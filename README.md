@@ -22,6 +22,7 @@ I have chosen to call this program `want` because its use can be as simple and i
 
 # Updates
 Each script will create, among other things, another update-oriented script, which can be activated when the program itself starts or by adding a relative `<program>-update` between the processes that you want to start at login. To make this possible, each user must be given the necessary permissions on each program folder.
-To allow updates on each program do `sudo chown -R $USER /opt/<program>`
+To allow updates on each program:
+- `sudo chown -R $USER /opt/<program>`
 
 NOTE that the AppImages are using `appimageupdate`, for now you can quickly install and integrate it using [AppMan](https://github.com/ivan-hc/AppMan).
