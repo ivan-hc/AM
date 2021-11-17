@@ -14,4 +14,10 @@ Actually this is a pure alpha, use it at your own risk!
 
 To install a program: `sudo want install <program>` or `sudo want -i <program>`
 
+To allow updates on each program: `sudo chown -R $USER /opt/<program>`
+
 To remove a program: `sudo want remove <program>` or `sudo want -r <program>`
+
+To update "want": `sudo want sync` or `sudo want -s`
+
+To know what programs are installed: `want files` or `want -f`
