@@ -11,13 +11,10 @@ Actually this is a pure alpha, use it at your own risk!
 `sudo want remove want`
 
 # Usage
+I have chosen to call this program `want` because its use can be as simple and intuitive as carrying out a search on the internet, so each option corresponds to the completion of a trivial sentence:
 
-To install a program: `sudo want install <program>` or `sudo want -i <program>`
-
-To allow updates on each program: `sudo chown -R $USER /opt/<program>`
-
-To remove a program: `sudo want remove <program>` or `sudo want -r <program>`
-
-To update "want": `sudo want sync` or `sudo want -s`
-
-To know what programs are installed: `want files` or `want -f`
+- To install a program do `sudo want install <program>` or `sudo want -i <program>`
+- To remove a program do `sudo want remove <program>` or `sudo want -r <program>`
+- To update "want" do `sudo want sync` or `sudo want -s`
+- To know what programs are installed do `want files` or `want -f`
+- To allow updates on each program do `sudo chown -R $USER /opt/<program>`
