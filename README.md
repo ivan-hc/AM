@@ -12,6 +12,6 @@ Actually this is a pure alpha, use it at your own risk!
 
 # Usage
 
-To install a program: `sudo want install <program>`
+To install a program: `sudo want install <program>` or `sudo want -i <program>`
 
-To remove a program: `sudo want remove <program>`
+To remove a program: `sudo want remove <program>` or `sudo want -r <program>`
