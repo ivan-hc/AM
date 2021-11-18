@@ -10,7 +10,7 @@ There are so many commands to remember among the GNU/Linux distributions, and so
                 >>  Want Applications, Not Torments!  <<
 
 
-WANT is inspired from my other project, [AppMan](https://github.com/ivan-hc/AppMan), an application manager for standalone programs and AppImages that works like APT or Pacman. In this case the commands are less, because there are less things to do. WANT is built to allow integration in the system and automatic updates for each application.
+WANT is inspired from my other project, [AppMan](https://github.com/ivan-hc/AppMan), an application manager for standalone programs and AppImages that works like APT or Pacman. In this case the commands are less, because there are less things to do. WANT is built to allow integration in the system and automatic updates for each application, so the final user must do nothing but just using the application.
 
 ### To install this program:
 
