@@ -59,7 +59,8 @@ I have chosen to call this program `want` because its use can be as simple and i
 
 # Updates
 Each script will create, among other things, another update-oriented script, which can be activated when the program itself starts or by adding a relative `<program>-update` between the processes that you want to start at login. To make this possible, each user must be given the necessary permissions on each program folder.
-To allow updates on each program:
-- `sudo chown -R $USER /opt/<program>`
 
-NOTE that the AppImages are using `appimageupdate`, for now you can quickly install and integrate it using [AppMan](https://github.com/ivan-hc/AppMan).
+NOTE that the AppImages are using `appimageupdate`, install it using the command `sudo want install appimageupdate`
+           
+# Uploaded programs
+Each $PROGRAM uses just one dedicated script that interacts with `sudo want install $PROGRAM`. A complete list is [here](https://github.com/ivan-hc/want/tree/main/opt/want/programs). If you want to add a program, just compile a script by yourself. I personally will try to import so many scripts from [AppMan](https://github.com/ivan-hc/AppMan) as possible (if I have time enough).
