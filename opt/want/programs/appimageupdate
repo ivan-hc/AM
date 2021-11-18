@@ -1,0 +1,53 @@
+#!/bin/sh
+
+mkdir /opt/appimage
+cd /opt/appimage
+wget https://github.com/AppImage/AppImageUpdate/releases/download/continuous/appimageupdatetool-x86_64.AppImage
+mv ./appimageupdatetool-x86_64.AppImage ./appimageupdate
+chmod a+x ./appimageupdate
+ln -s /opt/appimage/appimageupdate /usr/bin/appimageupdate
+
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/appimage
+
+# Creating an updater script
+echo "#!/bin/sh
+cd /opt/appimage && for f in *; do appimageupdate -O "$f"; done
+rm *zs-old" >> /opt/appimage/appimagetools-update
+chmod a+x /opt/appimage/appimagetools-update
+
+# Creating a script that removes all the files listed above
+echo '#!/bin/sh
+currentuser=$(who | awk '{print $1}')
+rm -R /usr/bin/appimageupdate /opt/appimage/appimageupdate /home/$currentuser/.config/autostart/appimagetools-update.desktop /opt/appimage/about-appimageupdate /opt/want/remove/appimageupdate /opt/want/programs/appimageupdate' >> /opt/want/remove/appimageupdate
+chmod a+x /opt/want/remove/appimageupdate
+
+# Creating an about file
+echo " AppImageUpdate lets you update AppImages using information embedded in the AppImage itself, if provided by the developer of the AppImage.
+  
+ SITE: https://github.com/AppImage/AppImageUpdate" >> /opt/appimage/about-appimageupdate
+
+# Changing privileges in /opt/appimage to allow automatic updates
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/appimage
+
+# Creating a process for "appimagetools-update"
+mkdir /home/$currentuser/.config/autostart
+echo "[Desktop Entry]
+Encoding=UTF-8
+Version=0.9.4
+Type=Application
+Name=appimagetools-update
+Comment=Automatic updates for the AppImage tools in /opt/appimage
+Exec=/opt/appimage/appimagetools-update
+OnlyShowIn=XFCE;
+RunHook=0
+StartupNotify=true
+Terminal=false
+Hidden=false" >> /home/$currentuser/.config/autostart/appimagetools-update.desktop
+chown -R $currentuser /home/$currentuser/.config/autostart
+
+# Message
+echo ""
+echo " AppImageUpdate has been installed!"
+echo ""
