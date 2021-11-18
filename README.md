@@ -63,4 +63,4 @@ Each script will create, among other things, another update-oriented script, whi
 NOTE that the AppImages are using `appimageupdate`, install it using the command `sudo want install appimageupdate`
            
 # Uploaded programs
-Each $PROGRAM uses just one dedicated script that interacts with `sudo want install $PROGRAM`. A complete list is [here](https://github.com/ivan-hc/want/tree/main/opt/want/programs). If you want to add a program, just compile a script by yourself. I personally will try to import so many scripts from [AppMan](https://github.com/ivan-hc/AppMan) as possible (if I have time enough).
+Each $PROGRAM uses just one dedicated script that interacts with `sudo want install $PROGRAM`. A complete list is [here](https://github.com/ivan-hc/want/tree/main/programs). If you want to add a program, just compile a script by yourself. I personally will try to import so many scripts from [AppMan](https://github.com/ivan-hc/AppMan) as possible (if I have time enough).
