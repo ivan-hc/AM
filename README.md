@@ -1,4 +1,4 @@
-There are so many commands to remember to remember among the GNU/Linux distributions, and sometime there is not what I really "want" from a package manager... so I've created another tool... again:
+There are so many commands to remember among the GNU/Linux distributions, and sometime there is not what I really "want" from a package manager... so I've created another tool... again:
 
            ____    __    ____  ___      .__   __. .___________.
            \   \  /  \  /   / /   \     |  \ |  | |           |
