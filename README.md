@@ -2,9 +2,12 @@ There are so many commands to remember among the GNU/Linux distributions, and so
 
 "APP" is inspired from my other project, [AppMan](https://github.com/ivan-hc/AppMan), an application manager for standalone programs and AppImages that works like APT or Pacman. In this case the commands are less, because there are less things to do. APP is built to allow integration in the system and automatic updates for each application, so the final user must do nothing but just using the application.
 
-"APP" is just what is aims to manage: only standalone apps! Not a program from a centralized repository or managed through a Package Manager, but just a standalone app. "APP" is easier to remember and an app is just what many people want to manage.
+"APP" seems to be a too much generic name for a command line tool, but it represents just what it aims to manage, ie only standalone apps!
+Here is not a program from a centralized repository or managed through a Package Manager, but just a standalone app.
 
-Each app installed using this tool must be just installed or removed using the related command, while updates must be automatic and related just to that program, not to the whole repository of the distribution. "APP" has not other options. APP is easy to use the same way you write it.
+Each app managed by this tool can be just installed or removed using the related command, while updates must be automatic and related just to that program, not to the whole repository of the distribution. "APP" has not other options.
+
+APP is easy to use the same way you write it.
 
 -----------------------
 
