@@ -58,7 +58,7 @@ NOTE that the AppImages are using `appimageupdate`, install it using the command
 # The "repository"
 Each $PROGRAM only uses a dedicated script which interacts with `sudo app install $PROGRAM`. A full list is [here](https://github.com/ivan-hc/APP-Manager/tree/main/programs).
 	
-If you want to add a program just compile a script by yourself which also contains the creation of a script named `remove-$PROGRAM` in a dedicated path named `/opt/$PROGRAM` which allows the complete uninstallation of all the files installed with your script (that will be downloaded in `/opt/app/programs`).
+If you want to add a program just compile a script by yourself which also contains the creation of a script named `remove` in a dedicated path named `/opt/$PROGRAM` which allows the complete uninstallation of all the files installed with your script (that will be downloaded in `/opt/app/programs`).
 
 I personally will try to import so many scripts from [AppMan](https://github.com/ivan-hc/AppMan) as possible (if I have time enough).
 
