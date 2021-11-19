@@ -77,7 +77,7 @@ case "$1" in
 	*) for var in $2;
 	do read -p "Do you wish to REMOVE this program (y,N)?" yn
 		case $yn in
-		[Yy]* ) exec /opt/$2/remove-$2; echo ""; echo "Application removed!"; echo ""; break;;
+		[Yy]* ) exec /opt/$2/remove; echo ""; echo "Application removed!"; echo ""; break;;
 		[Nn]*|* ) echo "Aborted"; exit;; esac done;;
 	esac
 	shift
