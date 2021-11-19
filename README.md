@@ -6,9 +6,30 @@ There are so many commands to remember among the GNU/Linux distributions, and so
 
 Each app installed using this tool must be just installed or removed using the related command, while updates must be automatic and related just to that program, not to the whole repository of the distribution. "APP" has not other options. APP is easy to use the same way you write it.
 
+-----------------------
+
+[Installation](#installation)
+
+[Usage](#usage)
+
+[Updates](#updates)
+
+[Repository and... rules?](#repository-and-rules)
+
+[Uninstall only "APP"](#uninstall-only-app)
+
+[Uninstall "APP" and all the other programs](#uninstall-app-and-all-the-other-programs)
+
+[Conclusions](#conclusions)
+
+-----------------------
+
 # Installation
+Copy/paste this command:
 
 `wget https://raw.githubusercontent.com/ivan-hc/APP-Manager/main/INSTALL && chmod a+x ./INSTALL && sudo ./INSTALL`
+
+This will download the ["app"](https://github.com/ivan-hc/APP-Manager/blob/main/app) script in /opt/app, a symlink for it in /usr/bin, a /opt/app/programs folder (where [each installation script of the programs you'll install](https://github.com/ivan-hc/APP-Manager/tree/main/programs) will be stored) and the /opt/app/remove script needed to uninstall "APP" (keep reading).
 
 # Usage
 
