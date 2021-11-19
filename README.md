@@ -54,7 +54,7 @@ NOTE that the AppImages are using `appimageupdate`, install it using the command
 #### WARNING! Programs that update at startup can slow down your system, and programs that include update at startup may take a long time to open before the update is complete.
 
            
-# The "repository"
+# Repository and... rules?
 Each [$PROGRAM](https://github.com/ivan-hc/APP-Manager/tree/main/programs) only uses a dedicated script. Once you've performed the command:
 	
 `sudo app install $PROGRAM`
