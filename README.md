@@ -1,33 +1,12 @@
-There are so many commands to remember among the GNU/Linux distributions, and sometime there is not what I really "want" from a package manager... so I've created another tool... again:
+There are so many commands to remember among the GNU/Linux distributions, and sometime there is not what I really want from a package manager... so I've created another tool... again: EYA!
 
-            _____                _____                    _____          
-           /\    \              |\    \                  /\    \         
-          /::\    \             |:\____\                /::\    \        
-         /::::\    \            |::|   |               /::::\    \       
-        /::::::\    \           |::|   |              /::::::\    \      
-       /:::/\:::\    \          |::|   |             /:::/\:::\    \     
-      /:::/__\:::\    \         |::|   |            /:::/__\:::\    \    
-     /::::\   \:::\    \        |::|   |           /::::\   \:::\    \   
-    /::::::\   \:::\    \       |::|___|______    /::::::\   \:::\    \  
-   /:::/\:::\   \:::\    \      /::::::::\    \  /:::/\:::\   \:::\    \ 
-  /:::/__\:::\   \:::\____\    /::::::::::\____\/:::/  \:::\   \:::\____\
-  \:::\   \:::\   \::/    /   /:::/~~~~/~~      \::/    \:::\  /:::/    /
-   \:::\   \:::\   \/____/   /:::/    /          \/____/ \:::\/:::/    / 
-    \:::\   \:::\    \      /:::/    /                    \::::::/    /  
-     \:::\   \:::\____\    /:::/    /                      \::::/    /   
-      \:::\   \::/    /    \::/    /                       /:::/    /    
-       \:::\   \/____/      \/____/                       /:::/    /     
-        \:::\    \                                       /:::/    /      
-         \:::\____\                                     /:::/    /       
-          \::/    /                                     \::/    /        
-           \/____/                                       \/____/         
                                                                          
      >>  Enjoy Your Apps... without thinking about anything else   <<    
 
 
 EYA means "Enjoy Your Apps" and it is inspired from my other project, [AppMan](https://github.com/ivan-hc/AppMan), an application manager for standalone programs and AppImages that works like APT or Pacman. In this case the commands are less, because there are less things to do. EYA is built to allow integration in the system and automatic updates for each application, so the final user must do nothing but just using the application.
 
-### To install this program:
+### To install EYA:
 
 `wget https://raw.githubusercontent.com/ivan-hc/EYA-App-Manager/main/INSTALL && chmod a+x ./INSTALL && sudo ./INSTALL`
 
