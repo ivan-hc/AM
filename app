@@ -1,38 +1,17 @@
 #!/bin/sh
 
-URL="https://raw.githubusercontent.com/ivan-hc/EYA-App-Manager/main"
+URL="https://raw.githubusercontent.com/ivan-hc/APP-Manager/main"
 
-cd /opt/eya
+cd /opt/app
 case "$1" in
   ''|'-h'|'help') echo '
  ------------------------------------------------------------------------
-            _____                _____                    _____          
-           /\    \              |\    \                  /\    \         
-          /::\    \             |:\____\                /::\    \        
-         /::::\    \            |::|   |               /::::\    \       
-        /::::::\    \           |::|   |              /::::::\    \      
-       /:::/\:::\    \          |::|   |             /:::/\:::\    \     
-      /:::/__\:::\    \         |::|   |            /:::/__\:::\    \    
-     /::::\   \:::\    \        |::|   |           /::::\   \:::\    \   
-    /::::::\   \:::\    \       |::|___|______    /::::::\   \:::\    \  
-   /:::/\:::\   \:::\    \      /::::::::\    \  /:::/\:::\   \:::\    \ 
-  /:::/__\:::\   \:::\____\    /::::::::::\____\/:::/  \:::\   \:::\____\
-  \:::\   \:::\   \::/    /   /:::/~~~~/~~      \::/    \:::\  /:::/    /
-   \:::\   \:::\   \/____/   /:::/    /          \/____/ \:::\/:::/    / 
-    \:::\   \:::\    \      /:::/    /                    \::::::/    /  
-     \:::\   \:::\____\    /:::/    /                      \::::/    /   
-      \:::\   \::/    /    \::/    /                       /:::/    /    
-       \:::\   \/____/      \/____/                       /:::/    /     
-        \:::\    \                                       /:::/    /      
-         \:::\____\                                     /:::/    /       
-          \::/    /                                     \::/    /        
-           \/____/                                       \/____/         
-                                                                         
+
      >>  Enjoy Your Apps... without thinking about anything else   <<     
 
  ------------------------------------------------------------------------
 
-  Usage:		eya [option]
+  Usage:		app [option]
   
   where option include:
   
@@ -40,11 +19,11 @@ case "$1" in
 
   -f, files	Show the programs installed.
 
-  -s, sync	Updates EYA to a more recent version.
+  -s, sync	Updates APP to a more recent version.
 
   -----------------------------------------------------------------------
       
-  Usage:		eya [option] [argument]
+  Usage:		app [option] [argument]
   
   where option include:
   
@@ -52,7 +31,7 @@ case "$1" in
   		  
   -i, install 	Install a program. This will be taken directly from the
   		repository of the developer (always the latest version):
-  		- the installer is stored in /opt/eya/programs;
+  		- the installer is stored in /opt/app/programs;
   		- the icon is pushed in /usr/share/pixmaps;
   		- the launcher is created /usr/share/applications;
   		- the command is linked to /usr/bin;
@@ -60,15 +39,15 @@ case "$1" in
 		file and a script to remove this and all the files listed
 		above.
 		The icon and launcher are not needed for no-ui programs.
-  		EYA uses both AppImages and other standalone programs.
+  		"APP" uses both AppImages and other standalone programs.
   		
   -r, remove	Removes the program and all the other files listed above
-  		using the instructions in /opt/eya/remove/<program>.
+  		using the instructions in /opt/app/remove/<program>.
   		Confirmation is required (Y or N, default is N).		 
 
   -----------------------------------------------------------------------
    
-  SITE: https://github.com/ivan-hc/EYA-App-Manager
+  SITE: https://github.com/ivan-hc/APP-Manager
   
   ' ;;
   '-a'|'about')
@@ -80,7 +59,7 @@ case "$1" in
 	esac
 	shift
 	done;;
-  '-f'|'files') echo ""; echo $(echo "  Applications installed on the system:"; ls /opt/eya/programs/ | wc -l); echo ""; ls /opt/eya/programs; echo "" ;;
+  '-f'|'files') echo ""; echo $(echo "  Applications installed on the system:"; ls /opt/app/programs/ | wc -l); echo ""; ls /opt/app/programs; echo "" ;;
   '-i'|'install')
 	while [ -n "$1" ]
 	do
