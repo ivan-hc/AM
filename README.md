@@ -1,4 +1,14 @@
-There are so many commands to remember among the GNU/Linux distributions, and sometime there is not what I really want from a package manager... so I've created another tool... again!
+There are so many commands to remember among the GNU/Linux distributions, and sometime there is not what I really want from a package manager:
+
+- I want an app totally independent from the repositories of my distribution;
+- it must not require hundreds of packages;
+- my app must not share its dependencies with other installed applications;
+- this app must always be updated to the latest version, even at the cost of updating itself;
+- it must also be available for other users who use my pc;
+- I want this app to be easy to install and remove using an extremely intuitive command;
+- I want to summarize the whole installation process, including icons, launchers, info files and a script to remove all this in just one script.
+
+So I've created another tool... again!
 
 "APP" is inspired from my other project, [AppMan](https://github.com/ivan-hc/AppMan), an application manager for standalone programs and AppImages that works like APT or Pacman. In this case the commands are less, because there are less things to do. APP is built to allow integration in the system and automatic updates for each application, so the final user must do nothing but just using the application.
 
