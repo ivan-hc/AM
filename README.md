@@ -34,16 +34,16 @@ EYA means "Enjoy Your Apps" and it is inspired from my other project, [AppMan](h
   
   `-a`, `about`	Show basic info on each application installed.
   		  
-  `-i`, `install` 	Install a program. This will be taken directly from the
+  -i, install 	Install a program. This will be taken directly from the
   		repository of the developer (always the latest version):
   		- the installer is stored in /opt/eya/programs;
-  		- the program is stored in /opt/<program>;
   		- the icon is pushed in /usr/share/pixmaps;
   		- the launcher is created /usr/share/applications;
   		- the command is linked to /usr/bin;
-  		- the uninstaller is created in /opt/eya/remove;
-  		- other files can be stored in /opt/<program>.
-  		The icon and launcher are not needed for no-ui programs.
+		  - the program is stored in /opt/<program> with an "about"
+		  file and a script to remove this and all the files listed
+		  above.
+		  The icon and launcher are not needed for no-ui programs.
   		EYA uses both AppImages and other standalone programs.
   		
   `-r`, `remove`	Removes the program and all the other files listed above
