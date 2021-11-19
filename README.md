@@ -1,7 +1,7 @@
 There are so many commands to remember among the GNU/Linux distributions, and sometime there is not what I really want from a package manager:
 
 - I want an app totally independent from the repositories of my distribution;
-- it must not require hundreds of packages;
+- it must not require hundreds of packages and files of dependencies;
 - my app must not share its dependencies with other installed applications;
 - this app must always be updated to the latest version, even at the cost of updating without asking, I just want to use it;
 - it must also be available for other users who use my pc;
