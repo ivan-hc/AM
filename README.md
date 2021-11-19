@@ -10,13 +10,13 @@ There are so many commands to remember among the GNU/Linux distributions, and so
 
 So I've created another tool... again!
 
-"APP" is inspired from my other project, [AppMan](https://github.com/ivan-hc/AppMan), an application manager for standalone programs and AppImages that works like APT or Pacman. In this case the commands are less, because there are less things to do. APP is built to allow integration in the system and automatic updates for each application, so the final user must do nothing but just using the application.
+"APP" is inspired from my other project, [AppMan](https://github.com/ivan-hc/AppMan), an application manager for standalone programs and AppImages that works like APT or Pacman. In this case the commands are less, because there are less things to do. "APP" is built to allow integration in the system and automatic updates for each application, so the final user must do nothing but just using the application.
 
 "APP" seems to be a too much generic name for a command line tool, but it represents just what it aims to manage, ie only standalone applications!
 
 Each app managed by this tool can be just installed or removed using the related command, while updates must be automatic and related just to that program, not to the whole repository of the distribution. "APP" has not other options.
 
-APP is easy to use the same way you write it.
+"APP" is easy to use the same way you write it.
 
 -----------------------
 
