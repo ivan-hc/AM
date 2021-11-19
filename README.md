@@ -3,7 +3,7 @@ There are so many commands to remember among the GNU/Linux distributions, and so
 - I want an app totally independent from the repositories of my distribution;
 - it must not require hundreds of packages;
 - my app must not share its dependencies with other installed applications;
-- this app must always be updated to the latest version, even at the cost of updating itself;
+- this app must always be updated to the latest version, even at the cost of updating without asking, I just want to use it;
 - it must also be available for other users who use my pc;
 - I want this app to be easy to install and remove using an extremely intuitive command;
 - I want to summarize the whole installation process, including icons, launchers, info files and a script to remove all this in just one script.
@@ -129,3 +129,5 @@ Before you remove "APP", you should remove each program one by one using the `ap
 
 # Conclusions
 I created this program because I was bored every time I had to look for the new version of a program... and after all, even the name of the command, "app", I decided out of boredom.
+	
+### And since the "app" command has not yet been invented by anyone, I gladly take advantage of it.
