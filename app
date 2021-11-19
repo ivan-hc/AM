@@ -65,8 +65,8 @@ case "$1" in
 	do
 	case $2 in
 	*) for var in $2;
-	do cd /opt/eya/programs; mkdir tmp; cd tmp; wget $URL/programs/$2; cd ..; mv ./tmp/$2 ./$2; rmdir ./tmp;
-	chmod a+x /opt/eya/programs/$2 && exec /opt/eya/programs/$2; done
+	do cd /opt/app/programs; mkdir tmp; cd tmp; wget $URL/programs/$2; cd ..; mv ./tmp/$2 ./$2; rmdir ./tmp;
+	chmod a+x /opt/app/programs/$2 && exec /opt/app/programs/$2; done
 	esac
 	shift
 	done;;
@@ -82,8 +82,8 @@ case "$1" in
 	esac
 	shift
 	done;;
-  '-s'|'sync') echo ""; echo " Updating EYA, please wait..."; sleep 1;
-  	cd /opt/eya; mkdir tmp; cd ./tmp; wget -q $URL/eya && chmod a+x ./eya; cd ..;
-  	mv /opt/eya/tmp/eya /opt/eya; rmdir /opt/eya/tmp; echo "...done!";;
-  *) exec /opt/eya/eya ;;
+  '-s'|'sync') echo ""; echo " Updating APP Manager, please wait..."; sleep 1;
+  	cd /opt/app; mkdir tmp; cd ./tmp; wget -q $URL/app && chmod a+x ./app; cd ..;
+  	mv /opt/app/tmp/app /opt/app; rmdir /opt/app/tmp; echo "...done!";;
+  *) exec /opt/app/app ;;
 esac
