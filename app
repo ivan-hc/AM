@@ -1,6 +1,7 @@
 #!/bin/sh
 
 URL="https://raw.githubusercontent.com/ivan-hc/APP-Manager/main"
+arch=$(uname -m)
 
 cd /opt/app
 case "$1" in
@@ -73,7 +74,7 @@ case "$1" in
 	do
 	case $2 in
 	*) for var in $2;
-	do cd /opt/app/programs; mkdir tmp; cd tmp; wget $URL/programs/$2; cd ..; mv ./tmp/$2 ./$2; rmdir ./tmp;
+	do cd /opt/app/programs; mkdir tmp; cd tmp; wget $URL/programs$arch/$2; cd ..; mv ./tmp/$2 ./$2; rmdir ./tmp;
 	chmod a+x /opt/app/programs/$2 && exec /opt/app/programs/$2; done
 	esac
 	shift
