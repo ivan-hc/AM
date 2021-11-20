@@ -40,14 +40,11 @@ case "$1" in
   -i, install 	Install a program. This will be taken directly from the
   		repository of the developer (always the latest version):
   		- the installer is stored in /opt/app/programs;
-  		- the icon is pushed in /usr/share/pixmaps;
-  		- the launcher is created /usr/share/applications;
-  		- the command is linked to /usr/bin;
-		- the program is stored in /opt/<program> with an "about"
-		file and a script to remove this and all the files listed
-		above.
-		The icon and launcher are not needed for no-ui programs.
-  		"APP" uses both AppImages and other standalone programs.
+  		- the command is linked to a $PATH;
+		- the program is stored in /opt/<program> with a script to
+	    	remove this and all the files listed above.
+		The icon and the launcher are optional for no-ui programs.
+  		APP uses both AppImages and other standalone programs.
   		
   -r, remove	Removes the program and all the other files listed above
   		using the instructions in /opt/app/remove/<program>.
