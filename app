@@ -2,6 +2,7 @@
 
 URL="https://raw.githubusercontent.com/ivan-hc/APP-Manager/main"
 arch=$(uname -m)
+currentuser=$(who | awk '{print $1}')
 
 cd /opt/app
 case "$1" in
@@ -94,7 +95,7 @@ case "$1" in
 	shift
 	done;;
   '-s'|'sync') echo ""; echo " Updating APP Manager, please wait..."; sleep 1;
-  	cd /opt/app; mkdir tmp; cd ./tmp; wget -q $URL/app && chmod a+x ./app; cd ..;
-  	mv /opt/app/tmp/app /opt/app; rmdir /opt/app/tmp; echo "...done!";;
+  	cd /opt/app; mkdir tmp; cd ./tmp; wget -q $URL/APP-COMMAND && chmod a+x ./app; cd ..;
+  	mv /opt/app/tmp/APP-COMMAND /opt/app; rmdir /opt/app/tmp; chown -R $currentuser /opt/app; echo "...done!";;
   *) exec /opt/app/app ;;
 esac
