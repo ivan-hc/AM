@@ -38,11 +38,17 @@ So I've created another tool... again!
 
 [Updates](#updates)
 
-[Repository and... rules?](#repository-and-rules)
+[Multiarchitecture](#multiarchitecture)
 
-[Uninstall only "APP"](#uninstall-only-app)
+[Repository](#repository)
 
-[Uninstall "APP" and all the other programs](#uninstall-app-and-all-the-other-programs)
+[Scripts and rules](#scripts-and-rules)
+
+[How to uninstall "APP"](#how-to-uninstall-app)
+
+[How to uninstall a program using "APP"](#how-to-uninstall-a-program-using-app)
+
+[How to uninstall a program without "APP"](#how-to-uninstall-a-program-without-app)
 
 [Conclusions](#conclusions)
 
@@ -73,7 +79,7 @@ This will download the ["app"](https://github.com/ivan-hc/APP-Manager/blob/main/
   
   `-h`, `help`	Print this message.
 
-  `-f`, `files`	Show the programs installed.
+  `-f`, `files`	Show the programs installed in /opt.
 
   `-s`, `sync`	Updates "APP" to a more recent version.
 
@@ -105,21 +111,28 @@ NOTE that the AppImages are using [appimageupdate](https://github.com/AppImage/A
 	
 #### WARNING! Programs that update at startup can slow down your system, and programs that include update at startup may take a long time to open before the update is complete.
 
-# Multiarchitecture
-Currently my work focuses on applications for x86_64 architecture, but it is possible to extend "APP" to all other available architectures. If you are interested, you can deliberately join this project.
+# Repository
+Each program is installed through a dedicated script.
 	
-# Repository and... rules?
-Each [$PROGRAM](https://github.com/ivan-hc/APP-Manager/tree/main/programs) only uses a dedicated script. Once you've performed the command:
+The scripts listed in the "[repository](https://github.com/ivan-hc/APP-Manager/tree/main/programs)" are divided by architecture.
+	
+# Multiarchitecture
+Currently my work focuses on applications for x86_64 architecture, but it is possible to extend "APP" to all other available architectures.
+
+If you are interested, you can deliberately join this project.
+
+# Scripts and rules	
+Once you've performed the command:
 	
 `sudo app install $PROGRAM`
 	
 The script will create:
-- a /opt/$PROGRAM folder containing the standalone app, an uninstaller script named `remove` and other files (maybe related to the automatic updates);
+- a /opt/$PROGRAM folder containing the standalone app, an uninstaller script named `remove`* and other files (maybe related to the automatic updates);
 - a symlink of /opt/$PROGRAM/$YOUR-APP-AND-HELPERS to a $PATH (ie /usr/local/bin, /usr/bin, /bin, /usr/local/games, /usr/games...);
 - the icon, that can be placed, for example, in /usr/share/pixmaps or /usr/share/icons (optional for command line tools);
 - the launcher in /usr/share/applications (optional for command line tools).
 	
-The more important thing is the /opt/$PROGRAM/remove script file, it must contain the path of all the files created by your script. It can be easilly called by "APP" also if you have removed and then re-installed "APP" itself, using the command:
+##### *NOTE that it is more important to have a /opt/$PROGRAM/remove script file, it must contain the path of all the files created by your script. It can be easilly called by "APP" also if you have removed and then re-installed "APP" itself, using the command:
 	
 `sudo app remove $PROGRAM`
 	
@@ -127,25 +140,18 @@ The more important thing is the /opt/$PROGRAM/remove script file, it must contai
 
 I personally will try to import so many scripts from [AppMan](https://github.com/ivan-hc/AppMan) as possible (if I'll have time enough).
 	
-# Uninstall only "APP"
-To remove only "APP" use the command:
+# How to uninstall "APP"
 
 `sudo app remove app`
 
-NOTE that the /opt/app/programs folder will be still there to list all the programs installed using this tool. To remove it use the command:
+# How to uninstall a program using "APP"
+With "APP":
 
-`sudo rm -R /opt/app`
+`sudo app remove <$PROGRAM>`
 
-# Uninstall "APP" and all the other programs
-Before you remove "APP", you should remove each program one by one using the `app remove <program>` command, this way:
-
-`sudo app remove <program1>`
-
-`sudo app remove <program2>`
-
-`...`
-
-`sudo app remove app && rm -R /opt/app`
+# How to uninstall a program without "APP"
+	
+`sudo /opt/$PROGRAM/remove`
 
 # Conclusions
 I created this program because I was bored every time I had to look for the new version of a program... and after all, even the name of the command, "app", I decided out of boredom.
