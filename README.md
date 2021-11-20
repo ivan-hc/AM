@@ -54,13 +54,13 @@ So I've created another tool... again!
 
 -----------------------
 
-"APP" is inspired from my other project, [AppMan](https://github.com/ivan-hc/AppMan), an application manager for standalone programs and AppImages that works like APT or Pacman. In this case the commands are less, because there are less things to do. "APP" is built to allow integration in the system and automatic updates for each application, so the final user must do nothing but just using the application.
+The `app` command is inspired from my other project, [AppMan](https://github.com/ivan-hc/AppMan), an application manager for standalone programs and AppImages that works like APT or Pacman. In this case the commands are less, because there are less things to do. `app` is built to allow integration in the system and automatic updates for each application, so the final user must do nothing but just using the application.
 
-"APP" seems to be a too much generic name for a command line tool, but it represents just what it aims to manage, ie only standalone applications!
+`app` seems to be a too much generic name for a command line tool, but it represents just what it aims to manage, ie only standalone applications!
 
-Each app managed by this tool can be just installed or removed using the related command, while updates must be automatic and related just to that program, not to the whole repository of the distribution. "APP" has not other options.
+Each app managed by this tool can be just installed or removed using the related command, while updates must be automatic and related just to that program, not to the whole repository of the distribution. The `app` command has not other options.
 
-"APP" is easy to use the same way you write it.
+`app` is easy to use the same way you write it.
 
 -----------------------
 
@@ -69,7 +69,7 @@ Copy/paste this command:
 
 `wget https://raw.githubusercontent.com/ivan-hc/APP-Manager/main/INSTALL && chmod a+x ./INSTALL && sudo ./INSTALL`
 
-This will download the ["app"](https://github.com/ivan-hc/APP-Manager/blob/main/app) script in /opt/app, a symlink for it in /usr/bin, a /opt/app/programs folder (where [each installation script of the programs you'll install](https://github.com/ivan-hc/APP-Manager/tree/main/programs) will be stored) and the /opt/app/remove script needed to uninstall "APP" (keep reading).
+This will download the ["APP-COMMAND"](https://github.com/ivan-hc/APP-Manager/blob/main/APP-COMMAND) script in /opt/app, a symlink for it in /usr/bin named `app` and the /opt/app/remove script needed to uninstall `app`.
 
 # Usage
 
@@ -132,14 +132,8 @@ The script will create:
 - the icon, that can be placed, for example, in /usr/share/pixmaps or /usr/share/icons (optional for command line tools);
 - the launcher in /usr/share/applications (optional for command line tools).
 	
-##### *NOTE that it is more important to have a /opt/$PROGRAM/remove script file, it must contain the path of all the files created by your script. It can be easilly called by "APP" also if you have removed and then re-installed "APP" itself, using the command:
-	
-`sudo app remove $PROGRAM`
-	
-### As you can see, you're free to do whatever you want with your script! The rules of "APP" are few and the commands to use even fewer.
+##### *NOTE that it is more important to have a /opt/$PROGRAM/remove script file, it must contain the path of all the files created by your script, learn more [here](#how-to-uninstall-a-program-using-app). 
 
-I personally will try to import so many scripts from [AppMan](https://github.com/ivan-hc/AppMan) as possible (if I'll have time enough).
-	
 # How to uninstall "APP"
 
 `sudo app remove app`
@@ -154,6 +148,10 @@ With "APP":
 `sudo /opt/$PROGRAM/remove`
 
 # Conclusions
+As you can see, you're free to do whatever you want with your script! The rules of the `app` command are few and the commands to use even fewer.
+
+I personally will try to import so many scripts from [AppMan](https://github.com/ivan-hc/AppMan) as possible (if I'll have time enough).
+	
 I created this program because I was bored every time I had to look for the new version of a program... and after all, even the name of the command, "app", I decided out of boredom.
 	
 ### And since the "app" command has not yet been invented by anyone, I gladly take advantage of it.
