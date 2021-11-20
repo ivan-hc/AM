@@ -1,4 +1,6 @@
-There are so many commands to remember among the GNU/Linux distributions, and sometime there is not what I really want from a package manager:
+There are so many commands to remember among the GNU/Linux distributions, and sometime I can't find what I really want from a package manager.
+
+Here's what it means for me to use a completely "standalone" application:
 
 - I want an app totally independent from the repositories of my distribution;
 - it must not require hundreds of packages and files of dependencies;
@@ -8,7 +10,13 @@ There are so many commands to remember among the GNU/Linux distributions, and so
 - I want this app to be easy to install and remove using an extremely intuitive command;
 - I want to summarize the whole installation process, including icons, launchers, info files and a script to remove all this in just one script.
 
-So I've created another tool... again!
+APT (Debian) often includes too old programs that require too many dependencies, while the programs installed by AUR (Arch Linux) are not always reliable, especially in terms of dependencies, and PacMan by default does not include all the programs that APT manages. Flatpak takes up too much disk space, while Snap slows down PC resources. AppImage doesn't have a centralized repository capable of automatically managing updates and tools such as "appimaged" are not enough to integrate the program in the correct way into the system.
+
+Finally I decided to write my own script, again.
+
+I have already wrote [AppMan](https://github.com/ivan-hc/AppMan), an application manager for standalone programs and AppImages that works like APT or Pacman, so the main problem for me was to find a name for a new command that was short, easy to remember and that fully reflected its purpose... failing!
+
+In the end I chose the most self-centered, obvious, stupid... and bravest name that an amateur developer could give to an application manager: `app`!
 
 ------------------------------------------------------------------------
                                                                            
@@ -54,13 +62,11 @@ So I've created another tool... again!
 
 -----------------------
 
-The `app` command is inspired from my other project, [AppMan](https://github.com/ivan-hc/AppMan), an application manager for standalone programs and AppImages that works like APT or Pacman. In this case the commands are less, because there are less things to do. `app` is built to allow integration in the system and automatic updates for each application, so the final user must do nothing but just using the application.
+The `app` command is very similar to [AppMan](https://github.com/ivan-hc/AppMan), but in this case [here are less inbuilt options](#usage), because here are less things to do:
 
-`app` seems to be a too much generic name for a command line tool, but it represents just what it aims to manage, ie only standalone applications!
-
-Each app managed by this tool can be just installed or removed using the related command, while updates must be automatic and related just to that program, not to the whole repository of the distribution. The `app` command has not other options.
-
-`app` is easy to use the same way you write it.
+-`app` is built to allow integration in the system and automatic updates for each application, so the final user must do nothing but just using the application;
+- this tool can only install or remove the desired application, updates are at the complete discretion and management of the latter;
+- using the `app` command to install/remove standalone apps is as easy and ridiculous as typing a command at random, out of desperation!
 
 -----------------------
 
