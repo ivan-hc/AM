@@ -10,6 +10,28 @@ There are so many commands to remember among the GNU/Linux distributions, and so
 
 So I've created another tool... again!
 
+------------------------------------------------------------------------
+                                                                           
+                AAA               PPPPPPPPPPPPPPPPP   PPPPPPPPPPPPPPPPP   
+               A:::A              P::::::::::::::::P  P::::::::::::::::P  
+              A:::::A             P::::::PPPPPP:::::P P::::::PPPPPP:::::P 
+             A:::::::A            PP:::::P     P:::::PPP:::::P     P:::::P
+            A:::::::::A             P::::P     P:::::P  P::::P     P:::::P
+           A:::::A:::::A            P::::P     P:::::P  P::::P     P:::::P
+          A:::::A A:::::A           P::::PPPPPP:::::P   P::::PPPPPP:::::P 
+         A:::::A   A:::::A          P:::::::::::::PP    P:::::::::::::PP  
+        A:::::A     A:::::A         P::::PPPPPPPPP      P::::PPPPPPPPP    
+       A:::::AAAAAAAAA:::::A        P::::P              P::::P            
+      A:::::::::::::::::::::A       P::::P              P::::P            
+     A:::::AAAAAAAAAAAAA:::::A      P::::P              P::::P            
+    A:::::A             A:::::A   PP::::::PP          PP::::::PP          
+
+------------------------------------------------------------------------
+
+ >>  Enjoy your applications without thinking about anything else   <<   
+  
+------------------------------------------------------------------------
+
 "APP" is inspired from my other project, [AppMan](https://github.com/ivan-hc/AppMan), an application manager for standalone programs and AppImages that works like APT or Pacman. In this case the commands are less, because there are less things to do. "APP" is built to allow integration in the system and automatic updates for each application, so the final user must do nothing but just using the application.
 
 "APP" seems to be a too much generic name for a command line tool, but it represents just what it aims to manage, ie only standalone applications!
