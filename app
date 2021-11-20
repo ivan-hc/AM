@@ -59,7 +59,7 @@ case "$1" in
   
   -h, help	Print this message.
 
-  -f, files	Show the programs installed.
+  -f, files	Show the programs installed in /opt.
 
   -s, sync	Updates APP to a more recent version.
 
@@ -68,7 +68,7 @@ case "$1" in
   SITE: https://github.com/ivan-hc/APP-Manager
   
   ' ;;
-  '-f'|'files') echo ""; echo $(echo "  Applications installed on the system:"; ls /opt/app/programs/ | wc -l); echo ""; ls /opt/app/programs; echo "" ;;
+  '-f'|'files') echo ""; echo $(echo "  Applications installed in /opt:"; ls /opt/ | wc -l); echo ""; ls /opt; echo "" ;;
   '-i'|'install')
 	while [ -n "$1" ]
 	do
