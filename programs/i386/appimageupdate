@@ -1,0 +1,53 @@
+#!/bin/sh
+
+mkdir /opt/appimageupdate
+cd /opt/appimageupdate
+wget https://github.com/AppImage/AppImageUpdate/releases/download/continuous/appimageupdatetool-i386.AppImage
+mv ./appimageupdatetool-i386.AppImage ./appimageupdate
+chmod a+x ./appimageupdate
+ln -s /opt/appimageupdate/appimageupdate /usr/bin/appimageupdate
+
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/appimageupdate
+
+# Creating an updater script
+rm /opt/appimageupdate/appimagetools-update
+echo "#!/bin/sh
+appimageupdate -O /opt/appimageupdate/appimageupdate
+appimageupdate -O /opt/pkg2appimage/pkg2appimage
+appimageupdate -O /opt/appimagetool/appimagetool
+rm /opt/appimageupdate/*zs-old /opt/pkg2appimage/*zs-old /opt/appimagetool/*zs-old" >> /opt/appimageupdate/appimagetools-update
+chmod a+x /opt/appimageupdate/appimagetools-update
+
+# Creating a script that removes all the files listed above
+rm /opt/appimageupdate/remove
+echo '#!/bin/sh
+currentuser=$(who | awk '{print $1}')
+rm -R /usr/bin/appimageupdate /opt/appimageupdate/appimageupdate /home/$currentuser/.config/autostart/appimagetools-update.desktop /opt/appimageupdate/remove /opt/app/programs/appimageupdate' >> /opt/appimageupdate/remove
+chmod a+x /opt/appimageupdate/remove
+
+# Changing privileges in /opt/appimageupdate to allow automatic updates
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/appimageupdate
+
+# Creating a process for "appimagetools-update"
+mkdir /home/$currentuser/.config/autostart
+rm /home/$currentuser/.config/autostart/appimagetools-update.desktop
+echo "[Desktop Entry]
+Encoding=UTF-8
+Version=0.9.4
+Type=Application
+Name=appimagetools-update
+Comment=Automatic updates for the AppImage tools in /opt/appimageupdate
+Exec=/opt/appimageupdate/appimagetools-update
+OnlyShowIn=XFCE;
+RunHook=0
+StartupNotify=true
+Terminal=false
+Hidden=false" >> /home/$currentuser/.config/autostart/appimagetools-update.desktop
+chown -R $currentuser /home/$currentuser/.config/autostart
+
+# Message
+echo ""
+echo " AppImageUpdate has been installed!"
+echo ""
