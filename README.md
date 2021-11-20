@@ -32,16 +32,6 @@ So I've created another tool... again!
   
 ------------------------------------------------------------------------
 
-"APP" is inspired from my other project, [AppMan](https://github.com/ivan-hc/AppMan), an application manager for standalone programs and AppImages that works like APT or Pacman. In this case the commands are less, because there are less things to do. "APP" is built to allow integration in the system and automatic updates for each application, so the final user must do nothing but just using the application.
-
-"APP" seems to be a too much generic name for a command line tool, but it represents just what it aims to manage, ie only standalone applications!
-
-Each app managed by this tool can be just installed or removed using the related command, while updates must be automatic and related just to that program, not to the whole repository of the distribution. "APP" has not other options.
-
-"APP" is easy to use the same way you write it.
-
------------------------
-
 [Installation](#installation)
 
 [Usage](#usage)
@@ -55,6 +45,16 @@ Each app managed by this tool can be just installed or removed using the related
 [Uninstall "APP" and all the other programs](#uninstall-app-and-all-the-other-programs)
 
 [Conclusions](#conclusions)
+
+-----------------------
+
+"APP" is inspired from my other project, [AppMan](https://github.com/ivan-hc/AppMan), an application manager for standalone programs and AppImages that works like APT or Pacman. In this case the commands are less, because there are less things to do. "APP" is built to allow integration in the system and automatic updates for each application, so the final user must do nothing but just using the application.
+
+"APP" seems to be a too much generic name for a command line tool, but it represents just what it aims to manage, ie only standalone applications!
+
+Each app managed by this tool can be just installed or removed using the related command, while updates must be automatic and related just to that program, not to the whole repository of the distribution. "APP" has not other options.
+
+"APP" is easy to use the same way you write it.
 
 -----------------------
 
@@ -99,11 +99,15 @@ This will download the ["app"](https://github.com/ivan-hc/APP-Manager/blob/main/
 # Updates
 Each script will create, among other things, another update-oriented script, which can be activated when the program itself starts or by adding a relative `<program>-update` between the processes that you want to start at login. To make this possible, each user must be given the necessary permissions on each program folder.
 
-NOTE that the AppImages are using `appimageupdate`, install it using the command `sudo app install appimageupdate`
+NOTE that the AppImages are using [appimageupdate](https://github.com/AppImage/AppImageUpdate), a command line tool available for both i386 and x86_64 architectures, install it using the command:
+	
+`sudo app install appimageupdate`
 	
 #### WARNING! Programs that update at startup can slow down your system, and programs that include update at startup may take a long time to open before the update is complete.
 
-           
+# Multiarchitecture
+Currently my work focuses on applications for x86_64 architecture, but it is possible to extend "APP" to all other available architectures. If you are interested, you can deliberately join this project.
+	
 # Repository and... rules?
 Each [$PROGRAM](https://github.com/ivan-hc/APP-Manager/tree/main/programs) only uses a dedicated script. Once you've performed the command:
 	
