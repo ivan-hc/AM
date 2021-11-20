@@ -77,9 +77,9 @@ This will download the ["app"](https://github.com/ivan-hc/APP-Manager/blob/main/
   
   where option include:
   
-  `-h`, `help`	Print this message.
+  `-h`, `help`	Prints this message.
 
-  `-f`, `files`	Show the programs installed in /opt.
+  `-f`, `files`	Shows the installed programs managed by "APP".
 
   `-s`, `sync`	Updates "APP" to a more recent version.
 
