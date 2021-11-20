@@ -57,18 +57,20 @@ case "$1" in
   
   where option include:
   
-  -h, help	Print this message.
+  -h, help	Prints this message.
 
-  -f, files	Show the programs installed in /opt.
+  -f, files	Shows the installed programs managed by "APP".
 
-  -s, sync	Updates APP to a more recent version.
+  -s, sync	Updates "APP" to a more recent version.
 
   -----------------------------------------------------------------------
    
   SITE: https://github.com/ivan-hc/APP-Manager
   
   ' ;;
-  '-f'|'files') echo ""; echo $(echo "  Applications installed in /opt:"; ls /opt/ | wc -l); echo ""; ls /opt; echo "" ;;
+  '-f'|'files') echo ""; echo $(echo "YOU HAVE INSTALLED "; cd /opt && find -name 'remove' -printf "%h\n" | sort -u | wc -l;
+  	echo " STANDALONE PROGRAMS MANAGED BY THE 'APP' COMMAND:"); echo "";
+  	cd /opt && find -name 'remove' -printf "%h\n" | sort -u | xargs -n 1 basename; echo "" ;;
   '-i'|'install')
 	while [ -n "$1" ]
 	do
