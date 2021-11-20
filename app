@@ -6,29 +6,37 @@ cd /opt/app
 case "$1" in
   ''|'-h'|'help') echo '
  ------------------------------------------------------------------------
+                                                                           
+                AAA               PPPPPPPPPPPPPPPPP   PPPPPPPPPPPPPPPPP   
+               A:::A              P::::::::::::::::P  P::::::::::::::::P  
+              A:::::A             P::::::PPPPPP:::::P P::::::PPPPPP:::::P 
+             A:::::::A            PP:::::P     P:::::PPP:::::P     P:::::P
+            A:::::::::A             P::::P     P:::::P  P::::P     P:::::P
+           A:::::A:::::A            P::::P     P:::::P  P::::P     P:::::P
+          A:::::A A:::::A           P::::PPPPPP:::::P   P::::PPPPPP:::::P 
+         A:::::A   A:::::A          P:::::::::::::PP    P:::::::::::::PP  
+        A:::::A     A:::::A         P::::PPPPPPPPP      P::::PPPPPPPPP    
+       A:::::AAAAAAAAA:::::A        P::::P              P::::P            
+      A:::::::::::::::::::::A       P::::P              P::::P            
+     A:::::AAAAAAAAAAAAA:::::A      P::::P              P::::P            
+    A:::::A             A:::::A   PP::::::PP          PP::::::PP          
+   A:::::A               A:::::A  P::::::::P          P::::::::P          
+  A:::::A                 A:::::A P::::::::P          P::::::::P          
+ AAAAAAA                   AAAAAAAPPPPPPPPPP          PPPPPPPPPP          
 
-     >>  Enjoy Your Apps... without thinking about anything else   <<     
+ ▄▀█ █▀█ █▀█ █░░ █ █▀▀ ▄▀█ ▀█▀ █ █▀█ █▄░█   █▀▄▀█ ▄▀█ █▄░█ ▄▀█ █▀▀ █▀▀ █▀█
+ █▀█ █▀▀ █▀▀ █▄▄ █ █▄▄ █▀█ ░█░ █ █▄█ █░▀█   █░▀░█ █▀█ █░▀█ █▀█ █▄█ ██▄ █▀▄
 
  ------------------------------------------------------------------------
 
-  Usage:		app [option]
+  >>  Enjoy your applications without thinking about anything else   <<   
   
-  where option include:
-  
-  -h, help	Print this message.
-
-  -f, files	Show the programs installed.
-
-  -s, sync	Updates APP to a more recent version.
-
-  -----------------------------------------------------------------------
+ ------------------------------------------------------------------------
       
   Usage:		app [option] [argument]
   
   where option include:
   
-  -a, about	Show basic info on each application installed.
-  		  
   -i, install 	Install a program. This will be taken directly from the
   		repository of the developer (always the latest version):
   		- the installer is stored in /opt/app/programs;
@@ -45,20 +53,23 @@ case "$1" in
   		using the instructions in /opt/app/remove/<program>.
   		Confirmation is required (Y or N, default is N).		 
 
+ ------------------------------------------------------------------------
+
+  Usage:		app [option]
+  
+  where option include:
+  
+  -h, help	Print this message.
+
+  -f, files	Show the programs installed.
+
+  -s, sync	Updates APP to a more recent version.
+
   -----------------------------------------------------------------------
    
   SITE: https://github.com/ivan-hc/APP-Manager
   
   ' ;;
-  '-a'|'about')
-	while [ -n "$1" ]
-	do
-	case $2 in
-	*) for var in $2;
-	do cat /opt/$2/about; echo ""; done
-	esac
-	shift
-	done;;
   '-f'|'files') echo ""; echo $(echo "  Applications installed on the system:"; ls /opt/app/programs/ | wc -l); echo ""; ls /opt/app/programs; echo "" ;;
   '-i'|'install')
 	while [ -n "$1" ]
