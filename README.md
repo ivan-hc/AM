@@ -83,18 +83,13 @@ This will download the ["app"](https://github.com/ivan-hc/APP-Manager/blob/main/
   
   where option include:
   
-  `-a`, `about`	Show basic info on each application installed.
-  		  
   `-i`, `install` Install a program. This will be taken directly from the
   		repository of the developer (always the latest version):
   		- the installer is stored in /opt/app/programs;
-  		- the icon is pushed in /usr/share/pixmaps;
-  		- the launcher is created /usr/share/applications;
-  		- the command is linked to /usr/bin;
-		- the program is stored in /opt/<program> with an "about"
-		file and a script to remove this and all the files listed
-		above.
-		The icon and launcher are not needed for no-ui programs.
+  		- the command is linked to a $PATH;
+		- the program is stored in /opt/<program> with a script to
+	    	remove this and all the files listed above.
+		The icon and the launcher are optional for no-ui programs.
   		APP uses both AppImages and other standalone programs.
   		
   `-r`, `remove` Removes the program and all the other files listed above
@@ -115,7 +110,7 @@ Each [$PROGRAM](https://github.com/ivan-hc/APP-Manager/tree/main/programs) only 
 `sudo app install $PROGRAM`
 	
 The script will create:
-- a /opt/$PROGRAM folder containing the standalone app, a file of basic info named `about`, an uninstaller script named `remove` and maybe other files related to the automatic updates;
+- a /opt/$PROGRAM folder containing the standalone app, an uninstaller script named `remove` and other files (maybe related to the automatic updates);
 - a symlink of /opt/$PROGRAM/$YOUR-APP-AND-HELPERS to a $PATH (ie /usr/local/bin, /usr/bin, /bin, /usr/local/games, /usr/games...);
 - the icon, that can be placed, for example, in /usr/share/pixmaps or /usr/share/icons (optional for command line tools);
 - the launcher in /usr/share/applications (optional for command line tools).
