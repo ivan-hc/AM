@@ -16,29 +16,38 @@ Finally I decided to write my own script, again.
 
 I have already wrote [AppMan](https://github.com/ivan-hc/AppMan), an application manager for standalone programs and AppImages that works like APT or Pacman, so the main problem for me was to find a name for a new command that was short, easy to remember and that fully reflected its purpose... failing!
 
-In the end I chose the most self-centered, obvious, stupid... and bravest name that an amateur developer could give to an application manager: `app`!
+In the end I chose the most self-centered, obvious, stupid, brief... and bravest name that an amateur developer could give to an "application manager": `am`!
 
 ------------------------------------------------------------------------
-                                                                           
-                AAA               PPPPPPPPPPPPPPPPP   PPPPPPPPPPPPPPPPP   
-               A:::A              P::::::::::::::::P  P::::::::::::::::P  
-              A:::::A             P::::::PPPPPP:::::P P::::::PPPPPP:::::P 
-             A:::::::A            PP:::::P     P:::::PPP:::::P     P:::::P
-            A:::::::::A             P::::P     P:::::P  P::::P     P:::::P
-           A:::::A:::::A            P::::P     P:::::P  P::::P     P:::::P
-          A:::::A A:::::A           P::::PPPPPP:::::P   P::::PPPPPP:::::P 
-         A:::::A   A:::::A          P:::::::::::::PP    P:::::::::::::PP  
-        A:::::A     A:::::A         P::::PPPPPPPPP      P::::PPPPPPPPP    
-       A:::::AAAAAAAAA:::::A        P::::P              P::::P            
-      A:::::::::::::::::::::A       P::::P              P::::P            
-     A:::::AAAAAAAAAAAAA:::::A      P::::P              P::::P            
-    A:::::A             A:::::A   PP::::::PP          PP::::::PP          
+                    _____                    _____                                                                           
+                   /\    \                  /\    \         
+                  /::\    \                /::\____\        
+                 /::::\    \              /::::|   |        
+                /::::::\    \            /:::::|   |        
+               /:::/\:::\    \          /::::::|   |        
+              /:::/__\:::\    \        /:::/|::|   |        
+             /::::\   \:::\    \      /:::/ |::|   |        
+            /::::::\   \:::\    \    /:::/  |::|___|______  
+           /:::/\:::\   \:::\    \  /:::/   |::::::::\    \ 
+          /:::/  \:::\   \:::\____\/:::/    |:::::::::\____\
+          \::/    \:::\  /:::/    /\::/    / ~~~~~/:::/    /
+           \/____/ \:::\/:::/    /  \/____/      /:::/    / 
+                    \::::::/    /               /:::/    /  
+                     \::::/    /               /:::/    /   
+                     /:::/    /               /:::/    /    
+                    /:::/    /               /:::/    /     
+                   /:::/    /               /:::/    /      
+                  /:::/    /               /:::/    /       
+                  \::/    /                \::/    /        
+                   \/____/                  \/____/         
+
+# "AM", THE APPLICATION MANAGER
 
 ------------------------------------------------------------------------
 
  >>  Enjoy your applications without thinking about anything else   <<   
   
-------------------------------------------------------------------------
+ ------------------------------------------------------------------------
 
 [Installation](#installation)
 
@@ -52,60 +61,60 @@ In the end I chose the most self-centered, obvious, stupid... and bravest name t
 
 [Scripts and rules](#scripts-and-rules)
 
-[How to uninstall "APP"](#how-to-uninstall-app)
+[How to uninstall "AM"](#how-to-uninstall-am)
 
-[How to uninstall a program using "APP"](#how-to-uninstall-a-program-using-app)
+[How to uninstall a program using "AM"](#how-to-uninstall-a-program-using-am)
 
-[How to uninstall a program without "APP"](#how-to-uninstall-a-program-without-app)
+[How to uninstall a program without "AM"](#how-to-uninstall-a-program-without-am)
 
 [Conclusions](#conclusions)
 
 -----------------------
 
-The `app` command is very similar to [AppMan](https://github.com/ivan-hc/AppMan), but in this case [here are less inbuilt options](#usage), because here are less things to do:
+The `am` command is very similar to [AppMan](https://github.com/ivan-hc/AppMan), but in this case [here are less inbuilt options](#usage), because here are less things to do:
 
--`app` is built to allow integration in the system and automatic updates for each application, so the final user must do nothing but just using the application;
+-`am` is built to allow integration in the system and automatic updates for each application, so the final user must do nothing but just using the application;
 - this tool can only install or remove the desired application, updates are at the complete discretion and management of the latter;
-- using the `app` command to install/remove standalone apps is as easy and ridiculous as typing a command at random, out of desperation!
+- using the `am` command to install/remove standalone apps is as easy and ridiculous as typing a command at random, out of desperation!
 
 -----------------------
 
 # Installation
 Copy/paste this command:
 
-`wget https://raw.githubusercontent.com/ivan-hc/APP-Manager/main/INSTALL && chmod a+x ./INSTALL && sudo ./INSTALL`
+`wget https://raw.githubusercontent.com/ivan-hc/APPLICATION-MANAGER/main/INSTALL && chmod a+x ./INSTALL && sudo ./INSTALL`
 
-This will download the ["APP-COMMAND"](https://github.com/ivan-hc/APP-Manager/blob/main/APP-COMMAND) script in /opt/app, a symlink for it in /usr/bin named `app` and the /opt/app/remove script needed to uninstall `app`.
+This will download the ["APP-MANAGER"](https://github.com/ivan-hc/APPLICATION-MANAGER/blob/main/APP-MANAGER) script in /opt/am, a symlink for it in /usr/local/bin named `am` and the /opt/am/remove script needed to uninstall `app`.
 
 # Usage
 
-  `app [option]`
+  `am [option]`
   
   where option include:
   
   `-h`, `help`	Prints this message.
 
-  `-f`, `files`	Shows the installed programs managed by "APP".
+  `-f`, `files`	Shows the installed programs managed by "AM".
 
-  `-s`, `sync`	Updates "APP" to a more recent version.
+  `-s`, `sync`	Updates "AM" to a more recent version.
 
   -----------------------------------------------------------------------
       
-  `app [option] [argument]`
+  `am [option] [argument]`
   
   where option include:
   
   `-i`, `install` Install a program. This will be taken directly from the
   		repository of the developer (always the latest version):
-  		- the installer is stored in /opt/app/programs;
+  		- the installer is stored in /opt/am/programs;
   		- the command is linked to a $PATH;
 		- the program is stored in /opt/<program> with a script to
 	    	remove this and all the files listed above.
 		The icon and the launcher are optional for no-ui programs.
-  		APP uses both AppImages and other standalone programs.
+  		"AM" uses both AppImages and other standalone programs.
   		
   `-r`, `remove` Removes the program and all the other files listed above
-  		using the instructions in /opt/app/remove/<program>.
+  		using the instructions in /opt/am/remove/<program>.
   		Confirmation is required (Y or N, default is N).
 
 # Updates
@@ -113,24 +122,24 @@ Each script will create, among other things, another update-oriented script, whi
 
 NOTE that the AppImages are using [appimageupdate](https://github.com/AppImage/AppImageUpdate), a command line tool available for both i386 and x86_64 architectures, install it using the command:
 	
-`sudo app install appimageupdate`
+`sudo am install appimageupdate`
 	
 #### WARNING! Programs that update at startup can slow down your system, and programs that include update at startup may take a long time to open before the update is complete.
 
 # Repository
 Each program is installed through a dedicated script.
 	
-The scripts listed in the "[repository](https://github.com/ivan-hc/APP-Manager/tree/main/programs)" are divided by architecture.
+The scripts listed in the "[repository](https://github.com/ivan-hc/APP-MANAGER/tree/main/programs)" are divided by architecture.
 	
 # Multiarchitecture
-Currently my work focuses on applications for x86_64 architecture, but it is possible to extend "APP" to all other available architectures.
+Currently my work focuses on applications for x86_64 architecture, but it is possible to extend "am" to all other available architectures.
 
 If you are interested, you can deliberately join this project.
 
 # Scripts and rules	
 Once you've performed the command:
 	
-`sudo app install $PROGRAM`
+`sudo am install $PROGRAM`
 	
 The script will create:
 - a /opt/$PROGRAM folder containing the standalone app, an uninstaller script named `remove`* and other files (maybe related to the automatic updates);
@@ -138,26 +147,23 @@ The script will create:
 - the icon, that can be placed, for example, in /usr/share/pixmaps or /usr/share/icons (optional for command line tools);
 - the launcher in /usr/share/applications (optional for command line tools).
 	
-##### *NOTE that it is more important to have a /opt/$PROGRAM/remove script file, it must contain the path of all the files created by your script, learn more [here](#how-to-uninstall-a-program-using-app). 
+##### *NOTE that it is more important to have a /opt/$PROGRAM/remove script file, it must contain the path of all the files created by your script, learn more [here](#how-to-uninstall-a-program-using-am). 
 
-# How to uninstall "APP"
+# How to uninstall "am"
 
-`sudo app remove app`
+`sudo am remove am`
 
-# How to uninstall a program using "APP"
-With "APP":
+# How to uninstall a program using "am"
+`sudo am remove <$PROGRAM>`
 
-`sudo app remove <$PROGRAM>`
-
-# How to uninstall a program without "APP"
-	
+# How to uninstall a program without "am"
 `sudo /opt/$PROGRAM/remove`
 
 # Conclusions
-As you can see, you're free to do whatever you want with your script! The rules of the `app` command are few and the commands to use even fewer.
+As you can see, you're free to do whatever you want with your script! The rules of the `am` command are few and the commands to use even fewer.
 
 I personally will try to import so many scripts from [AppMan](https://github.com/ivan-hc/AppMan) as possible (if I'll have time enough).
 	
-I created this program because I was bored every time I had to look for the new version of a program... and after all, even the name of the command, "app", I decided out of boredom.
+I created this program because I was bored every time I had to look for the new version of a program... and after all, even the name of the command, "am", I decided out of boredom.
 	
-### And since the "app" command has not yet been invented by anyone, I gladly take advantage of it.
+### And since the "am" command has not yet been invented by anyone, I gladly take advantage of it.
