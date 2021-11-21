@@ -114,7 +114,7 @@ This will download the ["APP-MANAGER"](https://github.com/ivan-hc/APPLICATION-MA
   		"AM" uses both AppImages and other standalone programs.
   		
   `-r`, `remove` Removes the program and all the other files listed above
-  		using the instructions in /opt/am/remove/<program>.
+  		using the instructions in /opt/<program>/remove.
   		Confirmation is required (Y or N, default is N).
 
 # Updates
