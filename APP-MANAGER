@@ -1,0 +1,112 @@
+#!/bin/sh
+
+URL="https://raw.githubusercontent.com/ivan-hc/APPLICATION-MANAGER/main"
+arch=$(uname -m)
+currentuser=$(who | awk '{print $1}')
+
+cd /opt/am
+case "$1" in
+  ''|'-h'|'help') echo '
+ ------------------------------------------------------------------------
+                    _____                    _____                                                                           
+                   /\    \                  /\    \         
+                  /::\    \                /::\____\        
+                 /::::\    \              /::::|   |        
+                /::::::\    \            /:::::|   |        
+               /:::/\:::\    \          /::::::|   |        
+              /:::/__\:::\    \        /:::/|::|   |        
+             /::::\   \:::\    \      /:::/ |::|   |        
+            /::::::\   \:::\    \    /:::/  |::|___|______  
+           /:::/\:::\   \:::\    \  /:::/   |::::::::\    \ 
+          /:::/  \:::\   \:::\____\/:::/    |:::::::::\____\
+          \::/    \:::\  /:::/    /\::/    / ~~~~~/:::/    /
+           \/____/ \:::\/:::/    /  \/____/      /:::/    / 
+                    \::::::/    /               /:::/    /  
+                     \::::/    /               /:::/    /   
+                     /:::/    /               /:::/    /    
+                    /:::/    /               /:::/    /     
+                   /:::/    /               /:::/    /      
+                  /:::/    /               /:::/    /       
+                  \::/    /                \::/    /        
+                   \/____/                  \/____/         
+
+
+ ▄▀█ █▀█ █▀█ █░░ █ █▀▀ ▄▀█ ▀█▀ █ █▀█ █▄░█   █▀▄▀█ ▄▀█ █▄░█ ▄▀█ █▀▀ █▀▀ █▀█
+ █▀█ █▀▀ █▀▀ █▄▄ █ █▄▄ █▀█ ░█░ █ █▄█ █░▀█   █░▀░█ █▀█ █░▀█ █▀█ █▄█ ██▄ █▀▄
+
+ ------------------------------------------------------------------------
+
+  >>  Enjoy your applications without thinking about anything else   <<   
+  
+ ------------------------------------------------------------------------
+      
+  Usage:		am [option] [argument]
+  
+  where option include:
+  
+  -i, install 	Install a program. This will be taken directly from the
+  		repository or the main site of the developer (always the
+  		latest version):
+  		- the installer is stored in /opt/am/.cache;
+  		- the command is linked to a $PATH;
+  		- the launcher is placed in /usr/share/applications;
+		- the program is stored in /opt/<program> with a script to
+	    	remove this and all the files listed above.
+		The icon and the launcher are optional for no-ui programs.
+  		"AM" uses both AppImages and other standalone programs.
+  		
+  -r, remove	Removes the program and all the other files listed above
+  		using the instructions in /opt/am/remove/<program>.
+  		Confirmation is required (Y or N, default is N).		 
+
+ ------------------------------------------------------------------------
+
+  Usage:		am [option]
+  
+  where option include:
+  
+  -h, help	Prints this message.
+  
+  -c, clean	Removes all the unnecessary files.
+
+  -f, files	Shows the installed programs managed by "AM".
+
+  -s, sync	Updates "AM" to a more recent version.
+
+  -----------------------------------------------------------------------
+   
+  SITE: https://github.com/ivan-hc/APPLICATION-MANAGER
+  
+  ' ;;
+   '-c'|'clean') echo ""; rm -R -f /opt/am/.cache/*;
+	echo "All unnecessary files are removed, exiting."; echo "" ;;
+  '-f'|'files') echo ""; echo $(echo "YOU HAVE INSTALLED "; cd /opt && find -name 'remove' -printf "%h\n" | sort -u | wc -l;
+  	echo " STANDALONE PROGRAMS MANAGED BY THE 'AM' COMMAND:"); echo "";
+  	cd /opt && find -name 'remove' -printf "%h\n" | sort -u | xargs -n 1 basename; echo "" ;;
+  '-i'|'install')
+	while [ -n "$1" ]
+	do
+	case $2 in
+	*) for var in $2;
+	do cd /opt/am/.cache; mkdir tmp; cd tmp; wget $URL/programs/$arch/$2; cd ..; mv ./tmp/$2 ./$2; rmdir ./tmp;
+	chmod a+x /opt/am/.cache/$2 && exec /opt/am/.cache/$2; done
+	esac
+	shift
+	done;;
+  '-r'|'remove')
+	while [ -n "$1" ]
+	do
+	case $2 in
+	*) for var in $2;
+	do read -p "Do you wish to REMOVE this program (y,N)?" yn
+		case $yn in
+		[Yy]* ) exec /opt/$2/remove; echo ""; echo "Application removed!"; echo ""; break;;
+		[Nn]*|* ) echo "Aborted"; exit;; esac done;;
+	esac
+	shift
+	done;;
+  '-s'|'sync') echo ""; echo " Updating the Application Manager, please wait..."; sleep 1;
+  	cd /opt/am/.cache; wget -q $URL/APP-MANAGER && chmod a+x ./APP-MANAGER; cd ..;
+  	mv /opt/am/.cache/APP-MANAGER /opt/am; chown -R $currentuser /opt/am; echo "...done!";;
+  *) exec /opt/am/APP-MANAGER ;;
+esac
