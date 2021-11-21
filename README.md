@@ -1,3 +1,37 @@
+# "AM", THE APPLICATION MANAGER
+
+------------------------------------------------------------------------
+
+ >>  Enjoy your applications without thinking about anything else   <<   
+  
+ ------------------------------------------------------------------------
+
+[Introducing "AM"](#introducing-am)
+
+[Installation](#installation)
+
+[Usage](#usage)
+
+[Updates](#updates)
+
+[Multiarchitecture](#multiarchitecture)
+
+[Repository](#repository)
+
+[Scripts and rules](#scripts-and-rules)
+
+[How to uninstall "AM"](#how-to-uninstall-am)
+
+[How to uninstall a program using "AM"](#how-to-uninstall-a-program-using-am)
+
+[How to uninstall a program without "AM"](#how-to-uninstall-a-program-without-am)
+
+[Conclusions](#conclusions)
+
+-----------------------------------------------------------------------------
+
+# Introducing "AM"
+
 There are so many commands to remember among the GNU/Linux distributions, and sometime I can't find what I really want from a package manager.
 
 Here's what it means for me to use a completely "standalone" application:
@@ -40,34 +74,6 @@ In the end I chose the most self-centered, obvious, stupid, brief... and bravest
                   /:::/    /               /:::/    /       
                   \::/    /                \::/    /        
                    \/____/                  \/____/         
-
-# "AM", THE APPLICATION MANAGER
-
-------------------------------------------------------------------------
-
- >>  Enjoy your applications without thinking about anything else   <<   
-  
- ------------------------------------------------------------------------
-
-[Installation](#installation)
-
-[Usage](#usage)
-
-[Updates](#updates)
-
-[Multiarchitecture](#multiarchitecture)
-
-[Repository](#repository)
-
-[Scripts and rules](#scripts-and-rules)
-
-[How to uninstall "AM"](#how-to-uninstall-am)
-
-[How to uninstall a program using "AM"](#how-to-uninstall-a-program-using-am)
-
-[How to uninstall a program without "AM"](#how-to-uninstall-a-program-without-am)
-
-[Conclusions](#conclusions)
 
 -----------------------
 
