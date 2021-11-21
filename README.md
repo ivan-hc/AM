@@ -99,6 +99,15 @@ This will download the ["APP-MANAGER"](https://github.com/ivan-hc/APPLICATION-MA
   `-s`, `sync`	Updates "AM" to a more recent version.
 
   -----------------------------------------------------------------------
+
+  `am [option] [keywords]`
+  
+  where option include:  
+
+  -q, query	Use one or more keywords to search for in the list of
+  		available applications.
+
+  -----------------------------------------------------------------------
       
   `am [option] [argument]`
   
