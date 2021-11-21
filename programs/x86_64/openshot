@@ -1,0 +1,45 @@
+#!/bin/sh
+
+mkdir /opt/openshot
+cd /opt/openshot;
+mkdir tmp;
+cd tmp;
+v=$(wget -q https://api.github.com/repos/OpenShot/openshot-qt/releases/latest -O - | grep -E tag_name | awk -F '[""]' '{print $4}')
+wget https://github.com/OpenShot/openshot-qt/releases/download/$v/OpenShot-$v-x86_64.AppImage;
+cd ..
+mv ./tmp/*mage ./openshot
+chmod a+x ./openshot
+rmdir ./tmp
+
+currentuser=$(who | awk '{print $1}')
+mkdir /home/$currentuser/.local/share/appimagekit
+touch /home/$currentuser/.local/share/appimagekit/no_desktopintegration
+chown -R $currentuser /home/$currentuser/.local/share/appimagekit
+
+wget https://raw.githubusercontent.com/ivan-hc/AppMan/main/applications/openshot/openshot.svg
+
+rm -R -f /usr/share/applications/openshot.desktop
+echo '[Desktop Entry]
+Name=OpenShot Video Editor
+GenericName=Video Editor
+X-GNOME-FullName=OpenShot Video Editor
+Comment=Create and edit amazing videos and movies
+Exec=/opt/openshot/openshot %F
+Terminal=false
+Type=Application
+Icon=/opt/openshot/openshot.svg
+Categories=GNOME;GTK;AudioVideo;Video;AudioVideoEditing;
+MimeType=application/vnd.openshot-qt-project;
+X-AppInstall-Package=openshot-qt
+Path=
+StartupNotify=true' >> /usr/share/applications/openshot.desktop
+
+echo '#!/bin/sh
+rm -R -f /usr/share/applications/openshot.desktop /opt/openshot' >> /opt/openshot/remove
+chmod a+x /opt/openshot/remove
+
+chown -R $currentuser /opt/openshot
+
+echo "
+ OpenShot AppImage has been installed!
+ "
