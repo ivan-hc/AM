@@ -110,7 +110,7 @@ This will download the ["APP-MANAGER"](https://github.com/ivan-hc/APPLICATION-MA
   
   where option include:  
 
-  -q, query	Use one or more keywords to search for in the list of
+  `-q`, `query`	Use one or more keywords to search for in the list of
   		available applications.
 
   -----------------------------------------------------------------------
