@@ -79,7 +79,7 @@ In the end I chose the most self-centered, obvious, stupid, brief... and bravest
 
 The `am` command is very similar to [AppMan](https://github.com/ivan-hc/AppMan), but in this case [here are less inbuilt options](#usage), because here are less things to do:
 
--`am` is built to allow integration in the system and automatic updates for each application, so the final user must do nothing but just using the application;
+- the `am` script is built to allow integration in the system and automatic updates for each application, so the final user must do nothing but just using the application installed;
 - this tool can only install or remove the desired application, updates are at the complete discretion and management of the latter;
 - using the `am` command to install/remove standalone apps is as easy and ridiculous as typing a command at random, out of desperation!
 
