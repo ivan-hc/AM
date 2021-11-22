@@ -133,13 +133,13 @@ This will download the ["APP-MANAGER"](https://github.com/ivan-hc/APPLICATION-MA
   		Confirmation is required (Y or N, default is N).
 
 # Updates
-Each script will create, among other things, another update-oriented script, which can be activated when the program itself starts or by adding a relative `<program>-update` between the processes that you want to start at login. To make this possible, each user must be given the necessary permissions on each program folder.
+Each script will create, among other things, another update-oriented script, which can be activated when the program itself starts or by adding a relative `<program>-update` between the processes that you want to start at login. To make this possible, the main user must have the necessary permissions on each program folder in /opt.
 
 NOTE that the AppImages are using [appimageupdate](https://github.com/AppImage/AppImageUpdate), a command line tool available for both i386 and x86_64 architectures, install it using the command:
 	
 `sudo am install appimageupdate`
 	
-#### WARNING! Programs that update at startup can slow down your system, and programs that include update at startup may take a long time to open before the update is complete.
+#### WARNING! Programs that update at startup can slow down your system at login, and programs that include update at startup may take a long time to close before the update is complete.
 
 # Repository
 Each program is installed through a dedicated script.
