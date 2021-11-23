@@ -1,0 +1,80 @@
+#!/bin/sh
+
+# Creating a dedicated folder for wine-devel
+mkdir /opt/wine-devel
+cd /opt/wine-devel
+mkdir tmp
+cd ./tmp
+
+# Downloading the AppImage
+wget -r -A .AppImage -nd https://github.com/mmtrt/WINE_AppImage/releases/tag/continuous-devel
+cd ..
+mv ./tmp/wine*AppImage ./wine-devel
+chmod a+x ./wine-devel
+rmdir ./tmp
+
+ln -s /opt/wine-devel/wine-devel /usr/bin/wine
+ln -s /opt/wine-devel/wine-devel /usr/bin/wineserver
+
+# Creating an updater script
+rm -R -f /opt/wine-devel/wine-update
+echo "#!/bin/sh
+cd /opt/wine-devel
+appimageupdate -O wine-devel
+rm *zs-old" >> /opt/wine-devel/wine-update
+chmod a+x /opt/wine-devel/wine-update
+
+# Creating a script that removes all the files listed above
+rm -R -f /opt/wine-devel/remove
+echo '#!/bin/sh
+currentuser=$(who | awk '{print $1}')
+rm -R -f /usr/bin/wine /usr/bin/wineserver /home/$currentuser/.config/autostart/wine-devel-update.desktop /opt/wine-devel' >> /opt/wine-devel/remove
+chmod a+x /opt/wine-devel/remove
+
+
+# Creating the "about" file
+rm -R -f /opt/wine-devel/about
+echo "
+ WINE - Compatibility layer to run MS Windows apps and games on GNU/Linux.
+ 
+ This version is for both x86 and x64 MS Windows programs.
+ 
+ USAGE: wine winecfg (this will launch WINE Config)
+        wine <program>.exe (to launch a Windows program)
+ 
+ SITE: https://www.winehq.org
+ SOURCE: https://github.com/mmtrt/WINE_AppImage" >> /opt/wine-devel/about
+ 
+# Changing privileges in /opt/wine-devel to allow automatic updates
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/wine-devel
+
+# Creating a process for "wine-update"
+mkdir /home/$currentuser/.config/autostart
+rm -R -f /home/$currentuser/.config/autostart/wine-update.desktop
+echo "[Desktop Entry]
+Encoding=UTF-8
+Version=0.9.4
+Type=Application
+Name=wine-update
+Comment=Automatic update of WINE
+Exec=/opt/wine-devel/wine-update
+OnlyShowIn=XFCE;
+RunHook=0
+StartupNotify=true
+Terminal=false
+Hidden=false" >> /home/$currentuser/.config/autostart/wine-update.desktop
+chown -R $currentuser /home/$currentuser/.config/autostart
+
+echo "
+ WINE - Compatibility layer to run MS Windows apps and games on GNU/Linux.
+ 
+ This version is for both x86 and x64 MS Windows programs.
+ 
+ USAGE: wine winecfg (this will launch WINE Config)
+        wine <program>.exe (to launch a Windows program)
+ 
+ SITE: https://www.winehq.org
+ 
+ SOURCE: https://github.com/mmtrt/WINE_AppImage
+ "
