@@ -101,6 +101,8 @@ This will download the ["APP-MANAGER"](https://github.com/ivan-hc/APPLICATION-MA
   `-h`, `help`	Prints this message.
 
   `-f`, `files`	Shows the installed programs managed by "AM".
+  
+  `-l`, `list`	Shows the list of apps available in the repository.
 
   `-s`, `sync`	Updates "AM" to a more recent version.
 
