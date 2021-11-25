@@ -18,9 +18,20 @@ ln -s /opt/wine-stable/wine-stable /usr/bin/wineserver
 
 # Creating an updater script
 rm -R -f /opt/wine-stable/wine-update
-echo "#!/bin/sh
-cd /opt/wine-stable
-appimageupdate -O wine-stable && rm -R -f /opt/wine-stable/*zs-old /opt/wine-stable/*.part /opt/wine-stable/rcksum*" >> /opt/wine-stable/wine-update
+echo '#!/bin/sh
+version=$(exec /opt/wine-stable/wine-stable --version  | grep -Eo "[0-9]+([.][0-9]+)?")
+url="https://github.com/mmtrt/WINE_AppImage/releases/download/continuous-stable/wine-stable_$version-x86_64.AppImage"
+if curl --output /dev/null --silent --head --fail "$url"; then
+  echo "Update not needed, exit!"
+else
+  mkdir /opt/wine-stable/tmp
+  cd /opt/wine-stable/tmp
+  wget -r -A .AppImage -nd https://github.com/mmtrt/WINE_AppImage/releases/tag/continuous-stable
+  cd ..
+  mv ./tmp/wine*AppImage ./wine-stable
+  chmod a+x ./wine-stable
+  rmdir ./tmp
+fi' >> /opt/wine-stable/wine-update
 chmod a+x /opt/wine-stable/wine-update
 
 # Creating a script that removes all the files listed above
