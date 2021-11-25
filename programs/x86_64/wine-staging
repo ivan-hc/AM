@@ -18,9 +18,20 @@ ln -s /opt/wine-staging/wine-staging /usr/bin/wineserver
 
 # Creating an updater script
 rm -R -f /opt/wine-staging/wine-update
-echo "#!/bin/sh
-cd /opt/wine-staging
-appimageupdate -O wine-staging && rm -R -f /opt/wine-staging/*zs-old /opt/wine-staging/*.part /opt/wine-staging/rcksum*" >> /opt/wine-staging/wine-update
+echo '#!/bin/sh
+version=$(exec /opt/wine-staging/wine-staging --version  | grep -Eo "[0-9]+([.][0-9]+)?")
+url="https://github.com/mmtrt/WINE_AppImage/releases/download/continuous-staging/wine-staging_$version-x86_64.AppImage"
+if curl --output /dev/null --silent --head --fail "$url"; then
+  echo "Update not needed, exit!"
+else
+  mkdir /opt/wine-staging/tmp
+  cd /opt/wine-staging/tmp
+  wget -r -A .AppImage -nd https://github.com/mmtrt/WINE_AppImage/releases/tag/continuous-staging
+  cd ..
+  mv ./tmp/wine*AppImage ./wine-staging
+  chmod a+x ./wine-staging
+  rmdir ./tmp
+fi' >> /opt/wine-staging/wine-update
 chmod a+x /opt/wine-staging/wine-update
 
 # Creating a script that removes all the files listed above
