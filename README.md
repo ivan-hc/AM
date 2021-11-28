@@ -14,6 +14,8 @@
 
 [Updates](#updates)
 
+[The only flaw](#the-only-flaw)
+
 [Multiarchitecture](#multiarchitecture)
 
 [Repository](#repository)
@@ -139,13 +141,13 @@ This will download the ["APP-MANAGER"](https://github.com/ivan-hc/AM-application
   		Confirmation is required (Y or N, default is N).
 
 # Updates
-Each script will create, among other things, another update-oriented script, which can be activated when the program itself starts or by adding a relative `<program>-update` between the processes that you want to start at login. To make this possible, the main user must have the necessary permissions on each program folder in /opt.
-
-NOTE that the AppImages are using [appimageupdate](https://github.com/AppImage/AppImageUpdate), a command line tool available for both i386 and x86_64 architectures, install it using the command:
+Each script will create, among other things, another script into a $PATH, which can be activated when the program itself starts. To make this possible, the main user has the necessary permissions on each /opt/<program> directory. NOTE that the AppImages are using [appimageupdate](https://github.com/AppImage/AppImageUpdate), a command line tool available for both i386 and x86_64 architectures, install it using the command:
 	
 `sudo am install appimageupdate`
+
+# The only flaw
 	
-#### WARNING! Programs that update at startup can slow down your system at login, and programs that include update at startup may take a long time to close before the update is complete.
+Due to the automatic check for updates, each program may take longer than normal to start.
 
 # Repository
 Each program is installed through a dedicated script.
@@ -163,12 +165,16 @@ Once you've performed the command:
 `sudo am install $PROGRAM`
 	
 The script will create:
-- a /opt/$PROGRAM folder containing the standalone app, an uninstaller script named `remove`* and other files (maybe related to the automatic updates);
-- a symlink of /opt/$PROGRAM/$YOUR-APP-AND-HELPERS to a $PATH (ie /usr/local/bin, /usr/bin, /bin, /usr/local/games, /usr/games...);
-- the icon, that can be placed, for example, in /usr/share/pixmaps or /usr/share/icons (optional for command line tools);
-- the launcher in /usr/share/applications (optional for command line tools).
+- a /opt/$PROGRAM folder containing the standalone app, an uninstaller script named `remove` and other files (if necessary);
+- a symlink of /opt/$PROGRAM/$YOUR-APP-AND-HELPERS into a $PATH (ie /usr/local/bin, /usr/bin, /bin, /usr/local/games, /usr/games...) or a script instead that checks for updates each time you launche the program;
+- the icon (optional for command line tools), it can be placed in /usr/share/pixmaps, /usr/share/icons or in /opt/<program> (recommended);
+- the launcher (optional for command line tools) in /usr/share/applications.
 	
-##### *NOTE that it is more important to have a /opt/$PROGRAM/remove script file, it must contain the path of all the files created by your script, learn more [here](#how-to-uninstall-a-program-using-am). 
+##### *NOTE that the /opt/$PROGRAM/remove script file is the more important part, it must contain the path of all the files created by your script, this way:
+
+`rm -R -f /opt/$PROGRAM /usr/local/bin/$PROGRAM /usr/share/applications/$PROGRAM.desktop`	
+	
+This scheme guarantees the removal of the program and all its components even without having to use "AM". Learn more [here](#how-to-uninstall-a-program-using-am). 
 
 # How to uninstall "am"
 
@@ -181,10 +187,14 @@ The script will create:
 `sudo /opt/$PROGRAM/remove`
 
 # Conclusions
-As you can see, you're free to do whatever you want with your script! The rules of the `am` command are few and the commands to use even fewer.
+As you can see, you're free to do whatever you want with your script! The [rules](#scripts-and-rules) of the `am` command are few and the [options](#usage) to use even fewer.
 
 I personally will try to import so many scripts from [AppMan](https://github.com/ivan-hc/AppMan) as possible (if I'll have time enough).
 	
-I created this program because I was bored every time I had to look for the new version of a program... and after all, even the name of the command, "am", I decided out of boredom.
+I created this program because I was bored every time I had to look for the new version of a program... and after all, even the name of the command, "am", I decided out of boredom. "AM" gives autonomy to every single installed application, and I try to add as many open source projects as possible.
 	
-### And since the "am" command has not yet been invented by anyone, I gladly take advantage of it.
+"AM" can be interpreted as either "I am" or "Application Manager", or both (I am the Application Manager) representing what I was looking for from an application manager, and since the `am` command has not yet been invented by anyone, I gladly take advantage of it.
+
+This project is much more demanding than AppMan, as each individual program requires a different script to check the version of the installed program and compare it to the source link, so each individual program can take hours of testing before being published in the repository, and between my real job and other family commitments, I try to carve up some free time for this project.
+	
+If you wish, you can support me, this work and my passion with a small [donation](https://paypal.me/ivanalexhc), I will gladly appreciate it. Thank you.
