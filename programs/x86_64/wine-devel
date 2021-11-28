@@ -20,26 +20,17 @@ mv ./tmp/wine*AppImage ./wine-devel
 chmod a+x ./wine-devel
 rmdir ./tmp
 
-ln -s /opt/wine-devel/wine-devel /usr/bin/wine
 ln -s /opt/wine-devel/wine-devel /usr/bin/wineserver
 
-# Creating an updater script
-rm -R -f /opt/wine-devel/wine-update
 echo '#!/bin/sh
-version=$(exec /opt/wine-devel/wine-devel --version  | grep -Eo "[0-9]+([.][0-9]+)?")
-url="https://github.com/mmtrt/WINE_AppImage/releases/download/continuous-devel/wine-devel_$version-x86_64.AppImage"
-if curl --output /dev/null --silent --head --fail "$url"; then
-  echo "Update not needed, exit!"
-else
-  mkdir /opt/wine-devel/tmp
-  cd /opt/wine-devel/tmp
-  wget -r -A .AppImage -nd https://github.com/mmtrt/WINE_AppImage/releases/tag/continuous-devel
-  cd ..
-  mv ./tmp/wine*AppImage ./wine-devel
-  chmod a+x ./wine-devel
-  rmdir ./tmp
-fi' >> /opt/wine-devel/wine-update
-chmod a+x /opt/wine-devel/wine-update
+cd /opt/wine-devel
+appimageupdate -O wine-devel
+rm *zs-old
+case "$1" in' >> ./wine
+echo "  'wine') exec /opt/wine-devel/wine-devel ;;" >> ./wine
+echo '  *) exec /opt/wine-devel/wine-devel "$@" ;;
+esac' >> ./wine
+chmod a+x /usr/bin/wine
 
 # Creating the "about" file
 rm -R -f /opt/wine-devel/about
@@ -57,23 +48,6 @@ echo "
 # Changing privileges in /opt/wine-devel to allow automatic updates
 currentuser=$(who | awk '{print $1}')
 chown -R $currentuser /opt/wine-devel
-
-# Creating a process for "wine-update"
-mkdir /home/$currentuser/.config/autostart
-rm -R -f /home/$currentuser/.config/autostart/wine-update.desktop
-echo "[Desktop Entry]
-Encoding=UTF-8
-Version=0.9.4
-Type=Application
-Name=wine-update
-Comment=Automatic update of WINE
-Exec=/opt/wine-devel/wine-update
-OnlyShowIn=XFCE;
-RunHook=0
-StartupNotify=true
-Terminal=false
-Hidden=false" >> /home/$currentuser/.config/autostart/wine-update.desktop
-chown -R $currentuser /home/$currentuser/.config/autostart
 
 echo "
  WINE - Compatibility layer to run MS Windows apps and games on GNU/Linux.
