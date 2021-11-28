@@ -83,6 +83,8 @@ The `am` command is very similar to [AppMan](https://github.com/ivan-hc/AppMan),
 - this tool can only install, remove and search the desired application, updates are at the complete discretion and management of the latter;
 - using the `am` command to install/remove standalone apps is as easy and ridiculous as typing a command at random, out of desperation!
 
+#### "AM", thanks to its installation scripts that in turn create other scripts to check for updates by simply starting the installed applications, which are themselves isolated from each other, transforms Debian into a rolling-release distro and Arch Linux into a more stable system .
+
 -----------------------
 
 # Installation
