@@ -146,7 +146,7 @@ NOTE that the AppImages are using [appimageupdate](https://github.com/AppImage/A
 # Repository
 Each program is installed through a dedicated script.
 	
-The scripts listed in the "[repository](https://github.com/ivan-hc/APP-MANAGER/tree/main/programs)" are divided by architecture.
+The scripts listed in the "[repository](https://github.com/ivan-hc/AM-application-manager/tree/main/programs)" are divided by architecture.
 	
 # Multiarchitecture
 Currently my work focuses on applications for x86_64 architecture, but it is possible to extend "am" to all other available architectures.
