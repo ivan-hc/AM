@@ -20,8 +20,17 @@ mv ./tmp/wine*AppImage ./wine-staging
 chmod a+x ./wine-staging
 rmdir ./tmp
 
-ln -s /opt/wine-staging/wine-staging /usr/bin/wine
 ln -s /opt/wine-staging/wine-staging /usr/bin/wineserver
+
+echo '#!/bin/sh
+cd /opt/wine-staging
+appimageupdate -O wine-staging
+rm *zs-old
+case "$1" in' >> ./wine
+echo "  'wine') exec /opt/wine-staging/wine-staging ;;" >> ./wine
+echo '  *) exec /opt/wine-staging/wine-staging "$@" ;;
+esac' >> ./wine
+chmod a+x /usr/bin/wine
 
 # Creating an updater script
 rm -R -f /opt/wine-staging/wine-update
@@ -57,23 +66,6 @@ echo "
 # Changing privileges in /opt/wine-staging to allow automatic updates
 currentuser=$(who | awk '{print $1}')
 chown -R $currentuser /opt/wine-staging
-
-# Creating a process for "wine-update"
-mkdir /home/$currentuser/.config/autostart
-rm -R -f /home/$currentuser/.config/autostart/wine-update.desktop
-echo "[Desktop Entry]
-Encoding=UTF-8
-Version=0.9.4
-Type=Application
-Name=wine-update
-Comment=Automatic update of WINE
-Exec=/opt/wine-staging/wine-update
-OnlyShowIn=XFCE;
-RunHook=0
-StartupNotify=true
-Terminal=false
-Hidden=false" >> /home/$currentuser/.config/autostart/wine-update.desktop
-chown -R $currentuser /home/$currentuser/.config/autostart
 
 echo "
  WINE - Compatibility layer to run MS Windows apps and games on GNU/Linux.
