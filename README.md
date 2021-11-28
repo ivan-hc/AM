@@ -139,6 +139,11 @@ This will download the ["APP-MANAGER"](https://github.com/ivan-hc/AM-application
   `-r`, `remove` Removes the program and all the other files listed above
   		using the instructions in /opt/$PROGRAM/remove.
   		Confirmation is required (Y or N, default is N).
+		
+  `-t`, `template` This option allows you to generate a custom script to
+  		manipulate on your PC in your $HOME directory. Please,
+  		consider submitting your app to the AM application manager,
+  		at https://github.com/ivan-hc/AM-application-manager
 
 # Updates
 Each script will create, among other things, another script into a $PATH, which can be activated when the program itself starts. To make this possible, the main user has the necessary permissions on each /opt/$PROGRAM directory. NOTE that the AppImages are using [appimageupdate](https://github.com/AppImage/AppImageUpdate), a command line tool available for both i386 and x86_64 architectures, install it using the command:
