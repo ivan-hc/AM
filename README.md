@@ -131,17 +131,17 @@ This will download the ["APP-MANAGER"](https://github.com/ivan-hc/AM-application
   		- the command is linked into a $PATH or launched from a 
 		custom script (created in a $PATH) which automates updates
 		at program startup;
-		- the program is stored in /opt/<program> with a script to
+		- the program is stored in /opt/$PROGRAM with a script to
 	    	remove this and all the files listed above.
 		The icon and the launcher are optional for no-ui programs.
   		"AM" uses both AppImages and other standalone programs.
   		
   `-r`, `remove` Removes the program and all the other files listed above
-  		using the instructions in /opt/<program>/remove.
+  		using the instructions in /opt/$PROGRAM/remove.
   		Confirmation is required (Y or N, default is N).
 
 # Updates
-Each script will create, among other things, another script into a $PATH, which can be activated when the program itself starts. To make this possible, the main user has the necessary permissions on each /opt/<program> directory. NOTE that the AppImages are using [appimageupdate](https://github.com/AppImage/AppImageUpdate), a command line tool available for both i386 and x86_64 architectures, install it using the command:
+Each script will create, among other things, another script into a $PATH, which can be activated when the program itself starts. To make this possible, the main user has the necessary permissions on each /opt/$PROGRAM directory. NOTE that the AppImages are using [appimageupdate](https://github.com/AppImage/AppImageUpdate), a command line tool available for both i386 and x86_64 architectures, install it using the command:
 	
 `sudo am install appimageupdate`
 
@@ -167,7 +167,7 @@ Once you've performed the command:
 The script will create:
 - a /opt/$PROGRAM folder containing the standalone app, an uninstaller script named `remove` and other files (if necessary);
 - a symlink of /opt/$PROGRAM/$YOUR-APP-AND-HELPERS into a $PATH (ie /usr/local/bin, /usr/bin, /bin, /usr/local/games, /usr/games...) or a script instead that checks for updates each time you launche the program;
-- the icon (optional for command line tools), it can be placed in /usr/share/pixmaps, /usr/share/icons or in /opt/<program> (recommended);
+- the icon (optional for command line tools), it can be placed in /usr/share/pixmaps, /usr/share/icons or in /opt/$PROGRAM (recommended);
 - the launcher (optional for command line tools) in /usr/share/applications.
 	
 ##### *NOTE that the /opt/$PROGRAM/remove script file is the more important part, it must contain the path of all the files created by your script, this way:
