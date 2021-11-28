@@ -59,8 +59,13 @@ case "$1" in
   		
   -r, remove	Removes the program and all the other files listed above
   		using the instructions in /opt/<program>/remove.
-  		Confirmation is required (Y or N, default is N).		 
-
+  		Confirmation is required (Y or N, default is N).
+  		
+  -t, template	This option allows you to generate a custom script to
+  		manipulate on your PC in your $HOME directory. Please,
+  		consider submitting your app to the AM application manager,
+  		at https://github.com/ivan-hc/AM-application-manager
+  		
   -----------------------------------------------------------------------
 
   Usage:		am [option] [keywords]
@@ -91,7 +96,7 @@ case "$1" in
   SITE: https://github.com/ivan-hc/AM-application-manager
   
   ' ;;
-   '-c'|'clean') echo ""; rm -R -f /opt/am/.cache/*;
+  '-c'|'clean') echo ""; rm -R -f /opt/am/.cache/*;
 	echo "All unnecessary files are removed, exiting."; echo "" ;;
   '-f'|'files') echo ""; echo $(echo "YOU HAVE INSTALLED "; cd /opt && find -name 'remove' -printf "%h\n" | sort -u | wc -l;
   	echo " STANDALONE PROGRAMS MANAGED BY THE 'AM' COMMAND:"); echo "";
@@ -137,5 +142,38 @@ case "$1" in
   '-s'|'sync') echo ""; echo " Updating the Application Manager, please wait..."; sleep 1;
   	cd /opt/am/.cache; wget -q $URL/APP-MANAGER && chmod a+x ./APP-MANAGER; cd ..;
   	mv /opt/am/.cache/APP-MANAGER /opt/am; chown -R $currentuser /opt/am; echo "...done!";;
+  '-t'|'template')
+	while [ -n "$1" ]
+	do
+	case $2 in
+	*) for var in $2
+	do cd /home/$currentuser/
+	echo ""
+	echo " WHAT KIND OF PROGRAM DO YOU WANT TO WRITE A SCRIPT FOR?"
+	echo ""
+	echo ""
+	echo " 1) I have an AppImage that uses Appimageupdate"
+	echo ""
+	echo " 2) I have an AppImage that uses a separated zsync file"
+	echo ""
+	echo " 3) I have a package or a non-updatable AppImage from a repository"
+	echo ""
+	echo " 4) I have a package or a non-updatable AppImage from a main site"
+	echo ""
+	echo ""
+	read -r -p " Please only choose one option between 1, 2, 3 and 4 : " response
+	case "$response" in
+    	1) mkdir $2-script-for-AM && cd $2-script-for-AM; wget $URL/templates/AM-SAMPLE-for-appimageupdate;;
+    	2) mkdir $2-script-for-AM && cd $2-script-for-AM; wget $URL/templates/AM-SAMPLE-for-zsync;;
+    	3) mkdir $2-script-for-AM && cd $2-script-for-AM; wget $URL/templates/AM-SAMPLE-from-a-repository;;
+    	4) mkdir $2-script-for-AM && cd $2-script-for-AM; wget $URL/templates/AM-SAMPLE-from-a-main-site;;
+    	*) echo ""; echo " No valid argument was chosen: process aborted! "; echo ""; exit;;
+	esac
+	mv AM-SAMPLE* $2
+	sed -i s/SAMPLE/$2/g $2
+	done
+	esac
+	shift
+	done;;
   *) exec /opt/am/APP-MANAGER ;;
 esac
