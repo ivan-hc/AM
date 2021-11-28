@@ -48,11 +48,11 @@ APT (Debian) often includes too old programs that require too many dependencies,
 
 Finally I decided to write my own script, again.
 
-I have already wrote [AppMan](https://github.com/ivan-hc/AppMan), an application manager for standalone programs and AppImages that works like APT or Pacman, so the main problem for me was to find a name for a new command that was short, easy to remember and that fully reflected its purpose... failing!
+I have already wrote [AppMan](https://github.com/ivan-hc/AppMan), an application manager for standalone programs and AppImages that works like APT or Pacman, so the main problem for me was to find a name for a new command that was short, easy to remember and that fully reflected its purpose.
 
 In the end I chose the most self-centered, obvious, stupid, brief... and bravest name that an amateur developer could give to an "application manager": `am`!
 
-------------------------------------------------------------------------
+--------------------------------------------------------------
                     _____                    _____                                                                           
                    /\    \                  /\    \         
                   /::\    \                /::\____\        
@@ -77,10 +77,10 @@ In the end I chose the most self-centered, obvious, stupid, brief... and bravest
 
 -----------------------
 
-The `am` command is very similar to [AppMan](https://github.com/ivan-hc/AppMan), but in this case [here are less inbuilt options](#usage), because here are less things to do:
+The `am` command is very similar to [AppMan](https://github.com/ivan-hc/AppMan), but with [inbuilt options](#usage), because here are less things to do:
 
 - the `am` script is built to allow integration in the system and automatic updates for each application, so the final user must do nothing but just using the application installed;
-- this tool can only install or remove the desired application, updates are at the complete discretion and management of the latter;
+- this tool can only install, remove and search the desired application, updates are at the complete discretion and management of the latter;
 - using the `am` command to install/remove standalone apps is as easy and ridiculous as typing a command at random, out of desperation!
 
 -----------------------
@@ -123,8 +123,10 @@ This will download the ["APP-MANAGER"](https://github.com/ivan-hc/AM-application
   
   `-i`, `install` Install a program. This will be taken directly from the
   		repository of the developer (always the latest version):
-  		- the installer is stored in /opt/am/programs;
-  		- the command is linked to a $PATH;
+  		- the installer is stored in /opt/am/.cache;
+  		- the command is linked into a $PATH or launched from a 
+		custom script (created in a $PATH) which automates updates
+		at program startup;
 		- the program is stored in /opt/<program> with a script to
 	    	remove this and all the files listed above.
 		The icon and the launcher are optional for no-ui programs.
