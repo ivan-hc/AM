@@ -1,0 +1,87 @@
+#!/bin/sh
+
+APP=opera
+
+# CREATE THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP
+
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+
+# DOWNLOAD THE APPIMAGE
+mkdir tmp
+cd ./tmp
+
+VERSION=$(wget -q "https://get.geo.opera.com/pub/opera/desktop/" -O - | grep href | tail -n 1 | cut -d '"' -f 2 | cut -d / -f 1)
+wget -nv -c "https://get.geo.opera.com/pub/opera/desktop/$VERSION/linux/opera-stable_${VERSION}_amd64.deb"
+ar x ./*.deb
+tar xf ./data.tar.xz
+cd ..
+
+mv ./tmp/usr/lib/x86_64-linux-gnu/opera/* ./
+rm -R -f ./tmp
+
+# SCRIPT TO LAUNCH AND UPDATE THE PROGRAM
+echo '#!/bin/sh
+version=$(exec /opt/opera/opera --version)
+if curl -L -s https://snapcraft.io/opera | grep -ioF "$version"; then
+  echo "Update not needed, exit!"
+  exec /opt/opera/opera
+else
+  mkdir /opt/opera/tmp
+  cd /opt/opera/tmp' >> /usr/local/bin/$APP
+
+echo "VERSION0=$VERSION" >> /usr/local/bin/$APP
+
+echo '  wget -nv -c "https://get.geo.opera.com/pub/opera/desktop/$VERSION0/linux/opera-stable_${VERSION0}_amd64.deb"
+  ar x ./*.deb
+  tar xf ./data.tar.xz
+  cd ..
+  mv ./tmp/usr/lib/x86_64-linux-gnu/opera/* ./
+  rm -R -f ./tmp
+  exec /opt/opera/opera
+fi' >> /usr/local/bin/$APP
+chmod a+x /usr/local/bin/$APP
+
+# LAUNCHER
+echo "[Desktop Entry]
+Version=1.0
+Name=Opera
+GenericName=Web browser
+Comment=Fast and secure web browser
+Exec=opera %U
+Terminal=false
+Icon=/opt/$APP/$APP.svg
+Type=Application
+Categories=Network;WebBrowser;
+MimeType=text/html;text/xml;application/xhtml_xml;x-scheme-handler/http;x-scheme-handler/https;x-scheme-handler/ftp;application/x-opera-download;
+Actions=new-window;new-private-window;
+
+[Desktop Action new-window]
+Name=New Window
+Exec=opera --new-window
+TargetEnvironment=Unity
+
+[Desktop Action new-private-window]
+Name=New Private Window
+Exec=opera --incognito
+TargetEnvironment=Unity" >> /usr/share/applications/$APP.desktop
+
+# ICON
+wget https://raw.githubusercontent.com/ivan-hc/AppMan/main/applications/$APP/$APP.svg
+
+# CHANGE THE PERMISSIONS
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/$APP
+
+# MESSAGE
+echo "
+	
+	This version of Opera comes from the official DEB package
+	
+	       OFFICIAL WEBSITE: https://www.opera.com
+	     
+"
