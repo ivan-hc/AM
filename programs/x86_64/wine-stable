@@ -22,15 +22,28 @@ rmdir ./tmp
 
 ln -s /opt/wine-stable/wine-stable /usr/bin/wineserver
 
-
 echo '#!/bin/sh
-cd /opt/wine-stable
-appimageupdate -O wine-stable
-rm *zs-old
-case "$1" in' >> /usr/bin/wine
-echo "  'wine') exec /opt/wine-stable/wine-stable ;;" >> /usr/bin/wine
-echo '  *) exec /opt/wine-stable/wine-stable "$@" ;;
-esac' >> /usr/bin/wine
+version=$(exec /opt/wine-stable/wine-stable --version  | grep -Eo "[0-9]+([.][0-9]+)?")
+url="https://github.com/mmtrt/WINE_AppImage/releases/download/continuous-stable/wine-stable_$version-x86_64.AppImage"
+if curl --output /dev/null --silent --head --fail "$url"; then
+  echo "Update not needed, exit!"
+  case "$1" in
+  	wine) exec /opt/wine-stable/wine-stable ;;
+  	*) exec /opt/wine-stable/wine-stable "$@" ;;
+  esac
+else
+  mkdir /opt/wine-stable/tmp
+  cd /opt/wine-stable/tmp
+  wget -r -A .AppImage -nd https://github.com/mmtrt/WINE_AppImage/releases/tag/continuous-stable
+  cd ..
+  mv ./tmp/wine*AppImage ./wine-stable
+  chmod a+x ./wine-stable
+  rmdir ./tmp
+  case "$1" in
+  	wine) exec /opt/wine-stable/wine-stable ;;
+  	*) exec /opt/wine-stable/wine-stable "$@" ;;
+  esac
+fi' >> /usr/bin/wine
 chmod a+x /usr/bin/wine
 
 # Creating the "about" file
