@@ -1,0 +1,81 @@
+#!/bin/sh
+
+APP=librewolf
+
+# CREATE THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP
+
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+
+# DOWNLOAD THE APPIMAGE
+mkdir tmp
+cd ./tmp
+
+wget https://gitlab.com/api/v4/projects/24386000/packages/generic/librewolf/latest/LibreWolf.x86_64.AppImage
+
+cd ..
+mv ./tmp/*mage ./$APP
+chmod a+x /opt/$APP/$APP
+rmdir ./tmp
+
+# SCRIPT TO LAUNCH AND UPDATE THE PROGRAM
+echo '#!/bin/sh' >> /usr/local/bin/$APP
+
+echo "cd /opt/$APP
+appimageupdate -O $APP
+rm *zs-old" >> /usr/local/bin/$APP
+echo 'case "$1" in' >> /usr/local/bin/$APP
+
+symbol='"$@"'
+
+echo "  'librewolf') exec /opt/$APP/$APP ;;
+  *) exec /opt/$APP/$APP $symbol ;;
+esac" >> /usr/local/bin/$APP
+chmod a+x /usr/local/bin/$APP
+
+# LAUNCHER
+rm /usr/share/applications/$APP.desktop
+echo "[Desktop Entry]
+Name=LibreWolf
+Exec=librewolf %u
+Icon=/opt/$APP/$APP.svg
+Comment=A fork of Firefox, focused on privacy, security and freedom.
+Type=Application
+MimeType=text/html;text/xml;application/xhtml+xml;x-scheme-handler/http;x-scheme-handler/https;application/x-xpinstall;application/pdf;application/json;
+StartupWMClass=LibreWolf
+Categories=Network;WebBrowser;
+StartupNotify=true
+Terminal=false
+X-MultipleArgs=false
+Keywords=Internet;WWW;Browser;Web;Explorer;
+Actions=new-window;new-private-window;profilemanager;
+
+[Desktop Action new-window]
+Name=Open a New Window
+Exec=librewolf %u
+
+[Desktop Action new-private-window]
+Name=Open a New Private Window
+Exec=librewolf --private-window %u
+
+[Desktop Action profilemanager]
+Name=Open the Profile Manager
+Exec=librewolf --ProfileManager %u" >> /usr/share/applications/$APP.desktop
+
+# ICON
+wget https://raw.githubusercontent.com/ivan-hc/AppMan/main/applications/$APP/$APP.svg
+
+# CHANGE THE PERMISSIONS
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/$APP
+
+# MESSAGE
+echo "
+	      LibreWolf is provided by
+	
+	https://librewolf-community.gitlab.io
+"
