@@ -155,12 +155,18 @@ Each script will create, among other things, another script into a $PATH, which 
 Due to the automatic check for updates, each program may take longer than normal to start.
 
 # Repository
-Each program is installed through a dedicated script.
-	
+Each program is installed through a dedicated script:
+
 The scripts listed in the "[repository](https://github.com/ivan-hc/AM-application-manager/tree/main/programs)" are divided by architecture.
 	
 # Multiarchitecture
-Currently my work focuses on applications for x86_64 architecture, but it is possible to extend "am" to all other available architectures.
+Currently my work focuses on applications for x86_64 architecture (being AppMan wrote for x86_64 only), but it is possible to extend "am" to all other available architectures.
+
+Click on the link of your architecture to see the list of all the apps available on this repository:
+
+- [x86_64](https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/programs/x86_64-apps)
+- [i686](https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/programs/i686-apps)
+- [aarch64](https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/programs/aarch64-apps)
 
 If you are interested, you can deliberately join this project.
 
