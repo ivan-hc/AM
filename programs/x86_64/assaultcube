@@ -1,0 +1,92 @@
+#!/bin/sh
+
+APP=assaultcube
+
+# CREATE THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP
+
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+
+# DOWNLOAD THE APPIMAGE
+mkdir tmp
+cd ./tmp
+
+v=$(wget -q https://api.github.com/repos/assaultcube/AC/releases/latest -O - | grep -E tag_name | awk -F '[""]' '{print $4}')
+wget https://github.com/assaultcube/AC/releases/download/$v/AssaultCube_$v.tar.bz2;
+
+version=$(ls /opt/$APP/tmp)
+echo "$version" >> /opt/$APP/version
+
+tar xf ./*.tar.bz2
+rm ./*.tar.bz2
+cd ..
+mv ./tmp/AssaultCube*/* ./
+
+rmdir ./tmp
+
+# SCRIPT TO LAUNCH AND UPDATE THE PROGRAM
+echo '#!/bin/sh' >> /usr/local/bin/$APP
+echo "APP=$APP" >> /usr/local/bin/$APP
+echo "cd /opt/$APP" /usr/local/bin/$APP
+echo 'version0=$(cat /opt/$APP/version)
+
+url=https://api.github.com/repos/assaultcube/AC/releases/latest' >> /usr/local/bin/$APP
+
+echo 'if curl -L -s $url | grep -ioF "$version0"; then' >> /usr/local/bin/$APP
+echo '  echo "Update not needed!".'  >> /usr/local/bin/$APP
+echo "  exec /opt/$APP/$APP.sh" >> /usr/local/bin/$APP
+echo 'else' >> /usr/local/bin/$APP
+echo "  notify-send 'A new version of $APP is available, please wait'" >> /usr/local/bin/$APP
+echo "  mkdir /opt/$APP/tmp
+  cd /opt/$APP/tmp" >> /usr/local/bin/$APP
+
+########################################################################################
+
+function1='v=$(wget -q https://api.github.com/repos/assaultcube/AC/releases/latest -O -'
+four='$4'
+function2="grep -E tag_name | awk -F '[""]' '{print $four}')"
+function3='$(ls /opt/$APP/tmp)'
+
+echo "  $function1 | $function2"  >> /usr/local/bin/$APP
+echo '  wget https://github.com/assaultcube/AC/releases/download/$v/AssaultCube_$v.tar.bz2' >> /usr/local/bin/$APP
+echo "  version=$function3" >> /usr/local/bin/$APP
+
+########################################################################################
+
+echo '  cd ..
+  rm ./version
+  echo "$version" >> ./version' >> /usr/local/bin/$APP
+echo "  tar xf ./*.tar.bz2
+  rm ./*.tar.bz2
+  cd ..
+  mv ./tmp/AssaultCube*/* ./
+  rmdir ./tmp
+  exec /opt/$APP/$APP.sh
+fi" >> /usr/local/bin/$APP
+chmod a+x /usr/local/bin/$APP
+
+# LAUNCHER
+rm /usr/share/applications/$APP.desktop
+echo "[Desktop Entry]
+Name=AssaultCube
+Exec=assaultcube
+Comment=AssaultCube is a FREE, multiplayer, first-person shooter game, based on the CUBE engine.
+Icon=/opt/$APP/$APP.svg
+Type=Application
+Categories=Game;" >> /usr/share/applications/$APP.desktop
+
+# ICON
+wget https://raw.githubusercontent.com/ivan-hc/AppMan/main/applications/$APP/$APP.svg
+
+# CHANGE THE PERMISSIONS
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/$APP
+
+# MESSAGE
+echo "
+	AssaultCube is provided by https://assault.cubers.net        
+"
