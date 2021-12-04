@@ -16,9 +16,7 @@
 
 [The only flaw](#the-only-flaw)
 
-[Multiarchitecture](#multiarchitecture)
-
-[Repository](#repository)
+[Repository and Multiarchitecture](#repository-and-multiarchitecture)
 
 [Scripts and rules](#scripts-and-rules)
 
@@ -154,12 +152,11 @@ Each script will create, among other things, another script into a $PATH, which 
 	
 Due to the automatic check for updates, each program may take longer than normal to start.
 
-# Repository
+# Repository and Multiarchitecture
 Each program is installed through a dedicated script:
 
 The scripts listed in the "[repository](https://github.com/ivan-hc/AM-application-manager/tree/main/programs)" are divided by architecture.
 	
-# Multiarchitecture
 Currently my work focuses on applications for x86_64 architecture (being AppMan wrote for x86_64 only), but it is possible to extend "am" to all other available architectures.
 
 Click on the link of your architecture to see the list of all the apps available on this repository:
