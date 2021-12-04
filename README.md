@@ -165,6 +165,8 @@ Click on the link of your architecture to see the list of all the apps available
 
 If you are interested, you can deliberately join this project.
 
+I personally will try to import so many scripts from [AppMan](https://github.com/ivan-hc/AppMan) as possible (if I'll have time enough).
+
 # Scripts and rules	
 Once you've performed the command:
 	
@@ -195,8 +197,6 @@ This scheme guarantees the removal of the program and all its components even wi
 # Conclusions
 As you can see, you're free to do whatever you want with your script! The [rules](#scripts-and-rules) of the `am` command are few and the [options](#usage) to use even fewer.
 
-I personally will try to import so many scripts from [AppMan](https://github.com/ivan-hc/AppMan) as possible (if I'll have time enough).
-	
 I created this program because I was bored every time I had to look for the new version of a program... and after all, even the name of the command, "am", I decided out of boredom. "AM" gives autonomy to every single installed application, and I try to add as many open source projects as possible.
 	
 "AM" can be interpreted as either "I am" or "Application Manager", or both (I am the Application Manager) representing what I was looking for from an application manager, and since the `am` command has not yet been invented by anyone, I gladly take advantage of it.
