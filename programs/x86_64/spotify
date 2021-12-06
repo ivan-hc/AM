@@ -1,0 +1,83 @@
+#!/bin/sh
+
+APP=spotify
+
+# CREATE THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP
+
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+
+# DOWNLOAD
+mkdir tmp
+cd ./tmp
+
+wget -r -A spotify-1:*-x86_64.pkg.tar.zst -nd https://aur.andontie.net/x86_64/;
+
+version=$(ls /opt/$APP/tmp)
+echo "$version" >> /opt/$APP/version
+
+tar xf ./*.tar.zst;
+rm ./*.tar.zst;
+cd ..
+mv ./tmp/opt/$APP/* ./
+rm -R -f /opt/$APP/tmp
+
+# SCRIPT TO LAUNCH AND UPDATE THE PROGRAM
+echo '#!/bin/sh' >> /usr/local/bin/$APP
+echo "APP=$APP" >> /usr/local/bin/$APP
+echo "cd /opt/$APP" /usr/local/bin/$APP
+echo 'version0=$(cat /opt/$APP/version)
+
+url=https://aur.andontie.net/x86_64' >> /usr/local/bin/$APP
+
+echo 'if curl -L -s $url | grep -ioF "$version0"; then' >> /usr/local/bin/$APP
+echo '  echo "Update not needed!".'  >> /usr/local/bin/$APP
+echo "  exec /opt/$APP/$APP" >> /usr/local/bin/$APP
+echo 'else' >> /usr/local/bin/$APP
+echo "  notify-send 'A new version of $APP is available, please wait'" >> /usr/local/bin/$APP
+echo "  mkdir /opt/$APP/tmp
+  cd /opt/$APP/tmp
+  wget -r -A spotify-1:*-x86_64.pkg.tar.zst -nd https://aur.andontie.net/x86_64/
+  cd ..
+  if test -f ./tmp/*tar.zst; then rm ./version
+  fi" >> /usr/local/bin/$APP
+echo '  version=$(ls /opt/$APP/tmp)
+  echo "$version" >> /opt/$APP/version' >> /usr/local/bin/$APP
+echo "  tar xf ./tmp/*.tar.zst
+  rm -f ./tmp/*.tar.zst
+  mv ./tmp/opt/$APP/* ./
+  rm -R -f /opt/$APP/tmp
+  exec /opt/$APP/$APP
+fi" >> /usr/local/bin/$APP
+chmod a+x /usr/local/bin/$APP
+
+# LAUNCHER
+rm /usr/share/applications/$APP.desktop
+echo "[Desktop Entry]
+Type=Application
+Name=Spotify
+GenericName=Music Player
+Icon=/opt/$APP/$APP.svg
+Exec=spotify %U
+Terminal=false
+MimeType=x-scheme-handler/spotify;
+Categories=Audio;Music;Player;AudioVideo;
+StartupWMClass=spotify" >> /usr/share/applications/$APP.desktop
+
+# ICON
+wget https://raw.githubusercontent.com/ivan-hc/AppMan/main/applications/$APP/$APP.svg
+
+# CHANGE THE PERMISSIONS
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/$APP
+
+# MESSAGE
+echo "";
+echo "
+   This version of Spotify comes from https://aur.andontie.net
+   ";
+echo "";
