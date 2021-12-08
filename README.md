@@ -123,6 +123,8 @@ This will download the ["APP-MANAGER"](https://github.com/ivan-hc/AM-application
   
   where option include:
   
+  `-a`, `about`	Shows the basic information, links and source of each app. 
+  
   `-i`, `install` Install a program. This will be taken directly from the
   		repository of the developer (always the latest version):
   		- the installer is stored in /opt/am/.cache;
