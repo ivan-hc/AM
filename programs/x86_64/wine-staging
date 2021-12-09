@@ -1,64 +1,84 @@
 #!/bin/sh
 
-# Creating a dedicated folder for wine-staging
-mkdir /opt/wine-staging
-cd /opt/wine-staging
+APP=wine-staging
 
-# Creating a script that removes all the files listed
-rm -R -f /opt/wine-staging/remove
-echo '#!/bin/sh
-rm -R -f /opt/wine-staging /usr/bin/wine-staging' >> /opt/wine-staging/remove
-chmod a+x /opt/wine-staging/remove
+# CREATE THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP
 
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /opt/$APP /usr/bin/$APP" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+
+# DOWNLOAD THE APPIMAGE
 mkdir tmp
 cd ./tmp
 
-# Downloading the AppImage
 wget -r -A .AppImage -nd https://github.com/mmtrt/WINE_AppImage/releases/tag/continuous-staging
+
+version=$(ls /opt/$APP/tmp)
+echo "$version" >> /opt/$APP/version
+
 cd ..
-mv ./tmp/wine*AppImage ./wine-staging
-chmod a+x ./wine-staging
+mv ./tmp/*mage ./$APP
+chmod a+x /opt/$APP/$APP
 rmdir ./tmp
 
-echo '#!/bin/sh
-version=$(exec /opt/wine-staging/wine-staging --version  | grep -Eo "[0-9]+([.][0-9]+)?")
-url="https://github.com/mmtrt/WINE_AppImage/releases/download/continuous-staging/wine-staging_$version-x86_64.AppImage"
-if curl --output /dev/null --silent --head --fail "$url"; then
-  echo "Update not needed, exit!"
-  case "$1" in
-  	wine-staging) exec /opt/wine-staging/wine-staging ;;
-  	*) exec /opt/wine-staging/wine-staging "$@" ;;
-  esac
-else
-  notify-send "A new version of Wine is available, please wait!"
-  mkdir /opt/wine-staging/tmp
-  cd /opt/wine-staging/tmp
-  wget -r -A .AppImage -nd https://github.com/mmtrt/WINE_AppImage/releases/tag/continuous-staging
-  cd ..
-  mv ./tmp/wine*AppImage ./wine-staging
-  chmod a+x ./wine-staging
+# SCRIPT TO LAUNCH AND UPDATE THE PROGRAM
+
+val1='"$1"'
+val2='"$@"'
+
+echo '#!/bin/sh' >> /usr/bin/$APP
+echo "APP=$APP" >> /usr/bin/$APP
+echo 'version0=$(cat /opt/$APP/version)
+
+url=https://github.com/mmtrt/WINE_AppImage/releases/tag/continuous-staging' >> /usr/bin/$APP
+
+echo 'if curl -L -s $url | grep -ioF "$version0"; then' >> /usr/bin/$APP
+echo '  echo "Update not needed!".'  >> /usr/bin/$APP
+echo "  case "$val1" in
+  $APP) exec /opt/$APP/$APP ;;
+  *) exec /opt/$APP/$APP "$val2" ;;
+esac" >> /usr/bin/$APP
+echo 'else' >> /usr/bin/$APP
+echo "  notify-send 'A new version of $APP is available, please wait'" >> /usr/bin/$APP
+echo "  mkdir /opt/$APP/tmp
+  cd /opt/$APP/tmp" >> /usr/bin/$APP
+echo "  wget -r -A .AppImage -nd https://github.com/mmtrt/WINE_AppImage/releases/tag/continuous-staging" >> /usr/bin/$APP
+echo '  cd ..
+  if test -f ./tmp/*mage; then rm ./version
+  fi
+  version=$(ls /opt/$APP/tmp)
+  echo "$version" >> ./version' >> /usr/bin/$APP
+echo "  mv ./tmp/*mage ./$APP
+  chmod a+x /opt/$APP/$APP
   rmdir ./tmp
-  case "$1" in
-  	wine-staging) exec /opt/wine-staging/wine-staging ;;
-  	*) exec /opt/wine-staging/wine-staging "$@" ;;
-  esac
-fi' >> /usr/bin/wine-staging
-chmod a+x /usr/bin/wine-staging
+  case "$val1" in
+  $APP) exec /opt/$APP/$APP ;;
+  *) exec /opt/$APP/$APP "$val2" ;;
+esac
+fi" >> /usr/bin/$APP
+chmod a+x /usr/bin/$APP
 
-ln -s /usr/bin/wine-staging /opt/wine-staging/wine
+ln -s /usr/bin/$APP /opt/$APP/wine
 
-# Changing privileges in /opt/wine-staging to allow automatic updates
+# CHANGE THE PERMISSIONS
 currentuser=$(who | awk '{print $1}')
-chown -R $currentuser /opt/wine-staging
+chown -R $currentuser /opt/$APP
+
+# MESSAGE
 
 echo "
                                 WINE
  
     Compatibility layer to run MS Windows apps and games on GNU/Linux.
- 
+
        This version is for both x86 and x64 MS Windows programs.
  
                    SITE: https://www.winehq.org
  
            SOURCE: https://github.com/mmtrt/WINE_AppImage
+
  "
