@@ -146,9 +146,14 @@ This will download the ["APP-MANAGER"](https://github.com/ivan-hc/AM-application
   		at https://github.com/ivan-hc/AM-application-manager
 
 # Updates
-Each script will create, among other things, another script into a $PATH, which can be activated when the program itself starts. To make this possible, the main user has the necessary permissions on each /opt/$PROGRAM directory. NOTE that the AppImages are using [appimageupdate](https://github.com/AppImage/AppImageUpdate), a command line tool available for both i386 and x86_64 architectures, install it using the command:
-	
-`sudo am install appimageupdate`
+As we have already seen, the installation script will create an additional script which will take the place of the symbolic link in $PATH (/usr/local/bin or usr/bin), which will check for updates when the program starts. Here are the ways in which the updates will be made:
+- Updateable AppImage can rely on an [appimageupdatetool](https://github.com/AppImage/AppImageUpdate)-based "updater" or on their external zsync file (if provided by the developer);
+- Non-updateable AppImages and other standalone programs will be replaced only with a more recent version if available, this will be taken by comparing the installed version with the one available on the source (using "curl", "grep" and "cat");
+- Fixed versions will be listed with their build number (e.g. $PROGRAM-1.1.1). Note that most of the programs are updateable, so fixed versions will only be added upon request (or if it is really difficult to find a right wget/curl command to download the latest version);
+- AppImages created with [pkg2appimage](https://github.com/AppImage/pkg2appimage) and [appimagetool](https://github.com/AppImage/AppImageKit) will be updated in the same way as the non-updatable AppImages (see above), but the two tools just mentioned must be present in the system (the specific instruction to install or reinstall them will be present in the installation script of the program that requires it).
+
+During the first installation, the main user ($currentuser) will take the necessary permissions on each /opt/$PROGRAM directory, in this way all updates will be automatic and without root permissions.
+
 
 # The only flaw
 	
