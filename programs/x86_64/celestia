@@ -7,7 +7,7 @@ cd /opt/celestia
 # Creating a script to remove all the files listed above
 rm -R -f  /opt/celestia/remove
 echo "#!/bin/sh
-rm -R -f  /usr/share/applications/celestia.desktop /usr/share/pixmaps/celestia.svg /usr/bin/celestia /opt/celestia" >> /opt/celestia/remove
+rm -R -f  /usr/share/applications/celestia.desktop /usr/bin/celestia /opt/celestia" >> /opt/celestia/remove
 chmod a+x /opt/celestia/remove
 
 mkdir tmp
@@ -15,18 +15,29 @@ cd tmp
 
 # Downloading the AppImage of Celestia to /opt/celestia
 wget https://download.opensuse.org/repositories/home:/munix9/AppImage/celestia-latest-x86_64.AppImage
+wget https://github.com/AppImage/AppImageUpdate/releases/download/continuous/appimageupdatetool-x86_64.AppImage
 cd ..
 mv ./tmp/celestia*AppImage ./celestia
+mv ./tmp/appimageupdatetool-x86_64.AppImage ./updater
 rmdir ./tmp
 chmod a+x ./celestia
+chmod a+x ./updater
 
 # Creating a command for "celestia" in /usr/bin with support for "appimageupdate"
 rm -R -f  /usr/bin/celestia
-echo "#!/bin/sh
-cd /opt/celestia
-appimageupdate -O celestia
-rm *zs-old
-exec /opt/celestia/celestia" >> /usr/bin/celestia
+echo '#!/bin/sh ' >> /usr/bin/celestia
+echo 'cd /opt/celestia
+./updater -O ./celestia
+chmod a+x /opt/celestia/celestia
+rm -R -f /opt/celestia/*zs-old && rm -R -f /opt/celestia/*.part' >> /usr/bin/celestia
+
+val1='"$1"'
+val2='"$@"'
+
+echo "case "$val1" in
+  'celestia') exec /opt/celestia/celestia ;;
+  *) exec /opt/celestia/celestia "$val2" ;;
+esac" >> /usr/bin/celestia
 chmod a+x /usr/bin/celestia
 
 # Creating the launcher in /usr/share/applications
@@ -40,20 +51,21 @@ Comment=Explore the Universe in this detailed space simulation
 Comment[de]=Erkunde das Universum in dieser detaillierten Weltraumsimulation
 Type=Application
 Categories=Astronomy;Education;Science;GTK;
-Icon=celestia
+Icon=/opt/celestia/celestia.svg
 Exec=celestia %f
 Terminal=false
 MimeType=application/x-celestia-script;" >> /usr/share/applications/celestia.desktop
 
 # Adding the icon to /usr/share/pixmaps
 wget wget https://raw.githubusercontent.com/ivan-hc/AppMan/main/applications/celestia/celestia.svg
-mv ./celestia.svg /usr/share/pixmaps/
 
 # Changing privileges in /opt/celestia to allow automatic updates
 currentuser=$(who | awk '{print $1}')
 chown -R $currentuser /opt/celestia
 
 # Message
-echo ""
-echo " Celestia has been installed!"
-echo ""
+echo "";
+echo "           Celestia is provided by https://celestia.space";
+echo "";
+echo " AppImage at https://download.opensuse.org/repositories/home:/munix9/AppImage";
+echo "";
