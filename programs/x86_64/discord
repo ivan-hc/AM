@@ -2,28 +2,51 @@
 
 APP=discord
 
+# CREATE THE FOLDER
 mkdir /opt/$APP
 cd /opt/$APP
 
-echo '#!/bin/sh
-rm -R -f /opt/discord /usr/share/applications/discord.desktop /usr/local/bin/discord' >> /opt/discord/remove
-chmod a+x /opt/discord/remove
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /opt/$APP /usr/bin/$APP" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
 
+# DOWNLOAD THE APPIMAGE
 mkdir tmp
 cd ./tmp
 wget -r -A .AppImage -nd https://github.com/srevinsaju/discord-appimage/releases/tag/stable
 cd ..
 mv ./tmp/*mage ./$APP
 chmod a+x /opt/$APP/$APP
-rm -R /opt/discord/tmp
 
-echo '#!/bin/sh
-cd /opt/discord
-appimageupdate -O discord
-rm *zs-old
-exec /opt/discord/discord' >> /usr/local/bin/discord
-chmod a+x /usr/local/bin/discord
+cd ./tmp
+wget https://github.com/AppImage/AppImageUpdate/releases/download/continuous/appimageupdatetool-x86_64.AppImage
+cd ..
+mv ./tmp/appimageupdatetool-x86_64.AppImage ./updater
+chmod a+x ./updater
 
+rmdir ./tmp
+
+# SCRIPT TO LAUNCH AND UPDATE THE PROGRAM
+
+val1='"$1"'
+val2='"$@"'
+
+echo '#!/bin/sh' >> /usr/bin/$APP
+echo "APP=$APP" >> /usr/bin/$APP
+echo 'cd /opt/$APP
+./updater -O ./$APP
+chmod a+x /opt/$APP/$APP
+rm -R -f /opt/$APP/*zs-old && rm -R -f /opt/$APP/*.part' >> /usr/bin/$APP
+echo "
+  case "$val1" in
+  $APP) exec /opt/$APP/$APP ;;
+  *) exec /opt/$APP/$APP "$val2" ;;
+esac
+fi" >> /usr/bin/$APP
+chmod a+x /usr/bin/$APP
+
+# LAUNCHER
 echo "[Desktop Entry]
 Name=Discord
 StartupWMClass=discord
@@ -34,13 +57,14 @@ Icon=/opt/discord/discord.svg
 Type=Application
 Categories=Network;InstantMessaging;" >> /usr/share/applications/$APP.desktop
 
+# ICON
 wget https://raw.githubusercontent.com/ivan-hc/AppMan/main/applications/$APP/$APP.svg
 
+# CHANGE THE PERMISSIONS
 currentuser=$(who | awk '{print $1}')
 chown -R $currentuser /opt/$APP
 
-echo "
-
- Discord AppImage has been installed!
-
-"
+# MESSAGE
+echo "";
+echo " Discord AppImage is provided by https://github.com/srevinsaju ";
+echo "";

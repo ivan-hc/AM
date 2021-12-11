@@ -8,34 +8,43 @@ cd /opt/$APP
 
 # ADD THE REMOVER
 echo '#!/bin/sh' >> /opt/$APP/remove
-echo "rm -R -f /usr/share/applications/$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
+echo "rm -R -f /opt/$APP /usr/bin/$APP" >> /opt/$APP/remove
 chmod a+x /opt/$APP/remove
 
 # DOWNLOAD THE APPIMAGE
 mkdir tmp
 cd ./tmp
-
 wget https://gitlab.com/api/v4/projects/24386000/packages/generic/librewolf/latest/LibreWolf.x86_64.AppImage
-
 cd ..
 mv ./tmp/*mage ./$APP
 chmod a+x /opt/$APP/$APP
+
+cd ./tmp
+wget https://github.com/AppImage/AppImageUpdate/releases/download/continuous/appimageupdatetool-x86_64.AppImage
+cd ..
+mv ./tmp/appimageupdatetool-x86_64.AppImage ./updater
+chmod a+x ./updater
+
 rmdir ./tmp
 
 # SCRIPT TO LAUNCH AND UPDATE THE PROGRAM
-echo '#!/bin/sh' >> /usr/local/bin/$APP
 
-echo "cd /opt/$APP
-appimageupdate -O $APP
-rm *zs-old" >> /usr/local/bin/$APP
-echo 'case "$1" in' >> /usr/local/bin/$APP
+val1='"$1"'
+val2='"$@"'
 
-symbol='"$@"'
-
-echo "  'librewolf') exec /opt/$APP/$APP ;;
-  *) exec /opt/$APP/$APP $symbol ;;
-esac" >> /usr/local/bin/$APP
-chmod a+x /usr/local/bin/$APP
+echo '#!/bin/sh' >> /usr/bin/$APP
+echo "APP=$APP" >> /usr/bin/$APP
+echo 'cd /opt/$APP
+./updater -O ./$APP
+chmod a+x /opt/$APP/$APP
+rm -R -f /opt/$APP/*zs-old && rm -R -f /opt/$APP/*.part' >> /usr/bin/$APP
+echo "
+  case "$val1" in
+  $APP) exec /opt/$APP/$APP ;;
+  *) exec /opt/$APP/$APP "$val2" ;;
+esac
+fi" >> /usr/bin/$APP
+chmod a+x /usr/bin/$APP
 
 # LAUNCHER
 rm /usr/share/applications/$APP.desktop
