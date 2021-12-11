@@ -14,15 +14,17 @@ chmod a+x /opt/$APP/remove
 # DOWNLOAD THE APPIMAGE
 mkdir tmp
 cd ./tmp
-
 wget -r -A .AppImage -nd https://github.com/mmtrt/WINE_AppImage/releases/tag/continuous-staging
-
-version=$(ls /opt/$APP/tmp)
-echo "$version" >> /opt/$APP/version
-
 cd ..
 mv ./tmp/*mage ./$APP
 chmod a+x /opt/$APP/$APP
+
+cd ./tmp
+wget https://github.com/AppImage/AppImageUpdate/releases/download/continuous/appimageupdatetool-x86_64.AppImage
+cd ..
+mv ./tmp/appimageupdatetool-x86_64.AppImage ./updater
+chmod a+x ./updater
+
 rmdir ./tmp
 
 # SCRIPT TO LAUNCH AND UPDATE THE PROGRAM
@@ -32,29 +34,11 @@ val2='"$@"'
 
 echo '#!/bin/sh' >> /usr/bin/$APP
 echo "APP=$APP" >> /usr/bin/$APP
-echo 'version0=$(cat /opt/$APP/version)
-
-url=https://github.com/mmtrt/WINE_AppImage/releases/tag/continuous-staging' >> /usr/bin/$APP
-
-echo 'if curl -L -s $url | grep -ioF "$version0"; then' >> /usr/bin/$APP
-echo '  echo "Update not needed!".'  >> /usr/bin/$APP
-echo "  case "$val1" in
-  $APP) exec /opt/$APP/$APP ;;
-  *) exec /opt/$APP/$APP "$val2" ;;
-esac" >> /usr/bin/$APP
-echo 'else' >> /usr/bin/$APP
-echo "  notify-send 'A new version of $APP is available, please wait'" >> /usr/bin/$APP
-echo "  mkdir /opt/$APP/tmp
-  cd /opt/$APP/tmp" >> /usr/bin/$APP
-echo "  wget -r -A .AppImage -nd https://github.com/mmtrt/WINE_AppImage/releases/tag/continuous-staging" >> /usr/bin/$APP
-echo '  cd ..
-  if test -f ./tmp/*mage; then rm ./version
-  fi
-  version=$(ls /opt/$APP/tmp)
-  echo "$version" >> ./version' >> /usr/bin/$APP
-echo "  mv ./tmp/*mage ./$APP
-  chmod a+x /opt/$APP/$APP
-  rmdir ./tmp
+echo 'cd /opt/$APP
+./updater -O ./$APP
+chmod a+x /opt/$APP/$APP
+rm -R -f /opt/$APP/*zs-old && rm -R -f /opt/$APP/*.part' >> /usr/bin/$APP
+echo "
   case "$val1" in
   $APP) exec /opt/$APP/$APP ;;
   *) exec /opt/$APP/$APP "$val2" ;;
