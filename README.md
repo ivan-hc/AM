@@ -146,7 +146,7 @@ This will download the ["APP-MANAGER"](https://github.com/ivan-hc/AM-application
   		at https://github.com/ivan-hc/AM-application-manager
 
 # Updates
-As we have already seen, the installation script will create an additional script which will take the place of the symbolic link in $PATH (/usr/local/bin or usr/bin) and which will check for updates when the program starts before launching it. Here are the ways in which the updates will be made:
+As we have already seen, the installation script will create an additional script which will take the place of the symbolic link in $PATH (/usr/local/bin or usr/bin) and which will check for updates at program startup before running it. Here are the ways in which the updates will be made:
 - Updateable AppImages can rely on an [appimageupdatetool](https://github.com/AppImage/AppImageUpdate)-based "updater" or on their external zsync file (if provided by the developer);
 - Non-updateable AppImages and other standalone programs will be replaced only with a more recent version if available, this will be taken by comparing the installed version with the one available on the source (using "curl", "grep" and "cat");
 - Fixed versions will be listed with their build number (e.g. $PROGRAM-1.1.1). Note that most of the programs are updateable, so fixed versions will only be added upon request (or if it is really difficult to find a right wget/curl command to download the latest version);
