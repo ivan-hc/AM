@@ -1,0 +1,107 @@
+#!/bin/sh
+
+APP=telegram
+
+# CREATE THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP
+
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+
+# DOWNLOAD THE APPIMAGE
+mkdir tmp
+cd ./tmp
+
+wget https://github.com/$(wget https://github.com/telegramdesktop/tdesktop/releases/latest -O - | egrep '/.*/.*/.*tar.xz' -o)
+
+version=$(ls /opt/$APP/tmp)
+echo "$version" >> /opt/$APP/version
+
+tar fx ./*.tar.xz
+rm ./*.tar.xz
+cd ..
+mv ./tmp/Telegram/Telegram* ./$APP
+rm -R -f ./tmp
+
+# SCRIPT TO LAUNCH AND UPDATE THE PROGRAM
+echo '#!/bin/sh' >> /usr/local/bin/$APP
+echo "APP=$APP" >> /usr/local/bin/$APP
+echo 'version0=$(cat /opt/$APP/version)
+
+url=https://github.com/telegramdesktop/tdesktop/releases/latest' >> /usr/local/bin/$APP
+
+
+val1='"$1"'
+val2='"$@"'
+
+echo 'if curl -L -s $url | grep -ioF "$version0"; then' >> /usr/local/bin/$APP
+echo '  echo "Update not needed!".'  >> /usr/local/bin/$APP
+echo "  case "$val1" in
+  $APP) exec /opt/$APP/$APP ;;
+  *) exec /opt/$APP/$APP "$val2" ;;
+esac" >> /usr/local/bin/$APP
+echo 'else' >> /usr/local/bin/$APP
+echo "  notify-send 'A new version of $APP is available, please wait'" >> /usr/local/bin/$APP
+echo "  mkdir /opt/$APP/tmp
+  cd /opt/$APP/tmp" >> /usr/local/bin/$APP
+
+function1='$(wget https://github.com/telegramdesktop/tdesktop/releases/latest -O -'
+function2="egrep '/.*/.*/.*tar.xz' -o)"
+function3='$(ls /opt/$APP/tmp)'
+
+echo "  wget https://github.com/$function1 | $function2
+  version=$function3" >> /usr/local/bin/$APP
+
+echo '  cd ..
+  if test -f ./tmp/*tar.xz; then rm ./version
+  fi
+  echo "$version" >> ./version' >> /usr/local/bin/$APP
+echo "  tar fx ./tmp/*.tar.xz
+  rm ./tmp/*.tar.xz
+  mv ./tmp/* ./
+  rm -R -f ./tmp" >> /usr/local/bin/$APP
+
+
+echo "  case "$val1" in
+  $APP) exec /opt/$APP/$APP ;;
+  *) exec /opt/$APP/$APP "$val2" ;;
+esac
+fi" >> /usr/local/bin/$APP
+chmod a+x /usr/local/bin/$APP
+
+# LAUNCHER
+rm /usr/share/applications/$APP.desktop
+echo "[Desktop Entry]
+Encoding=UTF-8
+Version=1.0
+Name=Telegram
+Comment=Official desktop version of Telegram messaging app
+Exec=$APP -- %u
+StartupWMClass=telegram-desktop
+Icon=/opt/$APP/$APP.svg
+Terminal=false
+Type=Application
+Categories=Network;
+MimeType=application/x-xdg-protocol-tg;x-scheme-handler/tg;" >> /usr/share/applications/$APP.desktop
+
+# ICON
+wget https://raw.githubusercontent.com/ivan-hc/AppMan/main/applications/$APP/$APP.svg
+
+currentuser=$(who | awk '{print $1}')
+mkdir /home/$currentuser/.local/share/appimagekit
+touch /home/$currentuser/.local/share/appimagekit/no_desktopintegration_Telegram_Desktop
+chown -R $currentuser /home/$currentuser/.local/share/appimagekit
+
+# CHANGE THE PERMISSIONS
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/$APP
+
+# MESSAGE
+echo "
+
+ Telegram is provided by https://desktop.telegram.org
+
+"
