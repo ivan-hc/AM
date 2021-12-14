@@ -1,0 +1,82 @@
+#!/bin/sh
+
+APP=zoom
+
+# CREATE THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP
+
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+
+# DOWNLOAD THE APPIMAGE
+mkdir tmp
+cd ./tmp
+
+wget -r -A x86_64.AppImage -nd https://github.com/probonopd/Zoom.AppImage/releases/tag/stable
+
+version=$(ls /opt/$APP/tmp)
+echo "$version" >> /opt/$APP/version
+
+cd ..
+mv ./tmp/*mage ./$APP
+chmod a+x /opt/$APP/$APP
+rmdir ./tmp
+
+# SCRIPT TO LAUNCH AND UPDATE THE PROGRAM
+echo '#!/bin/sh' >> /usr/local/bin/$APP
+echo "APP=$APP" >> /usr/local/bin/$APP
+echo 'version0=$(cat /opt/$APP/version)
+
+url=https://github.com/probonopd/Zoom.AppImage/releases/tag/stable' >> /usr/local/bin/$APP
+
+echo 'if curl -L -s $url | grep -ioF "$version0"; then' >> /usr/local/bin/$APP
+echo '  echo "Update not needed!".'  >> /usr/local/bin/$APP
+echo "  exec /opt/$APP/$APP" >> /usr/local/bin/$APP
+echo 'else' >> /usr/local/bin/$APP
+echo "  notify-send 'A new version of $APP is available, please wait'" >> /usr/local/bin/$APP
+echo "  mkdir /opt/$APP/tmp
+  cd /opt/$APP/tmp
+  wget -r -A x86_64.AppImage -nd https://github.com/probonopd/Zoom.AppImage/releases/tag/stable" >> /usr/local/bin/$APP
+echo '  cd ..
+  if test -f ./tmp/*mage; then rm ./version
+  fi
+  echo "$version" >> ./version' >> /usr/local/bin/$APP
+echo "  mv ./tmp/*mage ./$APP
+  chmod a+x /opt/$APP/$APP
+  rmdir ./tmp
+  exec /opt/$APP/$APP
+fi" >> /usr/local/bin/$APP
+chmod a+x /usr/local/bin/$APP
+
+# LAUNCHER
+rm /usr/share/applications/$APP.desktop
+echo "[Desktop Entry]
+Name=Zoom
+Comment=Zoom Video Conference
+Exec=$APP %U
+Icon=/opt/$APP/$APP.svg
+Terminal=false
+Type=Application
+Encoding=UTF-8
+Categories=Network;Application;
+StartupWMClass=zoom
+MimeType=x-scheme-handler/zoommtg;x-scheme-handler/zoomus;x-scheme-handler/tel;x-scheme-handler/callto;x-scheme-handler/zoomphonecall;application/x-zoom
+X-KDE-Protocols=zoommtg;zoomus;tel;callto;zoomphonecall;
+Name[en_US]=Zoom" >> /usr/share/applications/$APP.desktop
+
+# ICON
+wget https://raw.githubusercontent.com/ivan-hc/AppMan/main/applications/$APP/$APP.svg
+
+# CHANGE THE PERMISSIONS
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/$APP
+
+# MESSAGE
+echo "
+
+ Zoom AppImage is provided by https://github.com/probonopd/Zoom.AppImage
+ 
+ "
