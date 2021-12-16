@@ -12,6 +12,8 @@
 
 [Usage](#usage)
 
+[Development branches](#development-branches)
+
 [Updates](#updates)
 
 [The only flaw](#the-only-flaw)
@@ -39,7 +41,7 @@ Here's what it means for me to use a completely "standalone" application:
 - I want an app totally independent from the repositories of my distribution;
 - it must not require hundreds of packages and files of dependencies;
 - my app must not share its dependencies with other installed applications;
-- this app must always be updated to the latest version, even at the cost of updating without asking, I just want to use it;
+- this app must always be updated to the latest version;
 - it must also be available for other users who use my pc;
 - I want this app to be easy to install and remove using an extremely intuitive command;
 - I want to summarize the whole installation process, including icons, launchers, info files and a script to remove all this in just one script.
@@ -77,13 +79,11 @@ In the end I chose the most self-centered, obvious, stupid, brief... and bravest
 
 -----------------------
 
-The `am` command is very similar to [AppMan](https://github.com/ivan-hc/AppMan), but with [less inbuilt options](#usage), because here are less things to do:
+The `am` command is very similar to [AppMan](https://github.com/ivan-hc/AppMan), but with a better control of automatic updates for all the programs.
 
-- the `am` script is built to allow integration in the system and automatic updates for each application, so the final user must do nothing but just using the application installed;
-- this tool can only install, remove and search the desired application, updates are at the complete discretion and management of the latter;
-- using the `am` command to install/remove standalone apps is as easy and ridiculous as typing a command at random, out of desperation!
+Using the `am` command to install/remove standalone apps is as easy and ridiculous as typing a command at random, out of desperation!
 
-#### "AM", thanks to its installation scripts that in turn create other scripts to check for updates by simply starting the installed applications, which are themselves isolated from each other, transforms Debian into a rolling-release distro and Arch Linux into a more stable system .
+#### "AM", thanks to its installation scripts, transforms Debian into a rolling-release distro and Arch Linux into a more stable system .
 
 -----------------------
 
@@ -107,6 +107,8 @@ This will download the ["APP-MANAGER"](https://github.com/ivan-hc/AM-application
   `-l`, `list`	Shows the list of apps available in the repository.
 
   `-s`, `sync`	Updates "AM" to a more recent version.
+  
+  `-u`, `update` Update all the installed programs.
 
   -----------------------------------------------------------------------
 
@@ -128,11 +130,10 @@ This will download the ["APP-MANAGER"](https://github.com/ivan-hc/AM-application
   `-i`, `install` Install a program. This will be taken directly from the
   		repository of the developer (always the latest version):
   		- the installer is stored in /opt/am/.cache;
-  		- the command is linked into a $PATH or launched from a 
-		custom script (created in a $PATH) which automates updates
-		at program startup;
-		- the program is stored in /opt/$PROGRAM with a script to
-	    	remove this and all the files listed above.
+  		- the command is linked into a $PATH;
+		- the program is stored in /opt/<program> with all the 
+		related files (a script to remove this and all the files 
+		listed above and a script to update everything).
 		The icon and the launcher are optional for no-ui programs.
   		"AM" uses both AppImages and other standalone programs.
   		
@@ -145,20 +146,19 @@ This will download the ["APP-MANAGER"](https://github.com/ivan-hc/AM-application
   		consider submitting your app to the AM application manager,
   		at https://github.com/ivan-hc/AM-application-manager
 
+# Development branches
+The first version, [AM 1.0](https://github.com/ivan-hc/AM-application-manager/tree/1.0) can only install, remove and search the desired application, updates are at the complete discretion and management of the latter. However, due to the automatic check for updates, each program may take longer than normal to start.
+[AM 2.0](https://github.com/ivan-hc/AM-application-manager/tree/2.0) instead has a `-u` option to automatically update all the programs in bulk, thanks to an "AM-updater" script that will check for updates from the source. All this is needed to speedup the user experience.
+	
 # Updates
-As we have already seen, the installation script will create an additional script which will take the place of the symbolic link in $PATH (/usr/local/bin or usr/bin) and which will check for updates at program startup before running it. Here are the ways in which the updates will be made:
+Here are the ways in which the updates will be made:
 - Updateable AppImages can rely on an [appimageupdatetool](https://github.com/AppImage/AppImageUpdate)-based "updater" or on their external zsync file (if provided by the developer);
 - Non-updateable AppImages and other standalone programs will be replaced only with a more recent version if available, this will be taken by comparing the installed version with the one available on the source (using "curl", "grep" and "cat");
 - Fixed versions will be listed with their build number (e.g. $PROGRAM-1.1.1). Note that most of the programs are updateable, so fixed versions will only be added upon request (or if it is really difficult to find a right wget/curl command to download the latest version);
 - AppImages created with [pkg2appimage](https://github.com/AppImage/pkg2appimage) and [appimagetool](https://github.com/AppImage/AppImageKit) will be updated in the same way as the non-updatable AppImages (see above), but the two tools just mentioned must be present in the system (the specific instruction to install or reinstall them will be present in the installation script of the program that requires it).
 
 During the first installation, the main user ($currentuser) will take the necessary permissions on each /opt/$PROGRAM directory, in this way all updates will be automatic and without root permissions.
-
-
-# The only flaw
 	
-Due to the automatic check for updates, each program may take longer than normal to start.
-
 # Repository and Multiarchitecture
 Each program is installed through a dedicated script, and all these scripts are listed in the "[repository](https://github.com/ivan-hc/AM-application-manager/tree/main/programs)" and divided by architecture.
 	
@@ -177,11 +177,11 @@ I personally will try to import so many scripts from [AppMan](https://github.com
 # Scripts and rules	
 Once you've performed the command:
 	
-`sudo am install $PROGRAM`
+`sudo am -i $PROGRAM`
 	
 The script will create:
-- a /opt/$PROGRAM folder containing the standalone app, an uninstaller script named `remove` and other files (if necessary);
-- a symlink of /opt/$PROGRAM/$YOUR-APP-AND-HELPERS into a $PATH (ie /usr/local/bin, /usr/bin, /bin, /usr/local/games, /usr/games...) or a script instead that checks for updates each time you launche the program;
+- a /opt/$PROGRAM folder containing the standalone app, an uninstaller script named `remove`, an `AM-updater` script needed by the `am -u` command and other files (if necessary);
+- a symlink of /opt/$PROGRAM/$YOUR-PROGRAM into a $PATH (ie /usr/local/bin, /usr/bin, /bin, /usr/local/games, /usr/games...);
 - the icon (optional for command line tools), it can be placed in /usr/share/pixmaps, /usr/share/icons or in /opt/$PROGRAM (recommended);
 - the launcher (optional for command line tools) in /usr/share/applications.
 	
