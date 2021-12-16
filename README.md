@@ -12,6 +12,8 @@
 
 [Usage](#usage)
 
+[Development branches](#development-branches)
+
 [Updates](#updates)
 
 [The only flaw](#the-only-flaw)
@@ -144,6 +146,10 @@ This will download the ["APP-MANAGER"](https://github.com/ivan-hc/AM-application
   		consider submitting your app to the AM application manager,
   		at https://github.com/ivan-hc/AM-application-manager
 
+# Development branches
+The first version, [AM 1.0](https://github.com/ivan-hc/AM-application-manager/tree/1.0) can only install, remove and search the desired application, updates are at the complete discretion and management of the latter. However, due to the automatic check for updates, each program may take longer than normal to start.
+[AM 2.0](https://github.com/ivan-hc/AM-application-manager/tree/2.0) instead has a `-u` option to automatically update all the programs in bulk, thanks to an "AM-updater" script that will check for updates from the source. All this is needed to speedup the user experience.
+	
 # Updates
 Here are the ways in which the updates will be made:
 - Updateable AppImages can rely on an [appimageupdatetool](https://github.com/AppImage/AppImageUpdate)-based "updater" or on their external zsync file (if provided by the developer);
@@ -153,10 +159,6 @@ Here are the ways in which the updates will be made:
 
 During the first installation, the main user ($currentuser) will take the necessary permissions on each /opt/$PROGRAM directory, in this way all updates will be automatic and without root permissions.
 	
-# Development branches
-The first version, [AM 1.0](https://github.com/ivan-hc/AM-application-manager/tree/1.0) can only install, remove and search the desired application, updates are at the complete discretion and management of the latter. However, due to the automatic check for updates, each program may take longer than normal to start.
-[AM 2.0](https://github.com/ivan-hc/AM-application-manager/tree/2.0) has a `-u` option to automatically update all the programs in bulk, thanks to an "AM-updater" script that will check for updates from the source.
-
 # Repository and Multiarchitecture
 Each program is installed through a dedicated script, and all these scripts are listed in the "[repository](https://github.com/ivan-hc/AM-application-manager/tree/main/programs)" and divided by architecture.
 	
