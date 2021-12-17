@@ -1,0 +1,45 @@
+#!/bin/sh
+
+mkdir /opt/tor-browser
+cd /opt/tor-browser
+
+echo "#!/bin/sh
+rm -R -f  /opt/tor-browser /usr/share/applications/tor-browser.desktop /usr/local/bin/tor-browser" >> /opt/tor-browser/remove
+chmod a+x /opt/tor-browser/remove
+
+mkdir tmp;
+cd ./tmp;
+
+temp="$(curl -s https://www.torproject.org/download/languages/)"
+temp2=`echo "${temp}" | grep -E -o '[A-Za-z0-9/_.-]+_en-US.tar.xz' | tail -n 1`
+wget -O tor-browser-linux64.tar.xz "https://www.torproject.org$temp2"
+
+tar fx tor-browser-*.tar.xz
+cd ..
+mv ./tmp/tor-browser_en-US/Browser/* ./
+rm -R ./tmp
+
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/tor-browser
+
+echo '#!/bin/sh' >> /usr/local/bin/tor-browser
+echo "sh -c '/opt/tor-browser/start-tor-browser --detach || ([ ! -x /opt/tor-browser/start-tor-browser ] && /opt/tor-browser/start-tor-browser --detach)' dummy %k" >> /usr/local/bin/tor-browser
+chmod a+x /usr/local/bin/tor-browser
+
+echo "
+[Desktop Entry]
+Type=Application
+Name=Tor Browser Setup
+GenericName=Web Browser
+Comment=Tor Browser is +1 for privacy and −1 for mass surveillance
+Categories=Network;WebBrowser;Security;
+Exec=sh -c '/opt/tor-browser/start-tor-browser --detach || ([ ! -x /opt/tor-browser/start-tor-browser ] && /opt/tor-browser/start-tor-browser --detach)' dummy %k
+X-TorBrowser-ExecShell=/opt/tor-browser/start-tor-browser --detach
+Icon=/opt/tor-browser/browser/chrome/icons/default/default128.png
+StartupWMClass=Tor Browser"  >> /usr/share/applications/tor-browser.desktop
+
+echo "
+
+	Tor Browser is provided by https://www.torproject.org
+	
+	"
