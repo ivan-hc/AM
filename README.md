@@ -12,7 +12,7 @@
 
 [Usage](#usage)
 
-[Development branches](#development-branches)
+[History](#history)
 
 [Updates](#updates)
 
@@ -146,9 +146,10 @@ This will download the ["APP-MANAGER"](https://github.com/ivan-hc/AM-application
   		consider submitting your app to the AM application manager,
   		at https://github.com/ivan-hc/AM-application-manager
 
-# Development branches
-The first version, [AM 1.0](https://github.com/ivan-hc/AM-application-manager/tree/1.0) can only install, remove and search the desired application, updates are at the complete discretion and management of the latter. However, due to the automatic check for updates, each program may take longer than normal to start.
-[AM 2.0](https://github.com/ivan-hc/AM-application-manager/tree/2.0) instead has a `-u` option to automatically update all the programs in bulk, thanks to an "AM-updater" script that will check for updates from the source. All this is needed to speedup the user experience.
+# History
+Initially "AM" was designed only to install and remove applications, while updates were delegated to them through scripts that checked for new software versions at startup, connecting to the application's site of origin (you can consult the original 1.0 code [here](https://github.com/ivan-hc/AM-application-manager/tree/1.0)). However, this mechanism slowed the start of the application itself, which instead should be reactive from the first start.
+	
+Since version 2.0 "AM" has converted these scripts into files named "AM-updater", which are used by the new "`-u`" option instead. Even "AM" itself is involved when executing the "`am -u`" command, since the options in the main script are constantly updated. 
 	
 # Updates
 Here are the ways in which the updates will be made:
