@@ -83,6 +83,10 @@ The `am` command is very similar to [AppMan](https://github.com/ivan-hc/AppMan),
 
 Using the `am` command to install/remove standalone apps is as easy and ridiculous as typing a command at random, out of desperation!
 
+Like AppMan, the main goal of this tool is to provide the same updated applications to multiple GNU/Linux distributions without having to change the package manager or the distro itself. This means that whatever distro you use, you will not miss your favorite programs or the need for a more updated version.
+
+"AM" also aims to be a merger for GNU / Linux distributions, using not just AppImage as the main package format, but also other standalone programs, so without having to risk breaking anything on your system: no daemons, no shared libraries. Just your program!
+
 #### "AM", thanks to its installation scripts, transforms Debian into a rolling-release distro and Arch Linux into a more stable system .
 
 -----------------------
