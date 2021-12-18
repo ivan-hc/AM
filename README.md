@@ -16,8 +16,6 @@
 
 [Updates](#updates)
 
-[The only flaw](#the-only-flaw)
-
 [Repository and Multiarchitecture](#repository-and-multiarchitecture)
 
 [Scripts and rules](#scripts-and-rules)
