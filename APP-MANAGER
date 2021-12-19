@@ -62,10 +62,16 @@ case "$1" in
   		using the instructions in /opt/<program>/remove.
   		Confirmation is required (Y or N, default is N).
   		
-  -t, template	This option allows you to generate a custom script to
-  		manipulate on your PC in your $HOME directory. Please,
-  		consider submitting your app to the AM application manager,
-  		at https://github.com/ivan-hc/AM-application-manager
+  -t, template	This option allows you to generate a custom script: the 
+  		command will offer you to choose between different models 
+  		that may be vary according to the type of application you 
+  		want to create/install. Once you choose a number, the 
+  		script will download the template and rename it using the 
+  		<argument> you provided, all this will be created in the 
+  		"Desktop" folder of the user. So you just have to edit the 
+  		other parameters (LAUNCHER, AM-updater, Recipes, etc ...).
+  		Please, consider submitting your custom script to "AM", at 
+ 		https://github.com/ivan-hc/AM-application-manager/pulls .
   		
   -----------------------------------------------------------------------
 
@@ -116,12 +122,12 @@ case "$1" in
   	cd /opt && find -name 'remove' -printf "%h\n" | sort -u | xargs -n 1 basename; echo "" ;;
   '-i'|'install')
 	while [ -n "$1" ]
-	do
+	do sudo echo "";
 	if curl --output /dev/null --silent --head --fail $URL/programs/$arch/$2  1>/dev/null; then
 	case $2 in
 	*) for var in $2;
 	do cd /opt/am/.cache; mkdir tmp; cd tmp; wget $URL/programs/$arch/$2; cd ..; mv ./tmp/$2 ./$2; rmdir ./tmp;
-	chmod a+x /opt/am/.cache/$2 && exec /opt/am/.cache/$2; done
+	chmod a+x /opt/am/.cache/$2; sudo /opt/am/.cache/$2 && exit; done
 	esac
 	else
 	echo ""; 
@@ -156,7 +162,7 @@ case "$1" in
 	*) for var in $2;
 	do echo ""; read -p " Do you wish to REMOVE $2 (y,N)?" yn
 		case $yn in
-		[Yy]* ) echo ""; echo " $2 HAS BEEN REMOVED!"; echo ""; exec /opt/$2/remove; break;;
+		[Yy]* ) echo "";  sudo /opt/$2/remove && echo " $2 HAS BEEN SUCCESSFULLY REMOVED!" && echo "" && exit; break;;
 		[Nn]*|* ) echo ""; echo " $2 has not been removed, exiting!"; echo ""; exit;; esac done;;
 	esac
 	else
@@ -174,7 +180,7 @@ case "$1" in
 	do
 	case $2 in
 	*) for var in $2
-	do cd /home/$currentuser/
+	do cd $(xdg-user-dir DESKTOP)
 	echo ""
 	echo " WHAT KIND OF PROGRAM DO YOU WANT TO WRITE A SCRIPT FOR?"
 	echo ""
@@ -192,11 +198,11 @@ case "$1" in
 	echo ""
 	read -r -p " Please only choose one option between 1, 2, 3, 4 and 5 : " response
 	case "$response" in
-    	1) mkdir $2-script-for-AM && cd $2-script-for-AM; wget $URL/templates/AM-SAMPLE-for-appimageupdate;;
-    	2) mkdir $2-script-for-AM && cd $2-script-for-AM; wget $URL/templates/AM-SAMPLE-for-zsync;;
-    	3) mkdir $2-script-for-AM && cd $2-script-for-AM; wget $URL/templates/AM-SAMPLE-from-a-repository;;
-    	4) mkdir $2-script-for-AM && cd $2-script-for-AM; wget $URL/templates/AM-SAMPLE-from-a-main-site;;
-    	5) mkdir $2-script-for-AM && cd $2-script-for-AM; wget $URL/templates/AM-SAMPLE-pkg2appimage;;
+    	1) mkdir AM-scripts && cd AM-scripts; wget $URL/templates/AM-SAMPLE-for-appimageupdate;;
+    	2) mkdir AM-scripts && cd AM-scripts; wget $URL/templates/AM-SAMPLE-for-zsync;;
+    	3) mkdir AM-scripts && cd AM-scripts; wget $URL/templates/AM-SAMPLE-from-a-repository;;
+    	4) mkdir AM-scripts && cd AM-scripts; wget $URL/templates/AM-SAMPLE-from-a-main-site;;
+    	5) mkdir AM-scripts && cd AM-scripts; wget $URL/templates/AM-SAMPLE-pkg2appimage;;
     	*) echo ""; echo " No valid argument was chosen: process aborted! "; echo ""; exit;;
 	esac
 	mv AM-SAMPLE* $2
@@ -214,6 +220,6 @@ case "$1" in
   	echo "-----------------------------------------------------------------------"; echo " >> END OF ALL PROCESSES << "; 
   	echo "-----------------------------------------------------------------------";echo ""; sleep 2;
   	echo ""; echo ' ALL THE PROGRAMS MANAGED BY "AM" ARE UPDATED! '; echo "";;
-  '-v'|'--version') echo "2.0.4";;
+  '-v'|'--version') echo "2.0.5";;
   *) exec /opt/am/APP-MANAGER ;;
 esac
