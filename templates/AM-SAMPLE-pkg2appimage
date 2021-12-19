@@ -1,0 +1,68 @@
+#!/bin/sh
+
+APP=SAMPLE
+
+# CREATING THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP;
+
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+
+mkdir tmp;
+cd tmp;
+
+# DOWNLOADING THE DEPENDENCIES
+wget https://github.com/ivan-hc/AppMan/raw/main/applications/appimagetool/appimagetool
+wget https://github.com/ivan-hc/AppMan/raw/main/applications/pkg2appimage/pkg2appimage
+chmod a+x ./appimagetool ./pkg2appimage
+
+# CREATING THE APPIMAGE
+echo 'RECIPE' >> recipe.yml;
+
+./pkg2appimage ./recipe.yml;
+
+ARCH=x86_64 ./appimagetool -n /opt/$APP/tmp/$APP/$APP.AppDir;
+
+cd ..;
+mv ./tmp/*.AppImage ./$APP;
+chmod a+x ./$APP
+
+rm -R -f ./tmp
+
+# LINK
+ln -s /opt/$APP/$APP /usr/local/bin/$APP
+
+# SCRIPT TO UPDATE THE PROGRAM
+echo '#!/bin/sh
+version=$(exec /opt/$APP/$APP --version)
+url="https://www.$APP.org/download.php"
+if curl -L -s $url | grep -ioF "$version"; then
+  echo "Update not needed, exit!"
+ else
+  notify-send "A new version of '$APP' is available, please wait!"
+  mkdir /opt/$APP/tmp
+  cd /opt/$APP/tmp
+  wget https://github.com/ivan-hc/AppMan/raw/main/applications/appimagetool/appimagetool
+  wget https://github.com/ivan-hc/AppMan/raw/main/applications/pkg2appimage/pkg2appimage
+  chmod a+x ./appimagetool ./pkg2appimage
+  FUNCTION
+fi' >> /opt/$APP/AM-updater
+chmod a+x /opt/$APP/AM-updater
+
+# LAUNCHER
+echo "LAUNCHER" >> /usr/share/applications/$APP.desktop;
+
+# ICON
+wget wget https://raw.githubusercontent.com/ivan-hc/AppMan/main/applications/$APP/$APP.svg;
+
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/$APP
+
+echo "
+
+ MESSAGE
+  
+";
