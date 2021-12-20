@@ -36,6 +36,7 @@ There are so many commands to remember among the GNU/Linux distributions, and so
 - My programs must not require hundreds of packages and files of dependencies and shared libraries;
 - I want always the latest updated version of the program, maybe directly from the developer;
 - I want to install/remove/update/manage my programs using a short and extremely intuitive command;
+- Each installed program must be placed in a single folder with all dependencies, at most it can have a launcher and a link outside its own folder;
 - I want to summarize the whole installation process (including the download of the icons and the creation of launchers and updater/remover scripts...) in just one script.
 
 I can't find all this into other package managers. APT (Debian) often includes too old programs that require too many dependencies, while the programs installed by AUR (Arch Linux) are not always reliable (and PacMan by default does not include all the programs that APT manages). Flatpak takes up too much disk space to install only one program, while Snappy slows down PC resources (not to mention I don't trust Canonical).
