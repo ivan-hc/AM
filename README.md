@@ -41,7 +41,7 @@ There are so many commands to remember among the GNU/Linux distributions, and so
 
 I can't find all this into other package managers. APT (Debian) often includes too old programs that require too many dependencies, while the programs installed by AUR (Arch Linux) are not always reliable (and PacMan by default does not include all the programs that APT manages). Flatpak takes up too much disk space to install only one program, while Snappy slows down PC resources (not to mention I don't trust Canonical).
 
-AppImage are a good package format, but they have not a centralized repository capable of automatically managing updates, and more often there are some external tools and system daemons that can't do enough to integrate the program in the correct way into the system (including launchers). I myself was not satisfied with my other cration, [AppMan](https://github.com/ivan-hc/AppMan), because it can manage them only locally (as a normal user without administrative privileges), and this conflicts with the possibility of making the installed applications also be used by other users who use my PC or laptop, and in this sense it is necessary an application manager that integrates with the system as APT, PacMan, DNF, Zypper could do (but with fewer files scattered around the PC).
+AppImage are a good package format, but they have not a centralized repository capable of automatically managing updates, and more often there are some external tools and system daemons that can't do enough to integrate the program in the correct way into the system (including launchers). I myself was not satisfied with my other creation, [AppMan](https://github.com/ivan-hc/AppMan), because it can manage them only locally (as a normal user without administrative privileges), and this conflicts with the possibility of making the installed applications also be used by other users who use my PC or laptop, and in this sense it is necessary an application manager that integrates with the system as APT, PacMan, DNF, Zypper could do (but with fewer files scattered around the PC).
 
 Initially I was undecided whether to develop something totally different, given the little free time I had available.
 
@@ -76,7 +76,7 @@ Finally I decided to write another tool based on AppMan itself.
 
 AM is an application manager for all GNU / Linux distributions and which can be adapted to all available architectures, as its scripts are entirely based on the programs present in each basic installation. 
 
-Strongly inspired by [AppMan](https://github.com/ivan-hc/AppMan), the `am` command is very easy to use and can manage a better control of automatic updates for all the programs installed. Using the `am` command to install/remove standalone apps is as easy and ridiculous as typing a command at random, out of desperation!
+Strongly inspired by AppMan, `am` is very easy to use and can manage a better control of automatic updates for all the programs installed. Using `am` to install/remove standalone apps is as easy and ridiculous as typing a command at random, out of desperation!
 
 The main goal of this tool is to provide the same updated applications to multiple GNU/Linux distributions without having to change the package manager or the distro itself. This means that whatever distro you use, you will not miss your favorite programs or the need for a more updated version.
 
