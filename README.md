@@ -12,8 +12,6 @@
 
 [Usage](#usage)
 
-[History](#history)
-
 [Updates](#updates)
 
 [Repository and Multiarchitecture](#repository-and-multiarchitecture)
@@ -32,25 +30,23 @@
 
 # Introducing "AM"
 
-There are so many commands to remember among the GNU/Linux distributions, and sometime I can't find what I really want from a package manager.
+There are so many commands to remember among the GNU/Linux distributions, and sometime I can't find what I really want from a package manager:
 
-Here's what it means for me to use a completely "standalone" application:
+- I want my programs to be totally independent from the repositories of my distribution and from each other;
+- My programs must not require hundreds of packages and files of dependencies and shared libraries;
+- I want always the latest updated version of the program, maybe directly from the developer;
+- I want to install/remove/update/manage my programs using a short and extremely intuitive command;
+- I want to summarize the whole installation process (including the download of the icons and the creation of launchers and updater/remover scripts...) in just one script.
 
-- I want an app totally independent from the repositories of my distribution;
-- it must not require hundreds of packages and files of dependencies;
-- my app must not share its dependencies with other installed applications;
-- this app must always be updated to the latest version;
-- it must also be available for other users who use my pc;
-- I want this app to be easy to install and remove using an extremely intuitive command;
-- I want to summarize the whole installation process, including icons, launchers, info files and a script to remove all this in just one script.
+I can't find all this into other package managers. APT (Debian) often includes too old programs that require too many dependencies, while the programs installed by AUR (Arch Linux) are not always reliable (and PacMan by default does not include all the programs that APT manages). Flatpak takes up too much disk space to install only one program, while Snappy slows down PC resources (not to mention I don't trust Canonical).
 
-APT (Debian) often includes too old programs that require too many dependencies, while the programs installed by AUR (Arch Linux) are not always reliable, especially in terms of dependencies, and PacMan by default does not include all the programs that APT manages. Flatpak takes up too much disk space, while Snap slows down PC resources. AppImage doesn't have a centralized repository capable of automatically managing updates and tools such as "appimaged" are not enough to integrate the program in the correct way into the system.
+AppImage are a good package format, but they have not a centralized repository capable of automatically managing updates, and more often there are some external tools and system daemons that can't do enough to integrate the program in the correct way into the system (including launchers). I myself was not satisfied with my other cration, [AppMan](https://github.com/ivan-hc/AppMan), because it can manage them only locally (as a normal user without administrative privileges), and this conflicts with the possibility of making the installed applications also be used by other users who use my PC or laptop, and in this sense it is necessary an application manager that integrates with the system as APT, PacMan, DNF, Zypper could do (but with fewer files scattered around the PC).
 
-Finally I decided to write my own script, again.
+Initially I was undecided whether to develop something totally different, given the little free time I had available.
 
-I have already wrote [AppMan](https://github.com/ivan-hc/AppMan), an application manager for standalone programs and AppImages that works like APT or Pacman, so the main problem for me was to find a name for a new command that was short, easy to remember and that fully reflected its purpose.
+Finally I decided to write another tool based on AppMan itself.
 
-In the end I chose the most self-centered, obvious, stupid, brief... and bravest name that an amateur developer could give to an "application manager": `am`!
+### I've named it "`AM`", which is the abbreviation of Application Manager.
 
 --------------------------------------------------------------
                     _____                    _____                                                                           
@@ -77,15 +73,13 @@ In the end I chose the most self-centered, obvious, stupid, brief... and bravest
 
 -----------------------
 
-The `am` command is very similar to [AppMan](https://github.com/ivan-hc/AppMan), but with a better control of automatic updates for all the programs.
+AM is an application manager for all GNU / Linux distributions and which can be adapted to all available architectures, as its scripts are entirely based on the programs present in each basic installation. 
 
-Using the `am` command to install/remove standalone apps is as easy and ridiculous as typing a command at random, out of desperation!
+Strongly inspired by [AppMan](https://github.com/ivan-hc/AppMan), the `am` command is very easy to use and can manage a better control of automatic updates for all the programs installed. Using the `am` command to install/remove standalone apps is as easy and ridiculous as typing a command at random, out of desperation!
 
-Like AppMan, the main goal of this tool is to provide the same updated applications to multiple GNU/Linux distributions without having to change the package manager or the distro itself. This means that whatever distro you use, you will not miss your favorite programs or the need for a more updated version.
+The main goal of this tool is to provide the same updated applications to multiple GNU/Linux distributions without having to change the package manager or the distro itself. This means that whatever distro you use, you will not miss your favorite programs or the need for a more updated version.
 
 "AM" also aims to be a merger for GNU / Linux distributions, using not just AppImage as the main package format, but also other standalone programs, so without having to risk breaking anything on your system: no daemons, no shared libraries. Just your program!
-
-#### "AM", thanks to its installation scripts, transforms Debian into a rolling-release distro and Arch Linux into a more stable system .
 
 -----------------------
 
@@ -143,16 +137,18 @@ This will download the ["APP-MANAGER"](https://github.com/ivan-hc/AM-application
   		using the instructions in /opt/$PROGRAM/remove.
   		Confirmation is required (Y or N, default is N).
 		
-  `-t`, `template` This option allows you to generate a custom script to
-  		manipulate on your PC in your $HOME directory. Please,
-  		consider submitting your app to the AM application manager,
-  		at https://github.com/ivan-hc/AM-application-manager
+  `-t`, `template` This option allows you to generate a custom script: the 
+  		command will offer you to choose between different models 
+  		that may be vary according to the type of application you 
+  		want to create/install. Once you choose a number, the 
+  		script will download the template and rename it using the 
+  		<argument> you provided, all this will be created in the 
+  		"Desktop" folder of the user. So you just have to edit the 
+  		other parameters (LAUNCHER, AM-updater, Recipes, etc ...).
+  		Please, consider submitting your custom script to "AM", at 
+ 		https://github.com/ivan-hc/AM-application-manager/pulls.
 
-# History
-Initially "AM" was designed only to install and remove applications, while updates were delegated to them through scripts that checked for new software versions at startup, connecting to the application's site of origin (you can consult the original 1.0 code [here](https://github.com/ivan-hc/AM-application-manager/tree/1.0)). However, this mechanism slowed the start of the application itself, which instead should be reactive from the first start.
-	
-Since version 2.0 "AM" has converted these scripts into files named "AM-updater", which are used by the new "`-u`" option instead. Even "AM" itself is involved when executing the "`am -u`" command, since the options in the main script are constantly updated. 
-	
+
 # Updates
 Here are the ways in which the updates will be made:
 - Updateable AppImages can rely on an [appimageupdatetool](https://github.com/AppImage/AppImageUpdate)-based "updater" or on their external zsync file (if provided by the developer);
@@ -174,8 +170,6 @@ Click on the link of your architecture to see the list of all the apps available
 - [aarch64](https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/programs/aarch64-apps)
 
 If you are interested, you can deliberately join this project.
-
-I personally will try to import so many scripts from [AppMan](https://github.com/ivan-hc/AppMan) as possible (if I'll have time enough).
 
 # Scripts and rules	
 Once you've performed the command:
@@ -205,12 +199,6 @@ This scheme guarantees the removal of the program and all its components even wi
 `sudo /opt/$PROGRAM/remove`
 
 # Conclusions
-As you can see, you're free to do whatever you want with your script! The [rules](#scripts-and-rules) of the `am` command are few and the [options](#usage) to use even fewer.
-
-I created this program because I was bored every time I had to look for the new version of a program... and after all, even the name of the command, "am", I decided out of boredom. "AM" gives autonomy to every single installed application, and I try to add as many open source projects as possible.
-	
-"AM" can be interpreted as either "I am" or "Application Manager", or both (I am the Application Manager) representing what I was looking for from an application manager, and since the `am` command has not yet been invented by anyone, I gladly take advantage of it.
-
-This project is much more demanding than AppMan, as each individual program requires a different script to check the version of the installed program and compare it to the source link, so each individual program can take hours of testing before being published in the repository, and between my real job and other family commitments, I try to carve up some free time for this project.
+Having encouraged you to visit this page is already a huge achievement for me, being this my second creation after AppMan. This project is much more demanding than AppMan, as each individual program requires a different script to check the version of the installed program and compare it to the source link, so each individual program can take hours of testing before being published in the repository, and between my real job and other family commitments, I try to carve up some free time for this project.
 	
 If you wish, you can support me, this work and my passion with a small [donation](https://paypal.me/ivanalexhc), I will gladly appreciate it. Thank you.
