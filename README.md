@@ -117,8 +117,7 @@ This will download the ["APP-MANAGER"](https://github.com/ivan-hc/AM-application
   
   where option include:  
 
-  `-q`, `query`	Use one or more keywords to search for in the list of
-  		available applications.
+  `-q`, `query`	Use one or more keywords to search for in the list of available applications.
 
   -----------------------------------------------------------------------
       
@@ -128,30 +127,17 @@ This will download the ["APP-MANAGER"](https://github.com/ivan-hc/AM-application
   
   `-a`, `about`	Shows the basic information, links and source of each app. 
   
-  `-i`, `install` Install a program. This will be taken directly from the
-  		repository of the developer (always the latest version):
+  `-i`, `install` Install a program. This will be taken directly from the repository of the developer (always the latest version):
   		- the installer is stored in /opt/am/.cache;
   		- the command is linked into a $PATH;
-		- the program is stored in /opt/<program> with all the 
-		related files (a script to remove this and all the files 
-		listed above and a script to update everything).
-		The icon and the launcher are optional for no-ui programs.
-  		"AM" uses both AppImages and other standalone programs.
+		- the program is stored in /opt/<program> with all the related files (a script to remove this and all the files	listed above and a script to update everything).
+		The icon and the launcher are optional for no-ui programs. "AM" uses both AppImages and other standalone programs. PASSWORD REQUIRED!
   		
-  `-r`, `remove` Removes the program and all the other files listed above
-  		using the instructions in /opt/$PROGRAM/remove.
-  		Confirmation is required (Y or N, default is N).
+  `-r`, `remove` Removes the program and all the other files listed above using the instructions in /opt/$PROGRAM/remove.
+  		Confirmation is required (Y or N, default is N). PASSWORD REQUIRED!
 		
-  `-t`, `template` This option allows you to generate a custom script: the 
-  		command will offer you to choose between different models 
-  		that may be vary according to the type of application you 
-  		want to create/install. Once you choose a number, the 
-  		script will download the template and rename it using the 
-  		<argument> you provided, all this will be created in the 
-  		"Desktop" folder of the user. So you just have to edit the 
-  		other parameters (LAUNCHER, AM-updater, Recipes, etc ...).
-  		Please, consider submitting your custom script to "AM", at 
- 		https://github.com/ivan-hc/AM-application-manager/pulls.
+  `-t`, `template` This option allows you to generate a custom script: the command will offer you to choose between different models that may be vary according to the type of application you want to create/install. Once you choose a number, the script will download the template and rename it using the <argument> you provided, all this will be created in the "Desktop" folder of the user. So you just have to edit the other parameters (LAUNCHER, AM-updater, Recipes, etc ...).
+  		Please, consider submitting your custom script to "AM", at https://github.com/ivan-hc/AM-application-manager/pulls.
 
 
 # Updates
