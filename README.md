@@ -32,7 +32,7 @@
 
 [Important](#important)
 
-[Disclaimer](#disclaimer)
+[Disclaim](#disclaim)
 
 [Conclusions](#conclusions)
 
@@ -218,7 +218,7 @@ If you already have an existing installation of LibreOffice from your package ma
 	
 However, it is possible to solve the problem by customizing the scripts, perhaps assigning them a specific version of the software that will never be updated. "AM" tries to manage only the latest version of each program, but fixed versions also can be added to the repository, [if required](https://github.com/ivan-hc/AM-application-manager/pulls), you just have to ask.
 	
-# Disclaimer
+# Disclaim
 "AM" itself works well, but there are a few things to consider before, after and during use:
 - The "AM" scripts use the basic commands usually found in any GNU / Linux distribution (wget, curl, grep, egrep, find, rm, mkdir, mv, ls, echo...), make sure you have them before performing any operations;
 - The task of "AM" is solely to install / remove / update the applications managed by it. Problems related to the failure of an installed program or any related bugs are attributable solely to its developers. You can view the link to each project's repository or official site via the "`am -a $PROGRAM`" command;
