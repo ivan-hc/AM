@@ -207,13 +207,22 @@ This scheme guarantees the removal of the program and all its components even wi
 `sudo /opt/$PROGRAM/remove`
 
 # Important
-The programs installed with "AM" are official software in binary format or packaged as AppImage, their launchers are mostly the original ones, and can conflict with / overwrite those of the same programs installed from the repository. Do not install programs from "AM" and your package manager at the same time. Use ONLY the version you trust the most.
+### The programs installed with "AM" are official software in binary format or packaged as AppImage, their launchers are mostly the original ones, because of this they may conflict with / overwrite those of the same programs installed from the repository of your Linux distribution!
+For example, if you install LibreOffice (any version) from "AM", the binary /opt/libreoffice/libreoffice is linked to /usr/local/bin as "libreoffice"	and it has its own launchers in /usr/share/applications (libreoffice.desktop, libreoffice-base.desktop, libreoffice-writer.desktop... etcetera).
+If you already have an existing installation of LibreOffice from your package manager (APT / DNF / PacMan, Zypper ...), that won't work. There could also be more launchers in the application menu (if they have different names from the aforementioned, for example org.libreoffice.desktop, org.libreogffice.base.desktop ...) or they could be overwritten and recall the latest version installed (in our case the one coming from "AM".
+	
+## So do not install programs from "AM" and your package manager together! Use ONLY the version you trust the most!
+## Install LibreOffice only from your package manager or only from "AM". Never together!
+
+The same applies to all other installed programs.
+	
+However, it is possible to solve the problem by customizing the scripts, perhaps assigning them a specific version of the software that will never be updated. "AM" tries to manage only the latest version of each program, but fixed versions can be added to the repository, [if required](https://github.com/ivan-hc/AM-application-manager/pulls).
 	
 # Disclaimer
 "AM" itself works well, but there are a few things to consider before, after and during use:
 - The "AM" scripts use the basic commands usually found in any GNU / Linux distribution (wget, curl, grep, egrep, find, rm, mkdir, mv, ls, echo...), make sure you have them before performing any operations;
 - The task of "AM" is solely to install / remove / update the applications managed by it. Problems related to the failure of an installed program or any related bugs are attributable solely to its developers. You can view the link to each project's repository or official site via the "`am -a $PROGRAM`" command;
-- The developer of AM has compiled the application installation scripts based on any links made publicly available by the owners of the affected software (or from official repositories of other progressive release distributions, for example Debian Unstable, Arch Linux, Slackware ...) . These urls (with particular reference to the official ones of the developers) may not work in the future if the developers decide to modify the site, the tags, the repository or any detail that the script refers to to install / update the application. In this case, please report the problem to the "AM" team who will modify or (in the worst case) remove the installation script until the problem is resolved;
+- The developer of AM has compiled the application installation scripts based on any links made publicly available by the owners of the affected software (or from official repositories of other progressive release distributions, for example Debian Unstable, Arch Linux, Slackware ...) . These urls (with particular reference to the official ones of the developers) may not work in the future if the developers decide to modify the site, the tags, the repository or any detail that the script refers to to install / update the application. In this case, [please report the problem to the "AM" team](https://github.com/ivan-hc/AM-application-manager/issues) who will modify or (in the worst case) remove the installation script until the problem is resolved;
 - "AM" is an open source project, you can read and compile the scripts to your liking, as long as they don't damage your system. All scripts have been tested on Debian Testing / Unstable (64 bit) and Debian 11 (32 bit) and should work on any GNU / Linux distribution, regardless of the initialization process (with or without systemd).
 
 
