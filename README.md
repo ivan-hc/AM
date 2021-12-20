@@ -22,6 +22,10 @@
 
 [How to uninstall a program using "AM"](#how-to-uninstall-a-program-using-am)
 
+[How to install a program without "AM](#how-to-install-a-program-without-am)
+
+[How to update a program without "AM"](#how-to-update-a-program-without-am)
+
 [How to uninstall a program without "AM"](#how-to-uninstall-a-program-without-am)
 
 [Conclusions](#conclusions)
@@ -191,11 +195,19 @@ This scheme guarantees the removal of the program and all its components even wi
 
 # How to uninstall "am"
 
-`sudo am remove am`
+`sudo am -r am`
 
 # How to uninstall a program using "am"
-`sudo am remove <$PROGRAM>`
+`sudo am -r <$PROGRAM>`
 
+# How to install a program without "am"
+`sudo wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/programs/$ARCHITECTURE/$PROGRAM`
+			
+# How to update a program without "am"
+`/opt/$PROGRAM/AM-updater`*
+			
+*Note that this works only if the program has a /opt/$PROGRAM/AM-updater script, other programs like Firefox and Thunderbird are auto-updatable. 
+			
 # How to uninstall a program without "am"
 `sudo /opt/$PROGRAM/remove`
 
