@@ -12,6 +12,8 @@
 
 [Usage](#usage)
 
+[VIDEO](#video)
+
 [Updates](#updates)
 
 [Repository and Multiarchitecture](#repository-and-multiarchitecture)
@@ -139,6 +141,7 @@ This will download the ["APP-MANAGER"](https://github.com/ivan-hc/AM-application
   `-t`, `template` This option allows you to generate a custom script: the command will offer you to choose between different models that may be vary according to the type of application you want to create/install. Once you choose a number, the script will download the template and rename it using the <argument> you provided, all this will be created in the "Desktop" folder of the user. So you just have to edit the other parameters (LAUNCHER, AM-updater, Recipes, etc ...).
   		Please, consider submitting your custom script to "AM", at https://github.com/ivan-hc/AM-application-manager/pulls.
 
+# [VIDEO](https://www.youtube.com/watch?v=3Jezf6YMTUM)
 
 # Updates
 Here are the ways in which the updates will be made:
