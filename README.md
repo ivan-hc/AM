@@ -30,6 +30,10 @@
 
 [How to uninstall a program without "AM"](#how-to-uninstall-a-program-without-am)
 
+[Important](#important)
+
+[Disclaimer](#disclaimer)
+
 [Conclusions](#conclusions)
 
 -----------------------------------------------------------------------------
@@ -201,6 +205,17 @@ This scheme guarantees the removal of the program and all its components even wi
 			
 # How to uninstall a program without "am"
 `sudo /opt/$PROGRAM/remove`
+
+# Important
+The programs installed with "AM" are official software in binary format or packaged as AppImage, their launchers are mostly the original ones, and can conflict with / overwrite those of the same programs installed from the repository. Do not install programs from "AM" and your package manager at the same time. Use ONLY the version you trust the most.
+	
+# Disclaimer
+"AM" itself works well, but there are a few things to consider before, after and during use:
+- The "AM" scripts use the basic commands usually found in any GNU / Linux distribution (wget, curl, grep, egrep, find, rm, mkdir, mv, ls, echo...), make sure you have them before performing any operations;
+- The task of "AM" is solely to install / remove / update the applications managed by it. Problems related to the failure of an installed program or any related bugs are attributable solely to its developers. You can view the link to each project's repository or official site via the "`am -a $PROGRAM`" command;
+- The developer of AM has compiled the application installation scripts based on any links made publicly available by the owners of the affected software (or from official repositories of other progressive release distributions, for example Debian Unstable, Arch Linux, Slackware ...) . These urls (with particular reference to the official ones of the developers) may not work in the future if the developers decide to modify the site, the tags, the repository or any detail that the script refers to to install / update the application. In this case, please report the problem to the "AM" team who will modify or (in the worst case) remove the installation script until the problem is resolved;
+- "AM" is an open source project, you can read and compile the scripts to your liking, as long as they don't damage your system. All scripts have been tested on Debian Testing / Unstable (64 bit) and Debian 11 (32 bit) and should work on any GNU / Linux distribution, regardless of the initialization process (with or without systemd).
+
 
 # Conclusions
 Having encouraged you to visit this page is already a huge achievement for me, being this my second creation after AppMan. This project is much more demanding than AppMan, as each individual program requires a different script to check the version of the installed program and compare it to the source link, so each individual program can take hours of testing before being published in the repository, and between my real job and other family commitments, I try to carve up some free time for this project.
