@@ -1,0 +1,67 @@
+#!/bin/sh
+
+APP=celestia-dev
+
+# Creating a dedicated folder in /opt
+mkdir /opt/$APP
+cd /opt/$APP
+
+# Creating a script to remove all the files listed above
+rm -R -f  /opt/$APP/remove
+echo "#!/bin/sh
+rm -R -f  /usr/share/applications/$APP.desktop /usr/bin/$APP /opt/$APP" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+
+mkdir tmp
+cd tmp
+
+# Downloading the AppImage of $APP to /opt/$APP
+wget https://download.opensuse.org/repositories/home:/munix9:/unstable/AppImage/celestia-latest-x86_64.AppImage
+wget https://github.com/AppImage/AppImageUpdate/releases/download/continuous/appimageupdatetool-x86_64.AppImage
+cd ..
+mv ./tmp/celestia*AppImage ./$APP
+mv ./tmp/appimageupdatetool-x86_64.AppImage ./updater
+rmdir ./tmp
+chmod a+x ./$APP
+chmod a+x ./updater
+
+# LINK
+ln -s /opt/$APP/$APP /usr/local/bin/$APP
+
+# SCRIPT TO UPDATE THE PROGRAM
+echo '#!/bin/sh ' >> /opt/$APP/AM-updater
+echo 'cd /opt/'$APP'
+./updater -O ./'$APP'
+chmod a+x /opt/'$APP'/'$APP'
+rm -R -f /opt/'$APP'/*zs-old && rm -R -f /opt/'$APP'/*.part' >> /opt/$APP/AM-updater
+chmod a+x /opt/$APP/AM-updater
+
+# Creating the launcher in /usr/share/applications
+rm -R -f  /usr/share/applications/$APP.desktop
+echo "[Desktop Entry]
+Version=1.0
+Name=Celestia Developer Edition (GTK)
+GenericName=Space Simulator (AppImage-1.6.2.2)
+GenericName[de]=Weltraum-Simulator (AppImage-1.6.2.2)
+Comment=Explore the Universe in this detailed space simulation
+Comment[de]=Erkunde das Universum in dieser detaillierten Weltraumsimulation
+Type=Application
+Categories=Astronomy;Education;Science;GTK;
+Icon=/opt/$APP/celestia.svg
+Exec=$APP %f
+Terminal=false
+MimeType=application/x-celestia-script;" >> /usr/share/applications/$APP.desktop
+
+# Adding the icon to /usr/share/pixmaps
+wget wget https://raw.githubusercontent.com/ivan-hc/AppMan/main/applications/celestia/celestia.svg
+
+# Changing privileges in /opt/$APP to allow automatic updates
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/$APP
+
+# Message
+echo "";
+echo "        Celestia Dev is provided by https://celestia.space";
+echo "";
+echo " AppImage at https://download.opensuse.org/repositories/home:/munix9/AppImage";
+echo "";
