@@ -1,0 +1,53 @@
+#!/bin/sh
+
+APP=chromium-ungoogled
+
+mkdir /opt/$APP
+cd /opt/$APP
+
+echo '#!/bin/sh
+rm -R -f /opt/'$APP' /usr/share/pixmaps/'$APP'.png /usr/share/applications/'$APP'.desktop /usr/bin/'$APP'' >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+
+mkdir tmp
+cd ./tmp
+wget -r -erobots=off -l1 -np -A $APP-*-x86_64-1alien.txz -nd http://www.slackware.com/~alien/slackbuilds/$APP/pkg64/current/;
+tar xf ./*.txz
+cd ..
+mv ./tmp/usr/lib64/$APP/* ./
+cp ./tmp/usr/share/applications/*desktop /usr/share/applications/$APP.desktop
+cp ./tmp/usr/share/icons/hicolor/256x256/apps/*png /usr/share/pixmaps/$APP.png
+rm -R -f ./tmp
+
+# LINK
+ln -s /opt/$APP/$APP /usr/bin/$APP
+
+# SCRIPT TO UPDATE THE PROGRAM
+echo '#!/bin/sh
+version=$(exec /opt/'$APP'/'$APP' --version | grep -Eo "[+-]?[0-9]+([.][0-9]+)?+[+-]?[0-9]+([.][0-9]+)?")
+url="http://www.slackware.com/~alien/slackbuilds/'$APP'/pkg64/current/'$APP'-$version-x86_64-1alien.txz"
+if curl --output /dev/null --silent --head --fail "$url"; then
+  echo "Update not needed, exit!"
+else
+  notify-send "A new version of Chromium Ungoogled is available, please wait!"
+  mkdir /opt/'$APP'/tmp
+  cd /opt/'$APP'/tmp
+  wget -r -erobots=off -l1 -np -A '$APP'-*-x86_64-1alien.txz -nd http://www.slackware.com/~alien/slackbuilds/'$APP'/pkg64/current/
+  tar xf ./*.txz
+  cd ..
+  mv --backup=t ./tmp/usr/lib64/'$APP'/* ./
+  rm -R -f ./tmp ./*~
+fi' >> /opt/$APP/AM-updater
+chmod a+x /opt/$APP/AM-updater
+
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/$APP
+
+echo ""
+echo " 
+
+	 Chromium Ungoogled Browser has been installed!
+	
+	This version come from http://www.slackware.com
+
+"
