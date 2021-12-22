@@ -207,7 +207,10 @@ This scheme guarantees the removal of the program and all its components even wi
 	`sudo am -r <$PROGRAM>`
 
 # How to install a program without "am"
-`sudo wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/programs/$ARCHITECTURE/$PROGRAM`
+	
+	`ARCH=$(uname -m)
+	PROGRAM="name-of-the-program"
+	wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/programs/$ARCH/$PROGRAM && chmod a+x ./$PROGRAM && sudo ./$PROGRAM`
 			
 # How to uninstall a program without "am"
 	
