@@ -16,6 +16,8 @@
 
 [Updates](#updates)
 
+[How to update a program without "AM"](#how-to-update-a-program-without-am)
+
 [Repository and Multiarchitecture](#repository-and-multiarchitecture)
 
 [Scripts and rules](#scripts-and-rules)
@@ -25,8 +27,6 @@
 [How to uninstall a program using "AM"](#how-to-uninstall-a-program-using-am)
 
 [How to install a program without "AM](#how-to-install-a-program-without-am)
-
-[How to update a program without "AM"](#how-to-update-a-program-without-am)
 
 [How to uninstall a program without "AM"](#how-to-uninstall-a-program-without-am)
 
@@ -96,8 +96,8 @@ The main goal of this tool is to provide the same updated applications to multip
 
 # Installation
 Copy/paste this command:
-
-`wget https://raw.githubusercontent.com/ivan-hc/APPLICATION-MANAGER/main/INSTALL && chmod a+x ./INSTALL && sudo ./INSTALL`
+	
+	`wget https://raw.githubusercontent.com/ivan-hc/APPLICATION-MANAGER/main/INSTALL && chmod a+x ./INSTALL && sudo ./INSTALL`
 
 This will download the ["APP-MANAGER"](https://github.com/ivan-hc/AM-application-manager/blob/main/APP-MANAGER) script in /opt/am, a symlink for it in /usr/local/bin named `am` and the /opt/am/remove script needed to uninstall `am` itself, if needed.
 
@@ -150,6 +150,10 @@ This will download the ["APP-MANAGER"](https://github.com/ivan-hc/AM-application
 Go to https://www.youtube.com/watch?v=3Jezf6YMTUM
 
 # Updates
+To update all the programs, just run the command (without `sudo`):
+	
+	`am -u`
+	
 Here are the ways in which the updates will be made:
 - Updateable AppImages can rely on an [appimageupdatetool](https://github.com/AppImage/AppImageUpdate)-based "updater" or on their external zsync file (if provided by the developer);
 - Non-updateable AppImages and other standalone programs will be replaced only with a more recent version if available, this will be taken by comparing the installed version with the one available on the source (using "curl", "grep" and "cat");
@@ -157,7 +161,13 @@ Here are the ways in which the updates will be made:
 - AppImages created with [pkg2appimage](https://github.com/AppImage/pkg2appimage) and [appimagetool](https://github.com/AppImage/AppImageKit) will be updated in the same way as the non-updatable AppImages (see above), but the two tools just mentioned must be present in the system (the specific instruction to install or reinstall them will be present in the installation script of the program that requires it).
 
 During the first installation, the main user ($currentuser) will take the necessary permissions on each /opt/$PROGRAM directory, in this way all updates will be automatic and without root permissions.
+
+# How to update a program without "am"
 	
+	`/opt/$PROGRAM/AM-updater`*
+			
+*Note that this works only if the program has a /opt/$PROGRAM/AM-updater script, other programs like Firefox and Thunderbird are auto-updatable. 
+			
 # Repository and Multiarchitecture
 Each program is installed through a dedicated script, and all these scripts are listed in the "[repository](https://github.com/ivan-hc/AM-application-manager/tree/main/programs)" and divided by architecture.
 	
@@ -183,28 +193,25 @@ The script will create:
 - the launcher (optional for command line tools) in /usr/share/applications.
 	
 ##### *NOTE that the /opt/$PROGRAM/remove script file is the more important part, it must contain the path of all the files created by your script, this way:
-
-`rm -R -f /opt/$PROGRAM /usr/local/bin/$PROGRAM /usr/share/applications/$PROGRAM.desktop`	
+	
+	`rm -R -f /opt/$PROGRAM /usr/local/bin/$PROGRAM /usr/share/applications/$PROGRAM.desktop`	
 	
 This scheme guarantees the removal of the program and all its components even without having to use "AM". Learn more [here](#how-to-uninstall-a-program-using-am). 
 
 # How to uninstall "am"
-
-`sudo am -r am`
+	
+	`sudo am -r am`
 
 # How to uninstall a program using "am"
-`sudo am -r <$PROGRAM>`
+	
+	`sudo am -r <$PROGRAM>`
 
 # How to install a program without "am"
 `sudo wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/programs/$ARCHITECTURE/$PROGRAM`
 			
-# How to update a program without "am"
-`/opt/$PROGRAM/AM-updater`*
-			
-*Note that this works only if the program has a /opt/$PROGRAM/AM-updater script, other programs like Firefox and Thunderbird are auto-updatable. 
-			
 # How to uninstall a program without "am"
-`sudo /opt/$PROGRAM/remove`
+	
+	`sudo /opt/$PROGRAM/remove`
 
 # Important
 #### The programs installed with "AM" are official software in binary format or packaged as AppImage, their launchers are mostly the original ones, because of this they may conflict with / overwrite those of the same programs installed from the repository of your Linux distribution!
