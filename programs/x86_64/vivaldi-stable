@@ -2,25 +2,36 @@
 
 APP=vivaldi-stable
 
-# CREATE THE FOLDER
+# CREATING THE FOLDER
 mkdir /opt/$APP
-cd /opt/$APP
+cd /opt/$APP;
 
 # ADD THE REMOVER
 echo '#!/bin/sh' >> /opt/$APP/remove
 echo "rm -R -f /usr/share/applications/$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
 chmod a+x /opt/$APP/remove
 
-# DOWNLOAD THE APPIMAGE
-mkdir tmp
-cd ./tmp
+mkdir tmp;
+cd tmp;
 
-wget https://archlinux.org/packages/community/x86_64/vivaldi/download
-mv ./download ./vivaldi.tar.zst
-tar fx ./*tar.zst
-cd ..
+# DOWNLOADING THE DEPENDENCIES
+wget https://github.com/ivan-hc/AppMan/raw/main/applications/pkg2appimage/pkg2appimage
+chmod a+x ./appimagetool ./pkg2appimage
 
-mv ./tmp/opt/vivaldi/* ./
+# CREATING THE APPIMAGE
+echo 'app: vivaldi
+
+ingredients:
+  package: vivaldi-stable
+  dist: focal
+  sources: 
+    - deb http://repo.vivaldi.com/snapshot/deb stable main' >> recipe.yml;
+
+./pkg2appimage ./recipe.yml;
+
+
+cd ..;
+mv ./tmp/vivaldi/vivaldi.AppDir/opt/vivaldi/* ./;
 rm -R -f ./tmp
 
 # LINK
@@ -28,25 +39,29 @@ ln -s /opt/$APP/vivaldi /usr/local/bin/$APP
 
 # SCRIPT TO UPDATE THE PROGRAM
 echo '#!/bin/sh
-version=$(exec /opt/vivaldi-stable/vivaldi --version | grep -Eo "[+-]?[0-9]+([.][0-9]+)?+[+-]?[0-9]+([.][0-9]+)?")
-url="https://archlinux.org/packages/community/x86_64/vivaldi"
+version=$(exec /opt/'$APP'/vivaldi --version | grep -Eo "[+-]?[0-9]+([.][0-9]+)?+[+-]?[0-9]+([.][0-9]+)?")
+url="https://www.ubuntuupdates.org/package/vivaldi/stable/main/base/vivaldi-stable?id=2115385&page=2"
 if curl -L -s $url | grep -ioF "$version"; then
   echo "Update not needed, exit!"
-else
-  notify-send "A new version of Vivaldi Stable is available, please wait!"
-  mkdir /opt/vivaldi-stable/tmp
-  cd /opt/vivaldi-stable/tmp
-  wget https://archlinux.org/packages/community/x86_64/vivaldi/download
-  mv ./download ./vivaldi.tar.zst
-  tar fx ./*tar.zst
-  cd ..
-  mv --backup=t ./tmp/opt/vivaldi/* ./
+ else
+  notify-send "A new version of '$APP' is available, please wait!"
+  mkdir /opt/$APP/tmp
+  cd /opt/$APP/tmp
+  wget https://github.com/ivan-hc/AppMan/raw/main/applications/pkg2appimage/pkg2appimage
+  chmod a+x ./appimagetool ./pkg2appimage
+  echo "app: vivaldi
+ingredients:
+  package: vivaldi-stable
+  dist: focal
+  sources: 
+    - deb http://repo.vivaldi.com/snapshot/deb stable main" >> recipe.yml
+  ./pkg2appimage ./recipe.yml
+  mv --backup=t ./tmp/vivaldi/vivaldi.AppDir/opt/vivaldi/* ./
   rm -R -f ./tmp ./*~
 fi' >> /opt/$APP/AM-updater
 chmod a+x /opt/$APP/AM-updater
 
 # LAUNCHER
-rm /usr/share/applications/$APP.desktop
 echo "[Desktop Entry]
 Version=1.0
 Name=Vivaldi
@@ -162,7 +177,6 @@ Type=Application
 Categories=Network;WebBrowser;
 MimeType=application/pdf;application/rdf+xml;application/rss+xml;application/xhtml+xml;application/xhtml_xml;application/xml;image/gif;image/jpeg;image/png;image/webp;text/html;text/xml;x-scheme-handler/ftp;x-scheme-handler/http;x-scheme-handler/https;x-scheme-handler/mailto;
 Actions=new-window;new-private-window;
-
 [Desktop Action new-window]
 Name=New Window
 Name[am]=አዲስ መስኮት
@@ -216,7 +230,6 @@ Name[vi]=Cửa sổ Mới
 Name[zh_CN]=新建窗口
 Name[zh_TW]=開新視窗
 Exec=$APP --new-window
-
 [Desktop Action new-private-window]
 Name=New Private Window
 Name[ar]=نافذة جديدة بالتصفح الخفي
@@ -267,15 +280,13 @@ Name[uk]=Нове приватне вікно
 Name[vi]=Cửa sổ Riêng tư Mới
 Name[zh_CN]=新建隐私窗口
 Name[zh_TW]=新增無痕視窗
-Exec=$APP --incognito" >> /usr/share/applications/$APP.desktop
+Exec=$APP --incognito" >> /usr/share/applications/$APP.desktop;
 
-# CHANGE THE PERMISSIONS
 currentuser=$(who | awk '{print $1}')
 chown -R $currentuser /opt/$APP
 
-# MESSAGE
 echo "
 
-	Vivaldi browser is provided by https://vivaldi.com
-	
-"
+ Vivaldi browser is provided by https://vivaldi.com
+  
+";
