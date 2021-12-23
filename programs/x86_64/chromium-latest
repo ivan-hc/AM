@@ -1,0 +1,83 @@
+#!/bin/sh
+
+APP=chromium-latest
+
+# CREATING THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP;
+
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+
+mkdir tmp;
+cd tmp;
+
+# DOWNLOADING THE DEPENDENCIES
+wget https://github.com/ivan-hc/AppMan/raw/main/applications/pkg2appimage/pkg2appimage
+chmod a+x ./appimagetool ./pkg2appimage
+
+# CREATING THE APPIMAGE
+echo 'app: Chromium
+
+ingredients:
+  script:
+    - wget '"https://download-chromium.appspot.com/dl/Linux_x64?type=snapshots"' -O chrome-linux.zip
+    - unzip chrome-linux.zip
+    - echo $VERSION' >> recipe.yml;
+
+./pkg2appimage ./recipe.yml;
+
+
+cd ..;
+mv --backup=t ./tmp/Chromium/chrome-linux/* ./;
+rm -R -f ./tmp
+
+# LINK
+ln -s /opt/$APP/chrome /usr/local/bin/$APP
+
+# SCRIPT TO UPDATE THE PROGRAM
+echo '#!/bin/sh
+version=$(exec /opt/'$APP'/chrome --version | grep -Eo "[+-]?[0-9]+([.][0-9]+)?+[+-]?[0-9]+([.][0-9]+)?")
+url="https://community.chocolatey.org/packages/chromium/"
+if curl -L -s $url | grep -ioF "$version" 1>/dev/null; then
+  echo "Update not needed, exit!"
+ else
+  notify-send "A new version of '$APP' is available, please wait!"
+  mkdir /opt/'$APP'/tmp
+  cd /opt/'$APP'/tmp
+  wget https://github.com/ivan-hc/AppMan/raw/main/applications/pkg2appimage/pkg2appimage
+  chmod a+x ./appimagetool ./pkg2appimage
+  echo "app: Chromium
+
+ingredients:
+  script:
+    - wget '"https://download-chromium.appspot.com/dl/Linux_x64?type=snapshots"' -O chrome-linux.zip
+    - unzip chrome-linux.zip
+    - echo $VERSION" >> recipe.yml
+  ./pkg2appimage ./recipe.yml
+  mv --backup=t ./tmp/Chromium/chrome-linux/* ./
+  rm -R -f ./tmp ./*~
+fi' >> /opt/$APP/AM-updater
+chmod a+x /opt/$APP/AM-updater
+
+# LAUNCHER
+echo "[Desktop Entry]
+Type=Application
+Name=Chromium Latest
+Comment=Web Browser
+Icon=/opt/$APP/product_logo_48.png
+Exec=$APP %u
+Categories=GNOME;GTK;Network;WebBrowser;
+MimeType=text/html;text/xml;application/xhtml+xml;application/xml;application/rss+xml;application/rdf+xml;image/gif;image/jpeg;image/png;x-scheme-handler/http;x-scheme-handler/https;x-scheme-handler/ftp;x-scheme-handler/chrome;video/webm;application/x-xpinstall;
+StartupNotify=true" >> /usr/share/applications/$APP.desktop;
+
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/$APP
+
+echo "
+
+ Chromium Browser is provided by https://www.chromium.org
+  
+";
