@@ -1,0 +1,113 @@
+#!/bin/sh
+
+APP=dropbox
+
+# CREATING THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP;
+
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+
+mkdir tmp;
+cd tmp;
+
+# CREATING THE APPIMAGE & DOWNLOADING THE DEPENDENCIES
+wget -r -A dropbox-*-x86_64.pkg.tar.zst -nd https://aur.andontie.net/x86_64/;
+
+version=$(ls /opt/$APP/tmp)
+echo "$version" >> /opt/$APP/version
+
+wget https://github.com/ivan-hc/AppMan/raw/main/applications/appimagetool/appimagetool
+chmod a+x ./appimagetool
+
+tar xf ./*.tar.zst;
+mkdir $APP.AppDir;
+mv ./opt ./$APP.AppDir;
+mv ./usr ./$APP.AppDir;
+cp ./$APP.AppDir/usr/share/applications/*desktop ./$APP.AppDir;
+cp ./$APP.AppDir/usr/share/pixmaps/*svg ./$APP.AppDir;
+
+echo '#!/bin/sh
+HERE="$(dirname "$(readlink -f "${0}")")"
+export PATH="${HERE}/usr/lib/systemd/system/:${HERE}/usr/lib/systemd/user/:${HERE}/opt/dropbox/:${HERE}/opt/dropbox/resources/:${HERE}/opt/dropbox/plugins/platforms/:${HERE}/opt/dropbox/images/hicolor/16x16/status/:${HERE}/opt/dropbox/images/emblems/${PATH:+:$PATH}"
+export LD_LIBRARY_PATH="${HERE}/opt/dropbox/:${HERE}/opt/dropbox/plugins/platforms/${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+export XDG_DATA_DIRS="${HERE}/usr/share/${XDG_DATA_DIRS:+:$XDG_DATA_DIRS}"
+EXEC="${HERE}/opt/dropbox/dropbox"
+exec "${EXEC}"' >> ./$APP.AppDir/AppRun;
+chmod a+x ./$APP.AppDir/AppRun;
+cp ./$APP.AppDir/AppRun /opt/$APP/AppRun
+
+ARCH=x86_64 ./appimagetool -n ./$APP.AppDir;
+
+cd ..;
+mv ./tmp/*.AppImage ./$APP;
+chmod a+x ./$APP
+
+rm -R -f ./tmp
+
+# LINK
+ln -s /opt/$APP/$APP /usr/local/bin/$APP
+
+# SCRIPT TO UPDATE THE PROGRAM
+echo '#!/bin/sh
+version0=$(cat /opt/'$APP'/version)
+url="https://aur.andontie.net/x86_64/"
+if curl -L -s $url | grep -ioF "$version0"; then
+  echo "Update not needed, exit!"
+ else
+  notify-send "A new version of '$APP' is available, please wait!"
+  mkdir /opt/'$APP'/tmp
+  cd /opt/'$APP'/tmp
+  wget -r -A dropbox-*-x86_64.pkg.tar.zst -nd https://aur.andontie.net/x86_64/;
+  version=$(ls /opt/'$APP'/tmp)
+  if test -f /opt/'$APP'/tmp/*tar.zst; then rm -R -f /opt/'$APP'/version
+  fi
+  echo "$version" >> /opt/'$APP'/version
+  wget https://github.com/ivan-hc/AppMan/raw/main/applications/appimagetool/appimagetool
+  chmod a+x ./appimagetool
+  tar xf ./*.tar.zst
+  mkdir '$APP'.AppDir
+  mv ./opt ./'$APP'.AppDir
+  mv ./usr ./'$APP'.AppDir
+  cp ./'$APP'.AppDir/usr/share/applications/*desktop ./'$APP'.AppDir
+  cp ./'$APP'.AppDir/usr/share/pixmaps/*svg ./'$APP'.AppDir
+  cp /opt/'$APP'/AppRun ./'$APP'.AppDir/AppRun
+  chmod a+x ./'$APP'.AppDir/AppRun
+  ARCH=x86_64 ./appimagetool -n ./'$APP'.AppDir
+  cd ..
+  mv ./tmp/*.AppImage ./'$APP'
+  chmod a+x ./'$APP'
+  rm -R -f ./tmp
+fi' >> /opt/$APP/AM-updater
+chmod a+x /opt/$APP/AM-updater
+
+# LAUNCHER
+echo "[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Dropbox
+Comment=A free service that lets you bring your photos, docs, and videos anywhere and share them easily.
+Exec=dropbox
+Icon=/opt/$APP/$APP.svg
+Terminal=false
+StartupNotify=false
+Categories=Network;" >> /usr/share/applications/$APP.desktop;
+
+# ICON
+wget wget https://raw.githubusercontent.com/ivan-hc/AppMan/main/applications/$APP/$APP.svg;
+
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/$APP
+
+echo "
+
+      Dropbox Unofficial Appimage
+ 
+     built from Arch User Repository
+ 
+  OFFICIAL SITE: https://www.dropbox.com
+  
+";
