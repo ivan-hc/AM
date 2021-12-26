@@ -1,6 +1,6 @@
 #!/bin/sh
 
-APP=inkscape-1.1.1
+APP=inkscape
 
 # CREATE THE FOLDER
 mkdir /opt/$APP
@@ -11,11 +11,15 @@ echo '#!/bin/sh' >> /opt/$APP/remove
 echo "rm -R -f /usr/share/applications/$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
 chmod a+x /opt/$APP/remove
 
-# DOWNLOAD THE APPIMAGE
+# DOWNLOAD THE PROGRAM
 mkdir tmp
 cd ./tmp
 
-wget https://media.inkscape.org/dl/resources/file/Inkscape-3bf5ae0-x86_64.AppImage
+downloadURL="https://inkscape.org$(curl -fs https://inkscape.org$(curl -fsJL https://inkscape.org/release/  | grep "/release/" | grep en | head -n 1 | cut -d '"' -f 6)gnulinux/appimage/dl/ | grep "click here" | cut -d '"' -f 2)"
+wget $downloadURL
+
+version=$(curl -fsJL https://inkscape.org/release/  | grep "<title>" | grep -o -e "[0-9.]*")
+echo "$version" >> /opt/$APP/version
 
 cd ..
 mv ./tmp/*mage ./$APP
@@ -24,6 +28,10 @@ rmdir ./tmp
 
 # LINK
 ln -s /opt/$APP/$APP /usr/local/bin/$APP
+
+# SCRIPT TO UPDATE THE PROGRAM
+wget https://raw.githubusercontent.com/ivan-hc/AppMan/main/applications/inkscape/AM-updater
+chmod a+x /opt/$APP/AM-updater
 
 # LAUNCHER
 rm /usr/share/applications/$APP.desktop
@@ -290,7 +298,6 @@ StartupNotify=true
 Icon=/opt/$APP/inkscape-favicon.png
 X-Ayatana-Desktop-Shortcuts=Drawing
 Actions=new-window;
-
 [X-Drawing Shortcut Group]
 Name[ar]=رسم جديد
 Name[bg]=Нова рисунка
@@ -334,7 +341,6 @@ Name[zh_TW]=新增圖畫
 Name=New Drawing
 Exec=$APP
 TargetEnvironment=Unity
-
 [Desktop Action new-window]
 Name[ca]=Obre una finestra nova
 Name[cs]=Otevřít nové okno
@@ -361,6 +367,8 @@ currentuser=$(who | awk '{print $1}')
 chown -R $currentuser /opt/$APP
 
 # MESSAGE
-echo "";
-echo " Inkscape is provided by https://inkscape.org ";
-echo "";
+echo "
+
+ Inkscape is provided by https://inkscape.org
+  
+";
