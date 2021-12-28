@@ -157,7 +157,7 @@ These programs are taken:
 - from tar archives of other GNU/Linux distributions (see Chromium, Chromium Unstable...);
 - from AUR or other Arch Linux-related sources (see Palemoon, Spotify...);
 - from AppImage recipes to be compiled with [pkg2appimage](https://github.com/AppImage/pkg2appimage) and [appimagetool](https://github.com/AppImage/AppImageKit) (see qBittorrent, Dropbox, all the games from the "KDE Games" suite...);
-- from unofficial repositories of developers external to the project concerned (most of the time they are programs in AppImage format), but only if an official release is not available (see the various WINE, Zoom, VLC, GIMP...) and only in the case of particularly essential programs.
+- from unofficial repositories of developers external to the project concerned (most of the time they are programs in AppImage format), but only if an official release is not available (see the various WINE, Zoom, VLC, GIMP...).
 
 You can consult basic information, links to sites and sources used through the related `am -a $PROGRAM` command or by clicking [here](https://github.com/ivan-hc/AM-application-manager/tree/main/programs/.about).
 	
