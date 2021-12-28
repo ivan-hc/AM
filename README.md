@@ -12,6 +12,8 @@
 
 [Usage](#usage)
 
+[What programs can be installed with AM](#what-programs-can-be-installed-with-am)
+
 [Watch the VIDEO](#watch-the-video)
 
 [Updates](#updates)
@@ -145,6 +147,21 @@ This will download the ["APP-MANAGER"](https://github.com/ivan-hc/AM-application
   `-t`, `template` This option allows you to generate a custom script: the command will offer you to choose between different models that may be vary according to the type of application you want to create/install. Once you choose a number, the script will download the template and rename it using the <argument> you provided, all this will be created in the "Desktop" folder of the user. So you just have to edit the other parameters (LAUNCHER, AM-updater, Recipes, etc ...).
   		Please, consider submitting your custom script to "AM", at https://github.com/ivan-hc/AM-application-manager/pulls.
 
+# What programs can be installed with AM
+AM installs/removes/updates/manages only standalone programs, ie those programs that can be run from a single directory in which they are contained (where `$PROGRAM` is the name of the application, AM installs them always into a dedicated `/opt/$PROGRAM` directory).
+
+These programs are taken:
+- from official sources (see Firefox, Thunderbird, Blender, NodeJS, Chromium Latest...);
+- from official .deb packages (see Brave, Vivaldi, Google Chrome...);
+- from the repositories and official sites of individual developers (if an archive is not available, an official AppImage is used);
+- from tar archives of other GNU/Linux distributions (see Chromium, Chromium Unstable...);
+- from AUR or other Arch Linux-related sources (see Palemoon, Spotify...);
+- from AppImage recipes to be compiled with [pkg2appimage](https://github.com/AppImage/pkg2appimage) and [appimagetool](https://github.com/AppImage/AppImageKit) (see qBittorrent, Dropbox, all the games from the KDE Games Suite...);
+- from unofficial repositories of developers external to the project concerned (most of the time they are programs in AppImage format), but only if an official release is not available (see the various WINE, Zoom, VLC, GIMP...) and only in the case of particularly essential programs.
+
+You can consult basic information, links to sites and sources used through the related `am -a $PROGRAM` command or by clicking [here](https://github.com/ivan-hc/AM-application-manager/tree/main/programs/.about).
+	
+	
 # Watch the video
 	
 Go to https://www.youtube.com/watch?v=3Jezf6YMTUM
