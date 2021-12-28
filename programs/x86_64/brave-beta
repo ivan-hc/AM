@@ -1,51 +1,72 @@
 #!/bin/sh
 
-APP=brave-dev
+APP=brave-beta
 
-# CREATE THE FOLDER
+# CREATING THE FOLDER
 mkdir /opt/$APP
-cd /opt/$APP
+cd /opt/$APP;
 
 # ADD THE REMOVER
 echo '#!/bin/sh' >> /opt/$APP/remove
 echo "rm -R -f /usr/share/applications/$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
 chmod a+x /opt/$APP/remove
 
-# DOWNLOAD THE APPIMAGE
-mkdir tmp
-cd ./tmp
+mkdir tmp;
+cd tmp;
 
-wget https://github.com/srevinsaju/Brave-AppImage/releases/download/dev/Brave_Dev-x86_64.AppImage
-wget https://github.com/srevinsaju/Brave-AppImage/releases/download/dev/Brave_Dev-x86_64.AppImage.zsync
+# DOWNLOADING THE DEPENDENCIES
+wget https://github.com/ivan-hc/AppMan/raw/main/applications/pkg2appimage/pkg2appimage
+chmod a+x ./appimagetool ./pkg2appimage
 
-cd ..
-mv ./tmp/*mage ./$APP
-chmod a+x /opt/$APP/$APP
-mv ./tmp/*zsync ./$APP.zsync
-rmdir ./tmp
+# CREATING THE APPIMAGE
+echo 'app: brave
+
+ingredients:
+  package: brave-browser-beta
+  dist: stable
+  sources: 
+    - deb https://brave-browser-apt-beta.s3.brave.com stable main' >> recipe.yml;
+
+./pkg2appimage ./recipe.yml;
+
+
+cd ..;
+mv ./tmp/brave/brave.AppDir/opt/brave.com/brave-beta/* ./;
+rm -R -f ./tmp
 
 # LINK
-ln -s /opt/$APP/$APP /usr/local/bin/$APP
+ln -s /opt/$APP/brave /usr/local/bin/$APP
 
 # SCRIPT TO UPDATE THE PROGRAM
-echo '#!/bin/sh' >> /opt/$APP/AM-updater
-echo "mkdir /opt/$APP/tmp
-cd /opt/$APP/tmp
-wget https://github.com/srevinsaju/Brave-AppImage/releases/download/dev/Brave_Dev-x86_64.AppImage.zsync
-cd ..
-mv ./tmp/*AppImage.zsync ./$APP.zsync
-zsync /opt/$APP/$APP.zsync
-rmdir ./tmp
-rm -R -f /opt/$APP/*zs-old /opt/$APP/*.part
-chmod a+x /opt/$APP/$APP"  >> /opt/$APP/AM-updater
+echo '#!/bin/sh
+version=$(exec /opt/'$APP'/brave --version | grep -Eo "[+-]?[0-9]+([.][0-9]+)?+[+-]?[0-9]+([.][0-9]+)?")
+url="http://macupdater.org/app_updates/appinfo/com.brave.Browser.beta/index.html"
+if curl -L -s $url | grep -ioF "$version" 1>/dev/null; then
+  echo "Update not needed, exit!"
+ else
+  notify-send "A new version of '$APP' is available, please wait!"
+  mkdir /opt/'$APP'/tmp
+  cd /opt/'$APP'/tmp
+  wget https://github.com/ivan-hc/AppMan/raw/main/applications/pkg2appimage/pkg2appimage
+  chmod a+x ./appimagetool ./pkg2appimage
+  echo "app: brave
 
+ingredients:
+  package: brave-browser
+  dist: stable
+  sources: 
+    - deb https://brave-browser-apt-release.s3.brave.com stable main" >> recipe.yml;
+  ./pkg2appimage ./recipe.yml
+  cd ..
+  mv --backup=t ./tmp/brave/brave.AppDir/opt/brave.com/brave/* ./
+  rm -R -f ./tmp ./*~
+fi' >> /opt/$APP/AM-updater
 chmod a+x /opt/$APP/AM-updater
 
 # LAUNCHER
-rm /usr/share/applications/$APP.desktop
 echo "[Desktop Entry]
 Version=1.0
-Name=Brave Web Browser (Dev)
+Name=Brave Web Browser (Beta)
 # Only KDE 4 seems to use GenericName, so we reuse the KDE strings.
 # From Ubuntu's language-pack-kde-XX-base packages, version 9.04-20090413.
 GenericName=Web Browser
@@ -153,7 +174,7 @@ Comment[zh_TW]=連線到網際網路
 Exec=$APP %U
 StartupNotify=true
 Terminal=false
-Icon=/opt/$APP/brave-browser.svg
+Icon=/opt/$APP/product_logo_128_beta.png
 Type=Application
 Categories=Network;WebBrowser;
 MimeType=application/pdf;application/rdf+xml;application/rss+xml;application/xhtml+xml;application/xhtml_xml;application/xml;image/gif;image/jpeg;image/png;image/webp;text/html;text/xml;x-scheme-handler/http;x-scheme-handler/https;x-scheme-handler/ipfs;x-scheme-handler/ipns;
@@ -263,16 +284,11 @@ Name[zh_CN]=新建隐身窗口
 Name[zh_TW]=新增無痕式視窗
 Exec=$APP --incognito" >> /usr/share/applications/$APP.desktop
 
-# ICON
-wget https://raw.githubusercontent.com/ivan-hc/AppMan/main/applications/brave-browser/brave-browser.svg
-
-# CHANGE THE PERMISSIONS
 currentuser=$(who | awk '{print $1}')
 chown -R $currentuser /opt/$APP
 
-# MESSAGE
 echo "
 
-   Brave AppImage is provided by https://github.com/srevinsaju
-   
-   ";
+ Brave Browser is provided by https://brave.com
+  
+";
