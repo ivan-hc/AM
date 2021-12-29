@@ -154,7 +154,7 @@ These programs are taken:
 - from official sources (see Firefox, Thunderbird, Blender, NodeJS, Chromium Latest...);
 - from official .deb packages (see Brave, Vivaldi, Google Chrome...);
 - from the repositories and official sites of individual developers (if an archive is not available, an official AppImage is used, see Libreoffice, OnlyOffice);
-- from tar archives of other GNU/Linux distributions (see Chromium, Chromium Unstable...);
+- from tar archives of other GNU/Linux distributions (see Chromium, Chromium Ungoogled...);
 - from AUR or other Arch Linux-related sources (see Palemoon, Spotify, WhatsApp...);
 - from AppImage recipes to be compiled with [pkg2appimage](https://github.com/AppImage/pkg2appimage) and [appimagetool](https://github.com/AppImage/AppImageKit) (see Anydesk, qBittorrent, Dropbox, all the games from the "KDE Games" suite...);
 - from unofficial repositories of developers external to the project concerned (most of the time they are programs in AppImage format), but only if an official release is not available (see the various WINE, Zoom, VLC, GIMP...).
