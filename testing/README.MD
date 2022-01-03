@@ -2,7 +2,7 @@ This section stores the installation scripts of programs (divided by architectur
 These are minor bugs and can be fixed in a short time.
 Once ready, these programs will be moved to the main section of this repository.
 
-### How to test them
+## How to install/test
 Replace "SAMPLE" at the line 2 with the name of the program you want to install:
 	
     ARCH=$(uname -m)
@@ -11,6 +11,6 @@ Replace "SAMPLE" at the line 2 with the name of the program you want to install:
     chmod a+x ./$PROGRAM
     sudo ./$PROGRAM
     
-### How to remove them
+## How to remove
 
     sudo /opt/$PROGRAM/remove
