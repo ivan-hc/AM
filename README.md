@@ -99,7 +99,7 @@ The main goal of this tool is to provide the same updated applications to multip
 # Installation
 Copy/paste this command:
 	
-	`wget https://raw.githubusercontent.com/ivan-hc/APPLICATION-MANAGER/main/INSTALL && chmod a+x ./INSTALL && sudo ./INSTALL`
+    wget https://raw.githubusercontent.com/ivan-hc/APPLICATION-MANAGER/main/INSTALL && chmod a+x ./INSTALL && sudo ./INSTALL
 
 This will download the ["APP-MANAGER"](https://github.com/ivan-hc/AM-application-manager/blob/main/APP-MANAGER) script in /opt/am, a symlink for it in /usr/local/bin named `am` and the /opt/am/remove script needed to uninstall `am` itself, if needed.
 
@@ -168,8 +168,8 @@ Go to https://www.youtube.com/watch?v=3Jezf6YMTUM
 
 # Updates
 To update all the programs, just run the command (without `sudo`):
-	
-	`am -u`
+
+	am -u
 	
 Here are the ways in which the updates will be made:
 - Updateable AppImages can rely on an [appimageupdatetool](https://github.com/AppImage/AppImageUpdate)-based "updater" or on their external zsync file (if provided by the developer);
@@ -180,7 +180,7 @@ During the first installation, the main user ($currentuser) will take the necess
 
 # How to update a program without "am"
 	
-	`/opt/$PROGRAM/AM-updater`*
+	/opt/$PROGRAM/AM-updater
 			
 *Note that this works only if the program has a /opt/$PROGRAM/AM-updater script, other programs like Firefox and Thunderbird are auto-updatable. 
 			
@@ -200,7 +200,7 @@ If you are interested, you can deliberately join this project.
 # Scripts and rules	
 Once you've performed the command:
 	
-`sudo am -i $PROGRAM`
+	sudo am -i $PROGRAM
 	
 The script will create:
 - a /opt/$PROGRAM folder containing the standalone app, an uninstaller script named `remove`, an `AM-updater` script needed by the `am -u` command and other files (if necessary);
@@ -210,28 +210,28 @@ The script will create:
 	
 ##### *NOTE that the /opt/$PROGRAM/remove script file is the more important part, it must contain the path of all the files created by your script, this way:
 	
-	`rm -R -f /opt/$PROGRAM /usr/local/bin/$PROGRAM /usr/share/applications/$PROGRAM.desktop`	
+	rm -R -f /opt/$PROGRAM /usr/local/bin/$PROGRAM /usr/share/applications/$PROGRAM.desktop	
 	
 This scheme guarantees the removal of the program and all its components even without having to use "AM". Learn more [here](#how-to-uninstall-a-program-using-am). 
 
 # How to uninstall "am"
 	
-	`sudo am -r am`
+	sudo am -r am
 
 # How to uninstall a program using "am"
 	
-	`sudo am -r <$PROGRAM>`
+	sudo am -r <$PROGRAM>
 
 # How to install a program without "am"
 Replace "SAMPLE" at the line 2 with the name of the program you want to install:
 	
-	`ARCH=$(uname -m)
+	ARCH=$(uname -m)
 	PROGRAM=SAMPLE
-	wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/programs/$ARCH/$PROGRAM && chmod a+x ./$PROGRAM && sudo ./$PROGRAM`
+	wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/programs/$ARCH/$PROGRAM && chmod a+x ./$PROGRAM && sudo ./$PROGRAM
 			
 # How to uninstall a program without "am"
 	
-	`sudo /opt/$PROGRAM/remove`
+	sudo /opt/$PROGRAM/remove
 
 # Important
 #### The programs installed with "AM" are official software in binary format or packaged as AppImage, their launchers are mostly the original ones, because of this they may conflict with / overwrite those of the same programs installed from the repository of your Linux distribution!
