@@ -1,4 +1,3 @@
-### "AM", THE APP MANAGER FOR ANY GNU/LINUX DISTRIBUTION
 AM is an application manager for all GNU / Linux distributions and which can be adapted to all available architectures, as its scripts are entirely based on the programs present in each basic installation. 
 
 The `am` command is very easy to use and can manage a better control of automatic updates for all the programs installed. Using `am` to install/remove standalone apps is as easy and ridiculous as typing a command at random, out of desperation!
