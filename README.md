@@ -1,6 +1,12 @@
-AM is an application manager for all GNU / Linux distributions and which can be adapted to all available architectures, as its scripts are entirely based on the programs present in each basic installation. 
+# "AM" the Application Manager for GNU/Linux
 
-The `am` command is very easy to use and can manage a better control of automatic updates for all the programs installed. Using `am` to install/remove standalone apps is as easy and ridiculous as typing a command at random, out of desperation!
+------------------------------------------------------------------------
+
+  >>  Enjoy your applications without thinking about anything else   <<   
+  
+ ------------------------------------------------------------------------
+
+AM is an application manager for all GNU / Linux distributions and which can be adapted to all available architectures, as its scripts are entirely based on the programs present in each basic installation. The `am` command is very easy to use and can manage a better control of automatic updates for all the programs installed. Using it to install/remove standalone apps is as easy and ridiculous as typing a command at random, out of desperation!
 
 The main goal of this tool is to provide the same updated applications to multiple GNU/Linux distributions without having to change the package manager or the distro itself. This means that whatever distro you use, you will not miss your favorite programs or the need for a more updated version.
 
@@ -55,7 +61,7 @@ There are so many commands to remember among the GNU/Linux distributions, and so
 - Each installed program must be placed in a single folder with all dependencies, at most it can have a launcher and a link outside its own folder;
 - I want to summarize the whole installation process (including the download of the icons and the creation of launchers and updater/remover scripts...) in just one script.
 
-I can't find all this into other package managers.
+I can't find all this into other package managers. "AM" is created to combine all these qualities!
 
 # Comparing "AM" with other package managers
 - APT (Debian) often includes too old programs that require too many dependencies, while AM has always the last version of each program that will be stored in just one dedicated folder, AM's installation scripts just need to download the standalone program, create the launcher in /usr/share/application and a link into a $PATH (keep reading);
