@@ -20,9 +20,12 @@ The main goal of this tool is to provide the same updated applications to multip
 
 [Introducing "AM"](#introducing-am)
 
-[Comparing "AM" with other package managers](#comparing-am-with-other-package-managers)
-
-[Why "AM"?](#why-am)
+[Comparing "AM" with other package managers](#comparing-am-with-other-package-managers):
+- [APT versus "AM"](#-apt-versus-am)
+- [AUR & PacMan vs "AM"](#-aur--pacman-versus-am)
+- [Flatpak versus "AM"](#-flatpak-versus-am)
+- [Snappy versus "AM"](#-snappy-versus-am)
+- [Any other AppImage Manager versus "AM"](#-any-other-appimage-manager-versus-am)
 
 [Installation](#installation)
 
@@ -31,8 +34,6 @@ The main goal of this tool is to provide the same updated applications to multip
 [What programs can be installed with AM](#what-programs-can-be-installed-with-am)
 
 [Updates](#updates)
-
-[How to update a program without "AM"](#how-to-update-a-program-without-am)
 
 [Repository and Multiarchitecture](#repository-and-multiarchitecture)
 
@@ -67,6 +68,10 @@ There are so many commands to remember among the GNU/Linux distributions, and so
 
 I can't find all this into other package managers. "AM" is created to do all this!
 
+I've named it "AM", which is the abbreviation of Application Manager, because I wanted something that was really short to write and extremely easy to remember. At the same time this name had to be a word that fully expressed its functions. Two letters with a few simple options to remember (see "[Usage](#usage)"), to install, remove, update, manage programs on any GNU/Linux distribution and for any supported architecture, indiscriminately.
+
+Such a simple name, like its structure and its intentions. "AM" is everything you would expect from any application manager.
+
 # Comparing "AM" with other package managers
 "AM" is not a project that wants to compete with the basic package managers of GNU / Linux distributions (in fact many managed programs come from different distributions, including Debian, Arch Linux, Slackware and various derivatives, and then make them available for all), but wants to favor the promotion of standalone programs and lighten the load of the developers of the distributions, separating the programs of the base system from those of the individual developers, in order to increase the general stability of the system and fill the shortcomings of one or of the other distribution.
 
@@ -87,12 +92,8 @@ I can't find all this into other package managers. "AM" is created to do all thi
 - "AM" has no daemons and no hidden services are needed, each program is completely autonomous and will run when you want to use it (in any case, it is possible to convert Snap packages to AppImage, I have already done some tests for this, as their structure is quite similar... and I'm already thinking about writing a tool that can do that, so stay tuned).
 
 ## ◆ Any other AppImage Manager versus "AM"
-AppImages are a good package format, but they have not a centralized repository capable of automatically managing updates (unlike Snap or Flatpak), and more often there are some external tools and system daemons that can't do enough to integrate the program in the correct way into the system (including launchers). I myself was not satisfied with my other creation, [AppMan](https://github.com/ivan-hc/AppMan), because it can manage them only locally (as a normal user without administrative privileges), and this conflicts with the possibility of making the installed applications also be used by other users who use my PC or laptop, and in this sense it is necessary an application manager that integrates with the system as APT, PacMan, DNF, Zypper could do (but with fewer files scattered around the PC). Also I'd like to be able to run many of the same applications on multiple different architectures (including 32-bit ones, now abandoned by many developers), while AppMan is only meant for x86_64, despite being written in a virtually universal language. AM allows you to do all of this, and for compatibility reasons, it tends to favor real standalone programs, rather than AppImages (these are used when there are no valid alternatives).
-
-# Why "AM"?
-Initially I was undecided whether to develop something totally different from AppMan, given the little free time I had available, but finally I decided to write this new tool based on it, but better. I wanted something that was really short to write and extremely easy to remember. At the same time this name had to be a word that fully expressed its functions.
-#### I've named it "AM", which is the abbreviation of Application Manager. Two letters with a few simple options to remember, to install/remove/update/manage programs on any GNU/Linux distribution and for any supported architecture, indiscriminately!
-Such a simple name, like its structure (entirely in Shell scripts) and its intentions (download and install applications in few dedicated and isolated spaces, update them without root privileges and remove them safely... practically everything you would expect from any application manager).
+- AppImage is a good package format, the first in the history of portable apps for GNU / Linux (think that the first draft dates back to 2004) and are strongly requested by many users who prefer them to programs managed by Flatpak and Snappy ... yet their great limitation is that they do not have a real centralized repository. The idea of the creator of this packaging format is to lead users to a program developer's website as you would on Microsoft Windows, that is, by opening a browser and downloading it from there, and without having to use "special tools" (probably his was a clear reference to the command line). However, there are many independent developer projects that support their application database on sites that the creator of the AppImage considers "official" (even if they are very neglected). I myself had created a tool that could install, update and manage them, [AppMan](https://github.com/ivan-hc/AppMan), but it also has severe limitations, including checking for available updates (many non-updateable AppImage must be re-downloaded, regardless of whether the new version is actually available or not) and somewhat messy integration into multi-account systems, and was written for the x86_64 architecture only.
+- "AM" fixes all AppMan errors and is the perfect replacement for it. It is possible to use the same program on several different accounts, while each installed program has its own script that compares the installed version with the one available in the sources (see [updates](#updates)). Also there is support for multiple architectures, anyone can create a script to install that particular program (if available). However, in "AM", AppImage does not want to be a priority format, but only a fallback. If a program is already made available in a bundle by the developer (for example Firefox, Thunderbird, NodeJS, Blender, Chromium and other web browsers, games... ), "AM" will prefer it as it is written to work correctly as it is on any distribution (learn more [here](#what-programs-can-be-installed-with-am)).
 
 # Installation
 Copy/paste this command:
@@ -163,7 +164,6 @@ You can consult basic information, links to sites and sources used through the r
 To update all the programs, just run the command (without `sudo`):
 
 	am -u
-	
 Here are the ways in which the updates will be made:
 - Updateable AppImages can rely on an [appimageupdatetool](https://github.com/AppImage/AppImageUpdate)-based "updater" or on their external zsync file (if provided by the developer);
 - Non-updateable AppImages and other standalone programs will be replaced only with a more recent version if available, this will be taken by comparing the installed version with the one available on the source (using "curl", "grep" and "cat"), the same is for some AppImages created with [pkg2appimage](https://github.com/AppImage/pkg2appimage) and [appimagetool](https://github.com/AppImage/AppImageKit);
@@ -171,11 +171,10 @@ Here are the ways in which the updates will be made:
 
 During the first installation, the main user ($currentuser) will take the necessary permissions on each /opt/$PROGRAM directory, in this way all updates will be automatic and without root permissions.
 
-# How to update a program without "am"
+To update a program without "am" instead, just run:
 	
 	/opt/$PROGRAM/AM-updater
-			
-*Note that this works only if the program has a /opt/$PROGRAM/AM-updater script, other programs like Firefox and Thunderbird are auto-updatable. 
+Note that this works only if the program has a /opt/$PROGRAM/AM-updater script, other programs like Firefox and Thunderbird are auto-updatable. 
 			
 # Repository and Multiarchitecture
 Each program is installed through a dedicated script, and all these scripts are listed in the "[repository](https://github.com/ivan-hc/AM-application-manager/tree/main/programs)" and divided by architecture.
