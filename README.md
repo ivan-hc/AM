@@ -5,6 +5,8 @@
   >>  Enjoy your applications without thinking about anything else   <<   
   
  ------------------------------------------------------------------------
+ 
+ https://user-images.githubusercontent.com/88724353/148004386-01c0e38e-505a-428b-8dd9-3ec2a50c5229.mp4
 
 AM is an application manager for all GNU / Linux distributions and which can be adapted to all available architectures, as its scripts are entirely based on the programs present in each basic installation (wget, curl, grep, egrep, find, rm, mkdir, mv, ls, echo...). The `am` command is very easy to use and can manage a better control of automatic updates for all the programs installed. Using it to install/remove standalone apps is as easy and ridiculous as typing a command at random, out of desperation!
 
@@ -23,8 +25,6 @@ The main goal of this tool is to provide the same updated applications to multip
 [Usage](#usage)
 
 [What programs can be installed with AM](#what-programs-can-be-installed-with-am)
-
-[Watch the VIDEO](#watch-the-video)
 
 [Updates](#updates)
 
@@ -71,32 +71,7 @@ I can't find all this into other package managers. "AM" is created to combine al
 - AppImage are a good package format, but they have not a centralized repository capable of automatically managing updates, and more often there are some external tools and system daemons that can't do enough to integrate the program in the correct way into the system (including launchers). I myself was not satisfied with my other creation, [AppMan](https://github.com/ivan-hc/AppMan), because it can manage them only locally (as a normal user without administrative privileges), and this conflicts with the possibility of making the installed applications also be used by other users who use my PC or laptop, and in this sense it is necessary an application manager that integrates with the system as APT, PacMan, DNF, Zypper could do (but with fewer files scattered around the PC). Also I'd like to be able to run many of the same applications on multiple different architectures (including 32-bit ones, now abandoned by many developers), while AppMan is only meant for x86_64, despite being written in a virtually universal language. AM allows you to do all of this!
 
 Initially I was undecided whether to develop something totally different from AppMan, given the little free time I had available, but finally I decided to write this new tool based on AppMan itself, becoming the perfect substitute. 
-### I've named it "`AM`", which is the abbreviation of Application Manager. Two letters with a few simple options to remember, to install/remove/update/manage programs on any GNU/Linux distribution and for any supported architecture, indiscriminately!
-
---------------------------------------------------------------
-                    _____                    _____                                                                           
-                   /\    \                  /\    \         
-                  /::\    \                /::\____\        
-                 /::::\    \              /::::|   |        
-                /::::::\    \            /:::::|   |        
-               /:::/\:::\    \          /::::::|   |        
-              /:::/__\:::\    \        /:::/|::|   |        
-             /::::\   \:::\    \      /:::/ |::|   |        
-            /::::::\   \:::\    \    /:::/  |::|___|______  
-           /:::/\:::\   \:::\    \  /:::/   |::::::::\    \ 
-          /:::/  \:::\   \:::\____\/:::/    |:::::::::\____\
-          \::/    \:::\  /:::/    /\::/    / ~~~~~/:::/    /
-           \/____/ \:::\/:::/    /  \/____/      /:::/    / 
-                    \::::::/    /               /:::/    /  
-                     \::::/    /               /:::/    /   
-                     /:::/    /               /:::/    /    
-                    /:::/    /               /:::/    /     
-                   /:::/    /               /:::/    /      
-                  /:::/    /               /:::/    /       
-                  \::/    /                \::/    /        
-                   \/____/                  \/____/         
-
------------------------
+#### I've named it "AM", which is the abbreviation of Application Manager. Two letters with a few simple options to remember, to install/remove/update/manage programs on any GNU/Linux distribution and for any supported architecture, indiscriminately!
 
 # Installation
 Copy/paste this command:
@@ -163,11 +138,6 @@ These programs are taken:
 
 You can consult basic information, links to sites and sources used through the related `am -a $PROGRAM` command or by clicking [here](https://github.com/ivan-hc/AM-application-manager/tree/main/programs/.about).
 	
-	
-# Watch the video
-	
-Go to https://www.youtube.com/watch?v=3Jezf6YMTUM
-
 # Updates
 To update all the programs, just run the command (without `sudo`):
 
