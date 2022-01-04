@@ -1,38 +1,76 @@
 #!/bin/sh
 
-mkdir /opt/avidemux
-cd /opt/avidemux
+APP=avidemux
+
+# CREATE THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP
+
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+
+# DOWNLOAD THE PROGRAM
 mkdir tmp
 cd ./tmp
-wget --user-agent="X11; Linux x86_64;" https://sourceforge.net/projects/avidemux/files/latest/download
+
+version=$(curl -L -s https://archlinux.org/packages/extra/x86_64/avidemux-qt/flag | grep -E avidemux-qt | grep -Eo "[0-9]+([.][0-9]+)?+" | head -1)
+wget --user-agent="X11; Linux x86_64;" https://sourceforge.net/projects/avidemux/files/avidemux/$version/avidemux_$version.appImage/download
+echo $version >> /opt/$APP/version
+
 cd ..
-mv ./tmp/download ./avidemux 
-chmod a+x /opt/avidemux/avidemux
+mv ./tmp/download ./$APP
+chmod a+x /opt/$APP/$APP
 rmdir ./tmp
 
-ln -s /opt/avidemux/avidemux /usr/local/bin/avidemux
+# LINK
+ln -s /opt/$APP/$APP /usr/local/bin/$APP
 
-wget https://raw.githubusercontent.com/ivan-hc/AppMan/main/applications/avidemux/avidemux.svg;
+# SCRIPT TO UPDATE THE PROGRAM
+echo '#!/bin/sh
+version0=$(cat /opt/'$APP'/version)
+version=$(curl -L -s https://archlinux.org/packages/extra/x86_64/avidemux-qt/flag | grep -E avidemux-qt | grep -Eo "[0-9]+([.][0-9]+)?+" | head -1)
+if [ "$version0" = "$version" ]; then
+  echo "Update not needed, exit!"
+else
+  notify-send "A new version of '$APP' is available, please wait!"
+  mkdir /opt/'$APP'/tmp
+  cd /opt/'$APP'/tmp
+  wget --user-agent="X11; Linux x86_64;" https://sourceforge.net/projects/avidemux/files/avidemux/$version/avidemux_$version.appImage/download
+  cd ..
+  if test -f ./tmp/download; then rm -R -f ./version
+  fi
+  echo $version >> /opt/'$APP'/version
+  mv ./tmp/download ./'$APP'
+  chmod a+x /opt/'$APP'/'$APP'
+  rmdir ./tmp
+fi' >> /opt/$APP/AM-updater
+chmod a+x /opt/$APP/AM-updater
 
-rm -R -f /usr/share/applications/avidemux.desktop
+# LAUNCHER
+rm /usr/share/applications/$APP.desktop
 echo "[Desktop Entry]
 Name=Avidemux
 GenericName=Video Editor
 Comment=Multiplatform video editor
-Exec=/opt/avidemux/avidemux %U
-Icon=/opt/avidemux/avidemux.svg
+Exec=$APP %U
+Icon=/opt/$APP/$APP.svg
 Terminal=false
 Type=Application
 Categories=AudioVideo;AudioVideoEditing;Video;
-MimeType=video/mpeg;video/x-mpeg;video/mp4;video/x-m4v;video/quicktime;video/3gp;video/mkv;video/x-matroska;video/webm;video/flv;video/x-flv;video/dv;video/x-msvideo;video/x-ms-wmv;video/x-ms-asf;video/x-anim;" >> /usr/share/applications/avidemux.desktop
+MimeType=video/mpeg;video/x-mpeg;video/mp4;video/x-m4v;video/quicktime;video/3gp;video/mkv;video/x-matroska;video/webm;video/flv;video/x-flv;video/dv;video/x-msvideo;video/x-ms-wmv;video/x-ms-asf;video/x-anim;" >> /usr/share/applications/$APP.desktop
 
-echo '#!/bin/sh
-rm -R -f /usr/share/applications/avidemux.desktop /opt/avidemux /usr/local/bin/avidemux' >> /opt/avidemux/remove
-chmod a+x /opt/avidemux/remove
+# ICON
+wget https://raw.githubusercontent.com/ivan-hc/AppMan/main/applications/avidemux/avidemux.svg;
 
+# CHANGE THE PERMISSIONS
 currentuser=$(who | awk '{print $1}')
-chown -R $currentuser /opt/avidemux
+chown -R $currentuser /opt/$APP
 
-echo "";
-echo "   Avidemux AppImage has been installed!";
-echo "";
+# MESSAGE
+echo "
+
+ Avidemux is provided by http://avidemux.sourceforge.net
+  
+";
