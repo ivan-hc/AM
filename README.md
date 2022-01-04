@@ -22,6 +22,8 @@ The main goal of this tool is to provide the same updated applications to multip
 
 [Comparing "AM" with other package managers](#comparing-am-with-other-package-managers)
 
+[Why "AM"?](#why-am)
+
 [Installation](#installation)
 
 [Usage](#usage)
@@ -63,15 +65,26 @@ There are so many commands to remember among the GNU/Linux distributions, and so
 - Each installed program must be placed in a single folder with all dependencies, at most it can have a launcher and a link outside its own folder;
 - I want to summarize the whole installation process (including the download of the icons and the creation of launchers and updater/remover scripts...) in just one script.
 
-I can't find all this into other package managers. "AM" is created to combine all these qualities!
+I can't find all this into other package managers. "AM" is created to do all this!
 
 # Comparing "AM" with other package managers
-- APT (Debian) often includes too old programs that require too many dependencies, while AM has always the last version of each program that will be stored in just one dedicated folder, AM's installation scripts just need to download the standalone program, create the launcher in /usr/share/application and a link into a $PATH (keep reading);
-- The Arch User Repository (AUR) is not always reliable, while PacMan by default does not include all the programs that APT manages. AM tries to check and download the official programs from the main sources but without spreading files on the system (see the comparison with APT);
-- Flatpak takes up too much disk space to install only one program, AM uses standalone programs from main sources (without adding any runtime) and when forced, uses AppImage (which being a compressed format, saves disk space);
-- Snappy slows down PC resources due to the "snapd" daemon, while programs installed with AM only need a system to stay in, no hidden services are needed, each program is completely standalone;
-- AppImage are a good package format, but they have not a centralized repository capable of automatically managing updates, and more often there are some external tools and system daemons that can't do enough to integrate the program in the correct way into the system (including launchers). I myself was not satisfied with my other creation, [AppMan](https://github.com/ivan-hc/AppMan), because it can manage them only locally (as a normal user without administrative privileges), and this conflicts with the possibility of making the installed applications also be used by other users who use my PC or laptop, and in this sense it is necessary an application manager that integrates with the system as APT, PacMan, DNF, Zypper could do (but with fewer files scattered around the PC). Also I'd like to be able to run many of the same applications on multiple different architectures (including 32-bit ones, now abandoned by many developers), while AppMan is only meant for x86_64, despite being written in a virtually universal language. AM allows you to do all of this!
 
+##### - APT (Debian, Ubuntu, Linux Mint...) vs "AM"
+APT often includes too old programs that require too many dependencies, while AM has always the last version of each program that will be stored in just one dedicated folder, AM's installation scripts just need to download the standalone program, create the launcher in /usr/share/application and a link into a $PATH.
+
+##### - AUR/Pacman (Arch Linux, Manjaro, EndeavourOS...) vs "AM"
+The Arch User Repository (AUR) is not always reliable, while PacMan by default does not include all the programs that APT manages. AM tries to check and download the official programs from the main sources but without spreading files on the system. Like we have already seen in the previous comparison with APT, each program that will be stored in just one dedicated folder, AM's installation scripts just need to download the standalone program, create the launcher in /usr/share/application and a link into a $PATH.
+
+##### - Flatpak/Flathub vs "AM"
+Flatpak takes up too much disk space to install only one program, AM uses standalone programs from main sources (without adding any runtime) and when forced, uses AppImage (which being a compressed format, saves disk space).
+
+##### - Snappy/Snapcraft/SNAP vs "AM"
+Snappy slows down PC resources due to the "snapd" daemon, while programs installed with AM only need a system to stay in, no hidden services are needed, each program is completely standalone.
+
+##### - Any AppImage Managers vs "AM"
+AppImage are a good package format, but they have not a centralized repository capable of automatically managing updates, and more often there are some external tools and system daemons that can't do enough to integrate the program in the correct way into the system (including launchers). I myself was not satisfied with my other creation, [AppMan](https://github.com/ivan-hc/AppMan), because it can manage them only locally (as a normal user without administrative privileges), and this conflicts with the possibility of making the installed applications also be used by other users who use my PC or laptop, and in this sense it is necessary an application manager that integrates with the system as APT, PacMan, DNF, Zypper could do (but with fewer files scattered around the PC). Also I'd like to be able to run many of the same applications on multiple different architectures (including 32-bit ones, now abandoned by many developers), while AppMan is only meant for x86_64, despite being written in a virtually universal language. AM allows you to do all of this, and for compatibility reasons, it tends to favor real standalone programs, rather than AppImages (these are used when there are no valid alternatives).
+
+# Why "AM"?
 Initially I was undecided whether to develop something totally different from AppMan, given the little free time I had available, but finally I decided to write this new tool based on AppMan itself, becoming the perfect substitute. 
 #### I've named it "AM", which is the abbreviation of Application Manager. Two letters with a few simple options to remember, to install/remove/update/manage programs on any GNU/Linux distribution and for any supported architecture, indiscriminately!
 
