@@ -73,7 +73,7 @@ I can't find all this into other package managers. "AM" is created to do all thi
 APT often includes too old programs that require too many dependencies, while AM has always the last version of each program that will be stored in just one dedicated folder, AM's installation scripts just need to download the standalone program, create the launcher in /usr/share/application and a link into a $PATH.
 
 ##### - AUR/Pacman (Arch Linux, Manjaro, EndeavourOS...) vs "AM"
-The Arch User Repository (AUR) is not always reliable, while PacMan by default does not include all the programs that APT manages. AM tries to check and download the official programs from the main sources but without spreading files on the system. Like we have already seen in the previous comparison with APT, each program that will be stored in just one dedicated folder, AM's installation scripts just need to download the standalone program, create the launcher in /usr/share/application and a link into a $PATH.
+The Arch User Repository (AUR) is not always reliable, while PacMan by default does not include all the programs that APT manages. AM tries to check and download the official programs from the main sources but without spreading files on the system. Like we have already seen in the previous comparison with APT, each program will be stored in just one dedicated folder, AM's installation scripts just need to download the standalone program, create the launcher in /usr/share/application and a link into a $PATH.
 
 ##### - Flatpak/Flathub vs "AM"
 Flatpak takes up too much disk space to install only one program, AM uses standalone programs from main sources (without adding any runtime) and when forced, uses AppImage (which being a compressed format, saves disk space).
