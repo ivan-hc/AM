@@ -41,11 +41,7 @@ The main goal of this tool is to provide the same updated applications to multip
 
 [How to uninstall "AM"](#how-to-uninstall-am)
 
-[How to uninstall a program using "AM"](#how-to-uninstall-a-program-using-am)
-
-[How to install a program without "AM](#how-to-install-a-program-without-am)
-
-[How to uninstall a program without "AM"](#how-to-uninstall-a-program-without-am)
+[Install, update and remove "AM" programs without "AM"](#install-update-and-remove-am-programs-without-am)
 
 [Important](#important)
 
@@ -170,11 +166,6 @@ Here are the ways in which the updates will be made:
 - Fixed versions will be listed with their build number (e.g. $PROGRAM-1.1.1). Note that most of the programs are updateable, so fixed versions will only be added upon request (or if it is really difficult to find a right wget/curl command to download the latest version).
 
 During the first installation, the main user ($currentuser) will take the necessary permissions on each /opt/$PROGRAM directory, in this way all updates will be automatic and without root permissions.
-
-To update a program without "am" instead, just run:
-	
-	/opt/$PROGRAM/AM-updater
-Note that this works only if the program has a /opt/$PROGRAM/AM-updater script, other programs like Firefox and Thunderbird are auto-updatable. 
 			
 # Repository and Multiarchitecture
 Each program is installed through a dedicated script, and all these scripts are listed in the "[repository](https://github.com/ivan-hc/AM-application-manager/tree/main/programs)" and divided by architecture.
@@ -210,20 +201,23 @@ This scheme guarantees the removal of the program and all its components even wi
 	
 	sudo am -r am
 
-# How to uninstall a program using "am"
+# Install, update and remove "AM" programs without "AM"
+"AM" focuses a lot on the autonomy of its programs, so much that you can install, update and remove them without necessarily having "AM" installed on your system.
+- To install a program without "am", replace "SAMPLE" at the line 2 with the name of the program you want to install:
 	
-	sudo am -r <$PROGRAM>
-
-# How to install a program without "am"
-Replace "SAMPLE" at the line 2 with the name of the program you want to install:
+	  ARCH=$(uname -m)
+	  PROGRAM=SAMPLE
+	  wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/programs/$ARCH/$PROGRAM
+	  chmod a+x ./$PROGRAM
+	  sudo ./$PROGRAM
+- To update a program without "am" instead, just run:
 	
-	ARCH=$(uname -m)
-	PROGRAM=SAMPLE
-	wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/programs/$ARCH/$PROGRAM && chmod a+x ./$PROGRAM && sudo ./$PROGRAM
-			
-# How to uninstall a program without "am"
+	  /opt/$PROGRAM/AM-updater
+Note that this works only if the program has a /opt/$PROGRAM/AM-updater script, other programs like Firefox and Thunderbird are auto-updatable. 
 	
-	sudo /opt/$PROGRAM/remove
+- To uninstall a program without "am":
+	
+	  sudo /opt/$PROGRAM/remove
 
 # Important
 #### The programs installed with "AM" are official software in binary format or packaged as AppImage, their launchers are mostly the original ones, because of this they may conflict with / overwrite those of the same programs installed from the repository of your Linux distribution!
