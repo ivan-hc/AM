@@ -10,7 +10,7 @@
 
  ------------------------------------------------------------------------
 
-AM is an application manager for all GNU / Linux distributions and which can be adapted to all available architectures, as its scripts are entirely based on the programs present in each basic installation (wget, curl, grep, egrep, find, rm, mkdir, mv, ls, echo...). The `am` command is very easy to use and can manage a better control of automatic updates for all the programs installed. Using it to install/remove standalone apps is as easy and ridiculous as typing a command at random, out of desperation!
+AM is an application manager for all GNU / Linux distributions and which can be adapted to all available architectures, as its scripts are entirely based on the programs present in each basic installation (wget, curl, grep, egrep, find, rm, mkdir, mv, ls, echo...). The "am" command is very easy to use and can manage a better control of automatic updates for all the programs installed. Using it to install/remove standalone apps is as easy and ridiculous as typing a command at random, out of desperation!
 
 The main goal of this tool is to provide the same updated applications to multiple GNU/Linux distributions without having to change the package manager or the distro itself. This means that whatever distro you use, you will not miss your favorite programs or the need for a more updated version.
 
@@ -20,7 +20,7 @@ The main goal of this tool is to provide the same updated applications to multip
 
 [Introducing "AM"](#introducing-am)
 
-[Comparing "AM" with other package managers](#comparing-am-with-other-package-managers):
+[Comparison with other package managers](#comparison-with-other-package-managers):
 - [APT versus "AM"](#-apt-versus-am)
 - [AUR & PacMan vs "AM"](#-aur--pacman-versus-am)
 - [Flatpak versus "AM"](#-flatpak-versus-am)
@@ -28,20 +28,14 @@ The main goal of this tool is to provide the same updated applications to multip
 - [Any other AppImage Manager versus "AM"](#-any-other-appimage-manager-versus-am)
 
 [Installation](#installation)
+- [Usage](#usage)
+- [What programs can be installed](#what-programs-can-be-installed)
+- [Updates](#updates)
+- [Repository and Multiarchitecture](#repository-and-multiarchitecture)
+- [Scripts and rules](#scripts-and-rules)
 
-[Usage](#usage)
-
-[What programs can be installed with AM](#what-programs-can-be-installed-with-am)
-
-[Updates](#updates)
-
-[Repository and Multiarchitecture](#repository-and-multiarchitecture)
-
-[Scripts and rules](#scripts-and-rules)
-
-[How to uninstall "AM"](#how-to-uninstall-am)
-
-[Install/update/remove programs without "AM"](#installupdateremove-programs-without-am)
+[Uninstall](#uninstall)
+- [Install/update/remove programs without "AM"](#installupdateremove-programs-without-am)
 
 [Important](#important)
 
@@ -68,7 +62,7 @@ I've named it "AM", which is the abbreviation of Application Manager, because I 
 
 Such a simple name, like its structure and its intentions. "AM" is everything you would expect from any application manager.
 
-# Comparing "AM" with other package managers
+# Comparison with other package managers
 "AM" is not a project that wants to compete with the basic package managers of GNU / Linux distributions (in fact many managed programs come from different distributions, including Debian, Arch Linux, Slackware and various derivatives, and then make them available for all), but wants to favor the promotion of standalone programs and lighten the load of the developers of the distributions, separating the programs of the base system from those of the individual developers, in order to increase the general stability of the system and fill the shortcomings of one or of the other distribution.
 
 ### ◆ APT versus "AM"
@@ -142,7 +136,7 @@ This will download the ["APP-MANAGER"](https://github.com/ivan-hc/AM-application
   `-t`, `template` This option allows you to generate a custom script: the command will offer you to choose between different models that may be vary according to the type of application you want to create/install. Once you choose a number, the script will download the template and rename it using the <argument> you provided, all this will be created in the "Desktop" folder of the user. So you just have to edit the other parameters (LAUNCHER, AM-updater, Recipes, etc ...).
   		Please, consider submitting your custom script to "AM", at https://github.com/ivan-hc/AM-application-manager/pulls.
 
-# What programs can be installed with AM
+# What programs can be installed
 AM installs/removes/updates/manages only standalone programs, ie those programs that can be run from a single directory in which they are contained (where `$PROGRAM` is the name of the application, AM installs them always into a dedicated folder named `/opt/$PROGRAM`).
 
 These programs are taken:
@@ -197,7 +191,7 @@ The script will create:
 	
 This scheme guarantees the removal of the program and all its components even without having to use "AM". Learn more [here](#how-to-uninstall-a-program-using-am). 
 
-# How to uninstall "am"
+# Uninstall
 	
 	sudo am -r am
 
