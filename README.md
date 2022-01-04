@@ -41,7 +41,7 @@ The main goal of this tool is to provide the same updated applications to multip
 
 [How to uninstall "AM"](#how-to-uninstall-am)
 
-[Install/update/remove programs without "AM"](#install-update-remove-programs-without-am)
+[Install/update/remove programs without "AM"](#installupdateremove-programs-without-am)
 
 [Important](#important)
 
