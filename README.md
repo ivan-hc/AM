@@ -41,7 +41,7 @@ The main goal of this tool is to provide the same updated applications to multip
 
 [How to uninstall "AM"](#how-to-uninstall-am)
 
-[Install, update and remove "AM" programs without "AM"](#install-update-and-remove-am-programs-without-am)
+[Install/update/remove programs without "AM"](#install-update-remove-programs-without-am)
 
 [Important](#important)
 
@@ -201,7 +201,7 @@ This scheme guarantees the removal of the program and all its components even wi
 	
 	sudo am -r am
 
-# Install, update and remove "AM" programs without "AM"
+# Install/update/remove programs without "AM"
 "AM" focuses a lot on the autonomy of its programs, so much that you can install, update and remove them without necessarily having "AM" installed on your system.
 - To install a program without "am", replace "SAMPLE" at the line 2 with the name of the program you want to install:
 	
