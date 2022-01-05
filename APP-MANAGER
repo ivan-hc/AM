@@ -72,6 +72,14 @@ case "$1" in
   		other parameters (LAUNCHER, AM-updater, Recipes, etc ...).
   		Please, consider submitting your custom script to "AM", at 
  		https://github.com/ivan-hc/AM-application-manager/pulls .
+
+  lock		Lock the selected program to the current installed version,
+		this only works if a dedicated "AM-updater" script exists.
+
+  unlock	Unlock updates for the selected program. This option nulls
+		"lock", the update file is renamed as "AM-updater" again, 
+		so that it can be intercepted when executing the "am -u" 
+		command (see "-u").
   		
   -----------------------------------------------------------------------
 
@@ -229,6 +237,40 @@ case "$1" in
   	echo "-----------------------------------------------------------------------"; echo " >> END OF ALL PROCESSES << "; 
   	echo "-----------------------------------------------------------------------";echo ""; sleep 2;
   	echo ""; echo ' ALL THE PROGRAMS MANAGED BY "AM" ARE UPDATED! '; echo "";;
-  '-v'|'--version') echo "2.0.8";;
+  'lock')
+	while [ -n "$1" ]
+	do
+	if test -f /opt/$2/AM-updater; then
+	case $2 in
+	*) for var in $2;
+	do echo ""; read -p " Do you wish to keep $2  at the current version (y,N)?" yn
+		case $yn in
+		[Yy]* ) echo "";  mv /opt/$2/AM-updater /opt/$2/AM-LOCK 1>/dev/null &&
+			echo " $2 has been locked at current version!" && echo "" && exit; break;;
+		[Nn]*|* ) echo ""; echo " $2 is still updatable, exiting!"; echo ""; exit;; esac done;;
+	esac
+	else
+	echo ""; echo ' AM cannot manage updates for '$2', "AM-updater" file not found!'; echo ""; exit;
+	fi
+	done
+	shift;;
+  'unlock')
+	while [ -n "$1" ]
+	do
+	if test -f /opt/$2/AM-LOCK; then
+	case $2 in
+	*) for var in $2;
+	do echo ""; read -p " Do you wish to unlock updates for $2 (Y,n)?" yn
+		case $yn in
+		[Nn]* ) echo ""; echo " $2 is still locked at current version!"; echo ""; exit;;
+		[Yy]*|* ) echo "";  mv /opt/$2/AM-LOCK /opt/$2/AM-updater 1>/dev/null &&
+			echo ' '$2' can now receive updates, use the "am -u" command to update everything!' && echo "" && exit; break;; esac done;;
+	esac
+	else
+	echo ""; echo ' '$2' cannot be unlocked, "AM-LOCK" file not found!'; echo ""; exit;
+	fi
+	done
+	shift;;
+  'version'|'-v'|'--version') echo "2.0.9";;
   *) exec /opt/am/APP-MANAGER ;;
 esac
