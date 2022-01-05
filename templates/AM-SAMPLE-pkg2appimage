@@ -20,13 +20,26 @@ wget https://github.com/ivan-hc/AppMan/raw/main/applications/pkg2appimage/pkg2ap
 chmod a+x ./appimagetool ./pkg2appimage
 
 # CREATING THE APPIMAGE
-RECIPE='RECIPE'
+echo "app: SAMPLE
+binpatch: true
 
-echo "$RECIPE" >> recipe.yml;
+ingredients:
+  dist: sid
+  sources:
+    - deb http://ftp.debian.org/debian/ sid main contrib non-free
+  packages:
+    - SAMPLE" >> recipe.yml;
+
+cp /opt/$APP/tmp/recipe.yml /opt/$APP/recipe.yml
 
 ./pkg2appimage ./recipe.yml;
 
-ARCH=x86_64 ./appimagetool -n /opt/$APP/tmp/$APP/$APP.AppDir;
+ARCH=x86_64 ./appimagetool -n ./$APP/$APP.AppDir;
+DEB=$APP_
+mkdir version
+mv ./$APP/$DEB*_amd64.deb ./version/
+version=$(ls /opt/$APP/tmp/version)
+echo "$version" >> /opt/$APP/version
 
 cd ..;
 mv ./tmp/*.AppImage ./$APP;
@@ -39,22 +52,29 @@ ln -s /opt/$APP/$APP /usr/local/bin/$APP
 
 # SCRIPT TO UPDATE THE PROGRAM
 echo '#!/bin/sh
-version=$(exec /opt/'$APP'/'$APP' --version | grep -Eo "[+-]?[0-9]+([.][0-9]+)?+[+-]?[0-9]+([.][0-9]+)?")
-url="SOURCE-FOR-A-VERSION"
+version0=$(cat /opt/'$APP'/version)
+url="http://http.us.debian.org/debian/pool/main/FIRST-LETTER/'$APP'/$version0"
 if curl --output /dev/null --silent --head --fail "$url"; then
   echo "Update not needed, exit!"
- else
+else
   notify-send "A new version of '$APP' is available, please wait!"
-  mkdir /opt/$APP/tmp
-  cd /opt/$APP/tmp
+  mkdir /opt/'$APP'/tmp
+  cd /opt/'$APP'/tmp
   wget https://github.com/ivan-hc/AppMan/raw/main/applications/appimagetool/appimagetool
   wget https://github.com/ivan-hc/AppMan/raw/main/applications/pkg2appimage/pkg2appimage
   chmod a+x ./appimagetool ./pkg2appimage
-  echo "'$RECIPE'" >> recipe.yml
-  ./pkg2appimage ./recipe.yml
-  ARCH=x86_64 ./appimagetool -n /opt/'$APP'/tmp/'$APP'/'$APP'.AppDir
+  cp /opt/'$APP'/recipe.yml /opt/'$APP'/tmp/recipe.yml
+  ./pkg2appimage ./recipe.yml;
+  rm -R -f ./'$APP'/'$APP'.AppDir/'$APP'.desktop
+  ARCH=x86_64 ./appimagetool -n ./'$APP'/'$APP'.AppDir
+  mkdir version
+  mv ./'$APP'/'$DEB'*_amd64.deb ./version/
   cd ..
-  mv ./tmp/*.AppImage ./'$APP'
+  version=$(ls /opt/'$APP'/tmp/version)
+  if test -f ./tmp/version/$version; then rm -R -f ./version
+  fi
+  echo "$version" >> /opt/'$APP'/version
+  mv ./tmp/*.AppImage ./'$APP';
   chmod a+x ./'$APP'
   rm -R -f ./tmp
 fi' >> /opt/$APP/AM-updater
@@ -64,7 +84,7 @@ chmod a+x /opt/$APP/AM-updater
 echo "LAUNCHER" >> /usr/share/applications/$APP.desktop;
 
 # ICON
-wget wget https://raw.githubusercontent.com/ivan-hc/AppMan/main/applications/$APP/$APP.svg;
+WGET-THE-ICON
 
 currentuser=$(who | awk '{print $1}')
 chown -R $currentuser /opt/$APP
