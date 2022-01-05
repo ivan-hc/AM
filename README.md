@@ -138,7 +138,7 @@ This will download the ["APP-MANAGER"](https://github.com/ivan-hc/AM-application
 
   `lock`	Lock the selected program to the current installed version, this only works if a dedicated "AM-updater" script exists.
 
-  `unlock`	Unlock updates for the selected program. This option nulls "lock", the update file is renamed as "AM-updater" again, so that it can be intercepted when executing the "am -u" command (see "-u").
+  `unlock`	Unlock updates for the selected program. This option nulls "lock", the update file is renamed as "AM-updater" again, so that it can be intercepted when executing the `am -u` command (see `-u`).
 
 
 # What programs can be installed
