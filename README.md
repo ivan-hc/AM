@@ -136,6 +136,11 @@ This will download the ["APP-MANAGER"](https://github.com/ivan-hc/AM-application
   `-t`, `template` This option allows you to generate a custom script: the command will offer you to choose between different models that may be vary according to the type of application you want to create/install. Once you choose a number, the script will download the template and rename it using the <argument> you provided, all this will be created in the "Desktop" folder of the user. So you just have to edit the other parameters (LAUNCHER, AM-updater, Recipes, etc ...).
   		Please, consider submitting your custom script to "AM", at https://github.com/ivan-hc/AM-application-manager/pulls.
 
+  `lock`	Lock the selected program to the current installed version, this only works if a dedicated "AM-updater" script exists.
+
+  `unlock`	Unlock updates for the selected program. This option nulls "lock", the update file is renamed as "AM-updater" again, so that it can be intercepted when executing the "am -u" command (see "-u").
+
+
 # What programs can be installed
 AM installs/removes/updates/manages only standalone programs, ie those programs that can be run from a single directory in which they are contained (where `$PROGRAM` is the name of the application, AM installs them always into a dedicated folder named `/opt/$PROGRAM`).
 
