@@ -93,53 +93,66 @@ Copy/paste this command:
 This will download the ["APP-MANAGER"](https://github.com/ivan-hc/AM-application-manager/blob/main/APP-MANAGER) script in /opt/am, a symlink for it in /usr/local/bin named `am` and the /opt/am/remove script needed to uninstall `am` itself, if needed.
 
 # Usage
-
-  `am [option]`
+  `-a`, `about` Shows the basic information, links and source of each app. USAGE:
   
-  where option include:
+    am -a $PROGRAM
+-----------------------------------------------------------------------------
+  `-c`, `clean` Removes all the unnecessary files. USAGE:
   
-  `-h`, `help`	Prints this message.
-
-  `-f`, `files`	Shows the installed programs managed by "AM".
+    am -c
+-----------------------------------------------------------------------------
+  `-f`, `files` Shows the installed programs managed by "AM". USAGE:
   
-  `-l`, `list`	Shows the list of apps available in the repository.
-
-  `-s`, `sync`	Updates "AM" to a more recent version.
+    am -f
+-----------------------------------------------------------------------------
+  `-h`, `help` Prints this message. USAGE:
   
-  `-u`, `update` Update all the installed programs.
-
-  -----------------------------------------------------------------------
-
-  `am [option] [keywords]`
+    am -h
+-----------------------------------------------------------------------------
+  `-i`, `install` Install a program. This will be downloader/created into a dedicated /opt/$PROGRAM directory (containing a script to remove it and  another one to update it), the command is linked to a $PATH and a launcher $PROGRAM.desktop will be created in /usr/share/applications. USAGE:
   
-  where option include:  
-
-  `-q`, `query`	Use one or more keywords to search for in the list of available applications.
-
-  -----------------------------------------------------------------------
-      
-  `am [option] [argument]`
+    [sudo] am -i $PROGRAM
+-----------------------------------------------------------------------------
+  `-l`, `list` Shows the list of apps available in the repository. USAGE:
   
-  where option include:
+    am -l
+-----------------------------------------------------------------------------
+  `-q`, `query` Use one or more keywords to search for in the list of available applications. USAGE:
   
-  `-a`, `about`	Shows the basic information, links and source of each app. 
+    am -q $KEYWORD
+-----------------------------------------------------------------------------
+  `-r`, `remove` Removes the program and all the other files listed above using the instructions in /opt/$PROGRAM/remove. Confirmation is required (Y or N, default is N). USAGE:
   
-  `-i`, `install` Install a program. This will be taken directly from the repository of the developer (always the latest version):
-  		- the installer is stored in /opt/am/.cache;
-  		- the command is linked into a $PATH;
-		- the program is stored in /opt/<program> with all the related files (a script to remove this and all the files	listed above and a script to update everything).
-		The icon and the launcher are optional for no-ui programs. "AM" uses both AppImages and other standalone programs. PASSWORD REQUIRED!
-  		
-  `-r`, `remove` Removes the program and all the other files listed above using the instructions in /opt/$PROGRAM/remove.
-  		Confirmation is required (Y or N, default is N). PASSWORD REQUIRED!
-		
-  `-t`, `template` This option allows you to generate a custom script: the command will offer you to choose between different models that may be vary according to the type of application you want to create/install. Once you choose a number, the script will download the template and rename it using the <argument> you provided, all this will be created in the "Desktop" folder of the user. So you just have to edit the other parameters (LAUNCHER, AM-updater, Recipes, etc ...).
-  		Please, consider submitting your custom script to "AM", at https://github.com/ivan-hc/AM-application-manager/pulls.
-
-  `lock`	Lock the selected program to the current installed version, this only works if a dedicated "AM-updater" script exists.
-
-  `unlock`	Unlock updates for the selected program. This option nulls "lock", the update file is renamed as "AM-updater" again, so that it can be intercepted when executing the `am -u` command (see `-u`).
-
+    [sudo] am -r $PROGRAM
+-----------------------------------------------------------------------------
+  `-s`, `sync` Updates "AM" to a more recent version. USAGE:
+  
+    am -s
+-----------------------------------------------------------------------------
+  `-t`, `template` This option allows you to generate a custom script from a list of different templates that may be vary according to the kind of $PROGRAM you want to create/install/update. Once you choose a number, the script will download the template by renaming it using the argument "$PROGRAM" you provided above.  USAGE:
+  
+    am -t $PROGRAM
+-----------------------------------------------------------------------------
+  `-u`, `update` Update all the installed programs. USAGE:
+  
+    am -u
+-----------------------------------------------------------------------------
+  `-v`, `--version`, `version` Shows the version of "AM". USAGE:
+  
+    am -v
+-----------------------------------------------------------------------------
+  `-w`, `web` Shows the URLs of the sites/sources of $PROGRAM. USAGE:
+  
+    am -w $PROGRAM
+-----------------------------------------------------------------------------
+  `lock` Lock the selected $PROGRAM to the current installed version, this only works if a dedicated "AM-updater" script exists. USAGE:
+  
+    am lock $PROGRAM
+-----------------------------------------------------------------------------
+  `unlock` Unlock updates for the selected $PROGRAM. This option nulls "lock", the update file is renamed as "AM-updater" again, so that it can be intercepted when executing the "am -u" command (see "-u"). USAGE:
+  
+    am unlock $PROGRAM
+-----------------------------------------------------------------------------
 
 # What programs can be installed
 AM installs/removes/updates/manages only standalone programs, ie those programs that can be run from a single directory in which they are contained (where `$PROGRAM` is the name of the application, AM installs them always into a dedicated folder named `/opt/$PROGRAM`).
