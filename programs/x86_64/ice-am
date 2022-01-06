@@ -1,0 +1,115 @@
+#!/bin/sh
+
+APP=ice
+
+# CREATING THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP;
+
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/$APP.desktop /opt/$APP /usr/local/bin/$APP /usr/share/pixmaps/$APP.png" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+APP=ice
+mkdir tmp;
+cd tmp;
+
+# DOWNLOADING THE DEPENDENCIES
+wget https://github.com/ivan-hc/AppMan/raw/main/applications/appimagetool/appimagetool
+chmod a+x ./appimagetool
+
+# CREATING THE APPIMAGE
+wget https://github.com/peppermintos/ice/archive/refs/heads/master.zip
+unzip master.zip
+
+echo '#!/bin/sh
+HERE="$(dirname "$(readlink -f "${0}")")"
+export PATH="${HERE}/usr/bin/${PATH:+:$PATH}"
+export LD_LIBRARY_PATH="${HERE}/usr/lib/${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+export XDG_DATA_DIRS="${HERE}/usr/share/${XDG_DATA_DIRS:+:$XDG_DATA_DIRS}"
+EXEC="${HERE}/usr/bin/ice"
+exec "${EXEC}"' >> ./ice-master/AppRun
+cp ./ice-master/usr/share/applications/ice.desktop ./ice-master/
+cp ./ice-master/usr/share/pixmaps/ice.png ./ice-master/
+cp ./ice-master/usr/share/pixmaps/ice.png /usr/share/pixmaps/ice.png
+
+sed -i "s#/usr/bin/brave-browser#/usr/local/bin/brave#g" ./ice-master/usr/bin/ice
+sed -i "s#/usr/bin/google-chrome#/usr/local/bin/google-chrome#g" ./ice-master/usr/bin/ice
+sed -i "s#/usr/bin/chromium-browser#/usr/local/bin/chromium#g" ./ice-master/usr/bin/ice
+sed -i "s#/usr/bin/vivaldi-stable#/usr/local/bin/vivaldi-stable#g" ./ice-master/usr/bin/ice
+sed -i "s#/usr/bin/firefox#/usr/local/bin/firefox#g" ./ice-master/usr/bin/ice
+sed -i "s#/usr/bin/epiphany#/usr/local/bin/epiphany#g" ./ice-master/usr/bin/ice
+
+mv ./ice-master ./ice.AppDir
+chmod a+x ./ice.AppDir/AppRun
+
+cp ./ice.AppDir/AppRun /opt/$APP/AppRun
+
+ARCH=x86_64 ./appimagetool -n ./$APP.AppDir;
+
+cd ..;
+mv ./tmp/*.AppImage ./$APP;
+chmod a+x ./$APP
+
+rm -R -f ./tmp
+
+# LINK
+ln -s /opt/$APP/$APP /usr/local/bin/$APP
+
+# SCRIPT TO UPDATE THE PROGRAM
+echo '#!/bin/sh
+version0=$(cat /opt/'$APP'/version)
+url="http://http.us.debian.org/debian/pool/main/FIRST-LETTER/'$APP'/$version0"
+if curl --output /dev/null --silent --head --fail "$url"; then
+  echo "Update not needed, exit!"
+else
+  notify-send "A new version of '$APP' is available, please wait!"
+  mkdir /opt/'$APP'/tmp
+  cd /opt/'$APP'/tmp
+  wget https://github.com/ivan-hc/AppMan/raw/main/applications/appimagetool/appimagetool
+  chmod a+x ./appimagetool
+  wget https://github.com/peppermintos/ice/archive/refs/heads/master.zip
+  unzip master.zip
+  cp /opt/'$APP'/AppRun ./ice-master/AppRun
+  cp ./ice-master/usr/share/applications/ice.desktop ./ice-master/
+  cp ./ice-master/usr/share/pixmaps/ice.png ./ice-master/
+  sed -i "s#/usr/bin/brave-browser#/usr/local/bin/brave#g" ./ice-master/usr/bin/ice
+  sed -i "s#/usr/bin/google-chrome#/usr/local/bin/google-chrome#g" ./ice-master/usr/bin/ice
+  sed -i "s#/usr/bin/chromium-browser#/usr/local/bin/chromium#g" ./ice-master/usr/bin/ice
+  sed -i "s#/usr/bin/vivaldi-stable#/usr/local/bin/vivaldi-stable#g" ./ice-master/usr/bin/ice
+  sed -i "s#/usr/bin/firefox#/usr/local/bin/firefox#g" ./ice-master/usr/bin/ice
+  sed -i "s#/usr/bin/epiphany#/usr/local/bin/epiphany#g" ./ice-master/usr/bin/ice
+  mv ./ice-master ./ice.AppDir
+  cp /opt/'$APP'/AppRun ./ice.AppDir
+  chmod a+x ./ice.AppDir/AppRun
+  ARCH=x86_64 ./appimagetool -n ./'$APP'.AppDir
+  cd ..
+  mv ./tmp/*.AppImage ./'$APP';
+  chmod a+x ./'$APP'
+  rm -R -f ./tmp
+fi' >> /opt/$APP/AM-updater
+chmod a+x /opt/$APP/AM-updater
+
+# LAUNCHER
+echo "[Desktop Entry]
+Version=1.0
+Encoding=UTF-8
+Name=Ice
+Comment=Desktop integration for webapps
+GenericName=Ice
+Exec=ice
+Icon=ice
+Terminal=false
+Type=Application
+Categories=GTK;Network;
+StartupNotify=false
+GenericName[en_US]=Ice" >> /usr/share/applications/$APP.desktop;
+
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/$APP
+
+echo "
+
+ Ice-SSB is provided by https://github.com/peppermintos
+  
+";
