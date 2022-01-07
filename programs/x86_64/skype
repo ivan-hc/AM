@@ -1,0 +1,177 @@
+#!/bin/sh
+
+APP=skype
+
+# CREATE THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP
+
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/skypeforlinux.desktop /usr/share/applications/skypeforlinux-share.desktop /opt/$APP /usr/local/bin/skypeforlinux" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+
+# DOWNLOAD THE PROGRAM
+mkdir tmp
+cd ./tmp
+
+wget https://go.skype.com/skypeforlinux-64.deb
+ar x skypeforlinux-64.deb
+tar fx data.tar.gz
+cd ..
+mv ./tmp/usr/share/skypeforlinux/* ./
+cp ./tmp/usr/share/pixmaps/skypeforlinux.png ./skypeforlinux.png
+rm -R -f ./tmp
+skypevers=$(curl -v --silent https://repo.skype.com/deb/dists/stable/main/binary-amd64/Packages 2>&1 | grep -m 1 -Eo "Version: [+-]?[0-9]+([.][0-9]+)?+[+-]?[0-9]+([.][0-9]+)?")
+echo $skypevers >> /opt/$APP/skypevers
+
+# LINK
+ln -s /opt/$APP/skypeforlinux /usr/local/bin/skypeforlinux
+
+# SCRIPT TO UPDATE THE PROGRAM
+echo '#!/bin/sh
+version=$(cat /opt/skype/skypevers | cut -c 10-)
+skypevers=$(curl -v --silent https://repo.skype.com/deb/dists/stable/main/binary-amd64/Packages 2>&1 | grep -m 1 -Eo "Version: [+-]?[0-9]+([.][0-9]+)?+[+-]?[0-9]+([.][0-9]+)?")
+url=https://aur.archlinux.org/packages/skypeforlinux-stable-bin
+if curl -L -s $url | grep -ioF "stable/skypeforlinux_$version"; then
+  echo "Update not needed, exit!"
+else
+  notify-send "A new version of skype is available, please wait!"
+  mkdir /opt/skype/tmp
+  cd /opt/skype/tmp
+  wget https://go.skype.com/skypeforlinux-64.deb
+  ar x skypeforlinux-64.deb
+  tar fx data.tar.gz
+  cd ..
+  mv --backup=t ./tmp/usr/share/skypeforlinux/* ./
+  rm -R -f /opt/skype/skypevers
+  echo $skypevers >> /opt/skype/skypevers
+  rm -R -f ./tmp ./*~
+fi' >> /opt/$APP/AM-updater
+chmod a+x /opt/$APP/AM-updater
+
+# LAUNCHER STANDARD
+echo "[Desktop Entry]
+Name=Skype
+Comment=Skype Internet Telephony
+Exec=skypeforlinux %U
+Icon=/opt/$APP/skypeforlinux.png
+Terminal=false
+Type=Application
+StartupNotify=true
+StartupWMClass=Skype
+Encoding=UTF-8
+Categories=Network;Application;
+MimeType=x-scheme-handler/skype;x-scheme-handler/tel;x-scheme-handler/callto;
+X-KDE-Protocols=skype,tel,callto
+Actions=QuitSkype;
+
+[Desktop Action QuitSkype]
+Name=Quit Skype
+Name[ar]=إنهاء اسكايب
+Name[bg]=Изход от Skype
+Name[ca]=Surt de Skype
+Name[cs]=Ukončit Skype
+Name[da]=Afslut Skype
+Name[en]=Quit Skype
+Name[de]=Skype beenden
+Name[el]=Έξοδος από το Skype
+Name[es]=Salir de Skype
+Name[et]=Sulge Skype
+Name[fi]=Sulje Skype
+Name[fr]=Quitter Skype
+Name[he]=יציאה מסקייפ
+Name[hi]=स्काइप से बाहर निकलें
+Name[hr]=Izađi iz Skypea
+Name[hu]=A Skype bezárása
+Name[id]=Keluar dari Skype
+Name[it]=Esci da Skype
+Name[ja]=Skype を終了
+Name[ko]=Skype 종료
+Name[lt]=Išjungti „Skype“
+Name[lv]=Iziet no Skype
+Name[ms]=Keluar Skype
+Name[nb]=Avslutt Skype
+Name[nl]=Skype afsluiten
+Name[pl]=Zamknij Skype'a
+Name[pt]=Sair do Skype
+Name[pt_BR]=Encerrar o Skype
+Name[ro]=Închide Skype
+Name[ru]=Выйти из Скайпа
+Name[sk]=Ukončiť aplikáciu Skypee
+Name[sl]=Zapusti Skype
+Name[sr_Latn]=Zatvori Skype
+Name[sv]=Avsluta Skype
+Name[th]=จบการทำงาน Skype
+Name[tr]=Skype'tan Çık
+Name[uk]=Вийти зі Skype
+Name[vi]=Thoát Skype
+Name[zh_CN]=退出 Skype
+Name[zh_TW]=結束 Skype
+Exec=skypeforlinux --shutdown
+OnlyShowIn=Unity;" >> /usr/share/applications/skypeforlinux.desktop
+
+# LAUNCHER 2
+echo "[Desktop Entry]
+Name=Share with Skype
+Name[ar]=مشاركة باستخدام Skype
+Name[bg]=Споделяне със Skype
+Name[ca]=Comparteix-ho amb l'Skype
+Name[cs]=Sdílet na Skypu
+Name[da]=Del med Skype
+Name[de]=Mit Skype teilen
+Name[el]=Κοινή χρήση με το Skype
+Name[en]=Share with Skype
+Name[es]=Compartir con Skype
+Name[et]=Jaga Skype'is
+Name[fi]=Jaa Skypessä
+Name[fr]=Partager avec Skype
+Name[he]=שתף באמצעות סקייפ
+Name[hi]=Skype के जरिए साझा करें
+Name[hr]=Zajednički koristi putem Skypea
+Name[hu]=Megosztás a Skype-on keresztül
+Name[id]=Bagikan dengan Skype
+Name[it]=Condividi con Skype
+Name[ja]=Skype で共有
+Name[ko]=Skype와 공유
+Name[lt]=Bendrinti su „Skype“
+Name[lv]=Kopīgot programmā Skype
+Name[ms]=Kongsi dengan Skype
+Name[nb]=Del med Skype
+Name[nl]=Delen met Skype
+Name[pl]=Udostępnij przez Skype'a
+Name[pt]=Partilhar com o Skype
+Name[pt_BR]=Compartilhar com o Skype
+Name[ro]=Partajează cu Skype
+Name[ru]=Поделиться в Skype
+Name[sk]=Zdieľať v Skype
+Name[sl]=Skupna raba s Skypom
+Name[sr_Latn]=Deli sa programom Skype
+Name[sv]=Dela med Skype
+Name[th]=แชร์กับ Skype
+Name[tr]=Skype ile paylaş
+Name[uk]=Поділитись у Skype
+Name[vi]=Chia sẻ qua Skype
+Name[zh_CN]=Skype − 已注销。
+Name[zh_HK]=使用 Skype 共享
+Name[zh_TW]=使用 Skype 分享
+Exec=skypeforlinux --share-file=%f
+Icon=/opt/$APP/skypeforlinux.png
+Terminal=false
+Type=Application
+Encoding=UTF-8
+StartupNotify=false
+MimeType=application/octet-stream;
+NoDisplay=true
+NotShowIn=KDE" >> /usr/share/applications/skype4linux-share.desktop
+
+# CHANGE THE PERMISSIONS
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/$APP
+
+# MESSAGE
+echo "
+
+ Skype is provided by https://www.skype.com
+  
+";
