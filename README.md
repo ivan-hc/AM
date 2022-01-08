@@ -86,11 +86,18 @@ Such a simple name, like its structure and its intentions. "AM" is everything yo
 - "AM" fixes all the errors of AppMan, being the direct successor and the perfect replacement for it. The operation is the same, but what changes is the approach with the system on which it is installed: it is possible to use the same program on several different accounts, each installed program has its own script that compares the installed version with the one available in the sources (see [updates](#updates)), there is support for multiple architectures (including i686 and aarch64) and anyone can create a script to install that particular program (if available for its architecture). But yet, "AM" consider AppImage not to be a priority format, but only a fallback, because if a program is already made available in a bundle by the main developer, "AM" will prefer it. Some examples are given by Firefox, Thunderbird, NodeJS, Blender, Chromium Latest, SuperTuxKart... they are all programs provided in bundle, no other kind of package manager is really needed for them (including "AM" itself, that is only an helper to spead them to the masses). If you want learn more about the programs that can be installed by AM, click [here](#what-programs-can-be-installed).
 
 # Installation
-Copy/paste this command:
+To install "AM" quickly, just copy/paste the following command:
 	
     wget https://raw.githubusercontent.com/ivan-hc/APPLICATION-MANAGER/main/INSTALL && chmod a+x ./INSTALL && sudo ./INSTALL
 
-This will download the ["APP-MANAGER"](https://github.com/ivan-hc/AM-application-manager/blob/main/APP-MANAGER) script in /opt/am, a symlink for it in /usr/local/bin named `am` and the /opt/am/remove script needed to uninstall `am` itself, if needed.
+Or use "GIT":
+
+    git clone https://github.com/ivan-hc/AM-application-manager.git
+    cd AM-application-manager
+    chmod a+x INSTALL
+    sudo ./INSTALL
+    
+In both cases, the "INSTALL" script will create a dedicated /opt/am directory containing the ["APP-MANAGER"](https://github.com/ivan-hc/AM-application-manager/blob/main/APP-MANAGER) script (ie "AM" itself), a symlink for it in /usr/local/bin named `am` and the /opt/am/remove script needed to [uninstall](#uninstall) `am` itself, if needed. A temporary folder named /opt/am/.cache will be created too, in wich each installation script or list of available applications is downloaded.
 
 # Usage
   `-a`, `about` Shows the basic information, links and source of each app. USAGE:
