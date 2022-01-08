@@ -97,7 +97,7 @@ Or use "GIT":
     chmod a+x INSTALL
     sudo ./INSTALL
     
-In both cases, the "INSTALL" script will create a dedicated /opt/am directory containing the ["APP-MANAGER"](https://github.com/ivan-hc/AM-application-manager/blob/main/APP-MANAGER) script (ie "AM" itself), a symlink for it in /usr/local/bin named `am` and the /opt/am/remove script needed to [uninstall](#uninstall) `am` itself, if needed. A temporary folder named /opt/am/.cache will be created too, in wich each installation script or list of available applications is downloaded.
+In both cases, the "INSTALL" script will create a dedicated /opt/am directory containing the ["APP-MANAGER"](https://github.com/ivan-hc/AM-application-manager/blob/main/APP-MANAGER) script (ie "AM" itself), a symlink for it in /usr/local/bin named `am` and the /opt/am/remove script needed to [uninstall](#uninstall) "AM" itself, if needed. A temporary folder named /opt/am/.cache will be created too, in wich each installation script or list of available applications (for your architecture) is downloaded.
 
 # Usage
   `-a`, `about` Shows the basic information, links and source of each app. USAGE:
