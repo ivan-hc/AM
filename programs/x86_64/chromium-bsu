@@ -1,0 +1,107 @@
+#!/bin/sh
+
+APP=chromium-bsu
+
+# CREATING THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP;
+
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/$APP.desktop /opt/$APP /usr/games/$APP" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+APP=chromium-bsu
+mkdir tmp;
+cd tmp;
+
+# DOWNLOADING THE DEPENDENCIES
+wget https://github.com/ivan-hc/AppMan/raw/main/applications/appimagetool/appimagetool
+wget https://github.com/ivan-hc/AppMan/raw/main/applications/pkg2appimage/pkg2appimage
+chmod a+x ./appimagetool ./pkg2appimage
+
+# CREATING THE APPIMAGE
+echo "app: chromium-bsu
+binpatch: true
+
+ingredients:
+  dist: sid
+  sources:
+    - deb http://ftp.debian.org/debian/ sid main contrib non-free
+  packages:
+    - chromium-bsu" >> recipe.yml;
+
+cp /opt/$APP/tmp/recipe.yml /opt/$APP/recipe.yml
+
+./pkg2appimage ./recipe.yml;
+
+ARCH=x86_64 ./appimagetool -n ./$APP/$APP.AppDir;
+underscore=_
+mkdir version
+mv ./$APP/$APP$underscore*.deb ./version/
+version=$(ls /opt/$APP/tmp/version)
+echo "$version" >> /opt/$APP/version
+cp ./$APP/$APP.AppDir/$APP.png /opt/$APP/
+cd ..;
+mv ./tmp/*.AppImage ./$APP;
+chmod a+x ./$APP
+
+rm -R -f ./tmp
+
+# LINK
+ln -s /opt/$APP/$APP /usr/games/$APP
+
+# SCRIPT TO UPDATE THE PROGRAM
+echo '#!/bin/sh
+version0=$(cat /opt/'$APP'/version)
+url="http://http.us.debian.org/debian/pool/main/c/'$APP'/$version0"
+if curl --output /dev/null --silent --head --fail "$url"; then
+  echo "Update not needed, exit!"
+else
+  notify-send "A new version of '$APP' is available, please wait!"
+  mkdir /opt/'$APP'/tmp
+  cd /opt/'$APP'/tmp
+  wget https://github.com/ivan-hc/AppMan/raw/main/applications/appimagetool/appimagetool
+  wget https://github.com/ivan-hc/AppMan/raw/main/applications/pkg2appimage/pkg2appimage
+  chmod a+x ./appimagetool ./pkg2appimage
+  cp /opt/'$APP'/recipe.yml /opt/'$APP'/tmp/recipe.yml
+  ./pkg2appimage ./recipe.yml;
+  rm -R -f ./'$APP'/'$APP'.AppDir/'$APP'.desktop
+  ARCH=x86_64 ./appimagetool -n ./'$APP'/'$APP'.AppDir
+  mkdir version
+  mv ./'$APP'/'$APP''$underscore'*.deb ./version/
+  cd ..
+  version=$(ls /opt/'$APP'/tmp/version)
+  if test -f ./tmp/version/$version; then rm -R -f ./version
+  fi
+  echo "$version" >> /opt/'$APP'/version
+  mv ./tmp/*.AppImage ./'$APP';
+  chmod a+x ./'$APP'
+  rm -R -f ./tmp
+fi' >> /opt/$APP/AM-updater
+chmod a+x /opt/$APP/AM-updater
+
+# LAUNCHER
+echo "[Desktop Entry]
+Name=Chromium B.S.U.
+GenericName[sv]=Rymdskjutspel (Shoot'em up)
+GenericName=Shoot'em up space shooter
+Comment[ro]=O navă în spațiu trebuie să împuște inamicii
+Comment[sv]=Vertikalrullande skjutspel i rymdmiljö (Shoot'em up)
+Comment=Scrolling space shooter
+Exec=chromium-bsu
+Icon=/opt/$APP/chromium-bsu.png
+Terminal=false
+Type=Application
+Categories=Game;ArcadeGame;
+StartupNotify=false
+Keywords=Shooter;Space;
+X-AppImage-Version=0.9.16.1.glibc2.4" >> /usr/share/applications/$APP.desktop;
+
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/$APP
+
+echo "
+
+ Chromium-BSU is provided by https://chromium-bsu.sourceforge.io
+  
+";
