@@ -1,0 +1,113 @@
+#!/bin/sh
+
+APP=qbittorrent-lite
+
+# CREATING THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP;
+
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+
+mkdir tmp;
+cd tmp;
+
+# DOWNLOADING THE DEPENDENCIES
+wget https://github.com/ivan-hc/AppMan/raw/main/applications/appimagetool/appimagetool
+wget https://github.com/ivan-hc/AppMan/raw/main/applications/pkg2appimage/pkg2appimage
+chmod a+x ./appimagetool ./pkg2appimage
+
+# CREATING THE APPIMAGE
+echo 'app: qbittorrent
+binpatch: true
+
+ingredients:
+  dist: focal
+  ppas:
+    - qbittorrent-team/qbittorrent-stable
+  packages:
+    - qbittorrent
+    - libtorrent-rasterbar' >> recipe.yml;
+
+cp ./recipe.yml /opt/$APP/recipe.yml
+
+./pkg2appimage ./recipe.yml;
+
+rm ./qbittorrent/qbittorrent.AppDir/AppRun;
+
+echo '#!/bin/sh
+SELF=$(readlink -f "$0")
+HERE=${SELF%/*}
+export PATH="${HERE}/usr/bin/:${HERE}/usr/lib/mime/packages/:${HERE}/usr/lib/x86_64-linux-gnu/:${HERE}/usr/share/doc/libtorrent-rasterbar10/:${HERE}/usr/share/doc/qbittorrent/:${HERE}/usr/man/man1/:${HERE}/usr/share/metainfo/${PATH:+:$PATH}"
+export LD_LIBRARY_PATH="${HERE}/usr/lib/:${HERE}/usr/lib/x86_64-linux-gnu/:${HERE}/usr/lib/mime/:${HERE}/usr/share/doc/libtorrent-rasterbar10/:${HERE}/usr/share/doc/qbittorrent/${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+export XDG_DATA_DIRS="${HERE}/usr/share/${XDG_DATA_DIRS:+:$XDG_DATA_DIRS}"
+EXEC="${HERE}/usr/bin/qbittorrent"
+EXEC=$(grep -e '^Exec=.*' "${HERE}"/*.desktop | head -n 1 | cut -d "=" -f 2 | cut -d " " -f 1)
+exec "${EXEC}" "$@"' >> ./qbittorrent/qbittorrent.AppDir/AppRun;
+
+chmod a+x ./qbittorrent/qbittorrent.AppDir/AppRun;
+
+cp ./qbittorrent/qbittorrent.AppDir/AppRun /opt/$APP/AppRun
+
+ARCH=x86_64 ./appimagetool -n /opt/$APP/tmp/qbittorrent/qbittorrent.AppDir;
+
+cd ..;
+mv ./tmp/*.AppImage ./$APP;
+chmod a+x ./$APP
+
+rm -R -f ./tmp
+
+# LINK
+ln -s /opt/$APP/$APP /usr/local/bin/$APP
+
+# SCRIPT TO UPDATE THE PROGRAM
+echo '#!/bin/sh
+version=$(exec /opt/'$APP'/'$APP' --version)
+url="https://www.qbittorrent.org/download.php"
+if curl -L -s $url | grep -ioF "$version"; then
+  echo "Update not needed, exit!"
+ else
+  notify-send "A new version of qBittorrent from the PPA is available, please wait!"
+  mkdir /opt/'$APP'/tmp
+  cd /opt/'$APP'/tmp
+  wget https://github.com/ivan-hc/AppMan/raw/main/applications/appimagetool/appimagetool
+  wget https://github.com/ivan-hc/AppMan/raw/main/applications/pkg2appimage/pkg2appimage
+  chmod a+x ./appimagetool ./pkg2appimage
+  cp /opt/'$APP'/recipe.yml ./recipe.yml
+  ./pkg2appimage ./recipe.yml
+  rm ./qbittorrent/qbittorrent.AppDir/AppRun
+  cp /opt/'$APP'/AppRun ./qbittorrent/qbittorrent.AppDir/AppRun
+  chmod a+x ./qbittorrent/qbittorrent.AppDir/AppRun
+  ARCH=x86_64 ./appimagetool -n /opt/'$APP'/tmp/qbittorrent/qbittorrent.AppDir
+  cd ..
+  mv ./tmp/*.AppImage ./'$APP'
+  chmod a+x ./'$APP'
+  rm -R -f ./tmp
+fi' >> /opt/$APP/AM-updater
+chmod a+x /opt/$APP/AM-updater
+
+echo "[Desktop Entry]
+Categories=Network;FileTransfer;P2P;Qt;
+Exec='$APP' %U
+GenericName=BitTorrent client, unofficial AppImage built from the official PPA
+Comment=Download and share files over BitTorrent
+Icon=/opt/'$APP'/qbittorrent.svg
+MimeType=application/x-bittorrent;x-scheme-handler/magnet;
+Name=qBittorrent Lite
+Terminal=false
+Type=Application
+StartupNotify=false
+StartupWMClass=qbittorrent
+Keywords=bittorrent;torrent;magnet;download;p2p;" >> /usr/share/applications/$APP.desktop;
+wget wget https://raw.githubusercontent.com/ivan-hc/AppMan/main/applications/qbittorrent/qbittorrent.svg;
+
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/$APP
+
+echo "
+
+ qBittorrent Lite is built from https://launchpad.net/~qbittorrent-team
+  
+";
