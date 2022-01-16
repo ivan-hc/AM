@@ -15,8 +15,11 @@ mkdir tmp;
 cd tmp;
 
 # DOWNLOADING THE PROGRAM
-wget https://download-chromium.appspot.com/dl/Linux_x64?type=snapshots -O chrome-linux.zip
+build=$(curl -s "https://commondatastorage.googleapis.com/chromium-browser-snapshots/Linux_x64/LAST_CHANGE")
+wget https://commondatastorage.googleapis.com/chromium-browser-snapshots/Linux_x64/$build/chrome-linux.zip
 unzip chrome-linux.zip
+
+echo $build >> /opt/$APP/LAST_CHANGE
 
 cd ..;
 mv ./tmp/chrome-linux/* ./;
@@ -27,32 +30,44 @@ ln -s /opt/$APP/chrome /usr/local/bin/$APP
 
 # SCRIPT TO UPDATE THE PROGRAM
 echo '#!/bin/sh
-version=$(exec /opt/'$APP'/chrome --version | grep -Eo "[+-]?[0-9]+([.][0-9]+)?+[+-]?[0-9]+([.][0-9]+)?")
-url="https://community.chocolatey.org/packages/chromium/"
-if curl -L -s $url | grep -ioF "$version" 1>/dev/null; then
+version=$(cat /opt/'$APP'/LAST_CHANGE)
+build=$(curl -s "https://commondatastorage.googleapis.com/chromium-browser-snapshots/Linux_x64/LAST_CHANGE")
+if [ "$version" = "$build" ]; then
   echo "Update not needed, exit!"
  else
   notify-send "A new version of '$APP' is available, please wait!"
   mkdir /opt/'$APP'/tmp
   cd /opt/'$APP'/tmp
-  wget https://download-chromium.appspot.com/dl/Linux_x64?type=snapshots -O chrome-linux.zip
+  wget https://commondatastorage.googleapis.com/chromium-browser-snapshots/Linux_x64/$build/chrome-linux.zip
   unzip chrome-linux.zip
   cd ..
   mv --backup=t ./tmp/chrome-linux/* ./
   rm -R -f ./tmp ./*~
+  rm -R -f /opt/'$APP'/LAST_CHANGE && echo $build >> /opt/'$APP'/LAST_CHANGE
 fi' >> /opt/$APP/AM-updater
 chmod a+x /opt/$APP/AM-updater
 
 # LAUNCHER
 echo "[Desktop Entry]
-Type=Application
-Name=Chromium Latest
-Comment=Web Browser
+Version=1.0
+Name=Chromium Latest Snapshot
+GenericName=Web Browser
+Comment=Access the Internet
+Exec=$APP %U
+Terminal=false
 Icon=/opt/$APP/product_logo_48.png
-Exec=$APP %u
-Categories=GNOME;GTK;Network;WebBrowser;
-MimeType=text/html;text/xml;application/xhtml+xml;application/xml;application/rss+xml;application/rdf+xml;image/gif;image/jpeg;image/png;x-scheme-handler/http;x-scheme-handler/https;x-scheme-handler/ftp;x-scheme-handler/chrome;video/webm;application/x-xpinstall;
-StartupNotify=true" >> /usr/share/applications/$APP.desktop;
+Type=Application
+Categories=Network;WebBrowser;
+MimeType=application/pdf;application/rdf+xml;application/rss+xml;application/xhtml+xml;application/xhtml_xml;application/xml;image/gif;image/jpeg;image/png;image/webp;text/html;text/xml;x-scheme-handler/ftp;x-scheme-handler/http;x-scheme-handler/https;
+Actions=new-window;new-private-window;
+
+[Desktop Action new-window]
+Name=New Window
+Exec=$APP %U
+
+[Desktop Action new-private-window]
+Name=New Incognito Window
+Exec=$APP --incognito %U" >> /usr/share/applications/$APP.desktop;
 
 currentuser=$(who | awk '{print $1}')
 chown -R $currentuser /opt/$APP
