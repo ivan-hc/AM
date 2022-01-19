@@ -1,0 +1,82 @@
+#!/bin/sh
+
+APP=aaaaxy
+URL=https://github.com/divVerent/aaaaxy/releases/latest
+
+# CREATE THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP
+
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/$APP.desktop /opt/$APP /usr/games/$APP" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+
+# DOWNLOAD THE APPIMAGE
+mkdir tmp
+cd ./tmp
+
+wget https://github.com/$(wget $URL -O - | egrep '/.*/.*/.*AppImage' -o)
+
+version=$(ls /opt/$APP/tmp)
+echo "$version" >> /opt/$APP/version
+
+cd ..
+mv ./tmp/*mage ./$APP
+chmod a+x /opt/$APP/$APP
+rmdir ./tmp
+
+# LINK
+ln -s /opt/$APP/$APP /usr/games/$APP
+
+# SCRIPT TO UPDATE THE PROGRAM
+function1='$(wget '$URL' -O -'
+function2="egrep '/.*/.*/.*AppImage' -o)"
+function3='$(ls /opt/$APP/tmp)'
+echo '#!/bin/sh
+APP='$APP'
+version0=$(cat /opt/$APP/version)
+url='$URL'
+if curl -L -s $url | grep -ioF "$version0"; then
+  echo "Update not needed!"
+else
+  notify-send "A new version of '$APP' is available, please wait"
+  mkdir /opt/$APP/tmp
+  cd /opt/$APP/tmp
+  wget https://github.com/'$function1' | '$function2'
+  version='$function3'
+  cd ..
+  if test -f ./tmp/*mage; then rm ./version
+  fi
+  echo $version >> ./version
+  mv --backup=t ./tmp/*mage ./$APP
+  chmod a+x /opt/$APP/$APP
+  rm -R -f ./tmp ./*~
+fi' >> /opt/$APP/AM-updater
+chmod a+x /opt/$APP/AM-updater
+
+# LAUNCHER
+rm /usr/share/applications/$APP.desktop
+echo "[Desktop Entry]
+Name=AAAAXY
+Comment=A nonlinear puzzle platformer taking place in non-Euclidean geometry.
+Exec=aaaaxy
+Icon=/opt/$APP/aaaaxy.png
+Terminal=false
+Type=Application
+Categories=Game;ActionGame;
+StartupNotify=true" >> /usr/share/applications/$APP.desktop
+
+# ICON
+wget https://raw.githubusercontent.com/divVerent/aaaaxy/main/aaaaxy.png
+
+# CHANGE THE PERMISSIONS
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/$APP
+
+# MESSAGE
+echo '
+
+   AAAAXY is provided by https://github.com/divVerent/aaaaxy
+
+'
