@@ -32,6 +32,8 @@ The main goal of this tool is to provide the same updated applications to multip
 - [What programs can be installed](#what-programs-can-be-installed)
 - [Updates](#updates)
 - [Repository and Multiarchitecture](#repository-and-multiarchitecture)
+
+[Create your own script](#create-your-own-script)
 - [Scripts and rules](#scripts-and-rules)
 
 [Uninstall](#uninstall)
@@ -199,15 +201,22 @@ Click on the link of your architecture to see the list of all the apps available
 
 If you are interested, you can deliberately join this project.
 
+# Create your own script
+"AM" has a `-t` option (or `template`) with which you can get a script to customize according to your needs. With this option, you can quickly create scripts to download existing programs or even create AppImage or AppDir through tools such as appimagetool and pkg2appimage.
+
+The following video shows how to create and test an AppImage of "Abiword" from Debian Unstable repository with a custom AppRun (option 5):
+
+https://user-images.githubusercontent.com/88724353/150619523-a45455f6-a656-4753-93fe-aa99babc1083.mp4
+
+The currently available templates are stored [here](https://github.com/ivan-hc/AM-application-manager/tree/main/templates), more will be added with the next versions of "AM".
+
 # Scripts and rules	
-Once you've performed the command:
-	
-	sudo am -i $PROGRAM
-	
-The script will create:
-- a /opt/$PROGRAM folder containing the standalone app, an uninstaller script named `remove`, an `AM-updater` script needed by the `am -u` command and other files (if necessary);
+The "AM" installation scripts, including those created by you with the -t option that we have just seen, all follow very specific guidelines.
+
+Once you've performed the command `sudo am -i $PROGRAM`, the script will create:
+- a /opt/$PROGRAM folder containing the standalone app with all its files, by default "AM" also creates an uninstaller script named `remove`* (used by the `sudo am -r $PROGRAM` command) and an `AM-updater` script (used by the `am -u` command);
 - a symlink of /opt/$PROGRAM/$YOUR-PROGRAM into a $PATH (ie /usr/local/bin, /usr/bin, /bin, /usr/local/games, /usr/games...);
-- the icon (optional for command line tools), it can be placed in /usr/share/pixmaps, /usr/share/icons or in /opt/$PROGRAM (recommended);
+- the icon (optional for command line tools) is placed by default in /opt/$PROGRAM (recommended), but if you want you can put it in /usr/share/pixmaps or /usr/share/icons, you choose (as long as it is specified in the `remove` script);
 - the launcher (optional for command line tools) in /usr/share/applications.
 	
 ##### *NOTE that the /opt/$PROGRAM/remove script file is the more important part, it must contain the path of all the files created by your script, this way:
