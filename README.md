@@ -27,11 +27,10 @@ The main goal of this tool is to provide the same updated applications to multip
 - [Snappy versus "AM"](#-snappy-versus-am)
 - [Any other AppImage Manager versus "AM"](#-any-other-appimage-manager-versus-am)
 
-[System Requirements](#system-requirements)
-
 [Installation](#installation)
 - [Usage](#usage)
 - [What programs can be installed](#what-programs-can-be-installed)
+- [Programs intended for "rolling release" distributions only](#programs-intended-for-rolling-release-distributions-only)
 - [Updates](#updates)
 - [Repository and Multiarchitecture](#repository-and-multiarchitecture)
 
@@ -88,9 +87,6 @@ Such a simple name, like its structure and its intentions. "AM" is everything yo
 ## ◆ Any other AppImage Manager versus "AM"
 - AppImage is a good package format, the first in the history of portable apps for GNU / Linux (think that the first draft dates back to 2004) and are strongly requested by many users who prefer them to programs managed by Flatpak and Snappy ... yet their great limitation is that they do not have a real centralized repository. The idea of the creator of this packaging format is to lead users to a program developer's website as you would on Microsoft Windows, that is, by opening a browser and downloading it from there, and without having to use "special tools" (probably his was a clear reference to the command line). However, there are many independent developer projects that support their application database on sites that the creator of the AppImage considers "official" (even if they are very neglected). I myself have created a tool that could install, update and manage them, [AppMan](https://github.com/ivan-hc/AppMan), but it also has severe limitations, including checking for available updates (many non-updateable AppImage must be re-downloaded, regardless of whether the new version is actually available or not) and somewhat messy integration into multi-account systems. The same code is written in a universal language among GNU/Linux distributions, however AppMan was written only for the x86_64 architecture. These are all details that led me to reformulate a new project.
 - "AM" fixes all the errors of AppMan, being the direct successor and the perfect replacement for it. The operation is the same, but what changes is the approach with the system on which it is installed: it is possible to use the same program on several different accounts, each installed program has its own script that compares the installed version with the one available in the sources (see [updates](#updates)), there is support for multiple architectures (including i686 and aarch64) and anyone can create a script to install that particular program (if available for its architecture). But yet, "AM" consider AppImage not to be a priority format, but only a fallback, because if a program is already made available in a bundle by the main developer, "AM" will prefer it. Some examples are given by Firefox, Thunderbird, NodeJS, Blender, Chromium Latest, SuperTuxKart... they are all programs provided in bundle, no other kind of package manager is really needed for them (including "AM" itself, that is only an helper to spead them to the masses). If you want learn more about the programs that can be installed by AM, click [here](#what-programs-can-be-installed).
-
-# System Requirements
-Although many applications work correctly even on older GNU/Linux distributions, some programs compiled with pkg2appimage (for example GIMP and VLC) require [the latest versions of GLIBC](https://www.gnu.org/software/libc/), so it is preferable to install "AM" on Debian Testing/Unstable, Arch Linux, Slackware or any other rolling release distribution for maximum performance and compatibility.
 
 # Installation
 To install "AM" quickly, just copy/paste the following command:
@@ -181,7 +177,24 @@ These programs are taken:
 - from unofficial repositories of developers external to the project concerned (most of the time they are programs in AppImage format), but only if an official release is not available (see the various WINE, Zoom, VLC, GIMP...).
 
 You can consult basic information, links to sites and sources used through the related `am -a $PROGRAM` command or by clicking [here](https://github.com/ivan-hc/AM-application-manager/tree/main/programs/.about).
-	
+
+# Programs intended for rolling release distributions only
+Although the main part of the available applications work correctly even on older GNU/Linux distributions, the following programs compiled with pkg2appimage require [the latest versions of GLIBC](https://www.gnu.org/software/libc/):
+
+    - 0ad / 0ad-appimage / 0ad-bundle
+    - abiword
+    - asunder
+    - audacious
+    - billard-gl
+    - capbattleship
+    - chromium-bsu
+    - extremetuxracer
+    - gimp
+    - handbrake
+    - vlc / vlc+
+
+so it is preferable to install "AM" on Debian Testing/Unstable, Arch Linux, Slackware or any other rolling release distribution for maximum performance and compatibility. I will try to solve the problem asap.
+
 # Updates
 To update all the programs, just run the command (without `sudo`):
 
