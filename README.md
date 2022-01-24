@@ -182,12 +182,7 @@ You can consult basic information, links to sites and sources used through the r
 Although the main part of the available applications work correctly even on older GNU/Linux distributions, the following programs compiled with pkg2appimage require [the latest versions of GLIBC](https://www.gnu.org/software/libc/):
 
     - 0ad / 0ad-appimage / 0ad-bundle
-    - abiword
-    - asunder
     - audacious
-    - billard-gl
-    - capbattleship
-    - chromium-bsu
     - extremetuxracer
     - gimp
     - handbrake
