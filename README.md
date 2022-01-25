@@ -10,7 +10,7 @@ https://user-images.githubusercontent.com/88724353/150169396-7f215547-e7ee-4e3b-
 
  ------------------------------------------------------------------------
 
-AM is an application manager for all the most recent GNU / Linux distributions and which can be adapted to all available architectures, as its scripts are entirely based on the programs present in each basic installation (wget, curl, grep, egrep, find, rm, mkdir, mv, ls, echo...). The "am" command is very easy to use and can manage a better control of automatic updates for all the programs installed. Using it to install/remove standalone apps is as easy and ridiculous as typing a command at random, out of desperation!
+AM is an application manager for all the GNU / Linux distributions and which can be adapted to all available architectures, as its scripts are entirely based on the programs present in each basic installation (wget, curl, grep, egrep, find, rm, mkdir, mv, ls, echo...). The "am" command is very easy to use and can manage a better control of automatic updates for all the programs installed. Using it to install/remove standalone apps is as easy and ridiculous as typing a command at random, out of desperation!
 
 The main goal of this tool is to provide the same updated applications to multiple GNU/Linux distributions without having to change the package manager or the distro itself. This means that whatever distro you use, you will not miss your favorite programs or the need for a more updated version.
 
@@ -179,16 +179,17 @@ These programs are taken:
 You can consult basic information, links to sites and sources used through the related `am -a $PROGRAM` command or by clicking [here](https://github.com/ivan-hc/AM-application-manager/tree/main/programs/.about).
 
 # Programs intended for rolling release distributions only
-Although the main part of the available applications work correctly even on older GNU/Linux distributions, the following programs compiled with pkg2appimage require [the latest versions of GLIBC](https://www.gnu.org/software/libc/):
+Although the main part of the available applications work correctly even on older GNU/Linux distributions, for now the following programs compiled with pkg2appimage require [the latest versions of GLIBC](https://www.gnu.org/software/libc/):
 
     - abiword
     - asunder
     - audacious
     - gimp
     - handbrake
-    - vlc / vlc+
+    - vlc
+    - vlc+
 
-so it is preferable to install "AM" on Debian Testing/Unstable, Arch Linux, Slackware or any other rolling release distribution for maximum performance and compatibility. I will try to solve the problem asap.
+This problem is due to the use of Debian Unstable as the main source for recipes, an interim solution which on the one hand satisfies rolling release distributions, and on the other hand penalizes slightly older distributions. Personally, I will try to fix the problem as soon as possible by making the above programs at least compatible with the latest Debian Stable and/or the previous Ubuntu LTS.
 
 # Updates
 To update all the programs, just run the command (without `sudo`):
