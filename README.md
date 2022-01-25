@@ -184,7 +184,6 @@ Although the main part of the available applications work correctly even on olde
     - abiword
     - asunder
     - audacious
-    - extremetuxracer
     - gimp
     - handbrake
     - vlc / vlc+
