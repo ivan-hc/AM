@@ -30,7 +30,7 @@ The main goal of this tool is to provide the same updated applications to multip
 [Installation](#installation)
 - [Usage](#usage)
 - [What programs can be installed](#what-programs-can-be-installed)
-- [Programs intended for "rolling release" distributions only](#programs-intended-for-rolling-release-distributions-only)
+- [Programs that require an updated version of GLIBC](#programs-that-require-an-updated-version-of-glibc)
 - [Updates](#updates)
 - [Repository and Multiarchitecture](#repository-and-multiarchitecture)
 
@@ -178,7 +178,7 @@ These programs are taken:
 
 You can consult basic information, links to sites and sources used through the related `am -a $PROGRAM` command or by clicking [here](https://github.com/ivan-hc/AM-application-manager/tree/main/programs/.about).
 
-# Programs intended for rolling release distributions only
+# Programs that require an updated version of GLIBC
 Although the main part of the available applications work correctly even on older GNU/Linux distributions, for now the following programs compiled with pkg2appimage require [the latest versions of GLIBC](https://www.gnu.org/software/libc/):
 
     - abiword
@@ -189,7 +189,7 @@ Although the main part of the available applications work correctly even on olde
     - vlc
     - vlc+
 
-This problem is due to the use of Debian Unstable as the main source for recipes, an interim solution which on the one hand satisfies rolling release distributions, and on the other hand penalizes slightly older distributions. Personally, I will try to fix the problem as soon as possible by making the above programs at least compatible with the latest Debian Stable and/or the previous Ubuntu LTS.
+This problem is due to the use of Debian Unstable as the main source for recipes, an interim solution which on the one hand satisfies rolling release distributions. However, some scripts are available to compile recent and alternate versions of GLIBC on all systems that require it, starting with glibc-2.30. These scripts are purely experimental and still require testing. Use the "`am -q glib`" command to get a list of currently available versions.
 
 # Updates
 To update all the programs, just run the command (without `sudo`):
