@@ -189,7 +189,15 @@ Although the main part of the available applications work correctly even on olde
     - vlc
     - vlc+
 
-This problem is due to the use of Debian Unstable as the main source for recipes, an interim solution which on the one hand satisfies rolling release distributions. However, some scripts are available to compile recent and alternate versions of GLIBC on all systems that require it, starting with glibc-2.30. These scripts are purely experimental and still require testing. Use the "`am -q glib`" command to get a list of currently available versions.
+This problem is due to the use of Debian Unstable as the main source for recipes, an interim solution which satisfies only rolling release distributions.
+However, some scripts are available to compile recent and alternate versions of GLIBC on all systems that require them (for x86_64 and i686), starting from glibc-2.30 to the latest release!
+
+NOTE that these scripts are purely experimental and still require testing.
+
+Use the command
+
+    am -q glibc
+to get a list of currently available versions.
 
 # Updates
 To update all the programs, just run the command (without `sudo`):
