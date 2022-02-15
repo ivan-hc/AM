@@ -131,7 +131,7 @@ In both cases, the "INSTALL" script will create a dedicated /opt/am directory co
   
     am -q $KEYWORD
 -----------------------------------------------------------------------------
-  `-r`, `remove` Removes the program and all the other files listed above using the instructions in /opt/$PROGRAM/remove. Confirmation is required (Y or N, default is N). USAGE:
+  `-r`, `remove` Removes the program and all the other files listed above using the instructions in /opt/$PROGRAM/remove. Confirmation is required (Y or N, default is Y). USAGE:
   
     [sudo] am -r $PROGRAM
 -----------------------------------------------------------------------------
