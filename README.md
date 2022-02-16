@@ -46,6 +46,8 @@ The main goal of this tool is to provide the same updated applications to multip
 
 [Conclusions](#conclusions)
 
+[Related project](#related-projects)
+
 -----------------------------------------------------------------------------
 
 # Introducing "AM"
@@ -291,5 +293,11 @@ However, it is possible to solve the problem by customizing the scripts, perhaps
 
 # Conclusions
 Having encouraged you to visit this page is already a huge achievement for me, being this my second creation after AppMan. This project is much more demanding than AppMan, as each individual program requires a different script to check the version of the installed program and compare it to the source link, so each individual program can take hours of testing before being published in the repository, and between my real job and other family commitments, I try to carve up some free time for this project.
-	
+
 If you wish, you can support me, this work and my passion with a small [donation](https://paypal.me/ivanalexhc), I will gladly appreciate it. Thank you.
+
+# Related projects
+##### Sources and tools used in many scripts
+- appimagetool from https://github.com/AppImage/AppImageKit
+- libunionpreload from https://github.com/project-portable/libunionpreload
+- pkg2appimage, at https://github.com/AppImage/pkg2appimage
