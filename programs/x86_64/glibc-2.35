@@ -1,0 +1,56 @@
+#!/bin/sh
+
+APP=glibc-2.35
+
+if command -v bison >/dev/null 2>&1 ; then
+
+# CREATING THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP;
+
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+
+# DOWNLOAD AND COMPILE THE PROGRAM
+mkdir ./tmp; cd ./tmp
+wget http://ftp.gnu.org/gnu/glibc/$APP.tar.gz
+tar zxvf $APP.tar.gz
+cd $APP
+mkdir build
+cd build
+../configure --prefix=/opt/$APP
+make -j4
+sudo make install
+rm -R -f /opt/$APP/tmp
+
+# CREATING THE RUNNER
+echo '#!/bin/sh
+HERE="$(dirname "$(readlink -f "${0}")")"
+export PATH="${HERE}/bin/:${HERE}/sbin/${PATH:+:$PATH}"
+export LD_LIBRARY_PATH="${HERE}/lib/:${HERE}/lib/audit/:${HERE}/lib/gconv/${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+export XDG_DATA_DIRS="${HERE}/usr/share/${XDG_DATA_DIRS:+:$XDG_DATA_DIRS}"
+export LD_PRELOAD="${HERE}"/lib/libc.so.6:"${HERE}"/lib/libpthread.so.0
+exec bash -x $LD_PRELOAD' >> /opt/$APP/$APP;
+chmod a+x /opt/$APP/$APP
+
+# LINK
+ln -s /opt/$APP/$APP /usr/local/bin/$APP
+
+# CHANGE THE PERMISSIONS
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/$APP
+
+# MESSAGE
+echo "
+
+ $APP has been compiled successfully!
+  
+";
+
+else
+echo " GLIBC requires 'bison' to be compiled!"
+exit
+fi
+
