@@ -6,40 +6,78 @@ mkdir /opt/$APP
 cd /opt/$APP
 
 echo '#!/bin/sh
-rm -R -f /opt/'$APP' /usr/share/pixmaps/'$APP'.png /usr/share/applications/'$APP'.desktop /usr/bin/'$APP'' >> /opt/$APP/remove
+rm -R -f /opt/'$APP' /usr/share/pixmaps/'$APP'-browser.png /usr/share/applications/'$APP'.desktop /usr/bin/'$APP'-browser' >> /opt/$APP/remove
 chmod a+x /opt/$APP/remove
 
 mkdir tmp
 cd ./tmp
 
-version=$(curl -L -s https://chromedriver.storage.googleapis.com/LATEST_RELEASE | grep -Eo "[0-9]+([.][0-9]+)?+[+-]?" | rev | cut -c 4- | rev)
-wget -r -erobots=off -l1 -np -A $APP-$version*-i586-1alien.txz -nd http://www.slackware.com/~alien/slackbuilds/$APP/pkg/current/;
-tar xf ./*.txz
+# DOWNLOADING THE DEPENDENCIES
+#wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-$(uname -m).AppImage -O appimagetool
+# wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/tools/pkg2appimage # 64 BIT ONLY (comment to disable)
+wget https://github.com/ivan-hc/pkg2appimage-32bit/releases/download/continuous/pkg2appimage-i386.AppImage -O pkg2appimage # 32 BIT ONLY (uncomment to enable)
+chmod a+x ./pkg2appimage
+
+# CREATING THE APPIMAGE: APPDIR FROM A RECIPE...
+echo "app: chromium-browser
+binpatch: true
+
+ingredients:
+  dist: bionic
+  sources:
+    - deb http://cz.archive.ubuntu.com/ubuntu bionic-updates main universe
+  packages:
+    - chromium-browser
+    - chromium-browser-l10n
+    - chromium-chromedriver
+    - chromium-codecs-ffmpeg
+    - chromium-codecs-ffmpeg-extra" >> recipe.yml;
+
+cp /opt/$APP/tmp/recipe.yml /opt/$APP/recipe.yml
+
+./pkg2appimage ./recipe.yml;
+
+underscore=_
+mkdir version
+mv ./$APP-browser/$APP-browser$underscore*.deb ./version/
+version=$(ls /opt/$APP/tmp/version)
+echo "$version" >> /opt/$APP/version
+
+cp ./$APP-browser/$APP-browser.AppDir/usr/share/icons/hicolor/128x128/apps/* /usr/share/pixmaps/
+cp ./$APP-browser/$APP-browser.AppDir/usr/share/applications/* /usr/share/applications/
+
 cd ..
-mv ./tmp/usr/lib/$APP/* ./
-cp ./tmp/usr/share/applications/*desktop /usr/share/applications/$APP.desktop
-cp ./tmp/usr/share/icons/hicolor/256x256/apps/*png /usr/share/pixmaps/$APP.png
-rm -R -f ./tmp
+
+mv ./tmp/chromium-browser/chromium-browser.AppDir/usr/lib/chromium-browser/* ./
+rm -R -f ./tmp ./chrome-sandbox
 
 # LINK
-ln -s /opt/$APP/$APP /usr/bin/$APP
+ln -s /opt/$APP/$APP-browser /usr/bin/$APP-browser
 
 # SCRIPT TO UPDATE THE PROGRAM
+initial=$(echo $APP | head -c 1)
 echo '#!/bin/sh
-version0=$(exec /opt/'$APP'/'$APP' --version | grep -Eo "[+-]?[0-9]+([.][0-9]+)?+[+-]?[0-9]+([.][0-9]+)?")
-url="http://www.slackware.com/~alien/slackbuilds/'$APP'/pkg/current/'$APP'-$version0-i586-1alien.txz"
+version0=$(cat /opt/'$APP'/version)
+url="http://security.ubuntu.com/ubuntu/pool/universe/c/chromium-browser/$version0"
 if curl --output /dev/null --silent --head --fail "$url"; then
   echo "Update not needed, exit!"
 else
-  notify-send "A new version of Chromium is available, please wait!"
+  notify-send "A new version of '$APP' is available, please wait!"
   mkdir /opt/'$APP'/tmp
   cd /opt/'$APP'/tmp
-  version=$(curl -L -s https://chromedriver.storage.googleapis.com/LATEST_RELEASE | grep -Eo "[0-9]+([.][0-9]+)?+[+-]?" | rev | cut -c 4- | rev)
-  wget -r -erobots=off -l1 -np -A '$APP'-$version*-i586-1alien.txz -nd http://www.slackware.com/~alien/slackbuilds/'$APP'/pkg/current/
-  tar xf ./*.txz
+  wget https://github.com/ivan-hc/pkg2appimage-32bit/releases/download/continuous/pkg2appimage-i386.AppImage -O pkg2appimage
+  chmod a+x ./pkg2appimage
+  cp /opt/'$APP'/recipe.yml /opt/'$APP'/tmp/recipe.yml
+  ./pkg2appimage ./recipe.yml;
+  mkdir version
+  mv ./'$APP'-browser/'$APP'-browser'$underscore'*.deb ./version/
   cd ..
-  mv --backup=t ./tmp/usr/lib/'$APP'/* ./
-  rm -R -f ./tmp ./*~
+  version=$(ls /opt/'$APP'/tmp/version)
+  if test -f ./tmp/version/$version; then rm -R -f ./version
+  fi
+  echo "$version" >> /opt/'$APP'/version
+  mv ./tmp/chromium-browser/chromium-browser.AppDir/usr/lib/chromium-browser/* ./
+  rm -R -f ./tmp ./chrome-sandbox
 fi' >> /opt/$APP/AM-updater
 chmod a+x /opt/$APP/AM-updater
 
