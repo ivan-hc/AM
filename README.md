@@ -208,6 +208,9 @@ to get a list of currently available versions.
 To update all the programs, just run the command (without `sudo`):
 
 	am -u
+To update just one program (and to read the output from the shell):
+
+        am -u $PROGRAM
 Here are the ways in which the updates will be made:
 - Updateable AppImages can rely on an [appimageupdatetool](https://github.com/AppImage/AppImageUpdate)-based "updater" or on their external zsync file (if provided by the developer);
 - Non-updateable AppImages and other standalone programs will be replaced only with a more recent version if available, this will be taken by comparing the installed version with the one available on the source (using "curl", "grep" and "cat"), the same is for some AppImages created with [pkg2appimage](https://github.com/AppImage/pkg2appimage) and [appimagetool](https://github.com/AppImage/AppImageKit);
