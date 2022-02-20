@@ -1,49 +1,52 @@
 #!/bin/sh
 
 APP=libreoffice
-URL="https://libreoffice.soluzioniopen.com/daily/86/LibreOfficeDev-daily.standard-x86_64.AppImage"
 
-mkdir /opt/libreoffice
-cd /opt/libreoffice
+# CREATING THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP;
 
+# ADD THE REMOVER
 echo '#!/bin/sh' >> /opt/libreoffice/remove
 echo "rm -R -f /usr/share/applications/$APP* /opt/libreoffice /usr/local/bin/$APP" >> /opt/libreoffice/remove
 chmod a+x /opt/libreoffice/remove
 
 mkdir tmp;
-cd ./tmp;
-wget $URL;
-wget $URL.asc;
-wget $URL.zsync;
-wget $URL.zsync.asc;
-cd ..
-mv ./tmp/*mage ./$APP
-chmod a+x /opt/libreoffice/$APP
-mv ./tmp/*mage.zsync ./$APP.zsync
-mv ./tmp/*mage.asc ./$APP.asc
-mv ./tmp/*zsync.asc ./$APP.zsync.asc
-rmdir ./tmp
+cd tmp;
+
+# DOWNLOAD THE PROGRAM
+wget -r -erobots=off -l1 -np -A LibreOfficeDev-*0*.standard.help-x86_64.AppImage -nd https://libreoffice.soluzioniopen.com/daily/86
+version=$(ls /opt/$APP/tmp)
+echo "$version" >> /opt/$APP/version
+cd ..;
+mv ./tmp/*.AppImage ./$APP;
+chmod a+x ./$APP
+rm -R -f ./tmp
 
 # LINK
 ln -s /opt/$APP/$APP /usr/local/bin/$APP
 
 # SCRIPT TO UPDATE THE PROGRAM
-echo '#!/bin/sh' >> /opt/$APP/AM-updater
-echo "cd /opt/libreoffice
-mkdir tmp
-cd ./tmp
-wget $URL.asc;
-wget $URL.zsync;
-wget $URL.zsync.asc
-cd ..
-mv ./tmp/*mage.zsync ./$APP.zsync
-mv ./tmp/*mage.asc ./$APP.asc
-mv ./tmp/*zsync.asc ./$APP.zsync.asc
-rmdir ./tmp
-zsync /opt/$APP/$APP.zsync
-rm -R -f /opt/$APP/*zs-old /opt/$APP/*.part
-chmod a+x /opt/$APP/$APP" >> /opt/$APP/AM-updater
-
+initial=$(echo $APP | head -c 1)
+echo '#!/bin/sh
+version0=$(cat /opt/'$APP'/version)
+url="https://libreoffice.soluzioniopen.com/daily/86/$version0"
+if curl --output /dev/null --silent --head --fail "$url"; then
+  echo "Update not needed, exit!"
+else
+  notify-send "A new version of '$APP' is available, please wait!"
+  mkdir /opt/'$APP'/tmp
+  cd /opt/'$APP'/tmp
+  wget -r -erobots=off -l1 -np -A LibreOfficeDev-*0*.standard.help-x86_64.AppImage -nd https://libreoffice.soluzioniopen.com/daily/86
+  cd ..
+  version=$(ls /opt/'$APP'/tmp/version)
+  if test -f ./tmp/*mage; then rm ./version
+  fi
+  echo "$version" >> ./version
+  mv ./tmp/*.AppImage ./'$APP'
+  chmod a+x ./'$APP'
+  rm -R -f ./tmp
+fi' >> /opt/$APP/AM-updater
 chmod a+x /opt/$APP/AM-updater
 
 echo "#
