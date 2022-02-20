@@ -148,6 +148,9 @@ In both cases, the "INSTALL" script will create a dedicated /opt/am directory co
   `-u`, `update` Update all the installed programs. USAGE:
   
     am -u
+   To update just one program and read the shell's output, USAGE:
+
+    am -u $PROGRAM
 -----------------------------------------------------------------------------
   `-v`, `--version`, `version` Shows the version of "AM". USAGE:
   
