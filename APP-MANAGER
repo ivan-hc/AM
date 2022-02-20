@@ -99,6 +99,10 @@ case "$1" in
   -u, update
   USAGE: "am -u"
   DESCRIPTION: Update all the installed programs.
+  -u, update
+  USAGE: "am -u $PROGRAM"
+  DESCRIPTION: Update the selected program, this also allows you to see
+  all the logs during the installation process.
 
   -v, --version, version
   USAGE: "am -v"
@@ -255,10 +259,14 @@ case "$1" in
 	esac
 	shift
 	done;;
-  '-u'|'update') echo ""; echo ' "AM" CAN MANAGE UPDATES FOR THE FOLLOWING PROGRAMS: '; echo "";
-  	cd /opt && find -name 'AM-updater' -printf " %h\n" | sort -u | xargs -n 1 basename; echo "" ;
-	echo ' ALL OTHERS ARE FIXED VERSIONS OR CAN MANAGE UPDATES BY THEMSELF'; echo ""; sleep 1;
-	read -p " This may take several minutes, do you wish to continue (Y,n)?" yn
+  '-u'|'update') 
+	while [ -n "$1" ]
+	do
+	case $2 in
+	'') echo ""; echo ' "AM" CAN MANAGE UPDATES FOR THE FOLLOWING PROGRAMS: '; echo "";
+  		cd /opt && find -name 'AM-updater' -printf " %h\n" | sort -u | xargs -n 1 basename; echo "" ;
+		echo ' ALL OTHERS ARE FIXED VERSIONS OR CAN MANAGE UPDATES BY THEMSELF'; echo ""; sleep 1;
+		read -p " This may take several minutes, do you wish to continue (Y,n)?" yn
 		case $yn in
 		[Nn]* ) echo ""; exit;;
 		[Yy]*|* ) echo ""; echo " THE UPDATE VERIFICATION PROCESS IS IN PROGRESS, PLEASE WAIT..."; sleep 2; echo ""; echo "-----------------------------------------------------------------------";
@@ -268,11 +276,31 @@ case "$1" in
 			SECONDS=0; $(sh -x ./AM-updater > /dev/null 2>&1); duration=$SECONDS;
 			echo " "$(echo $f | cut -c 5- | tr -d '/')" is updated!" | tr a-z A-Z && echo " $(($duration / 60)) minutes and $(($duration % 60)) seconds elapsed!" && echo "";
 			else
-			echo ""  > /dev/null 2>&1; fi; done; rm -R -f /opt/am/.cache/* /opt/*/tmp; echo "-----------------------------------------------------------------------";
-			am -s; echo "-----------------------------------------------------------------------"; echo " >> END OF ALL PROCESSES << "; 
+			echo ""  > /dev/null 2>&1; fi; done;
+			rm -R -f /opt/am/.cache/* /opt/*/tmp; echo "-----------------------------------------------------------------------"; am -s; 
+			echo "-----------------------------------------------------------------------";
+			echo " >> END OF ALL PROCESSES << "; 
 		  	echo "-----------------------------------------------------------------------";echo ""; sleep 2;
 		  	echo ' ALL THE PROGRAMS MANAGED BY "AM" ARE UPDATED! '; echo "" && exit; break;;
-	esac;;
+		esac;;
+	*) if test -f /opt/$2/AM-updater; then
+			echo "" && echo ' Updating '$2'...' | tr a-z A-Z && echo "" && /opt/$2/AM-updater && echo "" &&
+			SECONDS=0; $(sh -x ./AM-updater > /dev/null 2>&1); duration=$SECONDS;
+			echo " " $2" is updated!" | tr a-z A-Z && echo " $(($duration / 60)) minutes and $(($duration % 60)) seconds elapsed!" && echo "" && break;
+		else
+			echo "" && echo ' "AM" CANNOT MANAGE UPDATES FOR "'$2'"' | tr a-z A-Z &&
+			UPDATERS=$(cd /opt/$2 && find . -name "*update*" -print)
+			if [[ -n "$UPDATERS" ]]; then
+				echo ' This program probably includes its own update system!' | tr a-z A-Z &&
+				echo ' References to the word "update" were found in its directory!'
+			else
+				echo "" && break
+			fi
+			echo "" && exit;
+		fi
+	esac
+	shift
+	done;;
   '-w'|'web')
 	while [ -n "$1" ]
 	do
@@ -326,6 +354,6 @@ case "$1" in
 	fi
 	done
 	shift;;
-  'version'|'-v'|'--version') echo "2.2.3";;
+  'version'|'-v'|'--version') echo "2.2.4";;
   *) exec /opt/am/APP-MANAGER ;;
 esac
