@@ -113,6 +113,10 @@ In both cases, the "INSTALL" script will create a dedicated /opt/am directory co
   
     am -c
 -----------------------------------------------------------------------------
+  `-d`, `db`, `database`, `terminal` Opens a shell in /opt/am/appdb with a full support for a dedicated bash autocompletion (complete a keyword with the TAB key) using the names of all installable applications in the "AM" repository. USAGE:
+  
+    am -d
+-----------------------------------------------------------------------------
   `-f`, `files` Shows the installed programs managed by "AM". USAGE:
   
     am -f
