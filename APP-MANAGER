@@ -162,16 +162,16 @@ case "$1" in
 	echo "" && for i in {5..1}; do echo -ne " $i\r" && sleep 1; done &&
 	echo ""; rm -R -f /opt/am/appdb/*; rm -R -f /opt/am/.cache/*; rm -R -f /opt/*/tmp; echo "" && echo " DONE!"; echo "" ;;
   '-d'|'db'|'database'|'terminal')
-	for f in /opt/am/appdb; do exo-open --working-directory "$f" --launch TerminalEmulator; exit; done;;
+	cd /opt/am/appdb && exec bash;;
   '-f'|'files') echo ""; echo $(echo "YOU HAVE INSTALLED "; cd /opt && find -name 'remove' -printf "%h\n" | sort -u | wc -l;
   	echo " STANDALONE PROGRAMS MANAGED BY THE 'AM' COMMAND:"); echo "";
   	cd /opt && find -name 'remove' -printf "%h\n" | sort -u | xargs -n 1 basename; echo "" ;;
   '-i'|'install')
 	while [ -n "$1" ]
-	do sudo echo "";
+	do echo "";
 	case $2 in
 	am) echo '"AM" IS ALREADY INSTALLED!'; exit;;
-	*) if test -f /opt/$2/remove; then
+	*) if test -f /opt/*$2*/remove; then
 	echo '"AM" HAS ALREADY INSTALLED "'$2'" PREVIOUSLY, THE DIRECTORY "/opt/'$2'" HAS ALREADY BEEN CREATED IN A PREVIOUS INSTALLATION! IF YOU HAVE ISSUES IN RUNNING THE PROGRAM, TRY TO REINSTALL IT USING THE FOLLOWING COMMAND:' &&
 	echo "" && echo ' sudo am -r '$2' && sudo am -i '$2'' && echo "" &&
 	echo 'OR REPORT THE BUG AT https://github.com/IVAN-HC/AM-APPLICATION-MANAGER/issues' && echo ""; exit;
@@ -179,11 +179,15 @@ case "$1" in
 	if curl --output /dev/null --silent --head --fail $URL/programs/$arch/$2  1>/dev/null; then
 	case $2 in
 	*) for var in $2;
-	do cd /opt/am/.cache; mkdir tmp; cd tmp; wget $URL/programs/$arch/$2; cd ..; mv ./tmp/$2 ./$2; rmdir ./tmp;
-	chmod a+x /opt/am/.cache/$2; sudo /opt/am/.cache/$2; chown -R $currentuser /opt/am/.cache/*; clear && echo "";
+	do cd /opt/am/.cache; mkdir tmp; cd tmp; wget -q $URL/programs/$arch/$2; cd ..; mv ./tmp/$2 ./$2; rmdir ./tmp;
+	chmod a+x /opt/am/.cache/$2; sudo /opt/am/.cache/$2; chown -R $currentuser /opt/am/.cache/*; echo "";
 	unset $LATESTSCRIPT
 	LATESTSCRIPT=$(cd /opt/am/.cache && ls -tp | grep -v /$ | head -1)
-	echo ' "'$LATESTSCRIPT'" has been installed!' | tr a-z A-Z && am -a $LATESTSCRIPT && chown -R $currentuser /opt/am/.cache/about 2> /dev/null;
+	if test -f /opt/*$2*/remove; then
+		clear; echo ' "'$LATESTSCRIPT'" has been installed!' | tr a-z A-Z && am -a $LATESTSCRIPT && chown -R $currentuser /opt/am/.cache/about 2> /dev/null;
+	else
+		echo " INSTALLATION ABORTED!";
+	fi
 	exit; done
 	esac
 	else
@@ -385,6 +389,6 @@ case "$1" in
 	fi
 	done
 	shift;;
-  'version'|'-v'|'--version') echo "2.2.5";;
+  'version'|'-v'|'--version') echo "2.3.0";;
   *) exec /opt/am/APP-MANAGER ;;
 esac
