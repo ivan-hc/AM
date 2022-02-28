@@ -113,10 +113,6 @@ In both cases, the "INSTALL" script will create a dedicated /opt/am directory co
   
     am -c
 -----------------------------------------------------------------------------
-  `-d`, `db`, `database`, `terminal` Opens a shell in /opt/am/appdb with a full support for a dedicated bash autocompletion (complete a keyword with the TAB key) using the names of all installable applications in the "AM" repository. USAGE:
-  
-    am -d
------------------------------------------------------------------------------
   `-f`, `files` Shows the installed programs managed by "AM". USAGE:
   
     am -f
@@ -163,6 +159,14 @@ In both cases, the "INSTALL" script will create a dedicated /opt/am directory co
   `-w`, `web` Shows the URLs of the sites/sources of $PROGRAM. USAGE:
   
     am -w $PROGRAM
+-----------------------------------------------------------------------------
+  `--disable-completion` Removes the /etc/bash_completion.d/am-completion.sh script previously created with the "[sudo] am --enable-completion" command. USAGE:
+  
+    am --disable-completion  
+-----------------------------------------------------------------------------
+  `--enable-completion` Create a bash completion script in /etc/bash_completion.d to complete a keyword with the TAB key using the names of all installable applications in the "AM" repository. USAGE:
+  
+    am --enable-completion
 -----------------------------------------------------------------------------
   `lock` Lock the selected $PROGRAM to the current installed version, this only works if a dedicated "AM-updater" script exists. USAGE:
   
