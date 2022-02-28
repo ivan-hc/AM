@@ -37,6 +37,8 @@ The main goal of this tool is to provide the same updated applications to multip
 [Create your own script](#create-your-own-script)
 - [Scripts and rules](#scripts-and-rules)
 
+[How to enable bash completion](#how-to-enable-bash-completion)
+
 [Uninstall](#uninstall)
 - [Install/update/remove programs without "AM"](#installupdateremove-programs-without-am)
 
@@ -262,6 +264,21 @@ Once you've performed the command `sudo am -i $PROGRAM`, the script will create:
 	rm -R -f /opt/$PROGRAM /usr/local/bin/$PROGRAM /usr/share/applications/$PROGRAM.desktop	
 	
 This scheme guarantees the removal of the program and all its components even without having to use "AM". Learn more [here](#how-to-uninstall-a-program-using-am). 
+
+# How to enable bash completion
+Since 2.3.1 release "AM" has its inbuilt bash completion script that can be enabled using the following command (as root):
+
+    sudo am --enable-completion
+This will ceate a bash completion script in /etc/bash_completion.d named `am-completion.sh` needed to complete a keyword with the TAB key using the names of all the main options and the name of the scripts of all the applications available in the "AM" repository.
+To disable bash completion (and to remove the /etc/bash_completion.d/am-completion.sh script):
+
+    sudo am --disable-completion
+Here you are a video on how to disable/enable bash completion in "AM":
+
+https://user-images.githubusercontent.com/88724353/155971864-783c098c-e696-47b5-aaa8-85dab6ab3b46.mp4
+
+A more detailed guide on how to create your own bash completion script for your project is available [here](https://iridakos.com/programming/2018/03/01/bash-programmable-completion-tutorial).
+
 
 # Uninstall
 	
