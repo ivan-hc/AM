@@ -162,11 +162,11 @@ In both cases, the "INSTALL" script will create a dedicated /opt/am directory co
 -----------------------------------------------------------------------------
   `--disable-completion` Removes the /etc/bash_completion.d/am-completion.sh script previously created with the "[sudo] am --enable-completion" command. USAGE:
   
-    am --disable-completion  
+    [sudo] am --disable-completion  
 -----------------------------------------------------------------------------
   `--enable-completion` Create a bash completion script in /etc/bash_completion.d to complete a keyword with the TAB key using the names of all installable applications in the "AM" repository. USAGE:
   
-    am --enable-completion
+    [sudo] am --enable-completion
 -----------------------------------------------------------------------------
   `lock` Lock the selected $PROGRAM to the current installed version, this only works if a dedicated "AM-updater" script exists. USAGE:
   
