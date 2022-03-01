@@ -1,0 +1,121 @@
+#!/bin/sh
+
+APP=asunder
+
+# CREATING THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP;
+
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+
+mkdir tmp;
+cd tmp;
+
+# DOWNLOADING THE DEPENDENCIES
+wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool
+wget -r -A .AppImage -nd https://github.com/AppImage/pkg2appimage/releases/tag/continuous && mv pkg2appimage* pkg2appimage
+chmod a+x ./appimagetool ./pkg2appimage
+
+# CREATING THE APPIMAGE
+echo "app: asunder
+binpatch: true
+
+ingredients:
+  dist: sid
+  sources:
+    - deb http://ftp.debian.org/debian/ sid main contrib non-free
+  packages:
+    - asunder" >> recipe.yml;
+
+cp /opt/$APP/tmp/recipe.yml /opt/$APP/recipe.yml
+
+./pkg2appimage ./recipe.yml;
+
+cp ./$APP/$APP.AppDir/$APP.png /opt/$APP/$APP.png
+
+ARCH=x86_64 ./appimagetool -n ./$APP/$APP.AppDir;
+underscore=_
+mkdir version
+mv ./$APP/$APP$underscore*.deb ./version/
+version=$(ls /opt/$APP/tmp/version)
+echo "$version" >> /opt/$APP/version
+
+cd ..;
+mv ./tmp/*.AppImage ./$APP;
+chmod a+x ./$APP
+
+rm -R -f ./tmp
+
+# LINK
+ln -s /opt/$APP/$APP /usr/local/bin/$APP
+
+# SCRIPT TO UPDATE THE PROGRAM
+initial=$(echo $APP | head -c 1)
+echo '#!/bin/sh
+version0=$(cat /opt/'$APP'/version)
+url="http://http.us.debian.org/debian/pool/main/'$initial'/'$APP'/$version0"
+if curl --output /dev/null --silent --head --fail "$url"; then
+  echo "Update not needed, exit!"
+else
+  notify-send "A new version of '$APP' is available, please wait!"
+  mkdir /opt/'$APP'/tmp
+  cd /opt/'$APP'/tmp
+  wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool
+  wget -r -A .AppImage -nd https://github.com/AppImage/pkg2appimage/releases/tag/continuous && mv pkg2appimage* pkg2appimage
+  chmod a+x ./appimagetool ./pkg2appimage
+  cp /opt/'$APP'/recipe.yml /opt/'$APP'/tmp/recipe.yml
+  ./pkg2appimage ./recipe.yml;
+  ARCH=x86_64 ./appimagetool -n ./'$APP'/'$APP'.AppDir
+  mkdir version
+  mv ./'$APP'/'$APP''$underscore'*.deb ./version/
+  cd ..
+  version=$(ls /opt/'$APP'/tmp/version)
+  if test -f ./tmp/version/$version; then rm -R -f ./version
+  fi
+  echo "$version" >> /opt/'$APP'/version
+  mv ./tmp/*.AppImage ./'$APP';
+  chmod a+x ./'$APP'
+  rm -R -f ./tmp
+fi' >> /opt/$APP/AM-updater
+chmod a+x /opt/$APP/AM-updater
+
+# LAUNCHER
+echo "[Desktop Entry]
+Name=Asunder CD Ripper
+Name[de]=Asunder
+Name[fr]=Asunder
+Name[hu]=Asunder
+Name[sv]=Asunder
+Name[ru]=Asunder
+GenericName=Audio CD Ripper
+GenericName[de]=Ein graphischer CD-Ripper und Encoder
+GenericName[es]=Un extractor de Audio CD
+GenericName[fr]=Extracteur de CD
+GenericName[hu]=Audió CD Ripper és Tömörítő
+GenericName[ru]=Копирование звуковых CD
+Comment=An application to save tracks from an Audio CD as WAV, MP3, OGG, FLAC, and/or Wavpack.
+Comment[de]=Oberfläche zur Erstellung von Audio-Dateien
+Comment[es]=Una aplicación para extraer las pistas de un CD de Auido como WAV, MP3, OGG, FLAC y/o Wavpack
+Comment[hu]=Egy alkalmazás ami az Audió CD-n lévő sávokat lementi, MP3, OGG, FLAC és/vagy Wavpack formátumba.
+Comment[ru]=Программа для сохранения звуковых дорожек CD в файлы форматов WAV, MP3, OGG, FLAC и/или Wavpack.
+Comment[sv]=Ett program för att spara spår från en ljudskiva som WAV, MP3, OGG och/eller FLAC.
+Exec=asunder %U
+Terminal=false
+StartupNotify=true
+Type=Application
+Categories=AudioVideo;Audio;
+Icon=/opt/$APP/$APP.png
+MimeType=x-content/audio-cdda;
+Keywords=CD;Extraction;Ripper;MP3;" >> /usr/share/applications/$APP.desktop;
+
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/$APP
+
+echo "
+
+ Asunder is provided by http://littlesvr.ca/asunder
+  
+";
