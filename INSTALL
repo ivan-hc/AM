@@ -1,22 +1,43 @@
 #!/bin/sh
 
-
+# CREATING THE MAIN FOLDER FOR "AM"
 mkdir /opt/am /opt/am/.cache
-
-
 cd /opt/am
+
+# DOWNLOAD THE MAIN SCRIPT
 wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/APP-MANAGER
 chmod a+x /opt/am/APP-MANAGER
 
-
+# LINK THE MAIN SCRIPT TO A KNOWN PATH
 ln -s /opt/am/APP-MANAGER /usr/local/bin/am
-rm -R -f /opt/am/remove
 
+# CREATE THE SCRIPT NEEDED TO UNINSTALL "AM"
+rm -R -f /opt/am/remove
 echo "#!/bin/sh
-rm -R -f /usr/local/bin/am /opt/am" >> /opt/am/remove
+rm -R -f /usr/local/bin/am /opt/am /etc/bash_completion.d/am-completion.sh" >> /opt/am/remove
 chmod a+x /opt/am/remove
+
+# DOWNLOAD THE LIST OF THE AVAILABLE PROGRAMS
+am -l
+
+# ENABLE NON-ROOT PERMISSIONS TO THE MAIN FOLDER FOR THE CURRENT USER
 currentuser=$(who | awk '{print $1}')
 chown -R $currentuser /opt/am
+
+# ADD THE BASH COMPLETION SCRIPT
+echo '#!/usr/bin/env bash' >> /opt/am/am-completion.sh; echo 'complete -W "$(cat /opt/am/list)" am' >> /opt/am/am-completion.sh
+chmod a+x /opt/am/am-completion.sh
+rm -R -f /opt/am/remove; echo '#!/bin/sh' >> /opt/am/remove
+echo 'rm -R -f /usr/local/bin/am /opt/am /etc/bash_completion.d/am-completion.sh' >> /opt/am/remove
+chmod a+x /opt/am/remove; chown -R $currentuser /opt/am/remove 2>/dev/null 
+if test -f /etc/bash_completion.d; then
+	mv /opt/am/am-completion.sh /etc/bash_completion.d/
+else
+	mkdir -p /etc/bash_completion.d; sudo mv /opt/am/am-completion.sh /etc/bash_completion.d/
+fi
+
+# SHOW THE MESSAGE
+clear
 echo '
  ------------------------------------------------------------------------
                     _____                    _____                                                                           
@@ -51,4 +72,8 @@ echo '
 
    >>  Enjoy your applications without thinking about anything else   <<   
   
-  -----------------------------------------------------------------------'
+  -----------------------------------------------------------------------
+
+  SITE: https://github.com/IVAN-HC/AM-APPLICATION-MANAGER
+
+'
