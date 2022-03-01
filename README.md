@@ -30,7 +30,6 @@ The main goal of this tool is to provide the same updated applications to multip
 [Installation](#installation)
 - [Usage](#usage)
 - [What programs can be installed](#what-programs-can-be-installed)
-- [Programs that require an updated version of GLIBC](#programs-that-require-an-updated-version-of-glibc)
 - [Updates](#updates)
 - [Repository and Multiarchitecture](#repository-and-multiarchitecture)
 
@@ -192,27 +191,6 @@ These programs are taken:
 - from unofficial repositories of developers external to the project concerned (most of the time they are programs in AppImage format), but only if an official release is not available (see the various WINE, Zoom, VLC, GIMP...).
 
 You can consult basic information, links to sites and sources used through the related `am -a $PROGRAM` command or by clicking [here](https://github.com/ivan-hc/AM-application-manager/tree/main/programs/.about).
-
-# Programs that require an updated version of GLIBC
-Although the main part of the available applications work correctly even on older GNU/Linux distributions, for now the following programs compiled with pkg2appimage require [the latest versions of GLIBC](https://www.gnu.org/software/libc/):
-
-    - abiword
-    - asunder
-    - audacious
-    - gimp
-    - handbrake
-    - vlc
-    - vlc+
-
-This problem is due to the use of Debian Unstable as the main source for recipes, an interim solution which satisfies only rolling release distributions.
-However, some scripts are available to compile recent and alternate versions of GLIBC on all systems that require them (for x86_64 and i686), starting from glibc-2.30 to the latest release!
-
-NOTE that these scripts are purely experimental and still require testing.
-
-Use the command
-
-    am -q glibc
-to get a list of currently available versions.
 
 # Updates
 To update all the programs, just run the command (without `sudo`):
