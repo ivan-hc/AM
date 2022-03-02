@@ -30,7 +30,28 @@ rmdir ./tmp
 ln -s /opt/$APP/$APP /usr/local/bin/$APP
 
 # SCRIPT TO UPDATE THE PROGRAM
-wget https://raw.githubusercontent.com/ivan-hc/AppMan/main/applications/inkscape/AM-updater
+cat > /opt/$APP/AM-updater <<\EOF
+#!/bin/sh
+version0=$(cat /opt/inkscape/version)
+url='curl -fsJL https://inkscape.org/release/  | grep "<title>" | grep -o -e "[0-9.]*'
+if curl -L -s $url | grep -ioF "$version0"; then
+  echo "Update not needed, exit!"
+else
+  notify-send "A new version of inkscape is available, please wait!"
+  mkdir /opt/inkscape/tmp
+  cd /opt/inkscape/tmp
+  downloadURL="https://inkscape.org$(curl -fs https://inkscape.org$(curl -fsJL https://inkscape.org/release/  | grep "/release/" | grep en | head -n 1 | cut -d '"' -f 6)gnulinux/appimage/dl/ | grep "click here" | cut -d '"' -f 2)"
+  wget $downloadURL
+  cd ..
+  if test -f ./tmp/*mage; then rm ./version
+  fi
+  version=$(curl -fsJL https://inkscape.org/release/  | grep "<title>" | grep -o -e "[0-9.]*")
+  echo "$version" >> /opt/inkscape/version
+  mv ./tmp/*mage ./inkscape
+  chmod a+x /opt/inkscape/inkscape
+  rmdir ./tmp
+fi
+EOF
 chmod a+x /opt/$APP/AM-updater
 
 # LAUNCHER
