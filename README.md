@@ -34,6 +34,7 @@ The main goal of this tool is to provide the same updated applications to multip
 - [Repository and Multiarchitecture](#repository-and-multiarchitecture)
 
 [Create your own script](#create-your-own-script)
+- Go to the "[Your first script](https://github.com/ivan-hc/AM-application-manager/wiki/Guide:-your-first-script-to-install-or-download-Applications-using-%22AM%22)" guide, on the AM's Wiki
 - [Scripts and rules](#scripts-and-rules)
 
 [How to enable bash completion](#how-to-enable-bash-completion)
@@ -228,6 +229,11 @@ https://user-images.githubusercontent.com/88724353/150619523-a45455f6-a656-4753-
 
 The currently available templates are stored [here](https://github.com/ivan-hc/AM-application-manager/tree/main/templates), more will be added with the next versions of "AM".
 
+# Your first script (guide)
+Learn more on the wiki's page, click here:
+## [Guide: your first script to install or download Applications using "AM"](https://github.com/ivan-hc/AM-application-manager/wiki/Guide:-your-first-script-to-install-or-download-Applications-using-%22AM%22)
+
+----------------------------------------------------------
 # Scripts and rules	
 The "AM" installation scripts, including those created by you with the -t option that we have just seen, all follow very specific guidelines.
 
