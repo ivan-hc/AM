@@ -1,0 +1,66 @@
+#!/bin/sh
+
+APP=ice-am
+
+# CREATING THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP;
+
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP /usr/share/pixmaps/$APP.png" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+
+mkdir tmp;
+cd tmp;
+
+# DOWNLOADING AND COMPILING ICE SSB
+wget https://github.com/peppermintos/ice/archive/refs/heads/master.zip
+unzip master.zip
+
+cd ..
+
+sed -i "s#/usr/bin/brave-browser#/usr/local/bin/brave#g" ./tmp/ice-master/usr/bin/ice
+sed -i "s#/usr/bin/google-chrome#/usr/local/bin/google-chrome#g" ./tmp/ice-master/usr/bin/ice
+sed -i "s#/usr/bin/chromium-browser#/usr/local/bin/chromium#g" ./tmp/ice-master/usr/bin/ice
+sed -i "s#/usr/bin/vivaldi-stable#/usr/local/bin/vivaldi-stable#g" ./tmp/ice-master/usr/bin/ice
+sed -i "s#/usr/bin/firefox#/usr/local/bin/firefox#g" ./tmp/ice-master/usr/bin/ice
+
+cp ./tmp/ice-master/usr/share/pixmaps/ice.png /usr/share/pixmaps/ice-am.png
+mv ./tmp/ice-master/* ./
+
+echo '#!/bin/sh
+HERE="$(dirname "$(readlink -f "${0}")")"
+export PATH="${HERE}/usr/bin/${PATH:+:$PATH}"
+export LD_LIBRARY_PATH="${HERE}/usr/lib/${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+export XDG_DATA_DIRS="${HERE}/usr/share/${XDG_DATA_DIRS:+:$XDG_DATA_DIRS}"
+EXEC="${HERE}/usr/bin/ice"
+exec "${EXEC}"' >> ./$APP
+chmod a+x ./$APP
+
+# LINK
+ln -s /opt/$APP/$APP /usr/local/bin/$APP
+
+# LAUNCHER
+echo "[Desktop Entry]
+Version=1.0
+Encoding=UTF-8
+Name=Ice
+Comment=Desktop integration for webapps
+GenericName=Ice
+Exec=ice-am
+Icon=ice-am
+Terminal=false
+Type=Application
+Categories=GTK;Network;
+StartupNotify=false
+GenericName[en_US]=Ice" >> /usr/share/applications/AM-$APP.desktop;
+
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/$APP
+
+echo "
+
+ Ice-SSB is provided by https://github.com/peppermintos
+  
+";
