@@ -123,7 +123,7 @@ In both cases, the "INSTALL" script will create a dedicated /opt/am directory co
   
     am -h
 -----------------------------------------------------------------------------
-  `-i`, `install` Install a program. This will be downloader/created into a dedicated /opt/$PROGRAM directory (containing a script to remove it and  another one to update it), the command is linked to a $PATH and a launcher $PROGRAM.desktop will be created in /usr/share/applications. USAGE:
+  `-i`, `install` Install a program. This will be downloader/created into a dedicated /opt/$PROGRAM directory (containing a script to remove it and  another one to update it), the command is linked to a $PATH and a launcher AM-$PROGRAM.desktop will be created in /usr/share/applications. USAGE:
   
     [sudo] am -i $PROGRAM
 -----------------------------------------------------------------------------
@@ -241,11 +241,11 @@ Once you've performed the command `sudo am -i $PROGRAM`, the script will create:
 - a /opt/$PROGRAM folder containing the standalone app with all its files, by default "AM" also creates an uninstaller script named `remove`* (used by the `sudo am -r $PROGRAM` command) and an `AM-updater` script (used by the `am -u` command);
 - a symlink of /opt/$PROGRAM/$YOUR-PROGRAM into a $PATH (ie /usr/local/bin, /usr/bin, /bin, /usr/local/games, /usr/games...);
 - the icon (optional for command line tools) is placed by default in /opt/$PROGRAM (recommended), but if you want you can put it in /usr/share/pixmaps or /usr/share/icons, you choose (as long as it is specified in the `remove` script);
-- the launcher (optional for command line tools) in /usr/share/applications.
+- the launcher (optional for command line tools) in /usr/share/applications must be named "`AM-$PROGRAM.desktop`" to avoid conflicts with software installed through the package manager or from other sources.
 	
 ##### *NOTE that the /opt/$PROGRAM/remove script file is the more important part, it must contain the path of all the files created by your script, this way:
 	
-	rm -R -f /opt/$PROGRAM /usr/local/bin/$PROGRAM /usr/share/applications/$PROGRAM.desktop	
+	rm -R -f /opt/$PROGRAM /usr/local/bin/$PROGRAM /usr/share/applications/AM-$PROGRAM.desktop	
 	
 This scheme guarantees the removal of the program and all its components even without having to use "AM". Learn more [here](#how-to-uninstall-a-program-using-am). 
 
@@ -287,16 +287,7 @@ Note that this works only if the program has a /opt/$PROGRAM/AM-updater script, 
 	  sudo /opt/$PROGRAM/remove
 
 # Important
-#### The programs installed with "AM" are official software in binary format or packaged as AppImage, their launchers are mostly the original ones, because of this they may conflict with / overwrite those of the same programs installed from the repository of your Linux distribution!
-For example, if you install LibreOffice (any version) from "AM", the binary /opt/libreoffice/libreoffice is linked to /usr/local/bin as "libreoffice"	and it has its own launchers in /usr/share/applications (libreoffice.desktop, libreoffice-base.desktop, libreoffice-writer.desktop... etcetera).
-If you already have an existing installation of LibreOffice from your package manager (APT / DNF / PacMan, Zypper ...), that won't work. There could also be more launchers in the application menu (if they have different names from the aforementioned, for example org.libreoffice.desktop, org.libreogffice.base.desktop ...) or they could be overwritten and recall the latest version installed (in our case the one coming from "AM").
-	
-#### So do not install programs from "AM" and your package manager together! Use ONLY the version you trust the most!
-#### Install LibreOffice only from your package manager or only from "AM". Never together!
-
-### The same applies to all other installed programs.
-	
-However, it is possible to solve the problem by customizing the scripts, perhaps assigning them a specific version of the software that will never be updated. "AM" tries to manage only the latest version of each program, but fixed versions also can be added to the repository, [if required](https://github.com/ivan-hc/AM-application-manager/pulls), you just have to ask.
+Since version 2.5.0, "AM" has solved the problem of the launchers by adding the suffix "`AM-`" to each *.desktop file created. However, as far as binary files are concerned, "AM" tries as much as possible to use `/usr/local/bin` for its program links to avoid conflicts. Games on the other hand have the link in `/usr/games` and few other programs (ie the various Wine versions, the AppImage tools and Chromium Browser) still use`/usr/bin`.
 	
 # Disclaim
 "AM" itself works well, but there are a few things to consider before, after and during use:
