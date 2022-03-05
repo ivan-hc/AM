@@ -10,22 +10,16 @@ cd /opt/$APP
 echo '#!/bin/sh' >> /opt/$APP/remove
 echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
 chmod a+x /opt/$APP/remove
-
+APP=firedragon
 # DOWNLOAD THE PROGRAM
 mkdir tmp
 cd ./tmp
 
-wget "https://download.mozilla.org/?product=firefox-latest&os=linux64&lang=en-US" --trust-server-names
-version0=$(ls | grep -Eo [0-9]+[.][0-9]+)
+version0=$(curl -fI 'https://download.mozilla.org/?product=firefox-latest&os=linux64&lang=en-US' | grep -o 'firefox-[0-9.]\+[0-9]' | grep -Eo [0-9]+[.][0-9]+)
 wget -r -A firedragon-$version0*.tar.zst -nd https://builds.garudalinux.org/repos/chaotic-aur/x86_64
-tar fx firedragon-$version0*.tar.zst
-tar fx firefox*tar.bz2
-mv ./firefox/libxul.so ./usr/lib/$APP/
-mkdir version
-mv ./firedragon-$version0*.tar.zst ./version/
-
-version=$(ls /opt/$APP/tmp/version)
+version=$(ls /opt/$APP/tmp)
 echo "$version" >> /opt/$APP/version
+tar fx firedragon-$version0*.tar.zst
 
 cd ..
 mv ./tmp/usr/lib/$APP/* ./
@@ -35,6 +29,8 @@ rm -R -f ./tmp
 ln -s /opt/$APP/$APP /usr/local/bin/$APP
 
 # SCRIPT TO UPDATE THE PROGRAM
+URL='https://download.mozilla.org/?product=firefox-latest&os=linux64&lang=en-US'
+function1="grep -o 'firefox-[0-9.]\+[0-9]'"
 echo '#!/bin/sh
 version0=$(cat /opt/'$APP'/version)
 url="https://cf-builds.garudalinux.org/repos/chaotic-aur/x86_64/$version0"
@@ -44,15 +40,11 @@ else
   notify-send "A new version of '$APP' is available, please wait!"
   mkdir /opt/'$APP'/tmp
   cd /opt/'$APP'/tmp
-  wget "https://download.mozilla.org/?product=firefox-latest&os=linux64&lang=en-US" --trust-server-names
-  version1=$(ls | grep -Eo [0-9]+[.][0-9]+)
+  version1=$(curl -fI '$URL' | '$function1' | grep -Eo [0-9]+[.][0-9]+)
   wget -r -A firedragon-$version1*.tar.zst -nd https://builds.garudalinux.org/repos/chaotic-aur/x86_64
-  tar fx firedragon-$version*.tar.zst
-  tar fx firefox*tar.bz2
-  mv ./firefox/libxul.so ./usr/lib/'$APP'/
-  mkdir version
-  mv ./firedragon-$version0*.tar.zst ./version/
-  version=$(ls /opt/'$APP'/tmp/version)
+  version=$(ls /opt/$APP/tmp)
+  echo "$version" >> /opt/$APP/version
+  tar fx firedragon-$version1*.tar.zst
   cd ..
   if test -f ./tmp/version/$version; then rm -R -f ./version
   fi
