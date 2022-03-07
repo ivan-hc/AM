@@ -39,7 +39,7 @@ The main goal of this tool is to provide the same updated applications to multip
 
 [How to enable bash completion](#how-to-enable-bash-completion)
 
-[Snapshots: backup your app and restore to a previous version](#snapshots--backup-your-app-and-restore-to-a-previous-version)
+[Snapshots: backup your app and restore to a previous version](#snapshots-backup-your-app-and-restore-to-a-previous-version)
 
 [Uninstall](#uninstall)
 - [Install/update/remove programs without "AM"](#installupdateremove-programs-without-am)
