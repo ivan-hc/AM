@@ -107,82 +107,86 @@ Or use "GIT":
 In both cases, the "INSTALL" script will create a dedicated /opt/am directory containing the ["APP-MANAGER"](https://github.com/ivan-hc/AM-application-manager/blob/main/APP-MANAGER) script (ie "AM" itself), a symlink for it in /usr/local/bin named `am` and the /opt/am/remove script needed to [uninstall](#uninstall) "AM" itself, if needed. A temporary folder named /opt/am/.cache will be created too, in wich each installation script or list of available applications (for your architecture) is downloaded.
 
 # Usage
-  `-a`, `about` Shows the basic information, links and source of each app. USAGE:
+  `-a`, `about` Shows the basic information, links and source of each app:
   
     am -a $PROGRAM
 -----------------------------------------------------------------------------
-  `-b`, `backup` Save the current version of a program you are interested in, the snapshot will be stored in /home/$USER/.am-snapshots/$PROGRAM. USAGE:
+  `-b`, `backup` Save the current version of a program you are interested in, the snapshot will be stored in /home/$USER/.am-snapshots/$PROGRAM (see "-o"): 
   
     am -b $PROGRAM
 -----------------------------------------------------------------------------
-  `-c`, `clean` Removes all the unnecessary files. USAGE:
+  `-c`, `clean` Removes all the unnecessary files:
   
     am -c
 -----------------------------------------------------------------------------
-  `-d`, `download` Download an installation script from the "AM" repository to your desktop without installing it. USAGE:
+  `-d`, `download` Download an installation script from the "AM" repository to your desktop without installing it:
   
     am -d $PROGRAM
 -----------------------------------------------------------------------------  
-  `-f`, `files` Shows the installed programs managed by "AM". USAGE:
+  `-f`, `files` Shows the installed programs managed by "AM":
   
     am -f
 -----------------------------------------------------------------------------
-  `-h`, `help` Prints this message. USAGE:
+  `-h`, `help` Prints this message:
   
     am -h
 -----------------------------------------------------------------------------
-  `-i`, `install` Install a program. This will be downloader/created into a dedicated /opt/$PROGRAM directory (containing a script to remove it and  another one to update it), the command is linked to a $PATH and a launcher AM-$PROGRAM.desktop will be created in /usr/share/applications. USAGE:
+  `-i`, `install` Install a program. This will be downloader/created into a dedicated /opt/$PROGRAM directory (containing a script to remove it and  another one to update it), the command is linked to a $PATH and a launcher AM-$PROGRAM.desktop will be created in /usr/share/applications:
   
     [sudo] am -i $PROGRAM
 -----------------------------------------------------------------------------
-  `-l`, `list` Shows the list of apps available in the repository. USAGE:
+  `-l`, `list` Shows the list of apps available in the repository:
   
     am -l
 -----------------------------------------------------------------------------
-  `-q`, `query` Use one or more keywords to search for in the list of available applications. USAGE:
+  `-o`, `overwrite` Overwrite the existing version of the program with a saved snapshot from /home/$USER/.am-snapshots/$PROGRAM (see "-b"):
+  
+    am -o $PROGRAM
+-----------------------------------------------------------------------------
+  `-q`, `query` Use one or more keywords to search for in the list of available applications:
   
     am -q $KEYWORD
 -----------------------------------------------------------------------------
-  `-r`, `remove` Removes the program and all the other files listed above using the instructions in /opt/$PROGRAM/remove. Confirmation is required (Y or N, default is Y). USAGE:
+  `-r`, `remove` Removes the program and all the other files listed above using the instructions in /opt/$PROGRAM/remove. Confirmation is required (Y or N, default is Y):
   
     [sudo] am -r $PROGRAM
 -----------------------------------------------------------------------------
-  `-s`, `sync` Updates "AM" to a more recent version. USAGE:
+  `-s`, `sync` Updates "AM" to a more recent version:
   
     am -s
 -----------------------------------------------------------------------------
-  `-t`, `template` This option allows you to generate a custom script from a list of different templates that may be vary according to the kind of $PROGRAM you want to create/install/update. Once you choose a number, the script will download the template by renaming it using the argument "$PROGRAM" you provided above.  USAGE:
+  `-t`, `template` This option allows you to generate a custom script from a list of different templates that may be vary according to the kind of $PROGRAM you want to create/install/update. Once you choose a number, the script will download the template by renaming it using the argument "$PROGRAM" you provided above:
   
     am -t $PROGRAM
 -----------------------------------------------------------------------------
-  `-u`, `update` Update all the installed programs. USAGE:
+  `-u`, `update` Update all the installed programs:
   
     am -u
-   To update just one program and read the shell's output, USAGE:
+   To update just one program and read the shell's output:
 
     am -u $PROGRAM
 -----------------------------------------------------------------------------
-  `-v`, `--version`, `version` Shows the version of "AM". USAGE:
+  `-v`, `--version`, `version` Shows the version of "AM":
   
     am -v
 -----------------------------------------------------------------------------
-  `-w`, `web` Shows the URLs of the sites/sources of $PROGRAM. USAGE:
+  `-w`, `web` Shows the URLs of the sites/sources of $PROGRAM:
   
     am -w $PROGRAM
 -----------------------------------------------------------------------------
-  `--disable-completion` Removes the /etc/bash_completion.d/am-completion.sh script previously created with the "[sudo] am --enable-completion" command. USAGE:
+  `--disable-completion` Removes the /etc/bash_completion.d/am-completion.sh script previously created with the "[sudo] am --enable-completion" command:
   
     [sudo] am --disable-completion  
 -----------------------------------------------------------------------------
-  `--enable-completion` Create a bash completion script in /etc/bash_completion.d to complete a keyword with the TAB key using the names of all installable applications in the "AM" repository. USAGE:
+  `--enable-completion` Create a bash completion script in /etc/bash_completion.d to complete a keyword with the TAB key using the names of all installable applications in the "AM" repository:
   
     [sudo] am --enable-completion
 -----------------------------------------------------------------------------
-  `lock` Lock the selected $PROGRAM to the current installed version, this only works if a dedicated "AM-updater" script exists. USAGE:
+  `lock` Lock the selected $PROGRAM to the current installed version, this only works if a dedicated "AM-updater" script exists:
   
     am lock $PROGRAM
 -----------------------------------------------------------------------------
-  `unlock` Unlock updates for the selected $PROGRAM. This option nulls "lock", the update file is renamed as "AM-updater" again, so that it can be intercepted when executing the "am -u" command (see "-u"). USAGE:
+  `unlock` Unlock updates for the selected $PROGRAM. This option nulls "lock", the update file is renamed as "AM-updater" again, so that it can be intercepted when executing the "am -u" command (see "-u"):
   
     am unlock $PROGRAM
 -----------------------------------------------------------------------------
