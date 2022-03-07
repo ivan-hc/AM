@@ -6,6 +6,7 @@ currentuser=$(who | awk '{print $1}')
 
 rm -R -f /opt/am/options
 echo "about
+backup
 clean
 download
 files
@@ -65,6 +66,11 @@ case "$1" in
   -a, about
   USAGE: "am -a $PROGRAM"
   DESCRIPTION: Shows the basic information, links and source of each app.
+
+  -b, backup
+  USAGE: "am -b $PROGRAM"
+  DESCRIPTION: Save the current version of a program you are interested in,
+  the snapshot will be stored in /home/$USER/.am-snapshots/$PROGRAM. 
 
   -c, clean
   USAGE: "am -c"
@@ -177,6 +183,23 @@ case "$1" in
 	echo ' OR START A SEARCH (WITH KEYWORDS) BY USING THE "am -q" COMMAND'; echo "";
 	exit;
 	fi
+	done
+	shift;;
+  '-b'|'backup')
+	while [ -n "$1" ]
+	do
+	case $2 in
+	'') echo " Specify the name of a program to back up"; echo ""; exit;;
+	*) if test -f /opt/$2/remove; then
+		echo ""; read -p " Do you wish to backup the current version of $2 (y,N)?" yn
+		case $yn in
+		[Yy]* ) mkdir -p "$(xdg-user-dir USER)/.am-snapshots/$2"; cp -r /opt/$2 "$(xdg-user-dir USER)/.am-snapshots/$2/$(date)"; echo ""; echo " SAVED in $(xdg-user-dir USER)/.am-snapshots/$2"; echo "" ; exit;;
+		[Nn]*|* ) echo ""; echo " OPERATION ABORTED!"; exit;;	
+		esac
+	else
+		echo ""; echo " '$2' is not a valid argument or is not installed."; echo ""; exit;
+	fi
+	esac
 	done
 	shift;;
   '-c'|'clean') echo ""; echo " CLEANING OF TEMPORARY FILES AND FOLDERS IN PROGRESS" && sleep 1 && echo "" && echo " PRESS CTRL+C TO ABORT." && sleep 1 &&
@@ -445,6 +468,6 @@ case "$1" in
 	fi
 	done
 	shift;;
-  'version'|'-v'|'--version') echo "2.5.1";;
+  'version'|'-v'|'--version') echo "2.6.0";;
   *) exec /opt/am/APP-MANAGER ;;
 esac
