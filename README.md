@@ -315,7 +315,7 @@ Note that this works only if the program has a /opt/$PROGRAM/AM-updater script, 
 	  sudo /opt/$PROGRAM/remove
 
 # Important
-Since version 2.5.0, "AM" has solved the problem of the launchers by adding the suffix "`AM-`" to each *.desktop file created. However, as far as binary files are concerned, "AM" tries as much as possible to use `/usr/local/bin` for its program links to avoid conflicts. Games on the other hand have the link in `/usr/games` and few other programs (ie the various Wine versions, the AppImage tools and Chromium Browser) still use`/usr/bin`.
+Since version 2.5.0, "AM" has solved the problem of the launchers by adding the suffix "`AM-`" to each *.desktop file created. However, as far as binary files are concerned, "AM" tries as much as possible to use `/usr/local/bin` for its program links to avoid conflicts. Games on the other hand have the link in `/usr/games` and few other programs (ie the various Wine versions and the AppImage tools) still use`/usr/bin`.
 	
 # Disclaim
 "AM" itself works well, but there are a few things to consider before, after and during use:
