@@ -282,10 +282,10 @@ Since 2.6.1 release, "AM" supports snapshots of all installed applications. A se
 
 - option `-b` or `backup` creates the snapshot, usage:
 
-    am -b $PROGRAM
+      am -b $PROGRAM
 - option `-o` or `overwrite` allows you to roll back to a previous version of the program.
 
-    am -o $PROGRAM
+      am -o $PROGRAM
 Here you are a video on how to backup/restore works in "AM":
 
 https://user-images.githubusercontent.com/88724353/157094646-0e29ddbe-6cb7-4880-8414-110db071e617.mp4
