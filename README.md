@@ -111,10 +111,18 @@ In both cases, the "INSTALL" script will create a dedicated /opt/am directory co
   
     am -a $PROGRAM
 -----------------------------------------------------------------------------
+  `-b`, `backup` Save the current version of a program you are interested in, the snapshot will be stored in /home/$USER/.am-snapshots/$PROGRAM. USAGE:
+  
+    am -b $PROGRAM
+-----------------------------------------------------------------------------
   `-c`, `clean` Removes all the unnecessary files. USAGE:
   
     am -c
 -----------------------------------------------------------------------------
+  `-d`, `download` Download an installation script from the "AM" repository to your desktop without installing it. USAGE:
+  
+    am -d $PROGRAM
+-----------------------------------------------------------------------------  
   `-f`, `files` Shows the installed programs managed by "AM". USAGE:
   
     am -f
