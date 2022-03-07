@@ -278,17 +278,19 @@ https://user-images.githubusercontent.com/88724353/155971864-783c098c-e696-47b5-
 A more detailed guide on how to create your own bash completion script for your project is available [here](https://iridakos.com/programming/2018/03/01/bash-programmable-completion-tutorial).
 
 # Snapshots: backup your app and restore to a previous version
-Since 2.6.1 release, "AM" supports snapshots of all installed applications. A selected program can be copied locally into your home folder, into an hidden /home/$USER/.am-snapshots folder containing other subfolders with the name of the programs you've done a backup before:
+Since 2.6.1 release, "AM" supports snapshots of all installed applications. A selected program can be copied locally into your home folder.
+
+Here you are a video on how to backup/restore works in "AM":
+
+https://user-images.githubusercontent.com/88724353/157094646-0e29ddbe-6cb7-4880-8414-110db071e617.mp4
 
 - option `-b` or `backup` creates the snapshot, usage:
 
       am -b $PROGRAM
-- option `-o` or `overwrite` allows you to roll back to a previous version of the program.
+- option `-o` or `overwrite` allows you to roll back to a previous version of the program. Usage:
 
       am -o $PROGRAM
-Here you are a video on how to backup/restore works in "AM":
-
-https://user-images.githubusercontent.com/88724353/157094646-0e29ddbe-6cb7-4880-8414-110db071e617.mp4
+All the snapshots are stored into an hidden `/home/$USER/.am-snapshots` folder containing other subfolders, each one has the name of the programs you've done a backup before. Each snapshot is named with the date and time you have done the backup. To restore the application to a previous version, copy/paste the name of the snapshot when the `-o` option will prompt it.
 
 # Uninstall
 	
