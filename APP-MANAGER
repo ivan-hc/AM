@@ -13,6 +13,7 @@ files
 install
 list
 lock
+overwrite
 query
 remove
 sync
@@ -70,7 +71,8 @@ case "$1" in
   -b, backup
   USAGE: "am -b $PROGRAM"
   DESCRIPTION: Save the current version of a program you are interested in,
-  the snapshot will be stored in /home/$USER/.am-snapshots/$PROGRAM. 
+  the snapshot will be stored in /home/$USER/.am-snapshots/$PROGRAM
+  (see "-o"). 
 
   -c, clean
   USAGE: "am -c"
@@ -99,6 +101,11 @@ case "$1" in
   -l, list
   USAGE: "am -l"
   DESCRIPTION: Shows the list of apps available in the repository.
+
+  -o, overwrite
+  USAGE: "am -o $PROGRAM"
+  DESCRIPTION: Overwrite the existing version of the program with a saved
+  snapshot from /home/$USER/.am-snapshots/$PROGRAM (see "-b").
   
   -q, query
   USAGE: "am -q $KEYWORD"
@@ -193,8 +200,8 @@ case "$1" in
 	*) if test -f /opt/$2/remove; then
 		echo ""; read -p " Do you wish to backup the current version of $2 (y,N)?" yn
 		case $yn in
-		[Yy]* ) mkdir -p "$(xdg-user-dir USER)/.am-snapshots/$2"; cp -r /opt/$2 "$(xdg-user-dir USER)/.am-snapshots/$2/$(date)"; echo ""; echo " SAVED in $(xdg-user-dir USER)/.am-snapshots/$2"; echo "" ; exit;;
-		[Nn]*|* ) echo ""; echo " OPERATION ABORTED!"; exit;;	
+		[Yy]* ) mkdir -p "$(xdg-user-dir USER)/.am-snapshots/$2"; cp -r /opt/$2 "$(xdg-user-dir USER)/.am-snapshots/$2/$(date +%F-%X)"; echo ""; echo " SAVED in $(xdg-user-dir USER)/.am-snapshots/$2"; echo "" ; exit;;
+		[Nn]*|* ) echo ""; echo " OPERATION ABORTED!"; echo ""; exit;;	
 		esac
 	else
 		echo ""; echo " '$2' is not a valid argument or is not installed."; echo ""; exit;
@@ -268,6 +275,35 @@ case "$1" in
   	cat /opt/am/$arch-apps; echo "";
   	echo $(echo "ALL:"; grep -e "$" -c /opt/am/$arch-apps);
   	echo $(echo "INSTALLED:"; cd /opt && find -name 'remove' -printf "%h\n" | sort -u | wc -l); echo "";;
+  '-o'|'overwrite')
+	while [ -n "$1" ]
+	do case $2 in
+	am) am -s; exit;;
+	'') echo " Specify the name of a program to overwrite"; echo ""; exit;;
+	*) if test -f /opt/$2/remove; then
+		echo ""; read -p " Do you wish to overwrite this version of $2 with an old one (y,N)?" yn
+		case $yn in
+		[Yy]* ) echo ""; echo " Please, select a snapshot:"; sleep 1; echo ""; snaps=$(ls "$(xdg-user-dir USER)/.am-snapshots/$2/" | sort -u); echo "$snaps"; echo ""
+			read -p " ENTER THE NAME OF THE SNAPSHOT?" response;
+			case $response in
+			*) for var in $(echo $snaps); do
+				if [ -d $(xdg-user-dir USER)/.am-snapshots/$2/$response ]; then
+					cp --backup=t $(xdg-user-dir USER)/.am-snapshots/$2/$response/* /opt/$2/
+	  				rm -R -f /opt/$2/*~; echo ""; echo " RESTORE COMPLETED SUCCESSFULLY!"; echo ""; exit;
+				else
+					echo ""; echo " NO SNAPSHOT SELECTED, RETRY!" >&2;
+				fi
+				done;;
+			'') echo ""; echo " NO SNAPSHOT SELECTED, OPERATION ABORTED!"; echo ""; exit;;
+			esac;;
+		[Nn]*|* ) echo ""; echo " OPERATION ABORTED!"; echo ""; exit;;	
+		esac
+	else
+		echo ""; echo " '$2' is not a valid argument or is not installed."; echo ""; exit;
+	fi
+	esac
+	done
+	shift;;
   '-q'|'query') rm -R -f /opt/am/$arch-apps /opt/am/list && wget -q $URL/programs/$arch-apps -P /opt/am && echo -e "$(cat /opt/am/$arch-apps | awk -v FS="(◆ | : )" '{print $2}')" >> /opt/am/list
 	cd /opt/am && cat options >> list
 	ARGS=$(echo "$@" | sed 's/-q //')
@@ -468,6 +504,6 @@ case "$1" in
 	fi
 	done
 	shift;;
-  'version'|'-v'|'--version') echo "2.6.0";;
+  'version'|'-v'|'--version') echo "2.6.1";;
   *) exec /opt/am/APP-MANAGER ;;
 esac
