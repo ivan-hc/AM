@@ -1,0 +1,390 @@
+#!/bin/sh
+
+APP=gimp-dev
+
+# CREATING THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP;
+
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+
+mkdir tmp;
+cd tmp;
+
+# DOWNLOADING THE DEPENDENCIES
+wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool
+wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/tools/pkg2appimage
+chmod a+x ./appimagetool ./pkg2appimage
+
+# CREATING THE APPIMAGE
+echo "app: gimp
+binpatch: true
+
+ingredients:
+  dist: focal
+  sources:
+    - deb http://archive.ubuntu.com/ubuntu/ focal main universe restricted multiverse
+    - deb http://archive.ubuntu.com/ubuntu focal-security main universe restricted multiverse
+    - deb http://archive.ubuntu.com/ubuntu/ focal-updates main universe restricted multiverse
+  ppas:
+    - mati75/gimp30
+  packages:
+    - gimp
+    - gimp-data
+    - gir1.0-gimp-3.0
+    - libgimp3.0
+    - libgimp3.0-doc
+    - libgimp3.0-dev" >> recipe.yml;
+
+cp /opt/$APP/tmp/recipe.yml /opt/$APP/recipe.yml
+
+./pkg2appimage ./recipe.yml;
+
+rm -R -f ./gimp/gimp.AppDir/AppRun
+function1="'^Exec=.*'"
+function2="'s|%.||g'"
+echo '#!/bin/sh
+HERE="$(dirname "$(readlink -f "${0}")")"
+export UNION_PRELOAD="${HERE}"
+LIBS=$($(find . -name "libgimpwidgets*"):$(find . -name "libgimpbase*"):$(find . -name "libgimpcolor*"):$(find . -name "libgimpconfig*"):$(find . -name "libgegl-0*"):$(find . -name "libbabl*"):$(find . -name "libgexiv*"):$(find . -name "libgimpmath*"):$(find . -name "libexiv*"):$(find . -name "libgimpthumb*"):$(find . -name "libgimpmodule*"):$(find . -name "libmypaint*"):$(find . -name "libjson-c*"):$(find . -name "libgimp-2*"):$(find . -name "libgimpui*"))
+for LIBS in ${HERE}/usr/lib/x86_64-linux-gnu/; do
+export LD_PRELOAD=$LIBS
+done
+export PATH=/bin/:/usr/bin/:/usr/local/bin/:/sbin/:"${HERE}"/usr/bin/:"${HERE}"/usr/sbin/:"${HERE}"/usr/games/:"${HERE}"/bin/:"${HERE}"/opt/gimp/:"${HERE}"/sbin/:"${PATH}"
+export LD_LIBRARY_PATH=/usr/lib/:/lib/:/usr/lib/x86_64-linux-gnu/:/lib/x86_64-linux-gnu/"${HERE}"/usr/lib/:"${HERE}"/usr/lib/gimp/:"${HERE}"/usr/lib/i386-linux-gnu/:"${HERE}"/usr/lib/x86_64-linux-gnu/:"${HERE}"/lib/:"${HERE}"/lib/i386-linux-gnu/:"${HERE}"/lib/x86_64-linux-gnu/:"${LD_LIBRARY_PATH}"
+export PKG_CONFIG_PATH="${HERE}"/usr/share/pkgconfig/:$PKG_CONFIG_PATH
+export GIMP2_LOCALEDIR="${HERE}/usr/share/locale"
+export GIMP3_LOCALEDIR="${HERE}/usr/share/locale"
+export GIMP2_DATADIR="${HERE}"/usr/share/gimp/2.0/
+export GIMP2_SYSCONFDIR="${HERE}"/etc/gimp/2.0/
+export GIMP2_PLUGINDIR="${HERE}"/usr/lib/gimp/2.0/
+export GIMP3_DATADIR="${HERE}"/usr/share/gimp/2.99/
+export GIMP3_SYSCONFDIR="${HERE}"/etc/gimp/2.99/
+export GIMP3_PLUGINDIR="${HERE}"/usr/lib/gimp/2.99/
+export GEGL_PATH="${HERE}"/usr/lib/x86_64-linux-gnu/gegl-0.4/
+export BABL_PATH="${HERE}"/usr/lib/x86_64-linux-gnu/babl-0.1/
+EXEC=$(grep -e '$function1' "${HERE}"/*.desktop | head -n 1 | cut -d "=" -f 2- | sed -e '$function2')
+exec ${EXEC} "$@"' >> AppRun
+chmod a+x AppRun
+cp ./AppRun /opt/$APP/
+cp ./AppRun ./gimp/gimp.AppDir/
+
+ARCH=x86_64 ./appimagetool -n ./gimp/gimp.AppDir;
+underscore=_
+mkdir version
+mv ./gimp/gimp$underscore*.deb ./version/
+version=$(ls /opt/$APP/tmp/version)
+echo "$version" >> /opt/$APP/version
+
+cd ..;
+mv ./tmp/*.AppImage ./$APP;
+chmod a+x ./$APP
+
+rm -R -f ./tmp
+
+# LINK
+ln -s /opt/$APP/$APP /usr/local/bin/$APP
+
+# SCRIPT TO UPDATE THE PROGRAM
+initial=$(echo $APP | head -c 1)
+echo '#!/bin/sh
+version0=$(cat /opt/'$APP'/version)
+url="https://ppa.launchpadcontent.net/mati75/gimp30/ubuntu/pool/main/'$initial'/'$APP'/$version0"
+if curl --output /dev/null --silent --head --fail "$url"; then
+  echo "Update not needed, exit!"
+else
+  notify-send "A new version of '$APP' is available, please wait!"
+  mkdir /opt/'$APP'/tmp
+  cd /opt/'$APP'/tmp
+  wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool
+  wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/tools/pkg2appimage
+  chmod a+x ./appimagetool ./pkg2appimage
+  cp /opt/'$APP'/recipe.yml /opt/'$APP'/tmp/recipe.yml
+  ./pkg2appimage ./recipe.yml;
+  rm -R -f ./gimp/gimp.AppDir/AppRun
+  cp /opt/'$APP'/AppRun ./gimp/gimp.AppDir/
+  ARCH=x86_64 ./appimagetool -n ./gimp/gimp.AppDir
+  mkdir version
+  mv ./gimp/gimp'$underscore'*.deb ./version/
+  cd ..
+  version=$(ls /opt/'$APP'/tmp/version)
+  if test -f ./tmp/version/$version; then rm -R -f ./version
+  fi
+  echo "$version" >> /opt/'$APP'/version
+  mv ./tmp/*.AppImage ./'$APP';
+  chmod a+x ./'$APP'
+  rm -R -f ./tmp
+fi' >> /opt/$APP/AM-updater
+chmod a+x /opt/$APP/AM-updater
+
+# LAUNCHER
+echo "[Desktop Entry]
+Version=1.0
+Type=Application
+Name=GNU Image Manipulation Program (Dev)
+Name[ar]=برنامج جنو لمعالجة الصور
+Name[ast]=Programa de manipulación d'Imaxe GNU
+Name[be]=GIMP — праґрама праекту GNU для працы зь відарысамі
+Name[bg]=Редактор на изображения (GIMP)
+Name[br]=Goulev da zornata skeudennoù GNU
+Name[bs]=Gnuov program za obradu slika (GNU Image Manipulation Program)
+Name[ca]=Programa de retoc d'imatges de GNU
+Name[ca@valencia]=Programa de retoc d'imatges de GNU
+Name[cs]=GNU Image Manipulation Program
+Name[csb]=Editora òbrôzów GIMP
+Name[da]=GNU Image Manipulation Program
+Name[de]=GNU Image Manipulation Program
+Name[dz]=་་ཨི་མེཇི་་མ་ནུ་པུ་ལེ་ཤཱན་་པོརོ་གརམ།
+Name[el]=Πρόγραμμα επεξεργασίας εικόνων GNU
+Name[en_CA]=GNU Image Manipulation Program
+Name[en_GB]=GNU Image Manipulation Program
+Name[eo]=Bildmanipulilo (GIMP = GNU Image Manipulation Program)
+Name[es]=Programa de manipulación de imágenes de GNU
+Name[et]=GIMP - GNU pilditöötlusprogramm
+Name[eu]=Irudiak Manipulatzeko GNU Programa
+Name[fa]=برنامهٔ روتوش تصاویر گنو
+Name[fi]=GIMP-kuvankäsittely
+Name[fr]=Éditeur d’image GIMP
+Name[gd]=GNU Image Manipulation Program
+Name[gl]=Programa de Manipulación de Imaxes de GNU
+Name[gu]=GNU ચિત્ર જાળવણી કાર્યક્રમ
+Name[he]=תוכנת עיבוד התמונה של GNU
+Name[hr]=GNU program za obradu slika
+Name[hu]=GNU képszerkesztő program
+Name[id]=GNU Program Manipulasi Gambar
+Name[is]=GNU Myndvinnsluforrit
+Name[it]=GNU Image Manipulation Program
+Name[ja]=GIMP (GNU Image Manipulation Program)
+Name[km]=កម្មវិធី​រៀបចំ​រូបភាពរបស់ GNU
+Name[kn]=GNU ಇಮೇಜ್ ಮ್ಯಾನಿಪುಲೇಶನ್ ಪ್ರೊಗ್ರಾಮ್
+Name[ko]=그누 이미지 처리 프로그램
+Name[ky]=GNU Image Manipulation Program
+Name[lt]=GNU paveikslėlių manipuliavimo programa
+Name[lv]=GNU attēlu apstrādes programma
+Name[mk]=ГНУ програма за манипулација со слики
+Name[ml]=GNU Image Manipulation Program
+Name[mr]=ग्नू इमेज मॅनिप्युलेशन प्रोग्राम
+Name[my]=GNU ရုပ်ပုံ စီမံကိုင်တွယ်ရေး ပရိုဂရမ်
+Name[nb]=GNU bildebehandlingsprogram
+Name[nds]=GNU Billbewarkenprogramm
+Name[ne]=जी एन यू छवि परिचालन कार्यक्रम
+Name[nl]=GNU Image Manipulation Program
+Name[nn]=GNU bilethandteringsprogram
+Name[oc]=Editor d'imatge GIMP
+Name[pa]=ਗਨੂ ਈਮੇਜ਼ ਮੈਨੂਪਲੇਸ਼ਨ ਪਰੋਗਰਾਮ
+Name[pl]=Edytor obrazów GIMP
+Name[pt]=Programa de Manipulação de Imagens GNU
+Name[pt_BR]=Programa de manipulação de imagem do GNU
+Name[ro]=GIMP
+Name[ru]=GNU Image Manipulation Program
+Name[si]=GNU Image Manipulation Program
+Name[sk]=GNU program na manipuláciu s obrázkami
+Name[sl]=GIMP – program GNU za obdelavo slik
+Name[sr]=Гнуов програм за обраду слика
+Name[sr@latin]=Gnuov program za obradu slika
+Name[sv]=GNU:s bildmanipuleringsprogram
+Name[ta]=க்னூ பட கையாளல் நிரல்
+Name[te]=గ్నూ ఇమేజ్ మానిప్యులేషన్ ప్రోగ్రామ్
+Name[th]=GNU Image Manipulation Program
+Name[tr]=GNU Görüntü İşleme Programı
+Name[tt]=Sürät Eşkärtüçe GNU-Yasılım
+Name[uk]=GNU Image Manipulation Program
+Name[vi]=Chương Trình Xử Lý Ảnh GNU
+Name[zh_CN]=GNU 图像处理程序
+Name[zh_HK]=GNU 圖片處理程式
+Name[zh_TW]=GNU 影像處理程式
+GenericName=Image Editor
+GenericName[ar]=محرر صور
+GenericName[ast]=Editor d'imaxe
+GenericName[be]=Рэдактар відарысаў
+GenericName[bg]=Редактор на изображения
+GenericName[br]=Embanner skeudennoù
+GenericName[bs]=Obrada slika
+GenericName[ca]=Editor d'imatges
+GenericName[ca@valencia]=Editor d'imatges
+GenericName[cs]=Editor obrázků
+GenericName[da]=Billedredigering
+GenericName[de]=Bildeditor
+GenericName[dz]=གཟུགས་བརྙན་ ཞུན་དག་པ།
+GenericName[el]=Επεξεργαστής εικόνων
+GenericName[en_CA]=Image Editor
+GenericName[en_GB]=Image Editor
+GenericName[eo]=Bildredaktilo
+GenericName[es]=Editor de imagen
+GenericName[et]=Pildiredaktor
+GenericName[eu]=Irudi-editorea
+GenericName[fa]=ویرایشگر تصویر
+GenericName[fi]=Kuvankäsittely
+GenericName[fr]=Éditeur d’image
+GenericName[gd]=Deasaiche dhealbhan
+GenericName[gl]=Editor de imaxes
+GenericName[gu]=ચિત્ર સંપાદક
+GenericName[hr]=Uređivač slika
+GenericName[hu]=Képszerkesztő
+GenericName[id]=Penyunting Gambar
+GenericName[is]=Myndvinnsluforrit
+GenericName[it]=Modifica immagine
+GenericName[ja]=画像エディター
+GenericName[ka]=გამოსახულებების რედაქტორი
+GenericName[kk]=Суреттерді өңдеу қолданбасы
+GenericName[km]=កម្មវិធី​និពន្ធ​រូបភាព
+GenericName[kn]=ಚಿತ್ರ ಸಂಪಾದಕ
+GenericName[ko]=이미지 편집기
+GenericName[ky]=Сүрөт редактору
+GenericName[lt]=Paveikslėlių rengyklė
+GenericName[lv]=Attēlu redaktors
+GenericName[mk]=Уредник за слики
+GenericName[mr]=प्रतिमा संपादक
+GenericName[my]=ရုပ်ပုံ တည်းဖြတ်ကိရိယာ
+GenericName[nb]=Bildebehandler
+GenericName[nds]=Billbewarker
+GenericName[ne]=छवि सम्पादक
+GenericName[nl]=Editor Afbeeldingen
+GenericName[nn]=Bilethandterar
+GenericName[oc]=Editor d'imatge
+GenericName[pa]=ਚਿੱਤਰ ਐਡੀਟਰ
+GenericName[pl]=Edytor obrazów
+GenericName[pt]=Editor de imagens
+GenericName[pt_BR]=Editor de imagens
+GenericName[ro]=Editor de imagini
+GenericName[ru]=Редактор изображений
+GenericName[sk]=Editor obrázkov
+GenericName[sl]=Urejevalnik slik
+GenericName[sr]=Обрада фотографија
+GenericName[sr@latin]=Obrada fotografija
+GenericName[sv]=Bildredigerare
+GenericName[ta]=பிம்ப திருத்தி
+GenericName[te]=బొమ్మ కూర్పకము
+GenericName[th]=เครื่องมือแก้ไขภาพ
+GenericName[tr]=Görüntü Düzenleyici
+GenericName[tt]=Sürät Tözätkeç
+GenericName[uk]=Редактор зображень
+GenericName[vi]=Bộ biên soạn ảnh
+GenericName[xh]=UmHleli woMfanekiso
+GenericName[zh_CN]=图像编辑器
+GenericName[zh_HK]=圖片編輯器
+GenericName[zh_TW]=影像編輯器
+Comment=Create images and edit photographs
+Comment[ar]=أنشئ صورا وحرّر لقطات
+Comment[ast]=Cree imáxenes y edite semeyes
+Comment[be]=Стварэньне відарысаў і праўленьне фатаздымкаў
+Comment[bg]=Създаване на изображения и редакция на снимки
+Comment[br]=Krouiñ hag embann skeudennoù pe luc'hskeudennoù
+Comment[bs]=Napravite slike i obradite fotografije
+Comment[ca]=Creeu imatges i editeu fotografies
+Comment[ca@valencia]=Creeu imatges i editeu fotografies
+Comment[cs]=Vytvářejte obrázky a upravujte fotografie
+Comment[da]=Opret billeder og redigér fotografier
+Comment[de]=Bilder erstellen und Fotografien bearbeiten
+Comment[dz]=གཟུགས་བརྙན་ཚུ་ གསར་བསྐྲུན་འབད་ནི་དང་ དཔར་ཚུ་ཞུན་དག་འབད།
+Comment[el]=Δημιουργία εικόνων και επεξεργασία φωτογραφιών
+Comment[en_CA]=Create images and edit photographs
+Comment[en_GB]=Create images and edit photographs
+Comment[eo]=Krei bildojn aŭ redakti fotaĵojn
+Comment[es]=Cree imágenes y edite fotografías
+Comment[et]=Joonistamine ja fotode töötlemine
+Comment[eu]=Sortu irudiak eta editatu argazkiak
+Comment[fi]=Luo kuvia ja muokkaa valokuvia
+Comment[fr]=Créer des images et modifier des photographies
+Comment[gd]=Cruthaich dealbhan is deasaich dealbhan camara
+Comment[gl]=Crear imaxes e editar fotografías
+Comment[gu]=ચિત્રો બનાવો અને ફોટાઓમાં ફેરફાર કરો
+Comment[hr]=Stvaraj slike i uređuj fotografije
+Comment[hu]=Képek létrehozása és fotók szerkesztése
+Comment[id]=Buat gambar dan sunting foto
+Comment[is]=Búa til myndir og breyta ljósmyndum
+Comment[it]=Crea immagini e modifica fotografie
+Comment[ja]=画像の作成と写真の編集を行います
+Comment[kk]=Суреттерді жасау және фотоларды түзету
+Comment[km]=បង្កើត​រូបភាព និង កែសម្រួល​រូបថត
+Comment[kn]=ಚಿತ್ರಗಳನ್ನು ರಚಿಸಿ ಹಾಗು ಫೋಟೋಗ್ರಾಫ್‌ಗಳನ್ನು ಸಂಪಾದಿಸಿ
+Comment[ko]=이미지를 만들고 사진을 편집합니다
+Comment[lt]=Kurti paveikslėlius ir redaguoti fotografijas
+Comment[lv]=Veido attēlus vai rediģē fotogrāfijas
+Comment[mk]=Направи слики и уреди фотографии
+Comment[mr]=प्रतिमा तयार करा आणि छायाचित्रे संपादित करा
+Comment[my]=ရုပ်ပုံများကို ဖန်တီးပြီး ဓါတ်ပုံများကို တည်းဖြတ်ပါ
+Comment[nb]=Lag bilder og rediger fotografier
+Comment[ne]=छवि सिर्जना गर्नुहोस् र फोटोग्राफ सम्पादन गर्नुहोस्
+Comment[nl]=Afbeeldingen aanmaken en foto's bewerken
+Comment[nn]=Lag teikningar eller rediger foto
+Comment[oc]=Crear d'imatges e modificar de fotografias
+Comment[pa]=ਚਿੱਤਰ ਬਣਾਓ ਅਤੇ ਤਸਵੀਰਾਂ ਸੋਧੋ
+Comment[pl]=Tworzenie oraz obróbka obrazów i fotografii
+Comment[pt]=Criar imagens e editar fotografias
+Comment[pt_BR]=Crie e edite imagens ou fotografias
+Comment[ro]=Creează imagini și editează fotografii
+Comment[ru]=Создание изображений и редактирование фотографий
+Comment[sk]=Vytvárajte a upravujte obrázky alebo fotografie
+Comment[sl]=Ustvari slike in uredi fotografije
+Comment[sr]=Направите нове сличице и средите ваше фотографије
+Comment[sr@latin]=Napravite nove sličice i sredite vaše fotografije
+Comment[sv]=Skapa bilder och redigera fotografier
+Comment[ta]=பிம்பங்களை உருவாக்கவும் மற்றும் படங்களை திருத்தவும்
+Comment[te]=బొమ్మలను సృష్టించు మరియు చిత్రాలను సవరించు
+Comment[tr]=Görüntü oluşturur ve fotoğraf düzenler
+Comment[uk]=Створення зображень та редагування фотографій
+Comment[vi]=Tạo và chỉnh sửa ảnh
+Comment[zh_CN]=创建图像或编辑照片
+Comment[zh_HK]=建立圖像與編輯照片
+Comment[zh_TW]=建立圖像與編輯照片
+# Translators: Search terms to find this application. Do NOT translate or localize the semicolons! The list MUST also end with a semicolon!
+Keywords=GIMP;graphic;design;illustration;painting;
+Keywords[ar]=GIMP;graphic;design;illustration;painting;
+Keywords[ca]=GIMP;gràfics;disseny;il·lustració;pintura;
+Keywords[ca@valencia]=GIMP;gràfic;disseny;il·lustració;pintura;
+Keywords[cs]=GIMP;grafika;design;ilustrace;malování;
+Keywords[da]=GIMP;grafisk;design;illustration;male;tegne;
+Keywords[de]=GIMP;Grafik;Design;Illustration;Malen;
+Keywords[el]=GIMP;γραφικό;σχεδίαση;επεξήγηση;βαφή;
+Keywords[en_GB]=GIMP;graphic;design;illustration;painting;
+Keywords[es]=GIMP;gráfico;diseño;ilustración;dibujo;
+Keywords[eu]=GIMP;irudia;diseinua;ilustrazioa;margotzea;
+Keywords[fi]=GIMP;grafiikka;maalaus;suunnittelu;valokuva;kuva;
+Keywords[fr]=GIMP;graphisme;conception;design;illustration;image;peinture;
+Keywords[gl]=GIMP;gráfico;deseño;ilustración;debuxo;
+Keywords[hr]=GIMP;grafika;dizajn;ilustracija;slikanje;
+Keywords[hu]=GIMP;grafika;dizájn;tervezés;illusztráció;festés;
+Keywords[is]=GIMP;mynd;hönnun;myndskreyting;málun;myndvinnsla;
+Keywords[it]=GIMP;grafica;design;illustrazioni;disegno;fotoritocco;
+Keywords[lt]=GIMP;grafika;dizainas;iliustracijos;paišymas;
+Keywords[lv]=GIMP;grafika;dizains;ilustrācija;glezna;
+Keywords[mr]=गिम्पसाठी;ग्राफिक्स;रचना;उदाहरण;चित्रकला;
+Keywords[nl]=GIMP;grafisch;ontwerp;illustratie;tekenen;
+Keywords[pl]=GIMP;grafika;graficzny;design;dizajn;projektowanie;wzornictwo;ilustracja;ilustrowanie;rysunek;rysowanie;rysownictwo;malowanie;malarstwo;obrazy;obrazki;fotografia;zdjęcia;retuszowanie;renderowanie;wtyczki;
+Keywords[pt]=GIMP;gráficos;design;desenho;ilustração;pintura;
+Keywords[pt_BR]=GIMP;gráficos;design;ilustração;pintura;
+Keywords[ro]=GIMP;graphic;design;illustration;painting;
+Keywords[ru]=GIMP;графика;дизайн;иллюстрация;рисование;
+Keywords[sk]=GIMP;grafika;grafický;návrh;dizajn;ilustrácia;kresba;maľovanie;maľba;
+Keywords[sl]=GIMP;grafika;oblikovanje;ilustracija;slikanje;
+Keywords[sr]=Гимп;обрада фотографија;графика;дизајн;илустрација;цртање;obrada fotografija;grafika;dizajn;ilustracija;crtanje;GIMP;graphic;design;illustration;painting;
+Keywords[sr@latin]=Gimp;obrada fotografija;grafika;dizajn;ilustracija;crtanje;obrada fotografija;grafika;dizajn;ilustracija;crtanje;GIMP;graphic;design;illustration;painting;
+Keywords[sv]=GIMP;grafik;design;illustrera;målning;rita;
+Keywords[tr]=GIMP;grafik;tasarım;örnekleme;boyama;illüstrasyon;resimleme;
+Keywords[uk]=GIMP;graphic;design;illustration;painting;гімп;ґімп;графіка;дизайн;ілюстрації;малювання;
+Keywords[vi]=GIMP;graphic;design;illustration;painting;đồ họa;do hoa;thiết kế;thiet ke;vẽ;ve;minh họa;minh hoa;hội họa;hoi hoa;
+Keywords[zh_CN]=GIMP;图形;设计;绘画;graphic;design;illustration;painting;
+Exec=gimp-dev %U
+TryExec=gimp-dev
+Icon=/opt/$APP/$APP.png
+Terminal=false
+Categories=Graphics;2DGraphics;RasterGraphics;GTK;
+StartupNotify=true
+MimeType=image/bmp;image/g3fax;image/gif;image/x-fits;image/x-pcx;image/x-portable-anymap;image/x-portable-bitmap;image/x-portable-graymap;image/x-portable-pixmap;image/x-psd;image/x-sgi;image/x-tga;image/x-xbitmap;image/x-xwindowdump;image/x-xcf;image/x-compressed-xcf;image/x-gimp-gbr;image/x-gimp-pat;image/x-gimp-gih;image/x-sun-raster;image/tiff;image/jpeg;image/x-psp;application/postscript;image/png;image/x-icon;image/x-xpixmap;image/x-exr;image/webp;image/x-webp;image/heif;image/heic;image/avif;image/svg+xml;application/pdf;image/x-wmf;image/jp2;image/x-xcursor;
+" >> /usr/share/applications/AM-$APP.desktop;
+
+# ICON
+wget https://wiki.gimp.org/wilber-devel.png && mv ./wilber-devel.png ./$APP.png
+
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/$APP
+
+echo "
+
+ GIMP is provided by https://www.gimp.org
+  
+";
