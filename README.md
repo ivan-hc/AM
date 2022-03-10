@@ -1,4 +1,4 @@
-# "AM" the Application Manager for GNU/Linux
+# "AM" the Application Manager for GNU/Linux (AM4LINUX)
 
 ------------------------------------------------------------------------
 
