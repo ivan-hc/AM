@@ -15,50 +15,35 @@ mkdir tmp;
 cd tmp;
 
 # DOWNLOADING THE DEPENDENCIES
-wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/tools/pkg2appimage
-chmod a+x ./pkg2appimage
-
-# CREATING THE APPIMAGE
-echo 'app: brave
-
-ingredients:
-  package: brave-browser-beta
-  dist: stable
-  sources: 
-    - deb https://brave-browser-apt-beta.s3.brave.com stable main' >> recipe.yml;
-
-./pkg2appimage ./recipe.yml;
-
-
-cd ..;
-mv ./tmp/brave/brave.AppDir/opt/brave.com/brave-beta/* ./;
+version=$(curl -s https://aur.archlinux.org/packages/$APP-bin | grep -Eo "$APP-bin [+-]?[0-9]+([.][0-9]+)?+[.]?[0-9]" | head -1 | cut -c 16-)
+wget https://github.com/brave/brave-browser/releases/download/v$version/brave-browser-beta-$version-linux-amd64.zip
+unzip ./*.zip
+rm ./*.zip
+cd ..
+echo $version >> ./version
+mv ./tmp/* ./
 rm -R -f ./tmp
 
 # LINK
 ln -s /opt/$APP/brave /usr/local/bin/$APP
 
 # SCRIPT TO UPDATE THE PROGRAM
-echo '#!/bin/sh
-version=$(exec /opt/'$APP'/brave --version | grep -Eo "[+-]?[0-9]+([.][0-9]+)?+[+-]?[0-9]+([.][0-9]+)?")
-url="http://macupdater.org/app_updates/appinfo/com.brave.Browser.beta/index.html"
-if curl -L -s $url | grep -ioF "$version" 1>/dev/null; then
+echo '#!/usr/bin/env bash
+version0=$(cat /opt/'$APP'/version)
+version=$(curl -s https://aur.archlinux.org/packages/'$APP'-bin | grep -Eo "'$APP'-bin [+-]?[0-9]+([.][0-9]+)?+[.]?[0-9]" | head -1 | cut -c 16-)
+if [[ "$version0" == "$version" ]]; then
   echo "Update not needed, exit!"
  else
   notify-send "A new version of '$APP' is available, please wait!"
   mkdir /opt/'$APP'/tmp
   cd /opt/'$APP'/tmp
-  wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/tools/pkg2appimage
-  chmod a+x ./pkg2appimage
-  echo "app: brave
-
-ingredients:
-  package: brave-browser
-  dist: stable
-  sources: 
-    - deb https://brave-browser-apt-release.s3.brave.com stable main" >> recipe.yml;
-  ./pkg2appimage ./recipe.yml
+  wget https://github.com/brave/brave-browser/releases/download/v$version/brave-browser-beta-$version-linux-amd64.zip
+  unzip ./*.zip
+  rm -R -f ./*.zip
   cd ..
-  mv --backup=t ./tmp/brave/brave.AppDir/opt/brave.com/brave/* ./
+  rm -R -f ./version
+  mv --backup=t ./tmp/* ./
+  echo $version >> ./version
   rm -R -f ./tmp ./*~
 fi' >> /opt/$APP/AM-updater
 chmod a+x /opt/$APP/AM-updater
