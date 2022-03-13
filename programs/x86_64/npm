@@ -1,3 +1,73 @@
 #!/bin/sh
 
-rm /opt/am/.cache/npm && sudo am install node
+APP=node
+
+# CREATE THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP
+
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP
+cd /usr/local/bin && find . -xtype l -exec rm {} \;" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+
+# DOWNLOAD THE PROGRAM
+mkdir tmp
+cd ./tmp
+
+wget -r -erobots=off -l1 -np -A node-*-linux-x64.tar.gz  -nd https://nodejs.org/dist/latest/
+tar fx ./*tar.gz
+
+
+cd ..
+mv ./tmp/node*linux-x64/* ./
+rmdir ./tmp
+
+# LINK
+ln -s /opt/$APP/bin/$APP /usr/local/bin/$APP
+ln -s /opt/$APP/bin/npm /usr/local/bin/npm
+ln -s /opt/$APP/bin/npx /usr/local/bin/npx
+ln -s /opt/$APP/bin/corepack /usr/local/bin/corepak
+
+# SCRIPT TO UPDATE THE PROGRAM
+echo '#!/bin/sh
+version=$(exec /opt/'$APP'/bin/'$APP' --version | grep -Eo "[+-]?[0-9]+([.][0-9]+)?+[+-]?[0-9]+([.][0-9]+)?")
+url="https://nodejs.org/en/"
+if curl --output /dev/null --silent --head --fail "$url"; then
+  echo "Update not needed, exit!"
+else
+  notify-send "A new version of '$APP' is available, please wait!"
+  mkdir /opt/'$APP'/tmp
+  cd /opt/'$APP'/tmp
+  wget -r -erobots=off -l1 -np -A node-*-linux-x64.tar.gz  -nd https://nodejs.org/dist/latest/
+  tar xf ./*tar.gz
+  cd ..
+  mv --backup=t ./tmp/node*linux-x64/* ./
+  rm -R -f ./tmp ./*~
+fi' >> /opt/$APP/AM-updater
+chmod a+x /opt/$APP/AM-updater
+
+# LAUNCHER
+rm /usr/share/applications/AM-$APP.desktop
+echo "[Desktop Entry]
+Name=NodeJS (Terminal)
+Comment=A JavaScript runtime built on Chrome's V8 JavaScript engine.
+Exec=exo-open --working-directory /opt/$APP/bin --launch TerminalEmulator
+Icon=/opt/$APP/nodejs.svg
+Type=Application
+Categories=Development;" >> /usr/share/applications/AM-$APP.desktop
+
+# ICON
+wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/programs/.icons/nodejs.svg;
+
+# CHANGE THE PERMISSIONS
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/$APP
+
+# MESSAGE
+echo "
+
+ NodeJS is provided by https://nodejs.org
+  
+";

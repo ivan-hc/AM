@@ -11,7 +11,279 @@ echo " 2) '0ad-bundle', this takes 3.5 GB, useful for debugging and mods"
 echo ""
 read -r -p " What do you choose between 1 and 2? " response
 case "$response" in
-    1) rm /opt/am/.cache/0ad && sudo am install 0ad-appimage;;
-    2) rm /opt/am/.cache/0ad && sudo am install 0ad-bundle;;
+    1) APP=0ad
+
+# CREATING THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP;
+
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/games/$APP" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+
+mkdir tmp;
+cd tmp;
+
+# DOWNLOADING THE DEPENDENCIES
+wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool
+wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/tools/pkg2appimage
+chmod a+x ./appimagetool ./pkg2appimage
+
+# CREATING THE APPIMAGE
+echo "app: 0ad
+
+ingredients:
+  dist: focal
+  sources:
+    - deb http://ftp.fau.de/ubuntu/ focal main universe
+  ppas:
+    - wfg/0ad" >> recipe.yml;
+
+cp /opt/$APP/tmp/recipe.yml /opt/$APP/recipe.yml
+
+./pkg2appimage ./recipe.yml;
+
+cp ./$APP/$APP.AppDir/usr/games/* ./$APP/$APP.AppDir/usr/bin/
+
+rm -R -f ./$APP/$APP.AppDir/AppRun
+
+function1="'^Exec=.*'"
+function2="'s|%.||g'"
+echo '#!/bin/sh
+HERE="$(dirname "$(readlink -f "${0}")")"
+export UNION_PRELOAD="${HERE}"
+export LD_PRELOAD="${HERE}/libunionpreload.so"
+export PATH="${HERE}"/usr/bin/:"${HERE}"/usr/sbin/:"${HERE}"/usr/games/:"${HERE}"/bin/:"${HERE}"/opt/0ad/:"${HERE}"/sbin/:"${PATH}"
+export LD_LIBRARY_PATH="${HERE}"/usr/lib/:"${HERE}"/usr/lib/games/0ad/:"${HERE}"/usr/lib64/games/0ad/:"${HERE}"/usr/lib/x86_64-linux-gnu/gdk-pixbuf-2.0/2.10.0/loaders/:"${HERE}"/usr/lib/x86_64-linux-gnu/sasl2/:"${HERE}"/usr/lib/x86_64-linux-gnu/:"${HERE}"/usr/lib/x86_64-linux-gnu/krb5/plugins/preauth/:"${HERE}"/usr/lib64/:"${HERE}"/lib/:"${HERE}"/lib/i386-linux-gnu/:"${HERE}"/lib/x86_64-linux-gnu/:"${HERE}"/usr/lib/x86_64-linux-gnu/engines-1.1/:"${HERE}"/lib64/:"${LD_LIBRARY_PATH}"
+export PYTHONPATH="${HERE}"/usr/share/pyshared/:"${HERE}"/usr/lib/python*/:"${PYTHONPATH}"
+export PYTHONHOME="${HERE}"/usr/:"${HERE}"/usr/lib/python*/
+export XDG_DATA_DIRS="${HERE}"/usr/share/:"${HERE}"/usr/share/games/0ad/:"${XDG_DATA_DIRS}"
+export PERLLIB="${HERE}"/usr/share/perl5/:"${HERE}"/usr/lib/perl5/:"${PERLLIB}"
+export GSETTINGS_SCHEMA_DIR="${HERE}"/usr/share/glib-2.0/schemas/:"${GSETTINGS_SCHEMA_DIR}"
+export QT_PLUGIN_PATH="${HERE}"/usr/lib/qt4/plugins/:"${HERE}"/usr/lib/games/0ad/:"${HERE}"/usr/lib64/games/0ad/:"${HERE}"/usr/lib32/games/0ad/:"${HERE}"/usr/lib/i386-linux-gnu/qt4/plugins/:"${HERE}"/usr/lib/x86_64-linux-gnu/qt4/plugins/:"${HERE}"/usr/lib32/qt4/plugins/:"${HERE}"/usr/lib64/qt4/plugins/:"${HERE}"/usr/lib/qt5/plugins/:"${HERE}"/usr/lib/i386-linux-gnu/qt5/plugins/:"${HERE}"/usr/lib/x86_64-linux-gnu/qt5/plugins/:"${HERE}"/usr/lib32/qt5/plugins/:"${HERE}"/usr/lib64/qt5/plugins/:"${QT_PLUGIN_PATH}"
+EXEC=$(grep -e '$function1' "${HERE}"/*.desktop | head -n 1 | cut -d "=" -f 2- | sed -e '$function2')
+exec ${EXEC} "$@"' >> ./$APP/$APP.AppDir/AppRun
+chmod a+x ./$APP/$APP.AppDir/AppRun
+wget https://github.com/project-portable/libunionpreload/releases/download/amd64/libunionpreload.so
+chmod a+x libunionpreload.so
+mv ./libunionpreload.so ./$APP/$APP.AppDir/ 2>/dev/null
+cp ./$APP/$APP.AppDir/AppRun /opt/$APP/
+cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/128x128/apps/$APP.png /opt/$APP/
+ARCH=x86_64 ./appimagetool -n ./$APP/$APP.AppDir;
+
+mkdir version
+mv ./$APP/0ad_*_amd64.deb ./version/
+version=$(ls /opt/$APP/tmp/version)
+echo "$version" >> /opt/$APP/version
+
+cd ..;
+mv ./tmp/*.AppImage ./$APP;
+chmod a+x ./$APP
+
+rm -R -f ./tmp
+
+# LINK
+ln -s /opt/$APP/$APP /usr/games/$APP
+
+# SCRIPT TO UPDATE THE PROGRAM
+echo '#!/bin/sh
+version0=$(cat /opt/'$APP'/version)
+url="http://ppa.launchpad.net/wfg/0ad/ubuntu/pool/main/0/0ad/$version0"
+if curl --output /dev/null --silent --head --fail "$url"; then
+  echo "Update not needed, exit!"
+else
+  notify-send "A new version of '$APP' is available, please wait!"
+  mkdir /opt/'$APP'/tmp
+  cd /opt/'$APP'/tmp
+  wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool
+  wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/tools/pkg2appimage
+  chmod a+x ./appimagetool ./pkg2appimage
+  cp /opt/'$APP'/recipe.yml /opt/'$APP'/tmp/recipe.yml
+  ./pkg2appimage ./recipe.yml;
+  rm -R -f ./'$APP'/'$APP'.AppDir/'$APP'.desktop ./'$APP'/'$APP'.AppDir/AppRun
+  cp /opt/'$APP'/AppRun ./'$APP'/'$APP'.AppDir/
+  chmod a+x ./'$APP'/'$APP'.AppDir/AppRun
+  wget https://github.com/project-portable/libunionpreload/releases/download/amd64/libunionpreload.so
+  chmod a+x libunionpreload.so
+  mv ./libunionpreload.so ./'$APP'/'$APP'.AppDir/ 2>/dev/null
+  ARCH=x86_64 ./appimagetool -n ./'$APP'/'$APP'.AppDir
+  mkdir version
+  mv ./'$APP'/0ad_*_amd64.deb ./version/
+  cd ..
+  version=$(ls /opt/'$APP'/tmp/version)
+  if test -f ./tmp/version/$version; then rm -R -f ./version
+  fi
+  echo "$version" >> /opt/'$APP'/version
+  mv ./tmp/*.AppImage ./'$APP';
+  chmod a+x ./'$APP'
+  rm -R -f ./tmp
+fi' >> /opt/$APP/AM-updater
+chmod a+x /opt/$APP/AM-updater
+
+# LAUNCHER
+echo "[Desktop Entry]
+Version=1.0
+Name=0 A.D.
+Exec=0ad
+Icon=/opt/$APP/$APP.png
+Terminal=false
+MimeType=application/x-pyromod+zip;
+Type=Application
+Categories=Game;StrategyGame;
+Comment=A real-time strategy game of ancient warfare
+Comment[de]=Ein Echtzeitstrategiespiel, das die Kriegsführung der Antike behandelt
+Comment[es]=Un juego de estrategia en tiempo real de guerra antigua
+Comment[fr]=Un jeu de statégie militaire en temps réel dans l'Antiquité
+Comment[it]=Videogioco strategico in tempo reale di guerre antiche
+Comment[nl]=Een real-time strategie spel over oorlog van de oudheid
+Comment[pl]=Gra strategiczna czasu rzeczywistego  o wojnach starożytnych
+Comment[pt_BR]=Um jogo em tempo real de guerra antiga
+Comment[ru]=Игра в жанре исторической стратегии в реальном времени
+Keywords=RTS;Realtime Strategy;Economic Simulation Game;History;Warfare;Infantry;Cavalry;Siege Engines;Fortress;Celtics;Hellenes;Athenians;Britons;Carthaginians;Gauls;Iberians;Macedonians;Mauryans;Persians;Ptolemies;Romans;Seleucids;Spartans;
+Actions=Atlas;
+
+[Desktop Action Atlas]
+Name=Atlas Map Editor
+Exec=0ad -editor" >> /usr/share/applications/AM-$APP.desktop;
+
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/$APP;;
+    2) APP=0ad
+
+# CREATING THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP;
+
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/games/$APP" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+
+mkdir tmp;
+cd tmp;
+
+# DOWNLOADING THE DEPENDENCIES
+wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/tools/pkg2appimage
+chmod a+x ./pkg2appimage
+
+# CREATING THE APPIMAGE
+echo "app: 0ad
+
+ingredients:
+  dist: focal
+  sources:
+    - deb http://ftp.fau.de/ubuntu/ focal main universe
+  ppas:
+    - wfg/0ad" >> recipe.yml;
+
+cp /opt/$APP/tmp/recipe.yml /opt/$APP/recipe.yml
+
+./pkg2appimage ./recipe.yml;
+
+cp ./$APP/$APP.AppDir/usr/games/* ./$APP/$APP.AppDir/usr/bin/
+
+rm -R -f ./$APP/$APP.AppDir/AppRun
+
+function1="'^Exec=.*'"
+function2="'s|%.||g'"
+echo '#!/bin/sh
+HERE="$(dirname "$(readlink -f "${0}")")"
+export UNION_PRELOAD="${HERE}"
+export LD_PRELOAD="${HERE}/libunionpreload.so"
+export PATH="${HERE}"/usr/bin/:"${HERE}"/usr/sbin/:"${HERE}"/usr/games/:"${HERE}"/bin/:"${HERE}"/opt/0ad/:"${HERE}"/sbin/:"${PATH}"
+export LD_LIBRARY_PATH="${HERE}"/usr/lib/:"${HERE}"/usr/lib/games/0ad/:"${HERE}"/usr/lib64/games/0ad/:"${HERE}"/usr/lib/x86_64-linux-gnu/gdk-pixbuf-2.0/2.10.0/loaders/:"${HERE}"/usr/lib/x86_64-linux-gnu/sasl2/:"${HERE}"/usr/lib/x86_64-linux-gnu/:"${HERE}"/usr/lib/x86_64-linux-gnu/krb5/plugins/preauth/:"${HERE}"/usr/lib64/:"${HERE}"/lib/:"${HERE}"/lib/i386-linux-gnu/:"${HERE}"/lib/x86_64-linux-gnu/:"${HERE}"/usr/lib/x86_64-linux-gnu/engines-1.1/:"${HERE}"/lib64/:"${LD_LIBRARY_PATH}"
+export PYTHONPATH="${HERE}"/usr/share/pyshared/:"${HERE}"/usr/lib/python*/:"${PYTHONPATH}"
+export PYTHONHOME="${HERE}"/usr/:"${HERE}"/usr/lib/python*/
+export XDG_DATA_DIRS="${HERE}"/usr/share/:"${HERE}"/usr/share/games/0ad/:"${XDG_DATA_DIRS}"
+export PERLLIB="${HERE}"/usr/share/perl5/:"${HERE}"/usr/lib/perl5/:"${PERLLIB}"
+export GSETTINGS_SCHEMA_DIR="${HERE}"/usr/share/glib-2.0/schemas/:"${GSETTINGS_SCHEMA_DIR}"
+export QT_PLUGIN_PATH="${HERE}"/usr/lib/qt4/plugins/:"${HERE}"/usr/lib/games/0ad/:"${HERE}"/usr/lib64/games/0ad/:"${HERE}"/usr/lib32/games/0ad/:"${HERE}"/usr/lib/i386-linux-gnu/qt4/plugins/:"${HERE}"/usr/lib/x86_64-linux-gnu/qt4/plugins/:"${HERE}"/usr/lib32/qt4/plugins/:"${HERE}"/usr/lib64/qt4/plugins/:"${HERE}"/usr/lib/qt5/plugins/:"${HERE}"/usr/lib/i386-linux-gnu/qt5/plugins/:"${HERE}"/usr/lib/x86_64-linux-gnu/qt5/plugins/:"${HERE}"/usr/lib32/qt5/plugins/:"${HERE}"/usr/lib64/qt5/plugins/:"${QT_PLUGIN_PATH}"
+EXEC=$(grep -e '$function1' "${HERE}"/*.desktop | head -n 1 | cut -d "=" -f 2- | sed -e '$function2')
+exec ${EXEC} "$@"' >> ./$APP/$APP.AppDir/AppRun
+chmod a+x ./$APP/$APP.AppDir/AppRun
+wget https://github.com/project-portable/libunionpreload/releases/download/amd64/libunionpreload.so
+chmod a+x libunionpreload.so
+mv ./libunionpreload.so ./$APP/$APP.AppDir/ 2>/dev/null
+
+mkdir version
+mv ./$APP/0ad_*_amd64.deb ./version/
+version=$(ls /opt/$APP/tmp/version)
+echo "$version" >> /opt/$APP/version
+
+cd ..;
+mv ./tmp/$APP/$APP.AppDir/* ./
+
+rm -R -f ./tmp
+
+# LINK
+ln -s /opt/$APP/AppRun /usr/games/$APP
+
+# SCRIPT TO UPDATE THE PROGRAM
+echo '#!/bin/sh
+version0=$(cat /opt/'$APP'/version)
+url="http://ppa.launchpad.net/wfg/0ad/ubuntu/pool/main/0/0ad/$version0"
+if curl --output /dev/null --silent --head --fail "$url"; then
+  echo "Update not needed, exit!"
+else
+  notify-send "A new version of '$APP' is available, please wait!"
+  mkdir /opt/'$APP'/tmp
+  cd /opt/'$APP'/tmp
+  wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/tools/pkg2appimage
+  chmod a+x ./pkg2appimage
+  cp /opt/'$APP'/recipe.yml /opt/'$APP'/tmp/recipe.yml
+  ./pkg2appimage ./recipe.yml;
+  rm -R -f ./'$APP'/'$APP'.AppDir/'$APP'.desktop ./'$APP'/'$APP'.AppDir/AppRun
+  cp /opt/'$APP'/AppRun ./'$APP'/'$APP'.AppDir/
+  chmod a+x ./'$APP'/'$APP'.AppDir/AppRun
+  wget https://github.com/project-portable/libunionpreload/releases/download/amd64/libunionpreload.so
+  chmod a+x libunionpreload.so
+  mv ./libunionpreload.so ./'$APP'/'$APP'.AppDir/ 2>/dev/null
+  mkdir version
+  mv ./'$APP'/0ad_*_amd64.deb ./version/
+  cd ..
+  version=$(ls /opt/'$APP'/tmp/version)
+  if test -f ./tmp/version/$version; then rm -R -f ./version
+  fi
+  echo "$version" >> /opt/'$APP'/version
+  mv --backup=t ./tmp/'$APP'/'$APP'.AppDir/* ./
+  rm -R -f ./tmp ./*~
+fi' >> /opt/$APP/AM-updater
+chmod a+x /opt/$APP/AM-updater
+
+# LAUNCHER
+echo "[Desktop Entry]
+Version=1.0
+Name=0 A.D.
+Exec=0ad
+Icon=/opt/$APP/$APP.png
+Terminal=false
+MimeType=application/x-pyromod+zip;
+Type=Application
+Categories=Game;StrategyGame;
+Comment=A real-time strategy game of ancient warfare
+Comment[de]=Ein Echtzeitstrategiespiel, das die Kriegsführung der Antike behandelt
+Comment[es]=Un juego de estrategia en tiempo real de guerra antigua
+Comment[fr]=Un jeu de statégie militaire en temps réel dans l'Antiquité
+Comment[it]=Videogioco strategico in tempo reale di guerre antiche
+Comment[nl]=Een real-time strategie spel over oorlog van de oudheid
+Comment[pl]=Gra strategiczna czasu rzeczywistego  o wojnach starożytnych
+Comment[pt_BR]=Um jogo em tempo real de guerra antiga
+Comment[ru]=Игра в жанре исторической стратегии в реальном времени
+Keywords=RTS;Realtime Strategy;Economic Simulation Game;History;Warfare;Infantry;Cavalry;Siege Engines;Fortress;Celtics;Hellenes;Athenians;Britons;Carthaginians;Gauls;Iberians;Macedonians;Mauryans;Persians;Ptolemies;Romans;Seleucids;Spartans;
+Actions=Atlas;
+
+[Desktop Action Atlas]
+Name=Atlas Map Editor
+Exec=0ad -editor" >> /usr/share/applications/AM-$APP.desktop;
+
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/$APP;;
     *) echo ""; echo " No valid argument was chosen: installation aborted! "; rm -f /opt/am/.cache/0ad; echo "";;
 esac
+
+echo "
+
+ 0 A.D. is an epic game provided by https://play0ad.com
+  
+";
