@@ -1,3 +1,72 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
-rm /opt/am/.cache/openshot-qt && sudo am install openshot
+APP=openshot
+
+mkdir /opt/openshot
+cd /opt/openshot;
+
+echo '#!/bin/sh
+rm -R -f /usr/share/applications/AM-openshot.desktop /opt/openshot /usr/local/bin/openshot' >> /opt/openshot/remove
+chmod a+x /opt/openshot/remove
+
+mkdir tmp;
+cd tmp;
+v=$(wget -q https://api.github.com/repos/OpenShot/openshot-qt/releases/latest -O - | grep -E tag_name | awk -F '[""]' '{print $4}')
+wget https://github.com/OpenShot/openshot-qt/releases/download/$v/OpenShot-$v-x86_64.AppImage;
+cd ..
+mv ./tmp/*mage ./openshot
+chmod a+x ./openshot
+rmdir ./tmp
+
+# LINK
+ln -s /opt/$APP/$APP /usr/local/bin/$APP
+
+# SCRIPT TO UPDATE THE PROGRAM
+part0='{print $4}'
+part1='[""]'
+function2="grep -E tag_name | awk -F '$part1' '$part0')"
+echo '#!/bin/sh
+version=$(exec /opt/openshot/openshot --version)
+url="https://github.com/OpenShot/openshot-qt/releases/download/v$version/OpenShot-v$version-x86_64.AppImage"
+if curl --output /dev/null --silent --head --fail "$url"; then
+  echo "Update not needed, exit!"
+else
+  notify-send "A new version of OpenShot is available, please wait!"
+  mkdir /opt/'$APP'/tmp
+  cd /opt/'$APP'/tmp 
+  v=$(wget -q https://api.github.com/repos/OpenShot/openshot-qt/releases/latest -O - | '$function2'
+  wget https://github.com/OpenShot/openshot-qt/releases/download/$v/OpenShot-$v-x86_64.AppImage;
+  cd ..
+  mv ./tmp/*mage ./openshot
+  chmod a+x ./openshot
+  rmdir ./tmp
+fi' >> /opt/$APP/AM-updater
+chmod a+x /opt/$APP/AM-updater
+
+currentuser=$(who | awk '{print $1}')
+
+wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/programs/.icons/openshot.svg
+
+rm -R -f /usr/share/applications/AM-openshot.desktop
+echo '[Desktop Entry]
+Name=OpenShot Video Editor
+GenericName=Video Editor
+X-GNOME-FullName=OpenShot Video Editor
+Comment=Create and edit amazing videos and movies
+Exec=/opt/openshot/openshot %F
+Terminal=false
+Type=Application
+Icon=/opt/openshot/openshot.svg
+Categories=GNOME;GTK;AudioVideo;Video;AudioVideoEditing;
+MimeType=application/vnd.openshot-qt-project;
+X-AppInstall-Package=openshot-qt
+Path=
+StartupNotify=true' >> /usr/share/applications/AM-openshot.desktop
+
+chown -R $currentuser /opt/openshot
+
+echo "
+
+ OpenShot Video Editor is provided by https://www.openshot.org
+
+"
