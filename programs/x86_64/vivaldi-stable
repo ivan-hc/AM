@@ -15,49 +15,35 @@ mkdir tmp;
 cd tmp;
 
 # DOWNLOADING THE DEPENDENCIES
-wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/tools/pkg2appimage
-chmod a+x ./pkg2appimage
-
-# CREATING THE APPIMAGE
-echo 'app: vivaldi
-
-ingredients:
-  package: vivaldi-stable
-  dist: stable
-  sources: 
-    - deb http://repo.vivaldi.com/snapshot/deb stable main' >> recipe.yml;
-
-./pkg2appimage ./recipe.yml;
-
-
-cd ..;
-mv ./tmp/vivaldi/vivaldi.AppDir/opt/vivaldi/* ./;
+version=$(curl -s https://archlinux.org/packages/community/x86_64/vivaldi/ | grep -Eo "vivaldi [+-]?[0-9]+([.][0-9]+)?+[.]?[0-9]" | head -1 | cut -c 9-)
+wget https://downloads.vivaldi.com/stable/vivaldi-stable_$version-1_amd64.deb
+ar x ./*deb
+tar fx ./data.tar.xz
+cd ..
+echo $version >> ./version
+mv ./tmp/opt/vivaldi/* ./
 rm -R -f ./tmp
 
 # LINK
 ln -s /opt/$APP/vivaldi /usr/local/bin/$APP
 
 # SCRIPT TO UPDATE THE PROGRAM
-echo '#!/bin/sh
-version=$(exec /opt/'$APP'/vivaldi --version | grep -Eo "[+-]?[0-9]+([.][0-9]+)?+[+-]?[0-9]+([.][0-9]+)?")
-url="https://www.ubuntuupdates.org/package/vivaldi/stable/main/base/vivaldi-stable?id=2115385&page=2"
-if curl -L -s $url | grep -ioF "$version"; then
+echo '#!/usr/bin/env bash
+version0=$(cat /opt/'$APP'/version)
+version=$(curl -s https://archlinux.org/packages/community/x86_64/vivaldi/ | grep -Eo "vivaldi [+-]?[0-9]+([.][0-9]+)?+[.]?[0-9]" | head -1 | cut -c 9-)
+if [[ "$version0" == "$version" ]]; then
   echo "Update not needed, exit!"
  else
   notify-send "A new version of '$APP' is available, please wait!"
   mkdir /opt/'$APP'/tmp
   cd /opt/'$APP'/tmp
-  wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/tools/pkg2appimage
-  chmod a+x ./pkg2appimage
-  echo "app: vivaldi
-ingredients:
-  package: vivaldi-stable
-  dist: stable
-  sources: 
-    - deb http://repo.vivaldi.com/snapshot/deb stable main" >> recipe.yml
-  ./pkg2appimage ./recipe.yml
+  wget https://downloads.vivaldi.com/stable/vivaldi-stable_$version-1_amd64.deb
+  ar x ./*deb
+  tar fx ./data.tar.xz
   cd ..
-  mv --backup=t ./tmp/vivaldi/vivaldi.AppDir/opt/vivaldi/* ./
+  rm -R -f ./version
+  mv --backup=t ./tmp/opt/vivaldi/* ./
+  echo $version >> ./version
   rm -R -f ./tmp ./*~
 fi' >> /opt/$APP/AM-updater
 chmod a+x /opt/$APP/AM-updater
