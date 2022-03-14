@@ -229,7 +229,7 @@ During the first installation, the main user ($currentuser) will take the necess
 # Repository and Multiarchitecture
 Each program is installed through a dedicated script, and all these scripts are listed in the "[repository](https://github.com/ivan-hc/AM-application-manager/tree/main/programs)" and divided by architecture.
 	
-###### NOTE that currently my work focuses on applications for x86_64 architecture (being AppMan wrote for x86_64 only), but it is possible to extend "am" to all other available architectures.
+###### NOTE that currently my work focuses on applications for x86_64 architecture, but it is possible to extend "am" to all other available architectures.
 
 Click on the link of your architecture to see the list of all the apps available on this repository:
 
