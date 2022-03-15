@@ -36,7 +36,7 @@ The main goal of this tool is to provide the same updated applications to multip
 - [Repository and Multiarchitecture](#repository-and-multiarchitecture)
 
 [Create your own script](#create-your-own-script)
-- Go to the "[Your first script](https://github.com/ivan-hc/AM-application-manager/wiki/Guide:-your-first-script-to-install-or-download-Applications-using-%22AM%22)" guide, on the AM's Wiki
+- [Your first script (guide)](#your-first-script-guide)
 - [Scripts and rules](#scripts-and-rules)
 
 [How to enable bash completion](#how-to-enable-bash-completion)
