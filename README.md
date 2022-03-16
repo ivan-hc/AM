@@ -35,8 +35,7 @@ The main goal of this tool is to provide the same updated applications to multip
 - [Updates](#updates)
 - [Repository and Multiarchitecture](#repository-and-multiarchitecture)
 
-[Create your own script](#create-your-own-script)
-- [Your first script (WIKI)](#your-first-script-wiki)
+[Create your own script (WIKI)](#create-your-own-script-wiki)
 - [Scripts and rules](#scripts-and-rules)
 
 [How to enable bash completion](#how-to-enable-bash-completion)
@@ -239,7 +238,7 @@ Click on the link of your architecture to see the list of all the apps available
 
 If you are interested, you can deliberately join this project.
 
-# Create your own script
+# Create your own script (WIKI)
 "AM" has a `-t` option (or `template`) with which you can get a script to customize according to your needs. With this option, you can quickly create scripts to download existing programs or even create AppImage or AppDir through tools such as appimagetool and pkg2appimage.
 
 The following video shows how to create and test an AppImage of "Abiword" from Debian Unstable repository with a custom AppRun (option 5):
@@ -248,7 +247,6 @@ https://user-images.githubusercontent.com/88724353/150619523-a45455f6-a656-4753-
 
 The currently available templates are stored [here](https://github.com/ivan-hc/AM-application-manager/tree/main/templates), more will be added with the next versions of "AM".
 
-# Your first script (wiki)
 A wiki is also available, here I will try to explain the installation script's workflow for a program to be better managed by "AM", trying to use a language that is as simple and elementary as possible.
 
 Each script is written exclusively for "AM" (and is structured in such a way that even "[AppMan](https://github.com/ivan-hc/AppMan)", the non-root version of "AM", can modify it to manage programs locally).
