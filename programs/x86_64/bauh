@@ -1,0 +1,86 @@
+#!/bin/sh
+
+APP=bauh
+
+# CREATE THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP
+
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+
+# DOWNLOAD THE APPIMAGE
+mkdir tmp;
+cd ./tmp;
+v=$(wget -q https://api.github.com/repos/vinifmor/bauh/releases/latest -O - | grep -E tag_name | awk -F '[""]' '{print $4}')
+wget https://github.com/vinifmor/bauh/releases/download/$v/bauh-$v-x86_64.AppImage
+wget https://github.com/vinifmor/bauh/releases/download/$v/bauh-$v-x86_64.AppImage.zsync
+cd ..
+mv ./tmp/*mage ./$APP
+chmod a+x /opt/$APP/$APP
+mv ./tmp/*mage.zsync ./$APP.zsync
+rmdir ./tmp
+
+# LINK
+ln -s /opt/$APP/$APP /usr/local/bin/$APP
+
+# SCRIPT TO UPDATE THE PROGRAM
+cat > /opt/$APP/AM-updater << 'EOF'
+#!/bin/sh
+APP=bauh
+cd /opt/$APP
+mkdir tmp
+cd ./tmp
+v=$(wget -q https://api.github.com/repos/vinifmor/bauh/releases/latest -O - | grep -E tag_name | awk -F '[""]' '{print $4}')
+wget https://github.com/vinifmor/bauh/releases/download/$v/bauh-$v-x86_64.AppImage.zsync
+cd ..
+mv ./tmp/*mage.zsync ./bauh.zsync
+rmdir ./tmp
+zsync /opt/$APP/$APP.zsync
+rm -R -f /opt/$APP/*zs-old /opt/$APP/*.part
+chmod a+x /opt/$APP/$APP
+EOF
+chmod a+x /opt/$APP/AM-updater
+
+# LAUNCHER
+rm /usr/share/applications/AM-$APP.desktop
+echo "[Desktop Entry]
+X-AppImage-Arch=x86_64
+X-AppImage-Version=e2d31ea7b7cdb8967bae465bd6f7c808e29d0ab0
+X-AppImage-Name=bauh
+Type=Application
+Name=Applications (bauh)
+Name[pt]=Aplicativos (bauh)
+Name[es]=Aplicaciones (bauh)
+Name[ca]=Aplicacions (bauh)
+Name[it]=Applicazioni (bauh)
+Name[de]=Anwendungen (bauh)
+Name[ru]=Приложения (bauh)
+Name[tr]=Paket Yönetici (bauh)
+Categories=System;
+Comment=Install and remove applications (AppImage, Arch, Flatpak, Snap, Web)
+Comment[pt]=Instale e remova aplicativos (AppImage, Arch, Flatpak, Snap, Web)
+Comment[es]=Instalar y eliminar aplicaciones (AppImage, Arch, Flatpak, Snap, Web)
+Comment[it]=Installa e rimuovi applicazioni (AppImage, Arch, Flatpak, Snap, Web)
+Comment[de]=Anwendungen installieren und entfernen (AppImage, Arch, Flatpak, Snap, Web)
+Comment[ca]=Instal·lar i eliminar aplicacions (AppImage, Arch, Flatpak, Snap, Web)
+Comment[ru]=Установка и удаление приложений (AppImage, Arch, Flatpak, Snap, Web)
+Comment[tr]=Uygulama yükle/kaldır (AppImage, Arch, Flatpak, Snap, Web)
+Exec=bauh
+Icon=/opt/$APP/bauh.svg" >> /usr/share/applications/AM-$APP.desktop
+
+# ICON
+wget https://raw.githubusercontent.com/ivan-hc/AM-Application-Manager/main/programs/.icons/bauh.svg
+
+# CHANGE THE PERMISSIONS
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/$APP
+
+# MESSAGE
+echo "
+
+   BAUH is provided by https://github.com/vinifmor/bauh
+	
+"
