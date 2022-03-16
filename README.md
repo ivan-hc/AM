@@ -36,7 +36,7 @@ The main goal of this tool is to provide the same updated applications to multip
 - [Repository and Multiarchitecture](#repository-and-multiarchitecture)
 
 [Create your own script](#create-your-own-script)
-- [Your first script (guide)](#your-first-script-guide)
+- [Your first script (WIKI)](#your-first-script-wiki)
 - [Scripts and rules](#scripts-and-rules)
 
 [How to enable bash completion](#how-to-enable-bash-completion)
@@ -248,13 +248,36 @@ https://user-images.githubusercontent.com/88724353/150619523-a45455f6-a656-4753-
 
 The currently available templates are stored [here](https://github.com/ivan-hc/AM-application-manager/tree/main/templates), more will be added with the next versions of "AM".
 
-# Your first script (guide)
-Learn more on the wiki's page, click here:
-## [Guide: your first script to install or download Applications using "AM"](https://github.com/ivan-hc/AM-application-manager/wiki/Guide:-your-first-script-to-install-or-download-Applications-using-%22AM%22)
+# Your first script (wiki)
+A wiki is also available, here I will try to explain the installation script's workflow for a program to be better managed by "AM", trying to use a language that is as simple and elementary as possible.
+
+Each script is written exclusively for "AM" (and is structured in such a way that even "[AppMan](https://github.com/ivan-hc/AppMan)", the non-root version of "AM", can modify it to manage programs locally).
+
+We can divide the stages of an installation's process as follows:
+
+* [Step 1: create the main directory](https://github.com/ivan-hc/AM-Application-Manager/wiki/Step-1:-create-the-main-directory) in /opt, as already suggested by the [Linux Standard Base](https://tldp.org/LDP/Linux-Filesystem-Hierarchy/html/opt.html) (LSB);
+* [Step 2: create the "remove" script](https://github.com/ivan-hc/AM-Application-Manager/wiki/Step-2:-create-the-%22remove%22-script), needed to uninstall averything (this must be the first one to be created, in order to quickly resolve any aborted/brocken installations using the `-r` option);
+* [Step 3: download the program](https://github.com/ivan-hc/AM-Application-Manager/wiki/Step-3:-download-the-program) and/or compile the program (this operation varies depending on how the program is distributed);
+* [Step 4: link to a $PATH](https://github.com/ivan-hc/AM-Application-Manager/wiki/Step-4:-link-to-a-$PATH) (usually `/usr/local/bin`, but also `/usr/bin`, `/usr/games` or `/usr/local/games`);
+* [Step 5: the "AM updater" script](https://github.com/ivan-hc/AM-Application-Manager/wiki/Step-5:-the-%22AM-updater%22-script), which is a kind of "copy" of step "3" (see above) that may include options to recognize newer versions of the program. NOTE that if you intend to create a script for the fixed version of a program, you can also skip this step;
+* [Step 6: launchers and icons](https://github.com/ivan-hc/AM-Application-Manager/wiki/Step-6:-launchers-and-icons). Note that if you intend to create a script for a command line utility, you can also skip this step;
+* [Step 7: change the permissions](https://github.com/ivan-hc/AM-Application-Manager/wiki/Step-7:-permissions) in the program folder, so you can use the update function (step 5) without using "sudo" privileges
+* [Step 8 (optional): your signature](https://github.com/ivan-hc/AM-Application-Manager/wiki/Step-8-(optional):-your-signature)
+
+The most difficult step to overcome is certainly the number "3", given the great variety of methods in which authors distribute their software, while all the other steps are much easier to overcome.
+
 
 ----------------------------------------------------------
 # Scripts and rules	
 The "AM" installation scripts, including those created by you with the -t option that we have just seen, all follow very specific guidelines.
+
+Some "templates" are already available [here](https://github.com/ivan-hc/AM-Application-Manager/tree/main/templates) or by downloading them using the `-t` option, this way:
+
+    am -t $PROGRAM
+
+Where $PROGRAM is the name of the program you want to create a script for. The command will generate a script named $PROGRAM.AM (I wrote the availability of a ".AM" extension to prevent overwriting of files on your desktop with the same name of the script you want write, you can safelly remove it).
+
+If you open the script, you can read some uppercased parts that you must replace manually (ICON, LAUNCHER, URL...).
 
 Once you've performed the command `sudo am -i $PROGRAM`, the script will create:
 - a /opt/$PROGRAM folder containing the standalone app with all its files, by default "AM" also creates an uninstaller script named `remove`* (used by the `sudo am -r $PROGRAM` command) and an `AM-updater` script (used by the `am -u` command);
