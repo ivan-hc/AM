@@ -1,0 +1,88 @@
+#!/bin/sh
+
+APP=filezilla
+
+# CREATING THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP;
+
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+APP=filezilla
+mkdir tmp;
+cd tmp;
+
+# DOWNLOADING THE PROGRAM
+DLLINK=$(wget https://filezilla-project.org/download.php?platform=linux32 -q -O - | grep https://dl | cut -d '"' -f 4)
+wget -O filezilla-latest.tar.bz2 $DLLINK
+tar fx filezilla-latest.tar.bz2
+cd FileZilla3
+echo '#!/bin/sh
+HERE="$(dirname "$(readlink -f "${0}")")"
+export PATH="${HERE}"/bin/:"${PATH}"
+export LD_LIBRARY_PATH="${HERE}"/lib/:"${LD_LIBRARY_PATH}"
+export XDG_DATA_DIRS="${HERE}"/usr/share/:"${HERE}"/usr/share/filezilla/:"${XDG_DATA_DIRS}"
+exec "${HERE}"/bin/filezilla' >> filezilla
+chmod a+x filezilla
+cd ..
+cd ..
+mv ./tmp/FileZilla3/* ./
+rm -R -f ./tmp
+cp ./share/pixmaps/filezilla.png ./
+
+# LINK
+ln -s /opt/$APP/$APP /usr/local/bin/$APP
+
+# SCRIPT TO UPDATE THE PROGRAM
+initial=$(echo $APP | head -c 1)
+cat >> /opt/$APP/AM-updater << 'EOF'
+#!/bin/sh
+cd /opt/filezilla
+mkdir tmp
+cd tmp
+DLLINK=$(wget https://filezilla-project.org/download.php?platform=linux32 -q -O - | grep https://dl | cut -d '"' -f 4)
+wget -O filezilla-latest.tar.bz2 $DLLINK
+tar fx filezilla-latest.tar.bz2
+cd FileZilla3
+echo '#!/bin/sh
+HERE="$(dirname "$(readlink -f "${0}")")"
+export PATH="${HERE}"/bin/:"${PATH}"
+export LD_LIBRARY_PATH="${HERE}"/lib/:"${LD_LIBRARY_PATH}"
+export XDG_DATA_DIRS="${HERE}"/usr/share/:"${HERE}"/usr/share/filezilla/:"${XDG_DATA_DIRS}"
+exec "${HERE}"/bin/filezilla' >> filezilla
+chmod a+x filezilla
+cd ..
+cd ..
+mv --backup=t ./tmp/FileZilla3/* ./
+rm -R -f ./tmp ./*~
+EOF
+chmod a+x /opt/$APP/AM-updater
+
+# LAUNCHER
+echo "[Desktop Entry]
+Name=FileZilla
+GenericName=FTP client
+GenericName[da]=FTP-klient
+GenericName[de]=FTP-Client
+GenericName[fr]=Client FTP
+Comment=Download and upload files via FTP, FTPS and SFTP
+Comment[da]=Download og upload filer via FTP, FTPS og SFTP
+Comment[de]=Dateien über FTP, FTPS und SFTP übertragen
+Comment[fr]=Transférer des fichiers via FTP, FTPS et SFTP
+Exec=filezilla
+Terminal=false
+Icon=/opt/$APP/filezilla.png
+Type=Application
+Categories=Network;FileTransfer;
+Version=1.0" >> /usr/share/applications/AM-$APP.desktop
+
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/$APP
+
+echo "
+
+ Filezilla is provided by https://filezilla-project.org
+  
+";
