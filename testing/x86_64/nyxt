@@ -1,0 +1,151 @@
+#!/bin/sh
+
+APP=nyxt
+
+# CREATING THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP;
+
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+APP=nyxt
+mkdir tmp;
+cd tmp;
+
+# DOWNLOADING THE DEPENDENCIES
+wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-$(uname -m).AppImage -O appimagetool
+wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/tools/pkg2appimage # 64 BIT ONLY (comment to disable)
+# wget https://github.com/ivan-hc/pkg2appimage-32bit/releases/download/continuous/pkg2appimage-i386.AppImage -O pkg2appimage # 32 BIT ONLY (uncomment to enable)
+chmod a+x ./appimagetool ./pkg2appimage
+
+# CREATING THE APPIMAGE: APPDIR FROM A RECIPE...
+cat >> recipe.yml << 'EOF'
+app: nyxt
+binpatch: true
+
+ingredients:
+  dist: stable
+  sources:
+    - deb http://deb.debian.org/debian/ stable main contrib non-free
+    - deb http://deb.debian.org/debian-security/ stable-security main contrib non-free
+    - deb http://deb.debian.org/debian stable-updates main contrib non-free
+    - deb http://deb.debian.org/debian stable-backports main contrib non-free
+  script:
+    - wget https://github.com/$(wget https://github.com/atlas-engineer/nyxt/releases/latest -O - | egrep '/.*/.*/.*amd64.deb' -o)
+  packages:
+    - nyxt
+EOF
+
+cp /opt/$APP/tmp/recipe.yml /opt/$APP/recipe.yml
+
+./pkg2appimage ./recipe.yml;
+
+cp /opt/$APP/tmp/$APP/$APP.AppDir/$APP.png /opt/$APP/$APP.png
+
+# ...REPLACING THE EXISTING APPRUN WITH A CUSTOM ONE...
+rm -R -f ./$APP/$APP.AppDir/AppRun
+function1="'^Exec=.*'"
+function2="'s|%.||g'"
+echo '#!/bin/sh
+HERE="$(dirname "$(readlink -f "${0}")")"
+export UNION_PRELOAD="${HERE}"
+export PATH="${HERE}"/usr/bin/:"${HERE}"/usr/sbin/:"${HERE}"/sbin/:"${PATH}"
+export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/:"${HERE}"/usr/lib/:"${HERE}"/usr/lib/x86_64-linux-gnu/:"${HERE}"/lib/:"${HERE}"/lib/x86_64-linux-gnu/:"${LD_LIBRARY_PATH}"
+export PYTHONPATH="${HERE}"/usr/share/python3/:"${HERE}"/usr/lib/python*/:"${PYTHONPATH}"
+export PYTHONHOME="${HERE}"/usr/:"${HERE}"/usr/lib/python*/
+export XDG_DATA_DIRS="${HERE}"/usr/share/:"${XDG_DATA_DIRS}"
+export PERLLIB="${HERE}"/usr/share/perl5/:"${PERLLIB}"
+export GSETTINGS_SCHEMA_DIR="${HERE}"/usr/share/glib-2.0/schemas/:"${GSETTINGS_SCHEMA_DIR}"
+EXEC=$(grep -e '$function1' "${HERE}"/*.desktop | head -n 1 | cut -d "=" -f 2- | sed -e '$function2')
+exec ${EXEC} "$@"' >> AppRun
+chmod a+x AppRun
+cp ./AppRun /opt/$APP/
+mv ./AppRun ./$APP/$APP.AppDir
+
+# ...IMPORT THE LAUNCHER AND THE ICON TO THE APPDIR (uncomment if not available)...
+#cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/22x22/apps/* ./$APP/$APP.AppDir/ 2>/dev/null
+#cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/24x24/apps/* ./$APP/$APP.AppDir/ 2>/dev/null
+#cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/32x32/apps/* ./$APP/$APP.AppDir/ 2>/dev/null
+#cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/48x48/apps/* ./$APP/$APP.AppDir/ 2>/dev/null
+#cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/64x64/apps/* ./$APP/$APP.AppDir/ 2>/dev/null
+#cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/128x128/apps/* ./$APP/$APP.AppDir/ 2>/dev/null
+#cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/256x256/apps/* ./$APP/$APP.AppDir/ 2>/dev/null
+#cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/512x512/apps/* ./$APP/$APP.AppDir/ 2>/dev/null
+#cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/scalable/apps/* ./$APP/$APP.AppDir/ 2>/dev/null
+#cp ./$APP/$APP.AppDir/usr/share/applications/* ./$APP/$APP.AppDir/ 2>/dev/null
+
+# ...EXPORT THE APPDIR TO AN APPIMAGE!
+ARCH=x86_64 ./appimagetool -n ./$APP/$APP.AppDir;
+underscore=_
+mkdir version
+mv ./$APP/$APP$underscore*.deb ./version/
+version=$(ls /opt/$APP/tmp/version)
+echo "$version" >> /opt/$APP/version
+
+cd ..;
+mv ./tmp/*.AppImage ./$APP;
+chmod a+x ./$APP
+
+rm -R -f ./tmp
+
+# LINK
+ln -s /opt/$APP/$APP /usr/local/bin/$APP
+
+# SCRIPT TO UPDATE THE PROGRAM
+initial=$(echo $APP | head -c 1)
+echo '#!/bin/sh
+version0=$(cat /opt/'$APP'/version)
+url="https://github.com/atlas-engineer/nyxt/releases/latest"
+if curl -u "$url" | grep Eo $version0; then
+  echo "Update not needed, exit!"
+else
+  notify-send "A new version of '$APP' is available, please wait!"
+  mkdir /opt/'$APP'/tmp
+  cd /opt/'$APP'/tmp
+  wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool
+  wget -r -A .AppImage -nd https://github.com/AppImage/pkg2appimage/releases/tag/continuous && mv pkg2appimage* pkg2appimage
+  chmod a+x ./appimagetool ./pkg2appimage
+  cp /opt/'$APP'/recipe.yml /opt/'$APP'/tmp/recipe.yml
+  ./pkg2appimage ./recipe.yml;
+  rm -R -f ./'$APP'/'$APP'.AppDir/AppRun
+  cp /opt/'$APP'/AppRun ./'$APP'/'$APP'.AppDir/
+  ARCH=x86_64 ./appimagetool -n ./'$APP'/'$APP'.AppDir
+  mkdir version
+  mv ./'$APP'/'$APP''$underscore'*.deb ./version/
+  cd ..
+  version=$(ls /opt/'$APP'/tmp/version)
+  if test -f ./tmp/version/$version; then rm -R -f ./version
+  fi
+  echo "$version" >> /opt/'$APP'/version
+  mv ./tmp/*.AppImage ./'$APP';
+  chmod a+x ./'$APP'
+  rm -R -f ./tmp
+fi' >> /opt/$APP/AM-updater
+chmod a+x /opt/$APP/AM-updater
+
+# LAUNCHER
+echo "[Desktop Entry]
+Name=Nyxt
+Comment=Be Productive
+GenericName=Web Browser
+Keywords=Internet;WWW;Browser;Web;Explorer;
+Exec=nyxt %u
+Terminal=false
+X-MultipleArgs=false
+Type=Application
+Icon=/opt/$APP/nyxt.png
+Categories=GTK;Network;WebBrowser;
+MimeType=text/html;text/xml;application/xhtml+xml;application/xml;application/rss+xml;application/rdf+xml;image/gif;image/jpeg;image/png;x-scheme-handler/http;x-scheme-handler/https;x-scheme-handler/ftp;x-scheme-handler/chrome;video/webm;application/x-xpinstall;
+StartupNotify=true
+StartupWMClass=nyxt" >> /usr/share/applications/AM-$APP.desktop;
+
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/$APP
+
+echo "
+
+ NYXT is provided by https://nyxt.atlas.engineer
+  
+";
