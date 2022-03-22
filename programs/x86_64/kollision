@@ -1,6 +1,6 @@
 #!/bin/sh
 
-APP=kollision
+APP=kdegames
 
 # CREATING THE FOLDER
 mkdir /opt/$APP
@@ -8,7 +8,7 @@ cd /opt/$APP;
 
 # ADD THE REMOVER
 echo '#!/bin/sh' >> /opt/$APP/remove
-echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/games/$APP" >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/AM-$APP*.desktop /opt/$APP /usr/games/$APP" >> /opt/$APP/remove
 chmod a+x /opt/$APP/remove
 
 mkdir tmp;
@@ -16,133 +16,160 @@ cd tmp;
 
 # DOWNLOADING THE DEPENDENCIES
 wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-$(uname -m).AppImage -O appimagetool
-wget -r -A .AppImage -nd https://github.com/AppImage/pkg2appimage/releases/tag/continuous && mv pkg2appimage* pkg2appimage
+wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/tools/pkg2appimage # 64 BIT ONLY (comment to disable)
+# wget https://github.com/ivan-hc/pkg2appimage-32bit/releases/download/continuous/pkg2appimage-i386.AppImage -O pkg2appimage # 32 BIT ONLY (uncomment to enable)
 chmod a+x ./appimagetool ./pkg2appimage
 
-# CREATING THE APPIMAGE
-echo "app: $APP
+# CREATING THE APPIMAGE: APPDIR FROM A RECIPE...
+echo "app: kdegames
 binpatch: true
 
 ingredients:
   dist: stable
   sources:
-    - deb http://ftp.us.debian.org/debian/ stable main contrib non-free" >> recipe.yml
+    - deb http://deb.debian.org/debian/ stable main contrib non-free
+    - deb http://deb.debian.org/debian-security/ stable-security main contrib non-free
+    - deb http://deb.debian.org/debian stable-updates main contrib non-free
+    - deb http://deb.debian.org/debian stable-backports main contrib non-free
+  packages:
+    - kdegames
+    - kde-games-core
+    - qml-module-qtquick2
+    - qml-module-org-kde-games-core" >> recipe.yml;
+
+cp /opt/$APP/tmp/recipe.yml /opt/$APP/recipe.yml
 
 ./pkg2appimage ./recipe.yml;
 
+# ...REPLACING THE EXISTING APPRUN WITH A CUSTOM ONE...
+rm -R -f ./$APP/$APP.AppDir/AppRun
+
+cat >> ./$APP/$APP.AppDir/AppRun << 'EOF' 
+#!/bin/sh
+HERE="$(dirname "$(readlink -f "${0}")")"
+export UNION_PRELOAD="${HERE}"
+export PATH="${HERE}"/usr/bin/:"${HERE}"/usr/sbin/:"${HERE}"/usr/games/:"${HERE}"/bin/:"${HERE}"/opt/kdegames/:"${HERE}"/sbin/:"${PATH}"
+export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/:/usr/lib/i386-linux-gnu/:"${HERE}"/usr/lib/:"${HERE}"/usr/lib/i386-linux-gnu/:"${HERE}"/usr/lib/x86_64-linux-gnu/:"${HERE}"/lib/:"${HERE}"/lib/i386-linux-gnu/:"${HERE}"/lib/x86_64-linux-gnu/:"${LD_LIBRARY_PATH}"
+export XDG_DATA_DIRS="${HERE}"/usr/share/:"${XDG_DATA_DIRS}"
+export GSETTINGS_SCHEMA_DIR="${HERE}"/usr/share/glib-2.0/schemas/:"${GSETTINGS_SCHEMA_DIR}"
+export QT_PLUGIN_PATH="${HERE}"/usr/lib/qt4/plugins/:"${HERE}"/usr/lib/i386-linux-gnu/qt4/plugins/:"${HERE}"/usr/lib/x86_64-linux-gnu/qt4/plugins/:"${HERE}"/usr/lib32/qt4/plugins/:"${HERE}"/usr/lib64/qt4/plugins/:"${HERE}"/usr/lib/qt5/plugins/:"${HERE}"/usr/lib/i386-linux-gnu/qt5/plugins/:"${HERE}"/usr/lib/x86_64-linux-gnu/qt5/plugins/:"${HERE}"/usr/lib32/qt5/plugins/:"${HERE}"/usr/lib64/qt5/plugins/:"${QT_PLUGIN_PATH}"
+case $1 in
+-h|--help) echo "
+ AVAILABLE KDE GAMES:
+
+$(ls "${HERE}"/usr/games)
+";;
+*) if test -f "${HERE}"/usr/games/$1; then
+EXEC=$(grep -e '^Exec=.*' "${HERE}"/usr/share/applications/org.kde.$1.desktop | head -n 1 | cut -d "=" -f 2- | sed -e 's|%.||g')
+exec ${EXEC} "$@" 2>/dev/null
+exit
+else
+echo "
+ AVAILABLE KDE GAMES:
+
+$(ls "${HERE}"/usr/games)
+"
+fi;;
+esac
+EOF
+chmod a+x ./$APP/$APP.AppDir/AppRun
+cp ./$APP/$APP.AppDir/AppRun /opt/$APP/
+
+# ...ADD A LAUNCHER AND AN ICON TO THE APPDIR...
+cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/256x256/apps/kpat* ./$APP/$APP.AppDir/ 2>/dev/null
+echo "[Desktop Entry]
+Name=kdegames
+Exec=AppRun
+Icon=kpat
+Type=Application
+Categories=Game;" >> $APP.desktop
+cp ./$APP.desktop /opt/$APP/
+mv ./$APP.desktop ./$APP/$APP.AppDir
+
+# ...EXPORT THE APPDIR TO AN APPIMAGE!
 ARCH=x86_64 ./appimagetool -n ./$APP/$APP.AppDir;
+underscore=_
+mkdir version
+mv ./$APP/$APP$underscore*.deb ./version/
+version=$(ls /opt/$APP/tmp/version)
+echo "$version" >> /opt/$APP/version
 
 cd ..;
 mv ./tmp/*.AppImage ./$APP;
 chmod a+x ./$APP
 
-rm -R -f ./tmp
-
 # LINK
 ln -s /opt/$APP/$APP /usr/games/$APP
 
-# LAUNCHER
-echo "[Desktop Entry]
-Exec=kollision
-Icon=/opt/$APP/$APP.svg
-Type=Application
-Name=Kollision
-Name[bs]=Kollision
-Name[ca]=Kollision
-Name[ca@valencia]=Kollision
-Name[cs]=Kollision
-Name[da]=Kollision
-Name[de]=Kollision
-Name[el]=Kollision
-Name[en_GB]=Kollision
-Name[eo]=Kollision
-Name[es]=Kollision
-Name[et]=Kollision
-Name[eu]=Kollision
-Name[fi]=Kollision
-Name[fr]=Kollision
-Name[ga]=Kollision
-Name[gl]=Kollision
-Name[hi]=कोल्लिसन
-Name[hne]=कोलिसन
-Name[hu]=Kollision
-Name[id]=Kollision
-Name[it]=Kollision
-Name[ja]=Kollision
-Name[kk]=Kollision
-Name[km]=Kollision
-Name[ko]=Kollision
-Name[lt]=Kollision
-Name[lv]=Kollision
-Name[mr]=कोलिजन
-Name[nb]=Kollision
-Name[nds]=Kollision
-Name[nl]=Kollision
-Name[nn]=Kollisjon
-Name[pl]=Kolizja
-Name[pt]=Kollision
-Name[pt_BR]=Kollision
-Name[ro]=Koliziune
-Name[ru]=Kollision
-Name[sk]=Kollision
-Name[sl]=Kollision
-Name[sr]=Колизија
-Name[sr@ijekavian]=Колизија
-Name[sr@ijekavianlatin]=Kolizija
-Name[sr@latin]=Kolizija
-Name[sv]=Kollision
-Name[tr]=Kollision
-Name[ug]=Kollision
-Name[uk]=Kollision
-Name[x-test]=xxKollisionxx
-Name[zh_CN]=Kollision
-Name[zh_TW]=Kollision
-GenericName=A simple ball dodging game
-GenericName[ca]=Un joc senzill d'esquivar una bola
-GenericName[ca@valencia]=Un joc senzill d'esquivar una bola
-GenericName[da]=Et enkelt undvigelsesspil med bolde
-GenericName[de]=Ein einfaches Ausweich-Ballspiel
-GenericName[el]=Ένα απλό παιχνίδι ελιγμών με μπάλες
-GenericName[en_GB]=A simple ball dodging game
-GenericName[es]=Un juego sencillo de esquivar pelotas
-GenericName[et]=Lihtne pallitogimise mäng
-GenericName[fi]=Yksinkertainen väistelypeli
-GenericName[fr]=Un jeu simple d'évitement de balles
-GenericName[gl]=Un xogo de bólas
-GenericName[hi]=गेंद को चकमा देने वाला खेल
-GenericName[id]=Sebuah permainan sederhana menghindari bola-bola
-GenericName[it]=Un semplice gioco in cui devi schivare delle palle
-GenericName[ko]=튀는 공 피하기 게임
-GenericName[nn]=Enkelt spel der du skal unngå kollisjonar
-GenericName[pl]=Gra w unikanie kul
-GenericName[pt]=Um jogo simples de desvio de bolas
-GenericName[pt_BR]=Um jogo simples: desvie das bolas
-GenericName[ru]=Простая игра в уклонение от шариков
-GenericName[sk]=Hra s vyhýbaním loptičiek
-GenericName[sl]=Preprosta igra izmikanja žogicam
-GenericName[sr]=Једноставна игра избегавања лопти
-GenericName[sr@ijekavian]=Једноставна игра избјегавања лопти
-GenericName[sr@ijekavianlatin]=Jednostavna igra izbjegavanja lopti
-GenericName[sr@latin]=Jednostavna igra izbegavanja lopti
-GenericName[sv]=Ett enkelt spel för att undvika bollar
-GenericName[tr]=Basit bir toptan kaçma oyunu
-GenericName[uk]=Проста гра з кулькою
-GenericName[x-test]=xxA simple ball dodging gamexx
-GenericName[zh_CN]=一个简单的躲避球游戏
-GenericName[zh_TW]=簡單的閃躲球遊戲
-Terminal=false
-Categories=Qt;KDE;Game;ArcadeGame;
-X-DocPath=kollision/index.html
-X-DBUS-ServiceName=org.kde.kollision" >> /usr/share/applications/AM-$APP.desktop;
+# SCRIPT TO UPDATE THE PROGRAM
+initial=$(echo $APP | head -c 1)
+echo '#!/bin/sh
+version0=$(cat /opt/'$APP'/version)
+url="http://ftp.us.debian.org/debian/pool/main/m/meta-kde/$version0"
+if curl --output /dev/null --silent --head --fail "$url"; then
+  echo "Update not needed, exit!"
+else
+  notify-send "A new version of '$APP' is available, please wait!"
+  mkdir /opt/'$APP'/tmp
+  cd /opt/'$APP'/tmp
+  wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool
+  wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/tools/pkg2appimage
+  chmod a+x ./appimagetool ./pkg2appimage
+  cp /opt/'$APP'/recipe.yml /opt/'$APP'/tmp/recipe.yml
+  ./pkg2appimage ./recipe.yml;
+  rm -R -f ./'$APP'/'$APP'.AppDir/AppRun
+  cp /opt/'$APP'/AppRun ./'$APP'/'$APP'.AppDir/
+  cp /opt/'$APP'/'$APP'.desktop ./'$APP'/'$APP'.AppDir/
+  cp /opt/'$APP'/kpat ./'$APP'/'$APP'.AppDir/kpat.png
+  ARCH=x86_64 ./appimagetool -n ./'$APP'/'$APP'.AppDir
+  mkdir version
+  mv ./'$APP'/'$APP''$underscore'*.deb ./version/
+  cd ..
+  version=$(ls /opt/'$APP'/tmp/version)
+  if test -f ./tmp/version/$version; then rm -R -f ./version
+  fi
+  echo "$version" >> /opt/'$APP'/version
+  mv ./tmp/*.AppImage ./'$APP';
+  chmod a+x ./'$APP'
+  rm -R -f ./tmp
+fi' >> /opt/$APP/AM-updater
+chmod a+x /opt/$APP/AM-updater
 
-# ICON
-wget wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/programs/.icons/$APP.svg;
+# ADD THE ICONS
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/22x22/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/24x24/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/32x32/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/48x48/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/64x64/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/128x128/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/256x256/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/512x512/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/scalable/apps/* /opt/$APP/ 2>/dev/null
+cd /opt/$APP
+for file in *.png; do mv -- "$file" "${file%%.png}"; done
+
+# ADD LAUNCHERS AND FOR THE GAMES
+mkdir /opt/$APP/launchers
+cp /opt/$APP/tmp/$APP/$APP.AppDir/usr/share/applications/* /opt/$APP/launchers/ 2>/dev/null
+cd /opt/$APP/launchers
+for file in *; do mv ./$file ./AM-$APP-$file
+done
+sed -i "s#Exec=#Exec=/opt/kdegames/kdegames #g" /opt/$APP/launchers/*.desktop
+sed -i "s#Icon=#Icon=/opt/kdegames/#g" /opt/$APP/launchers/*.desktop
+
+cp /opt/$APP/launchers/*.desktop /usr/share/applications/
+rm -R -f /opt/$APP/launchers
+
+# NOW YOU CAN REMOVE THE TEMPORARY FOLDER
+rm -R -f /opt/$APP/tmp
+
+# ADD THE PERMISSIONS
 
 currentuser=$(who | awk '{print $1}')
 chown -R $currentuser /opt/$APP
 
 echo "
 
- $APP is part of KDE Games, visit https://games.kde.org
+ KDE Games are provided by https://apps.kde.org
   
 ";

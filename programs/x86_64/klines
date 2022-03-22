@@ -1,6 +1,6 @@
 #!/bin/sh
 
-APP=klines
+APP=kdegames
 
 # CREATING THE FOLDER
 mkdir /opt/$APP
@@ -8,7 +8,7 @@ cd /opt/$APP;
 
 # ADD THE REMOVER
 echo '#!/bin/sh' >> /opt/$APP/remove
-echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/games/$APP" >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/AM-$APP*.desktop /opt/$APP /usr/games/$APP" >> /opt/$APP/remove
 chmod a+x /opt/$APP/remove
 
 mkdir tmp;
@@ -16,223 +16,160 @@ cd tmp;
 
 # DOWNLOADING THE DEPENDENCIES
 wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-$(uname -m).AppImage -O appimagetool
-wget -r -A .AppImage -nd https://github.com/AppImage/pkg2appimage/releases/tag/continuous && mv pkg2appimage* pkg2appimage
+wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/tools/pkg2appimage # 64 BIT ONLY (comment to disable)
+# wget https://github.com/ivan-hc/pkg2appimage-32bit/releases/download/continuous/pkg2appimage-i386.AppImage -O pkg2appimage # 32 BIT ONLY (uncomment to enable)
 chmod a+x ./appimagetool ./pkg2appimage
 
-# CREATING THE APPIMAGE
-echo "app: $APP
+# CREATING THE APPIMAGE: APPDIR FROM A RECIPE...
+echo "app: kdegames
 binpatch: true
 
 ingredients:
   dist: stable
   sources:
-    - deb http://ftp.us.debian.org/debian/ stable main contrib non-free" >> recipe.yml
+    - deb http://deb.debian.org/debian/ stable main contrib non-free
+    - deb http://deb.debian.org/debian-security/ stable-security main contrib non-free
+    - deb http://deb.debian.org/debian stable-updates main contrib non-free
+    - deb http://deb.debian.org/debian stable-backports main contrib non-free
+  packages:
+    - kdegames
+    - kde-games-core
+    - qml-module-qtquick2
+    - qml-module-org-kde-games-core" >> recipe.yml;
+
+cp /opt/$APP/tmp/recipe.yml /opt/$APP/recipe.yml
 
 ./pkg2appimage ./recipe.yml;
 
+# ...REPLACING THE EXISTING APPRUN WITH A CUSTOM ONE...
+rm -R -f ./$APP/$APP.AppDir/AppRun
+
+cat >> ./$APP/$APP.AppDir/AppRun << 'EOF' 
+#!/bin/sh
+HERE="$(dirname "$(readlink -f "${0}")")"
+export UNION_PRELOAD="${HERE}"
+export PATH="${HERE}"/usr/bin/:"${HERE}"/usr/sbin/:"${HERE}"/usr/games/:"${HERE}"/bin/:"${HERE}"/opt/kdegames/:"${HERE}"/sbin/:"${PATH}"
+export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/:/usr/lib/i386-linux-gnu/:"${HERE}"/usr/lib/:"${HERE}"/usr/lib/i386-linux-gnu/:"${HERE}"/usr/lib/x86_64-linux-gnu/:"${HERE}"/lib/:"${HERE}"/lib/i386-linux-gnu/:"${HERE}"/lib/x86_64-linux-gnu/:"${LD_LIBRARY_PATH}"
+export XDG_DATA_DIRS="${HERE}"/usr/share/:"${XDG_DATA_DIRS}"
+export GSETTINGS_SCHEMA_DIR="${HERE}"/usr/share/glib-2.0/schemas/:"${GSETTINGS_SCHEMA_DIR}"
+export QT_PLUGIN_PATH="${HERE}"/usr/lib/qt4/plugins/:"${HERE}"/usr/lib/i386-linux-gnu/qt4/plugins/:"${HERE}"/usr/lib/x86_64-linux-gnu/qt4/plugins/:"${HERE}"/usr/lib32/qt4/plugins/:"${HERE}"/usr/lib64/qt4/plugins/:"${HERE}"/usr/lib/qt5/plugins/:"${HERE}"/usr/lib/i386-linux-gnu/qt5/plugins/:"${HERE}"/usr/lib/x86_64-linux-gnu/qt5/plugins/:"${HERE}"/usr/lib32/qt5/plugins/:"${HERE}"/usr/lib64/qt5/plugins/:"${QT_PLUGIN_PATH}"
+case $1 in
+-h|--help) echo "
+ AVAILABLE KDE GAMES:
+
+$(ls "${HERE}"/usr/games)
+";;
+*) if test -f "${HERE}"/usr/games/$1; then
+EXEC=$(grep -e '^Exec=.*' "${HERE}"/usr/share/applications/org.kde.$1.desktop | head -n 1 | cut -d "=" -f 2- | sed -e 's|%.||g')
+exec ${EXEC} "$@" 2>/dev/null
+exit
+else
+echo "
+ AVAILABLE KDE GAMES:
+
+$(ls "${HERE}"/usr/games)
+"
+fi;;
+esac
+EOF
+chmod a+x ./$APP/$APP.AppDir/AppRun
+cp ./$APP/$APP.AppDir/AppRun /opt/$APP/
+
+# ...ADD A LAUNCHER AND AN ICON TO THE APPDIR...
+cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/256x256/apps/kpat* ./$APP/$APP.AppDir/ 2>/dev/null
+echo "[Desktop Entry]
+Name=kdegames
+Exec=AppRun
+Icon=kpat
+Type=Application
+Categories=Game;" >> $APP.desktop
+cp ./$APP.desktop /opt/$APP/
+mv ./$APP.desktop ./$APP/$APP.AppDir
+
+# ...EXPORT THE APPDIR TO AN APPIMAGE!
 ARCH=x86_64 ./appimagetool -n ./$APP/$APP.AppDir;
+underscore=_
+mkdir version
+mv ./$APP/$APP$underscore*.deb ./version/
+version=$(ls /opt/$APP/tmp/version)
+echo "$version" >> /opt/$APP/version
 
 cd ..;
 mv ./tmp/*.AppImage ./$APP;
 chmod a+x ./$APP
 
-rm -R -f ./tmp
-
 # LINK
 ln -s /opt/$APP/$APP /usr/games/$APP
 
-# LAUNCHER
-echo "# KDE Config File
-[Desktop Entry]
-Type=Application
-Exec=klines -qwindowtitle %c
-Icon=/opt/$APP/$APP.svg
-X-DocPath=klines/index.html
-GenericName=Tactical Game
-GenericName[af]=Taktiese Speletjie
-GenericName[be]=Тактычная гульня
-GenericName[bn]=কৌশলের খেলা
-GenericName[br]=C'hoari a vrezelekaouriezh
-GenericName[bs]=Taktična igra
-GenericName[ca]=Joc de tàctica
-GenericName[ca@valencia]=Joc de tàctica
-GenericName[cs]=Taktická hra
-GenericName[cy]=Gêm Dactegol
-GenericName[da]=Taktisk spil
-GenericName[de]=Kugeln entfernen
-GenericName[el]=Παιχνίδι τακτικής
-GenericName[en_GB]=Tactical Game
-GenericName[eo]=Taktika ludo
-GenericName[es]=Juego de táctica
-GenericName[et]=Taktikamäng
-GenericName[eu]=Joko taktikoa
-GenericName[fa]=بازی برنامه‌ریزی‌شده
-GenericName[fi]=Taktiikkapeli
-GenericName[fr]=Jeu de tactique
-GenericName[ga]=Cluiche Taicticiúil
-GenericName[gl]=Xogo de táctica
-GenericName[he]=משחק טקטי
-GenericName[hne]=रननीतिक खेल
-GenericName[hr]=Taktička igra
-GenericName[hu]=Taktikai játék
-GenericName[id]=Permainan Taktik
-GenericName[is]=Herkænskuleikur
-GenericName[it]=Gioco di tattica
-GenericName[ja]=戦略的ゲーム
-GenericName[kk]=Тактикалық ойын
-GenericName[km]=ល្បែង​ក្បួន​យុទ្ធសាស្ត្រ
-GenericName[ko]=전략 게임
-GenericName[lt]=Taktinis žaidimas
-GenericName[lv]=Taktiskā spēle
-GenericName[mai]=रणनीतिक खेल
-GenericName[mk]=Тактичка игра
-GenericName[mr]=सामरिक खेळ
-GenericName[nb]=Taktikk-spill
-GenericName[nds]=Taktikspeel
-GenericName[ne]=कौशल खेल
-GenericName[nl]=Tactisch spel
-GenericName[nn]=Taktisk spel
-GenericName[pa]=ਟਾਕਟੀਕਲ ਖੇਡ
-GenericName[pl]=Gra taktyczna
-GenericName[pt]=Jogo de Estratégia
-GenericName[pt_BR]=Jogo tático
-GenericName[ro]=Un joc de tactică
-GenericName[ru]=Тактическая игра
-GenericName[se]=Taktihkkaspeallu
-GenericName[sk]=Taktická hra
-GenericName[sl]=Strateška igra
-GenericName[sq]=Lojë Taktike
-GenericName[sr]=Тактичка игра
-GenericName[sr@ijekavian]=Тактичка игра
-GenericName[sr@ijekavianlatin]=Taktička igra
-GenericName[sr@latin]=Taktička igra
-GenericName[sv]=Taktikspel
-GenericName[ta]=தந்திரமான விளையாட்டு
-GenericName[tg]=Бозии Тактикӣ
-GenericName[tr]=Taktik Oyunu
-GenericName[ug]=تاكتىكىلىق ئويۇن
-GenericName[uk]=Тактична гра
-GenericName[vi]=Trò chơi chiến thuật 
-GenericName[wa]=Djeu di tactike
-GenericName[xh]=Umdlalo onamaqhinga
-GenericName[x-test]=xxTactical Gamexx
-GenericName[zh_CN]=战术游戏
-GenericName[zh_TW]=戰術遊戲
-Terminal=false
-Name=Kolor Lines
-Name[af]=Kleur Lyne
-Name[be]=Каляровыя лініі
-Name[bn]=কালার লাইন্স
-Name[br]=Linenn Kolor
-Name[bs]=Linije u boji
-Name[ca]=Kolor Lines
-Name[ca@valencia]=Kolor Lines
-Name[cs]=Kolor Lines
-Name[cy]=Kolor Lines
-Name[da]=Kolor Lines
-Name[de]=Kolor Lines
-Name[el]=Kolor Lines
-Name[en_GB]=Kolor Lines
-Name[eo]=Kolorlinioj
-Name[es]=Kolor Lines
-Name[et]=Kolor Lines
-Name[eu]=Kolor Lines
-Name[fa]=خطوط رنگی
-Name[fi]=Kolor Lines
-Name[fr]=Kolor Lines
-Name[ga]=Kolor Lines
-Name[gl]=Kolor Lines
-Name[he]=Kolor Lines
-Name[hne]=कलर लाइन्स
-Name[hr]=KNiz u boji
-Name[hu]=Színes vonalak
-Name[id]=Kolor Lines
-Name[is]=Kolor Lines
-Name[it]=Kolor Lines
-Name[ja]=Kolor Lines
-Name[kk]=Kolor Lines
-Name[km]=Kolor Lines
-Name[ko]=Kolor Lines
-Name[lt]=Kolor Lines
-Name[lv]=Kolor Lines
-Name[mk]=Kolor Lines
-Name[mr]=कलर लाईन्स
-Name[nb]=Klinjer
-Name[nds]=Kolor Lines
-Name[ne]=रङ रेखा
-Name[nl]=Kolor Lines
-Name[nn]=Fargelinjer
-Name[pa]=ਰੰਗ ਖੇਡ
-Name[pl]=Kolorowe linie
-Name[pt]=Linhas Coloridas
-Name[pt_BR]=Kolor Lines
-Name[ro]=Linii colorate
-Name[ru]=Kolor Lines
-Name[se]=Kolor Lines
-Name[sk]=Farebné čiary
-Name[sl]=Kolor Lines
-Name[sq]=Vija me Ngjyra
-Name[sr]=Обојене линије
-Name[sr@ijekavian]=Обојене линије
-Name[sr@ijekavianlatin]=Obojene linije
-Name[sr@latin]=Obojene linije
-Name[sv]=Färglinjer
-Name[ta]=வண்ணக்கோடுகள்
-Name[tg]=Хатҳои Рангӣ
-Name[tr]=Renkli Çizgiler
-Name[ug]=Kolor Lines
-Name[uk]=Кольорові лінії
-Name[vi]=Kolor Lines
-Name[wa]=Royes di coleur
-Name[xh]=Iilayini zeKolor 
-Name[x-test]=xxKolor Linesxx
-Name[zh_CN]=Kolor Lines
-Name[zh_TW]=Kolor Lines 彩色線條
-Comment=Tactical game
-Comment[ca]=Joc de tàctica
-Comment[ca@valencia]=Joc de tàctica
-Comment[cs]=Taktická hra
-Comment[da]=Taktisk spil
-Comment[de]=Taktikspiel
-Comment[el]=Παιχνίδι τακτικής
-Comment[en_GB]=Tactical game
-Comment[es]=Juego de táctica
-Comment[et]=Taktikamäng
-Comment[fi]=Taktiikkapeli
-Comment[fr]=Jeu de tactique
-Comment[gl]=Xogo de táctica.
-Comment[id]=Permainan taktik
-Comment[it]=Gioco di tattica
-Comment[ko]=전략 게임
-Comment[nl]=Tactisch spel
-Comment[nn]=Taktisk spel
-Comment[pl]=Gra taktyczna
-Comment[pt]=Jogo táctico
-Comment[pt_BR]=Jogo tático
-Comment[ru]=Тактическая игра
-Comment[sk]=Taktická hra
-Comment[sl]=Strateška igra
-Comment[sr]=Тактичка игра
-Comment[sr@ijekavian]=Тактичка игра
-Comment[sr@ijekavianlatin]=Taktička igra
-Comment[sr@latin]=Taktička igra
-Comment[sv]=Taktikspel
-Comment[tr]=Taktik oyunu
-Comment[uk]=Тактична гра
-Comment[x-test]=xxTactical gamexx
-Comment[zh_CN]=战术游戏
-Comment[zh_TW]=戰術遊戲
-X-DBUS-StartupType=Multi
-Categories=Qt;KDE;Game;StrategyGame;
-X-DBUS-ServiceName=org.kde.klines" >> /usr/share/applications/AM-$APP.desktop;
+# SCRIPT TO UPDATE THE PROGRAM
+initial=$(echo $APP | head -c 1)
+echo '#!/bin/sh
+version0=$(cat /opt/'$APP'/version)
+url="http://ftp.us.debian.org/debian/pool/main/m/meta-kde/$version0"
+if curl --output /dev/null --silent --head --fail "$url"; then
+  echo "Update not needed, exit!"
+else
+  notify-send "A new version of '$APP' is available, please wait!"
+  mkdir /opt/'$APP'/tmp
+  cd /opt/'$APP'/tmp
+  wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool
+  wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/tools/pkg2appimage
+  chmod a+x ./appimagetool ./pkg2appimage
+  cp /opt/'$APP'/recipe.yml /opt/'$APP'/tmp/recipe.yml
+  ./pkg2appimage ./recipe.yml;
+  rm -R -f ./'$APP'/'$APP'.AppDir/AppRun
+  cp /opt/'$APP'/AppRun ./'$APP'/'$APP'.AppDir/
+  cp /opt/'$APP'/'$APP'.desktop ./'$APP'/'$APP'.AppDir/
+  cp /opt/'$APP'/kpat ./'$APP'/'$APP'.AppDir/kpat.png
+  ARCH=x86_64 ./appimagetool -n ./'$APP'/'$APP'.AppDir
+  mkdir version
+  mv ./'$APP'/'$APP''$underscore'*.deb ./version/
+  cd ..
+  version=$(ls /opt/'$APP'/tmp/version)
+  if test -f ./tmp/version/$version; then rm -R -f ./version
+  fi
+  echo "$version" >> /opt/'$APP'/version
+  mv ./tmp/*.AppImage ./'$APP';
+  chmod a+x ./'$APP'
+  rm -R -f ./tmp
+fi' >> /opt/$APP/AM-updater
+chmod a+x /opt/$APP/AM-updater
 
-# ICON
-wget wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/programs/.icons/$APP.svg;
+# ADD THE ICONS
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/22x22/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/24x24/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/32x32/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/48x48/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/64x64/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/128x128/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/256x256/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/512x512/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/scalable/apps/* /opt/$APP/ 2>/dev/null
+cd /opt/$APP
+for file in *.png; do mv -- "$file" "${file%%.png}"; done
+
+# ADD LAUNCHERS AND FOR THE GAMES
+mkdir /opt/$APP/launchers
+cp /opt/$APP/tmp/$APP/$APP.AppDir/usr/share/applications/* /opt/$APP/launchers/ 2>/dev/null
+cd /opt/$APP/launchers
+for file in *; do mv ./$file ./AM-$APP-$file
+done
+sed -i "s#Exec=#Exec=/opt/kdegames/kdegames #g" /opt/$APP/launchers/*.desktop
+sed -i "s#Icon=#Icon=/opt/kdegames/#g" /opt/$APP/launchers/*.desktop
+
+cp /opt/$APP/launchers/*.desktop /usr/share/applications/
+rm -R -f /opt/$APP/launchers
+
+# NOW YOU CAN REMOVE THE TEMPORARY FOLDER
+rm -R -f /opt/$APP/tmp
+
+# ADD THE PERMISSIONS
 
 currentuser=$(who | awk '{print $1}')
 chown -R $currentuser /opt/$APP
 
 echo "
- $APP is part of KDE Games, visit https://games.kde.org
+
+ KDE Games are provided by https://apps.kde.org
   
 ";

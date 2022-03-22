@@ -1,6 +1,6 @@
 #!/bin/sh
 
-APP=kfourinline
+APP=kdegames
 
 # CREATING THE FOLDER
 mkdir /opt/$APP
@@ -8,7 +8,7 @@ cd /opt/$APP;
 
 # ADD THE REMOVER
 echo '#!/bin/sh' >> /opt/$APP/remove
-echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/games/$APP" >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/AM-$APP*.desktop /opt/$APP /usr/games/$APP" >> /opt/$APP/remove
 chmod a+x /opt/$APP/remove
 
 mkdir tmp;
@@ -16,184 +16,160 @@ cd tmp;
 
 # DOWNLOADING THE DEPENDENCIES
 wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-$(uname -m).AppImage -O appimagetool
-wget -r -A .AppImage -nd https://github.com/AppImage/pkg2appimage/releases/tag/continuous && mv pkg2appimage* pkg2appimage
+wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/tools/pkg2appimage # 64 BIT ONLY (comment to disable)
+# wget https://github.com/ivan-hc/pkg2appimage-32bit/releases/download/continuous/pkg2appimage-i386.AppImage -O pkg2appimage # 32 BIT ONLY (uncomment to enable)
 chmod a+x ./appimagetool ./pkg2appimage
 
-# CREATING THE APPIMAGE
-echo "app: $APP
+# CREATING THE APPIMAGE: APPDIR FROM A RECIPE...
+echo "app: kdegames
 binpatch: true
 
 ingredients:
   dist: stable
   sources:
-    - deb http://ftp.us.debian.org/debian/ stable main contrib non-free" >> recipe.yml
+    - deb http://deb.debian.org/debian/ stable main contrib non-free
+    - deb http://deb.debian.org/debian-security/ stable-security main contrib non-free
+    - deb http://deb.debian.org/debian stable-updates main contrib non-free
+    - deb http://deb.debian.org/debian stable-backports main contrib non-free
+  packages:
+    - kdegames
+    - kde-games-core
+    - qml-module-qtquick2
+    - qml-module-org-kde-games-core" >> recipe.yml;
+
+cp /opt/$APP/tmp/recipe.yml /opt/$APP/recipe.yml
 
 ./pkg2appimage ./recipe.yml;
 
+# ...REPLACING THE EXISTING APPRUN WITH A CUSTOM ONE...
+rm -R -f ./$APP/$APP.AppDir/AppRun
+
+cat >> ./$APP/$APP.AppDir/AppRun << 'EOF' 
+#!/bin/sh
+HERE="$(dirname "$(readlink -f "${0}")")"
+export UNION_PRELOAD="${HERE}"
+export PATH="${HERE}"/usr/bin/:"${HERE}"/usr/sbin/:"${HERE}"/usr/games/:"${HERE}"/bin/:"${HERE}"/opt/kdegames/:"${HERE}"/sbin/:"${PATH}"
+export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/:/usr/lib/i386-linux-gnu/:"${HERE}"/usr/lib/:"${HERE}"/usr/lib/i386-linux-gnu/:"${HERE}"/usr/lib/x86_64-linux-gnu/:"${HERE}"/lib/:"${HERE}"/lib/i386-linux-gnu/:"${HERE}"/lib/x86_64-linux-gnu/:"${LD_LIBRARY_PATH}"
+export XDG_DATA_DIRS="${HERE}"/usr/share/:"${XDG_DATA_DIRS}"
+export GSETTINGS_SCHEMA_DIR="${HERE}"/usr/share/glib-2.0/schemas/:"${GSETTINGS_SCHEMA_DIR}"
+export QT_PLUGIN_PATH="${HERE}"/usr/lib/qt4/plugins/:"${HERE}"/usr/lib/i386-linux-gnu/qt4/plugins/:"${HERE}"/usr/lib/x86_64-linux-gnu/qt4/plugins/:"${HERE}"/usr/lib32/qt4/plugins/:"${HERE}"/usr/lib64/qt4/plugins/:"${HERE}"/usr/lib/qt5/plugins/:"${HERE}"/usr/lib/i386-linux-gnu/qt5/plugins/:"${HERE}"/usr/lib/x86_64-linux-gnu/qt5/plugins/:"${HERE}"/usr/lib32/qt5/plugins/:"${HERE}"/usr/lib64/qt5/plugins/:"${QT_PLUGIN_PATH}"
+case $1 in
+-h|--help) echo "
+ AVAILABLE KDE GAMES:
+
+$(ls "${HERE}"/usr/games)
+";;
+*) if test -f "${HERE}"/usr/games/$1; then
+EXEC=$(grep -e '^Exec=.*' "${HERE}"/usr/share/applications/org.kde.$1.desktop | head -n 1 | cut -d "=" -f 2- | sed -e 's|%.||g')
+exec ${EXEC} "$@" 2>/dev/null
+exit
+else
+echo "
+ AVAILABLE KDE GAMES:
+
+$(ls "${HERE}"/usr/games)
+"
+fi;;
+esac
+EOF
+chmod a+x ./$APP/$APP.AppDir/AppRun
+cp ./$APP/$APP.AppDir/AppRun /opt/$APP/
+
+# ...ADD A LAUNCHER AND AN ICON TO THE APPDIR...
+cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/256x256/apps/kpat* ./$APP/$APP.AppDir/ 2>/dev/null
+echo "[Desktop Entry]
+Name=kdegames
+Exec=AppRun
+Icon=kpat
+Type=Application
+Categories=Game;" >> $APP.desktop
+cp ./$APP.desktop /opt/$APP/
+mv ./$APP.desktop ./$APP/$APP.AppDir
+
+# ...EXPORT THE APPDIR TO AN APPIMAGE!
 ARCH=x86_64 ./appimagetool -n ./$APP/$APP.AppDir;
+underscore=_
+mkdir version
+mv ./$APP/$APP$underscore*.deb ./version/
+version=$(ls /opt/$APP/tmp/version)
+echo "$version" >> /opt/$APP/version
 
 cd ..;
 mv ./tmp/*.AppImage ./$APP;
 chmod a+x ./$APP
 
-rm -R -f ./tmp
-
 # LINK
 ln -s /opt/$APP/$APP /usr/games/$APP
 
-# LAUNCHER
-echo "[Desktop Entry]
-Name=KFourInLine
-Name[bs]=KFourInLine
-Name[ca]=KFourInLine
-Name[ca@valencia]=KFourInLine
-Name[cs]=Čtyři v řadě
-Name[da]=KFourInLine
-Name[de]=Vier gewinnt
-Name[el]=KFourInLine
-Name[en_GB]=KFourInLine
-Name[es]=KFourInLine
-Name[et]=KFourInLine
-Name[eu]=KFourInLine
-Name[fa]=چهار-در-یک-خط
-Name[fi]=KFourInLine
-Name[fr]=KFourInLine
-Name[ga]=KFourInLine
-Name[gl]=KFourInLine
-Name[hi]=के पंक्ति में चार
-Name[hne]=केफोरइनलाइन
-Name[hu]=Színes vonalak
-Name[id]=KFourInLine
-Name[it]=KFourInLine
-Name[ja]=KFourInLine
-Name[kk]=KFourInLine
-Name[km]=KFourInLine
-Name[ko]=KFourInLine
-Name[lt]=KFourInLine
-Name[lv]=KFourInLine
-Name[mr]=के-फोर-इन-लाइन
-Name[nb]=KFourInLine
-Name[nds]=KFourInLine
-Name[nl]=KFourInLine
-Name[nn]=KFourInLine
-Name[pl]=KCzteryWLinii
-Name[pt]=KFourInLine
-Name[pt_BR]=KFourInLine
-Name[ro]=KPatruÎnLinie
-Name[ru]=KFourInLine
-Name[sk]=KFourInLine
-Name[sl]=KFourInLine
-Name[sq]=KFourInLine
-Name[sr]=К‑четири‑у‑низу
-Name[sr@ijekavian]=К‑четири‑у‑низу
-Name[sr@ijekavianlatin]=K‑četiri‑u‑nizu
-Name[sr@latin]=K‑četiri‑u‑nizu
-Name[sv]=Fyra i rad
-Name[tr]=KFourInLine
-Name[ug]=KFourInLine
-Name[uk]=Чотири-у-рядку
-Name[wa]=KFourInLine
-Name[x-test]=xxKFourInLinexx
-Name[zh_CN]=KFourInLine
-Name[zh_TW]=KFourInLine
-GenericName=Four-in-a-row Board Game
-GenericName[bs]=Četiri-u-nizu igra na ploči
-GenericName[ca]=Joc de quatre en fila
-GenericName[ca@valencia]=Joc de quatre en fila
-GenericName[da]=Fire-på-række-brætspil
-GenericName[de]=Vier-Gewinnt-Brettspiel
-GenericName[el]=Επιτραπέζιο παιχνίδι Τέσσερα στη σειρά
-GenericName[en_GB]=Four-in-a-row Board Game
-GenericName[eo]=Gobanga bretludo
-GenericName[es]=Juego de tablero de cuatro en raya
-GenericName[et]=Neli ritta lauamäng
-GenericName[eu]=Lauko artzain-jokoa
-GenericName[fa]=بازی تخته چهار در یک سطر
-GenericName[fi]=Neljän suora -lautapeli
-GenericName[fr]=Jeu de plateau « Quatre-en-ligne »
-GenericName[ga]=Cluiche Cláir ceithre-cinn-as-a-chéile
-GenericName[gl]=Xogo de taboleiro «Catro en liña»
-GenericName[hi]=बोर्ड में एक पंक्ति में चार का खेल
-GenericName[hne]=बोर्ड मं एक लकीर मं चार वाले खेल
-GenericName[hu]=Táblás játék
-GenericName[id]=Permainan Papan Empat-dalam-sebaris
-GenericName[it]=Quattro-in-fila, gioco da tavolo
-GenericName[ja]=四目並べ
-GenericName[km]=ល្បែង​ក្ដារ បួន​ក្នុង​មួយ​ជួរ
-GenericName[ko]=한 줄에 네 개 보드 게임
-GenericName[lv]=Četri-rindā galda spēle
-GenericName[mr]=एका-ओळीत-चार बोर्ड खेळ
-GenericName[nb]=Brettspill fire på rad
-GenericName[nl]=Vier-op-een-rij bordspel
-GenericName[nn]=Fire på rad
-GenericName[pt]=Jogo de Tabuleiro Quatro-em-Linha
-GenericName[pt_BR]=Jogo lógico quatro em linha
-GenericName[ro]=Joc de table Patru-în-linie
-GenericName[ru]=Четыре шарика в линию
-GenericName[sl]=Namizna igra Štiri v vrsto
-GenericName[sr]=Игра на табли „четири у низу“
-GenericName[sr@ijekavian]=Игра на табли „четири у низу“
-GenericName[sr@ijekavianlatin]=Igra na tabli „četiri u nizu“
-GenericName[sr@latin]=Igra na tabli „četiri u nizu“
-GenericName[sv]=Fyra-i-rad brädspel
-GenericName[tr]=Bir-satırda-dört Tahta Oyunu
-GenericName[ug]=بىر-قۇردا-تۆت تاختا ئويۇنى
-GenericName[uk]=Настільна гра «Чотири-у-рядку»
-GenericName[wa]=Djeu «cwate e roye»
-GenericName[x-test]=xxFour-in-a-row Board Gamexx
-GenericName[zh_CN]=四子连珠游戏
-GenericName[zh_TW]=四子棋棋盤遊戲
-Comment=Classic turn based game
-Comment[ca]=Joc clàssic basat en torns
-Comment[ca@valencia]=Joc clàssic basat en torns
-Comment[cs]=Klasická tahová hra
-Comment[da]=Klassisk tur-baseret spil
-Comment[de]=Brettspiel für zwei Spieler, das auf dem Spiel „Vier Gewinnt“ basiert.
-Comment[el]=Κλασικό παιχνίδι διαδοχής αντιπάλων
-Comment[en_GB]=Classic turn based game
-Comment[es]=Juego clásico basado en turnos
-Comment[et]=Klassikaline käigupõhine mäng
-Comment[fi]=Perinteinen vuoroperustainen peli
-Comment[fr]=Jeu au tour par tour classique
-Comment[gl]=Xogo clásico por quendas.
-Comment[hi]= प्रतिष्ठित चाल अधारित खेल
-Comment[id]=Permainan berdasarkan giliran yang klasik
-Comment[it]=Classico gioco a turni
-Comment[ko]=고전 턴제 게임
-Comment[nl]=Klassiek beurtelings spel
-Comment[nn]=Klassisk turbasert spel
-Comment[pl]=Klasyczna gra turowa
-Comment[pt]=Jogo clássico por turnos
-Comment[pt_BR]=Jogo baseado em turnos clássico
-Comment[ru]=Классическая пошаговая игра
-Comment[sk]=Klasická ťahová hra
-Comment[sl]=Klasična potezna igra
-Comment[sr]=Класична игра на потезе
-Comment[sr@ijekavian]=Класична игра на потезе
-Comment[sr@ijekavianlatin]=Klasična igra na poteze
-Comment[sr@latin]=Klasična igra na poteze
-Comment[sv]=Klassiskt turbaserat spel
-Comment[tr]=Klasik sıra tabanlı oyun
-Comment[uk]=Класична покрокова гра
-Comment[x-test]=xxClassic turn based gamexx
-Comment[zh_CN]=经典的回合制游戏
-Comment[zh_TW]=傳統輪流基礎遊戲
-Exec=kfourinline
-Icon=/opt/$APP/$APP.svg
-Terminal=false
-Type=Application
-X-DocPath=kfourinline/index.html
-Categories=Qt;KDE;Game;BoardGame;
-X-DBUS-ServiceName=org.kde.kfourinline" >> /usr/share/applications/AM-$APP.desktop;
+# SCRIPT TO UPDATE THE PROGRAM
+initial=$(echo $APP | head -c 1)
+echo '#!/bin/sh
+version0=$(cat /opt/'$APP'/version)
+url="http://ftp.us.debian.org/debian/pool/main/m/meta-kde/$version0"
+if curl --output /dev/null --silent --head --fail "$url"; then
+  echo "Update not needed, exit!"
+else
+  notify-send "A new version of '$APP' is available, please wait!"
+  mkdir /opt/'$APP'/tmp
+  cd /opt/'$APP'/tmp
+  wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool
+  wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/tools/pkg2appimage
+  chmod a+x ./appimagetool ./pkg2appimage
+  cp /opt/'$APP'/recipe.yml /opt/'$APP'/tmp/recipe.yml
+  ./pkg2appimage ./recipe.yml;
+  rm -R -f ./'$APP'/'$APP'.AppDir/AppRun
+  cp /opt/'$APP'/AppRun ./'$APP'/'$APP'.AppDir/
+  cp /opt/'$APP'/'$APP'.desktop ./'$APP'/'$APP'.AppDir/
+  cp /opt/'$APP'/kpat ./'$APP'/'$APP'.AppDir/kpat.png
+  ARCH=x86_64 ./appimagetool -n ./'$APP'/'$APP'.AppDir
+  mkdir version
+  mv ./'$APP'/'$APP''$underscore'*.deb ./version/
+  cd ..
+  version=$(ls /opt/'$APP'/tmp/version)
+  if test -f ./tmp/version/$version; then rm -R -f ./version
+  fi
+  echo "$version" >> /opt/'$APP'/version
+  mv ./tmp/*.AppImage ./'$APP';
+  chmod a+x ./'$APP'
+  rm -R -f ./tmp
+fi' >> /opt/$APP/AM-updater
+chmod a+x /opt/$APP/AM-updater
 
-# ICON
-wget wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/programs/.icons/$APP.svg;
+# ADD THE ICONS
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/22x22/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/24x24/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/32x32/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/48x48/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/64x64/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/128x128/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/256x256/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/512x512/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/scalable/apps/* /opt/$APP/ 2>/dev/null
+cd /opt/$APP
+for file in *.png; do mv -- "$file" "${file%%.png}"; done
+
+# ADD LAUNCHERS AND FOR THE GAMES
+mkdir /opt/$APP/launchers
+cp /opt/$APP/tmp/$APP/$APP.AppDir/usr/share/applications/* /opt/$APP/launchers/ 2>/dev/null
+cd /opt/$APP/launchers
+for file in *; do mv ./$file ./AM-$APP-$file
+done
+sed -i "s#Exec=#Exec=/opt/kdegames/kdegames #g" /opt/$APP/launchers/*.desktop
+sed -i "s#Icon=#Icon=/opt/kdegames/#g" /opt/$APP/launchers/*.desktop
+
+cp /opt/$APP/launchers/*.desktop /usr/share/applications/
+rm -R -f /opt/$APP/launchers
+
+# NOW YOU CAN REMOVE THE TEMPORARY FOLDER
+rm -R -f /opt/$APP/tmp
+
+# ADD THE PERMISSIONS
 
 currentuser=$(who | awk '{print $1}')
 chown -R $currentuser /opt/$APP
 
 echo "
 
- $APP is part of KDE Games, visit https://games.kde.org
+ KDE Games are provided by https://apps.kde.org
   
 ";

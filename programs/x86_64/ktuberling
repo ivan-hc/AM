@@ -1,6 +1,6 @@
 #!/bin/sh
 
-APP=ktuberling
+APP=kdegames
 
 # CREATING THE FOLDER
 mkdir /opt/$APP
@@ -8,7 +8,7 @@ cd /opt/$APP;
 
 # ADD THE REMOVER
 echo '#!/bin/sh' >> /opt/$APP/remove
-echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/games/$APP" >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/AM-$APP*.desktop /opt/$APP /usr/games/$APP" >> /opt/$APP/remove
 chmod a+x /opt/$APP/remove
 
 mkdir tmp;
@@ -16,208 +16,160 @@ cd tmp;
 
 # DOWNLOADING THE DEPENDENCIES
 wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-$(uname -m).AppImage -O appimagetool
-wget -r -A .AppImage -nd https://github.com/AppImage/pkg2appimage/releases/tag/continuous && mv pkg2appimage* pkg2appimage
+wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/tools/pkg2appimage # 64 BIT ONLY (comment to disable)
+# wget https://github.com/ivan-hc/pkg2appimage-32bit/releases/download/continuous/pkg2appimage-i386.AppImage -O pkg2appimage # 32 BIT ONLY (uncomment to enable)
 chmod a+x ./appimagetool ./pkg2appimage
 
-# CREATING THE APPIMAGE
-echo "app: $APP
+# CREATING THE APPIMAGE: APPDIR FROM A RECIPE...
+echo "app: kdegames
 binpatch: true
 
 ingredients:
   dist: stable
   sources:
-    - deb http://ftp.us.debian.org/debian/ stable main contrib non-free" >> recipe.yml
+    - deb http://deb.debian.org/debian/ stable main contrib non-free
+    - deb http://deb.debian.org/debian-security/ stable-security main contrib non-free
+    - deb http://deb.debian.org/debian stable-updates main contrib non-free
+    - deb http://deb.debian.org/debian stable-backports main contrib non-free
+  packages:
+    - kdegames
+    - kde-games-core
+    - qml-module-qtquick2
+    - qml-module-org-kde-games-core" >> recipe.yml;
+
+cp /opt/$APP/tmp/recipe.yml /opt/$APP/recipe.yml
 
 ./pkg2appimage ./recipe.yml;
 
+# ...REPLACING THE EXISTING APPRUN WITH A CUSTOM ONE...
+rm -R -f ./$APP/$APP.AppDir/AppRun
+
+cat >> ./$APP/$APP.AppDir/AppRun << 'EOF' 
+#!/bin/sh
+HERE="$(dirname "$(readlink -f "${0}")")"
+export UNION_PRELOAD="${HERE}"
+export PATH="${HERE}"/usr/bin/:"${HERE}"/usr/sbin/:"${HERE}"/usr/games/:"${HERE}"/bin/:"${HERE}"/opt/kdegames/:"${HERE}"/sbin/:"${PATH}"
+export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/:/usr/lib/i386-linux-gnu/:"${HERE}"/usr/lib/:"${HERE}"/usr/lib/i386-linux-gnu/:"${HERE}"/usr/lib/x86_64-linux-gnu/:"${HERE}"/lib/:"${HERE}"/lib/i386-linux-gnu/:"${HERE}"/lib/x86_64-linux-gnu/:"${LD_LIBRARY_PATH}"
+export XDG_DATA_DIRS="${HERE}"/usr/share/:"${XDG_DATA_DIRS}"
+export GSETTINGS_SCHEMA_DIR="${HERE}"/usr/share/glib-2.0/schemas/:"${GSETTINGS_SCHEMA_DIR}"
+export QT_PLUGIN_PATH="${HERE}"/usr/lib/qt4/plugins/:"${HERE}"/usr/lib/i386-linux-gnu/qt4/plugins/:"${HERE}"/usr/lib/x86_64-linux-gnu/qt4/plugins/:"${HERE}"/usr/lib32/qt4/plugins/:"${HERE}"/usr/lib64/qt4/plugins/:"${HERE}"/usr/lib/qt5/plugins/:"${HERE}"/usr/lib/i386-linux-gnu/qt5/plugins/:"${HERE}"/usr/lib/x86_64-linux-gnu/qt5/plugins/:"${HERE}"/usr/lib32/qt5/plugins/:"${HERE}"/usr/lib64/qt5/plugins/:"${QT_PLUGIN_PATH}"
+case $1 in
+-h|--help) echo "
+ AVAILABLE KDE GAMES:
+
+$(ls "${HERE}"/usr/games)
+";;
+*) if test -f "${HERE}"/usr/games/$1; then
+EXEC=$(grep -e '^Exec=.*' "${HERE}"/usr/share/applications/org.kde.$1.desktop | head -n 1 | cut -d "=" -f 2- | sed -e 's|%.||g')
+exec ${EXEC} "$@" 2>/dev/null
+exit
+else
+echo "
+ AVAILABLE KDE GAMES:
+
+$(ls "${HERE}"/usr/games)
+"
+fi;;
+esac
+EOF
+chmod a+x ./$APP/$APP.AppDir/AppRun
+cp ./$APP/$APP.AppDir/AppRun /opt/$APP/
+
+# ...ADD A LAUNCHER AND AN ICON TO THE APPDIR...
+cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/256x256/apps/kpat* ./$APP/$APP.AppDir/ 2>/dev/null
+echo "[Desktop Entry]
+Name=kdegames
+Exec=AppRun
+Icon=kpat
+Type=Application
+Categories=Game;" >> $APP.desktop
+cp ./$APP.desktop /opt/$APP/
+mv ./$APP.desktop ./$APP/$APP.AppDir
+
+# ...EXPORT THE APPDIR TO AN APPIMAGE!
 ARCH=x86_64 ./appimagetool -n ./$APP/$APP.AppDir;
+underscore=_
+mkdir version
+mv ./$APP/$APP$underscore*.deb ./version/
+version=$(ls /opt/$APP/tmp/version)
+echo "$version" >> /opt/$APP/version
 
 cd ..;
 mv ./tmp/*.AppImage ./$APP;
 chmod a+x ./$APP
 
-rm -R -f ./tmp
-
 # LINK
 ln -s /opt/$APP/$APP /usr/games/$APP
 
-# LAUNCHER
-echo "[Desktop Entry]
-Exec=ktuberling -qwindowtitle %c %u
-Name=Potato Guy
-Name[af]=Aartappel Man
-Name[be]=Бульбяш
-Name[bn]=পটেটো গাই
-Name[br]=Paotr ar patatez
-Name[bs]=Krompirko
-Name[ca]=Home Patata
-Name[ca@valencia]=Home Patata
-Name[cs]=Bramborový chlapík
-Name[cy]=Potato Guy
-Name[da]=Kartoffelfyren
-Name[de]=Kartoffelknülch
-Name[el]=Πατατάνθρωπος
-Name[en_GB]=Potato Guy
-Name[eo]=Terpomulo
-Name[es]=Señor Patata
-Name[et]=Kartulimees
-Name[eu]=Patata jauna
-Name[fa]=مرد سیب زمینی
-Name[fi]=Perunamies
-Name[fr]=Monsieur Patate
-Name[ga]=Potato Guy
-Name[gl]=O home pataca
-Name[he]=מר תפוח אדמה
-Name[hne]=आलू परसाद
-Name[hr]=Krumpirko
-Name[hu]=Krumpli bácsi
-Name[id]=Potato Guy
-Name[is]=Kartöflukall
-Name[it]=Uomo patata
-Name[ja]=ポテトマン
-Name[kk]=Картопбай
-Name[km]=មនុស្ស​ដំឡូង
-Name[ko]=감자돌이
-Name[lt]=Bulvinis Vyrukas
-Name[lv]=Kartupeļu vīrs
-Name[mk]=Компирко
-Name[mr]=बटाटा व्यक्ति
-Name[nb]=Potetfyren
-Name[nds]=Kantüffelfips
-Name[ne]=पोट्याटो गाइ
-Name[nl]=Aardappelmannetje
-Name[nn]=Potetfyren
-Name[pa]=ਆਲੂ ਮੁੰਡਾ
-Name[pl]=Ziemniaczany facet
-Name[pt]=Homem Batata
-Name[pt_BR]=Homem-Batata
-Name[ro]=Domnul Cartof
-Name[ru]=Картофельный парень
-Name[se]=Buđetolmmái
-Name[sk]=Zemiakový chlapec
-Name[sl]=Krompirček
-Name[sr]=Кромпирко
-Name[sr@ijekavian]=Кромпирко
-Name[sr@ijekavianlatin]=Krompirko
-Name[sr@latin]=Krompirko
-Name[sv]=Potatismannen
-Name[ta]=உருளைகிழங்கு வீரர்
-Name[tg]=Писараки Картошкагин
-Name[tr]=Patates Adam
-Name[ug]=Potato Guy
-Name[uk]=Картопляний хлопець
-Name[vi]=Potato Guy
-Name[wa]=Monsieu Crompire
-Name[xh]=Umfana wetapile 
-Name[x-test]=xxPotato Guyxx
-Name[zh_CN]=土豆小子
-Name[zh_TW]=馬鈴薯小子
-GenericName=Picture Game for Children
-GenericName[bs]=Igra slika za djecu
-GenericName[ca]=Joc d'imatges per a la canalla
-GenericName[ca@valencia]=Joc d'imatges per a la canalla
-GenericName[cs]=Obrázková hra pro děti
-GenericName[da]=Billedspil til børn
-GenericName[de]=Bastelspiel für Kinder
-GenericName[el]=Παιχνίδι με εικόνες για παιδιά
-GenericName[en_GB]=Picture Game for Children
-GenericName[eo]=Bildludo por infanoj
-GenericName[es]=Juego de dibujo para niños
-GenericName[et]=Laste pildimäng
-GenericName[eu]=Umeentzako irudien jokoa
-GenericName[fa]=بازی تصویری برای بچه‌‌‌ها
-GenericName[fi]=Peli lapsille
-GenericName[fr]=Jeu d'image pour les enfants
-GenericName[ga]=Cluiche Pictiúir do Phaistí
-GenericName[gl]=Xogo de imaxes para nenos
-GenericName[hne]=लइका मन बर फोटू वाले खेल
-GenericName[hu]=Képes játék gyermekeknek
-GenericName[id]=Permainan Gambar untuk Anak-anak
-GenericName[is]=Myndaleikur fyrir börn
-GenericName[it]=Gioco di immagini per bambini
-GenericName[ja]=子供のための福笑いゲーム
-GenericName[kk]=Сурет салу балалар ойны
-GenericName[km]=ល្បែង​រូបភាព​សម្រាប់​ក្មេងៗ
-GenericName[ko]=어린이용 그림 게임
-GenericName[lv]=Bilžu spēle bērniem
-GenericName[mr]=मुलांकरिता प्रतिमा खेळ
-GenericName[nb]=Bildespill for unger
-GenericName[nds]=Billerspeel för Kinners
-GenericName[nl]=Plaatjesspel voor kinderen
-GenericName[nn]=Biletspel for ungar
-GenericName[pl]=Gra obrazkowa dla dzieci
-GenericName[pt]=Jogo de Imagens para Crianças
-GenericName[pt_BR]=Jogo de figuras para Crianças
-GenericName[ro]=Joc cu imagini pentru copii
-GenericName[ru]=Игра с картинками для детей
-GenericName[sk]=Obrázková hra pre deti
-GenericName[sl]=Slikovna igra za otroke
-GenericName[sr]=Игра за децу
-GenericName[sr@ijekavian]=Игра за дјецу
-GenericName[sr@ijekavianlatin]=Igra za djecu
-GenericName[sr@latin]=Igra za decu
-GenericName[sv]=Bildspel för barn
-GenericName[te]=పిల్లల చిత్రాల ఆట
-GenericName[tr]=Çocuklar için Resim Oyunu
-GenericName[ug]=بالىلار ئۈچۈن سۈرەت ئويۇنى
-GenericName[uk]=Гра у картинки для дітей
-GenericName[wa]=Djeu d' dessin po ls efants
-GenericName[x-test]=xxPicture Game for Childrenxx
-GenericName[zh_CN]=孩子们的游戏
-GenericName[zh_TW]=小孩的圖畫遊戲
-Comment=A simple constructor game suitable for children and adults alike
-Comment[ca]=Un joc de construcció senzill, adequat per a infants i també per a adults
-Comment[ca@valencia]=Un joc de construcció senzill, adequat per a infants i també per a adults
-Comment[da]=En simpelt byggeprogram til børn i alle aldre
-Comment[de]=Ein einfaches Aufbauspiel für Kinder und Erwachsene
-Comment[el]=Ένα απλό παιχνίδι κατασκευών κατάλληλο για παιδιά και μεγάλους
-Comment[en_GB]=A simple constructor game suitable for children and adults alike
-Comment[es]=Un sencillo juego de construcción adecuado para niños y para adultos
-Comment[et]=Lihtne konstrueerimismäng, mis sobib nii lastele kui ka täiskasvanutele
-Comment[eu]=Eraikitzeko joko erraz bat ume eta helduentzako egokia
-Comment[fi]=Yksinkertainen rakennuspeli, joka sopii niin lapsille kuin aikuisille
-Comment[fr]=Un jeu d'assemblage simple qui convient aussi bien aux enfants qu'aux adultes
-Comment[gl]=Un construtor de xogos sinxelo axeitado tanto para nenos como para adultos.
-Comment[hu]=Egyszerű építőjátéknak gyerekeknek és felnőtteknek egyaránt
-Comment[id]=Sebuah permainan konstruktor yang sederhana cocok untuk anak-anak dan dewasa juga
-Comment[it]=Un semplice gioco di costruzioni adatto sia ai bambini, sia agli adulti
-Comment[ko]=어린이와 어른 모두가 좋아하는 그림 그리기 게임
-Comment[nl]=Een eenvoudig aannemerspel geschikt voor zowel kinderen als volwassenen
-Comment[nn]=Eit enkelt biletbyggjespel for både store og små
-Comment[pl]=Prosta gra twórcza kierowana dla dzieci i dorosłych
-Comment[pt]=Um jogo de construção simples, adequado tanto para crianças como adultos
-Comment[pt_BR]=Um jogo de construção simples, adequado para crianças e adultos
-Comment[ru]=Игра-конструктор для детей, а также взрослых, впадающих в детство
-Comment[sk]=Jednoduchá výstavbová hra vhodná pre deti a dospelých
-Comment[sl]=Preprosta igra sestavljanja primerna za mlajše in starejše otroke
-Comment[sr]=Једноставна игра конструисања погодна и за децу и за одрасле
-Comment[sr@ijekavian]=Једноставна игра конструисања погодна и за децу и за одрасле
-Comment[sr@ijekavianlatin]=Jednostavna igra konstruisanja pogodna i za decu i za odrasle
-Comment[sr@latin]=Jednostavna igra konstruisanja pogodna i za decu i za odrasle
-Comment[sv]=Ett enkelt byggspel lika lämpligt för barn som vuxna
-Comment[tr]=Çocukların ve yetişkinlerin hoşlanacağı basit bir inşaat oyunu
-Comment[uk]=Проста гра-складанка для дітей та дорослих.
-Comment[x-test]=xxA simple constructor game suitable for children and adults alikexx
-Comment[zh_CN]=一个简单的建造游戏，适合儿童和成人
-Comment[zh_TW]=適合小孩與童心未泯的大人們的簡單遊戲
-Type=Application
-X-DocPath=ktuberling/index.html
-Terminal=false
-Icon=/opt/$APP/$APP.svg
-MimeType=application/x-tuberling;
-StartupNotify=true
-X-DBUS-StartupType=Multi
-Categories=Qt;KDE;Game;KidsGame;
-X-DBUS-ServiceName=org.kde.ktuberling" >> /usr/share/applications/AM-$APP.desktop;
+# SCRIPT TO UPDATE THE PROGRAM
+initial=$(echo $APP | head -c 1)
+echo '#!/bin/sh
+version0=$(cat /opt/'$APP'/version)
+url="http://ftp.us.debian.org/debian/pool/main/m/meta-kde/$version0"
+if curl --output /dev/null --silent --head --fail "$url"; then
+  echo "Update not needed, exit!"
+else
+  notify-send "A new version of '$APP' is available, please wait!"
+  mkdir /opt/'$APP'/tmp
+  cd /opt/'$APP'/tmp
+  wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool
+  wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/tools/pkg2appimage
+  chmod a+x ./appimagetool ./pkg2appimage
+  cp /opt/'$APP'/recipe.yml /opt/'$APP'/tmp/recipe.yml
+  ./pkg2appimage ./recipe.yml;
+  rm -R -f ./'$APP'/'$APP'.AppDir/AppRun
+  cp /opt/'$APP'/AppRun ./'$APP'/'$APP'.AppDir/
+  cp /opt/'$APP'/'$APP'.desktop ./'$APP'/'$APP'.AppDir/
+  cp /opt/'$APP'/kpat ./'$APP'/'$APP'.AppDir/kpat.png
+  ARCH=x86_64 ./appimagetool -n ./'$APP'/'$APP'.AppDir
+  mkdir version
+  mv ./'$APP'/'$APP''$underscore'*.deb ./version/
+  cd ..
+  version=$(ls /opt/'$APP'/tmp/version)
+  if test -f ./tmp/version/$version; then rm -R -f ./version
+  fi
+  echo "$version" >> /opt/'$APP'/version
+  mv ./tmp/*.AppImage ./'$APP';
+  chmod a+x ./'$APP'
+  rm -R -f ./tmp
+fi' >> /opt/$APP/AM-updater
+chmod a+x /opt/$APP/AM-updater
 
-# ICON
-wget wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/programs/.icons/$APP.svg;
+# ADD THE ICONS
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/22x22/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/24x24/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/32x32/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/48x48/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/64x64/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/128x128/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/256x256/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/512x512/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/scalable/apps/* /opt/$APP/ 2>/dev/null
+cd /opt/$APP
+for file in *.png; do mv -- "$file" "${file%%.png}"; done
+
+# ADD LAUNCHERS AND FOR THE GAMES
+mkdir /opt/$APP/launchers
+cp /opt/$APP/tmp/$APP/$APP.AppDir/usr/share/applications/* /opt/$APP/launchers/ 2>/dev/null
+cd /opt/$APP/launchers
+for file in *; do mv ./$file ./AM-$APP-$file
+done
+sed -i "s#Exec=#Exec=/opt/kdegames/kdegames #g" /opt/$APP/launchers/*.desktop
+sed -i "s#Icon=#Icon=/opt/kdegames/#g" /opt/$APP/launchers/*.desktop
+
+cp /opt/$APP/launchers/*.desktop /usr/share/applications/
+rm -R -f /opt/$APP/launchers
+
+# NOW YOU CAN REMOVE THE TEMPORARY FOLDER
+rm -R -f /opt/$APP/tmp
+
+# ADD THE PERMISSIONS
 
 currentuser=$(who | awk '{print $1}')
 chown -R $currentuser /opt/$APP
 
 echo "
 
- $APP is part of KDE Games, visit https://games.kde.org
+ KDE Games are provided by https://apps.kde.org
   
 ";

@@ -1,6 +1,6 @@
 #!/bin/sh
 
-APP=katomic
+APP=kdegames
 
 # CREATING THE FOLDER
 mkdir /opt/$APP
@@ -8,7 +8,7 @@ cd /opt/$APP;
 
 # ADD THE REMOVER
 echo '#!/bin/sh' >> /opt/$APP/remove
-echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/games/$APP" >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/AM-$APP*.desktop /opt/$APP /usr/games/$APP" >> /opt/$APP/remove
 chmod a+x /opt/$APP/remove
 
 mkdir tmp;
@@ -16,182 +16,160 @@ cd tmp;
 
 # DOWNLOADING THE DEPENDENCIES
 wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-$(uname -m).AppImage -O appimagetool
-wget -r -A .AppImage -nd https://github.com/AppImage/pkg2appimage/releases/tag/continuous && mv pkg2appimage* pkg2appimage
+wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/tools/pkg2appimage # 64 BIT ONLY (comment to disable)
+# wget https://github.com/ivan-hc/pkg2appimage-32bit/releases/download/continuous/pkg2appimage-i386.AppImage -O pkg2appimage # 32 BIT ONLY (uncomment to enable)
 chmod a+x ./appimagetool ./pkg2appimage
 
-# CREATING THE APPIMAGE
-echo "app: $APP
+# CREATING THE APPIMAGE: APPDIR FROM A RECIPE...
+echo "app: kdegames
 binpatch: true
 
 ingredients:
   dist: stable
   sources:
-    - deb http://ftp.us.debian.org/debian/ stable main contrib non-free" >> recipe.yml
+    - deb http://deb.debian.org/debian/ stable main contrib non-free
+    - deb http://deb.debian.org/debian-security/ stable-security main contrib non-free
+    - deb http://deb.debian.org/debian stable-updates main contrib non-free
+    - deb http://deb.debian.org/debian stable-backports main contrib non-free
+  packages:
+    - kdegames
+    - kde-games-core
+    - qml-module-qtquick2
+    - qml-module-org-kde-games-core" >> recipe.yml;
+
+cp /opt/$APP/tmp/recipe.yml /opt/$APP/recipe.yml
 
 ./pkg2appimage ./recipe.yml;
 
+# ...REPLACING THE EXISTING APPRUN WITH A CUSTOM ONE...
+rm -R -f ./$APP/$APP.AppDir/AppRun
+
+cat >> ./$APP/$APP.AppDir/AppRun << 'EOF' 
+#!/bin/sh
+HERE="$(dirname "$(readlink -f "${0}")")"
+export UNION_PRELOAD="${HERE}"
+export PATH="${HERE}"/usr/bin/:"${HERE}"/usr/sbin/:"${HERE}"/usr/games/:"${HERE}"/bin/:"${HERE}"/opt/kdegames/:"${HERE}"/sbin/:"${PATH}"
+export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/:/usr/lib/i386-linux-gnu/:"${HERE}"/usr/lib/:"${HERE}"/usr/lib/i386-linux-gnu/:"${HERE}"/usr/lib/x86_64-linux-gnu/:"${HERE}"/lib/:"${HERE}"/lib/i386-linux-gnu/:"${HERE}"/lib/x86_64-linux-gnu/:"${LD_LIBRARY_PATH}"
+export XDG_DATA_DIRS="${HERE}"/usr/share/:"${XDG_DATA_DIRS}"
+export GSETTINGS_SCHEMA_DIR="${HERE}"/usr/share/glib-2.0/schemas/:"${GSETTINGS_SCHEMA_DIR}"
+export QT_PLUGIN_PATH="${HERE}"/usr/lib/qt4/plugins/:"${HERE}"/usr/lib/i386-linux-gnu/qt4/plugins/:"${HERE}"/usr/lib/x86_64-linux-gnu/qt4/plugins/:"${HERE}"/usr/lib32/qt4/plugins/:"${HERE}"/usr/lib64/qt4/plugins/:"${HERE}"/usr/lib/qt5/plugins/:"${HERE}"/usr/lib/i386-linux-gnu/qt5/plugins/:"${HERE}"/usr/lib/x86_64-linux-gnu/qt5/plugins/:"${HERE}"/usr/lib32/qt5/plugins/:"${HERE}"/usr/lib64/qt5/plugins/:"${QT_PLUGIN_PATH}"
+case $1 in
+-h|--help) echo "
+ AVAILABLE KDE GAMES:
+
+$(ls "${HERE}"/usr/games)
+";;
+*) if test -f "${HERE}"/usr/games/$1; then
+EXEC=$(grep -e '^Exec=.*' "${HERE}"/usr/share/applications/org.kde.$1.desktop | head -n 1 | cut -d "=" -f 2- | sed -e 's|%.||g')
+exec ${EXEC} "$@" 2>/dev/null
+exit
+else
+echo "
+ AVAILABLE KDE GAMES:
+
+$(ls "${HERE}"/usr/games)
+"
+fi;;
+esac
+EOF
+chmod a+x ./$APP/$APP.AppDir/AppRun
+cp ./$APP/$APP.AppDir/AppRun /opt/$APP/
+
+# ...ADD A LAUNCHER AND AN ICON TO THE APPDIR...
+cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/256x256/apps/kpat* ./$APP/$APP.AppDir/ 2>/dev/null
+echo "[Desktop Entry]
+Name=kdegames
+Exec=AppRun
+Icon=kpat
+Type=Application
+Categories=Game;" >> $APP.desktop
+cp ./$APP.desktop /opt/$APP/
+mv ./$APP.desktop ./$APP/$APP.AppDir
+
+# ...EXPORT THE APPDIR TO AN APPIMAGE!
 ARCH=x86_64 ./appimagetool -n ./$APP/$APP.AppDir;
+underscore=_
+mkdir version
+mv ./$APP/$APP$underscore*.deb ./version/
+version=$(ls /opt/$APP/tmp/version)
+echo "$version" >> /opt/$APP/version
 
 cd ..;
 mv ./tmp/*.AppImage ./$APP;
 chmod a+x ./$APP
 
-rm -R -f ./tmp
-
 # LINK
 ln -s /opt/$APP/$APP /usr/games/$APP
 
-# LAUNCHER
-echo "[Desktop Entry]
-Name=KAtomic
-Name[af]=Katomic
-Name[be]=KAtomic
-Name[bn]=কে-অ্যাটমিক
-Name[br]=KAtomic
-Name[bs]=KAtomic
-Name[ca]=KAtomic
-Name[ca@valencia]=KAtomic
-Name[cs]=KAtomic
-Name[cy]=KAtomic
-Name[da]=KAtomic
-Name[de]=KAtomic
-Name[el]=KAtomic
-Name[en_GB]=KAtomic
-Name[eo]=KAtomic
-Name[es]=KAtomic
-Name[et]=KAtomic
-Name[eu]=KAtomic
-Name[fa]=اتمی
-Name[fi]=KAtomic
-Name[fr]=KAtomic
-Name[ga]=KAtomic
-Name[gl]=KAtomic
-Name[he]=KAtomic
-Name[hne]=के-एटामिक
-Name[hr]=KAtomic
-Name[hu]=KAtomic
-Name[id]=KAtomic
-Name[is]=KAtomic
-Name[it]=KAtomic
-Name[ja]=KAtomic
-Name[kk]=KAtomic
-Name[km]=KAtomic
-Name[ko]=KAtomic
-Name[lt]=KAtomic
-Name[lv]=KAtomic
-Name[mk]=KAtomic
-Name[mr]=के-एटॉमिक
-Name[nb]=KAtomic
-Name[nds]=KAtomic
-Name[ne]=केडीई एटोमिक
-Name[nl]=KAtomic
-Name[nn]=KAtomic
-Name[pa]=ਕੇ-ਪਰਮਾਣੂ
-Name[pl]=Atomy
-Name[pt]=KAtomic
-Name[pt_BR]=KAtomic
-Name[ro]=KAtomic
-Name[ru]=KAtomic
-Name[se]=KAtomic
-Name[sk]=KAtomic
-Name[sl]=KAtomic
-Name[sq]=KAtomic
-Name[sr]=К‑атомика
-Name[sr@ijekavian]=К‑атомика
-Name[sr@ijekavianlatin]=K‑atomika
-Name[sr@latin]=K‑atomika
-Name[sv]=Katom
-Name[ta]=கேஅடாமிக்
-Name[te]=కెఎటామిక్
-Name[tg]=KАтомҳо
-Name[tr]=KAtomic
-Name[ug]=KAtomic
-Name[uk]=Веселі атоми
-Name[vi]=KAtomic
-Name[wa]=KAtomic
-Name[xh]=KAtomic
-Name[x-test]=xxKAtomicxx
-Name[zh_CN]=KAtomic
-Name[zh_TW]=KAtomic 原子
-Icon=/opt/$APP/$APP.svg
-Type=Application
-Exec=katomic -qwindowtitle %c
-X-DocPath=katomic/index.html
-GenericName=Sokoban-like Logic Game
-GenericName[be]=Лагічная гульня тыпу Sokoban
-GenericName[bn]=সোকোবান-এর মত যুক্তির খেলা
-GenericName[bs]=Logička igra poput Sokoban-a
-GenericName[ca]=Joc de lògica similar al Sokoban
-GenericName[ca@valencia]=Joc de lògica similar al Sokoban
-GenericName[cs]=Logická hra jako Sokoban
-GenericName[cy]=Gêm Resymeg sy'n debyg i Sokoban
-GenericName[da]=Sokoban-lignende logisk spil
-GenericName[de]=„Sokoban“-Spiel
-GenericName[el]=Παιχνίδι λογικής παρόμοιο με το Sokoban
-GenericName[en_GB]=Sokoban-like Logic Game
-GenericName[eo]=Logikludo simila al Sokoban
-GenericName[es]=Juego de lógica similar al Sokoban
-GenericName[et]=Sokobani moodi loogikamäng
-GenericName[eu]=Sokoban-en antzeko joko logikoa
-GenericName[fa]=بازی منطق شبیه Sokoban
-GenericName[fi]=Sokoban-tyylinen logiikkapeli
-GenericName[fr]=Jeu de logique dans le style de Sokoban
-GenericName[ga]=Cluiche Loighce Cosúil le Sokoban
-GenericName[gl]=Xogo de lóxica ao estilo do Sokoban
-GenericName[he]=חיקוי Sokoban, משחק לוגי
-GenericName[hne]=सोकोबान जइसन तर्क वाले खेल
-GenericName[hr]=Logička igra poput Sokobana
-GenericName[hu]=Sokoban-szerű logikai játék
-GenericName[id]=Permainan Logika Seperti Sokoban
-GenericName[is]=Leikur sem líkist Sokoban
-GenericName[it]=Gioco di logica simile a Sokoban
-GenericName[ja]=倉庫番のような論理ゲーム
-GenericName[kk]=Сокобан-секілді логикалық ойын
-GenericName[km]=ល្បែង​តក្ក​ដូច Sokoban
-GenericName[ko]=소코반 같은 전략 게임
-GenericName[lt]=Sokoban tipo loginis žaidimas
-GenericName[lv]=Sokoban līdzīga loģiskā spēle
-GenericName[mk]=Логичка игра слична на Сокобан
-GenericName[nb]=Sokoban-lignende logikkspill
-GenericName[nds]=Sokoban-liek Logikspeel
-GenericName[ne]=सोकोबान जस्तै तार्किक खेल
-GenericName[nl]=Sokoban-achtig logisch spel
-GenericName[nn]=Sokoban-liknande logikkspel
-GenericName[pl]=Gra logiczna typu Sokoban
-GenericName[pt]=Jogo de Lógica tipo Sokoban
-GenericName[pt_BR]=Jogo Lógico parecido com Sokoban
-GenericName[ro]=Un joc de logică ca Sokoban
-GenericName[ru]=Составление молекул, клон Sokoban
-GenericName[se]=Sokoban-lágan logihkkaspeallu
-GenericName[sk]=Logická hra ako Sokoban
-GenericName[sl]=Logična igra podobna Sokobanu
-GenericName[sq]=Lojë logjike e ngjajshme me Sokoban
-GenericName[sr]=Логичка игра налик на Сокобан
-GenericName[sr@ijekavian]=Логичка игра налик на Сокобан
-GenericName[sr@ijekavianlatin]=Logička igra nalik na Sokoban
-GenericName[sr@latin]=Logička igra nalik na Sokoban
-GenericName[sv]=Sokoban-liknande logiskt spel
-GenericName[ta]=சோகோபான் போன்ற லாஜிக் விளையாட்டு
-GenericName[tr]=Sokoban-benzeri Mantık Oyunu
-GenericName[ug]=Sokoban غا ئوخشايدىغان لوگىكىلىق ئويۇن
-GenericName[uk]=Гра на логіку подібна до Сокобану
-GenericName[wa]=Djeu di lodjike rishonnant a sokoban
-GenericName[x-test]=xxSokoban-like Logic Gamexx
-GenericName[zh_CN]=类似推箱子的逻辑游戏
-GenericName[zh_TW]=倉庫番(sokoban)式的智力遊戲
-StartupNotify=true
-X-DBUS-StartupType=Multi
-Categories=Qt;KDE;Game;StrategyGame;
-X-DBUS-ServiceName=org.kde.katomic" >> /usr/share/applications/AM-$APP.desktop;
+# SCRIPT TO UPDATE THE PROGRAM
+initial=$(echo $APP | head -c 1)
+echo '#!/bin/sh
+version0=$(cat /opt/'$APP'/version)
+url="http://ftp.us.debian.org/debian/pool/main/m/meta-kde/$version0"
+if curl --output /dev/null --silent --head --fail "$url"; then
+  echo "Update not needed, exit!"
+else
+  notify-send "A new version of '$APP' is available, please wait!"
+  mkdir /opt/'$APP'/tmp
+  cd /opt/'$APP'/tmp
+  wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool
+  wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/tools/pkg2appimage
+  chmod a+x ./appimagetool ./pkg2appimage
+  cp /opt/'$APP'/recipe.yml /opt/'$APP'/tmp/recipe.yml
+  ./pkg2appimage ./recipe.yml;
+  rm -R -f ./'$APP'/'$APP'.AppDir/AppRun
+  cp /opt/'$APP'/AppRun ./'$APP'/'$APP'.AppDir/
+  cp /opt/'$APP'/'$APP'.desktop ./'$APP'/'$APP'.AppDir/
+  cp /opt/'$APP'/kpat ./'$APP'/'$APP'.AppDir/kpat.png
+  ARCH=x86_64 ./appimagetool -n ./'$APP'/'$APP'.AppDir
+  mkdir version
+  mv ./'$APP'/'$APP''$underscore'*.deb ./version/
+  cd ..
+  version=$(ls /opt/'$APP'/tmp/version)
+  if test -f ./tmp/version/$version; then rm -R -f ./version
+  fi
+  echo "$version" >> /opt/'$APP'/version
+  mv ./tmp/*.AppImage ./'$APP';
+  chmod a+x ./'$APP'
+  rm -R -f ./tmp
+fi' >> /opt/$APP/AM-updater
+chmod a+x /opt/$APP/AM-updater
 
-# ICON
-wget wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/programs/.icons/$APP.svg;
+# ADD THE ICONS
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/22x22/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/24x24/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/32x32/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/48x48/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/64x64/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/128x128/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/256x256/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/512x512/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/scalable/apps/* /opt/$APP/ 2>/dev/null
+cd /opt/$APP
+for file in *.png; do mv -- "$file" "${file%%.png}"; done
+
+# ADD LAUNCHERS AND FOR THE GAMES
+mkdir /opt/$APP/launchers
+cp /opt/$APP/tmp/$APP/$APP.AppDir/usr/share/applications/* /opt/$APP/launchers/ 2>/dev/null
+cd /opt/$APP/launchers
+for file in *; do mv ./$file ./AM-$APP-$file
+done
+sed -i "s#Exec=#Exec=/opt/kdegames/kdegames #g" /opt/$APP/launchers/*.desktop
+sed -i "s#Icon=#Icon=/opt/kdegames/#g" /opt/$APP/launchers/*.desktop
+
+cp /opt/$APP/launchers/*.desktop /usr/share/applications/
+rm -R -f /opt/$APP/launchers
+
+# NOW YOU CAN REMOVE THE TEMPORARY FOLDER
+rm -R -f /opt/$APP/tmp
+
+# ADD THE PERMISSIONS
 
 currentuser=$(who | awk '{print $1}')
 chown -R $currentuser /opt/$APP
 
 echo "
 
- $APP is part of KDE Games, visit https://games.kde.org
+ KDE Games are provided by https://apps.kde.org
   
 ";

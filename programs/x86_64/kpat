@@ -1,6 +1,6 @@
 #!/bin/sh
 
-APP=kpat
+APP=kdegames
 
 # CREATING THE FOLDER
 mkdir /opt/$APP
@@ -8,7 +8,7 @@ cd /opt/$APP;
 
 # ADD THE REMOVER
 echo '#!/bin/sh' >> /opt/$APP/remove
-echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/games/$APP" >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/AM-$APP*.desktop /opt/$APP /usr/games/$APP" >> /opt/$APP/remove
 chmod a+x /opt/$APP/remove
 
 mkdir tmp;
@@ -16,202 +16,160 @@ cd tmp;
 
 # DOWNLOADING THE DEPENDENCIES
 wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-$(uname -m).AppImage -O appimagetool
-wget -r -A .AppImage -nd https://github.com/AppImage/pkg2appimage/releases/tag/continuous && mv pkg2appimage* pkg2appimage
+wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/tools/pkg2appimage # 64 BIT ONLY (comment to disable)
+# wget https://github.com/ivan-hc/pkg2appimage-32bit/releases/download/continuous/pkg2appimage-i386.AppImage -O pkg2appimage # 32 BIT ONLY (uncomment to enable)
 chmod a+x ./appimagetool ./pkg2appimage
 
-# CREATING THE APPIMAGE
-echo "app: $APP
+# CREATING THE APPIMAGE: APPDIR FROM A RECIPE...
+echo "app: kdegames
 binpatch: true
 
 ingredients:
   dist: stable
   sources:
-    - deb http://ftp.us.debian.org/debian/ stable main contrib non-free" >> recipe.yml
+    - deb http://deb.debian.org/debian/ stable main contrib non-free
+    - deb http://deb.debian.org/debian-security/ stable-security main contrib non-free
+    - deb http://deb.debian.org/debian stable-updates main contrib non-free
+    - deb http://deb.debian.org/debian stable-backports main contrib non-free
+  packages:
+    - kdegames
+    - kde-games-core
+    - qml-module-qtquick2
+    - qml-module-org-kde-games-core" >> recipe.yml;
+
+cp /opt/$APP/tmp/recipe.yml /opt/$APP/recipe.yml
 
 ./pkg2appimage ./recipe.yml;
 
+# ...REPLACING THE EXISTING APPRUN WITH A CUSTOM ONE...
+rm -R -f ./$APP/$APP.AppDir/AppRun
+
+cat >> ./$APP/$APP.AppDir/AppRun << 'EOF' 
+#!/bin/sh
+HERE="$(dirname "$(readlink -f "${0}")")"
+export UNION_PRELOAD="${HERE}"
+export PATH="${HERE}"/usr/bin/:"${HERE}"/usr/sbin/:"${HERE}"/usr/games/:"${HERE}"/bin/:"${HERE}"/opt/kdegames/:"${HERE}"/sbin/:"${PATH}"
+export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/:/usr/lib/i386-linux-gnu/:"${HERE}"/usr/lib/:"${HERE}"/usr/lib/i386-linux-gnu/:"${HERE}"/usr/lib/x86_64-linux-gnu/:"${HERE}"/lib/:"${HERE}"/lib/i386-linux-gnu/:"${HERE}"/lib/x86_64-linux-gnu/:"${LD_LIBRARY_PATH}"
+export XDG_DATA_DIRS="${HERE}"/usr/share/:"${XDG_DATA_DIRS}"
+export GSETTINGS_SCHEMA_DIR="${HERE}"/usr/share/glib-2.0/schemas/:"${GSETTINGS_SCHEMA_DIR}"
+export QT_PLUGIN_PATH="${HERE}"/usr/lib/qt4/plugins/:"${HERE}"/usr/lib/i386-linux-gnu/qt4/plugins/:"${HERE}"/usr/lib/x86_64-linux-gnu/qt4/plugins/:"${HERE}"/usr/lib32/qt4/plugins/:"${HERE}"/usr/lib64/qt4/plugins/:"${HERE}"/usr/lib/qt5/plugins/:"${HERE}"/usr/lib/i386-linux-gnu/qt5/plugins/:"${HERE}"/usr/lib/x86_64-linux-gnu/qt5/plugins/:"${HERE}"/usr/lib32/qt5/plugins/:"${HERE}"/usr/lib64/qt5/plugins/:"${QT_PLUGIN_PATH}"
+case $1 in
+-h|--help) echo "
+ AVAILABLE KDE GAMES:
+
+$(ls "${HERE}"/usr/games)
+";;
+*) if test -f "${HERE}"/usr/games/$1; then
+EXEC=$(grep -e '^Exec=.*' "${HERE}"/usr/share/applications/org.kde.$1.desktop | head -n 1 | cut -d "=" -f 2- | sed -e 's|%.||g')
+exec ${EXEC} "$@" 2>/dev/null
+exit
+else
+echo "
+ AVAILABLE KDE GAMES:
+
+$(ls "${HERE}"/usr/games)
+"
+fi;;
+esac
+EOF
+chmod a+x ./$APP/$APP.AppDir/AppRun
+cp ./$APP/$APP.AppDir/AppRun /opt/$APP/
+
+# ...ADD A LAUNCHER AND AN ICON TO THE APPDIR...
+cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/256x256/apps/kpat* ./$APP/$APP.AppDir/ 2>/dev/null
+echo "[Desktop Entry]
+Name=kdegames
+Exec=AppRun
+Icon=kpat
+Type=Application
+Categories=Game;" >> $APP.desktop
+cp ./$APP.desktop /opt/$APP/
+mv ./$APP.desktop ./$APP/$APP.AppDir
+
+# ...EXPORT THE APPDIR TO AN APPIMAGE!
 ARCH=x86_64 ./appimagetool -n ./$APP/$APP.AppDir;
+underscore=_
+mkdir version
+mv ./$APP/$APP$underscore*.deb ./version/
+version=$(ls /opt/$APP/tmp/version)
+echo "$version" >> /opt/$APP/version
 
 cd ..;
 mv ./tmp/*.AppImage ./$APP;
 chmod a+x ./$APP
 
-rm -R -f ./tmp
-
 # LINK
 ln -s /opt/$APP/$APP /usr/games/$APP
 
-# LAUNCHER
-echo "[Desktop Entry]
-Name=KPatience
-Name[bs]=KPatience
-Name[ca]=KPatience
-Name[ca@valencia]=KPatience
-Name[cs]=KPatience
-Name[da]=KPatience
-Name[de]=KPatience
-Name[el]=KPatience
-Name[en_GB]=KPatience
-Name[es]=KPatience
-Name[et]=KPatience
-Name[eu]=KPatience
-Name[fi]=KPatience
-Name[fr]=KPatience
-Name[ga]=KPatience
-Name[gl]=KPatience
-Name[hne]=के-पेसेन्स
-Name[hu]=KPatience
-Name[id]=KPatience
-Name[it]=KPatience
-Name[ja]=KPatience
-Name[kk]=KPatience
-Name[km]=KPatience
-Name[ko]=KPatience
-Name[lt]=KPatience
-Name[lv]=KPatience
-Name[mr]=के-पेशन्स
-Name[nb]=Kabal
-Name[nds]=KPatience
-Name[nl]=KPatience
-Name[nn]=KPatience
-Name[pa]=ਕੇਪੇਟੀਨਸ਼
-Name[pl]=Pasjans
-Name[pt]=KPatience
-Name[pt_BR]=KPatience
-Name[ro]=KPasențe
-Name[ru]=KPatience
-Name[sk]=KPatience
-Name[sl]=KPatience
-Name[sr]=К‑пасијанс
-Name[sr@ijekavian]=К‑пасијанс
-Name[sr@ijekavianlatin]=K‑pasijans
-Name[sr@latin]=K‑pasijans
-Name[sv]=Patiens
-Name[tr]=KPatience
-Name[ug]=KPatience
-Name[uk]=Пасьянс
-Name[wa]=KPacyince
-Name[x-test]=xxKPatiencexx
-Name[zh_CN]=KPatience
-Name[zh_TW]=KPatience 單人紙牌遊戲
-Exec=kpat -qwindowtitle %c %u
-Type=Application
-Icon=/opt/$APP/$APP.svg
-X-DocPath=kpat/index.html
-GenericName=Patience Card Game
-GenericName[af]=Patience Kaart Speletjie
-GenericName[be]=Картачны пасьянс
-GenericName[bn]=পেশেন্স নামের তাস খেলা
-GenericName[br]=C'hoari a habaskter
-GenericName[bs]=Kartaška igra strpljenja
-GenericName[ca]=Partida de cartes paciència
-GenericName[ca@valencia]=Partida de cartes paciència
-GenericName[cs]=Karetní hra passiáns
-GenericName[cy]=Gêm Cerdiau Patience
-GenericName[da]=Kabale-kortspil
-GenericName[de]=Patiencen legen
-GenericName[el]=Παιχνίδι καρτών πασιέντζας
-GenericName[en_GB]=Patience Card Game
-GenericName[eo]=Pacienca Kartludo
-GenericName[es]=Juego de cartas Patience
-GenericName[et]=Kaardimäng
-GenericName[eu]=Pazientziako karta-jokoa
-GenericName[fa]=بازی Patience Card
-GenericName[fi]=Pasianssi-korttipeli
-GenericName[fr]=Jeux de réussite
-GenericName[ga]=Cluiche Cártaí Patience
-GenericName[gl]=Xogo de cartas
-GenericName[he]=משחק קלפים
-GenericName[hne]=पेसेंस तास वाले खेल
-GenericName[hr]=Kartaška igra pasijansa
-GenericName[hu]=Pasziánsz kártyajáték
-GenericName[id]=Permainan Kartu Patience
-GenericName[is]=Kaplar
-GenericName[it]=Solitari con le carte
-GenericName[ja]=Patience カードゲーム
-GenericName[kk]=Пасьянс ойны
-GenericName[km]=ល្បែង​បៀ Patience
-GenericName[ko]=카드 놀이
-GenericName[lt]=Pasianso kortų žaidimas
-GenericName[lv]=Patience kāršu spēle
-GenericName[mk]=Пасијанс - игра со карти
-GenericName[mr]=पेशन्स पत्यांचा खेळ
-GenericName[nb]=Kabalspill
-GenericName[nds]=Patschangsen leggen
-GenericName[ne]=शान्त कार्ड खेल
-GenericName[nl]=Patience-kaartspel
-GenericName[nn]=Kabalspel
-GenericName[pl]=Gra karciana Patience
-GenericName[pt]=Jogo de Paciência
-GenericName[pt_BR]=Jogo de cartas paciência
-GenericName[ro]=Joc de cărți de răbdare
-GenericName[ru]=Карточный пасьянс
-GenericName[se]=Kabálaspeallu
-GenericName[sk]=Kartová hra Patience
-GenericName[sl]=Igra s kartami Patience
-GenericName[sr]=Пасијанс са картама
-GenericName[sr@ijekavian]=Пасијанс са картама
-GenericName[sr@ijekavianlatin]=Pasijans sa kartama
-GenericName[sr@latin]=Pasijans sa kartama
-GenericName[sv]=Patienskortspel
-GenericName[ta]=பொறுமையான சீட்டு விளையாட்டு
-GenericName[te]=సహనం పేక ఆట
-GenericName[tg]=Бозии Пасянси Кортӣ
-GenericName[tr]=Sabır Kart Oyunu
-GenericName[ug]=سەۋر تاقەت كارتا ئويۇنى
-GenericName[uk]=Гра картами у пасьянс
-GenericName[wa]=Cwårdjeu d' pacyince
-GenericName[xh]=Ikhadi lomdlalo wokunyamezela
-GenericName[x-test]=xxPatience Card Gamexx
-GenericName[zh_CN]=考验耐心的牌类游戏
-GenericName[zh_TW]=單人玩的紙牌遊戲
-Comment=Solitaire card game
-Comment[ca]=Joc de cartes al solitari
-Comment[ca@valencia]=Joc de cartes al solitari
-Comment[cs]=Karetní hra Solitaire
-Comment[da]=Kabale kortspil
-Comment[de]=Solitär-Kartenspiel
-Comment[el]=Παιχνίδι καρτών solitaire
-Comment[en_GB]=Solitaire card game
-Comment[es]=Juego de cartas solitario
-Comment[et]=Solitaire kaardimäng
-Comment[eu]=Bakarkako karta-jokoa
-Comment[fi]=Pasianssikorttipeli
-Comment[fr]=Jeu de solitaire
-Comment[gl]=Xogo de cartas do solitario.
-Comment[id]=Permainan kartu solitaire
-Comment[it]=Solitari con le carte
-Comment[ko]=솔리테어 카드 게임
-Comment[nl]=Solitaire kaartspel
-Comment[nn]=Kabelspel
-Comment[pl]=Gra pasjans
-Comment[pt]=Jogo de cartas solitário
-Comment[pt_BR]=Jogo de cartas paciência
-Comment[sk]=Solitaire kartová hra
-Comment[sl]=Igra Pasjanse
-Comment[sr]=Игра пасијанса
-Comment[sr@ijekavian]=Игра пасијанса
-Comment[sr@ijekavianlatin]=Igra pasijansa
-Comment[sr@latin]=Igra pasijansa
-Comment[sv]=Patienskortspel
-Comment[tr]=Solitaire kart oyunu
-Comment[uk]=Карткова гра у пасьянс
-Comment[x-test]=xxSolitaire card gamexx
-Comment[zh_CN]=纸牌游戏
-Comment[zh_TW]=接龍卡片遊戲
-X-DBUS-StartupType=Multi
-Categories=Qt;KDE;Game;CardGame;
-MimeType=application/vnd.kde.kpatience.savedstate;
-X-DBUS-ServiceName=org.kde.kpat" >> /usr/share/applications/AM-$APP.desktop;
+# SCRIPT TO UPDATE THE PROGRAM
+initial=$(echo $APP | head -c 1)
+echo '#!/bin/sh
+version0=$(cat /opt/'$APP'/version)
+url="http://ftp.us.debian.org/debian/pool/main/m/meta-kde/$version0"
+if curl --output /dev/null --silent --head --fail "$url"; then
+  echo "Update not needed, exit!"
+else
+  notify-send "A new version of '$APP' is available, please wait!"
+  mkdir /opt/'$APP'/tmp
+  cd /opt/'$APP'/tmp
+  wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool
+  wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/tools/pkg2appimage
+  chmod a+x ./appimagetool ./pkg2appimage
+  cp /opt/'$APP'/recipe.yml /opt/'$APP'/tmp/recipe.yml
+  ./pkg2appimage ./recipe.yml;
+  rm -R -f ./'$APP'/'$APP'.AppDir/AppRun
+  cp /opt/'$APP'/AppRun ./'$APP'/'$APP'.AppDir/
+  cp /opt/'$APP'/'$APP'.desktop ./'$APP'/'$APP'.AppDir/
+  cp /opt/'$APP'/kpat ./'$APP'/'$APP'.AppDir/kpat.png
+  ARCH=x86_64 ./appimagetool -n ./'$APP'/'$APP'.AppDir
+  mkdir version
+  mv ./'$APP'/'$APP''$underscore'*.deb ./version/
+  cd ..
+  version=$(ls /opt/'$APP'/tmp/version)
+  if test -f ./tmp/version/$version; then rm -R -f ./version
+  fi
+  echo "$version" >> /opt/'$APP'/version
+  mv ./tmp/*.AppImage ./'$APP';
+  chmod a+x ./'$APP'
+  rm -R -f ./tmp
+fi' >> /opt/$APP/AM-updater
+chmod a+x /opt/$APP/AM-updater
 
-# ICON
-wget wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/programs/.icons/$APP.svg;
+# ADD THE ICONS
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/22x22/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/24x24/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/32x32/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/48x48/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/64x64/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/128x128/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/256x256/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/512x512/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/scalable/apps/* /opt/$APP/ 2>/dev/null
+cd /opt/$APP
+for file in *.png; do mv -- "$file" "${file%%.png}"; done
+
+# ADD LAUNCHERS AND FOR THE GAMES
+mkdir /opt/$APP/launchers
+cp /opt/$APP/tmp/$APP/$APP.AppDir/usr/share/applications/* /opt/$APP/launchers/ 2>/dev/null
+cd /opt/$APP/launchers
+for file in *; do mv ./$file ./AM-$APP-$file
+done
+sed -i "s#Exec=#Exec=/opt/kdegames/kdegames #g" /opt/$APP/launchers/*.desktop
+sed -i "s#Icon=#Icon=/opt/kdegames/#g" /opt/$APP/launchers/*.desktop
+
+cp /opt/$APP/launchers/*.desktop /usr/share/applications/
+rm -R -f /opt/$APP/launchers
+
+# NOW YOU CAN REMOVE THE TEMPORARY FOLDER
+rm -R -f /opt/$APP/tmp
+
+# ADD THE PERMISSIONS
 
 currentuser=$(who | awk '{print $1}')
 chown -R $currentuser /opt/$APP
 
 echo "
 
- $APP is part of KDE Games, visit https://games.kde.org
+ KDE Games are provided by https://apps.kde.org
   
 ";

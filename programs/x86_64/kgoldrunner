@@ -1,6 +1,6 @@
 #!/bin/sh
 
-APP=kgoldrunner
+APP=kdegames
 
 # CREATING THE FOLDER
 mkdir /opt/$APP
@@ -8,7 +8,7 @@ cd /opt/$APP;
 
 # ADD THE REMOVER
 echo '#!/bin/sh' >> /opt/$APP/remove
-echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/games/$APP" >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/AM-$APP*.desktop /opt/$APP /usr/games/$APP" >> /opt/$APP/remove
 chmod a+x /opt/$APP/remove
 
 mkdir tmp;
@@ -16,223 +16,160 @@ cd tmp;
 
 # DOWNLOADING THE DEPENDENCIES
 wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-$(uname -m).AppImage -O appimagetool
-wget -r -A .AppImage -nd https://github.com/AppImage/pkg2appimage/releases/tag/continuous && mv pkg2appimage* pkg2appimage
+wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/tools/pkg2appimage # 64 BIT ONLY (comment to disable)
+# wget https://github.com/ivan-hc/pkg2appimage-32bit/releases/download/continuous/pkg2appimage-i386.AppImage -O pkg2appimage # 32 BIT ONLY (uncomment to enable)
 chmod a+x ./appimagetool ./pkg2appimage
 
-# CREATING THE APPIMAGE
-echo "app: $APP
+# CREATING THE APPIMAGE: APPDIR FROM A RECIPE...
+echo "app: kdegames
 binpatch: true
 
 ingredients:
   dist: stable
   sources:
-    - deb http://ftp.us.debian.org/debian/ stable main contrib non-free" >> recipe.yml
+    - deb http://deb.debian.org/debian/ stable main contrib non-free
+    - deb http://deb.debian.org/debian-security/ stable-security main contrib non-free
+    - deb http://deb.debian.org/debian stable-updates main contrib non-free
+    - deb http://deb.debian.org/debian stable-backports main contrib non-free
+  packages:
+    - kdegames
+    - kde-games-core
+    - qml-module-qtquick2
+    - qml-module-org-kde-games-core" >> recipe.yml;
+
+cp /opt/$APP/tmp/recipe.yml /opt/$APP/recipe.yml
 
 ./pkg2appimage ./recipe.yml;
 
+# ...REPLACING THE EXISTING APPRUN WITH A CUSTOM ONE...
+rm -R -f ./$APP/$APP.AppDir/AppRun
+
+cat >> ./$APP/$APP.AppDir/AppRun << 'EOF' 
+#!/bin/sh
+HERE="$(dirname "$(readlink -f "${0}")")"
+export UNION_PRELOAD="${HERE}"
+export PATH="${HERE}"/usr/bin/:"${HERE}"/usr/sbin/:"${HERE}"/usr/games/:"${HERE}"/bin/:"${HERE}"/opt/kdegames/:"${HERE}"/sbin/:"${PATH}"
+export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/:/usr/lib/i386-linux-gnu/:"${HERE}"/usr/lib/:"${HERE}"/usr/lib/i386-linux-gnu/:"${HERE}"/usr/lib/x86_64-linux-gnu/:"${HERE}"/lib/:"${HERE}"/lib/i386-linux-gnu/:"${HERE}"/lib/x86_64-linux-gnu/:"${LD_LIBRARY_PATH}"
+export XDG_DATA_DIRS="${HERE}"/usr/share/:"${XDG_DATA_DIRS}"
+export GSETTINGS_SCHEMA_DIR="${HERE}"/usr/share/glib-2.0/schemas/:"${GSETTINGS_SCHEMA_DIR}"
+export QT_PLUGIN_PATH="${HERE}"/usr/lib/qt4/plugins/:"${HERE}"/usr/lib/i386-linux-gnu/qt4/plugins/:"${HERE}"/usr/lib/x86_64-linux-gnu/qt4/plugins/:"${HERE}"/usr/lib32/qt4/plugins/:"${HERE}"/usr/lib64/qt4/plugins/:"${HERE}"/usr/lib/qt5/plugins/:"${HERE}"/usr/lib/i386-linux-gnu/qt5/plugins/:"${HERE}"/usr/lib/x86_64-linux-gnu/qt5/plugins/:"${HERE}"/usr/lib32/qt5/plugins/:"${HERE}"/usr/lib64/qt5/plugins/:"${QT_PLUGIN_PATH}"
+case $1 in
+-h|--help) echo "
+ AVAILABLE KDE GAMES:
+
+$(ls "${HERE}"/usr/games)
+";;
+*) if test -f "${HERE}"/usr/games/$1; then
+EXEC=$(grep -e '^Exec=.*' "${HERE}"/usr/share/applications/org.kde.$1.desktop | head -n 1 | cut -d "=" -f 2- | sed -e 's|%.||g')
+exec ${EXEC} "$@" 2>/dev/null
+exit
+else
+echo "
+ AVAILABLE KDE GAMES:
+
+$(ls "${HERE}"/usr/games)
+"
+fi;;
+esac
+EOF
+chmod a+x ./$APP/$APP.AppDir/AppRun
+cp ./$APP/$APP.AppDir/AppRun /opt/$APP/
+
+# ...ADD A LAUNCHER AND AN ICON TO THE APPDIR...
+cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/256x256/apps/kpat* ./$APP/$APP.AppDir/ 2>/dev/null
+echo "[Desktop Entry]
+Name=kdegames
+Exec=AppRun
+Icon=kpat
+Type=Application
+Categories=Game;" >> $APP.desktop
+cp ./$APP.desktop /opt/$APP/
+mv ./$APP.desktop ./$APP/$APP.AppDir
+
+# ...EXPORT THE APPDIR TO AN APPIMAGE!
 ARCH=x86_64 ./appimagetool -n ./$APP/$APP.AppDir;
+underscore=_
+mkdir version
+mv ./$APP/$APP$underscore*.deb ./version/
+version=$(ls /opt/$APP/tmp/version)
+echo "$version" >> /opt/$APP/version
 
 cd ..;
 mv ./tmp/*.AppImage ./$APP;
 chmod a+x ./$APP
 
-rm -R -f ./tmp
-
 # LINK
 ln -s /opt/$APP/$APP /usr/games/$APP
 
-# LAUNCHER
-echo "[Desktop Entry]
-Name=KGoldrunner
-Name[be]=Залатая ліхаманка
-Name[bn]=কে-গোল্ডরানার
-Name[br]=KGoldrunner
-Name[bs]=KGoldrunner
-Name[ca]=KGoldrunner
-Name[ca@valencia]=KGoldrunner
-Name[cs]=KGoldrunner
-Name[cy]=KGoldrunner
-Name[da]=KGoldrunner
-Name[de]=KGoldrunner
-Name[el]=KGoldrunner
-Name[en_GB]=KGoldrunner
-Name[eo]=KGoldrunner
-Name[es]=KGoldrunner
-Name[et]=KGoldrunner
-Name[eu]=KGoldrunner
-Name[fa]=فرار با جواهرات
-Name[fi]=KGoldrunner
-Name[fr]=KGoldRunner
-Name[ga]=KGoldrunner
-Name[gl]=KGoldrunner
-Name[he]=KGoldrunner
-Name[hne]=के-गोल्डरनर
-Name[hr]=KPotraga za zlatom
-Name[hu]=KGoldrunner
-Name[id]=KGoldrunner
-Name[is]=KGoldrunner
-Name[it]=KGoldrunner
-Name[ja]=KGoldrunner
-Name[kk]=KGoldrunner
-Name[km]=KGoldrunner
-Name[ko]=KGoldrunner
-Name[lt]=KGoldrunner
-Name[lv]=KGoldrunner
-Name[mk]=KGoldrunner
-Name[mr]=के-गोल्ड-रनर
-Name[nb]=KGoldrunner
-Name[nds]=KGoldrunner
-Name[ne]=केडीई गोल्ड रनर
-Name[nl]=KGoldrunner
-Name[nn]=KGoldrunner
-Name[pa]=ਕੇ-ਗੋਲਡ ਰਨਰ
-Name[pl]=KGoldrunner
-Name[pt]=KGoldrunner
-Name[pt_BR]=KGoldrunner
-Name[ro]=KGoldrunner
-Name[ru]=KGoldrunner
-Name[se]=KGoldrunner
-Name[sk]=KGoldrunner
-Name[sl]=KGoldrunner
-Name[sq]=KGoldrunner
-Name[sr]=К‑златобојац
-Name[sr@ijekavian]=К‑златобојац
-Name[sr@ijekavianlatin]=K‑zlatobojac
-Name[sr@latin]=K‑zlatobojac
-Name[sv]=Kgoldrunner
-Name[ta]=கேதங்கம் ஓடுபவர்
-Name[te]=కెగొల్డ్ రన్నర్
-Name[tg]=KҶӯяндаи тилло
-Name[tr]=KGoldrunner
-Name[ug]=KGoldrunner
-Name[uk]=Золотошукач
-Name[wa]=KGoldrunner
-Name[x-test]=xxKGoldrunnerxx
-Name[zh_CN]=KGoldrunner
-Name[zh_TW]=KGoldrunner 撿金塊
-GenericName=Hunt Gold, Dodge Enemies and Solve Puzzles
-GenericName[bs]=Nađi zlato, zbuni neprijatelje i riješi zagonetke
-GenericName[ca]=Cerca l'or, esquiva els enemics i resol trencaclosques
-GenericName[ca@valencia]=Cerca l'or, esquiva els enemics i resol trencaclosques
-GenericName[da]=Jagt guld, undgå fjender og løs opgaver
-GenericName[de]=Gold suchen, Feinden entkommen und Rätsel lösen
-GenericName[el]=Κυνηγήστε χρυσό, αποφύγετε εχθρούς και λύστε γρίφους
-GenericName[en_GB]=Hunt Gold, Dodge Enemies and Solve Puzzles
-GenericName[es]=Buscar oro, esquivar enemigos y resolver rompecabezas
-GenericName[et]=Kullajaht, vaenlaste hävitamine ja mõistatuste lahendamine
-GenericName[eu]=Bildu urrea, saihetsi etsaiak eta ebatzi buruhauskarriak
-GenericName[fi]=Etsi kultaa, väistä vihollisia ja ratkaise pulmia
-GenericName[fr]=Chassez l'or, évitez les ennemis et résolvez des énigmes
-GenericName[ga]=Téigh sa Tóir ar Ór, Seachain Naimhde, agus Réitigh Puzail
-GenericName[gl]=Colle moedas, escapa dos inimigos e resolve quebracabezas
-GenericName[hu]=Vadászat az aranyra, rejtvényekkel és mumusokkal fűszerezve
-GenericName[id]=Memburu Emas, Menghindari Musuh, dan Memecahkan Teka-teki
-GenericName[it]=Cerca l'oro, evita i nemici e risolvi i problemi
-GenericName[ja]=敵をかわし、パズルを解きながら金塊を集めるゲーム
-GenericName[kk]=Алтын ізде, жауды алда, басқатырғыштарды шеш
-GenericName[km]=រក​មាស គេច​សត្រូវ និង​ដោះស្រាយ​បញ្ហា
-GenericName[ko]=금을 캐고, 적을 피하고, 퍼즐을 풀기
-GenericName[lv]=Meklē zeltu, izvairies no pretiniekiem un risini mīklas
-GenericName[mr]=सोने शोधा, शत्रुंना पळवा व कोडी सोडवा
-GenericName[nb]=Jakt etter gull, unngå fiender og løs oppgaver
-GenericName[nds]=Söök Gold, gah Feenden ut'n Weg, un löös Radels
-GenericName[nl]=Jaag op goud, versla vijanden en los puzzels op
-GenericName[nn]=Jakt etter gull, unngå fiendar og løys oppgåver
-GenericName[pl]=Goń za złotem, unikaj wrogów i rozwiązuj zagadki
-GenericName[pt]=Faça uma Caça ao Ouro, Fuja dos Inimigos e Resolva 'Puzzles'
-GenericName[pt_BR]=Procure ouro, evite inimigos e resolva os problemas
-GenericName[ro]=Vînați aur, eliminați inamicii și rezolvați puzzle
-GenericName[ru]=Золото, опасности и головоломки
-GenericName[sk]=Hľadajte zlato, vyhnite sa nepriateľom a riešte puzzle
-GenericName[sl]=Iščite zlato, izmikajte se sovražnikom in rešujte uganke
-GenericName[sr]=Сакупљајте злато, избегавајте непријатеље и решавајте загонетке
-GenericName[sr@ijekavian]=Сакупљајте злато, избјегавајте непријатеље и рјешавајте загонетке
-GenericName[sr@ijekavianlatin]=Sakupljajte zlato, izbjegavajte neprijatelje i rješavajte zagonetke
-GenericName[sr@latin]=Sakupljajte zlato, izbegavajte neprijatelje i rešavajte zagonetke
-GenericName[sv]=Leta guld, undvik fiender och lös problem
-GenericName[tr]=Altın Avla, Düşmanlarını Atlat ve Bulmacaları Çöz
-GenericName[uk]=Шукайте золото, уникайте ворогів і розгадуйте загадки
-GenericName[x-test]=xxHunt Gold, Dodge Enemies and Solve Puzzlesxx
-GenericName[zh_CN]=淘金，避敌，以及解谜
-GenericName[zh_TW]=尋找金塊，躲避敵人，並解謎
-Type=Application
-Exec=kgoldrunner
-Icon=/opt/$APP/$APP.svg
-X-DocPath=kgoldrunner/index.html
-Comment=A game of action and puzzle-solving
-Comment[be]=Актыўная гульня з галаваломкамі
-Comment[bn]=ধাঁধাঁ ও অ্যাকশন মেশানো এক দারুণ খেলা
-Comment[bs]=Igra akcije i rješavanja zagonetki
-Comment[ca]=Un joc d'acció i solució de trencaclosques
-Comment[ca@valencia]=Un joc d'acció i solució de trencaclosques
-Comment[cs]=Akční hra s řešením hádanek
-Comment[cy]=Gêm gynhyrfus o ddatrys posau
-Comment[da]=Et spil med handling og problemløsning
-Comment[de]=Aktionsreiches Spiel für Rätsellöser
-Comment[el]=Ένα παιχνίδι δράσης και λύσης γρίφων
-Comment[en_GB]=A game of action and puzzle-solving
-Comment[eo]=Ludo de agado kaj enigmosolvado
-Comment[es]=Un juego de acción y resolución de rompecabezas
-Comment[et]=Põnev mõistatuste lahendamise mäng
-Comment[eu]=Ekintzarako eta buruhauskarriak ebazteko jokoa
-Comment[fa]=یک بازی کنشی و حل معما
-Comment[fi]=Toiminta- ja pulmanratkaisupeli
-Comment[fr]=Un jeu d'action et de résolution d'énigmes
-Comment[ga]=Cluiche gníomhaíochta agus réiteach puzal
-Comment[gl]=Un xogo de acción e resolución de quebracabezas
-Comment[he]=משחק אקשן ופתרון חידות
-Comment[hne]=एक्सन अउ समस्या हल करे के एक खेल
-Comment[hr]=Igra akcije i rješavanja zagonetki
-Comment[hu]=Ügyességi játék rejtvényekkel tarkítva
-Comment[id]=Sebuah permainan aksi dan pemecahan teka-teki
-Comment[is]=Leikur sem reynir á hraða og kænsku
-Comment[it]=Un gioco sia d'azione che rompicapo
-Comment[ja]=アクションと謎解きゲーム
-Comment[kk]=Әрекет пен басқатырғыш ойны
-Comment[km]=ល្បែង​សកម្មភាព​ និង​ដោះស្រាយ​​បញ្ហា​
-Comment[ko]=액션 및 퍼즐 풀기 게임
-Comment[lt]=Veiksmo ir galvosūkių žaidimas
-Comment[lv]=Darbības un loģikas spēle
-Comment[mk]=Игра со акција и решавање на загатки
-Comment[mr]=एक्शन व कोडे सोडविण्याचा खेळ
-Comment[nb]=Et handlingsfylt spill med innlagte gåter
-Comment[nds]=Een Speel mit veel Akschoon un Radels
-Comment[ne]=काम र पजल समाधान गर्ने खेल
-Comment[nl]=Een spel met actie en oplossen van puzzels
-Comment[nn]=Handlingsfylt spel med innlagde gåter
-Comment[pl]=Gra akcji i rozwiązywania układanek
-Comment[pt]=Um jogo de acção e resolução de quebra-cabeças
-Comment[pt_BR]=Um jogo de ação e quebra-cabeça
-Comment[ro]=Un joc de acțiune și rezolvare de puzzle
-Comment[ru]=Решение головоломок на ходу
-Comment[sk]=Kombinovaná akčná a logická hra
-Comment[sl]=Igra akcije in reševanja ugank
-Comment[sr]=Игра акције и решавања загонетки
-Comment[sr@ijekavian]=Игра акције и рјешавања загонетки
-Comment[sr@ijekavianlatin]=Igra akcije i rješavanja zagonetki
-Comment[sr@latin]=Igra akcije i rešavanja zagonetki
-Comment[sv]=Ett spel med action och problemlösning
-Comment[ta]=செயல்பாடு மற்றும் புதிர் விடுவிக்கும் விளையாட்டு
-Comment[tg]=Бозии амалиёт ва ҳалли муаммоҳо
-Comment[tr]=Aksiyon ve bulmaca çözümlerini barındıran bir oyun
-Comment[ug]=ھەرىكەتلىك ۋە تېپىشماق تاپىدىغان ئويۇن
-Comment[uk]=Вирішення головоломок на ходу
-Comment[x-test]=xxA game of action and puzzle-solvingxx
-Comment[zh_CN]=动作和解谜游戏
-Comment[zh_TW]= 一個動作和解謎的遊戲
-Terminal=false
-Categories=Qt;KDE;Game;ArcadeGame;
-X-DBUS-StartupType=Multi
-X-DBUS-ServiceName=org.kde.kgoldrunner" >> /usr/share/applications/AM-$APP.desktop;
+# SCRIPT TO UPDATE THE PROGRAM
+initial=$(echo $APP | head -c 1)
+echo '#!/bin/sh
+version0=$(cat /opt/'$APP'/version)
+url="http://ftp.us.debian.org/debian/pool/main/m/meta-kde/$version0"
+if curl --output /dev/null --silent --head --fail "$url"; then
+  echo "Update not needed, exit!"
+else
+  notify-send "A new version of '$APP' is available, please wait!"
+  mkdir /opt/'$APP'/tmp
+  cd /opt/'$APP'/tmp
+  wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool
+  wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/tools/pkg2appimage
+  chmod a+x ./appimagetool ./pkg2appimage
+  cp /opt/'$APP'/recipe.yml /opt/'$APP'/tmp/recipe.yml
+  ./pkg2appimage ./recipe.yml;
+  rm -R -f ./'$APP'/'$APP'.AppDir/AppRun
+  cp /opt/'$APP'/AppRun ./'$APP'/'$APP'.AppDir/
+  cp /opt/'$APP'/'$APP'.desktop ./'$APP'/'$APP'.AppDir/
+  cp /opt/'$APP'/kpat ./'$APP'/'$APP'.AppDir/kpat.png
+  ARCH=x86_64 ./appimagetool -n ./'$APP'/'$APP'.AppDir
+  mkdir version
+  mv ./'$APP'/'$APP''$underscore'*.deb ./version/
+  cd ..
+  version=$(ls /opt/'$APP'/tmp/version)
+  if test -f ./tmp/version/$version; then rm -R -f ./version
+  fi
+  echo "$version" >> /opt/'$APP'/version
+  mv ./tmp/*.AppImage ./'$APP';
+  chmod a+x ./'$APP'
+  rm -R -f ./tmp
+fi' >> /opt/$APP/AM-updater
+chmod a+x /opt/$APP/AM-updater
 
-# ICON
-wget wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/programs/.icons/$APP.svg;
+# ADD THE ICONS
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/22x22/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/24x24/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/32x32/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/48x48/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/64x64/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/128x128/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/256x256/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/512x512/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/scalable/apps/* /opt/$APP/ 2>/dev/null
+cd /opt/$APP
+for file in *.png; do mv -- "$file" "${file%%.png}"; done
+
+# ADD LAUNCHERS AND FOR THE GAMES
+mkdir /opt/$APP/launchers
+cp /opt/$APP/tmp/$APP/$APP.AppDir/usr/share/applications/* /opt/$APP/launchers/ 2>/dev/null
+cd /opt/$APP/launchers
+for file in *; do mv ./$file ./AM-$APP-$file
+done
+sed -i "s#Exec=#Exec=/opt/kdegames/kdegames #g" /opt/$APP/launchers/*.desktop
+sed -i "s#Icon=#Icon=/opt/kdegames/#g" /opt/$APP/launchers/*.desktop
+
+cp /opt/$APP/launchers/*.desktop /usr/share/applications/
+rm -R -f /opt/$APP/launchers
+
+# NOW YOU CAN REMOVE THE TEMPORARY FOLDER
+rm -R -f /opt/$APP/tmp
+
+# ADD THE PERMISSIONS
 
 currentuser=$(who | awk '{print $1}')
 chown -R $currentuser /opt/$APP
 
 echo "
 
- $APP is part of KDE Games, visit https://games.kde.org
+ KDE Games are provided by https://apps.kde.org
   
 ";

@@ -1,6 +1,6 @@
 #!/bin/sh
 
-APP=kolf
+APP=kdegames
 
 # CREATING THE FOLDER
 mkdir /opt/$APP
@@ -8,7 +8,7 @@ cd /opt/$APP;
 
 # ADD THE REMOVER
 echo '#!/bin/sh' >> /opt/$APP/remove
-echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/games/$APP" >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/AM-$APP*.desktop /opt/$APP /usr/games/$APP" >> /opt/$APP/remove
 chmod a+x /opt/$APP/remove
 
 mkdir tmp;
@@ -16,184 +16,160 @@ cd tmp;
 
 # DOWNLOADING THE DEPENDENCIES
 wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-$(uname -m).AppImage -O appimagetool
-wget -r -A .AppImage -nd https://github.com/AppImage/pkg2appimage/releases/tag/continuous && mv pkg2appimage* pkg2appimage
+wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/tools/pkg2appimage # 64 BIT ONLY (comment to disable)
+# wget https://github.com/ivan-hc/pkg2appimage-32bit/releases/download/continuous/pkg2appimage-i386.AppImage -O pkg2appimage # 32 BIT ONLY (uncomment to enable)
 chmod a+x ./appimagetool ./pkg2appimage
 
-# CREATING THE APPIMAGE
-echo "app: $APP
+# CREATING THE APPIMAGE: APPDIR FROM A RECIPE...
+echo "app: kdegames
 binpatch: true
 
 ingredients:
   dist: stable
   sources:
-    - deb http://ftp.us.debian.org/debian/ stable main contrib non-free" >> recipe.yml
+    - deb http://deb.debian.org/debian/ stable main contrib non-free
+    - deb http://deb.debian.org/debian-security/ stable-security main contrib non-free
+    - deb http://deb.debian.org/debian stable-updates main contrib non-free
+    - deb http://deb.debian.org/debian stable-backports main contrib non-free
+  packages:
+    - kdegames
+    - kde-games-core
+    - qml-module-qtquick2
+    - qml-module-org-kde-games-core" >> recipe.yml;
+
+cp /opt/$APP/tmp/recipe.yml /opt/$APP/recipe.yml
 
 ./pkg2appimage ./recipe.yml;
 
+# ...REPLACING THE EXISTING APPRUN WITH A CUSTOM ONE...
+rm -R -f ./$APP/$APP.AppDir/AppRun
+
+cat >> ./$APP/$APP.AppDir/AppRun << 'EOF' 
+#!/bin/sh
+HERE="$(dirname "$(readlink -f "${0}")")"
+export UNION_PRELOAD="${HERE}"
+export PATH="${HERE}"/usr/bin/:"${HERE}"/usr/sbin/:"${HERE}"/usr/games/:"${HERE}"/bin/:"${HERE}"/opt/kdegames/:"${HERE}"/sbin/:"${PATH}"
+export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/:/usr/lib/i386-linux-gnu/:"${HERE}"/usr/lib/:"${HERE}"/usr/lib/i386-linux-gnu/:"${HERE}"/usr/lib/x86_64-linux-gnu/:"${HERE}"/lib/:"${HERE}"/lib/i386-linux-gnu/:"${HERE}"/lib/x86_64-linux-gnu/:"${LD_LIBRARY_PATH}"
+export XDG_DATA_DIRS="${HERE}"/usr/share/:"${XDG_DATA_DIRS}"
+export GSETTINGS_SCHEMA_DIR="${HERE}"/usr/share/glib-2.0/schemas/:"${GSETTINGS_SCHEMA_DIR}"
+export QT_PLUGIN_PATH="${HERE}"/usr/lib/qt4/plugins/:"${HERE}"/usr/lib/i386-linux-gnu/qt4/plugins/:"${HERE}"/usr/lib/x86_64-linux-gnu/qt4/plugins/:"${HERE}"/usr/lib32/qt4/plugins/:"${HERE}"/usr/lib64/qt4/plugins/:"${HERE}"/usr/lib/qt5/plugins/:"${HERE}"/usr/lib/i386-linux-gnu/qt5/plugins/:"${HERE}"/usr/lib/x86_64-linux-gnu/qt5/plugins/:"${HERE}"/usr/lib32/qt5/plugins/:"${HERE}"/usr/lib64/qt5/plugins/:"${QT_PLUGIN_PATH}"
+case $1 in
+-h|--help) echo "
+ AVAILABLE KDE GAMES:
+
+$(ls "${HERE}"/usr/games)
+";;
+*) if test -f "${HERE}"/usr/games/$1; then
+EXEC=$(grep -e '^Exec=.*' "${HERE}"/usr/share/applications/org.kde.$1.desktop | head -n 1 | cut -d "=" -f 2- | sed -e 's|%.||g')
+exec ${EXEC} "$@" 2>/dev/null
+exit
+else
+echo "
+ AVAILABLE KDE GAMES:
+
+$(ls "${HERE}"/usr/games)
+"
+fi;;
+esac
+EOF
+chmod a+x ./$APP/$APP.AppDir/AppRun
+cp ./$APP/$APP.AppDir/AppRun /opt/$APP/
+
+# ...ADD A LAUNCHER AND AN ICON TO THE APPDIR...
+cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/256x256/apps/kpat* ./$APP/$APP.AppDir/ 2>/dev/null
+echo "[Desktop Entry]
+Name=kdegames
+Exec=AppRun
+Icon=kpat
+Type=Application
+Categories=Game;" >> $APP.desktop
+cp ./$APP.desktop /opt/$APP/
+mv ./$APP.desktop ./$APP/$APP.AppDir
+
+# ...EXPORT THE APPDIR TO AN APPIMAGE!
 ARCH=x86_64 ./appimagetool -n ./$APP/$APP.AppDir;
+underscore=_
+mkdir version
+mv ./$APP/$APP$underscore*.deb ./version/
+version=$(ls /opt/$APP/tmp/version)
+echo "$version" >> /opt/$APP/version
 
 cd ..;
 mv ./tmp/*.AppImage ./$APP;
 chmod a+x ./$APP
 
-rm -R -f ./tmp
-
 # LINK
 ln -s /opt/$APP/$APP /usr/games/$APP
 
-# LAUNCHER
-echo "[Desktop Entry]
-X-DocPath=kolf/index.html
-Name=Kolf
-Name[be]=Гольф
-Name[bn]=কল্‌ফ
-Name[br]=Kolf
-Name[bs]=Kolf
-Name[ca]=Kolf
-Name[ca@valencia]=Kolf
-Name[cs]=Kolf
-Name[cy]=Kolf
-Name[da]=Kolf
-Name[de]=Kolf
-Name[el]=Kolf
-Name[en_GB]=Kolf
-Name[eo]=Kolf
-Name[es]=Kolf
-Name[et]=Kolf
-Name[eu]=Kolf
-Name[fa]=کلف
-Name[fi]=Kolf
-Name[fr]=Kolf
-Name[ga]=Kolf
-Name[gl]=Kolf
-Name[he]=Kolf
-Name[hne]=कोल्फ
-Name[hr]=Kolf
-Name[hu]=Kolf
-Name[is]=Kolf
-Name[it]=Kolf
-Name[ja]=Kolf
-Name[kk]=Kolf
-Name[km]=Kolf
-Name[ko]=Kolf
-Name[lt]=Kolf
-Name[lv]=Kolf
-Name[mk]=Kolf
-Name[mr]=कोल्फ
-Name[nb]=Kolf
-Name[nds]=Kolf
-Name[ne]=कोल्फ
-Name[nl]=Kolf
-Name[nn]=Kolf
-Name[pa]=ਕੇ-ਗੋਲਫ਼
-Name[pl]=Kolf
-Name[pt]=Kolf
-Name[pt_BR]=Kolf
-Name[ro]=Kolf
-Name[ru]=Kolf
-Name[se]=Kolf
-Name[sk]=Kolf
-Name[sl]=Kolf
-Name[sq]=Kolf
-Name[sr]=Колф
-Name[sr@ijekavian]=Колф
-Name[sr@ijekavianlatin]=Kolf
-Name[sr@latin]=Kolf
-Name[sv]=Kolf
-Name[ta]=கால்ஃப்
-Name[te]=కొల్ఫ్
-Name[tg]=Колф
-Name[tr]=Kolf
-Name[ug]=Kolf
-Name[uk]=Kolf
-Name[vi]=Kolf
-Name[wa]=Kolf
-Name[xh]=Kolf
-Name[x-test]=xxKolfxx
-Name[zh_CN]=Kolf
-Name[zh_TW]=Kolf
+# SCRIPT TO UPDATE THE PROGRAM
+initial=$(echo $APP | head -c 1)
+echo '#!/bin/sh
+version0=$(cat /opt/'$APP'/version)
+url="http://ftp.us.debian.org/debian/pool/main/m/meta-kde/$version0"
+if curl --output /dev/null --silent --head --fail "$url"; then
+  echo "Update not needed, exit!"
+else
+  notify-send "A new version of '$APP' is available, please wait!"
+  mkdir /opt/'$APP'/tmp
+  cd /opt/'$APP'/tmp
+  wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool
+  wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/tools/pkg2appimage
+  chmod a+x ./appimagetool ./pkg2appimage
+  cp /opt/'$APP'/recipe.yml /opt/'$APP'/tmp/recipe.yml
+  ./pkg2appimage ./recipe.yml;
+  rm -R -f ./'$APP'/'$APP'.AppDir/AppRun
+  cp /opt/'$APP'/AppRun ./'$APP'/'$APP'.AppDir/
+  cp /opt/'$APP'/'$APP'.desktop ./'$APP'/'$APP'.AppDir/
+  cp /opt/'$APP'/kpat ./'$APP'/'$APP'.AppDir/kpat.png
+  ARCH=x86_64 ./appimagetool -n ./'$APP'/'$APP'.AppDir
+  mkdir version
+  mv ./'$APP'/'$APP''$underscore'*.deb ./version/
+  cd ..
+  version=$(ls /opt/'$APP'/tmp/version)
+  if test -f ./tmp/version/$version; then rm -R -f ./version
+  fi
+  echo "$version" >> /opt/'$APP'/version
+  mv ./tmp/*.AppImage ./'$APP';
+  chmod a+x ./'$APP'
+  rm -R -f ./tmp
+fi' >> /opt/$APP/AM-updater
+chmod a+x /opt/$APP/AM-updater
 
-Type=Application
-Exec=kolf %U
-Icon=/opt/$APP/$APP.svg
-MimeType=application/x-kourse;application/x-kolf;
+# ADD THE ICONS
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/22x22/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/24x24/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/32x32/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/48x48/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/64x64/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/128x128/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/256x256/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/512x512/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/scalable/apps/* /opt/$APP/ 2>/dev/null
+cd /opt/$APP
+for file in *.png; do mv -- "$file" "${file%%.png}"; done
 
-GenericName=Miniature Golf
-GenericName[be]=Маленькі гольф
-GenericName[bn]=ছোটখাটো গলফ
-GenericName[bs]=Minijaturni golf
-GenericName[ca]=Golf en miniatura
-GenericName[ca@valencia]=Golf en miniatura
-GenericName[cs]=Miniaturní golf
-GenericName[cy]=Golff Bach
-GenericName[da]=Minigolf
-GenericName[de]=Minigolf
-GenericName[el]=Μίνι γκολφ
-GenericName[en_GB]=Miniature Golf
-GenericName[eo]=Eta golfludo
-GenericName[es]=Minigolf
-GenericName[et]=Miniatuurne golf
-GenericName[eu]=Golf txikia
-GenericName[fa]=گلف مینیاتوری
-GenericName[fi]=Ratagolf
-GenericName[fr]=Golf miniature
-GenericName[ga]=Mionghalf
-GenericName[gl]=Golf en miniatura
-GenericName[he]=מיני־גולף
-GenericName[hne]=मिनिएचर गोल्फ
-GenericName[hr]=Mini-golf
-GenericName[hu]=Minigolf
-GenericName[is]=Minigolf
-GenericName[it]=Minigolf
-GenericName[ja]=ミニチュアゴルフ
-GenericName[kk]=Шағын гольф
-GenericName[km]=ហ្គោល ខ្នាត​តូច
-GenericName[ko]=모형 골프
-GenericName[lt]=Miniatiūrinis golfas
-GenericName[lv]=Miniatūrs golfs
-GenericName[mk]=Минијатурен голф
-GenericName[nb]=Minigolf
-GenericName[nds]=Minigolf
-GenericName[ne]=सानो गल्फ
-GenericName[nl]=Miniatuurgolf
-GenericName[nn]=Minigolf
-GenericName[pa]=ਛੋਟੀ ਗੋਲਫ਼ ਭੇਜੋ
-GenericName[pl]=Miniaturowy Golf
-GenericName[pt]=Golfe em Miniatura
-GenericName[pt_BR]=Mini-Golf
-GenericName[ro]=Golf în miniatură
-GenericName[ru]=Гольф в миниатюре
-GenericName[se]=Minigolfa
-GenericName[sk]=Miniatúrny golf
-GenericName[sl]=Mini golf
-GenericName[sq]=Golf në Miniaturë
-GenericName[sr]=Минијатурни голф
-GenericName[sr@ijekavian]=Минијатурни голф
-GenericName[sr@ijekavianlatin]=Minijaturni golf
-GenericName[sr@latin]=Minijaturni golf
-GenericName[sv]=Minigolf
-GenericName[ta]=சிறிய கால்ஃப்
-GenericName[tg]=Колф дар шакли хурд
-GenericName[tr]=Minyatür Golf
-GenericName[ug]=كىچىك تىپتىكى گولف
-GenericName[uk]=Мініатюрний гольф
-GenericName[vi]=Miniature Golf
-GenericName[wa]=Golf miniateure
-GenericName[xh]=Igalufa encinci
-GenericName[x-test]=xxMiniature Golfxx
-GenericName[zh_CN]=迷你高尔夫
-GenericName[zh_TW]=迷你高爾夫
-Categories=Qt;KDE;Game;ArcadeGame;
-X-DBUS-ServiceName=org.kde.kolf" >> /usr/share/applications/AM-$APP.desktop;
+# ADD LAUNCHERS AND FOR THE GAMES
+mkdir /opt/$APP/launchers
+cp /opt/$APP/tmp/$APP/$APP.AppDir/usr/share/applications/* /opt/$APP/launchers/ 2>/dev/null
+cd /opt/$APP/launchers
+for file in *; do mv ./$file ./AM-$APP-$file
+done
+sed -i "s#Exec=#Exec=/opt/kdegames/kdegames #g" /opt/$APP/launchers/*.desktop
+sed -i "s#Icon=#Icon=/opt/kdegames/#g" /opt/$APP/launchers/*.desktop
 
-# ICON
-wget wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/programs/.icons/$APP.svg;
+cp /opt/$APP/launchers/*.desktop /usr/share/applications/
+rm -R -f /opt/$APP/launchers
+
+# NOW YOU CAN REMOVE THE TEMPORARY FOLDER
+rm -R -f /opt/$APP/tmp
+
+# ADD THE PERMISSIONS
 
 currentuser=$(who | awk '{print $1}')
 chown -R $currentuser /opt/$APP
 
 echo "
 
- $APP is part of KDE Games, visit https://games.kde.org
+ KDE Games are provided by https://apps.kde.org
   
 ";
