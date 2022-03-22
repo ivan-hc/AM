@@ -1,6 +1,6 @@
 #!/bin/sh
 
-APP=kjumpingcube
+APP=kdegames
 
 # CREATING THE FOLDER
 mkdir /opt/$APP
@@ -8,7 +8,7 @@ cd /opt/$APP;
 
 # ADD THE REMOVER
 echo '#!/bin/sh' >> /opt/$APP/remove
-echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/games/$APP" >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/AM-$APP*.desktop /opt/$APP /usr/games/$APP" >> /opt/$APP/remove
 chmod a+x /opt/$APP/remove
 
 mkdir tmp;
@@ -16,201 +16,160 @@ cd tmp;
 
 # DOWNLOADING THE DEPENDENCIES
 wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-$(uname -m).AppImage -O appimagetool
-wget https://github.com/ivan-hc/pkg2appimage-32bit/releases/download/continuous/pkg2appimage-i386.AppImage -O pkg2appimage
+# wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/tools/pkg2appimage # 64 BIT ONLY (comment to disable)
+wget https://github.com/ivan-hc/pkg2appimage-32bit/releases/download/continuous/pkg2appimage-i386.AppImage -O pkg2appimage # 32 BIT ONLY (uncomment to enable)
 chmod a+x ./appimagetool ./pkg2appimage
 
-# CREATING THE APPIMAGE
-echo "app: $APP
+# CREATING THE APPIMAGE: APPDIR FROM A RECIPE...
+echo "app: kdegames
 binpatch: true
 
 ingredients:
   dist: stable
   sources:
-    - deb http://ftp.us.debian.org/debian/ stable main contrib non-free" >> recipe.yml
+    - deb http://deb.debian.org/debian/ stable main contrib non-free
+    - deb http://deb.debian.org/debian-security/ stable-security main contrib non-free
+    - deb http://deb.debian.org/debian stable-updates main contrib non-free
+    - deb http://deb.debian.org/debian stable-backports main contrib non-free
+  packages:
+    - kdegames
+    - kde-games-core
+    - qml-module-qtquick2
+    - qml-module-org-kde-games-core" >> recipe.yml;
+
+cp /opt/$APP/tmp/recipe.yml /opt/$APP/recipe.yml
 
 ./pkg2appimage ./recipe.yml;
 
-ARCH=i386 ./appimagetool -n ./$APP/$APP.AppDir;
+# ...REPLACING THE EXISTING APPRUN WITH A CUSTOM ONE...
+rm -R -f ./$APP/$APP.AppDir/AppRun
+
+cat >> ./$APP/$APP.AppDir/AppRun << 'EOF' 
+#!/bin/sh
+HERE="$(dirname "$(readlink -f "${0}")")"
+export UNION_PRELOAD="${HERE}"
+export PATH="${HERE}"/usr/bin/:"${HERE}"/usr/sbin/:"${HERE}"/usr/games/:"${HERE}"/bin/:"${HERE}"/opt/kdegames/:"${HERE}"/sbin/:"${PATH}"
+export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/:/usr/lib/i386-linux-gnu/:"${HERE}"/usr/lib/:"${HERE}"/usr/lib/i386-linux-gnu/:"${HERE}"/usr/lib/x86_64-linux-gnu/:"${HERE}"/lib/:"${HERE}"/lib/i386-linux-gnu/:"${HERE}"/lib/x86_64-linux-gnu/:"${LD_LIBRARY_PATH}"
+export XDG_DATA_DIRS="${HERE}"/usr/share/:"${XDG_DATA_DIRS}"
+export GSETTINGS_SCHEMA_DIR="${HERE}"/usr/share/glib-2.0/schemas/:"${GSETTINGS_SCHEMA_DIR}"
+export QT_PLUGIN_PATH="${HERE}"/usr/lib/qt4/plugins/:"${HERE}"/usr/lib/i386-linux-gnu/qt4/plugins/:"${HERE}"/usr/lib/x86_64-linux-gnu/qt4/plugins/:"${HERE}"/usr/lib32/qt4/plugins/:"${HERE}"/usr/lib64/qt4/plugins/:"${HERE}"/usr/lib/qt5/plugins/:"${HERE}"/usr/lib/i386-linux-gnu/qt5/plugins/:"${HERE}"/usr/lib/x86_64-linux-gnu/qt5/plugins/:"${HERE}"/usr/lib32/qt5/plugins/:"${HERE}"/usr/lib64/qt5/plugins/:"${QT_PLUGIN_PATH}"
+case $1 in
+-h|--help) echo "
+ AVAILABLE KDE GAMES:
+
+$(ls "${HERE}"/usr/games)
+";;
+*) if test -f "${HERE}"/usr/games/$1; then
+EXEC=$(grep -e '^Exec=.*' "${HERE}"/usr/share/applications/org.kde.$1.desktop | head -n 1 | cut -d "=" -f 2- | sed -e 's|%.||g')
+exec ${EXEC} "$@" 2>/dev/null
+exit
+else
+echo "
+ AVAILABLE KDE GAMES:
+
+$(ls "${HERE}"/usr/games)
+"
+fi;;
+esac
+EOF
+chmod a+x ./$APP/$APP.AppDir/AppRun
+cp ./$APP/$APP.AppDir/AppRun /opt/$APP/
+
+# ...ADD A LAUNCHER AND AN ICON TO THE APPDIR...
+cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/256x256/apps/kpat* ./$APP/$APP.AppDir/ 2>/dev/null
+echo "[Desktop Entry]
+Name=kdegames
+Exec=AppRun
+Icon=kpat
+Type=Application
+Categories=Game;" >> $APP.desktop
+cp ./$APP.desktop /opt/$APP/
+mv ./$APP.desktop ./$APP/$APP.AppDir
+
+# ...EXPORT THE APPDIR TO AN APPIMAGE!
+ARCH=x86_64 ./appimagetool -n ./$APP/$APP.AppDir;
+underscore=_
+mkdir version
+mv ./$APP/$APP$underscore*.deb ./version/
+version=$(ls /opt/$APP/tmp/version)
+echo "$version" >> /opt/$APP/version
 
 cd ..;
 mv ./tmp/*.AppImage ./$APP;
 chmod a+x ./$APP
 
-rm -R -f ./tmp
-
 # LINK
 ln -s /opt/$APP/$APP /usr/games/$APP
 
-# LAUNCHER
-echo "[Desktop Entry]
-Name=KJumpingCube
-Name[af]=Kjumpingcube
-Name[be]=Скокаючы кубік
-Name[bn]=কে-জাম্পিংকিউব
-Name[br]=KDiñsALamm
-Name[bs]=KJumpingCube
-Name[ca]=KJumpingCube
-Name[ca@valencia]=KJumpingCube
-Name[cs]=KJumpingCube
-Name[cy]=KJumpingCube
-Name[da]=KJumpingCube
-Name[de]=KJumpingCube
-Name[el]=KJumpingCube
-Name[en_GB]=KJumpingCube
-Name[eo]=KJumpingCube
-Name[es]=KJumpingCube
-Name[et]=KJumpingCube
-Name[eu]=KJumpingCube
-Name[fa]=مکعب پرنده
-Name[fi]=KJumpingCube
-Name[fr]=KJumpingCube
-Name[ga]=KJumpingCube
-Name[gl]=KJumpingCube
-Name[he]=KJumpingCube
-Name[hne]=के-जम्पिंगक्यूब
-Name[hr]=KJumpingCube
-Name[hu]=Ugráló kocka
-Name[id]=KJumpingCube
-Name[is]=Hoppandi kubbur
-Name[it]=KJumpingCube
-Name[ja]=KJumpingCube
-Name[kk]=KJumpingCube
-Name[km]=KJumpingCube
-Name[ko]=KJumpingCube
-Name[lt]=KJumpingCube
-Name[lv]=KJumpingCube
-Name[mk]=KJumpingCube
-Name[mr]=के-जम्पिंगक्यूब
-Name[nb]=KJumpingCube
-Name[nds]=KJumpingCube
-Name[ne]=केडीई जम्पिङ क्युब
-Name[nl]=KJumpingCube
-Name[nn]=KJumpingCube
-Name[pa]=ਕੇ-ਜੰਪ ਘਣ
-Name[pl]=KSkaczącySześcian
-Name[pt]=KJumpingCube
-Name[pt_BR]=KJumpingCube
-Name[ro]=Cubul săritor
-Name[ru]=KJumpingCube
-Name[se]=KJumpingCube
-Name[sk]=KJumpingCube
-Name[sl]=KJumpingCube
-Name[sq]=KJumpingCube
-Name[sr]=К‑скочикоцка
-Name[sr@ijekavian]=К‑скочикоцка
-Name[sr@ijekavianlatin]=K‑skočikocka
-Name[sr@latin]=K‑skočikocka
-Name[sv]=Hoppande kuben
-Name[ta]=கேகுதிக்கும் கனசதுரம்
-Name[tg]=KКубикҳои Ҷиҳанда
-Name[tr]=KJumpingCube
-Name[ug]=KJumpingCube
-Name[uk]=KJumpingCube
-Name[vi]=KJumpingCube
-Name[wa]=KJumpingCube
-Name[xh]=Ityhubhu yeKJumping
-Name[x-test]=xxKJumpingCubexx
-Name[zh_CN]=KJumpingCube
-Name[zh_TW]=KJumpingCube 跳躍立方體
-Exec=kjumpingcube -qwindowtitle %c
-Icon=/opt/$APP/$APP.svg
-Type=Application
-X-DocPath=kjumpingcube/index.html
-GenericName=Territory Capture Game
-GenericName[bs]=Igra osvajanja teritorija
-GenericName[ca]=Joc de conquesta del territori
-GenericName[ca@valencia]=Joc de conquesta del territori
-GenericName[cs]=Hra na zabírání území
-GenericName[da]=Spil om at indtage områder
-GenericName[de]=Eroberungsspiel
-GenericName[el]=Παιχνίδι κατάληψης περιοχών
-GenericName[en_GB]=Territory Capture Game
-GenericName[es]=Juego de conquista del territorio
-GenericName[et]=Mänguala vallutamise mäng
-GenericName[eu]=Territorioak bereganatzeko jokoa
-GenericName[fi]=Alueenvaltauspeli
-GenericName[fr]=Jeu de capture de territoires
-GenericName[ga]=Cluiche Gabhála Talaimh
-GenericName[gl]=Xogo de captura de territorios
-GenericName[hu]=Területfoglaló
-GenericName[id]=Permainan Menguasai Wilayah
-GenericName[it]=Gioco di conquista del territorio
-GenericName[ja]=陣地獲得ゲーム
-GenericName[kk]=Жер жаулау ойны
-GenericName[km]=ល្បែង​ចាប់​យក​ដែនដី
-GenericName[ko]=땅따먹기 게임
-GenericName[lt]=Teritorijos užgrobimo žaidimas
-GenericName[lv]=Teritorijas ieņemšanas spēle
-GenericName[mr]=क्षेत्र अंकित खेळ
-GenericName[nb]=Spill basert på områdekapring
-GenericName[nl]=Landverovertjespel
-GenericName[nn]=Spel basert på områdekapring
-GenericName[pl]=Gra w zajmowanie terytorium
-GenericName[pt]=Jogo de Captura do Território
-GenericName[pt_BR]=Jogo de captura de território
-GenericName[ro]=Joc de capturare a teritoriului
-GenericName[ru]=Захват территорий
-GenericName[sk]=Hra na obsadzovanie území
-GenericName[sl]=Igra osvajanja ozemlja
-GenericName[sr]=Игра заузимања територије
-GenericName[sr@ijekavian]=Игра заузимања територије
-GenericName[sr@ijekavianlatin]=Igra zauzimanja teritorije
-GenericName[sr@latin]=Igra zauzimanja teritorije
-GenericName[sv]=Terrängerövring
-GenericName[tr]=Bölge Ele Geçirme Oyunu
-GenericName[ug]=تېررىتورىيە ئىگىلەش ئويۇنى
-GenericName[uk]=Гра на захоплення територій
-GenericName[x-test]=xxTerritory Capture Gamexx
-GenericName[zh_CN]=版块占领游戏
-GenericName[zh_TW]=領土爭奪戰
-Comment=Territory Capture Game
-Comment[ca]=Joc de conquesta del territori
-Comment[ca@valencia]=Joc de conquesta del territori
-Comment[cs]=Hra na zabírání území
-Comment[da]=Spil om at indtage områder
-Comment[de]=Eroberungsspiel
-Comment[el]=Παιχνίδι κατάληψης περιοχών
-Comment[en_GB]=Territory Capture Game
-Comment[es]=Juego de conquista de territorios
-Comment[et]=Mänguala vallutamise mäng
-Comment[fi]=Alueenvaltauspeli
-Comment[fr]=Jeu de capture de territoires
-Comment[gl]=Xogo de captura de territorios.
-Comment[id]=Permainan Menguasai Wilayah
-Comment[it]=Gioco di conquista del territorio
-Comment[ko]=땅따먹기 게임
-Comment[nl]=Landverovertjespel
-Comment[nn]=Spel basert på områdekapring
-Comment[pl]=Gra w zajmowanie terytorium
-Comment[pt]=Jogo de Captura do Território
-Comment[pt_BR]=Jogo de captura de território
-Comment[ru]=Захват территорий
-Comment[sk]=Hra na obsadzovanie území
-Comment[sl]=Igra osvajanja ozemlja
-Comment[sr]=Игра заузимања територије
-Comment[sr@ijekavian]=Игра заузимања територије
-Comment[sr@ijekavianlatin]=Igra zauzimanja teritorije
-Comment[sr@latin]=Igra zauzimanja teritorije
-Comment[sv]=Territorium-erövringsspel
-Comment[tr]=Bölge Ele Geçirme Oyunu
-Comment[uk]=Гра на захоплення територій
-Comment[x-test]=xxTerritory Capture Gamexx
-Comment[zh_CN]=版块占领游戏
-Comment[zh_TW]=領土爭奪戰
-Terminal=false
-StartupNotify=true
-X-DBUS-StartupType=Multi
-Categories=Qt;KDE;Game;StrategyGame;
-X-DBUS-ServiceName=org.kde.kjumpingcube" >> /usr/share/applications/AM-$APP.desktop;
+# SCRIPT TO UPDATE THE PROGRAM
+initial=$(echo $APP | head -c 1)
+echo '#!/bin/sh
+version0=$(cat /opt/'$APP'/version)
+url="http://ftp.us.debian.org/debian/pool/main/m/meta-kde/$version0"
+if curl --output /dev/null --silent --head --fail "$url"; then
+  echo "Update not needed, exit!"
+else
+  notify-send "A new version of '$APP' is available, please wait!"
+  mkdir /opt/'$APP'/tmp
+  cd /opt/'$APP'/tmp
+  wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-i686.AppImage -O appimagetool
+  wget https://github.com/ivan-hc/pkg2appimage-32bit/releases/download/continuous/pkg2appimage-i386.AppImage -O pkg2appimage
+  chmod a+x ./appimagetool ./pkg2appimage
+  cp /opt/'$APP'/recipe.yml /opt/'$APP'/tmp/recipe.yml
+  ./pkg2appimage ./recipe.yml;
+  rm -R -f ./'$APP'/'$APP'.AppDir/AppRun
+  cp /opt/'$APP'/AppRun ./'$APP'/'$APP'.AppDir/
+  cp /opt/'$APP'/'$APP'.desktop ./'$APP'/'$APP'.AppDir/
+  cp /opt/'$APP'/kpat ./'$APP'/'$APP'.AppDir/kpat.png
+  ARCH=i386 ./appimagetool -n ./'$APP'/'$APP'.AppDir
+  mkdir version
+  mv ./'$APP'/'$APP''$underscore'*.deb ./version/
+  cd ..
+  version=$(ls /opt/'$APP'/tmp/version)
+  if test -f ./tmp/version/$version; then rm -R -f ./version
+  fi
+  echo "$version" >> /opt/'$APP'/version
+  mv ./tmp/*.AppImage ./'$APP';
+  chmod a+x ./'$APP'
+  rm -R -f ./tmp
+fi' >> /opt/$APP/AM-updater
+chmod a+x /opt/$APP/AM-updater
 
-# ICON
-wget wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/programs/.icons/$APP/$APP.svg;
+# ADD THE ICONS
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/22x22/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/24x24/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/32x32/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/48x48/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/64x64/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/128x128/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/256x256/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/512x512/apps/* /opt/$APP/ 2>/dev/null
+cp ./tmp/$APP/$APP.AppDir/usr/share/icons/hicolor/scalable/apps/* /opt/$APP/ 2>/dev/null
+cd /opt/$APP
+for file in *.png; do mv -- "$file" "${file%%.png}"; done
+
+# ADD LAUNCHERS AND FOR THE GAMES
+mkdir /opt/$APP/launchers
+cp /opt/$APP/tmp/$APP/$APP.AppDir/usr/share/applications/* /opt/$APP/launchers/ 2>/dev/null
+cd /opt/$APP/launchers
+for file in *; do mv ./$file ./AM-$APP-$file
+done
+sed -i "s#Exec=#Exec=/opt/kdegames/kdegames #g" /opt/$APP/launchers/*.desktop
+sed -i "s#Icon=#Icon=/opt/kdegames/#g" /opt/$APP/launchers/*.desktop
+
+cp /opt/$APP/launchers/*.desktop /usr/share/applications/
+rm -R -f /opt/$APP/launchers
+
+# NOW YOU CAN REMOVE THE TEMPORARY FOLDER
+rm -R -f /opt/$APP/tmp
+
+# ADD THE PERMISSIONS
 
 currentuser=$(who | awk '{print $1}')
 chown -R $currentuser /opt/$APP
 
 echo "
 
- $APP is part of KDE Games, visit https://games.kde.org
+ KDE Games are provided by https://apps.kde.org
   
 ";
