@@ -1,0 +1,389 @@
+#!/bin/sh
+
+APP=gnumeric
+ 
+# CREATING THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP;
+
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+
+mkdir tmp;
+cd tmp;
+
+# DOWNLOADING THE DEPENDENCIES
+wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-$(uname -m).AppImage -O appimagetool
+wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/tools/pkg2appimage # 64 BIT ONLY (comment to disable)
+# wget https://github.com/ivan-hc/pkg2appimage-32bit/releases/download/continuous/pkg2appimage-i386.AppImage -O pkg2appimage # 32 BIT ONLY (uncomment to enable)
+chmod a+x ./appimagetool ./pkg2appimage
+
+# CREATING THE APPIMAGE: APPDIR FROM A RECIPE...
+echo "app: gnumeric
+binpatch: true
+
+ingredients:
+  dist: stable
+  sources:
+    - deb http://deb.debian.org/debian/ stable main contrib non-free
+    - deb http://deb.debian.org/debian-security/ stable-security main contrib non-free
+    - deb http://deb.debian.org/debian stable-updates main contrib non-free
+    - deb http://deb.debian.org/debian stable-backports main contrib non-free
+  packages:
+    - gnumeric" >> recipe.yml;
+
+cp /opt/$APP/tmp/recipe.yml /opt/$APP/recipe.yml
+
+./pkg2appimage ./recipe.yml;
+
+# ...DOWNLOADING LIBUNIONPRELOAD...
+wget https://github.com/project-portable/libunionpreload/releases/download/amd64/libunionpreload.so
+chmod a+x libunionpreload.so
+mv ./libunionpreload.so ./$APP/$APP.AppDir/
+
+# ...REPLACING THE EXISTING APPRUN WITH A CUSTOM ONE...
+rm -R -f ./$APP/$APP.AppDir/AppRun
+cat > AppRun << 'EOF'
+#!/bin/sh
+HERE="$(dirname "$(readlink -f "${0}")")"
+export UNION_PRELOAD="${HERE}"
+export LD_PRELOAD="${HERE}/libunionpreload.so"
+export PATH="${HERE}"/usr/bin/:"${HERE}"/usr/sbin/:"${HERE}"/usr/games/:"${HERE}"/bin/:"${HERE}"/sbin/:"${PATH}"
+export LD_LIBRARY_PATH=/usr/lib/i386-linux-gnu/:/usr/lib/x86_64-linux-gnu/:"${HERE}"/usr/lib/:"${HERE}"/usr/lib/i386-linux-gnu/:"${HERE}"/usr/lib/x86_64-linux-gnu/:"${HERE}"/usr/lib32/:"${HERE}"/usr/lib64/:"${HERE}"/lib/:"${HERE}"/lib/i386-linux-gnu/:"${HERE}"/lib/x86_64-linux-gnu/:"${HERE}"/lib32/:"${HERE}"/lib64/:"${LD_LIBRARY_PATH}"
+export PYTHONPATH="${HERE}"/usr/share/pyshared/:"${PYTHONPATH}"
+export PYTHONHOME="${HERE}"/usr/
+export XDG_DATA_DIRS="${HERE}"/usr/share/:"${XDG_DATA_DIRS}"
+export PERLLIB="${HERE}"/usr/share/perl5/:"${HERE}"/usr/lib/perl5/:"${PERLLIB}"
+export GSETTINGS_SCHEMA_DIR="${HERE}"/usr/share/glib-2.0/schemas/:"${GSETTINGS_SCHEMA_DIR}"
+export QT_PLUGIN_PATH="${HERE}"/usr/lib/qt4/plugins/:"${HERE}"/usr/lib/i386-linux-gnu/qt4/plugins/:"${HERE}"/usr/lib/x86_64-linux-gnu/qt4/plugins/:"${HERE}"/usr/lib32/qt4/plugins/:"${HERE}"/usr/lib64/qt4/plugins/:"${HERE}"/usr/lib/qt5/plugins/:"${HERE}"/usr/lib/i386-linux-gnu/qt5/plugins/:"${HERE}"/usr/lib/x86_64-linux-gnu/qt5/plugins/:"${HERE}"/usr/lib32/qt5/plugins/:"${HERE}"/usr/lib64/qt5/plugins/:"${QT_PLUGIN_PATH}"
+EXEC=$(grep -e '^Exec=.*' "${HERE}"/*.desktop | head -n 1 | cut -d "=" -f 2- | sed -e 's|%.||g')
+exec ${EXEC} "$@"
+EOF
+chmod a+x AppRun
+cp ./AppRun /opt/$APP/
+mv ./AppRun ./$APP/$APP.AppDir
+
+# ...IMPORT THE LAUNCHER AND THE ICON TO THE APPDIR (uncomment if not available)...
+#cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/22x22/apps/* ./$APP/$APP.AppDir/ 2>/dev/null
+#cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/24x24/apps/* ./$APP/$APP.AppDir/ 2>/dev/null
+#cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/32x32/apps/* ./$APP/$APP.AppDir/ 2>/dev/null
+#cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/48x48/apps/* ./$APP/$APP.AppDir/ 2>/dev/null
+#cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/64x64/apps/* ./$APP/$APP.AppDir/ 2>/dev/null
+#cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/128x128/apps/* ./$APP/$APP.AppDir/ 2>/dev/null
+#cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/256x256/apps/* ./$APP/$APP.AppDir/ 2>/dev/null
+#cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/512x512/apps/* ./$APP/$APP.AppDir/ 2>/dev/null
+#cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/scalable/apps/* ./$APP/$APP.AppDir/ 2>/dev/null
+#cp ./$APP/$APP.AppDir/usr/share/applications/* ./$APP/$APP.AppDir/ 2>/dev/null
+
+cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/256x256/apps/*$APP* /opt/$APP/$APP.png 2>/dev/null
+
+# ...EXPORT THE APPDIR TO AN APPIMAGE!
+ARCH=x86_64 ./appimagetool -n ./$APP/$APP.AppDir;
+underscore=_
+mkdir version
+mv ./$APP/$APP$underscore*.deb ./version/
+version=$(ls /opt/$APP/tmp/version)
+echo "$version" >> /opt/$APP/version
+
+cd ..;
+mv ./tmp/*.AppImage ./$APP;
+chmod a+x ./$APP
+
+rm -R -f ./tmp
+
+# LINK
+ln -s /opt/$APP/$APP /usr/local/bin/$APP
+
+# SCRIPT TO UPDATE THE PROGRAM
+initial=$(echo $APP | head -c 1)
+echo '#!/bin/sh
+version0=$(cat /opt/'$APP'/version)
+url="http://http.us.debian.org/debian/pool/main/'$initial'/'$APP'/$version0"
+if curl --output /dev/null --silent --head --fail "$url"; then
+  echo "Update not needed, exit!"
+else
+  notify-send "A new version of '$APP' is available, please wait!"
+  mkdir /opt/'$APP'/tmp
+  cd /opt/'$APP'/tmp
+  wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool
+  wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/tools/pkg2appimage
+  chmod a+x ./appimagetool ./pkg2appimage
+  cp /opt/'$APP'/recipe.yml /opt/'$APP'/tmp/recipe.yml
+  ./pkg2appimage ./recipe.yml;
+  wget https://github.com/project-portable/libunionpreload/releases/download/amd64/libunionpreload.so
+  chmod a+x libunionpreload.so
+  mv ./libunionpreload.so ./'$APP'/'$APP'.AppDir/
+  rm -R -f ./'$APP'/'$APP'.AppDir/AppRun
+  cp /opt/'$APP'/AppRun ./'$APP'/'$APP'.AppDir/
+  ARCH=x86_64 ./appimagetool -n ./'$APP'/'$APP'.AppDir
+  mkdir version
+  mv ./'$APP'/'$APP''$underscore'*.deb ./version/
+  cd ..
+  version=$(ls /opt/'$APP'/tmp/version)
+  if test -f ./tmp/version/$version; then rm -R -f ./version
+  fi
+  echo "$version" >> /opt/'$APP'/version
+  mv ./tmp/*.AppImage ./'$APP';
+  chmod a+x ./'$APP'
+  rm -R -f ./tmp
+fi' >> /opt/$APP/AM-updater
+chmod a+x /opt/$APP/AM-updater
+
+# LAUNCHER
+echo "[Desktop Entry]
+Version=1.0
+Name=Gnumeric
+Name[ast]=Gnumeric
+Name[bg]=Gnumeric
+Name[bs]=Gnumeric
+Name[ca]=Gnumeric
+Name[ca@valencia]=Gnumeric
+Name[cs]=Gnumeric
+Name[da]=Gnumeric
+Name[de]=Gnumeric
+Name[dz]=ཇི་ནུ་མིརིཀ་
+Name[el]=Gnumeric
+Name[en_CA]=Gnumeric
+Name[en_GB]=Gnumeric
+Name[eo]=Gnumeriko
+Name[es]=Gnumeric
+Name[et]=Gnumeric
+Name[eu]=Gnumeric
+Name[fi]=Gnumeric
+Name[fr]=Gnumeric
+Name[ga]=Gnumeric
+Name[gl]=Gnumeric
+Name[gu]=Gnumeric
+Name[he]=Gnumeric
+Name[hr]=Gnumeric
+Name[hu]=Gnumeric
+Name[id]=Gnumeric
+Name[it]=Gnumeric
+Name[ja]=Gnumeric
+Name[kk]=Gnumeric
+Name[ko]=Gnumeric
+Name[lt]=Gnumeric
+Name[lv]=Gnumeric
+Name[mk]=Gnumeric
+Name[ml]=ജിന്യ‌ൂമറിക്
+Name[mr]=जीन्यूमेरिक
+Name[ms]=Gnumeric
+Name[nb]=Gnumeric
+Name[ne]=जिन्युमेरिक
+Name[nl]=Gnumeric
+Name[nn]=Gnumeric
+Name[oc]=Gnumeric
+Name[pl]=Gnumeric
+Name[pt]=Gnumeric
+Name[pt_BR]=Gnumeric
+Name[ro]=Gnumeric
+Name[ru]=Gnumeric
+Name[sk]=Gnumeric
+Name[sl]=Gnumeric
+Name[sr]=Гнумерик
+Name[sr@latin]=Gnumerik
+Name[sv]=Gnumeric
+Name[tr]=Gnumeric
+Name[uk]=Gnumeric
+Name[vi]=Gnumeric
+Name[zh_CN]=Gnumeric
+Name[zh_HK]=Gnumeric
+Name[zh_TW]=Gnumeric
+GenericName=Spreadsheet
+GenericName[ast]=Fueya de cálculu
+GenericName[bg]=Електронна таблица
+GenericName[bs]=Tabelarni proračun
+GenericName[ca]=Full de càlcul
+GenericName[ca@valencia]=Full de càlcul
+GenericName[cs]=Tabulkový kalkulátor
+GenericName[da]=Regneark
+GenericName[de]=Tabellenkalkulation
+GenericName[dz]=ཤོག་ཁྲམ་
+GenericName[el]=Υπολογιστικό φύλλο
+GenericName[en_CA]=Spreadsheet
+GenericName[en_GB]=Spreadsheet
+GenericName[eo]=Kalkultabelo
+GenericName[es]=Hoja de cálculo
+GenericName[et]=Tabelarvutus
+GenericName[eu]=Kalkulu-orria
+GenericName[fi]=Taulukkolaskenta
+GenericName[fr]=Tableur
+GenericName[ga]=Scarbhileog
+GenericName[gl]=Folla de cálculo
+GenericName[gu]=સ્પ્રેડશીટ
+GenericName[he]=גיליון אלקטרוני
+GenericName[hr]=Proračunska tablica
+GenericName[hu]=Munkafüzet
+GenericName[id]=Lembar kerja
+GenericName[it]=Foglio di calcolo
+GenericName[ja]=スプレッドシート
+GenericName[kk]=Электрондық кестелер
+GenericName[ko]=스프레드시트
+GenericName[lt]=Skaičiuoklė
+GenericName[lv]=Izklājlapa
+GenericName[mk]=Табеларни пресметки
+GenericName[nb]=Regneark
+GenericName[ne]=स्प्रेडसिट
+GenericName[nl]=Rekenblad
+GenericName[nn]=Rekneark
+GenericName[oc]=Fuèlha de calcul
+GenericName[pl]=Arkusz kalkulacyjny
+GenericName[pt]=Folha de cálculo
+GenericName[pt_BR]=Planilha
+GenericName[ru]=Электронная таблица
+GenericName[rw]=Urupapurorusesuye
+GenericName[sl]=Preglednica
+GenericName[sr]=Табеларни прорачун
+GenericName[sr@latin]=Tabelarni proračun
+GenericName[sv]=Kalkylprogram
+GenericName[te]=స్ర్పెడ్ షీట్
+GenericName[tr]=Çizelge
+GenericName[uk]=Електронна таблиця
+GenericName[vi]=Bảng tính
+GenericName[zh_CN]=电子表格
+GenericName[zh_HK]=試算表
+GenericName[zh_TW]=試算表
+X-GNOME-FullName=Gnumeric Spreadsheet
+X-GNOME-FullName[ast]=Fueya de cálculu Gnumeric
+X-GNOME-FullName[az]=Gnumeric Hesab Cədvəli
+X-GNOME-FullName[bg]=Електронна таблица Gnumeric
+X-GNOME-FullName[bs]=Gnumeric tabelarni proračun
+X-GNOME-FullName[ca]=Full de càlcul Gnumeric
+X-GNOME-FullName[ca@valencia]=Full de càlcul Gnumeric
+X-GNOME-FullName[cs]=Tabulkový kalkulátor Gnumeric
+X-GNOME-FullName[da]=Gnumeric Regneark
+X-GNOME-FullName[de]=Gnumeric Tabellenkalkulation
+X-GNOME-FullName[dz]=ཇི་ནུ་མི་རིཀ་ ཤོག་ཁྲམ་
+X-GNOME-FullName[el]=Φύλλο εργασίας Gnumeric
+X-GNOME-FullName[en_CA]=Gnumeric Spreadsheet
+X-GNOME-FullName[en_GB]=Gnumeric Spreadsheet
+X-GNOME-FullName[eo]=Gnumeriko-kalkultabelo
+X-GNOME-FullName[es]=Hoja de cálculo Gnumeric
+X-GNOME-FullName[et]=Gnumericu tabelarvutus
+X-GNOME-FullName[eu]=Gnumeric kalkulu-orria
+X-GNOME-FullName[fi]=Gnumeric-taulukkolaskenta
+X-GNOME-FullName[fr]=Tableur Gnumeric
+X-GNOME-FullName[ga]=Scarbhileog Gnumeric
+X-GNOME-FullName[gl]=Folla de cálculo de Gnumeric
+X-GNOME-FullName[gu]=Gnumeric સ્પ્રેડશીટ
+X-GNOME-FullName[he]=גיליון אלקטרוני של Gnumeric
+X-GNOME-FullName[hr]=Gnumeric proračunska tablica
+X-GNOME-FullName[hu]=Gnumeric munkafüzet
+X-GNOME-FullName[id]=Lembar kerja Gnumeric
+X-GNOME-FullName[it]=Gnumeric - Foglio di calcolo
+X-GNOME-FullName[ja]=Gnumeric スプレッドシート
+X-GNOME-FullName[kk]=Gnumeric электрондық кестесі
+X-GNOME-FullName[ko]=Gnumeric 스프레드시트
+X-GNOME-FullName[lt]=Gnumeric skaičiuoklė
+X-GNOME-FullName[lv]=Gnumeric izklājlapa
+X-GNOME-FullName[mk]=Gnumeric табеларни пресметки
+X-GNOME-FullName[ml]=ജിന്യ‌ൂമറിക് വിസ്തൃതപത്രിക
+X-GNOME-FullName[mr]=जीन्यूमेरिक पान
+X-GNOME-FullName[ms]=Hamparan Gnumeric
+X-GNOME-FullName[nb]=Gnumeric regneark
+X-GNOME-FullName[ne]=जीन्युमेरिक स्प्रेडसिट
+X-GNOME-FullName[nl]=Gnumeric rekenblad
+X-GNOME-FullName[nn]=Gnumeric rekneark
+X-GNOME-FullName[pl]=Arkusz kalkulacyjny Gnumeric
+X-GNOME-FullName[pt]=Folha de cálculo Gnumeric
+X-GNOME-FullName[pt_BR]=Planilha eletrônica Gnumeric
+X-GNOME-FullName[ru]=Электронная таблица Gnumeric
+X-GNOME-FullName[sk]=Zošit Gnumeric
+X-GNOME-FullName[sl]=Preglednica Gnumeric
+X-GNOME-FullName[sr]=Табеларни прорачун Гнумерик
+X-GNOME-FullName[sr@latin]=Tabelarni proračun Gnumerik
+X-GNOME-FullName[sv]=Gnumeric kalkylprogram
+X-GNOME-FullName[te]=జి పూర్ణసంఖ్య స్ర్పెడ్ షీట్
+X-GNOME-FullName[tr]=Gnumeric Çizelgesi
+X-GNOME-FullName[uk]=Електронна таблиця Gnumeric
+X-GNOME-FullName[vi]=Bảng tính Gnumeric
+X-GNOME-FullName[zh_CN]=Gnumeric 电子表格
+X-GNOME-FullName[zh_HK]=Gnumeric 試算表
+X-GNOME-FullName[zh_TW]=Gnumeric 試算表
+Comment=Calculation, Analysis, and Visualization of Information
+Comment[bs]=Proračuni, analiza, prikazivanje podataka
+Comment[ca]=Càlcul, anàlisi, i visualització d'informació
+Comment[ca@valencia]=Càlcul, anàlisi, i visualització d'informació
+Comment[cs]=Výpočty, analýzy a vizualizace informací
+Comment[da]=Beregning, analyse og visualisering af information
+Comment[de]=Berechnung, Analyse und Darstellung von Information
+Comment[dz]=བརྡ་དོན་གྱི་་རྩིས་ལས་ དཔྱད་ཞིབ་ དང་འཆར་སྣང་
+Comment[el]=Υπολογισμός, ανάλυση και εμφάνιση της πληροφορίας
+Comment[en_GB]=Calculation, Analysis, and Visualisation of Information
+Comment[es]=Cálculo, análisis, y visualización de información
+Comment[et]=Arvutamine, analüüs ja teabe visualiseerimine
+Comment[eu]=Kalkulatu, analizatu eta bistaratu informazioa
+Comment[fi]=Tiedon laskenta, analyysi ja visualisointi
+Comment[fr]=Calculs, analyses et visualisation d'information
+Comment[gl]=Cálculo, Análise e Visualización de Información
+Comment[he]=חישוב, ניתוח והדמיית נתונים
+Comment[hu]=Információk számítása, elemzése és megjelenítése
+Comment[id]=Kalkulasi, Analisis, dan Visualisasi Informasi
+Comment[it]=Calcolo, analisi e visualizzazione informazioni
+Comment[kk]=Есептеу, талдау, және мәліметті бейнелік түрінде көрсету
+Comment[lt]=Informacijos apdorojimas, analizė ir atvaizdavimas
+Comment[lv]=Aprēķināšana, analīze un informācijas vizualizācija
+Comment[mk]=Пресметување, анализа и визуелизација на информациите
+Comment[nb]=Kalkulering, analyse og visualisering av informasjon
+Comment[ne]=सूचनाको गणना, विश्लेषण, र दृष्टिकरण
+Comment[pl]=Kalkulacja, analiza i wizualizacja informacji
+Comment[pt]=Cálculo, análise e visualização de informação
+Comment[pt_BR]=Cálculo, análise e visualização de informações
+Comment[ru]=Вычисление, анализ и визуализация информации
+Comment[sl]=Preračunavanje, analiza in predočenje podatkov in podrobnosti
+Comment[sr]=Прорачуни, анализа, приказивање података
+Comment[sr@latin]=Proračuni, analiza, prikazivanje podataka
+Comment[sv]=Beräkning, analys och visualisering av information
+Comment[tr]=Hesaplama, Analiz ve Bilgi Görselleştirme
+Comment[uk]=Обчислення, аналіз та візуалізація даних
+Comment[vi]=Tính, phân tích và cách thức hiển thị thông tin
+Comment[zh_CN]=信息的计算、统计和可视化
+Comment[zh_HK]=計算、分析及資訊圖像化
+Comment[zh_TW]=計算、分析及資訊圖像化
+Keywords=Spreadsheet;
+Keywords[bs]=Tablica;
+Keywords[ca]=Full de càlcul;
+Keywords[cs]=tabulkový kalkulátor;tabulky;výpočty;
+Keywords[de]=Tabellenkalkulation;
+Keywords[el]=Υπολογιστικό φύλλο;Spreadsheet;
+Keywords[eo]=Kalkultabelo;
+Keywords[es]=Hoja de cálculo;
+Keywords[eu]=Kalkulu-orria;
+Keywords[fr]=Tableur;
+Keywords[hu]=Munkafüzet;
+Keywords[kk]=Spreadsheet;Электрондық кесте;
+Keywords[nb]=Regneark;
+Keywords[pl]=Arkusz kalkulacyjny;
+Keywords[pt]=Folha de cálculo;
+Keywords[pt_BR]=Planilha;
+Keywords[ru]=Электронная таблица;
+Keywords[sl]=Preglednica;
+Keywords[sr]=таблице; табеларни прорачун;
+Keywords[sr@latin]=tablice; tabelarni proračun;
+Keywords[sv]=Kalkylblad;Kalkylprogram;
+Keywords[uk]=Spreadsheet;електронна;таблиця;таблиці;
+Exec=gnumeric %U
+Icon=/opt/$APP/gnumeric.png
+Terminal=false
+Type=Application
+Categories=Office;Spreadsheet;Science;Math;GNOME;GTK;
+StartupNotify=true
+X-GNOME-Bugzilla-Bugzilla=GNOME
+X-GNOME-Bugzilla-Product=Gnumeric
+X-GNOME-Bugzilla-Version=1.12.48
+X-GNOME-Bugzilla-Component=General
+X-GNOME-DocPath=gnumeric
+MimeType=application/x-gnumeric;application/vnd.ms-excel;application/excel;application/msexcel;application/x-excel;application/x-ms-excel;application/x-msexcel;application/x-xls;application/xls;application/x-dos_ms_excel;application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;application/tab-separated-values;text/csv;text/x-csv;text/spreadsheet;text/tab-separated-values;application/vnd.lotus-1-2-3;application/x-123;application/vnd.sun.xml.calc;application/vnd.sun.xml.calc.template;application/x-applix-spreadsheet;application/x-mps;application/x-oleo;application/x-planperfect;application/x-quattropro;application/x-sc;application/x-sylk;application/x-dbase;application/x-dbf;application/x-xbase;application/vnd.oasis.opendocument.spreadsheet;
+" >> /usr/share/applications/AM-$APP.desktop;
+
+
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/$APP
+
+echo "
+
+ Gnumeric is provided by http://www.gnumeric.org
+  
+";
