@@ -1,20 +1,15 @@
-# "AM" the Application Manager for GNU/Linux
+# Introducing the "AM" project
+There are many programs for GNU/Linux that work without necessarily having to mix their libraries with other programs on the system, in order to work in a completely standalone way (AppImage, but also other autonomous applications, such as Firefox, Blender and Thunderbird). 
 
-------------------------------------------------------------------------
+The only thing they needed was a tool that could download, install, and manage them, even just via the command line. So I thought about writing one ... or rather two: "AM" and "AppMan".
 
-  >>  Enjoy your applications without thinking about anything else   <<   
-  
- ------------------------------------------------------------------------
- 
-https://user-images.githubusercontent.com/88724353/150169396-7f215547-e7ee-4e3b-becc-848f341ba8b3.mp4
+"AM" and "AppMan" are two command line tools that can download, install, update, remove and save AppImage and other standalone applications trying to always draw the original versions from the main sources, and where necessary, try to create AppImage using [pkg2appimage](https://github.com/AppImage/pkg2appimage) and [appimagetool](https://github.com/AppImage/AppImageKit).
 
- ------------------------------------------------------------------------
+Where `$PROGRAM` is the application we're going to install:
+- "AM" (or `am` command) installs programs and all related files into a `/opt/$PROGRAM` directory, the launcher in `/usr/share/applications` and the main application link in a`$PATH` (i.e. `/usr/local/bin` or `/usr/games`), this allows multiple users of the same system to be able to use the same installed applications;
+- "AppMan" (or `appman` command) instead does not need root privileges to work, programs and all related files into a local directory named `~/.opt/$PROGRAM`, the launcher is placed in `~/.local/share/applications` and the main application link is placed into a new `~/.local/bin` directory requires to be enabled into the `~/.bashrc` file by adding the line `export PATH=$PATH:$(xdg-user-dir USER)/.local/bin` at the end of the file), this allows a single user to costumize its local configuration without having to share applications with others in the system.
 
-AM is an application manager for all the GNU / Linux distributions and which can be adapted to all available architectures, as its scripts are entirely based on the programs present in each basic installation (wget, curl, grep, egrep, find, rm, mkdir, mv, ls, echo...). The "am" command is very easy to use and can manage a better control of automatic updates for all the programs installed. Using it to install/remove standalone apps is as easy and ridiculous as typing a command at random, out of desperation!
-
-The main goal of this tool is to provide the same updated applications to multiple GNU/Linux distributions without having to change the package manager or the distro itself. This means that whatever distro you use, you will not miss your favorite programs or the need for a more updated version.
-
-"AM" also aims to be a merger for GNU / Linux distributions, using not just AppImage as the main package format, but also other standalone programs, so without having to risk breaking anything on your system: no daemons, no shared libraries. Just your program!
+For everything else, the controls and operation are always the same for both command line tools. The only thing that changes is that the installation scripts are written only for "AM", while "AppMan" uses the same scripts and includes commands that can modify them to make them work locally during the installation process.
 
  ------------------------------------------------------------------------
 
@@ -55,22 +50,19 @@ The main goal of this tool is to provide the same updated applications to multip
 
 -----------------------------------------------------------------------------
 
-# Introducing "AM"
-There are so many commands to remember among the GNU/Linux distributions, and sometime I can't find what I really want from a package manager:
+# "AM" the Application Manager for GNU/Linux
 
-- I want my programs to be totally independent from the repositories of my distribution and from each other;
-- My programs must not require hundreds of packages and files of dependencies and shared libraries scattered throughout the system;
-- I want always the latest updated version of the program, maybe directly from the main developer;
-- I want to install/remove/update/manage my programs using a short and extremely intuitive command;
-- I want to update my programs without root privileges;
-- Each installed program must be placed in a single folder with all dependencies, at most it can have a launcher and a link outside its own folder;
-- I want to summarize the whole installation process (including the download of the icons and the creation of launchers and updater/remover scripts...) in just one script.
+"AM" is an application manager for AppImages and other standalone programs for GNU/Linux with multi-architecture support.
+ 
+https://user-images.githubusercontent.com/88724353/150169396-7f215547-e7ee-4e3b-becc-848f341ba8b3.mp4
 
-I can't find all this into other package managers. "AM" is created to do all this!
+ ------------------------------------------------------------------------
 
-I've named it "AM", which is the abbreviation of Application Manager, because I wanted something that was really short to write and extremely easy to remember. At the same time this name had to be a word that fully expressed its functions. Two letters with a few simple options to remember (see "[Usage](#usage)"), to install, remove, update, manage programs on any GNU/Linux distribution and for any supported architecture, indiscriminately.
+AM is an application manager for AppImages and other standalone programs for GNU/Linux with multi-architecture support. The "am" command is very easy to use and can manage a better control of automatic updates for all the programs installed.
 
-Such a simple name, like its structure and its intentions. "AM" is everything you would expect from any application manager.
+The main goal of this tool is to provide the same updated applications to multiple GNU/Linux distributions without having to change the package manager or the distro itself. This means that whatever distro you use, you will not miss your favorite programs or the need for a more updated version.
+
+"AM" also aims to be a merger for GNU/Linux distributions, using not just AppImage as the main package format, but also other standalone programs, so without having to risk breaking anything on your system: no daemons, no shared libraries. Just your program!
 
 # Comparison with other package managers
 "AM" is not a project that wants to compete with the basic package managers of GNU / Linux distributions (in fact many managed programs come from different distributions, including Debian, Arch Linux, Slackware and various derivatives, and then make them available for all), but wants to favor the promotion of standalone programs and lighten the load of the developers of the distributions, separating the programs of the base system from those of the individual developers, in order to increase the general stability of the system and fill the shortcomings of one or of the other distribution.
