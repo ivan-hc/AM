@@ -8,6 +8,7 @@ Many programs for GNU/Linux can work without necessarily having to mix their lib
 - [What programs can be installed](#what-programs-can-be-installed)
 - [How to update all programs, for real](#how-to-update-all-programs-for-real)
 - [Repository and Multiarchitecture](#repository-and-multiarchitecture)
+- [Comparison with other package managers](#comparison-with-other-package-managers)
 
 [Installation](#installation)
 
@@ -92,6 +93,22 @@ Click on the link of your architecture to see the list of all the apps available
 - [aarch64](https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/programs/aarch64-apps)
 
 If you are interested, you can deliberately join this project.
+
+-----------------------------------------------------------------------------
+# Comparison with other package managers
+"AM" is not a project that wants to compete with the basic package managers of GNU/Linux distributions, being many managed programs come from different distributions (including Debian, Arch Linux and Slackware), but wants to favor the promotion of standalone programs and lighten the load of the developers of the distributions, separating the programs of the base system from those of the individual developers, in order to increase the general stability of the system and fill the shortcomings of one or of the other distribution:
+
+### 1) "AM" versus APT/DNF/PacMan/any AUR helper
+- Any traditional package manager follows precise patterns in integrating software and sharing libraries among the various applications in the system, and this last point can create conflicts that lead to the malfunction of one program compared to another. Furthermore, the programs differ in version according to the kind of software update model between the various distributions, the rolling-releases distributions (for example Arch Linux and Slackware) tend to always have the latest version while the fixed-release distributions (for example Debian Stable) often get older program versions.
+- "AM" tends to get always the last version of each program from the main developer's source, and being them only standalone programs, they will be stored in just one dedicated folder, each script just need to download the standalone program into a dedicated `/opt/$PROGRAM` directory, creates the launcher in `/usr/share/application` and a link into a `$PATH` (ie `/usr/bin`, `/usr/local/bin` or `/usr/games`). In case no alternative sources are available, "AM" can compile and create AppImages using pkg2appimage and appimagetool, and these can be distributed on all other GNU/Linux distributions.
+
+### 2) "AM" versus Flatpak
+ - Flatpak is one of the most popular projects for redistributing standalone programs, but it takes too much space for each individual application, as several hundred megabytes of libraries are created since the first program is installed (just like creating a virtual machine to use programs on the host) and while on the one hand the application is free to function (almost) perfectly, on the other hand the consumption of physical memory is practically shameful;
+ - "AM" doesn't uses any runtime, but only standalone programs that rarely require additional libraries (and in that case they are libraries already installed by default on any GNU/Linux system), ie bundle archives or (if necessary) AppImages (which being a compressed format, saves disk space), making the full installation really... flat (forgive me for the irony, but I could not resist).
+
+### 3) "AM" versus Snap
+- Snappy is a package manager devised by Canonical Ltd. and a software package format (SNAP) initially only for Ubuntu, but is also adopted by other distributions. It slows down PC resources due to the "snapd" daemon, so the more programs you install, the greater the system's boot time (and less is the free RAM);
+- "AM" has no daemons and no hidden services are needed, each program is completely standalone and will run when you want to use it.
 
 -----------------------------------------------------------------------------
 
