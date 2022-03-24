@@ -1,4 +1,5 @@
-# Why a new package manager?
+# "AM" the Application Manager for GNU/Linux
+#### Why a new package manager?
 Many programs for GNU/Linux can work without necessarily having to mix their libraries with other programs in a completely standalone way (AppImage, but also other autonomous applications, such as Firefox, Blender and Thunderbird). The only thing they needed was a tool that could download, install, and manage them... so I thought about writing not one but two: "AM" and "AppMan".
 
 ------------------------------------------------------------------------
