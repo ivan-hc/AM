@@ -110,6 +110,12 @@ If you are interested, you can deliberately join this project.
 - Snappy is a package manager devised by Canonical Ltd. and a software package format (SNAP) initially only for Ubuntu, but is also adopted by other distributions. It slows down PC resources due to the "snapd" daemon, so the more programs you install, the greater the system's boot time (and less is the free RAM);
 - "AM" has no daemons and no hidden services are needed, each program is completely standalone and will run when you want to use it.
 
+### 4) "AM" versus any other AppImage Manager
+- There are many other AppImage managers around, and almost all of them support their database on appimagehub or other official AppImage resources, but the big problem is at the base of the compilation of these packages, being very often without an integrated update system. Furthermore, AppImage is a format that many developers are abandoning in favor of Flatpak, also because there were no centralized repositories or software that managed its updates in a universal way... at least until the invention of the first draft of [AppMan](https://github.com/ivan-hc/AppMan), and therefore of its successor, "AM";
+- With "AM" each installed program has its own script (AM-updater) that compares the installed version with the one available in the sources or uses official tools to update the AppImages ([see above](#how-to-update-all-programs-for-real)), there is support for multiple architectures (including i686 and aarch64) and anyone can create a script to install that particular program (if available for its architecture).
+ 
+#### NOTE: "AM" consider AppImage not to be a priority format, but only a fallback, because if a program is already made available in a bundle by the main developer, "AM" will prefer it. Some examples are given by Firefox, Thunderbird, NodeJS, Blender, Chromium Latest, SuperTuxKart... they are all programs provided in bundle, no other kind of package manager is really needed for them.
+
 -----------------------------------------------------------------------------
 
 # Installation
