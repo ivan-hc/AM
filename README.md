@@ -1,17 +1,9 @@
 # Introducing the "AM" project
-There are many programs for GNU/Linux that work without necessarily having to mix their libraries with other programs on the system, in order to work in a completely standalone way (AppImage, but also other autonomous applications, such as Firefox, Blender and Thunderbird). 
+Many programs for GNU/Linux can work without necessarily having to mix their libraries with other programs in a completely standalone way (AppImage, but also other autonomous applications, such as Firefox, Blender and Thunderbird). The only thing they needed was a tool that could download, install, and manage them... so I thought about writing not one but two: "AM" and "AppMan".
 
-The only thing they needed was a tool that could download, install, and manage them, even just via the command line. So I thought about writing one ... or rather two: "AM" and "AppMan".
+------------------------------------------------------------------------
 
-"AM" and "AppMan" are two command line tools that can download, install, update, remove and save AppImage and other standalone applications trying to always draw the original versions from the main sources, and where necessary, try to create AppImage using [pkg2appimage](https://github.com/AppImage/pkg2appimage) and [appimagetool](https://github.com/AppImage/AppImageKit).
-
-Where `$PROGRAM` is the application we're going to install:
-- "AM" (or `am` command) installs programs and all related files into a `/opt/$PROGRAM` directory, the launcher in `/usr/share/applications` and the main application link in a`$PATH` (i.e. `/usr/local/bin` or `/usr/games`), this allows multiple users of the same system to be able to use the same installed applications;
-- "AppMan" (or `appman` command) instead does not need root privileges to work, programs and all related files into a local directory named `~/.opt/$PROGRAM`, the launcher is placed in `~/.local/share/applications` and the main application link is placed into a new `~/.local/bin` directory requires to be enabled into the `~/.bashrc` file by adding the line `export PATH=$PATH:$(xdg-user-dir USER)/.local/bin` at the end of the file), this allows a single user to costumize its local configuration without having to share applications with others in the system.
-
-For everything else, the controls and operation are always the same for both command line tools. The only thing that changes is that the installation scripts are written only for "AM", while "AppMan" uses the same scripts and includes commands that can modify them to make them work locally during the installation process.
-
- ------------------------------------------------------------------------
+[Differences between "AM" and "AppMan"](#differences-between-am-and-appman)
 
 [Introducing "AM"](#introducing-am)
 
@@ -49,6 +41,16 @@ For everything else, the controls and operation are always the same for both com
 [Related project](#related-projects)
 
 -----------------------------------------------------------------------------
+
+# Differences between "AM" and "AppMan"
+
+"AM" and "AppMan" are two command line tools that can download, install, update, remove and save AppImage and other standalone applications trying to always draw the original versions from the main sources, and where necessary, try to create AppImage using [pkg2appimage](https://github.com/AppImage/pkg2appimage) and [appimagetool](https://github.com/AppImage/AppImageKit).
+
+Where `$PROGRAM` is the application we're going to install:
+- "AM" (or `am` command) installs programs and all related files into a `/opt/$PROGRAM` directory, the launcher in `/usr/share/applications` and the main application link in a`$PATH` (i.e. `/usr/local/bin` or `/usr/games`), this allows multiple users of the same system to be able to use the same installed applications;
+- "AppMan" (or `appman` command) instead does not need root privileges to work, programs and all related files into a local directory named `~/.opt/$PROGRAM`, the launcher is placed in `~/.local/share/applications` and the main application link is placed into a new `~/.local/bin` directory requires to be enabled into the `~/.bashrc` file by adding the line `export PATH=$PATH:$(xdg-user-dir USER)/.local/bin` at the end of the file), this allows a single user to costumize its local configuration without having to share applications with others in the system.
+
+For everything else, the controls and operation are always the same for both command line tools. The only thing that changes is that the installation scripts are written only for "AM", while "AppMan" uses the same scripts and includes commands that can modify them to make them work locally during the installation process.
 
 # Introducing "AM"
 
