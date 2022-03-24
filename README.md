@@ -24,7 +24,7 @@ Many programs for GNU/Linux can work without necessarily having to mix their lib
 
 [Known issues](#known-issues)
 
-[Related project](#related-projects)
+[Related projects](#related-projects)
 
 [Conclusions](#conclusions)
 
