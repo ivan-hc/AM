@@ -50,7 +50,7 @@ For everything else, the controls and operation are always the same for both com
 
 -----------------------------------------------------------------------------
 
-# "AM" the Application Manager for GNU/Linux
+# Introducing "AM"
 
 "AM" is an application manager for AppImages and other standalone programs for GNU/Linux with multi-architecture support.
  
