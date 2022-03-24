@@ -306,4 +306,6 @@ To uninstall "AM" just run the command:
 
 ------------------------------------------------------------------------
 # Conclusions
-Having encouraged you to visit this page is already a huge achievement for me. If you wish, you can support this work with a small [donation](https://paypal.me/ivanalexhc). I will gladly appreciate it. Thank you.
+Having encouraged you to visit this page is already a huge achievement for me, being this my second creation after AppMan. This project is much more demanding than AppMan, as each individual program requires a different script to check the version of the installed program and compare it to the source link, so each individual program can take hours of testing before being published in the repository, and between my real job and other family commitments, I try to carve up some free time for this project.
+
+If you wish, you can support me, this work and my passion with a small [donation](https://paypal.me/ivanalexhc), I will gladly appreciate it. Thank you.
