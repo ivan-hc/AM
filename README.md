@@ -304,6 +304,14 @@ To uninstall "AM" just run the command:
 - libunionpreload from https://github.com/project-portable/libunionpreload
 - pkg2appimage, at https://github.com/AppImage/pkg2appimage
 
+##### My other projects
+- appman from https://github.com/ivan-hc/AppMan
+- arch-deployer from https://github.com/ivan-hc/Arch-Deployer
+- firefox for linux scripts, at https://github.com/ivan-hc/Firefox-for-Linux-scripts
+
+##### My forks
+- pkg2appimage for 32 bit systems, at https://github.com/ivan-hc/pkg2appimage-32bit
+
 ------------------------------------------------------------------------
 # Conclusions
 Having encouraged you to visit this page is already a huge achievement for me, being this my second creation after AppMan. This project is much more demanding than AppMan, as each individual program requires a different script to check the version of the installed program and compare it to the source link, so each individual program can take hours of testing before being published in the repository, and between my real job and other family commitments, I try to carve up some free time for this project.
