@@ -41,7 +41,7 @@ https://user-images.githubusercontent.com/88724353/150169396-7f215547-e7ee-4e3b-
 
 -----------------------------------------------------------------------------
 ## Differences between "AM" and "AppMan"
-"AM" and "AppMan" are two command line tools that can download, install, update, remove and save AppImage and other standalone applications trying to always draw the original versions from the main sources, and where necessary, try to create AppImage using [pkg2appimage](https://github.com/AppImage/pkg2appimage) and [appimagetool](https://github.com/AppImage/AppImageKit).
+"AM" and "AppMan" are two command line tools that can download, install, update, remove and save AppImage and other standalone applications trying to always get the original versions from the main sources, and where necessary, try to create AppImage using [pkg2appimage](https://github.com/AppImage/pkg2appimage) and [appimagetool](https://github.com/AppImage/AppImageKit).
 
 Where `$PROGRAM` is the application we're going to install:
 - "AM" (ie the `am` command) installs programs and all related files into a `/opt/$PROGRAM` directory, the launcher in `/usr/share/applications` and the main application link in a`$PATH` (i.e. `/usr/local/bin` or `/usr/games`), this allows multiple users of the same system to be able to use the same installed applications;
