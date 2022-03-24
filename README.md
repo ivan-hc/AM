@@ -8,7 +8,6 @@ Many programs for GNU/Linux can work without necessarily having to mix their lib
 - [What programs can be installed](#what-programs-can-be-installed)
 - [How to update all programs, for real](#how-to-update-all-programs-for-real)
 - [Repository and Multiarchitecture](#repository-and-multiarchitecture)
-- ["AM" as the basis for new versions of AppMan](#am-as-the-basis-for-new-versions-of-appman)
 
 [Installation](#installation)
 
@@ -41,13 +40,15 @@ https://user-images.githubusercontent.com/88724353/150169396-7f215547-e7ee-4e3b-
 
 -----------------------------------------------------------------------------
 ## Differences between "AM" and "AppMan"
-"AM" and "AppMan" are two command line tools that can download, install, update, remove and save AppImage and other standalone applications trying to always get the original versions from the main sources, and where necessary, try to create AppImage using [pkg2appimage](https://github.com/AppImage/pkg2appimage) and [appimagetool](https://github.com/AppImage/AppImageKit).
+"AM" and "AppMan" are two command line tools that can download, install, update, remove and save AppImage and other standalone applications trying to always get the original versions from the main sources, and where necessary, try to create AppImage using [pkg2appimage](https://github.com/AppImage/pkg2appimage) and [appimagetool](https://github.com/AppImage/AppImageKit). Since March 2022 "AM" provides its source code as the base for the newer releases of AppMan, making it a version of "AM" that allows you to install programs locally instead. 
 
 Where `$PROGRAM` is the application we're going to install:
 - "AM" (ie the `am` command, provided by this main repository) installs programs and all related files into a `/opt/$PROGRAM` directory, the launcher in `/usr/share/applications` and the main application link in a`$PATH` (i.e. `/usr/local/bin` or `/usr/games`), this allows multiple users of the same system to be able to use the same installed applications. Root privileges (`sudo`) are required only to install and remove applications;
 - "AppMan" (ie the `appman` command, available at [github.com/ivan-hc/AppMan](https://github.com/ivan-hc/AppMan)) instead does not need root privileges to work, programs and all related files into a local directory named `~/.opt/$PROGRAM`, the launcher is placed into the `~/.local/share/applications` directory and the main application link is placed into a new `~/.local/bin` directory ( the latter requires to be enabled into the `~/.bashrc` file, by adding the line `export PATH=$PATH:$(xdg-user-dir USER)/.local/bin` at the end of the file), this allows a single user to costumize its local configuration without having to share applications with others in the system.
 
 For everything else, the controls and operation are always the same for both command line tools. The only thing that changes is that the installation scripts are written only for "AM", while "AppMan" uses the same scripts and includes commands that can modify them to make them work locally during the installation process.
+
+More details about AppMan on the official repository, at https://github.com/ivan-hc/AppMan
 
 -----------------------------------------------------------------------------
 ## What programs can be installed
@@ -93,10 +94,7 @@ Click on the link of your architecture to see the list of all the apps available
 If you are interested, you can deliberately join this project.
 
 -----------------------------------------------------------------------------
-## "AM" as the basis for new versions of AppMan
-Since March 2022 "AM" provides its source code as the base for the newer releases of AppMan, making it a version of "AM" that allows you to install programs locally instead. More details on the official repository, at https://github.com/ivan-hc/AppMan
 
------------------------------------------------------------------------------
 # Installation
 To install "AM" quickly, just copy/paste the following command:
 	
