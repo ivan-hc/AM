@@ -295,16 +295,6 @@ We can divide the stages of an installation's process as follows:
 * [Step 8 (optional): your signature](https://github.com/ivan-hc/AM-Application-Manager/wiki/Step-8-(optional):-your-signature)
 
 The most difficult step to overcome is certainly the number "3", given the great variety of methods in which authors distribute their software, while all the other steps are much easier to overcome.
-	
-The "AM" installation scripts, including those created by you with the -t option that we have just seen, all follow very specific guidelines.
-
-Some "templates" are already available [here](https://github.com/ivan-hc/AM-Application-Manager/tree/main/templates) or by downloading them using the `-t` option, this way:
-
-    am -t $PROGRAM
-
-Where $PROGRAM is the name of the program you want to create a script for. The command will generate a script named $PROGRAM.AM (I wrote the availability of a ".AM" extension to prevent overwriting of files on your desktop with the same name of the script you want write, you can safelly remove it).
-
-If you open the script, you can read some uppercased parts that you must replace manually (ICON, LAUNCHER, URL...).
 
 ------------------------------------------------------------------------
 # Uninstall
