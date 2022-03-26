@@ -185,36 +185,55 @@ case "$1" in
   '-a'|'about')
 	while [ -n "$1" ]
 	do
-	if curl --output /dev/null --silent --head --fail $URL/programs/.about/$2  1>/dev/null; then
-	case $2 in
-	*) for var in $2;
-	do rm -R -f /opt/am/.cache/about; mkdir /opt/am/.cache/about;
-		cd /opt/am/.cache/about && wget -q $URL/programs/.about/$2 && cat ./$2 && echo "" && exit; done
+	rm -f /opt/am/.cache/about-args
+	echo $@ | tr ' ' '\n' >> /opt/am/.cache/about-args && echo STOP >> /opt/am/.cache/about-args
+	ARGS=$(sed '1d' /opt/am/.cache/about-args)
+	for arg in $ARGS; do
+	for var in $arg; do
+	if [ $arg == STOP ]; then
+	exit
+	else
+	if curl --output /dev/null --silent --head --fail $URL/programs/.about/$arg  1>/dev/null; then
+	echo "-----------------------------------------------------------------------"
+	case $arg in
+	*) rm -R -f /opt/am/.cache/about; mkdir /opt/am/.cache/about;
+		cd /opt/am/.cache/about && wget -q $URL/programs/.about/$arg &&
+		cat ./$arg && echo "" && echo "-----------------------------------------------------------------------" && break
 	esac
 	else
-	echo ""; 
-	echo ' "'$2'" IS NOT A VALID ARGUMENT, PLEASE RUN THE "am -l" COMMAND'; echo ""; 
-	echo ' TO SEE THE LIST OF ALL THE APPLICATIONS AVAILABLE FOR '$arch''; echo "";
-	echo ' OR START A SEARCH (WITH KEYWORDS) BY USING THE "am -q" COMMAND'; echo "";
-	exit;
+	echo ' "'$arg'" is not a valid argument' | tr a-z A-Z && break
 	fi
+	fi
+	done
+	done
 	done
 	shift;;
   '-b'|'backup')
 	while [ -n "$1" ]
 	do
-	case $2 in
+	rm -f /opt/am/.cache/backup-args
+	echo $@ | tr ' ' '\n' >> /opt/am/.cache/backup-args && echo STOP >> /opt/am/.cache/backup-args
+	ARGS=$(sed '1d' /opt/am/.cache/backup-args)
+	for arg in $ARGS; do
+	for var in $arg; do
+	if [ $arg == STOP ]; then
+	exit
+	else
+	case $arg in
 	'') echo " Specify the name of a program to back up"; echo ""; exit;;
-	*) if test -f /opt/$2/remove; then
-		echo ""; read -p " Do you wish to backup the current version of $2 (y,N)?" yn
+	*) if test -f /opt/$arg/remove; then
+		echo ""; read -p " Do you wish to backup the current version of $arg (y,N)?" yn
 		case $yn in
-		[Yy]* ) mkdir -p "$(xdg-user-dir USER)/.am-snapshots/$2"; cp -r /opt/$2 "$(xdg-user-dir USER)/.am-snapshots/$2/$(date +%F-%X)"; echo ""; echo " SAVED in $(xdg-user-dir USER)/.am-snapshots/$2"; echo "" ; exit;;
-		[Nn]*|* ) echo ""; echo " OPERATION ABORTED!"; echo ""; exit;;	
+		[Yy]* ) mkdir -p "$(xdg-user-dir USER)/.am-snapshots/$arg"; cp -r /opt/$arg "$(xdg-user-dir USER)/.am-snapshots/$arg/$(date +%F-%X)"; echo ""; echo " SAVED in $(xdg-user-dir USER)/.am-snapshots/$arg"; echo "" ; break;;
+		[Nn]*|* ) echo ""; echo " OPERATION ABORTED!"; echo ""; break;;	
 		esac
 	else
-		echo ""; echo " '$2' is not a valid argument or is not installed."; echo ""; exit;
+		echo ""; echo " '$arg' is not a valid argument or is not installed."; echo ""; break;
 	fi
 	esac
+	fi
+	done
+	done
 	done
 	shift;;
   '-c'|'clean') echo ""; echo " CLEANING OF TEMPORARY FILES AND FOLDERS IN PROGRESS" && sleep 1 && echo "" && echo " PRESS CTRL+C TO ABORT." && sleep 1 &&
@@ -222,24 +241,36 @@ case "$1" in
 	echo ""; rm -R -f /opt/am/appdb; rm -R -f /opt/am/.cache/*; rm -R -f /opt/*/tmp; echo "" && echo " DONE!"; echo "" ;;
   '-d'|'download')
 	while [ -n "$1" ]
-	do case $2 in
-	am) for var in $2;
+	do
+	rm -f /opt/am/.cache/download-args
+	echo $@ | tr ' ' '\n' >> /opt/am/.cache/download-args && echo STOP >> /opt/am/.cache/download-args
+	ARGS=$(sed '1d' /opt/am/.cache/download-args)
+	for arg in $ARGS; do
+	for var in $arg; do
+	if [ $arg == STOP ]; then
+	exit
+	else
+	case $arg in
+	am) for var in $arg;
 		do read -p ' Do you wish to open the main script of "AM" (y,N)?' yn
 			case $yn in
-			[Yy]* ) xdg-open /opt/am/APP-MANAGER; exit;;
-			[Nn]*|* ) exit;;
+			[Yy]* ) xdg-open /opt/am/APP-MANAGER; break;;
+			[Nn]*|* ) break;;
 		esac
 	done;; 
-	*) if curl --output /dev/null --silent --head --fail $URL/programs/$arch/$2  1>/dev/null; then
-		echo ""; echo ' "'$2'" installation script downloaded! ' | tr a-z A-Z
-		cd $(xdg-user-dir DESKTOP); wget -q $URL/programs/$arch/$2; echo ""; exit;
-	elif curl --output /dev/null --silent --head --fail $URL/testing/$arch/$2  1>/dev/null; then
-		echo ""; echo '  "'$2'" downloaded from "testing", the unstable branch ' | tr a-z A-Z; echo ""; echo ' WARNING! PROGRAMS COMING FROM "TESTING" ARE BROKEN, USE AT YOUR OWN RISK!'
-		cd $(xdg-user-dir DESKTOP); wget -q $URL/testing/$arch/$2; echo ""; exit;
+	*) if curl --output /dev/null --silent --head --fail $URL/programs/$arch/$arg  1>/dev/null; then
+		echo ""; echo ' "'$arg'" installation script downloaded! ' | tr a-z A-Z
+		cd $(xdg-user-dir DESKTOP); wget -q $URL/programs/$arch/$arg; echo ""; break;
+	elif curl --output /dev/null --silent --head --fail $URL/testing/$arch/$arg  1>/dev/null; then
+		echo ""; echo '  "'$arg'" downloaded from "testing", the unstable branch ' | tr a-z A-Z; echo ""; echo ' WARNING! PROGRAMS COMING FROM "TESTING" ARE BROKEN, USE AT YOUR OWN RISK!'
+		cd $(xdg-user-dir DESKTOP); wget -q $URL/testing/$arch/$arg; echo ""; break;
 	else
-		echo ""; echo ' "'$2'" is NOT a valid argument, check the list (command "am -l")'; echo ""; exit;
+		echo ""; echo ' "'$arg'" is NOT a valid argument, check the list (command "am -l")'; echo ""; break;
 	fi
 	esac
+	fi
+	done
+	done
 	done
 	shift;;
   '-f'|'files') echo ""; echo $(echo "YOU HAVE INSTALLED "; cd /opt && find -name 'remove' -printf "%h\n" | sort -u | wc -l;
@@ -247,41 +278,62 @@ case "$1" in
   	cd /opt && find -name 'remove' -printf "%h\n" | sort -u | xargs -n 1 basename; echo "" ;;
   '-i'|'install')
 	while [ -n "$1" ]
-	do echo "";
-	case $2 in
-	am) echo '"AM" IS ALREADY INSTALLED!'; exit;;
-	*) if test -f /opt/*$2*/remove; then
-		echo '"AM" HAS ALREADY INSTALLED "'$2'" PREVIOUSLY, THE DIRECTORY "/opt/'$2'" HAS ALREADY BEEN CREATED IN A PREVIOUS INSTALLATION! IF YOU HAVE ISSUES IN RUNNING THE PROGRAM, TRY TO REINSTALL IT USING THE FOLLOWING COMMAND:' &&
-		echo "" && echo ' sudo am -r '$2' && sudo am -i '$2'' && echo "" &&
-		echo 'OR REPORT THE BUG AT HTTPS://github.com/IVAN-HC/AM-APPLICATION-MANAGER/issues' && echo ""; exit;
+	do
+	rm -f /opt/am/.cache/install-args
+	rm -R -f /opt/am/.cache/installed
+	echo $@ | tr ' ' '\n' >> /opt/am/.cache/install-args && echo STOP >> /opt/am/.cache/install-args
+	ARGS=$(sed '1d' /opt/am/.cache/install-args)
+	for arg in $ARGS; do
+	for var in $arg; do
+	if [ $arg == STOP ]; then
+		if test -f /opt/am/.cache/installed; then
+			echo ""; echo " INSTALLATION PROCESS COMPLETED!"; echo "";
+			echo " The following NEW programs have been installed: " | tr a-z A-Z; echo ""
+			echo "" >> /opt/am/.cache/installed
+			echo "" >> /opt/am/.cache/installed
+			echo "-----------------------------------------------------------------------" >> /opt/am/.cache/installed
+			cat /opt/am/.cache/installed
+			for i in "${@:2}"; do
+			am -a $i
+			done
+			exit
+		else
+			exit
+		fi
 	else
-		if curl --output /dev/null --silent --head --fail $URL/programs/$arch/$2  1>/dev/null; then
-		case $2 in
-		*) for var in $2;
-			do cd /opt/am/.cache; mkdir tmp; cd tmp; wget -q $URL/programs/$arch/$2; cd ..; mv ./tmp/$2 ./$2; rmdir ./tmp;
-			chmod a+x /opt/am/.cache/$2; sudo /opt/am/.cache/$2; chown -R $currentuser /opt/am/.cache/*; echo "";
+	echo ""
+	case $arg in
+	am) echo '"AM" IS ALREADY INSTALLED!'; break;;
+	*) if test -f /opt/*$arg*/remove; then
+		echo ' ERROR: "'$arg'" is already installed, please try to remove it first' && echo ""; break;
+	else
+		if curl --output /dev/null --silent --head --fail $URL/programs/$arch/$arg  1>/dev/null; then
+		case $arg in
+		*) for var in $arg;
+			do cd /opt/am/.cache; mkdir tmp; cd tmp; wget -q $URL/programs/$arch/$arg; cd ..; mv ./tmp/$arg ./$arg; rmdir ./tmp;
+			chmod a+x /opt/am/.cache/$arg; sudo /opt/am/.cache/$arg; chown -R $currentuser /opt/am/.cache/*; echo "";
 			unset $LATESTDIR
 			LATESTDIR=$(cd /opt && ls -td * | head -1)
 				if test -f /opt/$LATESTDIR/remove; then
-					clear;
-					echo ' "'$LATESTDIR'" has been installed!' | tr a-z A-Z && am -a $LATESTDIR && chown -R $currentuser /opt/am/.cache/about 2> /dev/null;
+					clear
+					echo " - $LATESTDIR" >> /opt/am/.cache/installed &&
+					echo "" && chown -R $currentuser /opt/am/.cache/about 2> /dev/null;
 				else
 					echo " INSTALLATION ABORTED!";
 				fi
-			exit; done
+			break; done
 			esac
 		else
-			echo ""; 
-			echo ' "'$2'" IS NOT A VALID ARGUMENT, PLEASE RUN THE "am -l" COMMAND'; echo ""; 
-			echo ' TO SEE THE LIST OF ALL THE APPLICATIONS AVAILABLE FOR '$arch''; echo "";
-			echo ' OR START A SEARCH (WITH KEYWORDS) BY USING THE "am -q" COMMAND'; echo "";
-			exit;
+			echo ' "'$arg'" is NOT a valid argument, please try again!'; echo ""; break;
 		fi			
 	fi
 	esac
+	fi
+	done
+	done
 	done
 	shift;;
-  '-l'|'list') rm -R -f /opt/am/$arch-apps /opt/am/list && wget -q $URL/programs/$arch-apps -P /opt/am && echo -e "$(cat /opt/am/$arch-apps | awk -v FS="(◆ | : )" '{print $2}')" >> /opt/am/list
+  '-l'|'list') rm -R -f /opt/am/$arch-apps /opt/am/list && wget -q $URL/programs/$arch-apps -P /opt/am && echo -e "$(cat /opt/am/$arch-apps | awk -v FS="(◆ | : )" '{print $arg}')" >> /opt/am/list
 	cd /opt/am && cat options >> list
 	echo ""; echo "  LIST OF APPLICATIONS AVAILABLE IN THE 'AM' REPOSITORY:"; echo "";
   	cat /opt/am/$arch-apps; echo "";
@@ -289,31 +341,43 @@ case "$1" in
   	echo $(echo "INSTALLED:"; cd /opt && find -name 'remove' -printf "%h\n" | sort -u | wc -l); echo "";;
   '-o'|'overwrite')
 	while [ -n "$1" ]
-	do case $2 in
-	am) am -s; exit;;
-	'') echo " Specify the name of a program to overwrite"; echo ""; exit;;
-	*) if test -f /opt/$2/remove; then
-		echo ""; read -p " Do you wish to overwrite this version of $2 with an old one (y,N)?" yn
+	do
+	rm -f /opt/am/.cache/overwrite-args
+	echo $@ | tr ' ' '\n' >> /opt/am/.cache/overwrite-args && echo STOP >> /opt/am/.cache/overwrite-args
+	ARGS=$(sed '1d' /opt/am/.cache/overwrite-args)
+	for arg in $ARGS; do
+	for var in $arg; do
+	if [ $arg == STOP ]; then
+	exit
+	else
+	case $arg in
+	am) am -s; break;;
+	'') echo " Specify the name of a program to overwrite"; echo ""; break;;
+	*) if test -f /opt/$arg/remove; then
+		echo ""; read -p " Do you wish to overwrite this version of $arg with an old one (y,N)?" yn
 		case $yn in
-		[Yy]* ) echo ""; echo " Please, select a snapshot:"; sleep 1; echo ""; snaps=$(ls "$(xdg-user-dir USER)/.am-snapshots/$2/" | sort -u); echo "$snaps"; echo ""
+		[Yy]* ) echo ""; echo " Please, select a snapshot:"; sleep 1; echo ""; snaps=$(ls "$(xdg-user-dir USER)/.am-snapshots/$arg/" | sort -u); echo "$snaps"; echo ""
 			read -p " ENTER THE NAME OF THE SNAPSHOT?" response;
 			case $response in
 			*) for var in $(echo $snaps); do
-				if [ -d $(xdg-user-dir USER)/.am-snapshots/$2/$response ]; then
-					cp --backup=t $(xdg-user-dir USER)/.am-snapshots/$2/$response/* /opt/$2/
-	  				rm -R -f /opt/$2/*~; echo ""; echo " RESTORE COMPLETED SUCCESSFULLY!"; echo ""; exit;
+				if [ -d $(xdg-user-dir USER)/.am-snapshots/$arg/$response ]; then
+					cp --backup=t $(xdg-user-dir USER)/.am-snapshots/$arg/$response/* /opt/$arg/
+	  				rm -R -f /opt/$arg/*~; echo ""; echo " RESTORE COMPLETED SUCCESSFULLY!"; echo ""; break;
 				else
 					echo ""; echo " NO SNAPSHOT SELECTED, RETRY!" >&2;
 				fi
 				done;;
-			'') echo ""; echo " NO SNAPSHOT SELECTED, OPERATION ABORTED!"; echo ""; exit;;
+			'') echo ""; echo " NO SNAPSHOT SELECTED, OPERATION ABORTED!"; echo ""; break;;
 			esac;;
-		[Nn]*|* ) echo ""; echo " OPERATION ABORTED!"; echo ""; exit;;	
+		[Nn]*|* ) echo ""; echo " OPERATION ABORTED!"; echo ""; break;;	
 		esac
 	else
-		echo ""; echo " '$2' is not a valid argument or is not installed."; echo ""; exit;
+		echo ""; echo " '$arg' is not a valid argument or is not installed."; echo ""; break;
 	fi
 	esac
+	fi
+	done
+	done
 	done
 	shift;;
   '-q'|'query') rm -R -f /opt/am/$arch-apps /opt/am/list && wget -q $URL/programs/$arch-apps -P /opt/am && echo -e "$(cat /opt/am/$arch-apps | awk -v FS="(◆ | : )" '{print $2}')" >> /opt/am/list
@@ -334,24 +398,35 @@ case "$1" in
   '-r'|'remove')
 	while [ -n "$1" ]
 	do
-	if ls /opt/$2 1>/dev/null; then
-	case $2 in
-	*) for var in $2;
-	do echo ""; read -p " Do you wish to REMOVE $2 (Y,n)?" yn
+	rm -f /opt/am/.cache/remove-args
+	echo $@ | tr ' ' '\n' >> /opt/am/.cache/remove-args && echo STOP >> /opt/am/.cache/remove-args
+	ARGS=$(sed '1d' /opt/am/.cache/remove-args)
+	for arg in $ARGS; do
+	for var in $arg; do
+	if [ $arg == STOP ]; then
+	exit
+	else
+	if ls /opt/$arg 1>/dev/null; then
+	case $arg in
+	*) for var in $arg;
+	do echo ""; read -p " Do you wish to REMOVE $arg (Y,n)?" yn
 		case $yn in
-		[Nn]* ) echo ""; echo " $2 has not been removed, exiting!"; echo ""; exit;;
-		[Yy]*|* ) echo "";  sudo /opt/$2/remove && echo " $2 HAS BEEN SUCCESSFULLY REMOVED!" && echo "" && exit; break;;
+		[Nn]* ) echo ""; echo " $arg has not been removed, exiting!"; echo ""; break;;
+		[Yy]*|* ) echo "";  sudo /opt/$arg/remove && echo " $arg HAS BEEN SUCCESSFULLY REMOVED!" && echo "" && break; break;;
 	esac
 	done;;
 	esac
 	else
-	echo ""; echo " '$2' is not a valid argument or is not installed."; echo "";
+	echo ""; echo " '$arg' is not a valid argument or is not installed."; echo "";
 	echo ' LIST OF THE INSTALLED PROGRAMS / VALID ARGUMENTS:'; echo "";
-	cd /opt && find -name 'remove' -printf "%h\n" | sort -u | xargs -n 1 basename; echo "" ; exit;
+	cd /opt && find -name 'remove' -printf "%h\n" | sort -u | xargs -n 1 basename; echo "" ; break;
+	fi
 	fi
 	done
+	done
+	done
 	shift;;
-  '-s'|'sync') rm -R -f /opt/am/$arch-apps /opt/am/list && wget -q $URL/programs/$arch-apps -P /opt/am && echo -e "$(cat /opt/am/$arch-apps | awk -v FS="(◆ | : )" '{print $2}')" >> /opt/am/list
+  '-s'|'sync') rm -R -f /opt/am/$arch-apps /opt/am/list && wget -q $URL/programs/$arch-apps -P /opt/am && echo -e "$(cat /opt/am/$arch-apps | awk -v FS="(◆ | : )" '{print $arg}')" >> /opt/am/list
 	cd /opt/am && cat options >> list
 	echo ""; echo ' SYNCHRONIZING "AM" VERSION '$(am -v)'...'; sleep 1; echo "";
   	rm -R -f /opt/am/.cache/* 1>/dev/null; cd /opt/am/.cache; wget -q $URL/APP-MANAGER && chmod a+x ./APP-MANAGER; cd ..;
@@ -522,6 +597,6 @@ case "$1" in
 	fi
 	done
 	shift;;
-  'version'|'-v'|'--version') echo "2.7.0-6";;
+  'version'|'-v'|'--version') echo "3.0.0";;
   *) exec /opt/am/APP-MANAGER ;;
 esac
