@@ -1,0 +1,55 @@
+#!/bin/sh
+
+APP=bread
+
+# CREATE THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP
+
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+
+# DOWNLOAD THE APPIMAGE
+mkdir tmp;
+cd ./tmp;
+wget https://github.com/$(wget https://github.com/DEVLOPRR/bread/releases/latest -O - | egrep '/.*/.*/.*AppImage' -o)
+wget https://github.com/$(wget https://github.com/DEVLOPRR/bread/releases/latest -O - | egrep '/.*/.*/.*AppImage.zsync' -o)
+cd ..
+mv ./tmp/*mage ./$APP
+chmod a+x /opt/$APP/$APP
+mv ./tmp/*mage.zsync ./$APP.zsync
+rmdir ./tmp
+
+# LINK
+ln -s /opt/$APP/$APP /usr/local/bin/$APP
+
+# SCRIPT TO UPDATE THE PROGRAM
+cat >> AM-updater << 'EOF'
+#!/bin/sh
+APP=bread
+cd /opt/$APP
+mkdir tmp
+cd ./tmp
+wget https://github.com/$(wget https://github.com/DEVLOPRR/bread/releases/latest -O - | egrep '/.*/.*/.*AppImage.zsync' -o)
+cd ..
+mv ./tmp/*mage.zsync ./$APP.zsync
+rmdir ./tmp
+zsync /opt/$APP/$APP.zsync
+rm -R -f /opt/$APP/*zs-old
+rm -R -f /opt/$APP/*.part
+chmod a+x /opt/$APP/$APP
+EOF
+chmod a+x /opt/$APP/AM-updater
+
+# CHANGE THE PERMISSIONS
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/$APP
+
+# MESSAGE
+echo "
+
+ Bread is provided by https://github.com/DEVLOPRR/bread
+	
+"
