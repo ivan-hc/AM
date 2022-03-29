@@ -1,0 +1,343 @@
+#!/bin/sh
+
+APP=lxtask
+ 
+# CREATING THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP;
+
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+APP=lxtask
+mkdir tmp;
+cd tmp;
+
+# DOWNLOADING THE DEPENDENCIES
+wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-$(uname -m).AppImage -O appimagetool
+wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/tools/pkg2appimage # 64 BIT ONLY (comment to disable)
+# wget https://github.com/ivan-hc/pkg2appimage-32bit/releases/download/continuous/pkg2appimage-i386.AppImage -O pkg2appimage # 32 BIT ONLY (uncomment to enable)
+chmod a+x ./appimagetool ./pkg2appimage
+
+# CREATING THE APPIMAGE: APPDIR FROM A RECIPE...
+echo "app: lxtask
+binpatch: true
+
+ingredients:
+  dist: oldstable
+  sources:
+    - deb http://deb.debian.org/debian/ oldstable main contrib non-free
+    - deb http://deb.debian.org/debian-security/ oldstable-security main contrib non-free
+    - deb http://deb.debian.org/debian oldstable-updates main contrib non-free
+    - deb http://deb.debian.org/debian oldstable-backports main contrib non-free
+  packages:
+    - lxtask" >> recipe.yml;
+
+cp /opt/$APP/tmp/recipe.yml /opt/$APP/recipe.yml
+
+./pkg2appimage ./recipe.yml;
+
+# ...DOWNLOADING LIBUNIONPRELOAD...
+wget https://github.com/project-portable/libunionpreload/releases/download/amd64/libunionpreload.so
+chmod a+x libunionpreload.so
+mv ./libunionpreload.so ./$APP/$APP.AppDir/
+
+# ...REPLACING THE EXISTING APPRUN WITH A CUSTOM ONE...
+rm -R -f ./$APP/$APP.AppDir/AppRun
+cat > AppRun << 'EOF'
+#!/bin/sh
+HERE="$(dirname "$(readlink -f "${0}")")"
+export UNION_PRELOAD="${HERE}"
+export LD_PRELOAD="${HERE}/libunionpreload.so"
+export PATH="${HERE}"/usr/bin/:"${HERE}"/usr/sbin/:"${HERE}"/usr/games/:"${HERE}"/bin/:"${HERE}"/sbin/:"${PATH}"
+export LD_LIBRARY_PATH=/usr/lib/i386-linux-gnu/:/usr/lib/x86_64-linux-gnu/:"${HERE}"/usr/lib/:"${HERE}"/usr/lib/i386-linux-gnu/:"${HERE}"/usr/lib/x86_64-linux-gnu/:"${HERE}"/usr/lib32/:"${HERE}"/usr/lib64/:"${HERE}"/lib/:"${HERE}"/lib/i386-linux-gnu/:"${HERE}"/lib/x86_64-linux-gnu/:"${HERE}"/lib32/:"${HERE}"/lib64/:"${LD_LIBRARY_PATH}"
+export PYTHONPATH="${HERE}"/usr/share/pyshared/:"${PYTHONPATH}"
+export PYTHONHOME="${HERE}"/usr/
+export XDG_DATA_DIRS="${HERE}"/usr/share/:"${XDG_DATA_DIRS}"
+export PERLLIB="${HERE}"/usr/share/perl5/:"${HERE}"/usr/lib/perl5/:"${PERLLIB}"
+export GSETTINGS_SCHEMA_DIR="${HERE}"/usr/share/glib-2.0/schemas/:"${GSETTINGS_SCHEMA_DIR}"
+export QT_PLUGIN_PATH="${HERE}"/usr/lib/qt4/plugins/:"${HERE}"/usr/lib/i386-linux-gnu/qt4/plugins/:"${HERE}"/usr/lib/x86_64-linux-gnu/qt4/plugins/:"${HERE}"/usr/lib32/qt4/plugins/:"${HERE}"/usr/lib64/qt4/plugins/:"${HERE}"/usr/lib/qt5/plugins/:"${HERE}"/usr/lib/i386-linux-gnu/qt5/plugins/:"${HERE}"/usr/lib/x86_64-linux-gnu/qt5/plugins/:"${HERE}"/usr/lib32/qt5/plugins/:"${HERE}"/usr/lib64/qt5/plugins/:"${QT_PLUGIN_PATH}"
+EXEC=$(grep -e '^Exec=.*' "${HERE}"/*.desktop | head -n 1 | cut -d "=" -f 2- | sed -e 's|%.||g')
+exec ${EXEC} "$@"
+EOF
+chmod a+x AppRun
+cp ./AppRun /opt/$APP/
+mv ./AppRun ./$APP/$APP.AppDir
+
+wget https://upload.wikimedia.org/wikipedia/commons/6/64/GNOME_System_Monitor_icon_2019.svg -O ./$APP/$APP.AppDir/utilities-system-monitor.svg
+
+# ...EXPORT THE APPDIR TO AN APPIMAGE!
+ARCH=x86_64 ./appimagetool -n ./$APP/$APP.AppDir;
+underscore=_
+mkdir version
+mv ./$APP/$APP$underscore*.deb ./version/
+version=$(ls /opt/$APP/tmp/version)
+echo "$version" >> /opt/$APP/version
+
+cd ..;
+mv ./tmp/*.AppImage ./$APP;
+chmod a+x ./$APP
+
+rm -R -f ./tmp
+
+# LINK
+ln -s /opt/$APP/$APP /usr/local/bin/$APP
+
+# SCRIPT TO UPDATE THE PROGRAM
+initial=$(echo $APP | head -c 1)
+echo '#!/bin/sh
+version0=$(cat /opt/'$APP'/version)
+url="http://http.us.debian.org/debian/pool/main/'$initial'/'$APP'/$version0"
+if curl --output /dev/null --silent --head --fail "$url"; then
+  echo "Update not needed, exit!"
+else
+  notify-send "A new version of '$APP' is available, please wait!"
+  mkdir /opt/'$APP'/tmp
+  cd /opt/'$APP'/tmp
+  wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool
+  wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/tools/pkg2appimage # 64 BIT ONLY (comment to disable)
+# wget https://github.com/ivan-hc/pkg2appimage-32bit/releases/download/continuous/pkg2appimage-i386.AppImage -O pkg2appimage # 32 BIT ONLY (uncomment to enable)
+  chmod a+x ./appimagetool ./pkg2appimage
+  cp /opt/'$APP'/recipe.yml /opt/'$APP'/tmp/recipe.yml
+  ./pkg2appimage ./recipe.yml;
+  wget https://github.com/project-portable/libunionpreload/releases/download/amd64/libunionpreload.so
+  chmod a+x libunionpreload.so
+  mv ./libunionpreload.so ./'$APP'/'$APP'.AppDir/
+  rm -R -f ./'$APP'/'$APP'.AppDir/AppRun
+  cp /opt/'$APP'/AppRun ./'$APP'/'$APP'.AppDir/
+  wget https://upload.wikimedia.org/wikipedia/commons/6/64/GNOME_System_Monitor_icon_2019.svg -O ./$APP/$APP.AppDir/utilities-system-monitor.svg
+  ARCH=x86_64 ./appimagetool -n ./'$APP'/'$APP'.AppDir
+  mkdir version
+  mv ./'$APP'/'$APP''$underscore'*.deb ./version/
+  cd ..
+  version=$(ls /opt/'$APP'/tmp/version)
+  if test -f ./tmp/version/$version; then rm -R -f ./version
+  fi
+  echo "$version" >> /opt/'$APP'/version
+  mv ./tmp/*.AppImage ./'$APP';
+  chmod a+x ./'$APP'
+  rm -R -f ./tmp
+fi' >> /opt/$APP/AM-updater
+chmod a+x /opt/$APP/AM-updater
+
+# LAUNCHER
+echo "[Desktop Entry]
+Name=Task Manager
+Name[af]=Taakbestuurder
+Name[ar]=مدير المهام
+Name[ast]=Alministrador de xeres
+Name[be]=Менеджар задач
+Name[bg]=Диспечер на задачи
+Name[bn]=টাস্ক ম্যানেজার
+Name[ca]=Gestor de tasques
+Name[cs]=Správce úloh
+Name[da]=Opgavehåndtering
+Name[de]=Taskmanager
+Name[el]=Διαχειριστής εργασιών
+Name[en_GB]=Task Manager
+Name[es]=Gestor de tareas
+Name[et]=Protsessihaldur
+Name[eu]=Ataza-kudeatzailea
+Name[fa]=مدیر وظیفه
+Name[fi]=Tehtävienhallinta
+Name[fo]=Koyrslu fyrisiting
+Name[fr]=Gestionnaire des tâches
+Name[frp]=Διαχειριστής εργασιών
+Name[gl]=Xestor de tarefas
+Name[he]=מנהל המשימות
+Name[hr]=Upravitelj Zadacima
+Name[hu]=Feladatkezelő
+Name[id]=Manajer Tugas
+Name[is]=Verkefnastjóri
+Name[it]=Gestore processi
+Name[ja]=タスクマネージャ
+Name[kk]=Тапсырмалар басқарушысы
+Name[ko]=작업 관리자
+Name[lg]=Kiteekateekamirimu
+Name[lt]=Užduočių tvarkytuvė
+Name[lv]=Procesu pārvaldnieks
+Name[ms]=Pengurus Tugas
+Name[nb]=Oppgavebehandler
+Name[nl]=Taakbeheerder
+Name[nn]=Oppgåvestyring
+Name[pa]=ਟਾਸਕ ਮੈਨੇਜਰ
+Name[pl]=Menedżer zadań
+Name[pt]=Gestor de tarefas
+Name[pt_BR]=Gerenciador de tarefas
+Name[ro]=Manager de programe
+Name[ru]=Диспетчер задач
+Name[sk]=Správca úloh
+Name[sl]=Upravljalnik opravil
+Name[sr]=Праћење система
+Name[sr@latin]=Praćenje sistema
+Name[sv]=Aktivitetshanterare
+Name[te]=కార్య నిర్వాహకం
+Name[tr]=Görev Yönetici
+Name[tt_RU]=Мәсьәлә диспетчеры
+Name[ug]=ۋەزىپە باشقۇرغۇچ
+Name[uk]=Диспетчер задач
+Name[ur]=ٹاسک منیجر
+Name[ur_PK]=ٹاسک منیجر
+Name[vi]=Quản lý tác vụ
+Name[zh_CN]=任务管理器
+Name[zh_TW]=工作管理員
+Comment=Manage running processes
+Comment[af]=Bestuur prosesse wat uitvoer
+Comment[ar]=إدارة العمليات الجارية
+Comment[ast]=Alministrar procesos n'execución
+Comment[be]=Кіраванне бягучымі працэсамі
+Comment[bg]=Управлявай изпълняваните процеси
+Comment[bn]=চলমান প্রসেস ব্যবস্থাপনা
+Comment[ca]=Gestioneu els processos en execució
+Comment[cs]=Správa spuštěných procesů
+Comment[da]=Håndter kørende processer
+Comment[de]=Laufende Prozesse verwalten
+Comment[el]=Διαχείριση τρεχουσών διεργασιών
+Comment[en_GB]=Manage running processes
+Comment[es]=Gestione los procesos en ejecución
+Comment[et]=Töötavate protsesside haldamine
+Comment[eu]=Kudeatu martxan dauden prozesuak
+Comment[fa]=مدیریت فرآیندهای درحال اجرا
+Comment[fi]=Hallitse käynnissä olevia prosesseja
+Comment[fo]=Umsit koyrandi tilgongdir
+Comment[fr]=Administre les processus en cours
+Comment[frp]=Διαχείριση τρεχουσών διεργασιών
+Comment[gl]=Xestionar os procesos en execución
+Comment[he]=ניהול התהליכים הפעילים
+Comment[hr]=Upravljaj pokrenutim procesima
+Comment[hu]=Futó folyamatok kezelése
+Comment[id]=Mengelola proses yang berjalan
+Comment[is]=Sýsla með keyrandi ferli
+Comment[it]=Gestisce i processi attivi
+Comment[ja]=実行中のプロセスを管理します
+Comment[kk]=Орындалып жатқан үрдістерді басқару
+Comment[ko]=실행중인 프로세스를 관리합니다
+Comment[lg]=Teekateeka emirimu egibindabinda
+Comment[lt]=Tvarkyti vykdomus procesus
+Comment[lv]=Pārvaldīt aktīvos procesus
+Comment[nb]=Håndter kjørende prosesser
+Comment[nl]=Beheer lopende processen
+Comment[nn]=Handsam prosessar som køyrer
+Comment[pa]=ਚੱਲ ਰਹੇ ਪਰੋਸੈਸ ਦਾ ਪਰਬੰਧ
+Comment[pl]=Zarządza uruchomionymi procesami
+Comment[pt]=Gestão dos processos em execução
+Comment[pt_BR]=Gerencie processos em execução
+Comment[ro]=Gestionați programele pornite
+Comment[ru]=Управлять запущенными приложениями и процессами
+Comment[sk]=Spravovať bežiace procesy
+Comment[sl]=Upravljajte zagnana opravila
+Comment[sr]=Управљање покренутим процесима
+Comment[sr@latin]=Upravljanje pokrenutim procesima
+Comment[sv]=Hantera processer som kör
+Comment[te]=నడుస్తున్న ప్రక్రియలను నిర్వహించు
+Comment[tr]=Çalışan süreçleri yönet
+Comment[tt_RU]=Җибәрелгән кумышталар һәм процесслар белән идарә итү
+Comment[ug]=ئىجرا بولۇۋاتقان ئىجرالارنى باشقۇرۇش
+Comment[uk]=Керування запущеними процесами
+Comment[vi]=Quản lý các tiến trình đang chạy
+Comment[zh_CN]=管理运行中的进程
+Comment[zh_TW]=管理執行中的程式
+GenericName=Process manager
+GenericName[af]=Prosesbestuurder
+GenericName[ar]=إدارة العملية
+GenericName[ast]=Alministrador de procesos
+GenericName[be]=Менеджар працэсаў
+GenericName[bg]=Процесов мениджър
+GenericName[bn]=প্রসেস ম্যানেজার
+GenericName[ca]=Gestor de processos
+GenericName[cs]=Správce procesů
+GenericName[da]=Proceshåndtering
+GenericName[de]=Prozessverwaltung
+GenericName[el]=Διαχειριστής διεργασιών
+GenericName[en_GB]=Process manager
+GenericName[es]=Gestor de procesos
+GenericName[et]=Protsesside haldamine
+GenericName[eu]=Prozesu-kudeatzailea
+GenericName[fa]=مدیر فرآیند
+GenericName[fi]=Prosessien käsittelijä
+GenericName[fo]=Tilgongdar fyrisiting
+GenericName[fr]=Gestionnaire des tâches
+GenericName[frp]=Διαχειριστής διεργασιών
+GenericName[gl]=Xestor de procesos
+GenericName[he]=מנהל התהליכים
+GenericName[hr]=Upravitelj procesa
+GenericName[hu]=Folyamatkezelő
+GenericName[id]=Pengelola proses
+GenericName[is]=Ferlastjórnun
+GenericName[it]=Gestore processi
+GenericName[ja]=プロセスマネージャ
+GenericName[kk]=Үрдістерді басқарушысы
+GenericName[ko]=프로세스 관리자
+GenericName[lg]=Ekiteekateeka emirimu
+GenericName[lt]=Procesų tvarkytuvė
+GenericName[lv]=Procesu pārvaldnieks
+GenericName[nb]=Prosesshåndtering
+GenericName[nl]=Procesbeheerder
+GenericName[nn]=Prosesshandsamar
+GenericName[pa]=ਪਰੋਸੈਸ ਮੈਨੇਜਰ
+GenericName[pl]=Menedżer procesów
+GenericName[pt]=Gestão de processos
+GenericName[pt_BR]=Gerenciador de processos
+GenericName[ro]=Manager de procese
+GenericName[ru]=Диспетчер процессов
+GenericName[sk]=Správca procesov
+GenericName[sl]=Upravljalnik opravil
+GenericName[sr]=Управљач процеса
+GenericName[sr@latin]=Upravljač procesa
+GenericName[sv]=Processhanterare
+GenericName[te]=ప్రక్రియ నిర్వాహకం
+GenericName[tr]=Süreç yönetici
+GenericName[tt_RU]=Процесслар диспетчеры
+GenericName[ug]=ئىجرا باشقۇرغۇ
+GenericName[uk]=Менеджер процесів
+GenericName[vi]=Quản lý tiến trình
+GenericName[zh_CN]=进程管理器
+GenericName[zh_TW]=程式管理員
+Keywords=task;kill;suspend;processor;memory;monitoring;performance;
+Keywords[ca]=tasca;mata;suspèn;processador;memòria;monitoratge;rendiment;
+Keywords[cs]=Úkol;kill;uspat;procesor;paměť;sledování;výkon;
+Keywords[da]=task;kill;suspend;processor;memory;monitoring;performance;opgave;dræb;hukommelse;overvågning;ydelse;
+Keywords[de]=Anwendung;kill;aussetzen;Prozessor;Speicher;Überwachung;Leistung;
+Keywords[es]=tarea;finalizar;suspender;procesador;memoria;monitorización;desempeño;
+Keywords[et]=tegum;seiska;peata;protsessor;mälu;monitoorimine;jõudlus;
+Keywords[eu]=ataza;hil;eseki;prozesadorea;memoria;monitorizazioa;errendimendua;
+Keywords[gl]=tarefa;matar;suspender;procesador;memoria;monitorización;rendemento;
+Keywords[he]=משימה;תהליך;השהיה;מעבד;עיבוד;זיכרון;ניטור;מעקב;מוניטור;ביצועים;
+Keywords[hu]=feladat;kilövés;készenlét;processzor;memória;megfigyelés;teljesítmény;
+Keywords[id]=tugas;bunuh;suspensi;prosesor;memori;pemantauan;kinerja;
+Keywords[ja]=タスク;強制終了;サスペンド;プロセッサ;メモリ;監視;パフォーマンス;
+Keywords[kk]=task;kill;suspend;processor;memory;monitoring;performance;тапсырма;үрдіс;қолданба;бағдарлама;өлтіру;тоқтату;ұйықтату;процессор;жады;бақылау;өнімділік;
+Keywords[ko]=task;작업;kill;강제 종료;suspend;대기;processor;프로세서;memory;메모리;monitoring;모니터링;performance;성능;
+Keywords[lg]=mulimu;komya mbagirawo;guyimirire kulinda kiragiro;kitundu ekibazi;gwanika;kulabiriza;kukuluusana;
+Keywords[lt]=užduotis;nutraukti;pristabdyti;procesorius;atmintis;stebėjimas;našumas;
+Keywords[nl]=taak;afbreken;pauzestand;processor;geheugen;bewaken;prestatievermogen;
+Keywords[pl]=zadanie;zabij;wstrzymanie;procesor;pamięć;monitorowanie;wydajność;
+Keywords[pt]=tarefa;terminar;suspender;processador;memória;monitorização;desempenho;
+Keywords[pt_BR]=tarefa;finalizar;suspender;processador;memória;monitoração;performance;
+Keywords[ru]=процесс;задача;программа;приложение;убить;остановить;процессор;память;отслеживать;производительность;
+Keywords[sr]=task;kill;suspend;processor;memory;monitoring;performance;
+Keywords[sv]=task;kill;suspend;processor;memory;monitoring;performance;
+Keywords[te]=పని;అంతంచేయి;అర్థంతరంగానిలుపు;ప్రాసెసర్;మెమొరి;పర్యవేక్షణ;పనితనం;
+Keywords[tr]=görev;öldür;durdur;işlemci;hafıza;gözlemek;performans;
+Keywords[uk]=процес;задача;програма;вбити;зупинити;процесор;пам'ять;слідкувати;продуктивність;швидкодія;
+Keywords[zh_CN]=task;kill;suspend;processor;memory;monitoring;performance;任务;终止;杀死;挂起;进程;内存;监视;性能;
+Exec=lxtask
+Icon=/opt/$APP/utilities-system-monitor.svg
+Terminal=false
+StartupNotify=true
+Type=Application
+Categories=GTK;System;Monitor;
+" >> /usr/share/applications/AM-$APP.desktop;
+
+# ICON
+wget https://upload.wikimedia.org/wikipedia/commons/6/64/GNOME_System_Monitor_icon_2019.svg -O utilities-system-monitor.svg
+
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/$APP
+
+echo "
+
+ LXtask is provided by https://www.lxde.org
+  
+";
