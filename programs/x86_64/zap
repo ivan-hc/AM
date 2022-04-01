@@ -1,0 +1,65 @@
+#!/bin/sh
+
+APP=zap
+BINARY=zap-amd64
+
+# CREATE THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP
+
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+
+# DOWNLOAD THE PROGRAM
+mkdir tmp
+cd ./tmp
+
+v=$(wget -q https://api.github.com/repos/srevinsaju/zap/releases/latest -O - | grep -E tag_name | awk -F '[""]' '{print $4}')
+wget https://github.com/srevinsaju/zap/releases/download/$v/$BINARY
+echo $v >> /opt/$APP/version
+
+cd ..
+mv ./tmp/$BINARY ./$APP
+chmod a+x /opt/$APP/$APP
+rmdir ./tmp
+
+# LINK
+ln -s /opt/$APP/$APP /usr/local/bin/$APP
+
+# SCRIPT TO UPDATE THE PROGRAM
+cat >> /opt/$APP/AM-updater << 'EOF'
+#!/usr/bin/env bash
+APP=zap
+BINARY=zap-amd64
+version0=$(cat /opt/$APP/version)
+v=$(wget -q https://api.github.com/repos/srevinsaju/zap/releases/latest -O - | grep -E tag_name | awk -F '[""]' '{print $4}')
+if [ "$version0" == "$v" ]; then
+  echo "Update not needed, exit!"
+else
+  notify-send "A new version of '$APP' is available, please wait!"
+  mkdir /opt/$APP/tmp
+  cd /opt/$APP/tmp
+  wget https://github.com/srevinsaju/zap/releases/download/$v/$BINARY
+  rm -R /opt/$APP/version
+  echo $v >> /opt/$APP/version
+  cd ..
+  mv /opt/$APP/tmp/$BINARY /opt/$APP/$APP
+  chmod a+x /opt/$APP/$APP
+  rm -R -f /opt/$APP/tmp
+fi
+
+EOF
+chmod a+x /opt/$APP/AM-updater
+
+# CHANGE THE PERMISSIONS
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/$APP
+
+# MESSAGE
+echo "
+
+ ZAP is provided by https://github.com/srevinsaju/zap
+  
+";
