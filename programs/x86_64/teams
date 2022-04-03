@@ -1,0 +1,128 @@
+#!/bin/sh
+
+APP=teams
+
+# CREATE THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP
+
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+
+# DOWNLOAD THE PROGRAM
+mkdir tmp
+cd ./tmp
+
+version=$(wget -q https://aur.archlinux.org/packages/teams -O - | grep -Eo "https://packages.microsoft.com/[a-zA-Z0-9./?=_%:-]*" | head -1)
+wget $version
+echo $version >> /opt/$APP/version
+
+ar x ./*.deb
+tar xf ./data.tar.xz
+rm -R -f ./*tar.* ./*.deb
+cd ..
+cp ./tmp/usr/share/pixmaps/* /opt/$APP/
+mv ./tmp/usr/share/teams/* ./
+rm -R -f ./tmp
+
+# LINK
+ln -s /opt/$APP/$APP /usr/local/bin/$APP
+
+# SCRIPT TO UPDATE THE PROGRAM
+echo '#!/usr/bin/env bash
+APP=teams
+version0=$(cat /opt/$APP/version)
+version=$(wget -q https://aur.archlinux.org/packages/teams -O - | grep -Eo "https://packages.microsoft.com/[a-zA-Z0-9./?=_%:-]*" | head -1)
+if [ $version = $version0 ]; then
+  echo "Update not needed, exit!"
+else
+  notify-send "A new version of Microsoft Teams is available, please wait!"
+  mkdir /opt/$APP/tmp
+  cd /opt/$APP/tmp
+  wget $version
+  ar x ./*.deb
+  tar xf ./data.tar.xz
+  rm -R -f ./*tar.* ./*.deb
+  cd ..
+  mv --backup=t ./tmp/usr/share/teams/* ./
+  rm -R -f /opt/$APP/version
+  echo $version >> /opt/$APP/version
+  rm -R -f ./tmp ./*~
+fi' >> /opt/$APP/AM-updater
+chmod a+x /opt/$APP/AM-updater
+
+# LAUNCHER
+rm /usr/share/applications/AM-$APP.desktop
+echo "[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Microsoft Teams - Preview
+Comment=Microsoft Teams for Linux is your chat-centered workspace in Office 365.
+Exec=teams %U
+Icon=/opt/$APP/teams.png
+Terminal=false
+StartupNotify=true
+StartupWMClass=Microsoft Teams - Preview
+Categories=Network;
+MimeType=x-scheme-handler/msteams;
+X-KDE-Protocols=teams
+Actions=QuitTeams;
+X-GNOME-UsesNotifications=true;
+
+[Desktop Action QuitTeams]
+Name=Quit Teams
+Name[ar]=إنهاء اسكايب
+Name[bg]=Изход от Teams
+Name[ca]=Surt de Teams
+Name[cs]=Ukončit Teams
+Name[da]=Afslut Teams
+Name[en]=Quit Teams
+Name[de]=Teams beenden
+Name[el]=Έξοδος από το Teams
+Name[es]=Salir de Teams
+Name[et]=Sulge Teams
+Name[fi]=Sulje Teams
+Name[fr]=Quitter Teams
+Name[he]=יציאה מסקייפ
+Name[hi]=स्काइप से बाहर निकलें
+Name[hr]=Izađi iz Teamsa
+Name[hu]=A Teams bezárása
+Name[id]=Keluar dari Teams
+Name[it]=Esci da Teams
+Name[ja]=Teams を終了
+Name[ko]=Teams 종료
+Name[lt]=Išjungti „Teams“
+Name[lv]=Iziet no Teams
+Name[ms]=Keluar Teams
+Name[nb]=Avslutt Teams
+Name[nl]=Teams afsluiten
+Name[pl]=Zamknij Teams'a
+Name[pt]=Sair do Teams
+Name[pt_BR]=Encerrar o Teams
+Name[ro]=Închide Teams
+Name[ru]=Выйти из Скайпа
+Name[sk]=Ukončiť aplikáciu Teams
+Name[sl]=Zapusti Teams
+Name[sr_Latn]=Zatvori Teams
+Name[sv]=Avsluta Teams
+Name[th]=จบการทำงาน Teams
+Name[tr]=Teams'tan Çık
+Name[uk]=Вийти зі Teams
+Name[vi]=Thoát Teams
+Name[zh_CN]=退出 Teams
+Name[zh_TW]=結束 Teams
+Exec=teams --quit
+OnlyShowIn=Unity;" >> /usr/share/applications/AM-$APP.desktop
+
+# CHANGE THE PERMISSIONS
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/$APP
+
+# MESSAGE
+echo "
+
+ Microsoft Teams is provided by https://www.microsoft.com 
+  
+";
