@@ -1,0 +1,97 @@
+#!/usr/bin/env bash
+# This is a fork of https://github.com/pniedzwiedzinski/upp
+# Original Author: Patryk Niedźwiedziński
+# License: MIT
+
+set -uoe pipefail
+
+function show_help() {
+	printf "upp - AppImage installer\n
+Usage: upp COMMAND APP
+
+Commands:
+\t- search
+\t- install
+"
+}
+
+function ask() {
+	echo $1 [Y/n]
+	read -r answer
+	case $answer in
+          ""|[Yy]) true;;
+          [Nn]) false;;
+	  *) false;;
+	esac
+}
+
+function len() {
+	echo $@ | jq '. | length'
+}
+
+function list_apps() {
+	printf "\n"
+	for row in $(echo $@ | jq -r '.[] | @base64'); do
+		_jq() {
+     			echo ${row} | base64 --decode | jq -r ${1}
+    		}
+
+		printf "=> $(_jq '.name') - $(_jq '.description')\n\n"
+	done
+}
+
+function get_repo() {
+	response=`curl "https://appimage.github.io/feed.json" 2> /dev/null`
+	items=`echo $response | jq ".items"`
+	echo $items
+}
+
+function get_apps() {
+	app=$1
+	items=$(get_repo)
+	found_apps=`echo $items | jq "[.[] | select(.name | test(\".*$app.*\"; \"i\"))]"`
+	echo $found_apps
+}
+
+function install() {
+	apps=$(get_apps $1)
+	if [ "$(len $apps)" == "0" ]; then echo "$1 not found"; exit 1; fi
+	if [ "$(len $apps)" != "1" ]; then list_apps $apps && echo Found multiple matching apps! > /dev/stderr; exit 1; fi
+	echo "Installing $1" > /dev/stderr
+	app=`echo $apps | jq '.[0]'`
+	download_link=`echo $app | jq -r '.links[] | select(.type=="Download") .url'`
+	url=$(get_appimage_path $download_link)
+	wget $url -P ./tmp/
+	chmod +x ./tmp/*mage
+	version=$(cd ./tmp && ls -1 *mage)
+	echo $version >> ./version
+	mv ./tmp/*mage ./$1
+	rm -R -f ./tmp
+}
+
+function get_appimage_path() {
+	path=`echo $1 | sed 's/https:\/\/github\.com\///'`
+	url="https://api.github.com/repos/$path"
+	latest=`curl $url | jq '.[0]'`
+	assets=`echo $latest | jq '.assets'`
+	appimage=`echo $assets | jq -r '.[] | .browser_download_url' | grep AppImage`
+	echo $appimage
+}
+
+function search() {
+	apps=$(get_apps $1)
+	list_apps $apps
+	[[ "$(len $apps)" == "1" ]] && ask "Install it?" && install $1
+}
+
+function main() {
+	[ -z $1 ] && show_help
+
+	case "$1" in
+		"search") search $2 ;;
+		"install") install $2 ;;
+		*) show_help ;;
+	esac
+}
+
+main $@
