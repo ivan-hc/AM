@@ -316,6 +316,7 @@ To uninstall "AM" just run the command:
 - appimagetool from https://github.com/AppImage/AppImageKit
 - libunionpreload from https://github.com/project-portable/libunionpreload
 - pkg2appimage, at https://github.com/AppImage/pkg2appimage
+- upp, forked for "AM" from https://github.com/pniedzwiedzinski/upp
 
 ##### My other projects
 - appman from https://github.com/ivan-hc/AppMan
@@ -324,6 +325,7 @@ To uninstall "AM" just run the command:
 
 ##### My forks
 - pkg2appimage for 32 bit systems, at https://github.com/ivan-hc/pkg2appimage-32bit
+- upp, at https://github.com/ivan-hc/AM-Application-Manager/blob/main/tools/upp
 
 ------------------------------------------------------------------------
 # Conclusions
