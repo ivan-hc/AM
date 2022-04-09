@@ -312,20 +312,18 @@ To uninstall "AM" just run the command:
 
 ------------------------------------------------------------------------
 # Related projects
-##### External sources and tools used in many scripts
-- appimagetool from https://github.com/AppImage/AppImageKit
-- libunionpreload from https://github.com/project-portable/libunionpreload
-- pkg2appimage, at https://github.com/AppImage/pkg2appimage
-- upp, forked for "AM" from https://github.com/pniedzwiedzinski/upp
+#### External tools and forks used in this project
+- [appimagedl](https://github.com/simoniz0r/appimagedl), fork available as [appimagedl](https://github.com/ivan-hc/AM-Application-Manager/blob/main/appimagedl)
+- [appimagetool](https://github.com/AppImage/AppImageKit)
+- [appimageupdatetool](https://github.com/AppImage/AppImageUpdate)
+- [libunionpreload](https://github.com/project-portable/libunionpreload)
+- [pkg2appimage](https://github.com/AppImage/pkg2appimage), forks available as [pkg2appimage-32bit](https://github.com/ivan-hc/pkg2appimage-32bit) and [pkg2appimage](https://github.com/ivan-hc/AM-Application-Manager/blob/main/tools/pkg2appimage) lite version
+- [upp](https://github.com/pniedzwiedzinski/upp), fork available as [upp](https://github.com/ivan-hc/AM-Application-Manager/blob/main/tools/upp)
 
-##### My other projects
-- appman from https://github.com/ivan-hc/AppMan
-- arch-deployer from https://github.com/ivan-hc/Arch-Deployer
-- firefox for linux scripts, at https://github.com/ivan-hc/Firefox-for-Linux-scripts
-
-##### My forks
-- pkg2appimage for 32 bit systems, at https://github.com/ivan-hc/pkg2appimage-32bit
-- upp, at https://github.com/ivan-hc/AM-Application-Manager/blob/main/tools/upp
+#### My other projects
+- [AppMan](https://github.com/ivan-hc/AppMan)
+- [Arch-Deployer](https://github.com/ivan-hc/Arch-Deployer)
+- [Firefox for Linux scripts](https://github.com/ivan-hc/Firefox-for-Linux-scripts)
 
 ------------------------------------------------------------------------
 # Conclusions
