@@ -313,12 +313,13 @@ To uninstall "AM" just run the command:
 ------------------------------------------------------------------------
 # Related projects
 #### External tools and forks used in this project
-- [appimagedl](https://github.com/simoniz0r/appimagedl), fork available as [appimagedl](https://github.com/ivan-hc/AM-Application-Manager/blob/main/appimagedl)
+- [appimagedl](https://github.com/ivan-hc/appimagedl)
 - [appimagetool](https://github.com/AppImage/AppImageKit)
 - [appimageupdatetool](https://github.com/AppImage/AppImageUpdate)
 - [libunionpreload](https://github.com/project-portable/libunionpreload)
-- [pkg2appimage](https://github.com/AppImage/pkg2appimage), forks available as [pkg2appimage-32bit](https://github.com/ivan-hc/pkg2appimage-32bit) and [pkg2appimage](https://github.com/ivan-hc/AM-Application-Manager/blob/main/tools/pkg2appimage) lite version
-- [upp](https://github.com/pniedzwiedzinski/upp), fork available as [upp](https://github.com/ivan-hc/AM-Application-Manager/blob/main/tools/upp)
+- [pkg2appimage](https://github.com/AppImage/pkg2appimage)
+- [pkg2appimage-32bit](https://github.com/ivan-hc/pkg2appimage-32bit)
+- [upp](https://github.com/ivan-hc/upp)
 
 #### My other projects
 - [AppMan](https://github.com/ivan-hc/AppMan)
