@@ -15,7 +15,7 @@ chmod a+x /opt/$APP/remove
 # DOWNLOAD THE PROGRAM
 mkdir ./tmp
 cd ./tmp
-wget https://raw.githubusercontent.com/ivan-hc/AM-Application-Manager/main/tools/upp
+wget https://raw.githubusercontent.com/ivan-hc/upp/master/upp
 chmod a+x ./upp
 ./upp install $APP
 cd ..
@@ -32,7 +32,7 @@ echo '#!/usr/bin/env bash
 notify-send "Download in progress, please wait!"
 mkdir /opt/'$APP'/tmp
 cd /opt/'$APP'/tmp
-wget https://raw.githubusercontent.com/ivan-hc/AM-Application-Manager/main/tools/upp
+wget https://raw.githubusercontent.com/ivan-hc/upp/master/upp
 chmod a+x ./upp
 ./upp install '$APP'
 cd ..
