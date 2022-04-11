@@ -1,0 +1,83 @@
+#!/bin/sh
+
+APP=nordvpn
+URL=https://github.com/martijnmichel/nordvpn-linux/releases/latest
+
+# CREATE THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP
+
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+
+# DOWNLOAD THE APPIMAGE
+mkdir tmp
+cd ./tmp
+
+wget https://github.com/$(wget $URL -O - | egrep '/.*/.*/.*AppImage' -o)
+
+version=$(ls /opt/$APP/tmp)
+echo "$version" >> /opt/$APP/version
+
+cd ..
+mv ./tmp/*mage ./$APP
+chmod a+x /opt/$APP/$APP
+rmdir ./tmp
+
+# LINK
+ln -s /opt/$APP/$APP /usr/local/bin/$APP
+
+# SCRIPT TO UPDATE THE PROGRAM
+function1='$(wget '$URL' -O -'
+function2="egrep '/.*/.*/.*AppImage' -o)"
+function3='$(ls /opt/$APP/tmp)'
+echo '#!/bin/sh
+APP='$APP'
+version0=$(cat /opt/$APP/version)
+url='$URL'
+if curl -L -s $url | grep -ioF "$version0"; then
+  echo "Update not needed!"
+else
+  notify-send "A new version of '$APP' is available, please wait"
+  mkdir /opt/$APP/tmp
+  cd /opt/$APP/tmp
+  wget https://github.com/'$function1' | '$function2'
+  version='$function3'
+  cd ..
+  if test -f ./tmp/*mage; then rm ./version
+  fi
+  echo $version >> ./version
+  mv --backup=t ./tmp/*mage ./$APP
+  chmod a+x /opt/$APP/$APP
+  rm -R -f ./tmp ./*~
+fi' >> /opt/$APP/AM-updater
+chmod a+x /opt/$APP/AM-updater
+
+# LAUNCHER
+rm /usr/share/applications/AM-$APP.desktop
+echo "[Desktop Entry]
+Name=NordVPN for Linux
+Exec=$APP
+Terminal=false
+Type=Application
+Icon=/opt/$APP/$APP.png
+StartupWMClass=NordVPN for Linux
+X-AppImage-Version=0.6.0
+Comment=NordVPN for Linux
+Categories=Utility;" >> /usr/share/applications/AM-$APP.desktop
+
+# ICON
+wget https://s1.nordcdn.com/nordvpn/media/1.752.0/images/global/favicon/favicon-196x196.png -O $APP.png
+
+# CHANGE THE PERMISSIONS
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/$APP
+
+# MESSAGE
+echo '
+
+ NordVPN is provided by https://nordvpn.com
+
+'
