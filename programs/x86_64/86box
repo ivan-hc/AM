@@ -1,0 +1,86 @@
+#!/bin/sh
+
+APP=86box
+URL=https://github.com/86Box/86Box/releases/latest
+
+# CREATE THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP
+
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+
+# DOWNLOAD THE APPIMAGE
+mkdir tmp
+cd ./tmp
+URL=https://github.com/86Box/86Box/releases/latest
+release=$(curl -L -s https://github.com/86Box/86Box/releases | grep -E AppImage | head -1 | sed 's/^.*86Box-Linux-x86_64-/86Box-Linux-x86_64-/' | sed 's/\.AppImage.*/.AppImage/')
+wget https://github.com/$(wget $URL -O - | egrep '/.*/.*/'$release'' -o)
+
+version=$(ls /opt/$APP/tmp)
+echo "$version" >> /opt/$APP/version
+
+cd ..
+mv ./tmp/*mage ./$APP
+chmod a+x /opt/$APP/$APP
+rmdir ./tmp
+
+# LINK
+ln -s /opt/$APP/$APP /usr/local/bin/$APP
+
+# SCRIPT TO UPDATE THE PROGRAM
+cat >> /opt/$APP/AM-updater << 'EOF'
+#!/usr/bin/env bash
+APP=86box
+version0=$(cat /opt/$APP/version)
+url=https://github.com/86Box/86Box/releases/latest
+if curl -L -s $url | grep -ioF "$version0"; then
+  echo "Update not needed!"
+else
+  notify-send "A new version of $APP is available, please wait"
+  mkdir /opt/$APP/tmp
+  cd /opt/$APP/tmp
+  URL=https://github.com/86Box/86Box/releases/latest
+  release=$(curl -L -s https://github.com/86Box/86Box/releases | grep -E AppImage | head -1 | sed 's/^.*86Box-Linux-x86_64-/86Box-Linux-x86_64-/' | sed 's/\.AppImage.*/.AppImage/')
+  wget https://github.com/$(wget $URL -O - | egrep '/.*/.*/'$release'' -o)
+  version=$(ls /opt/$APP/tmp)
+  cd ..
+  if test -f ./tmp/*mage; then rm ./version
+  fi
+  echo $version >> ./version
+  mv --backup=t ./tmp/*mage ./$APP
+  chmod a+x /opt/$APP/$APP
+  rm -R -f ./tmp ./*~
+fi
+EOF
+chmod a+x /opt/$APP/AM-updater
+
+# LAUNCHER
+rm /usr/share/applications/AM-$APP.desktop
+echo "[Desktop Entry]
+X-AppImage-Arch=x86_64
+X-AppImage-Version=3.3-b3700
+X-AppImage-Name=86Box
+Name=86Box
+Exec=$APP
+Icon=/opt/$APP/$APP.png
+Type=Application
+Terminal=false
+Categories=Utility;
+Comment=Emulator of x86-based machines based on PCem." >> /usr/share/applications/AM-$APP.desktop
+
+# ICON
+wget https://appimage.github.io/database/86Box/icons/512x512/86box.png
+
+# CHANGE THE PERMISSIONS
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/$APP
+
+# MESSAGE
+echo '
+
+   86Box is provided by https://github.com/86Box
+
+'
