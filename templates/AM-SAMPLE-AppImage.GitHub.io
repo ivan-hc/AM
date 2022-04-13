@@ -10,7 +10,7 @@ USER=$(echo $REPO | sed 's:/[^/]*$::')
 REPO2=$(echo $REPO | sed 's:.*/::')
 FILENAMEEXTENTION="x86_64.AppImage"
 URL=https://github.com/$REPO/releases/latest
-COMMENT=$(curl https://api.github.com/repos/$REPO  2>/dev/null | grep description | sed 's/"description": "//' | sed 's/",//')
+COMMENT=$(curl -L -s https://raw.githubusercontent.com/AppImage/appimage.github.io/master/apps/$APPNAME.md | grep "Comment:" | cut -c 14-)
 
 # CREATE THE FOLDER
 mkdir /opt/$APP
