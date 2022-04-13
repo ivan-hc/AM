@@ -51,7 +51,7 @@ else
   mkdir /opt/$APP/tmp
   cd /opt/$APP/tmp
   URL=https://github.com/FUNCTION2/FUNCTION3/releases/latest
-  wget https://github.com/$(wget https://github.com/FUNCTION2/FUNCTION3/releases/latest -O - | egrep '/.*/.*/.*'FUNCTION4'' -o);
+  wget https://github.com/$(wget https://github.com/FUNCTION2/FUNCTION3/releases/latest -O - | egrep '/.*/.*'FUNCTION4'' -o);
   version=$(wget -q https://api.github.com/repos/FUNCTION2/FUNCTION3/releases/latest -O - | grep -E tag_name | awk -F '[""]' '{print $4}')
   cd ..
   if test -f ./tmp/*mage; then rm ./version
