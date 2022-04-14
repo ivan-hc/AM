@@ -8,7 +8,7 @@ ICONURL="https://appimage.github.io/database/$(curl -L -s https://raw.githubuser
 REPO=$(curl -L -s https://raw.githubusercontent.com/AppImage/appimage.github.io/master/apps/$APPNAME.md | grep -A1 "type: GitHub" | sed -n 2p | cut -c 10-)
 USER=$(echo $REPO | sed 's:/[^/]*$::')
 REPO2=$(echo $REPO | sed 's:.*/::')
-FILENAMEEXTENTION="x86_64.AppImage"
+FILENAMEEXTENTION="/.*/.*.AppImage"
 URL=https://github.com/$REPO/releases/latest
 COMMENT=$(curl -L -s https://raw.githubusercontent.com/AppImage/appimage.github.io/master/apps/$APPNAME.md | grep "Comment:" | cut -c 14-)
 
@@ -25,7 +25,7 @@ chmod a+x /opt/$APP/remove
 mkdir tmp
 cd ./tmp
 
-wget https://github.com/$(wget https://github.com/$REPO/releases/latest -O - | egrep '/.*/.*'$FILENAMEEXTENTION'' -o);
+wget https://github.com/$(wget https://github.com/$REPO/releases/latest -O - | egrep ''$FILENAMEEXTENTION'' -o);
 
 version=$(wget -q https://api.github.com/repos/$REPO/releases/latest -O - | grep -E tag_name | awk -F '[""]' '{print $4}')
 echo "$version" >> /opt/$APP/version
@@ -51,7 +51,7 @@ else
   mkdir /opt/$APP/tmp
   cd /opt/$APP/tmp
   URL=https://github.com/FUNCTION2/FUNCTION3/releases/latest
-  wget https://github.com/$(wget https://github.com/FUNCTION2/FUNCTION3/releases/latest -O - | egrep '/.*/.*'FUNCTION4'' -o);
+  wget https://github.com/$(wget https://github.com/FUNCTION2/FUNCTION3/releases/latest -O - | egrep ''FUNCTION4'' -o);
   version=$(wget -q https://api.github.com/repos/FUNCTION2/FUNCTION3/releases/latest -O - | grep -E tag_name | awk -F '[""]' '{print $4}')
   cd ..
   if test -f ./tmp/*mage; then rm ./version
