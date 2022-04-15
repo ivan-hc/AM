@@ -325,6 +325,7 @@ To uninstall "AM" just run the command:
 - [AppMan](https://github.com/ivan-hc/AppMan)
 - [Arch-Deployer](https://github.com/ivan-hc/Arch-Deployer)
 - [Firefox for Linux scripts](https://github.com/ivan-hc/Firefox-for-Linux-scripts)
+- [aih2AM](https://github.com/ivan-hc/aih2AM)
 
 ------------------------------------------------------------------------
 # Conclusions
