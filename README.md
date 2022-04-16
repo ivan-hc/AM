@@ -323,7 +323,7 @@ To uninstall "AM" just run the command:
 
 #### My other projects
 - [AppMan](https://github.com/ivan-hc/AppMan), a clone of "AM" that works in the user's $HOME instead;
-- [Arch-Deployer](https://github.com/ivan-hc/Arch-Deployer), a script to bulk download a Arch Linux package with all its dependencies;
+- [Arch-Deployer](https://github.com/ivan-hc/Arch-Deployer), a script to bulk download a package for Arch Linux with all its dependencies;
 - [Firefox for Linux scripts](https://github.com/ivan-hc/Firefox-for-Linux-scripts), easily install the official releases of Firefox for Linux;
 - [aih2AM](https://github.com/ivan-hc/aih2AM), a script that helps you porting AppImages from AppImage.github.io in "AM" installation scripts.
 
