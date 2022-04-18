@@ -1,0 +1,80 @@
+#!/bin/sh
+
+APP=imagemagick-clang
+REPO=ImageMagick/ImageMagick
+
+CATEGORIES=Graphics
+ICONURL=https://raw.githubusercontent.com/ImageMagick/ImageMagick/main/images/logo.png
+
+USER=$(echo $REPO | sed 's:/[^/]*$::')
+REPO2=$(echo $REPO | sed 's:.*/::')
+FILENAMEEXTENTION="/.*/.*clang-x86_64.AppImage"
+URL=https://github.com/$REPO/releases/latest
+COMMENT=$(curl https://api.github.com/repos/$REPO 2>/dev/null | grep description | sed 's/"description": "//' | sed 's/",//')
+APPNAME=$(echo $REPO2 | sed 's/-/ /g' | sed 's/_/ /g')
+
+# CREATE THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP
+
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+
+# DOWNLOAD THE APPIMAGE
+mkdir tmp
+cd ./tmp
+
+wget https://github.com/$(wget https://github.com/$REPO/releases/latest -O - | grep -w -v i386 | grep -w -v i686 | grep -w -v arm64 | grep -w -v armv7l | egrep ''$FILENAMEEXTENTION'' -o);
+
+version=$(wget -q https://api.github.com/repos/$REPO/releases/latest -O - | grep -E tag_name | awk -F '[""]' '{print $4}')
+echo "$version" >> /opt/$APP/version
+
+cd ..
+mv ./tmp/*mage ./$APP
+chmod a+x /opt/$APP/$APP
+rmdir ./tmp
+
+# LINK
+ln -s /opt/$APP/$APP /usr/local/bin/$APP
+
+# SCRIPT TO UPDATE THE PROGRAM
+cat >> /opt/$APP/AM-updater << 'EOF'
+#!/usr/bin/env bash
+APP=imagemagick
+version0=$(cat /opt/$APP/version)
+url=https://github.com/FUNCTION2/FUNCTION3/releases/latest
+if curl -L -s $url | grep -ioF "$version0"; then
+  echo "Update not needed!"
+else
+  notify-send "A new version of $APP is available, please wait"
+  mkdir /opt/$APP/tmp
+  cd /opt/$APP/tmp
+  URL=https://github.com/FUNCTION2/FUNCTION3/releases/latest
+  wget https://github.com/$(wget https://github.com/FUNCTION2/FUNCTION3/releases/latest -O - | grep -w -v i386 | grep -w -v i686 | grep -w -v arm64 | grep -w -v armv7l | egrep ''FUNCTION4'' -o);
+  version=$(wget -q https://api.github.com/repos/FUNCTION2/FUNCTION3/releases/latest -O - | grep -E tag_name | awk -F '[""]' '{print $4}')
+  cd ..
+  if test -f ./tmp/*mage; then rm ./version
+  fi
+  echo $version >> ./version
+  mv --backup=t ./tmp/*mage ./$APP
+  chmod a+x /opt/$APP/$APP
+  rm -R -f ./tmp ./*~
+fi
+EOF
+sed -i s/FUNCTION2/$USER/g /opt/$APP/AM-updater
+sed -i s/FUNCTION3/$REPO2/g /opt/$APP/AM-updater
+sed -i s/FUNCTION4/$FILENAMEEXTENTION/g /opt/$APP/AM-updater
+chmod a+x /opt/$APP/AM-updater
+
+# CHANGE THE PERMISSIONS
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/$APP
+
+# MESSAGE
+echo '
+
+ '$REPO2' is provided by https://github.com/'$USER'
+
+'
