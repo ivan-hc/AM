@@ -20,6 +20,7 @@ Many programs for GNU/Linux can work without necessarily having to mix their lib
 - [Install/update/remove programs without "AM"](#installupdateremove-programs-without-am)
 
 [Create your own script](#create-your-own-script)
+- [Helpers](#helpers)
 
 [Uninstall](#uninstall)
 
@@ -296,6 +297,18 @@ We can divide the stages of an installation's process as follows:
 
 The most difficult step to overcome is certainly the number "3", given the great variety of methods in which authors distribute their software, while all the other steps are much easier to overcome.
 
+### Helpers
+Some external scripts developed for "AM" are available in the repository:
+- [aih2AM](https://github.com/ivan-hc/aih2AM), a script that helps you porting AppImages from AppImage.github.io in "AM" installation scripts.
+- [github2AM](https://github.com/ivan-hc/github2AM), a script that helps you porting apps from any GitHub repository in "AM" installation scripts.
+
+To install them it is sufficient to run the following command:
+
+    sudo am -i aih2am github2am
+To uninstall them instead:
+
+    sudo am -r aih2am github2am 
+
 ------------------------------------------------------------------------
 # Uninstall
 To uninstall "AM" just run the command:
@@ -326,6 +339,7 @@ To uninstall "AM" just run the command:
 - [Arch-Deployer](https://github.com/ivan-hc/Arch-Deployer), a script to bulk download a package for Arch Linux with all its dependencies;
 - [Firefox for Linux scripts](https://github.com/ivan-hc/Firefox-for-Linux-scripts), easily install the official releases of Firefox for Linux;
 - [aih2AM](https://github.com/ivan-hc/aih2AM), a script that helps you porting AppImages from AppImage.github.io in "AM" installation scripts.
+- [github2AM](https://github.com/ivan-hc/github2AM), a script that helps you porting apps from any GitHub repository in "AM" installation scripts.
 
 ------------------------------------------------------------------------
 # Conclusions
