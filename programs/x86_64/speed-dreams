@@ -1,0 +1,79 @@
+#!/bin/sh
+
+APP=speed-dreams
+
+# CREATE THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP
+
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/games/$APP" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+
+# DOWNLOAD THE PROGRAM
+mkdir tmp
+cd ./tmp
+
+version=$(curl -L -s https://www.speed-dreams.net/en/downloads/ | grep -E "You can download the official AppImage" | head -1)
+wget --user-agent="X11; Linux x86_64;" https://sourceforge.net/projects/speed-dreams/files/latest/download
+echo $version >> /opt/$APP/version
+
+cd ..
+mv ./tmp/download ./$APP
+chmod a+x /opt/$APP/$APP
+rmdir ./tmp
+
+# LINK
+ln -s /opt/$APP/$APP /usr/local/games/$APP
+
+# SCRIPT TO UPDATE THE PROGRAM
+cat >> /opt/$APP/AM-updater << 'EOF'
+#!/usr/bin/env bash
+APP=speed-dreams
+version0=$(cat /opt/$APP/version)
+version=$(curl -L -s https://www.speed-dreams.net/en/downloads/ | grep -E "You can download the official AppImage" | head -1)
+if [ "$version0" = "$version" ]; then
+  echo "Update not needed, exit!"
+else
+  notify-send "A new version of $APP is available, please wait!"
+  mkdir /opt/$APP/tmp
+  cd /opt/$APP/tmp
+  wget --user-agent="X11; Linux x86_64;" https://sourceforge.net/projects/speed-dreams/files/latest/download
+  cd ..
+  if test -f ./tmp/download; then rm -R -f ./version
+  fi
+  echo $version >> /opt/$APP/version
+  mv ./tmp/download ./$APP
+  chmod a+x /opt/$APP/$APP
+  rmdir ./tmp
+fi
+EOF
+chmod a+x /opt/$APP/AM-updater
+
+# LAUNCHER
+rm /usr/share/applications/AM-$APP.desktop
+echo "[Desktop Entry]
+Name=Speed Dreams
+GenericName=Speed Dreams
+Comment=The Open Racing Car Simulator Fork
+Exec=$APP %U
+Icon=/opt/$APP/icons/$APP
+Terminal=false
+Type=Application
+Categories=Game;" >> /usr/share/applications/AM-$APP.desktop
+
+# ICON
+mkdir ./icons
+wget https://pbs.twimg.com/profile_images/671067257892691970/23LUcjRG_400x400.png -O /opt/$APP/icons/$APP
+
+# CHANGE THE PERMISSIONS
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/$APP
+
+# MESSAGE
+echo "
+
+ Speed Dreams is provided by https://www.speed-dreams.net
+  
+";
