@@ -1,0 +1,77 @@
+#!/bin/sh
+
+APP=avocado
+APPNAME=Avocado
+
+CATEGORIES="Utility;Game;"
+ICONURL="https://appimage.github.io/database/$(curl -L -s https://raw.githubusercontent.com/AppImage/appimage.github.io/master/apps/$APPNAME.md | grep -E -i icons | sed -n 2p | cut -c 5-)"
+REPO="JaCzekanski/Avocado"
+USER=$(echo $REPO | sed 's:/[^/]*$::')
+REPO2=$(echo $REPO | sed 's:.*/::')
+FILENAMEEXTENTION="/.*/.*.AppImage"
+URL=https://github.com/$REPO/releases/latest
+COMMENT="PlayStation 1 emulator"
+
+# CREATE THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP
+
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/games/$APP" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+
+# DOWNLOAD THE APPIMAGE
+mkdir tmp
+cd ./tmp
+
+wget https://avocado-builds.czekanski.info/latest/linux64 -O $APPNAME.AppImage
+
+cd ..
+mv ./tmp/*mage ./$APP
+chmod a+x /opt/$APP/$APP
+rmdir ./tmp
+
+# LINK
+ln -s /opt/$APP/$APP /usr/local/games/$APP
+
+# SCRIPT TO UPDATE THE PROGRAM
+cat >> /opt/$APP/AM-updater << 'EOF'
+#!/usr/bin/env bash
+APP=avocado
+APPNAME=Avocado
+mkdir /opt/$APP/tmp
+cd /opt/$APP/tmp
+wget https://avocado-builds.czekanski.info/latest/linux64 -O $APPNAME.AppImage
+cd ..
+mv --backup=t ./tmp/*mage ./$APP
+chmod a+x /opt/$APP/$APP
+rm -R -f ./tmp ./*~
+EOF
+chmod a+x /opt/$APP/AM-updater
+
+# LAUNCHER
+rm /usr/share/applications/AM-$APP.desktop
+echo "[Desktop Entry]
+Name=$APPNAME
+Exec=$APP
+Icon=/opt/$APP/icons/$APP
+Type=Application
+Terminal=false
+Categories=$CATEGORIES;
+Comment=$COMMENT" >> /usr/share/applications/AM-$APP.desktop
+
+# ICON
+mkdir ./icons
+wget $ICONURL -O /opt/$APP/icons/$APP
+
+# CHANGE THE PERMISSIONS
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/$APP
+
+# MESSAGE
+echo '
+
+ '$APPNAME' is provided by https://github.com/'$REPO'
+
+'
