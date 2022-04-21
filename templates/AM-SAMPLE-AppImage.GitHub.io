@@ -42,6 +42,8 @@ ln -s /opt/$APP/$APP /usr/local/bin/$APP
 cat >> /opt/$APP/AM-updater << 'EOF'
 #!/usr/bin/env bash
 APP=SAMPLE
+APPNAME=APPIMAGENAME
+REPO=$(curl -L -s https://raw.githubusercontent.com/AppImage/appimage.github.io/master/apps/$APPNAME.md | grep -A1 "type: GitHub" | sed -n 2p | cut -c 10-)
 version0=$(cat /opt/$APP/version)
 url=https://github.com/FUNCTION2/FUNCTION3/releases/latest
 if curl -L -s $url | grep -ioF "$version0"; then
