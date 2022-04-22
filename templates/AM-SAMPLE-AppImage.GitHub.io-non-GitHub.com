@@ -9,9 +9,9 @@ ICONURL="https://appimage.github.io/database/$(curl -L -s https://raw.githubuser
 COMMENT=$(curl -L -s https://raw.githubusercontent.com/AppImage/appimage.github.io/master/apps/$APPNAME.md | grep "Comment:" | cut -c 14-)
 
 # WEBSITESITE
-URL0=MAINSITE
+URL0="MAINSITE"
 # WHERE TO CHECK THE DOWNLOAD LINK
-URL1=SOMEWHEREURL
+URL1="SOMEWHEREURL"
 URL2="AppImage"
 
 # CREATE THE FOLDER
@@ -62,8 +62,8 @@ else
   rm -R -f ./tmp ./*~
 fi
 EOF
-sed -i s/FUNCTION1/$URL1/g /opt/$APP/AM-updater
-sed -i s/FUNCTION2/$URL2/g /opt/$APP/AM-updater
+sed -i s@FUNCTION1@$URL1@g /opt/$APP/AM-updater
+sed -i s@FUNCTION2@$URL2@g /opt/$APP/AM-updater
 chmod a+x /opt/$APP/AM-updater
 
 # LAUNCHER
