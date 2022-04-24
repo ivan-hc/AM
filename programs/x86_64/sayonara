@@ -1,0 +1,66 @@
+#!/bin/sh
+
+APP=sayonara
+
+# LET TAKE INFO FROM APPIMAGE.GITHUB.IO
+APPNAME=sayonara
+CATEGORIES="AudioVideo"
+ICONURL="https://appimage.github.io/database/$(curl -L -s https://raw.githubusercontent.com/AppImage/appimage.github.io/master/apps/$APPNAME.md | grep -E -i icons | sed -n 2p | cut -c 5-)"
+COMMENT=$(curl -L -s https://raw.githubusercontent.com/AppImage/appimage.github.io/master/apps/$APPNAME.md | grep "Comment:" | cut -c 14-)
+
+# WEBSITESITE
+URL0="https://sayonara-player.com"
+# WHERE TO CHECK THE DOWNLOAD LINK
+URL1="https://sayonara-player.com/files/appimage/"
+URL2="AppImage"
+
+# CREATE THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP
+
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+
+# DOWNLOAD THE APPIMAGE
+mkdir tmp
+cd ./tmp
+
+version=$(wget -q $URL1 -O - | grep -Eo "[a-zA-Z0-9./?=_%:-]*" | grep "$URL2" | tail -1)
+wget https://sayonara-player.com/files/appimage/$version
+echo $version /opt/$APP/version
+
+cd ..
+mv ./tmp/*mage ./$APP
+chmod a+x /opt/$APP/$APP
+rmdir ./tmp
+
+# LINK
+ln -s /opt/$APP/$APP /usr/local/bin/$APP
+
+# LAUNCHER
+rm /usr/share/applications/AM-$APP.desktop
+echo "[Desktop Entry]
+Name=$APPNAME
+Exec=$APP
+Icon=/opt/$APP/icons/$APP
+Type=Application
+Terminal=false
+Categories=$CATEGORIES;
+Comment=$COMMENT" >> /usr/share/applications/AM-$APP.desktop
+
+# ICON
+mkdir ./icons
+wget $ICONURL -O /opt/$APP/icons/$APP
+
+# CHANGE THE PERMISSIONS
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/$APP
+
+# MESSAGE
+echo '
+
+ '$APPNAME' is provided by '$URL0'
+
+'
