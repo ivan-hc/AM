@@ -29,7 +29,7 @@ cd ./tmp
 
 version=$(wget -q $URL1 -O - | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep "$URL2" | head -1)
 wget $version
-echo $version /opt/$APP/version
+echo $version >> /opt/$APP/version
 
 cd ..
 mv ./tmp/*mage ./$APP
