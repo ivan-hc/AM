@@ -1,0 +1,91 @@
+#!/bin/sh
+
+APP=surfshark
+
+CATEGORIES="Network"
+ICONURL="https://surfshark.com/wp-content/uploads/2018/07/favicon.png"
+
+URL=https://aur.archlinux.org/packages/surfshark-gui-bin
+COMMENT="Secure your digital life (VPN)."
+APPNAME="Surfshark"
+
+# CREATE THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP
+
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+
+# DOWNLOAD THE DEB PACKAGE
+mkdir tmp
+cd ./tmp
+
+version=$(wget -q https://aur.archlinux.org/packages/surfshark-gui-bin -O - | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep deb | head -1)
+wget $version
+echo $version >> /opt/$APP/version
+
+ar x ./*.deb
+tar fx ./data.tar.xz
+
+cd ..
+mv ./tmp/opt/Surfshark/* ./
+rm -R -f ./tmp
+
+# LINK
+ln -s /opt/$APP/$APP /usr/local/bin/$APP
+
+# SCRIPT TO UPDATE THE PROGRAM
+cat >> /opt/$APP/AM-updater << 'EOF'
+#!/usr/bin/env bash
+APP=surfshark
+version0=$(cat /opt/$APP/version)
+url=https://aur.archlinux.org/packages/surfshark-gui-bin
+if curl -L -s $url | grep -ioF "$version0"; then
+  echo "Update not needed!"
+else
+  notify-send "A new version of $APP is available, please wait"
+  mkdir /opt/$APP/tmp
+  cd /opt/$APP/tmp
+  REPO=""
+  version=$(wget -q https://aur.archlinux.org/packages/surfshark-gui-bin -O - | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep deb | head -1)
+  wget $version
+  ar x ./*.deb
+  tar fx ./data.tar.xz
+  cd ..
+  if test -f ./tmp/*.deb; then rm ./version
+  fi
+  echo $version >> ./version
+  mv --backup=t ./tmp/opt/Surfshark/* ./
+  chmod a+x /opt/$APP/$APP
+  rm -R -f ./tmp ./*~
+fi
+EOF
+chmod a+x /opt/$APP/AM-updater
+
+# LAUNCHER
+rm /usr/share/applications/AM-$APP.desktop
+echo "[Desktop Entry]
+Name=$APPNAME
+Exec=$APP
+Icon=/opt/$APP/icons/$APP
+Type=Application
+Terminal=false
+Categories=$CATEGORIES;
+Comment=$COMMENT" >> /usr/share/applications/AM-$APP.desktop
+
+# ICON
+mkdir ./icons
+wget $ICONURL -O /opt/$APP/icons/$APP
+
+# CHANGE THE PERMISSIONS
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/$APP
+
+# MESSAGE
+echo '
+
+ '$APPNAME' is provided by https://surfshark.com
+
+'
