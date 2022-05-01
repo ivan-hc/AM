@@ -1,17 +1,13 @@
 #!/bin/sh
 
 APP=SAMPLE
-REPO="REPLACETHIS"
 
 CATEGORIES="YOURCATEGORY"
 ICONURL="YOURICONURL"
 
-USER=$(echo $REPO | sed 's:/[^/]*$::')
-REPO2=$(echo $REPO | sed 's:.*/::')
-FILENAMEEXTENTION="/.*/.*.NAMETHATEXTENSION"
-URL=https://github.com/$REPO/releases/latest
-COMMENT=$(curl https://api.github.com/repos/$REPO 2>/dev/null | grep description | sed 's/"description": "//' | sed 's/",//')
-APPNAME=$(echo $REPO2 | sed 's/-/ /g' | sed 's/_/ /g')
+URL=https://aur.archlinux.org/packages/$APP
+COMMENT=$(wget -q $URL -O - | grep -A1 Description | tail -1 | cut -c 30- | rev | cut -c 6- | rev)
+APPNAME="NANETHATAPP"
 
 # CREATE THE FOLDER
 mkdir /opt/$APP
@@ -26,8 +22,8 @@ chmod a+x /opt/$APP/remove
 mkdir tmp
 cd ./tmp
 
-wget https://github.com/$(wget https://github.com/$REPO/releases/latest -O - | grep -w -v i386 | grep -w -v i686 | grep -w -v arm64 | grep -w -v armv7l | egrep ''$FILENAMEEXTENTION'' -o);
-version=$(wget -q https://api.github.com/repos/$REPO/releases/latest -O - | grep -E tag_name | awk -F '[""]' '{print $4}')
+version=$(wget -q $URL -O - | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep .NAMETHATEXTENSION | head -1)
+wget $version
 echo "$version" >> /opt/$APP/version
 cd ..
 if ls ./tmp/ | grep mage; then
@@ -72,17 +68,15 @@ ln -s /opt/$APP/$APP /usr/local/bin/$APP
 cat >> /opt/$APP/AM-updater << 'EOF'
 #!/usr/bin/env bash
 APP=SAMPLE
-REPO="REPLACETHIS"
-FILENAMEEXTENTION="/.*/.*.NAMETHATEXTENSION"
-url=https://github.com/$REPO/releases/latest
-if curl -L -s $url | grep -ioF "$version0"; then
+URL=https://aur.archlinux.org/packages/$APP
+if curl -L -s $URL | grep -ioF "$version0"; then
   echo "Update not needed!"
 else
   notify-send "A new version of $APP is available, please wait"
   mkdir /opt/$APP/tmp
   cd /opt/$APP/tmp
-  wget https://github.com/$(wget https://github.com/$REPO/releases/latest -O - | grep -w -v i386 | grep -w -v i686 | grep -w -v arm64 | grep -w -v armv7l | egrep ''$FILENAMEEXTENTION'' -o);
-  version=$(wget -q https://api.github.com/repos/$REPO/releases/latest -O - | grep -E tag_name | awk -F '[""]' '{print $4}')
+  version=$(wget -q $URL -O - | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep .NAMETHATEXTENSION | head -1)
+  wget $version
   if ls . | grep mage; then
 	cd ..
   	if test -f ./tmp/*mage; then rm ./version
@@ -166,6 +160,6 @@ chown -R $currentuser /opt/$APP
 # MESSAGE
 echo "
 
- $APPNAME is provided by https://github.com/$USER
+ $APPNAME is provided by MAINSITENAME
 
 "
