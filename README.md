@@ -1,6 +1,13 @@
 # "AM" the Application Manager for GNU/Linux
-#### Why a new package manager?
-Many programs for GNU/Linux can work without necessarily having to mix their libraries with other programs in a completely standalone way (AppImage, but also other autonomous applications, such as Firefox, Blender and Thunderbird). The only thing they needed was a tool that could download, install, and manage them... so I thought about writing not one but two: "AM" and "AppMan".
+"AM" (ie "Application Manager") is a bash script able to install, update and remove thousands of standalone programs, official/unofficial AppImage packages, but also the official versions of Firefox, Thunderbird, Brave, Blender and hundreds of other programs from official sources.
+
+"AM" applies system-wide programs integration (for all users), i.e. install programs in the `/opt` directory (see [Linux Standard Base](https://refspecs.linuxfoundation.org/FHS_3.0/fhs/ch03s13.html)), the launchers instead are installed in `/usr/share/applications` with the "AM-" suffix and the links are placed in `/usr/local/bin` or `/usr/local/games`.
+
+Being "AM" a bash-based script, it can be used on all the architectures supported by the Linux kernel and works with all the GNU/Linux distributions.
+
+This repository contains "AM" and the full database of the installation scripts for the applications.
+
+For a version of "AM" that works locally and installs/removes the same programs without root privileges, see [AppMan](https://github.com/ivan-hc/AppMan).
 
 ------------------------------------------------------------------------
 [Introducing "AM"](#introducing-am)
