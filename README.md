@@ -1,5 +1,5 @@
 # "AM" the Application Manager for GNU/Linux
-"AM" (ie "Application Manager") is a bash script able to install, update and remove thousands of standalone programs, official/unofficial AppImage packages, but also the official versions of Firefox, Thunderbird, Brave, Blender and hundreds of other programs from official sources.
+"AM" (ie "Application Manager") is a bash script able to install, update and remove thousands of standalone programs (official/unofficial AppImage packages, but also the official versions of Firefox, Thunderbird, Brave, Blender and hundreds of other programs from official sources).
 
 "AM" applies system-wide programs integration (for all users), i.e. install programs in the `/opt` directory (see [Linux Standard Base](https://refspecs.linuxfoundation.org/FHS_3.0/fhs/ch03s13.html)), the launchers instead are installed in `/usr/share/applications` with the "AM-" suffix and the links are placed in `/usr/local/bin` or `/usr/local/games`.
 
