@@ -1,14 +1,14 @@
 #!/bin/sh
 
-APP=exifcleaner
-REPO="szTheory/exifcleaner"
+APP=pboy
+REPO="2mol/pboy"
 
 CATEGORIES="Utility"
-ICONURL="https://raw.githubusercontent.com/szTheory/exifcleaner/master/static/icon.svg"
+ICONURL=""
 
 USER=$(echo $REPO | sed 's:/[^/]*$::')
 REPO2=$(echo $REPO | sed 's:.*/::')
-FILENAMEEXTENTION="/.*/.*.AppImage"
+FILENAMEEXTENTION="/.*/.*.tar.gz"
 URL=https://github.com/$REPO/releases/latest
 COMMENT=$(curl https://api.github.com/repos/$REPO 2>/dev/null | grep description | sed 's/"description": "//' | sed 's/",//')
 APPNAME=$(echo $REPO2 | sed 's/-/ /g' | sed 's/_/ /g')
@@ -26,7 +26,7 @@ chmod a+x /opt/$APP/remove
 mkdir tmp
 cd ./tmp
 
-wget https://github.com/$(wget https://github.com/$REPO/releases/latest -O - | grep -w -v i386 | grep -w -v i686 | grep -w -v arm64 | grep -w -v armv7l | egrep ''$FILENAMEEXTENTION'' -o);
+wget https://github.com/$(wget https://github.com/$REPO/releases/latest -O - | grep -w -v i386 | grep -w -v osx.tar.gz | grep -w -v arm64 | grep -w -v armv7l | egrep ''$FILENAMEEXTENTION'' -o);
 version=$(wget -q https://api.github.com/repos/$REPO/releases/latest -O - | grep -E tag_name | awk -F '[""]' '{print $4}')
 echo "$version" >> /opt/$APP/version
 if ls . | grep mage; then
@@ -48,9 +48,9 @@ elif ls . | grep .tar.bz2; then
 	rm -R -f ./tmp
 elif ls . | grep .tar.gz; then
 	tar fx *.tar.gz
-	dir=$(ls . | grep -w -v *.tar.*)
+
 	cd ..
-	mv ./tmp/$(echo $dir)/* ./
+	mv ./tmp/$APP ./
 	rm -R -f ./tmp
 elif ls . | grep .tar.xz; then
 	tar fx *.tar.xz
@@ -74,9 +74,9 @@ ln -s /opt/$APP/$APP /usr/local/bin/$APP
 # SCRIPT TO UPDATE THE PROGRAM
 cat >> /opt/$APP/AM-updater << 'EOF'
 #!/usr/bin/env bash
-APP=exifcleaner
-REPO="szTheory/exifcleaner"
-FILENAMEEXTENTION="/.*/.*.AppImage"
+APP=pboy
+REPO="2mol/pboy"
+FILENAMEEXTENTION="/.*/.*.tar.gz"
 version0=$(cat /opt/$APP/version)
 url=https://github.com/$REPO/releases/latest
 if curl -L -s $url | grep -ioF "$version0"; then
@@ -85,7 +85,7 @@ else
   notify-send "A new version of $APP is available, please wait"
   mkdir /opt/$APP/tmp
   cd /opt/$APP/tmp
-  wget https://github.com/$(wget https://github.com/$REPO/releases/latest -O - | grep -w -v i386 | grep -w -v i686 | grep -w -v arm64 | grep -w -v armv7l | egrep ''$FILENAMEEXTENTION'' -o);
+  wget https://github.com/$(wget https://github.com/$REPO/releases/latest -O - | grep -w -v i386 | grep -w -v osx.tar.gz | grep -w -v arm64 | grep -w -v armv7l | egrep ''$FILENAMEEXTENTION'' -o);
   version=$(wget -q https://api.github.com/repos/$REPO/releases/latest -O - | grep -E tag_name | awk -F '[""]' '{print $4}')
   if ls . | grep mage; then
 	cd ..
@@ -115,12 +115,12 @@ else
 	rm -R -f ./tmp
   elif ls . | grep .tar.gz; then
 	tar fx *.tar.gz
-	dir=$(ls . | grep -w -v *.tar.*)
+
 	cd ..
   	if test -f ./tmp/*.tar.gz; then rm ./version
   	fi
   	echo $version >> ./version
-	mv --backup=t ./tmp/$(echo $dir)/* ./
+	mv --backup=t ./tmp/$APP ./
 	rm -R -f ./tmp
   elif ls . | grep .tar.xz; then
 	tar fx *.tar.xz
@@ -144,21 +144,6 @@ else
 fi
 EOF
 chmod a+x /opt/$APP/AM-updater
-
-# LAUNCHER
-rm /usr/share/applications/AM-$APP.desktop
-echo "[Desktop Entry]
-Name=$APPNAME
-Exec=$APP
-Icon=/opt/$APP/icons/$APP
-Type=Application
-Terminal=false
-Categories=$CATEGORIES;
-Comment=$COMMENT" >> /usr/share/applications/AM-$APP.desktop
-
-# ICON
-mkdir /opt/$APP/icons
-wget $ICONURL -O /opt/$APP/icons/$APP
 
 # CHANGE THE PERMISSIONS
 currentuser=$(who | awk '{print $1}')
