@@ -1,0 +1,50 @@
+#!/bin/sh
+
+APP=zotero
+CATEGORIES="Network;Utility"
+APPNAME="Zotero"
+
+# CREATE THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP
+
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+
+# DOWNLOAD THE ARCHIVE
+mkdir tmp
+cd ./tmp
+
+wget "https://www.zotero.org/download/client/dl?channel=release&platform=linux-x86_64" --trust-server-names
+tar fx *.tar.bz2
+dir=$(ls . | grep -w -v *.tar.*)
+cd ..
+mv ./tmp/$(echo $dir)/* ./
+rm -R -f ./tmp
+
+# LINK
+ln -s /opt/$APP/$APP /usr/local/bin/$APP
+
+# LAUNCHER
+rm /usr/share/applications/AM-$APP.desktop
+echo "[Desktop Entry]
+Name=$APPNAME
+Exec=$APP
+Icon=/opt/$APP/chrome/icons/default/default256.png
+Type=Application
+Terminal=false
+Categories=$CATEGORIES;
+Comment=A free, easy-to-use tool to help you collect, organize, cite, and share your research sources." >> /usr/share/applications/AM-$APP.desktop
+
+# CHANGE THE PERMISSIONS
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/$APP
+
+# MESSAGE
+echo "
+
+ $APPNAME is provided by https://www.zotero.org
+
+"
