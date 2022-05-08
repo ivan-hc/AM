@@ -15,40 +15,46 @@ chmod a+x /opt/$APP/remove
 mkdir tmp
 cd ./tmp
 
-wget -r -A blender-*-stable*-linux.x86_64-release.tar.xz -nd https://builder.blender.org/download/daily
-version=$(ls /opt/$APP/tmp)
+release=$(wget -q https://mirrors.dotsrc.org/blender/release/ -O - | grep -Eo "Blender[0-9.][0-9.]?*" | tail -1)
+version=$(wget -q https://mirrors.dotsrc.org/blender/release/$release/ -O - | grep -Eo blender-[0-9.]*-linux-x64.tar.xz | tail -1)
+wget https://mirrors.dotsrc.org/blender/release/$release/$version
 echo "$version" >> /opt/$APP/version
-tar fx *linux.x86_64-release.tar.xz
+tar fx *.tar.xz
+dir=$(ls . | grep -w -v *.tar.*)
 cd ..
-mv ./tmp/blender-*linux.x86_64-release/* ./
+mv ./tmp/$(echo $dir)/* ./
 rm -R -f ./tmp
 
 # LINK
 ln -s /opt/$APP/$APP /usr/local/bin/$APP
 
 # SCRIPT TO UPDATE THE PROGRAM
-echo '#!/bin/sh' >> /opt/$APP/AM-updater
-
-echo 'APP=blender
+cat >> /opt/$APP/AM-updater << 'EOF'
+#!/usr/bin/env bash
+APP=blender
+release=$(wget -q https://mirrors.dotsrc.org/blender/release/ -O - | grep -Eo "Blender[0-9.][0-9.]?*" | tail -1)
 version0=$(cat /opt/$APP/version)
-
-url=https://builder.blender.org/download/daily
-if curl -L -s $url | grep -ioF "$version0"; then
+version=$(wget -q https://mirrors.dotsrc.org/blender/release/$release/ -O - | grep -Eo blender-[0-9.]*-linux-x64.tar.xz | tail -1)
+if [ $version0 = $version ]; then
   echo "Update not needed, exit!"
 else
   notify-send "A new version of blender is available, please wait"
   mkdir /opt/blender/tmp
   cd /opt/blender/tmp
-  wget -r -A blender-*-stable*-linux.x86_64-release.tar.xz -nd https://builder.blender.org/download/daily
-  version=$(ls /opt/$APP/tmp)
-  tar fx *linux.x86_64-release.tar.xz
+  release=$(wget -q https://mirrors.dotsrc.org/blender/release/ -O - | grep -Eo "Blender[0-9.][0-9.]?*" | tail -1)
+  version=$(wget -q https://mirrors.dotsrc.org/blender/release/$release/ -O - | grep -Eo blender-[0-9.]*-linux-x64.tar.xz | tail -1)
+  wget https://mirrors.dotsrc.org/blender/release/$release/$version
+  echo "$version" >> /opt/$APP/version
+  tar fx *.tar.xz
+  dir=$(ls . | grep -w -v *.tar.*)
   cd ..
-  if test -f ./tmp/*linux.x86_64-release.tar.xz; then rm ./version
+  if test -f ./tmp/*.tar.xz; then rm ./version
   fi
   echo "$version" >> ./version
-  mv --backup=t ./tmp/blender-*linux.x86_64-release/* ./
+  mv --backup=t ./tmp/$(echo $dir)/* ./
   rm -R -f ./tmp ./*~
-fi' >> /opt/$APP/AM-updater
+fi
+EOF
 chmod a+x /opt/$APP/AM-updater
 
 # LAUNCHER
