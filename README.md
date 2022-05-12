@@ -72,7 +72,7 @@ These programs are taken:
 - from AppImage recipes to be compiled with [pkg2appimage](https://github.com/AppImage/pkg2appimage) and [appimagetool](https://github.com/AppImage/AppImageKit) (see Anydesk, qBittorrent, Dropbox, all the games from the "KDE Games" suite...);
 - from unofficial repositories of developers external to the project concerned (most of the time they are programs in AppImage format), but only if an official release is not available (see the various WINE, Zoom, VLC, GIMP...).
 
-"AM" can even create Firefox profiles to run as a web app (as an alternative to the countless Electron-based apps/AppImages)!
+"AM" can even create Firefox profiles to run as webapps (as an alternative to the countless Electron-based apps/AppImages)!
 
 You can consult basic information, links to sites and sources used through the related `am -a $PROGRAM` command or by clicking [here](https://github.com/ivan-hc/AM-application-manager/tree/main/programs/.about).
 
