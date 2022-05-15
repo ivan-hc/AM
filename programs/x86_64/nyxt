@@ -1,0 +1,101 @@
+#!/bin/sh
+
+APP=nyxt
+REPO="atlas-engineer/nyxt"
+ICONURL="https://raw.githubusercontent.com/atlas-engineer/nyxt/master/assets/nyxt_512x512.png"
+FILENAMEEXTENTION="/.*/.*.tar.xz"
+URL=https://github.com/$REPO/releases/latest
+
+# CREATE THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP
+
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+
+# DOWNLOAD THE ARCHIVE
+mkdir tmp
+cd ./tmp
+
+wget https://github.com/$(wget https://github.com/$REPO/releases/latest -O - | grep -w -v source | grep -w -v i686 | grep -w -v arm64 | grep -w -v armv7l | egrep ''$FILENAMEEXTENTION'' -o);
+version=$(wget -q https://api.github.com/repos/$REPO/releases/latest -O - | grep -E tag_name | awk -F '[""]' '{print $4}')
+echo "$version" >> /opt/$APP/version
+if ls . | grep .tar.xz; then
+	tar fx *.tar.xz
+	dir=$(ls . | grep -w -v *.tar.*)
+	cd ..
+	mv ./tmp/$(echo $dir)/* ./
+	mv ./tmp/usr ./
+	rm -R -f ./tmp
+fi
+
+#-------------------------------------
+
+# LINK
+ln -s /opt/$APP/usr/local/bin/$APP /usr/local/bin/$APP
+
+# SCRIPT TO UPDATE THE PROGRAM
+cat >> /opt/$APP/AM-updater << 'EOF'
+#!/usr/bin/env bash
+APP=nyxt
+REPO="atlas-engineer/nyxt"
+FILENAMEEXTENTION="/.*/.*.tar.xz"
+version0=$(cat /opt/$APP/version)
+url=https://github.com/$REPO/releases/latest
+if curl -L -s $url | grep -ioF "$version0"; then
+  echo "Update not needed!"
+else
+  notify-send "A new version of $APP is available, please wait"
+  mkdir /opt/$APP/tmp
+  cd /opt/$APP/tmp
+  wget https://github.com/$(wget https://github.com/$REPO/releases/latest -O - | grep -w -v source | grep -w -v i686 | grep -w -v arm64 | grep -w -v armv7l | egrep ''$FILENAMEEXTENTION'' -o);
+  version=$(wget -q https://api.github.com/repos/$REPO/releases/latest -O - | grep -E tag_name | awk -F '[""]' '{print $4}')
+  if ls . | grep .tar.xz; then
+	tar fx *.tar.xz
+	dir=$(ls . | grep -w -v *.tar.*)
+	cd ..
+  	if test -f ./tmp/*.tar.xz; then rm ./version
+  	fi
+  	echo $version >> ./version
+	mv --backup=t ./tmp/$(echo $dir)/* ./
+	mv ./tmp/usr ./
+	rm -R -f ./tmp
+  fi
+fi
+EOF
+chmod a+x /opt/$APP/AM-updater
+
+# LAUNCHER
+rm /usr/share/applications/AM-$APP.desktop
+echo "
+[Desktop Entry]
+Name=Nyxt
+Comment=Be Productive
+GenericName=Web Browser
+Keywords=Internet;WWW;Browser;Web;Explorer
+Exec=nyxt %u
+Terminal=false
+X-MultipleArgs=false
+Type=Application
+Icon=/opt/$APP/icons/$APP
+Categories=GTK;Network;WebBrowser;
+MimeType=text/html;text/xml;application/xhtml+xml;application/xml;application/rss+xml;application/rdf+xml;image/gif;image/jpeg;image/png;x-scheme-handler/http;x-scheme-handler/https;x-scheme-handler/ftp;x-scheme-handler/chrome;video/webm;application/x-xpinstall;
+StartupNotify=true
+StartupWMClass=nyxt" >> /usr/share/applications/AM-$APP.desktop
+
+# ICON
+mkdir /opt/$APP/icons
+wget $ICONURL -O /opt/$APP/icons/$APP
+
+# CHANGE THE PERMISSIONS
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/$APP
+
+# MESSAGE
+echo "
+
+ Nyxt is provided by https://nyxt.atlas.engineer/
+
+"
