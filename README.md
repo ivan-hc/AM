@@ -15,7 +15,7 @@ For a version of "AM" that works locally and installs/removes the same programs 
 - [What programs can be installed](#what-programs-can-be-installed)
 - [How to update all programs, for real](#how-to-update-all-programs-for-real)
 - [Repository and Multiarchitecture](#repository-and-multiarchitecture)
-- [Comparison with other AppImage managers](#comparison-with-other-package-managers)
+- [Comparison with other AppImage managers](#comparison-with-other-appimage-managers)
 
 [Installation](#installation)
 
