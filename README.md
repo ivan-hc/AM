@@ -15,7 +15,7 @@ For a version of "AM" that works locally and installs/removes the same programs 
 - [What programs can be installed](#what-programs-can-be-installed)
 - [How to update all programs, for real](#how-to-update-all-programs-for-real)
 - [Repository and Multiarchitecture](#repository-and-multiarchitecture)
-- [Comparison with other package managers](#comparison-with-other-package-managers)
+- [Comparison with other AppImage managers](#comparison-with-other-package-managers)
 
 [Installation](#installation)
 
@@ -105,22 +105,8 @@ Click on the link of your architecture to see the list of all the apps available
 If you are interested, you can deliberately join this project.
 
 -----------------------------------------------------------------------------
-# Comparison with other package managers
-"AM" is not a project that wants to compete with the basic package managers of GNU/Linux distributions, being many managed programs come from different distributions (including Debian, Arch Linux and Slackware), but wants to favor the promotion of standalone programs and lighten the load of the developers of the distributions, separating the programs of the base system from those of the individual developers, in order to increase the general stability of the system and fill the shortcomings of one or of the other distribution:
+# Comparison with other AppImage managers
 
-### 1) "AM" versus APT/DNF/PacMan/any AUR helper
-- Any traditional package manager follows precise patterns in integrating software and sharing libraries among the various applications in the system, and this last point can create conflicts that lead to the malfunction of one program compared to another. Furthermore, the programs differ in version according to the kind of software update model between the various distributions, the rolling-releases distributions (for example Arch Linux and Slackware) tend to always have the latest version while the fixed-release distributions (for example Debian Stable) often get older program versions.
-- "AM" tends to get always the last version of each program from the main developer's source, and being them only standalone programs, they will be stored in just one dedicated folder, each script just need to download the standalone program into a dedicated `/opt/$PROGRAM` directory, creates the launcher in `/usr/share/applications` and a link into a `$PATH` (ie `/usr/bin`, `/usr/local/bin` or `/usr/games`). In case no alternative sources are available, "AM" can compile and create AppImages using pkg2appimage and appimagetool, and these can be distributed on all other GNU/Linux distributions.
-
-### 2) "AM" versus Flatpak
-- Flatpak is one of the most popular projects for redistributing standalone programs, and many developers prefer it. However the disadvantage concerns the use of several hundreds of megabytes of libraries where required which will be re-shared with any other installed applications. What if you just want to install one application? For example, installing GIMP (300MB) requires adding a huge set of GTK libraries (800MB), while installing any QT-based application requires a set of QT libraries (700MB) which will be then shared again. In practice it is a bit like installing a virtual machine in VirtualBox in order to take advantage of a specific version of a program, and if on the one hand the application is free to work (almost) perfectly, on the other the physical memory consumption is useless and shameful;
-- "AM" only manages standalone programs (which rarely require the installation of additional libraries on the host), ie bundle programs or AppImages, and the latter, being a compressed format, saves disk space, making the installation really complete and... flat (sorry for the irony, but I could not resist).
-
-### 3) "AM" versus Snap
-- Snappy is a package manager from Canonical Ltd and the software package format is SNAP. Snappy uses a system daemon called "snapd" to work, and this slows down the system, ie the more are the installed programs, the lower is the boot speed (and the less is the RAM free), and too many times the programs are slow if compared with the same version but from the system's repositories, from Flatpak or in AppImage format;
-- "AM" has no daemons and no hidden services are needed, each program is completely standalone and will run only when you want to use it.
-
-### 4) "AM" versus any other AppImage Manager
 - There are many other AppImage managers around, and almost all of them support their database on appimagehub or other official AppImage resources, but the big problem is at the base of the compilation of these packages, being very often without an integrated update system. Furthermore, AppImage is a format that many developers are abandoning in favor of Flatpak, also because there were no centralized repositories or software that managed its updates in a universal way... at least until the invention of the first draft of [AppMan](https://github.com/ivan-hc/AppMan), and therefore of its successor, "AM";
 - With "AM" each installed program has its own script (AM-updater) that compares the installed version with the one available in the sources or uses official tools to update the AppImages ([see above](#how-to-update-all-programs-for-real)), there is support for multiple architectures (including i686 and aarch64) and anyone can create a script to install that particular program (if available for its architecture).
  
