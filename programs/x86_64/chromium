@@ -1,46 +1,148 @@
 #!/bin/sh
 
 APP=chromium
+REPO="ivan-hc/Chromium-Web-Browser-appimage"
 
+CATEGORIES="Game"
+ICONURL="https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/org.chromium.Chromium.png"
+
+USER=$(echo $REPO | sed 's:/[^/]*$::')
+REPO2=$(echo $REPO | sed 's:.*/::')
+FILENAMEEXTENTION="/.*/.*x86_64.AppImage"
+URL=https://github.com/$REPO/releases/latest
+COMMENT=$(curl https://api.github.com/repos/$REPO 2>/dev/null | grep description | sed 's/"description": "//' | sed 's/",//')
+APPNAME=$(echo $REPO2 | sed 's/-/ /g' | sed 's/_/ /g')
+
+# CREATE THE FOLDER
 mkdir /opt/$APP
 cd /opt/$APP
 
-echo '#!/bin/sh
-rm -R -f /opt/'$APP' /usr/share/pixmaps/'$APP'.png /usr/share/applications/AM-'$APP'.desktop /usr/local/bin/'$APP'' >> /opt/$APP/remove
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/games/$APP" >> /opt/$APP/remove
 chmod a+x /opt/$APP/remove
 
+# DOWNLOAD THE ARCHIVE
 mkdir tmp
 cd ./tmp
 
-version=$(curl -L -s https://chromedriver.storage.googleapis.com/LATEST_RELEASE | grep -Eo "[0-9]+([.][0-9]+)?+[+-]?" | rev | cut -c 4- | rev)
-wget -r -erobots=off -l1 -np -A $APP-$version*-x86_64-1alien.txz -nd http://www.slackware.com/~alien/slackbuilds/$APP/pkg64/current/;
-tar xf ./*.txz
-cd ..
-mv ./tmp/usr/lib64/$APP/* ./
+version=$(curl -s https://api.github.com/repos/ivan-hc/Chromium-Web-Browser-appimage/releases/latest | grep browser_download_url | cut -d '"' -f 4 | head -1)
+echo "$version" >> /opt/$APP/version
+wget $version
+if ls . | grep mage; then
+	cd ..
+	mv ./tmp/*mage ./$APP
+	chmod a+x /opt/$APP/$APP
+	rmdir ./tmp
+elif ls . | grep .deb; then
+	ar x ./*.deb
+	tar fx ./data.tar.xz
+	cd ..
+	mv ./tmp//* ./
+	rm -R -f ./tmp
+elif ls . | grep .tar.bz2; then
+	tar fx *.tar.bz2
+	dir=$(ls . | grep -w -v *.tar.*)
+	cd ..
+	mv ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+elif ls . | grep .tar.gz; then
+	tar fx *.tar.gz
+	dir=$(ls . | grep -w -v *.tar.*)
+	cd ..
+	mv ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+elif ls . | grep .tar.xz; then
+	tar fx *.tar.xz
+	dir=$(ls . | grep -w -v *.tar.*)
+	cd ..
+	mv ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+elif ls ./tmp/ | grep .zip; then
+	unzip *.zip
+	dir=$(ls . | grep -w -v *.zip)
+	cd ..
+	mv ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+fi
 
-cp ./tmp/usr/share/icons/hicolor/256x256/apps/*png /usr/share/pixmaps/$APP.png
-rm -R -f ./tmp
+#-------------------------------------
 
 # LINK
-ln -s /opt/$APP/$APP /usr/local/bin/$APP
+ln -s /opt/$APP/$APP /usr/local/games/$APP
 
 # SCRIPT TO UPDATE THE PROGRAM
-echo '#!/bin/sh
-version0=$(exec /opt/'$APP'/'$APP' --version | grep -Eo "[+-]?[0-9]+([.][0-9]+)?+[+-]?[0-9]+([.][0-9]+)?")
-url="http://www.slackware.com/~alien/slackbuilds/'$APP'/pkg64/current/'$APP'-$version0-x86_64-1alien.txz"
-if curl --output /dev/null --silent --head --fail "$url"; then
-  echo "Update not needed, exit!"
+cat >> /opt/$APP/AM-updater << 'EOF'
+#!/usr/bin/env bash
+APP=chromium
+REPO="ivan-hc/Chromium-Web-Browser-appimage"
+FILENAMEEXTENTION="/.*/.*x86_64.AppImage"
+version0=$(cat /opt/$APP/version)
+version=$(curl -s https://api.github.com/repos/ivan-hc/Chromium-Web-Browser-appimage/releases/latest | grep browser_download_url | cut -d '"' -f 4 | head -1)
+if [ $version = $version0 ]; then
+  echo "Update not needed!"
 else
-  notify-send "A new version of Chromium is available, please wait!"
-  mkdir /opt/'$APP'/tmp
-  cd /opt/'$APP'/tmp
-  version=$(curl -L -s https://chromedriver.storage.googleapis.com/LATEST_RELEASE | grep -Eo "[0-9]+([.][0-9]+)?+[+-]?" | rev | cut -c 4- | rev)
-  wget -r -erobots=off -l1 -np -A '$APP'-$version*-x86_64-1alien.txz -nd http://www.slackware.com/~alien/slackbuilds/'$APP'/pkg64/current/
-  tar xf ./*.txz
-  cd ..
-  mv --backup=t ./tmp/usr/lib64/'$APP'/* ./
-  rm -R -f ./tmp ./*~
-fi' >> /opt/$APP/AM-updater
+  notify-send "A new version of $APP is available, please wait"
+  mkdir /opt/$APP/tmp
+  cd /opt/$APP/tmp
+  version=$(curl -s https://api.github.com/repos/ivan-hc/Chromium-Web-Browser-appimage/releases/latest | grep browser_download_url | cut -d '"' -f 4 | head -1)
+  wget $version
+  if ls . | grep mage; then
+	cd ..
+  	if test -f ./tmp/*mage; then rm ./version
+  	fi
+  	echo $version >> ./version
+  	mv --backup=t ./tmp/*mage ./$APP
+  	chmod a+x /opt/$APP/$APP
+  	rm -R -f ./tmp ./*~
+  elif ls . | grep .deb; then
+	ar x ./*.deb
+	tar fx ./data.tar.xz
+	cd ..
+  	if test -f ./tmp/*.deb; then rm ./version
+  	fi
+  	echo $version >> ./version
+  	mv --backup=t ./tmp//* ./
+  	rm -R -f ./tmp ./*~
+  elif ls . | grep .tar.bz2; then
+	tar fx *.tar.bz2
+	dir=$(ls . | grep -w -v *.tar.*)
+	cd ..
+  	if test -f ./tmp/*.tar.bz2; then rm ./version
+  	fi
+  	echo $version >> ./version
+	mv --backup=t ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+  elif ls . | grep .tar.gz; then
+	tar fx *.tar.gz
+	dir=$(ls . | grep -w -v *.tar.*)
+	cd ..
+  	if test -f ./tmp/*.tar.gz; then rm ./version
+  	fi
+  	echo $version >> ./version
+	mv --backup=t ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+  elif ls . | grep .tar.xz; then
+	tar fx *.tar.xz
+	dir=$(ls . | grep -w -v *.tar.*)
+	cd ..
+  	if test -f ./tmp/*.tar.xz; then rm ./version
+  	fi
+  	echo $version >> ./version
+	mv --backup=t ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+  elif ls ./tmp/ | grep .zip; then
+	unzip *.zip
+	dir=$(ls . | grep -w -v *.zip)
+	cd ..
+  	if test -f ./tmp/*.zip; then rm ./version
+  	fi
+  	echo $version >> ./version
+	mv --backup=t ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+  fi
+fi
+EOF
 chmod a+x /opt/$APP/AM-updater
 
 # LAUNCHER
@@ -154,12 +256,11 @@ Comment[zh_TW]=連線到網際網路
 Exec=chromium %U
 StartupNotify=true
 Terminal=false
-Icon=chromium
+Icon=/opt/$APP/icons/$APP
 Type=Application
 Categories=Network;WebBrowser;
 MimeType=application/pdf;application/rdf+xml;application/rss+xml;application/xhtml+xml;application/xhtml_xml;application/xml;image/gif;image/jpeg;image/png;image/webp;text/html;text/xml;x-scheme-handler/http;x-scheme-handler/https;
 Actions=new-window;new-private-window;
-
 [Desktop Action new-window]
 Name=New Window
 Name[am]=አዲስ መስኮት
@@ -213,7 +314,6 @@ Name[vi]=Cửa sổ Mới
 Name[zh_CN]=新建窗口
 Name[zh_TW]=開新視窗
 Exec=chromium
-
 [Desktop Action new-private-window]
 Name=New Incognito Window
 Name[ar]=نافذة جديدة للتصفح المتخفي
@@ -267,14 +367,17 @@ Name[zh_TW]=新增無痕式視窗
 Exec=chromium --incognito
 " >> /usr/share/applications/AM-$APP.desktop;
 
+# ICON
+mkdir /opt/$APP/icons
+wget $ICONURL -O /opt/$APP/icons/$APP
+
+# CHANGE THE PERMISSIONS
 currentuser=$(who | awk '{print $1}')
 chown -R $currentuser /opt/$APP
 
-echo ""
-echo " 
+# MESSAGE
+echo "
 
-	    Chromium Browser has been installed!
-	
-	This version come from http://www.slackware.com
+ $APPNAME is provided by https://github.com/$USER
 
 "
