@@ -21,88 +21,19 @@ echo '#!/bin/sh' >> /opt/$APP/remove
 echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
 chmod a+x /opt/$APP/remove
 
-# CREATE THE APPRUN
-cat >> AppRun << 'EOF'
-#!/bin/sh
-HERE="$(dirname "$(readlink -f "${0}")")"
-VER=$(ls "${HERE}/usr/share/emacs/" | head -n 1)
-export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/:${HERE}/usr/lib/x86_64-linux-gnu/:$HERE/lib/x86_64-linux-gnu/:$HERE/usr/lib/:${HERE}/lib/:$LD_LIBRARY_PATH
-export PATH=${HERE}/usr/sbin:${HERE}/usr/bin:$PATH
-export EMACSPATH=${HERE}/usr/share/emacs/$VER/
-export EMACSDATA=$EMACSPATH/etc
-export EMACSDOC=$EMACSPATH/etc
-export EMACSLOADPATH=$EMACSPATH/site-lisp:$EMACSPATH/lisp:$EMACSPATH/lisp/emacs-lisp
-export INFOPATH=./local/share/info
-"${HERE}"/usr/bin/emacs "$@"
-EOF
-chmod a+x ./AppRun
-
 # DOWNLOAD THE APPIMAGE
 mkdir tmp
 cd ./tmp
 
 download=$(wget -q https://api.github.com/repos/$REPO/releases/latest -O - | grep -E browser_download_url | awk -F '[""]' '{print $4}' | egrep ''$FILENAMEEXTENTION'' -o | tail -1);
-version=$(ls .)
-echo "$version" >> /opt/$APP/version
+wget https:$download
 chmod a+x ./*mage
-./*mage --appimage-extract
-rm -R ./*mage
-cd ./squashfs-root
-mv ./AppRun ./script.old
-cp -r /opt/$APP/AppRun /opt/$APP/tmp/squashfs-root/AppRun
-cd ..
-mv ./squashfs-root ./$APP.AppDir
-wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-$(uname -m).AppImage -O appimagetool
-chmod a+x ./appimagetool
-ARCH=x86_64 ./appimagetool -n ./$APP.AppDir
-
 cd ..
 mv ./tmp/*mage ./$APP
-chmod a+x /opt/$APP/$APP
 rm -R -f ./tmp
 
 # LINK
 ln -s /opt/$APP/$APP /usr/local/bin/$APP
-
-# SCRIPT TO UPDATE THE PROGRAM
-cat >> /opt/$APP/AM-updater << 'EOF'
-#!/usr/bin/env bash
-APP=emacs
-APPNAME=Emacs
-REPO=$(curl -L -s https://raw.githubusercontent.com/AppImage/appimage.github.io/master/apps/$APPNAME.md | grep -A1 "type: GitHub" | sed -n 2p | cut -c 10-)
-FILENAMEEXTENTION="/.*/.*x86_64.AppImage"
-version0=$(cat /opt/$APP/version)
-newversion=$(wget -q https://github.com/probonopd/Emacs.AppImage/releases/latest -O - | grep -Eo [a-zA-Z0-9./?=_%:-]*x86_64.AppImage | tail -1)
-if [ $version0 = $newversion ]; then
-  echo "Update not needed!"
-else
-  notify-send "A new version of $APP is available, please wait"
-  mkdir /opt/$APP/tmp
-  cd /opt/$APP/tmp
-  download=$(wget -q https://api.github.com/repos/$REPO/releases/latest -O - | grep -E browser_download_url | awk -F '[""]' '{print $4}' | egrep ''$FILENAMEEXTENTION'' -o | tail -1);
-  version=$(ls .)
-  echo "$version" >> /opt/$APP/version
-  chmod a+x ./*mage
-  ./*mage --appimage-extract
-  rm -R ./*mage
-  cd ./squashfs-root
-  mv ./AppRun ./script.old
-  cp -r /opt/$APP/AppRun /opt/$APP/tmp/squashfs-root/AppRun
-  cd ..
-  mv ./squashfs-root ./$APP.AppDir
-  wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-$(uname -m).AppImage -O appimagetool
-  ARCH=x86_64 ./appimagetool -n ./$APP.AppDir
-  chmod a+x ./appimagetool
-  cd ..
-  if test -f ./tmp/*mage; then rm ./version
-  fi
-  echo $version >> ./version
-  mv --backup=t ./tmp/*mage ./$APP
-  chmod a+x /opt/$APP/$APP
-  rm -R -f ./tmp ./*~
-fi
-EOF
-chmod a+x /opt/$APP/AM-updater
 
 # LAUNCHER
 rm /usr/share/applications/AM-$APP.desktop
