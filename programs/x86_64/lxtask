@@ -1,124 +1,150 @@
 #!/bin/sh
 
 APP=lxtask
- 
-# CREATING THE FOLDER
+REPO="ivan-hc/Database-of-pkg2appimaged-packages"
+
+CATEGORIES="Utility"
+ICONURL="https://upload.wikimedia.org/wikipedia/commons/6/64/GNOME_System_Monitor_icon_2019.svg"
+
+USER=$(echo $REPO | sed 's:/[^/]*$::')
+REPO2=$(echo $REPO | sed 's:.*/::')
+FILENAMEEXTENTION="/.*/.*.AppImage"
+url=https://github.com/$REPO/releases/download/$APP
+COMMENT=$(curl https://api.github.com/repos/$REPO 2>/dev/null | grep description | sed 's/"description": "//' | sed 's/",//')
+APPNAME=$(echo $REPO2 | sed 's/-/ /g' | sed 's/_/ /g')
+
+# CREATE THE FOLDER
 mkdir /opt/$APP
-cd /opt/$APP;
+cd /opt/$APP
 
 # ADD THE REMOVER
 echo '#!/bin/sh' >> /opt/$APP/remove
 echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
 chmod a+x /opt/$APP/remove
-APP=lxtask
-mkdir tmp;
-cd tmp;
 
-# DOWNLOADING THE DEPENDENCIES
-wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-$(uname -m).AppImage -O appimagetool
-wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/tools/pkg2appimage # 64 BIT ONLY (comment to disable)
-# wget https://github.com/ivan-hc/pkg2appimage-32bit/releases/download/continuous/pkg2appimage-i386.AppImage -O pkg2appimage # 32 BIT ONLY (uncomment to enable)
-chmod a+x ./appimagetool ./pkg2appimage
+# DOWNLOAD THE ARCHIVE
+mkdir tmp
+cd ./tmp
 
-# CREATING THE APPIMAGE: APPDIR FROM A RECIPE...
-echo "app: lxtask
-binpatch: true
-
-ingredients:
-  dist: oldstable
-  sources:
-    - deb http://deb.debian.org/debian/ oldstable main contrib non-free
-    - deb http://deb.debian.org/debian-security/ oldstable-security main contrib non-free
-    - deb http://deb.debian.org/debian oldstable-updates main contrib non-free
-    - deb http://deb.debian.org/debian oldstable-backports main contrib non-free
-  packages:
-    - lxtask" >> recipe.yml;
-
-cp /opt/$APP/tmp/recipe.yml /opt/$APP/recipe.yml
-
-./pkg2appimage ./recipe.yml;
-
-# ...DOWNLOADING LIBUNIONPRELOAD...
-wget https://github.com/project-portable/libunionpreload/releases/download/amd64/libunionpreload.so
-chmod a+x libunionpreload.so
-mv ./libunionpreload.so ./$APP/$APP.AppDir/
-
-# ...REPLACING THE EXISTING APPRUN WITH A CUSTOM ONE...
-rm -R -f ./$APP/$APP.AppDir/AppRun
-cat > AppRun << 'EOF'
-#!/bin/sh
-HERE="$(dirname "$(readlink -f "${0}")")"
-export UNION_PRELOAD="${HERE}"
-export LD_PRELOAD="${HERE}/libunionpreload.so"
-export PATH="${HERE}"/usr/bin/:"${HERE}"/usr/sbin/:"${HERE}"/usr/games/:"${HERE}"/bin/:"${HERE}"/sbin/:"${PATH}"
-export LD_LIBRARY_PATH=/usr/lib/i386-linux-gnu/:/usr/lib/x86_64-linux-gnu/:"${HERE}"/usr/lib/:"${HERE}"/usr/lib/i386-linux-gnu/:"${HERE}"/usr/lib/x86_64-linux-gnu/:"${HERE}"/usr/lib32/:"${HERE}"/usr/lib64/:"${HERE}"/lib/:"${HERE}"/lib/i386-linux-gnu/:"${HERE}"/lib/x86_64-linux-gnu/:"${HERE}"/lib32/:"${HERE}"/lib64/:"${LD_LIBRARY_PATH}"
-export PYTHONPATH="${HERE}"/usr/share/pyshared/:"${PYTHONPATH}"
-export PYTHONHOME="${HERE}"/usr/
-export XDG_DATA_DIRS="${HERE}"/usr/share/:"${XDG_DATA_DIRS}"
-export PERLLIB="${HERE}"/usr/share/perl5/:"${HERE}"/usr/lib/perl5/:"${PERLLIB}"
-export GSETTINGS_SCHEMA_DIR="${HERE}"/usr/share/glib-2.0/schemas/:"${GSETTINGS_SCHEMA_DIR}"
-export QT_PLUGIN_PATH="${HERE}"/usr/lib/qt4/plugins/:"${HERE}"/usr/lib/i386-linux-gnu/qt4/plugins/:"${HERE}"/usr/lib/x86_64-linux-gnu/qt4/plugins/:"${HERE}"/usr/lib32/qt4/plugins/:"${HERE}"/usr/lib64/qt4/plugins/:"${HERE}"/usr/lib/qt5/plugins/:"${HERE}"/usr/lib/i386-linux-gnu/qt5/plugins/:"${HERE}"/usr/lib/x86_64-linux-gnu/qt5/plugins/:"${HERE}"/usr/lib32/qt5/plugins/:"${HERE}"/usr/lib64/qt5/plugins/:"${QT_PLUGIN_PATH}"
-EXEC=$(grep -e '^Exec=.*' "${HERE}"/*.desktop | head -n 1 | cut -d "=" -f 2- | sed -e 's|%.||g')
-exec ${EXEC} "$@"
-EOF
-chmod a+x AppRun
-cp ./AppRun /opt/$APP/
-mv ./AppRun ./$APP/$APP.AppDir
-
-wget https://upload.wikimedia.org/wikipedia/commons/6/64/GNOME_System_Monitor_icon_2019.svg -O ./$APP/$APP.AppDir/utilities-system-monitor.svg
-
-# ...EXPORT THE APPDIR TO AN APPIMAGE!
-ARCH=x86_64 ./appimagetool -n ./$APP/$APP.AppDir;
-underscore=_
-mkdir version
-mv ./$APP/$APP$underscore*.deb ./version/
-version=$(ls /opt/$APP/tmp/version)
+download=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep $APP | grep -E browser_download_url | awk -F '[""]' '{print $4}' | grep -w -v i386 | grep -w -v i686 | grep -w -v arm64 | grep -w -v armv7l | egrep ''$FILENAMEEXTENTION'' -o | head -1);
+wget https:$download
+version=$(ls .)
 echo "$version" >> /opt/$APP/version
+if ls . | grep mage; then
+	cd ..
+	mv ./tmp/*mage ./$APP
+	chmod a+x /opt/$APP/$APP
+	rmdir ./tmp
+elif ls . | grep .deb; then
+	ar x ./*.deb
+	tar fx ./data.tar.xz
+	cd ..
+	mv ./tmp//* ./
+	rm -R -f ./tmp
+elif ls . | grep .tar.bz2; then
+	tar fx *.tar.bz2
+	dir=$(ls . | grep -w -v *.tar.*)
+	cd ..
+	mv ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+elif ls . | grep .tar.gz; then
+	tar fx *.tar.gz
+	dir=$(ls . | grep -w -v *.tar.*)
+	cd ..
+	mv ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+elif ls . | grep .tar.xz; then
+	tar fx *.tar.xz
+	dir=$(ls . | grep -w -v *.tar.*)
+	cd ..
+	mv ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+elif ls ./tmp/ | grep .zip; then
+	unzip *.zip
+	dir=$(ls . | grep -w -v *.zip)
+	cd ..
+	mv ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+fi
 
-cd ..;
-mv ./tmp/*.AppImage ./$APP;
-chmod a+x ./$APP
-
-rm -R -f ./tmp
+#-------------------------------------
 
 # LINK
 ln -s /opt/$APP/$APP /usr/local/bin/$APP
 
 # SCRIPT TO UPDATE THE PROGRAM
-initial=$(echo $APP | head -c 1)
-echo '#!/bin/sh
-version0=$(cat /opt/'$APP'/version)
-url="http://http.us.debian.org/debian/pool/main/'$initial'/'$APP'/$version0"
-if curl --output /dev/null --silent --head --fail "$url"; then
-  echo "Update not needed, exit!"
+cat >> /opt/$APP/AM-updater << 'EOF'
+#!/usr/bin/env bash
+APP=lxtask
+REPO="ivan-hc/Database-of-pkg2appimaged-packages"
+FILENAMEEXTENTION="/.*/.*.AppImage"
+version0=$(cat /opt/$APP/version)
+url=https://github.com/$REPO/releases/download/$APP
+if wget --spider $url/$version0 2> /dev/null; then
+  echo "Update not needed!"
 else
-  notify-send "A new version of '$APP' is available, please wait!"
-  mkdir /opt/'$APP'/tmp
-  cd /opt/'$APP'/tmp
-  wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool
-  wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/tools/pkg2appimage # 64 BIT ONLY (comment to disable)
-# wget https://github.com/ivan-hc/pkg2appimage-32bit/releases/download/continuous/pkg2appimage-i386.AppImage -O pkg2appimage # 32 BIT ONLY (uncomment to enable)
-  chmod a+x ./appimagetool ./pkg2appimage
-  cp /opt/'$APP'/recipe.yml /opt/'$APP'/tmp/recipe.yml
-  ./pkg2appimage ./recipe.yml;
-  wget https://github.com/project-portable/libunionpreload/releases/download/amd64/libunionpreload.so
-  chmod a+x libunionpreload.so
-  mv ./libunionpreload.so ./'$APP'/'$APP'.AppDir/
-  rm -R -f ./'$APP'/'$APP'.AppDir/AppRun
-  cp /opt/'$APP'/AppRun ./'$APP'/'$APP'.AppDir/
-  wget https://upload.wikimedia.org/wikipedia/commons/6/64/GNOME_System_Monitor_icon_2019.svg -O ./$APP/$APP.AppDir/utilities-system-monitor.svg
-  ARCH=x86_64 ./appimagetool -n ./'$APP'/'$APP'.AppDir
-  mkdir version
-  mv ./'$APP'/'$APP''$underscore'*.deb ./version/
-  cd ..
-  version=$(ls /opt/'$APP'/tmp/version)
-  if test -f ./tmp/version/$version; then rm -R -f ./version
+  notify-send "A new version of $APP is available, please wait"
+  mkdir /opt/$APP/tmp
+  cd /opt/$APP/tmp
+  download=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep $APP | grep -E browser_download_url | awk -F '[""]' '{print $4}' | grep -w -v i386 | grep -w -v i686 | grep -w -v arm64 | grep -w -v armv7l | egrep ''$FILENAMEEXTENTION'' -o | head -1);
+  wget https:$download
+  version=$(ls .)
+  if ls . | grep mage; then
+	cd ..
+  	if test -f ./tmp/*mage; then rm ./version
+  	fi
+  	echo $version >> ./version
+  	mv --backup=t ./tmp/*mage ./$APP
+  	chmod a+x /opt/$APP/$APP
+  	rm -R -f ./tmp ./*~
+  elif ls . | grep .deb; then
+	ar x ./*.deb
+	tar fx ./data.tar.xz
+	cd ..
+  	if test -f ./tmp/*.deb; then rm ./version
+  	fi
+  	echo $version >> ./version
+  	mv --backup=t ./tmp//* ./
+  	rm -R -f ./tmp ./*~
+  elif ls . | grep .tar.bz2; then
+	tar fx *.tar.bz2
+	dir=$(ls . | grep -w -v *.tar.*)
+	cd ..
+  	if test -f ./tmp/*.tar.bz2; then rm ./version
+  	fi
+  	echo $version >> ./version
+	mv --backup=t ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+  elif ls . | grep .tar.gz; then
+	tar fx *.tar.gz
+	dir=$(ls . | grep -w -v *.tar.*)
+	cd ..
+  	if test -f ./tmp/*.tar.gz; then rm ./version
+  	fi
+  	echo $version >> ./version
+	mv --backup=t ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+  elif ls . | grep .tar.xz; then
+	tar fx *.tar.xz
+	dir=$(ls . | grep -w -v *.tar.*)
+	cd ..
+  	if test -f ./tmp/*.tar.xz; then rm ./version
+  	fi
+  	echo $version >> ./version
+	mv --backup=t ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+  elif ls ./tmp/ | grep .zip; then
+	unzip *.zip
+	dir=$(ls . | grep -w -v *.zip)
+	cd ..
+  	if test -f ./tmp/*.zip; then rm ./version
+  	fi
+  	echo $version >> ./version
+	mv --backup=t ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
   fi
-  echo "$version" >> /opt/'$APP'/version
-  mv ./tmp/*.AppImage ./'$APP';
-  chmod a+x ./'$APP'
-  rm -R -f ./tmp
-fi' >> /opt/$APP/AM-updater
+fi
+EOF
 chmod a+x /opt/$APP/AM-updater
 
 # LAUNCHER
@@ -322,8 +348,8 @@ Keywords[te]=పని;అంతంచేయి;అర్థంతరంగా�
 Keywords[tr]=görev;öldür;durdur;işlemci;hafıza;gözlemek;performans;
 Keywords[uk]=процес;задача;програма;вбити;зупинити;процесор;пам'ять;слідкувати;продуктивність;швидкодія;
 Keywords[zh_CN]=task;kill;suspend;processor;memory;monitoring;performance;任务;终止;杀死;挂起;进程;内存;监视;性能;
-Exec=lxtask
-Icon=/opt/$APP/utilities-system-monitor.svg
+Exec=$APP
+Icon=/opt/$APP/icons/$APP
 Terminal=false
 StartupNotify=true
 Type=Application
@@ -331,13 +357,16 @@ Categories=GTK;System;Monitor;
 " >> /usr/share/applications/AM-$APP.desktop;
 
 # ICON
-wget https://upload.wikimedia.org/wikipedia/commons/6/64/GNOME_System_Monitor_icon_2019.svg -O utilities-system-monitor.svg
+mkdir /opt/$APP/icons
+wget $ICONURL -O /opt/$APP/icons/$APP
 
+# CHANGE THE PERMISSIONS
 currentuser=$(who | awk '{print $1}')
 chown -R $currentuser /opt/$APP
 
+# MESSAGE
 echo "
 
- LXtask is provided by https://www.lxde.org
-  
-";
+ This AppImage of $APP is provided by https://github.com/$USER
+
+"
