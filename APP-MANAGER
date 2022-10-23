@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+VERSION=4.0.0
+
 for name in "ar" "cat" "chmod" "chown" "curl" "echo" "egrep" "grep" "sed" "tar" "test" "unzip" "wget" "zsync"
 do
   [[ $(which $name 2>/dev/null) ]] || { echo "" && echo -e 'ERROR: "'$name'" not found, required by some installation scripts.';deps=1; }
@@ -8,7 +10,6 @@ done
 
 URL="https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main"
 arch=$(uname -m)
-currentuser=$(who | awk '{print $1}' | head -1)
 
 rm -R -f /opt/am/options
 echo "about
@@ -198,7 +199,14 @@ case "$1" in
 	case $arg in
 	*) rm -R -f /opt/am/.cache/about; mkdir /opt/am/.cache/about;
 		cd /opt/am/.cache/about && wget -q $URL/programs/.about/$arg &&
-		cat ./$arg && echo "" && echo "-----------------------------------------------------------------------" && break
+		echo " PACKAGE: $(echo $arg | tr a-z A-Z)"
+		if test -f /opt/$arg/remove; then
+			echo " STATUS: INSTALLED, ABOUT $(du -sk /opt/$arg | awk '{print $1}' ) KB OF DISK SPACE IN USE"
+		else
+			echo " STATUS: NOT INSTALLED"
+		fi
+		cat ./$arg && echo "" &&
+		echo "-----------------------------------------------------------------------" && break
 	esac
 	else
 	echo ' "'$arg'" is not a valid argument' | tr a-z A-Z && break
@@ -287,15 +295,12 @@ case "$1" in
 	for var in $arg; do
 	if [ $arg == STOP ]; then
 		if test -f /opt/am/.cache/installed; then
+			echo "-----------------------------------------------------------------------"
 			echo ""; echo " INSTALLATION PROCESS COMPLETED!"; echo "";
 			echo " The following NEW programs have been installed: " | tr a-z A-Z; echo ""
 			echo "" >> /opt/am/.cache/installed
-			echo "" >> /opt/am/.cache/installed
 			echo "-----------------------------------------------------------------------" >> /opt/am/.cache/installed
 			cat /opt/am/.cache/installed
-			for i in "${@:2}"; do
-			am -a $i
-			done
 			exit
 		else
 			exit
@@ -311,13 +316,26 @@ case "$1" in
 		case $arg in
 		*) for var in $arg;
 			do cd /opt/am/.cache; mkdir tmp; cd tmp; wget -q $URL/programs/$arch/$arg; cd ..; mv ./tmp/$arg ./$arg; rmdir ./tmp;
-			chmod a+x /opt/am/.cache/$arg; sudo /opt/am/.cache/$arg; chown -R $currentuser /opt/am/.cache/*; echo "";
+			chmod a+x /opt/am/.cache/$arg
+			sed -i "s#wget #wget -q --show-progress #g" /opt/am/.cache/$arg
+			sed -i "s#rm #rm -f #g" /opt/am/.cache/$arg
+			sed -i "s#unzip #unzip -qq #g" /opt/am/.cache/$arg
+			echo "◆ INSTALLING $(echo $arg | tr a-z A-Z), THIS MAY TAKE SEVERAL MINUTES"
+			sudo /opt/am/.cache/$arg > /dev/null 2>1 | echo "PLEASE WAIT..."
+			if cat /opt/am/.cache/$arg | grep -q kdegames; then
+				echo "INSTALLATION COMPLETE, DOWNLOADED ABOUT $(du -sk /opt/kdegames | awk '{print $1}' ) KB OF FILES!"
+			elif cat /opt/am/.cache/$arg | grep -q kdeutils; then
+				echo "INSTALLATION COMPLETE, DOWNLOADED ABOUT $(du -sk /opt/kdeutils | awk '{print $1}' ) KB OF FILES!"
+			else
+				echo "INSTALLATION COMPLETE, DOWNLOADED ABOUT $(du -sk /opt/$arg | awk '{print $1}' ) KB OF FILES!"
+			fi			
+			echo "-----------------------------------------------------------------------"
+			sudo rm /opt/am/.cache/$arg
 			unset $LATESTDIR
 			LATESTDIR=$(cd /opt && ls -td * | head -1)
 				if test -f /opt/$LATESTDIR/remove; then
-					clear
 					echo " - $LATESTDIR" >> /opt/am/.cache/installed &&
-					echo "" && chown -R $currentuser /opt/am/.cache/about 2> /dev/null;
+					chown -R $currentuser /opt/am/.cache/about 2> /dev/null;
 				else
 					echo " INSTALLATION ABORTED!";
 				fi
@@ -422,9 +440,9 @@ case "$1" in
 	shift;;
   '-s'|'sync') rm -R -f /opt/am/$arch-apps /opt/am/list && wget -q $URL/programs/$arch-apps -P /opt/am && echo -e "$(cat /opt/am/$arch-apps | awk -v FS="(◆ | : )" '{print $2}')" >> /opt/am/list
 	cd /opt/am && cat options >> list
-	echo ""; echo ' SYNCHRONIZING "AM" VERSION '$(am -v)'...'; sleep 1; echo "";
+	echo ""; echo ' SYNCHRONIZING "AM" VERSION '$VERSION'...'; sleep 1; echo "";
   	rm -R -f /opt/am/.cache/* 1>/dev/null; cd /opt/am/.cache; wget -q $URL/APP-MANAGER && chmod a+x ./APP-MANAGER; cd ..;
-  	mv /opt/am/.cache/APP-MANAGER /opt/am; chown -R $currentuser /opt/am; echo ' THE "AM" SCRIPT IS NOW UPDATED TO THE '$(am -v)' VERSION! '; echo "";;
+  	mv /opt/am/.cache/APP-MANAGER /opt/am; chown -R $currentuser /opt/am; echo ' THE "AM" SCRIPT IS NOW UPDATED TO THE '$VERSION' VERSION! '; echo "";;
   '-t'|'template'|'convert')
 	while [ -n "$1" ]
 	do
@@ -737,6 +755,6 @@ case "$1" in
 	fi
 	done
 	shift;;
-  'version'|'-v'|'--version') echo "3.0.6";;
+  'version'|'-v'|'--version') echo "$VERSION";;
   *) exec /opt/am/APP-MANAGER ;;
 esac
