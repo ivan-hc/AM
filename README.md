@@ -45,7 +45,7 @@ The main goal of this tool is to provide the same updated applications to multip
 
 "AM" also aims to be a merger for GNU/Linux distributions, using not just AppImage as the main package format, but also other standalone programs, so without having to risk breaking anything on your system: no daemons, no shared libraries. Just your program!
  
-https://user-images.githubusercontent.com/88724353/150169396-7f215547-e7ee-4e3b-becc-848f341ba8b3.mp4
+https://user-images.githubusercontent.com/88724353/197427371-f7911876-a8f1-4f3b-a601-970d69fa3273.mp4
 
 -----------------------------------------------------------------------------
 ## Differences between "AM" and "AppMan"
