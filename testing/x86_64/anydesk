@@ -1,86 +1,178 @@
 #!/bin/sh
 
 APP=anydesk
+REPO="ivan-hc/Database-of-pkg2appimaged-packages"
 
-# CREATING THE FOLDER
+CATEGORIES="Network"
+ICONURL="https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/com.anydesk.Anydesk.png"
+
+USER=$(echo $REPO | sed 's:/[^/]*$::')
+REPO2=$(echo $REPO | sed 's:.*/::')
+FILENAMEEXTENTION="/.*/.*.AppImage"
+URL=https://github.com/$REPO/releases/latest
+COMMENT=$(curl https://api.github.com/repos/$REPO 2>/dev/null | grep description | sed 's/"description": "//' | sed 's/",//')
+APPNAME=$(echo $REPO2 | sed 's/-/ /g' | sed 's/_/ /g')
+
+# CREATE THE FOLDER
 mkdir /opt/$APP
-cd /opt/$APP;
+cd /opt/$APP
 
 # ADD THE REMOVER
 echo '#!/bin/sh' >> /opt/$APP/remove
 echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
 chmod a+x /opt/$APP/remove
 
-mkdir tmp;
-cd tmp;
+# DOWNLOAD THE ARCHIVE
+mkdir tmp
+cd ./tmp
 
-# DOWNLOADING THE DEPENDENCIES
-wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-$(uname -m).AppImage -O appimagetool
-wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/tools/pkg2appimage
-chmod a+x ./appimagetool ./pkg2appimage
+download=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep $APP | grep -E browser_download_url | awk -F '[""]' '{print $4}' | grep -w -v i386 | grep -w -v i686 | grep -w -v arm64 | grep -w -v armv7l | egrep ''$FILENAMEEXTENTION'' -o | head -1);
+wget https:$download
+version=$(ls .)
+echo "$version" >> /opt/$APP/version
+if ls . | grep mage; then
+	cd ..
+	mv ./tmp/*mage ./$APP
+	chmod a+x /opt/$APP/$APP
+	rmdir ./tmp
+elif ls . | grep .deb; then
+	ar x ./*.deb
+	tar fx ./data.tar.xz
+	cd ..
+	mv ./tmp//* ./
+	rm -R -f ./tmp
+elif ls . | grep .tar.bz2; then
+	tar fx *.tar.bz2
+	dir=$(ls . | grep -w -v *.tar.*)
+	cd ..
+	mv ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+elif ls . | grep .tar.gz; then
+	tar fx *.tar.gz
+	dir=$(ls . | grep -w -v *.tar.*)
+	cd ..
+	mv ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+elif ls . | grep .tar.xz; then
+	tar fx *.tar.xz
+	dir=$(ls . | grep -w -v *.tar.*)
+	cd ..
+	mv ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+elif ls ./tmp/ | grep .zip; then
+	unzip *.zip
+	dir=$(ls . | grep -w -v *.zip)
+	cd ..
+	mv ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+fi
 
-# CREATING THE APPIMAGE
-wget https://raw.githubusercontent.com/ivan-hc/AppMan/1.8/applications/anydesk/Anydesk.yml;
-sed -i s/bullseye/unstable/g ./Anydesk.yml
-
-./pkg2appimage ./Anydesk.yml;
-
-ARCH=x86_64 ./appimagetool -n ./AnyDesk/AnyDesk.AppDir;
-
-cd ..;
-mv ./tmp/*.AppImage ./$APP;
-chmod a+x ./$APP
-
-rm -R -f ./tmp
+#-------------------------------------
 
 # LINK
 ln -s /opt/$APP/$APP /usr/local/bin/$APP
 
 # SCRIPT TO UPDATE THE PROGRAM
-echo '#!/bin/sh
-version=$(exec /opt/'$APP'/'$APP' --version | grep -Eo "[+-]?[0-9]+([.][0-9]+)?+[+-]?[0-9]+([.][0-9]+)?")
-url="https://anydesk.com/en/downloads/linux"
-if curl --output /dev/null --silent --head --fail "$url"; then
-  echo "Update not needed, exit!"
- else
-  notify-send "A new version of '$APP' is available, please wait!"
+cat >> /opt/$APP/AM-updater << 'EOF'
+#!/usr/bin/env bash
+APP=anydesk
+REPO="ivan-hc/Database-of-pkg2appimaged-packages"
+FILENAMEEXTENTION="/.*/.*.AppImage"
+version0=$(cat /opt/$APP/version)
+url=https://github.com/$REPO/releases
+if curl -L -s $url | grep -ioF "$version0"; then
+  echo "Update not needed!"
+else
+  notify-send "A new version of $APP is available, please wait"
   mkdir /opt/$APP/tmp
   cd /opt/$APP/tmp
-  wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-$(uname -m).AppImage -O appimagetool
-  wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/tools/pkg2appimage
-  chmod a+x ./appimagetool ./pkg2appimage
-  wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/programs/.icons/anydesk/Anydesk.yml
-  sed -i s/bullseye/unstable/g ./Anydesk.yml
-  ./pkg2appimage ./Anydesk.yml
-  ARCH=x86_64 ./appimagetool -n -n ./AnyDesk/AnyDesk.AppDir
-  cd ..
-  mv ./tmp/*.AppImage ./'$APP'
-  chmod a+x ./'$APP'
-  rm -R -f ./tmp
-fi' >> /opt/$APP/AM-updater
+  download=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep $APP | grep -E browser_download_url | awk -F '[""]' '{print $4}' | grep -w -v i386 | grep -w -v i686 | grep -w -v arm64 | grep -w -v armv7l | egrep ''$FILENAMEEXTENTION'' -o | head -1);
+  wget https:$download
+  version=$(ls .)
+  if ls . | grep mage; then
+	cd ..
+  	if test -f ./tmp/*mage; then rm ./version
+  	fi
+  	echo $version >> ./version
+  	mv --backup=t ./tmp/*mage ./$APP
+  	chmod a+x /opt/$APP/$APP
+  	rm -R -f ./tmp ./*~
+  elif ls . | grep .deb; then
+	ar x ./*.deb
+	tar fx ./data.tar.xz
+	cd ..
+  	if test -f ./tmp/*.deb; then rm ./version
+  	fi
+  	echo $version >> ./version
+  	mv --backup=t ./tmp//* ./
+  	rm -R -f ./tmp ./*~
+  elif ls . | grep .tar.bz2; then
+	tar fx *.tar.bz2
+	dir=$(ls . | grep -w -v *.tar.*)
+	cd ..
+  	if test -f ./tmp/*.tar.bz2; then rm ./version
+  	fi
+  	echo $version >> ./version
+	mv --backup=t ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+  elif ls . | grep .tar.gz; then
+	tar fx *.tar.gz
+	dir=$(ls . | grep -w -v *.tar.*)
+	cd ..
+  	if test -f ./tmp/*.tar.gz; then rm ./version
+  	fi
+  	echo $version >> ./version
+	mv --backup=t ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+  elif ls . | grep .tar.xz; then
+	tar fx *.tar.xz
+	dir=$(ls . | grep -w -v *.tar.*)
+	cd ..
+  	if test -f ./tmp/*.tar.xz; then rm ./version
+  	fi
+  	echo $version >> ./version
+	mv --backup=t ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+  elif ls ./tmp/ | grep .zip; then
+	unzip *.zip
+	dir=$(ls . | grep -w -v *.zip)
+	cd ..
+  	if test -f ./tmp/*.zip; then rm ./version
+  	fi
+  	echo $version >> ./version
+	mv --backup=t ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+  fi
+fi
+EOF
 chmod a+x /opt/$APP/AM-updater
 
 # LAUNCHER
+rm /usr/share/applications/AM-$APP.desktop
 echo "[Desktop Entry]
 Type=Application
 Name=AnyDesk
 GenericName=AnyDesk
 X-GNOME-FullName=AnyDesk
-Exec=anydesk %u
-Icon=/opt/$APP/$APP.svg
+Exec=$APP
+Icon=/opt/$APP/icons/$APP
 Terminal=false
+TryExec=anydesk
 Categories=Network;GTK;
 MimeType=x-scheme-handler/anydesk;
-Name[de_DE]=AnyDesk" >> /usr/share/applications/AM-$APP.desktop;
+Name[de_DE]=AnyDesk" >> /usr/share/applications/AM-$APP.desktop
 
 # ICON
-wget wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/programs/.icons/$APP.svg;
+mkdir /opt/$APP/icons
+wget $ICONURL -O /opt/$APP/icons/$APP
 
+# CHANGE THE PERMISSIONS
 currentuser=$(who | awk '{print $1}')
 chown -R $currentuser /opt/$APP
 
+# MESSAGE
 echo "
 
- Anydesk (unofficial AppImage) is provided by https://anydesk.com
-  
-";
+ $APPNAME is provided by https://github.com/$USER
+
+"
