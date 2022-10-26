@@ -1,16 +1,17 @@
 #!/bin/sh
 
 APP=jexiftoolgui
-APPNAME=jexiftoolgui
+REPO="hvdwolf/jExifToolGUI"
 
-CATEGORIES=$(curl -L -s https://raw.githubusercontent.com/AppImage/appimage.github.io/master/apps/$APPNAME.md | grep -E -i categories | cut -c 17-)
-ICONURL="https://appimage.github.io/database/$(curl -L -s https://raw.githubusercontent.com/AppImage/appimage.github.io/master/apps/$APPNAME.md | grep -E -i icons | sed -n 2p | cut -c 5-)"
-REPO=$(curl -L -s https://raw.githubusercontent.com/AppImage/appimage.github.io/master/apps/$APPNAME.md | grep -A1 "type: GitHub" | sed -n 2p | cut -c 10-)
+CATEGORIES="Graphics"
+ICONURL="https://raw.githubusercontent.com/hvdwolf/jExifToolGUI/master/images/jexiftoolgui.png"
+
 USER=$(echo $REPO | sed 's:/[^/]*$::')
 REPO2=$(echo $REPO | sed 's:.*/::')
-FILENAMEEXTENTION="/.*/.*x86_64.AppImage"
+FILENAMEEXTENTION="/.*/.*.AppImage"
 URL=https://github.com/$REPO/releases/latest
-COMMENT=$(curl -L -s https://raw.githubusercontent.com/AppImage/appimage.github.io/master/apps/$APPNAME.md | grep "Comment:" | cut -c 14-)
+COMMENT=$(curl https://api.github.com/repos/$REPO 2>/dev/null | grep description | sed 's/"description": "//' | sed 's/",//')
+APPNAME=$(echo $REPO2 | sed 's/-/ /g' | sed 's/_/ /g')
 
 # CREATE THE FOLDER
 mkdir /opt/$APP
@@ -21,18 +22,52 @@ echo '#!/bin/sh' >> /opt/$APP/remove
 echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
 chmod a+x /opt/$APP/remove
 
-# DOWNLOAD THE APPIMAGE
+# DOWNLOAD THE ARCHIVE
 mkdir tmp
 cd ./tmp
 
+download=$(wget -q https://api.github.com/repos/$REPO/releases/latest -O - | grep -E browser_download_url | awk -F '[""]' '{print $4}' | grep -w -v i386 | grep -w -v i686 | grep -w -v arm64 | grep -w -v armv7l | egrep ''$FILENAMEEXTENTION'' -o | head -1);
+wget https:$download
 version=$(wget -q https://api.github.com/repos/$REPO/releases/latest -O - | grep -E tag_name | awk -F '[""]' '{print $4}')
-wget https://github.com/hvdwolf/jExifToolGUI/releases/download/$version/jExifToolGUI-$version-x86_64.AppImage
 echo "$version" >> /opt/$APP/version
+if ls . | grep mage; then
+	cd ..
+	mv ./tmp/*mage ./$APP
+	chmod a+x /opt/$APP/$APP
+	rmdir ./tmp
+elif ls . | grep .deb; then
+	ar x ./*.deb
+	tar fx ./data.tar.xz
+	cd ..
+	mv ./tmp//* ./
+	rm -R -f ./tmp
+elif ls . | grep .tar.bz2; then
+	tar fx *.tar.bz2
+	dir=$(ls . | grep -w -v *.tar.*)
+	cd ..
+	mv ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+elif ls . | grep .tar.gz; then
+	tar fx *.tar.gz
+	dir=$(ls . | grep -w -v *.tar.*)
+	cd ..
+	mv ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+elif ls . | grep .tar.xz; then
+	tar fx *.tar.xz
+	dir=$(ls . | grep -w -v *.tar.*)
+	cd ..
+	mv ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+elif ls ./tmp/ | grep .zip; then
+	unzip *.zip
+	dir=$(ls . | grep -w -v *.zip)
+	cd ..
+	mv ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+fi
 
-cd ..
-mv ./tmp/*mage ./$APP
-chmod a+x /opt/$APP/$APP
-rmdir ./tmp
+#-------------------------------------
 
 # LINK
 ln -s /opt/$APP/$APP /usr/local/bin/$APP
@@ -41,28 +76,75 @@ ln -s /opt/$APP/$APP /usr/local/bin/$APP
 cat >> /opt/$APP/AM-updater << 'EOF'
 #!/usr/bin/env bash
 APP=jexiftoolgui
+REPO="hvdwolf/jExifToolGUI"
+FILENAMEEXTENTION="/.*/.*.AppImage"
 version0=$(cat /opt/$APP/version)
-url=https://github.com/FUNCTION2/FUNCTION3/releases/latest
+url=https://github.com/$REPO/releases/latest
 if curl -L -s $url | grep -ioF "$version0"; then
   echo "Update not needed!"
 else
   notify-send "A new version of $APP is available, please wait"
   mkdir /opt/$APP/tmp
   cd /opt/$APP/tmp
+  download=$(wget -q https://api.github.com/repos/$REPO/releases/latest -O - | grep -E browser_download_url | awk -F '[""]' '{print $4}' | grep -w -v i386 | grep -w -v i686 | grep -w -v arm64 | grep -w -v armv7l | egrep ''$FILENAMEEXTENTION'' -o | head -1);
+  wget https:$download
   version=$(wget -q https://api.github.com/repos/$REPO/releases/latest -O - | grep -E tag_name | awk -F '[""]' '{print $4}')
-  wget https://github.com/hvdwolf/jExifToolGUI/releases/download/$version/jExifToolGUI-$version-x86_64.AppImage
-  cd ..
-  if test -f ./tmp/*mage; then rm ./version
+  if ls . | grep mage; then
+	cd ..
+  	if test -f ./tmp/*mage; then rm ./version
+  	fi
+  	echo $version >> ./version
+  	mv --backup=t ./tmp/*mage ./$APP
+  	chmod a+x /opt/$APP/$APP
+  	rm -R -f ./tmp ./*~
+  elif ls . | grep .deb; then
+	ar x ./*.deb
+	tar fx ./data.tar.xz
+	cd ..
+  	if test -f ./tmp/*.deb; then rm ./version
+  	fi
+  	echo $version >> ./version
+  	mv --backup=t ./tmp//* ./
+  	rm -R -f ./tmp ./*~
+  elif ls . | grep .tar.bz2; then
+	tar fx *.tar.bz2
+	dir=$(ls . | grep -w -v *.tar.*)
+	cd ..
+  	if test -f ./tmp/*.tar.bz2; then rm ./version
+  	fi
+  	echo $version >> ./version
+	mv --backup=t ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+  elif ls . | grep .tar.gz; then
+	tar fx *.tar.gz
+	dir=$(ls . | grep -w -v *.tar.*)
+	cd ..
+  	if test -f ./tmp/*.tar.gz; then rm ./version
+  	fi
+  	echo $version >> ./version
+	mv --backup=t ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+  elif ls . | grep .tar.xz; then
+	tar fx *.tar.xz
+	dir=$(ls . | grep -w -v *.tar.*)
+	cd ..
+  	if test -f ./tmp/*.tar.xz; then rm ./version
+  	fi
+  	echo $version >> ./version
+	mv --backup=t ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+  elif ls ./tmp/ | grep .zip; then
+	unzip *.zip
+	dir=$(ls . | grep -w -v *.zip)
+	cd ..
+  	if test -f ./tmp/*.zip; then rm ./version
+  	fi
+  	echo $version >> ./version
+	mv --backup=t ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
   fi
-  echo $version >> ./version
-  mv --backup=t ./tmp/*mage ./$APP
-  chmod a+x /opt/$APP/$APP
-  rm -R -f ./tmp ./*~
 fi
 EOF
-sed -i s/FUNCTION2/$USER/g /opt/$APP/AM-updater
-sed -i s/FUNCTION3/$REPO2/g /opt/$APP/AM-updater
-sed -i s/FUNCTION4/$FILENAMEEXTENTION/g /opt/$APP/AM-updater
 chmod a+x /opt/$APP/AM-updater
 
 # LAUNCHER
@@ -77,7 +159,7 @@ Categories=$CATEGORIES;
 Comment=$COMMENT" >> /usr/share/applications/AM-$APP.desktop
 
 # ICON
-mkdir ./icons
+mkdir /opt/$APP/icons
 wget $ICONURL -O /opt/$APP/icons/$APP
 
 # CHANGE THE PERMISSIONS
@@ -85,8 +167,8 @@ currentuser=$(who | awk '{print $1}')
 chown -R $currentuser /opt/$APP
 
 # MESSAGE
-echo '
+echo "
 
- '$APPNAME' is provided by https://github.com/'$REPO'
+ $APPNAME is provided by https://github.com/$USER
 
-'
+"
