@@ -23,11 +23,11 @@ chmod a+x ./appimagetool ./pkg2appimage
 echo "app: obs-studio
 binpatch: true
 ingredients:
-  dist: bionic
+  dist: focal
   sources:
-    - deb http://archive.ubuntu.com/ubuntu/ bionic main universe restricted multiverse
-    - deb http://archive.ubuntu.com/ubuntu bionic-security main universe restricted multiverse
-    - deb http://archive.ubuntu.com/ubuntu/ bionic-updates main universe restricted multiverse
+    - deb http://archive.ubuntu.com/ubuntu/ focal main universe restricted multiverse
+    - deb http://archive.ubuntu.com/ubuntu focal-security main universe restricted multiverse
+    - deb http://archive.ubuntu.com/ubuntu/ focal-updates main universe restricted multiverse
   ppas:
     - savoury1/multimedia
     - savoury1/build-tools
@@ -40,7 +40,15 @@ ingredients:
     - savoury1/display
   packages:
     - obs-studio
-    - v4l2loopback-dkms" >> recipe.yml;
+    - v4l2loopback-dkms
+    - ffmpeg
+    - libavutil57
+    - libavcodec59
+    - libavformat59
+    - libswscale6
+    - libavfilter8
+    - libswresample4
+    - libva2" >> recipe.yml
 
 cp /opt/$APP/tmp/recipe.yml /opt/$APP/recipe.yml
 
@@ -55,19 +63,21 @@ mv ./libunionpreload.so ./$APP/$APP.AppDir/
 rm -R -f ./$APP/$APP.AppDir/AppRun
 cat >> ./$APP/$APP.AppDir/AppRun << 'EOF'
 #!/bin/sh
-HERE="$(dirname "$(readlink -f "${0}")")"
-export UNION_PRELOAD=/:"${HERE}"
-export LD_PRELOAD="${HERE}/libunionpreload.so":/usr/lib/x86_64-linux-gnu/libpangox-1.0.so.0:/lib/x86_64-linux-gnu/libselinux.so.1:/lib/x86_64-linux-gnu/libpango-1.0.so.0:/usr/lib/x86_64-linux-gnu/libfribidi.so.0:/usr/lib/x86_64-linux-gnu/libharfbuzz.so.0
-export PATH=/usr/bin/:"${HERE}"/usr/bin/:"${HERE}"/usr/sbin/:"${HERE}"/usr/games/:"${HERE}"/bin/:"${HERE}"/opt/obs-studio/:"${HERE}"/sbin/:"${PATH}"
-export LD_LIBRARY_PATH=/usr/lib/:/usr/lib/x86_64-linux-gnu/:"${HERE}"/usr/lib/:"${HERE}"/usr/lib/obs-studio/:"${HERE}"/usr/lib64/obs-studio/:"${HERE}"/usr/lib32/obs-studio/:"${HERE}"/usr/lib/i386-linux-gnu/:"${HERE}"/usr/lib/x86_64-linux-gnu/:"${HERE}"/usr/lib32/:"${HERE}"/usr/lib64/:"${HERE}"/lib/:"${HERE}"/usr/lib/x86_64-linux-gnu/obs-scripting/:"${HERE}"/lib/x86_64-linux-gnu/:"${HERE}"/lib/udev/:"${HERE}"/usr/lib/x86_64-linux-gnu/obs-plugins/:"${LD_LIBRARY_PATH}"
-export PYTHONPATH="${HERE}"/usr/share/pyshared/:"${HERE}"/usr/lib/python*/:"${PYTHONPATH}"
-export PYTHONHOME="${HERE}"/usr/:"${HERE}"/usr/lib/python*/
-export XDG_DATA_DIRS="${HERE}"/usr/share/:"${HERE}"/usr/share/obs/:"${HERE}"/usr/share/obs/obs-studio/:"${XDG_DATA_DIRS}"
-export PERLLIB="${HERE}"/usr/share/perl5/:"${HERE}"/usr/lib/perl5/:"${PERLLIB}"
-export GSETTINGS_SCHEMA_DIR="${HERE}"/usr/share/glib-2.0/schemas/:"${GSETTINGS_SCHEMA_DIR}"
-export QT_PLUGIN_PATH="${HERE}"/usr/lib/qt4/plugins/:"${HERE}"/usr/lib//:"${HERE}"/usr/lib64//:"${HERE}"/usr/lib32//:"${HERE}"/usr/lib/i386-linux-gnu/qt4/plugins/:"${HERE}"/usr/lib/x86_64-linux-gnu/qt4/plugins/:"${HERE}"/usr/lib32/qt4/plugins/:"${HERE}"/usr/lib64/qt4/plugins/:"${HERE}"/usr/lib/qt5/plugins/:"${HERE}"/usr/lib/i386-linux-gnu/qt5/plugins/:"${HERE}"/usr/lib/x86_64-linux-gnu/qt5/plugins/:"${HERE}"/usr/lib32/qt5/plugins/:"${HERE}"/usr/lib64/qt5/plugins/:"${QT_PLUGIN_PATH}"
-EXEC=$(grep -e '^Exec=.*' "${HERE}"/*.desktop | head -n 1 | cut -d "=" -f 2- | sed -e 's|%.||g')
-exec ${EXEC} "$@"
+HERE="$(dirname "$(readlink -f $0)")"
+export UNION_PRELOAD=$HERE
+export LD_PRELOAD=$HERE/libunionpreload.so
+export PATH=$HERE/usr/bin/:$HERE/usr/sbin/:$HERE/bin/:$HERE/sbin/:$PATH
+export LD_LIBRARY_PATH=/lib/:/usr/lib/:/usr/lib/x86_64-linux-gnu/:$HERE/usr/lib/:$HERE/usr/lib/x86_64-linux-gnu/:$HERE/lib/:$HERE/lib/x86_64-linux-gnu/:$LD_LIBRARY_PATH
+export FFMPEG_CODEC_PATH=$HERE/usr/lib/x86_64-linux-gnu/:$LD_CODEC_PATH
+export PYTHONPATH=$HERE/usr/lib/python3.8/:$PYTHONPATH
+export XDG_DATA_DIRS=$HERE/usr/share/:$XDG_DATA_DIRS
+export PERLLIB=$HERE/usr/share/perl5/:$HERE/usr/lib/perl5/:$PERLLIB
+export GSETTINGS_SCHEMA_DIR=$HERE/usr/share/glib-2.0/schemas/:$GSETTINGS_SCHEMA_DIR
+export QT_PLUGIN_PATH=/usr/lib/qt5/plugins/:/usr/lib/x86_64-linux-gnu/qt5/plugins/:$HERE/lib/:$HERE/usr/lib/:$HERE/usr/lib/x86_64-linux-gnu/qt5/plugins/:$HERE/usr/lib/x86_64-linux-gnu/obs-plugins/:$QT_PLUGIN_PATH
+export OBS_PLUGIN_PATH=$HERE/usr/lib/x86_64-linux-gnu/obs-plugins/:$OBS_PLUGIN_PATH
+export OBS_SCRIPTING_PATH=$HERE/usr/lib/x86_64-linux-gnu/obs-scripting/:$OBS_SCRIPTING_PATH
+export OBS_DATA_PATH=$HERE/usr/share/obs/:$OBS_DATA_PATH
+exec $HERE/usr/bin/obs "$@"
 EOF
 chmod a+x ./$APP/$APP.AppDir/AppRun
 
