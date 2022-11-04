@@ -1,0 +1,187 @@
+#!/bin/sh
+
+APP=cherrytree
+
+CATEGORIES="Utility"
+ICONURL="https://raw.githubusercontent.com/giuspen/cherrytree/master/icons/cherrytree.svg"
+
+URL=https://www.giuspen.net/cherrytree/#downl
+APPNAME="CherryTree"
+
+# CREATE THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP
+
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+
+# DOWNLOAD THE ARCHIVE
+mkdir tmp
+cd ./tmp
+
+version=$(wget -q $URL -O - | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep .AppImage | head -1)
+wget $version
+echo "$version" >> /opt/$APP/version
+if ls . | grep mage; then
+	cd ..
+	mv ./tmp/*mage ./$APP
+	chmod a+x /opt/$APP/$APP
+	rmdir ./tmp
+elif ls . | grep .deb; then
+	ar x ./*.deb
+	tar fx ./data.tar.xz
+	cd ..
+	mv ./tmp//* ./
+	rm -R -f ./tmp
+elif ls . | grep .tar.bz2; then
+	tar fx *.tar.bz2
+	dir=$(ls . | grep -w -v *.tar.*)
+	cd ..
+	mv ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+elif ls . | grep .tar.gz; then
+	tar fx *.tar.gz
+	dir=$(ls . | grep -w -v *.tar.*)
+	cd ..
+	mv ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+elif ls . | grep .tar.xz; then
+	tar fx *.tar.xz
+	dir=$(ls . | grep -w -v *.tar.*)
+	cd ..
+	mv ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+elif ls ./tmp/ | grep .zip; then
+	unzip *.zip
+	dir=$(ls . | grep -w -v *.zip)
+	cd ..
+	mv ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+fi
+
+#-------------------------------------
+
+# LINK
+ln -s /opt/$APP/$APP /usr/local/bin/$APP
+
+# SCRIPT TO UPDATE THE PROGRAM
+cat >> /opt/$APP/AM-updater << 'EOF'
+#!/usr/bin/env bash
+APP=cherrytree
+version0=$(cat /opt/$APP/version)
+URL=https://www.giuspen.net/cherrytree/#downl
+if curl -L -s $URL | grep -ioF "$version0"; then
+  echo "Update not needed!"
+else
+  notify-send "A new version of $APP is available, please wait"
+  mkdir /opt/$APP/tmp
+  cd /opt/$APP/tmp
+  version=$(wget -q $URL -O - | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep .AppImage | head -1)
+  wget $version
+  if ls . | grep mage; then
+	cd ..
+  	if test -f ./tmp/*mage; then rm ./version
+  	fi
+  	echo $version >> ./version
+  	mv --backup=t ./tmp/*mage ./$APP
+  	chmod a+x /opt/$APP/$APP
+  	rm -R -f ./tmp ./*~
+  elif ls . | grep .deb; then
+	ar x ./*.deb
+	tar fx ./data.tar.xz
+	cd ..
+  	if test -f ./tmp/*.deb; then rm ./version
+  	fi
+  	echo $version >> ./version
+  	mv --backup=t ./tmp//* ./
+  	rm -R -f ./tmp ./*~
+  elif ls . | grep .tar.bz2; then
+	tar fx *.tar.bz2
+	dir=$(ls . | grep -w -v *.tar.*)
+	cd ..
+  	if test -f ./tmp/*.tar.bz2; then rm ./version
+  	fi
+  	echo $version >> ./version
+	mv --backup=t ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+  elif ls . | grep .tar.gz; then
+	tar fx *.tar.gz
+	dir=$(ls . | grep -w -v *.tar.*)
+	cd ..
+  	if test -f ./tmp/*.tar.gz; then rm ./version
+  	fi
+  	echo $version >> ./version
+	mv --backup=t ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+  elif ls . | grep .tar.xz; then
+	tar fx *.tar.xz
+	dir=$(ls . | grep -w -v *.tar.*)
+	cd ..
+  	if test -f ./tmp/*.tar.xz; then rm ./version
+  	fi
+  	echo $version >> ./version
+	mv --backup=t ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+  elif ls ./tmp/ | grep .zip; then
+	unzip *.zip
+	dir=$(ls . | grep -w -v *.zip)
+	cd ..
+  	if test -f ./tmp/*.zip; then rm ./version
+  	fi
+  	echo $version >> ./version
+	mv --backup=t ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+  fi
+fi
+EOF
+chmod a+x /opt/$APP/AM-updater
+
+# LAUNCHER
+rm /usr/share/applications/AM-$APP.desktop
+echo "[Desktop Entry]
+Name=CherryTree
+Comment=Hierarchical Note Taking
+Comment[cs]=Hierarchická tvorba poznámek
+Comment[de]=Hierarchische Notizfunktion
+Comment[el]=Ιεραρχική καταγραφή σημειώσεων
+Comment[es]=Gestor de notas jerárquico
+Comment[fi]=Hierarkkinen muistiinpanojen tekeminen
+Comment[fr]=Prise de Notes Hiérarchisées
+Comment[hy]=Աստիճանակարգային կառուցվածքով նշատետր
+Comment[it]=Gestore di appunti gerarchico
+Comment[ja]=階層的メモ取り
+Comment[lt]=Hierarchiniai užrašai
+Comment[nl]=Hiërarchisch notitie programma
+Comment[pl]=Strukturalny Notes
+Comment[pt_BR]=Gerenciador de notas hierárquicas
+Comment[ru]=Записная книжка с иерархической структурой
+Comment[sl]=Hierarhično beleženje
+Comment[sv]=Hierarkiska anteckningar
+Comment[tr]=Hiyerarşik Notları Tutar
+Comment[uk]=Записник з ієрархічною структурою
+Comment[zh_CN]=分层笔记
+Exec=cherrytree %f
+MimeType=application/cherrytree-ctd;application/cherrytree-ctz;application/cherrytree-ctb;application/cherrytree-ctx;
+Terminal=false
+Type=Application
+StartupNotify=true
+Categories=GNOME;GTK;Utility;
+Keywords=editor;notes;note-taking;
+Icon=/opt/$APP/icons/$APP" >> /usr/share/applications/AM-$APP.desktop
+
+# ICON
+mkdir /opt/$APP/icons
+wget $ICONURL -O /opt/$APP/icons/$APP
+
+# CHANGE THE PERMISSIONS
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/$APP
+
+# MESSAGE
+echo "
+
+ $APPNAME is provided by https://www.giuspen.net/cherrytree/
+
+"
