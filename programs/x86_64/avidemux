@@ -1,6 +1,17 @@
 #!/bin/sh
 
 APP=avidemux
+REPO="mean00/avidemux2"
+
+CATEGORIES="AudioVideo"
+ICONURL="https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/programs/.icons/avidemux.svg"
+
+USER=$(echo $REPO | sed 's:/[^/]*$::')
+REPO2=$(echo $REPO | sed 's:.*/::')
+FILENAMEEXTENTION="/.*/.*.appImage"
+URL=https://github.com/$REPO/releases/latest
+COMMENT=$(curl https://api.github.com/repos/$REPO 2>/dev/null | grep description | sed 's/"description": "//' | sed 's/",//')
+APPNAME=$(echo $REPO2 | sed 's/-/ /g' | sed 's/_/ /g')
 
 # CREATE THE FOLDER
 mkdir /opt/$APP
@@ -11,41 +22,129 @@ echo '#!/bin/sh' >> /opt/$APP/remove
 echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
 chmod a+x /opt/$APP/remove
 
-# DOWNLOAD THE PROGRAM
+# DOWNLOAD THE ARCHIVE
 mkdir tmp
 cd ./tmp
 
-version=$(curl -L -s https://archlinux.org/packages/extra/x86_64/avidemux-qt/flag | grep -E avidemux-qt | grep -Eo "[0-9]+([.][0-9]+)?+" | head -1)
-wget --user-agent="X11; Linux x86_64;" https://sourceforge.net/projects/avidemux/files/avidemux/$version/avidemux_$version.appImage/download
-echo $version >> /opt/$APP/version
+download=$(wget -q https://api.github.com/repos/$REPO/releases/latest -O - | grep -E browser_download_url | awk -F '[""]' '{print $4}' | grep -w -v legacy | grep -w -v i686 | grep -w -v arm64 | grep -w -v armv7l | egrep ''$FILENAMEEXTENTION'' -o | head -1);
+wget https:$download
+version=$(wget -q https://api.github.com/repos/$REPO/releases/latest -O - | grep -E tag_name | awk -F '[""]' '{print $4}')
+echo "$version" >> /opt/$APP/version
+if ls . | grep mage; then
+	cd ..
+	mv ./tmp/*mage ./$APP
+	chmod a+x /opt/$APP/$APP
+	rmdir ./tmp
+elif ls . | grep .deb; then
+	ar x ./*.deb
+	tar fx ./data.tar.xz
+	cd ..
+	mv ./tmp//* ./
+	rm -R -f ./tmp
+elif ls . | grep .tar.bz2; then
+	tar fx *.tar.bz2
+	dir=$(ls . | grep -w -v *.tar.*)
+	cd ..
+	mv ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+elif ls . | grep .tar.gz; then
+	tar fx *.tar.gz
+	dir=$(ls . | grep -w -v *.tar.*)
+	cd ..
+	mv ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+elif ls . | grep .tar.xz; then
+	tar fx *.tar.xz
+	dir=$(ls . | grep -w -v *.tar.*)
+	cd ..
+	mv ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+elif ls ./tmp/ | grep .zip; then
+	unzip *.zip
+	dir=$(ls . | grep -w -v *.zip)
+	cd ..
+	mv ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+fi
 
-cd ..
-mv ./tmp/download ./$APP
-chmod a+x /opt/$APP/$APP
-rmdir ./tmp
+#-------------------------------------
 
 # LINK
 ln -s /opt/$APP/$APP /usr/local/bin/$APP
 
 # SCRIPT TO UPDATE THE PROGRAM
-echo '#!/bin/sh
-version0=$(cat /opt/'$APP'/version)
-version=$(curl -L -s https://archlinux.org/packages/extra/x86_64/avidemux-qt/flag | grep -E avidemux-qt | grep -Eo "[0-9]+([.][0-9]+)?+" | head -1)
-if [ "$version0" = "$version" ]; then
-  echo "Update not needed, exit!"
+cat >> /opt/$APP/AM-updater << 'EOF'
+#!/usr/bin/env bash
+APP=avidemux
+REPO="mean00/avidemux2"
+FILENAMEEXTENTION="/.*/.*.appImage"
+version0=$(cat /opt/$APP/version)
+url=https://github.com/$REPO/releases/latest
+if curl -L -s $url | grep -ioF "$version0"; then
+  echo "Update not needed!"
 else
-  notify-send "A new version of '$APP' is available, please wait!"
-  mkdir /opt/'$APP'/tmp
-  cd /opt/'$APP'/tmp
-  wget --user-agent="X11; Linux x86_64;" https://sourceforge.net/projects/avidemux/files/avidemux/$version/avidemux_$version.appImage/download
-  cd ..
-  if test -f ./tmp/download; then rm -R -f ./version
+  notify-send "A new version of $APP is available, please wait"
+  mkdir /opt/$APP/tmp
+  cd /opt/$APP/tmp
+  download=$(wget -q https://api.github.com/repos/$REPO/releases/latest -O - | grep -E browser_download_url | awk -F '[""]' '{print $4}' | grep -w -v legacy | grep -w -v i686 | grep -w -v arm64 | grep -w -v armv7l | egrep ''$FILENAMEEXTENTION'' -o | head -1);
+  wget https:$download
+  version=$(wget -q https://api.github.com/repos/$REPO/releases/latest -O - | grep -E tag_name | awk -F '[""]' '{print $4}')
+  if ls . | grep mage; then
+	cd ..
+  	if test -f ./tmp/*mage; then rm ./version
+  	fi
+  	echo $version >> ./version
+  	mv --backup=t ./tmp/*mage ./$APP
+  	chmod a+x /opt/$APP/$APP
+  	rm -R -f ./tmp ./*~
+  elif ls . | grep .deb; then
+	ar x ./*.deb
+	tar fx ./data.tar.xz
+	cd ..
+  	if test -f ./tmp/*.deb; then rm ./version
+  	fi
+  	echo $version >> ./version
+  	mv --backup=t ./tmp//* ./
+  	rm -R -f ./tmp ./*~
+  elif ls . | grep .tar.bz2; then
+	tar fx *.tar.bz2
+	dir=$(ls . | grep -w -v *.tar.*)
+	cd ..
+  	if test -f ./tmp/*.tar.bz2; then rm ./version
+  	fi
+  	echo $version >> ./version
+	mv --backup=t ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+  elif ls . | grep .tar.gz; then
+	tar fx *.tar.gz
+	dir=$(ls . | grep -w -v *.tar.*)
+	cd ..
+  	if test -f ./tmp/*.tar.gz; then rm ./version
+  	fi
+  	echo $version >> ./version
+	mv --backup=t ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+  elif ls . | grep .tar.xz; then
+	tar fx *.tar.xz
+	dir=$(ls . | grep -w -v *.tar.*)
+	cd ..
+  	if test -f ./tmp/*.tar.xz; then rm ./version
+  	fi
+  	echo $version >> ./version
+	mv --backup=t ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+  elif ls ./tmp/ | grep .zip; then
+	unzip *.zip
+	dir=$(ls . | grep -w -v *.zip)
+	cd ..
+  	if test -f ./tmp/*.zip; then rm ./version
+  	fi
+  	echo $version >> ./version
+	mv --backup=t ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
   fi
-  echo $version >> /opt/'$APP'/version
-  mv ./tmp/download ./'$APP'
-  chmod a+x /opt/'$APP'/'$APP'
-  rmdir ./tmp
-fi' >> /opt/$APP/AM-updater
+fi
+EOF
 chmod a+x /opt/$APP/AM-updater
 
 # LAUNCHER
@@ -55,14 +154,15 @@ Name=Avidemux
 GenericName=Video Editor
 Comment=Multiplatform video editor
 Exec=$APP %U
-Icon=/opt/$APP/$APP.svg
+Icon=/opt/$APP/icons/$APP
 Terminal=false
 Type=Application
 Categories=AudioVideo;AudioVideoEditing;Video;
 MimeType=video/mpeg;video/x-mpeg;video/mp4;video/x-m4v;video/quicktime;video/3gp;video/mkv;video/x-matroska;video/webm;video/flv;video/x-flv;video/dv;video/x-msvideo;video/x-ms-wmv;video/x-ms-asf;video/x-anim;" >> /usr/share/applications/AM-$APP.desktop
 
 # ICON
-wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/programs/.icons/avidemux.svg;
+mkdir /opt/$APP/icons
+wget $ICONURL -O /opt/$APP/icons/$APP
 
 # CHANGE THE PERMISSIONS
 currentuser=$(who | awk '{print $1}')
@@ -71,6 +171,6 @@ chown -R $currentuser /opt/$APP
 # MESSAGE
 echo "
 
- Avidemux is provided by http://avidemux.sourceforge.net
-  
-";
+ $APPNAME is provided by https://github.com/$USER
+
+"
