@@ -293,11 +293,11 @@ case "$1" in
 	for var in $arg; do
 	if [ $arg == STOP ]; then
 		if test -f /opt/am/.cache/installed; then
-			echo "-----------------------------------------------------------------------"
+			echo "--------------------------------------------------------------------------------"
 			echo ""; echo " INSTALLATION PROCESS COMPLETED!"; echo "";
 			echo " The following NEW programs have been installed: " | tr a-z A-Z; echo ""
 			echo "" >> /opt/am/.cache/installed
-			echo "-----------------------------------------------------------------------" >> /opt/am/.cache/installed
+			echo "--------------------------------------------------------------------------------" >> /opt/am/.cache/installed
 			cat /opt/am/.cache/installed
 			exit
 		else
@@ -318,9 +318,13 @@ case "$1" in
 			sed -i "s#wget #wget -q --show-progress #g" /opt/am/.cache/$arg
 			sed -i "s#rm #rm -f #g" /opt/am/.cache/$arg
 			sed -i "s#unzip #unzip -qq #g" /opt/am/.cache/$arg
-			sudo echo "◆ INSTALLING $(echo $arg | tr a-z A-Z), THIS MAY TAKE SEVERAL MINUTES"
-			echo "PLEASE WAIT..."
-			sudo /opt/am/.cache/$arg > /dev/null 2>1
+			sed -i 's/currentuser=/#currentuser=/g' /opt/am/.cache/$arg
+			sed -i 's/chown -R $currentuser/#chown -R $currentuser/g' /opt/am/.cache/$arg
+			sed -i '/# MESSAGE/,$d' /opt/am/.cache/$arg
+			sudo echo "◆ INSTALLING $(echo $arg | tr a-z A-Z), THIS MAY TAKE SEVERAL MINUTES, PLEASE WAIT..."
+			sudo /opt/am/.cache/$arg
+			sudo chmod -R 777 /opt/$(cd /opt && ls -td * | head -1)
+			echo ""
 			if cat /opt/am/.cache/$arg | grep -q kdegames; then
 				echo "INSTALLATION COMPLETE, DOWNLOADED ABOUT $(du -sm /opt/kdegames | awk '{print $1}' ) MB OF FILES!"
 			elif cat /opt/am/.cache/$arg | grep -q kdeutils; then
@@ -328,7 +332,7 @@ case "$1" in
 			else
 				echo "INSTALLATION COMPLETE, DOWNLOADED ABOUT $(du -sm /opt/$arg | awk '{print $1}' ) MB OF FILES!"
 			fi			
-			echo "-----------------------------------------------------------------------"
+			echo "--------------------------------------------------------------------------------"
 			sudo rm /opt/am/.cache/$arg
 			unset $LATESTDIR
 			LATESTDIR=$(cd /opt && ls -td * | head -1)
@@ -755,6 +759,6 @@ case "$1" in
 	fi
 	done
 	shift;;
-  'version'|'-v'|'--version') echo "4.0.0-4";;
+  'version'|'-v'|'--version') echo "4.0.0-5";;
   *) exec /opt/am/APP-MANAGER ;;
 esac
