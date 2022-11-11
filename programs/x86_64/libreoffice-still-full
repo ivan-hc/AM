@@ -1,48 +1,45 @@
 #!/bin/sh
 
-APP=libreoffice-daily
-
-# CREATING THE FOLDER
+APP=libreoffice-still
+URL1="https://libreoffice.soluzioniopen.com/stable/standard/LibreOffice-still.standard-x86_64.AppImage"
+URL2="https://libreoffice.soluzioniopen.com/stable/full/LibreOffice-still.full-x86_64.AppImage"
 mkdir /opt/$APP
-cd /opt/$APP;
+cd /opt/$APP
 
-# ADD THE REMOVER
 echo '#!/bin/sh' >> /opt/$APP/remove
 echo "rm -R -f /usr/share/applications/AM-$APP* /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
 chmod a+x /opt/$APP/remove
 
 mkdir tmp;
-cd tmp;
+cd ./tmp;
 
-wget -r -erobots=off -l1 -np -A LibreOfficeDev-*0*.standard-x86_64.AppImage -nd https://libreoffice.soluzioniopen.com/daily/86
-version=$(ls /opt/$APP/tmp)
-echo "$version" >> /opt/$APP/version
-cd ..;
-mv ./tmp/*.AppImage ./$APP;
-chmod a+x ./$APP
-rm -R -f ./tmp
-initial=$(echo $APP | head -c 1)
-echo '#!/bin/sh
-version0=$(cat /opt/'$APP'/version)
-url="https://libreoffice.soluzioniopen.com/daily/86/"
-if curl -L -s "$url" | grep -ioF $version0 ; then
-  echo "Update not needed, exit!"
-else
-  notify-send "A new version of '$APP' is available, please wait!"
-  mkdir /opt/'$APP'/tmp
-  cd /opt/'$APP'/tmp
-  wget -r -erobots=off -l1 -np -A LibreOfficeDev-*0*.standard-x86_64.AppImage -nd https://libreoffice.soluzioniopen.com/daily/86
-  cd ..
-  version=$(ls /opt/'$APP'/tmp)
-  if test -f ./tmp/*mage; then rm ./version
-  fi
-  echo "$version" >> ./version
-  mv ./tmp/*.AppImage ./'$APP'
-  chmod a+x ./'$APP'
-  rm -R -f ./tmp
-fi' >> /opt/$APP/AM-updater
+wget $URL2;
+wget $URL2.asc;
+wget $URL2.zsync;
+wget $URL2.zsync.asc;
+cd ..
+mv ./tmp/*mage ./$APP
+chmod a+x /opt/$APP/$APP
+mv ./tmp/*mage.zsync ./$APP.zsync
+mv ./tmp/*mage.asc ./$APP.asc
+mv ./tmp/*zsync.asc ./$APP.zsync.asc
+rmdir ./tmp
+echo '#!/bin/sh' >> /opt/$APP/AM-updater
+echo "cd /opt/$APP
+mkdir tmp
+cd ./tmp
+wget $URL2.asc;
+wget $URL2.zsync;
+wget $URL2.zsync.asc
+cd ..
+mv ./tmp/*mage.zsync ./$APP.zsync
+mv ./tmp/*mage.asc ./$APP.asc
+mv ./tmp/*zsync.asc ./$APP.zsync.asc
+rmdir ./tmp
+zsync /opt/$APP/$APP.zsync
+rm -R -f /opt/$APP/*zs-old /opt/$APP/*.part
+chmod a+x /opt/$APP/$APP" >> /opt/$APP/AM-updater
 chmod a+x /opt/$APP/AM-updater
-
 
 # LINK
 ln -s /opt/$APP/$APP /usr/local/bin/$APP
