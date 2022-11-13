@@ -1,0 +1,53 @@
+#!/bin/sh
+
+APP=appimagekit
+
+# CREATE THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP
+
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/local/bin/appimagetool /usr/local/bin/pkg2appimage /usr/local/bin/appimageupdatetool /opt/$APP" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+
+# DOWNLOAD THE APPIMAGE
+mkdir tmp
+cd ./tmp
+
+wget https://github.com/AppImage/AppImageUpdate/releases/download/continuous/appimageupdatetool-x86_64.AppImage -O appimageupdatetool
+wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool
+version=$(curl -s https://api.github.com/repos/AppImageCommunity/pkg2appimage/releases/latest | grep browser_download_url | cut -d '"' -f 4 | head -1)
+wget $version -O pkg2appimage
+chmod a+x ./*
+cd ..
+mv ./tmp/* ./*
+rmdir tmp
+
+# LINK
+ln -s /opt/$APP/appimagetool /usr/local/bin/appimagetool
+ln -s /opt/$APP/appimageupdatetool /usr/local/bin/appimageupdatetool
+ln -s /opt/$APP/pkg2appimage /usr/local/bin/pkg2appimage
+
+# SCRIPT TO UPDATE
+echo '#!/bin/sh
+cd /opt/appimagekit
+./appimageupdatetool -O ./pkg2appimage
+./appimageupdatetool -O ./appimagetool
+./appimageupdatetool -O ./appimageupdatetool
+chmod a+x ./pkg2appimage ./appimagetool ./appimageupdatetool
+rm -f -R -f /opt/appimagekit/*zs-old && rm -f -R -f /opt/appimagekit/*.part' >> /opt/$APP/AM-updater
+chmod a+x /opt/$APP/AM-updater
+
+# CHANGE THE PERMISSIONS
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/$APP
+
+# MESSAGE
+echo "
+  
+ AppImagetool at https://github.com/AppImage/AppImageKit
+ AppImageUpdateTool at https://github.com/AppImage/AppImageUpdate
+ PKG2AppImage at https://github.com/AppImageCommunity/pkg2appimage
+
+"
