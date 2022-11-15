@@ -1,6 +1,17 @@
 #!/bin/sh
 
 APP=akasha
+REPO="AKASHAorg/Community"
+
+CATEGORIES="Network"
+ICONURL="https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/programs/.icons/$APP.svg"
+
+USER=$(echo $REPO | sed 's:/[^/]*$::')
+REPO2=$(echo $REPO | sed 's:.*/::')
+FILENAMEEXTENTION="/.*/.*.AppImage"
+URL=https://github.com/$REPO/releases/latest
+COMMENT=$(curl https://api.github.com/repos/$REPO 2>/dev/null | grep description | sed 's/"description": "//' | sed 's/",//')
+APPNAME=AKASHA
 
 # CREATE THE FOLDER
 mkdir /opt/$APP
@@ -11,68 +22,145 @@ echo '#!/bin/sh' >> /opt/$APP/remove
 echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
 chmod a+x /opt/$APP/remove
 
-# DOWNLOAD THE APPIMAGE
+# DOWNLOAD THE ARCHIVE
 mkdir tmp
 cd ./tmp
 
-download=$(wget -q https://api.github.com/repos/AKASHAorg/Community/releases/latest -O - | grep -E browser_download_url | awk -F '[""]' '{print $4}' | egrep '/.*/.*/.*AppImage' | head -1)
-wget $download;
-
-version=$(ls /opt/$APP/tmp)
+download=$(wget -q https://api.github.com/repos/$REPO/releases/latest -O - | grep -E browser_download_url | awk -F '[""]' '{print $4}' | grep -w -v i386 | grep -w -v i686 | grep -w -v arm64 | grep -w -v armv7l | egrep ''$FILENAMEEXTENTION'' -o | head -1);
+wget https:$download
+version=$(wget -q https://api.github.com/repos/$REPO/releases/latest -O - | grep -E tag_name | awk -F '[""]' '{print $4}')
 echo "$version" >> /opt/$APP/version
+if ls . | grep mage; then
+	cd ..
+	mv ./tmp/*mage ./$APP
+	chmod a+x /opt/$APP/$APP
+	rmdir ./tmp
+elif ls . | grep .deb; then
+	ar x ./*.deb
+	tar fx ./data.tar.xz
+	cd ..
+	mv ./tmp//* ./
+	rm -R -f ./tmp
+elif ls . | grep .tar.bz2; then
+	tar fx *.tar.bz2
+	dir=$(ls . | grep -w -v *.tar.*)
+	cd ..
+	mv ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+elif ls . | grep .tar.gz; then
+	tar fx *.tar.gz
+	dir=$(ls . | grep -w -v *.tar.*)
+	cd ..
+	mv ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+elif ls . | grep .tar.xz; then
+	tar fx *.tar.xz
+	dir=$(ls . | grep -w -v *.tar.*)
+	cd ..
+	mv ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+elif ls ./tmp/ | grep .zip; then
+	unzip *.zip
+	dir=$(ls . | grep -w -v *.zip)
+	cd ..
+	mv ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+fi
 
-cd ..
-mv ./tmp/*mage ./$APP
-chmod a+x /opt/$APP/$APP
-rmdir ./tmp
+#-------------------------------------
 
 # LINK
 ln -s /opt/$APP/$APP /usr/local/bin/$APP
 
 # SCRIPT TO UPDATE THE PROGRAM
-echo '#!/bin/sh' >> /opt/$APP/AM-updater
-echo "APP=$APP" >> /opt/$APP/AM-updater
-echo "cd /opt/$APP" /usr/local/bin/$APP
-echo 'version0=$(cat /opt/$APP/version)
-
-url=https://github.com/AKASHAorg/Community/releases/latest' >> /opt/$APP/AM-updater
-
-echo 'if curl -L -s $url | grep -ioF "$version0"; then' >> /opt/$APP/AM-updater
-echo '  echo "Update not needed!".'  >> /opt/$APP/AM-updater
-echo 'else' >> /opt/$APP/AM-updater
-echo "  notify-send 'A new version of $APP is available, please wait'" >> /opt/$APP/AM-updater
-echo "  mkdir /opt/$APP/tmp
-  cd /opt/$APP/tmp" >> /opt/$APP/AM-updater
-
-function1='$(wget https://github.com/AKASHAorg/Community/releases/latest -O -'
-function2="egrep '/.*/.*/.*AppImage' -o | head -1)"
-function3='$(ls /opt/$APP/tmp)'
-
-echo "  wget https://github.com/$function1 | $function2
-  version=$function3" >> /opt/$APP/AM-updater
-
-echo '  cd ..
-  if test -f ./tmp/*mage; then rm ./version
+cat >> /opt/$APP/AM-updater << 'EOF'
+#!/usr/bin/env bash
+APP=akasha
+REPO="AKASHAorg/Community"
+FILENAMEEXTENTION="/.*/.*.AppImage"
+version0=$(cat /opt/$APP/version)
+url=https://github.com/$REPO/releases/latest
+if curl -L -s $url | grep -ioF "$version0"; then
+  echo "Update not needed!"
+else
+  notify-send "A new version of $APP is available, please wait"
+  mkdir /opt/$APP/tmp
+  cd /opt/$APP/tmp
+  download=$(wget -q https://api.github.com/repos/$REPO/releases/latest -O - | grep -E browser_download_url | awk -F '[""]' '{print $4}' | grep -w -v i386 | grep -w -v i686 | grep -w -v arm64 | grep -w -v armv7l | egrep ''$FILENAMEEXTENTION'' -o | head -1);
+  wget https:$download
+  version=$(wget -q https://api.github.com/repos/$REPO/releases/latest -O - | grep -E tag_name | awk -F '[""]' '{print $4}')
+  if ls . | grep mage; then
+	cd ..
+  	if test -f ./tmp/*mage; then rm ./version
+  	fi
+  	echo $version >> ./version
+  	mv --backup=t ./tmp/*mage ./$APP
+  	chmod a+x /opt/$APP/$APP
+  	rm -R -f ./tmp ./*~
+  elif ls . | grep .deb; then
+	ar x ./*.deb
+	tar fx ./data.tar.xz
+	cd ..
+  	if test -f ./tmp/*.deb; then rm ./version
+  	fi
+  	echo $version >> ./version
+  	mv --backup=t ./tmp//* ./
+  	rm -R -f ./tmp ./*~
+  elif ls . | grep .tar.bz2; then
+	tar fx *.tar.bz2
+	dir=$(ls . | grep -w -v *.tar.*)
+	cd ..
+  	if test -f ./tmp/*.tar.bz2; then rm ./version
+  	fi
+  	echo $version >> ./version
+	mv --backup=t ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+  elif ls . | grep .tar.gz; then
+	tar fx *.tar.gz
+	dir=$(ls . | grep -w -v *.tar.*)
+	cd ..
+  	if test -f ./tmp/*.tar.gz; then rm ./version
+  	fi
+  	echo $version >> ./version
+	mv --backup=t ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+  elif ls . | grep .tar.xz; then
+	tar fx *.tar.xz
+	dir=$(ls . | grep -w -v *.tar.*)
+	cd ..
+  	if test -f ./tmp/*.tar.xz; then rm ./version
+  	fi
+  	echo $version >> ./version
+	mv --backup=t ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+  elif ls ./tmp/ | grep .zip; then
+	unzip *.zip
+	dir=$(ls . | grep -w -v *.zip)
+	cd ..
+  	if test -f ./tmp/*.zip; then rm ./version
+  	fi
+  	echo $version >> ./version
+	mv --backup=t ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
   fi
-  echo "$version" >> ./version' >> /opt/$APP/AM-updater
-echo "  mv ./tmp/*mage ./$APP
-  chmod a+x /opt/$APP/$APP
-  rmdir ./tmp
-fi" >> /opt/$APP/AM-updater
+fi
+EOF
 chmod a+x /opt/$APP/AM-updater
 
 # LAUNCHER
 rm /usr/share/applications/AM-$APP.desktop
 echo "[Desktop Entry]
-Name=AKASHA
-Exec=akasha
-Comment=AKASHA community
-Icon=/opt/$APP/$APP.svg
+Name=$APPNAME
+Exec=$APP
+Icon=/opt/$APP/icons/$APP
 Type=Application
-Categories=Network;" >> /usr/share/applications/AM-$APP.desktop
+Terminal=false
+Categories=$CATEGORIES;
+Comment=$COMMENT" >> /usr/share/applications/AM-$APP.desktop
 
 # ICON
-wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/programs/.icons/$APP.svg
+mkdir /opt/$APP/icons
+wget $ICONURL -O /opt/$APP/icons/$APP
 
 # CHANGE THE PERMISSIONS
 currentuser=$(who | awk '{print $1}')
@@ -80,5 +168,7 @@ chown -R $currentuser /opt/$APP
 
 # MESSAGE
 echo "
-	AKASHA is provided by https://github.com/AKASHAorg        
+
+ $APPNAME is provided by https://github.com/$USER
+
 "
