@@ -1,0 +1,271 @@
+#!/bin/sh
+
+APP=kwave
+REPO="ivan-hc/Database-of-pkg2appimaged-packages"
+
+CATEGORIES="Audio"
+ICONURL="https://apps.kde.org/app-icons/org.kde.kwave.svg"
+
+USER=$(echo $REPO | sed 's:/[^/]*$::')
+REPO2=$(echo $REPO | sed 's:.*/::')
+FILENAMEEXTENTION="/.*/.*.AppImage"
+url=https://github.com/$REPO/releases/download/$APP
+COMMENT=$(curl https://api.github.com/repos/$REPO 2>/dev/null | grep description | sed 's/"description": "//' | sed 's/",//')
+APPNAME=$(echo $REPO2 | sed 's/-/ /g' | sed 's/_/ /g')
+
+# CREATE THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP
+
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+
+# DOWNLOAD THE ARCHIVE
+mkdir tmp
+cd ./tmp
+
+download=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep $APP | grep -E browser_download_url | awk -F '[""]' '{print $4}' | grep -w -v i386 | grep -w -v i686 | grep -w -v arm64 | grep -w -v armv7l | egrep ''$FILENAMEEXTENTION'' -o | head -1);
+wget https:$download
+version=$(ls .)
+echo "$version" >> /opt/$APP/version
+if ls . | grep mage; then
+	cd ..
+	mv ./tmp/*mage ./$APP
+	chmod a+x /opt/$APP/$APP
+	rmdir ./tmp
+elif ls . | grep .deb; then
+	ar x ./*.deb
+	tar fx ./data.tar.xz
+	cd ..
+	mv ./tmp//* ./
+	rm -R -f ./tmp
+elif ls . | grep .tar.bz2; then
+	tar fx *.tar.bz2
+	dir=$(ls . | grep -w -v *.tar.*)
+	cd ..
+	mv ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+elif ls . | grep .tar.gz; then
+	tar fx *.tar.gz
+	dir=$(ls . | grep -w -v *.tar.*)
+	cd ..
+	mv ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+elif ls . | grep .tar.xz; then
+	tar fx *.tar.xz
+	dir=$(ls . | grep -w -v *.tar.*)
+	cd ..
+	mv ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+elif ls ./tmp/ | grep .zip; then
+	unzip *.zip
+	dir=$(ls . | grep -w -v *.zip)
+	cd ..
+	mv ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+fi
+
+#-------------------------------------
+
+# LINK
+ln -s /opt/$APP/$APP /usr/local/bin/$APP
+
+# SCRIPT TO UPDATE THE PROGRAM
+cat >> /opt/$APP/AM-updater << 'EOF'
+#!/usr/bin/env bash
+APP=kwave
+REPO="ivan-hc/Database-of-pkg2appimaged-packages"
+FILENAMEEXTENTION="/.*/.*.AppImage"
+version0=$(cat /opt/$APP/version)
+url=https://github.com/$REPO/releases/download/$APP
+if wget --spider $url/$version0 2> /dev/null; then
+  echo "Update not needed!"
+else
+  notify-send "A new version of $APP is available, please wait"
+  mkdir /opt/$APP/tmp
+  cd /opt/$APP/tmp
+  download=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep $APP | grep -E browser_download_url | awk -F '[""]' '{print $4}' | grep -w -v i386 | grep -w -v i686 | grep -w -v arm64 | grep -w -v armv7l | egrep ''$FILENAMEEXTENTION'' -o | head -1);
+  wget https:$download
+  version=$(ls .)
+  if ls . | grep mage; then
+	cd ..
+  	if test -f ./tmp/*mage; then rm ./version
+  	fi
+  	echo $version >> ./version
+  	mv --backup=t ./tmp/*mage ./$APP
+  	chmod a+x /opt/$APP/$APP
+  	rm -R -f ./tmp ./*~
+  elif ls . | grep .deb; then
+	ar x ./*.deb
+	tar fx ./data.tar.xz
+	cd ..
+  	if test -f ./tmp/*.deb; then rm ./version
+  	fi
+  	echo $version >> ./version
+  	mv --backup=t ./tmp//* ./
+  	rm -R -f ./tmp ./*~
+  elif ls . | grep .tar.bz2; then
+	tar fx *.tar.bz2
+	dir=$(ls . | grep -w -v *.tar.*)
+	cd ..
+  	if test -f ./tmp/*.tar.bz2; then rm ./version
+  	fi
+  	echo $version >> ./version
+	mv --backup=t ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+  elif ls . | grep .tar.gz; then
+	tar fx *.tar.gz
+	dir=$(ls . | grep -w -v *.tar.*)
+	cd ..
+  	if test -f ./tmp/*.tar.gz; then rm ./version
+  	fi
+  	echo $version >> ./version
+	mv --backup=t ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+  elif ls . | grep .tar.xz; then
+	tar fx *.tar.xz
+	dir=$(ls . | grep -w -v *.tar.*)
+	cd ..
+  	if test -f ./tmp/*.tar.xz; then rm ./version
+  	fi
+  	echo $version >> ./version
+	mv --backup=t ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+  elif ls ./tmp/ | grep .zip; then
+	unzip *.zip
+	dir=$(ls . | grep -w -v *.zip)
+	cd ..
+  	if test -f ./tmp/*.zip; then rm ./version
+  	fi
+  	echo $version >> ./version
+	mv --backup=t ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+  fi
+fi
+EOF
+chmod a+x /opt/$APP/AM-updater
+
+# LAUNCHER
+echo "[Desktop Entry]
+Version=1.0
+Type=Application
+GenericName=Sound Editor
+GenericName[bs]=Editor zvuka
+GenericName[ca]=Editor de so
+GenericName[ca@valencia]=Editor de so
+GenericName[cs]=Editor zvuku
+GenericName[da]=Lydredigering
+GenericName[de]=Sound-Editor
+GenericName[el]=Επεξεργαστής ήχου
+GenericName[en_GB]=Sound Editor
+GenericName[es]=Editor de sonido
+GenericName[et]=Heliredaktor
+GenericName[eu]=Soinu editorea
+GenericName[fi]=Äänimuokkain
+GenericName[fr]=Éditeur de sons
+GenericName[gl]=Editor de sons
+GenericName[ia]=Editor (redactor) de sono
+GenericName[it]=Editor del suono
+GenericName[ko]=소리 편집기
+GenericName[nl]=Geluidsbewerker
+GenericName[nn]=Lydredigering
+GenericName[pl]=Edytor dźwięku
+GenericName[pt]=Editor de Som
+GenericName[pt_BR]=Editor de som
+GenericName[ru]=Аудиоредактор
+GenericName[sk]=Editor zvuku
+GenericName[sl]=Urejevalnik zvokov
+GenericName[sv]=Ljudeditor
+GenericName[tr]=Ses Düzenleyicisi
+GenericName[uk]=Звуковий редактор
+GenericName[x-test]=xxSound Editorxx
+GenericName[zh_CN]=声音编辑器
+GenericName[zh_TW]=音效編輯器
+Name=Kwave Sound Editor
+Name[bs]=Kwave editor zvuka
+Name[ca]=Editor de so Kwave
+Name[ca@valencia]=Editor de so Kwave
+Name[cs]=Editor zvuku Kwave
+Name[da]=Kwave lydredigering
+Name[de]=Kwave-Sound-Editor
+Name[el]=Επεξεργαστής ήχου Kwave
+Name[en_GB]=Kwave Sound Editor
+Name[es]=Editor de sonido Kwave
+Name[et]=Heliredaktor Kwave
+Name[eu]=Kwave soinu editorea
+Name[fi]=Kwave-äänimuokkain
+Name[fr]=Éditeur de sons KWave
+Name[gl]=Editor de sons Kwave
+Name[ia]=Kwave Sound Editor
+Name[it]=Editor del suono Kwave
+Name[ko]=Kwave 소리 편집기
+Name[nl]=Kwave geluidsbewerker
+Name[nn]=Kwave lydredigering
+Name[pl]=Edytor dźwięku Kwave
+Name[pt]=Editor de Som Kwave
+Name[pt_BR]=Editor de som Kwave
+Name[ru]=Аудиоредактор Kwave
+Name[sk]=Editor zvuku Kwave
+Name[sl]=Urejevalnik zvokov Kwave
+Name[sv]=Kwave ljudeditor
+Name[tr]=Kwave Ses Düzenleyicisi
+Name[uk]=Звуковий редактор Kwave
+Name[x-test]=xxKwave Sound Editorxx
+Name[zh_CN]=Kwave 声音编辑器
+Name[zh_TW]=Kwave 音效編輯器
+Comment=A sound editor by KDE
+Comment[ca]=Un editor de so, creat per la comunitat KDE
+Comment[ca@valencia]=Un editor de so, creat per la comunitat KDE
+Comment[cs]=Editor zvuku od KDE
+Comment[da]=Et lydredigeringsprogram af KDE
+Comment[de]=Ein Sound-Editor von KDE
+Comment[el]=Ένας επεξεργαστής ήχου από το KDE
+Comment[en_GB]=A sound editor by KDE
+Comment[es]=Un editor de sonido por KDE
+Comment[et]=KDE heliredaktor
+Comment[eu]=KDEren soinu editore bat
+Comment[fi]=KDE:n äänimuokkain
+Comment[fr]=Un éditeur de sons par KDE
+Comment[gl]=Un editor de sons por KDE.
+Comment[ia]=Un redactor de sono per KDE
+Comment[it]=Editor del suono di KDE
+Comment[ko]=KDE의 소리 편집기
+Comment[nl]=Een geluidsbewerker door KDE
+Comment[nn]=Lydredigeringsprogram frå KDE
+Comment[pl]=Edytor dźwięku w ramach KDE
+Comment[pt]=Um editor de som do KDE
+Comment[pt_BR]=Um editor de som do KDE
+Comment[ru]=Аудиоредактор KDE
+Comment[sk]=Zvukový editor pre KDE
+Comment[sl]=Urejevalnik zvokov iz KDE
+Comment[sv]=En ljudeditor av KDE
+Comment[tr]=KDE tarafından geliştirilmiş bir ses düzenleyicisi
+Comment[uk]=Звуковий редактор від KDE
+Comment[x-test]=xxA sound editor by KDExx
+Comment[zh_CN]=KDE 推出的声音编辑器
+Comment[zh_TW]=來自 KDE 的音效編輯器
+TryExec=kwave
+Exec=kwave %F
+Icon=/opt/$APP/icons/$APP
+MimeType=audio/wav;audio/x-wav;audio/basic;audio/x-8svx;audio/x-aifc;audio/x-aiff;audio/x-avr;audio/x-caf;audio/x-ircam;audio/x-nist;audio/x-smp;audio/x-voc;audio/mpeg;audio/x-mp1;audio/x-mp2;audio/x-mp3;application/x-flac;audio/x-flac;audio/ogg;application/ogg;audio/x-ogg;application/x-ogg;audio/x-vorbis+ogg;audio/opus;
+Terminal=false
+Categories=Qt;KDE;AudioVideo;Audio;Player;Recorder;AudioVideoEditing;
+X-DBUS-StartupType=Unique
+X-SuSE-translate=true" >> /usr/share/applications/AM-$APP.desktop;
+
+# ICON
+mkdir /opt/$APP/icons
+wget $ICONURL -O /opt/$APP/icons/$APP
+
+# CHANGE THE PERMISSIONS
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/$APP
+
+# MESSAGE
+echo "
+
+ This AppImage of $APP is provided by https://github.com/$USER
+
+"
