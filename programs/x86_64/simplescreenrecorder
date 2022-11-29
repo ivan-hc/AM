@@ -1,0 +1,107 @@
+#!/bin/sh
+
+APP=simplescreenrecorder
+REPO="ivan-hc/Database-of-pkg2appimaged-packages"
+
+ICONURL="https://raw.githubusercontent.com/MaartenBaert/ssr/master/data/icons/256/simplescreenrecorder.png"
+
+USER=$(echo $REPO | sed 's:/[^/]*$::')
+REPO2=$(echo $REPO | sed 's:.*/::')
+FILENAMEEXTENTION="/.*/.*.AppImage"
+URL=https://github.com/$REPO/releases/latest
+COMMENT=$(curl https://api.github.com/repos/$REPO 2>/dev/null | grep description | sed 's/"description": "//' | sed 's/",//')
+APPNAME=$(echo $REPO2 | sed 's/-/ /g' | sed 's/_/ /g')
+
+# CREATE THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP
+
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+
+# DOWNLOAD THE ARCHIVE
+mkdir tmp
+cd ./tmp
+
+download=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep $APP | grep -E browser_download_url | awk -F '[""]' '{print $4}' | grep -w -v i386 | grep -w -v i686 | grep -w -v arm64 | grep -w -v armv7l | egrep ''$FILENAMEEXTENTION'' -o | head -1);
+wget https:$download
+version=$(wget -q https://api.github.com/repos/$REPO/releases/latest -O - | grep -E tag_name | awk -F '[""]' '{print $4}')
+echo "$version" >> /opt/$APP/version
+if ls . | grep mage; then
+	cd ..
+	mv ./tmp/*mage ./$APP
+	chmod a+x /opt/$APP/$APP
+	rmdir ./tmp
+elif ls . | grep .deb; then
+	ar x ./*.deb
+	tar fx ./data.tar.xz
+	cd ..
+	mv ./tmp//* ./
+	rm -R -f ./tmp
+elif ls . | grep .tar.bz2; then
+	tar fx *.tar.bz2
+	dir=$(ls . | grep -w -v *.tar.*)
+	cd ..
+	mv ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+elif ls . | grep .tar.gz; then
+	tar fx *.tar.gz
+	dir=$(ls . | grep -w -v *.tar.*)
+	cd ..
+	mv ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+elif ls . | grep .tar.xz; then
+	tar fx *.tar.xz
+	dir=$(ls . | grep -w -v *.tar.*)
+	cd ..
+	mv ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+elif ls ./tmp/ | grep .zip; then
+	unzip *.zip
+	dir=$(ls . | grep -w -v *.zip)
+	cd ..
+	mv ./tmp/$(echo $dir)/* ./
+	rm -R -f ./tmp
+fi
+
+#-------------------------------------
+
+# LINK
+ln -s /opt/$APP/$APP /usr/local/bin/$APP
+
+# LAUNCHER
+rm /usr/share/applications/AM-$APP.desktop
+echo "[Desktop Entry]
+Type=Application
+Name=SimpleScreenRecorder
+Comment=A feature-rich screen recorder that supports X11 and OpenGL
+Comment[de]=Ein funktionsreicher Bildschirmrekorder, der X11 und OpenGL unterstützt
+Comment[fr]=Un captureur d'écran complet qui supporte X11 et OpenGL
+Comment[hu]=Funkciógazdag képernyőrögzítő X11 és OpenGL támogatással
+Comment[id]=Perekam layar kaya fitur yang mendukung X11 dan OpenGL
+Comment[lt]=Funkcionali ekrano įrašymo programa, palaikanti X11 ir OpenGL
+Comment[ru]=Многофункциональный рекордер экрана, который поддерживает X11 и OpenGL
+Comment[sk]=Vlastnosťami nabitý nahrávač obrazovky, ktorý podporuje X11 a OpenGL
+Exec=$APP--logfile
+Terminal=false
+Categories=AudioVideo;Video;Recorder;Qt;
+Keywords=screen recorder;screencast;live streaming;ssr;
+StartupNotify=true
+Icon=/opt/$APP/icons/$APP" >> /usr/share/applications/AM-$APP.desktop
+
+# ICON
+mkdir /opt/$APP/icons
+wget $ICONURL -O /opt/$APP/icons/$APP
+
+# CHANGE THE PERMISSIONS
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/$APP
+
+# MESSAGE
+echo "
+
+ $APPNAME is provided by https://github.com/$USER
+
+"
