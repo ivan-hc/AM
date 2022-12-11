@@ -66,20 +66,41 @@ sed -i s@FUNCTION1@$URL1@g /opt/$APP/AM-updater
 sed -i s@FUNCTION2@$URL2@g /opt/$APP/AM-updater
 chmod a+x /opt/$APP/AM-updater
 
-# LAUNCHER
-rm /usr/share/applications/AM-$APP.desktop
-echo "[Desktop Entry]
-Name=$APPNAME
-Exec=$APP
-Icon=/opt/$APP/icons/$APP
-Type=Application
-Terminal=false
-Categories=$CATEGORIES;
-Comment=$COMMENT" >> /usr/share/applications/AM-$APP.desktop
+# LAUNCHER & ICON
+cd /opt/$APP
+mv $(./$APP --appimage-extract *.desktop) ./$APP.desktop
+if [ ! -e ./$APP.desktop ]; then rm ./$APP.desktop; mv $(/opt/$APP/$APP --appimage-extract usr/share/applications/*.desktop) ./$APP.desktop; fi
+if [ ! -e ./$APP.desktop ]; then rm ./$APP.desktop; mv $(/opt/$APP/$APP --appimage-extract share/applications/*.desktop) ./$APP.desktop; fi
+if cat ./$APP.desktop | grep Exec | grep AppRun; then rm ./$APP.desktop; mv $(./$APP --appimage-extract usr/share/applications/*$APP*.desktop) ./$APP.desktop; fi
+CHANGEEXEC=$(cat ./$APP.desktop | grep Exec= | tr ' ' '\n' | tr '=' '\n' | tr '/' '\n' | grep $APP | head -1)
+sed -i "s#$CHANGEEXEC#$APP#g" ./$APP.desktop
+CHANGEICON=$(cat ./$APP.desktop | grep Icon= | grep $APP | head -1)
+sed -i "s#$CHANGEICON#Icon=/opt/$APP/icons/$APP#g" ./$APP.desktop
 
-# ICON
-mkdir ./icons
-wget $ICONURL -O /opt/$APP/icons/$APP
+mkdir icons
+mv $(./$APP --appimage-extract *.png) ./icons/$APP 2>/dev/null
+mv $(./$APP --appimage-extract *.svg) ./icons/$APP 2>/dev/null
+mv $(./$APP --appimage-extract share/icons/hicolor/22x22/apps/*$APP*) ./icons/$APP 2>/dev/null
+mv $(./$APP --appimage-extract share/icons/hicolor/24x24/apps/*$APP*) ./icons/$APP 2>/dev/null
+mv $(./$APP --appimage-extract share/icons/hicolor/32x32/apps/*$APP*) ./icons/$APP 2>/dev/null
+mv $(./$APP --appimage-extract share/icons/hicolor/48x48/apps/*$APP*) ./icons/$APP 2>/dev/null
+mv $(./$APP --appimage-extract share/icons/hicolor/64x64/apps/*$APP*) ./icons/$APP 2>/dev/null
+mv $(./$APP --appimage-extract share/icons/hicolor/128x128/apps/*$APP*) ./icons/$APP 2>/dev/null
+mv $(./$APP --appimage-extract share/icons/hicolor/256x256/apps/*$APP*) ./icons/$APP 2>/dev/null
+mv $(./$APP --appimage-extract share/icons/hicolor/512x512/apps/*$APP*) ./icons/$APP 2>/dev/null
+mv $(./$APP --appimage-extract share/icons/hicolor/scalable/apps/*$APP*) ./icons/$APP 2>/dev/null
+mv $(./$APP --appimage-extract usr/share/icons/hicolor/22x22/apps/*$APP*) ./icons/$APP 2>/dev/null
+mv $(./$APP --appimage-extract usr/share/icons/hicolor/24x24/apps/*$APP*) ./icons/$APP 2>/dev/null
+mv $(./$APP --appimage-extract usr/share/icons/hicolor/32x32/apps/*$APP*) ./icons/$APP 2>/dev/null
+mv $(./$APP --appimage-extract usr/share/icons/hicolor/48x48/apps/*$APP*) ./icons/$APP 2>/dev/null
+mv $(./$APP --appimage-extract usr/share/icons/hicolor/64x64/apps/*$APP*) ./icons/$APP 2>/dev/null
+mv $(./$APP --appimage-extract usr/share/icons/hicolor/128x128/apps/*$APP*) ./icons/$APP 2>/dev/null
+mv $(./$APP --appimage-extract usr/share/icons/hicolor/256x256/apps/*$APP*) ./icons/$APP 2>/dev/null
+mv $(./$APP --appimage-extract usr/share/icons/hicolor/512x512/apps/*$APP*) ./icons/$APP 2>/dev/null
+mv $(./$APP --appimage-extract usr/share/icons/hicolor/scalable/apps/*$APP*) ./icons/$APP 2>/dev/null
+
+rm -R -f /opt/$APP/squashfs-root
+mv ./$APP.desktop /usr/share/applications/AM-$APP.desktop
 
 # CHANGE THE PERMISSIONS
 currentuser=$(who | awk '{print $1}')
