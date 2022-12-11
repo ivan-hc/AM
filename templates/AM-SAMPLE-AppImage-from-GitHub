@@ -2,35 +2,22 @@
 
 APP=SAMPLE
 REPO="REPLACETHIS"
-BINARYNAME="NAMETHEBINARY"
-ICONNAME="NAMETHEICON"
 
 # CREATE THE FOLDER
 mkdir /opt/$APP
 cd /opt/$APP
 
 # ADD THE REMOVER
-cat >> /opt/$APP/remove << 'EOF'
-#!/bin/sh
-APP=SAMPLE
-BINARYNAME="NAMETHEBINARY"
-ICONNAME="NAMETHEICON"
-rm -R -f /usr/local/share/applications/$APP.desktop 2>/dev/null
-rm -R -f /usr/local/share/pixmaps/$ICONNAME 2>/dev/null
-rmdir /usr/local/share/applications 2>/dev/null
-rmdir /usr/local/share/pixmaps 2>/dev/null
-rm -R -f /usr/local/bin/$BINARYNAME 2>/dev/null
-rm -R -f /opt/$APP 2>/dev/null
-EOF
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
 chmod a+x /opt/$APP/remove
 
 # DOWNLOAD THE ARCHIVE
 mkdir tmp
 cd ./tmp
 
-download=$(wget -q https://api.github.com/repos/$REPO/releases/latest -O - | grep -E browser_download_url | awk -F '[""]' '{print $4}' | grep -w -v i386 | grep -w -v i686 | grep -w -v arm64 | grep -w -v armv7l | egrep '/.*/.*.AppImage' -o | head -1);
-wget https:$download
-version=$(wget -q https://api.github.com/repos/$REPO/releases/latest -O - | grep -E tag_name | awk -F '[""]' '{print $4}')
+version=$(wget -q https://api.github.com/repos/$REPO/releases/latest -O - | grep -w -v i386 | grep -w -v i686 | grep -w -v arm64 | grep -w -v armv7l | grep browser_download_url | grep -i appimage | cut -d '"' -f 4 | head -1)
+wget $version
 echo "$version" >> /opt/$APP/version
 cd ..
 mv ./tmp/*mage ./$APP
@@ -46,16 +33,14 @@ cat >> /opt/$APP/AM-updater << 'EOF'
 APP=SAMPLE
 REPO="REPLACETHIS"
 version0=$(cat /opt/$APP/version)
-version=$(wget -q https://api.github.com/repos/$REPO/releases/latest -O - | grep -E tag_name | awk -F '[""]' '{print $4}')
+version=$(wget -q https://api.github.com/repos/$REPO/releases/latest -O - | grep -w -v i386 | grep -w -v i686 | grep -w -v arm64 | grep -w -v armv7l | grep browser_download_url | grep -i appimage | cut -d '"' -f 4 | head -1)
 if [ $version = $version0 ]; then
   echo "Update not needed!"
 else
   notify-send "A new version of $APP is available, please wait"
   mkdir /opt/$APP/tmp
   cd /opt/$APP/tmp
-  download=$(wget -q https://api.github.com/repos/$REPO/releases/latest -O - | grep -E browser_download_url | awk -F '[""]' '{print $4}' | grep -w -v i386 | grep -w -v i686 | grep -w -v arm64 | grep -w -v armv7l | egrep '/.*/.*.AppImage' -o | head -1);
-  wget https:$download
-  version=$(wget -q https://api.github.com/repos/$REPO/releases/latest -O - | grep -E tag_name | awk -F '[""]' '{print $4}')
+  wget $version
   if ls . | grep mage; then
 	cd ..
   	if test -f ./tmp/*mage; then rm ./version
@@ -70,12 +55,29 @@ EOF
 chmod a+x /opt/$APP/AM-updater
 
 # LAUNCHER & ICON
-mkdir -p /usr/local/share/applications
-mv $(./$APP --appimage-extract *.desktop) /usr/local/share/applications/$APP.desktop 2>/dev/null
-mkdir -p /usr/local/share/pixmaps
-mv $(./$APP --appimage-extract *.png) /usr/local/share/pixmaps/$ICONNAME.png 2>/dev/null
-mv $(./$APP --appimage-extract *.svg) /usr/local/share/pixmaps/$ICONNAME.svg 2>/dev/null
-rmdir squashfs-root
+cd /opt/$APP
+mv $(./$APP --appimage-extract *.desktop) ./$APP.desktop
+if cat ./$APP.desktop | grep Exec | grep AppRun; then rm ./$APP.desktop; mv $(./$APP --appimage-extract usr/share/applications/*$APP*.desktop) ./$APP.desktop; fi
+CHANGEEXEC=$(cat ./$APP.desktop | grep Exec= | tr ' ' '\n' | tr '=' '\n' | tr '/' '\n' | grep $APP | head -1)
+sed -i "s#$CHANGEEXEC#$APP#g" ./$APP.desktop
+CHANGEICON=$(cat ./$APP.desktop | grep Icon= | grep $APP | head -1)
+sed -i "s#$CHANGEICON#Icon=/opt/$APP/icons/$APP#g" ./$APP.desktop
+
+mkdir icons
+mv $(./$APP --appimage-extract *.png) ./icons/$APP 2>/dev/null
+mv $(./$APP --appimage-extract *.svg) ./icons/$APP 2>/dev/null
+mv $(./$APP --appimage-extract usr/share/icons/hicolor/22x22/apps/*$APP*) ./icons/$APP 2>/dev/null
+mv $(./$APP --appimage-extract usr/share/icons/hicolor/24x24/apps/*$APP*) ./icons/$APP 2>/dev/null
+mv $(./$APP --appimage-extract usr/share/icons/hicolor/32x32/apps/*$APP*) ./icons/$APP 2>/dev/null
+mv $(./$APP --appimage-extract usr/share/icons/hicolor/48x48/apps/*$APP*) ./icons/$APP 2>/dev/null
+mv $(./$APP --appimage-extract usr/share/icons/hicolor/64x64/apps/*$APP*) ./icons/$APP 2>/dev/null
+mv $(./$APP --appimage-extract usr/share/icons/hicolor/128x128/apps/*$APP*) ./icons/$APP 2>/dev/null
+mv $(./$APP --appimage-extract usr/share/icons/hicolor/256x256/apps/*$APP*) ./icons/$APP 2>/dev/null
+mv $(./$APP --appimage-extract usr/share/icons/hicolor/512x512/apps/*$APP*) ./icons/$APP 2>/dev/null
+mv $(./$APP --appimage-extract usr/share/icons/hicolor/scalable/apps/*$APP*) ./icons/$APP 2>/dev/null
+
+rm -R -f /opt/$APP/squashfs-root
+mv ./$APP.desktop /usr/share/applications/AM-$APP.desktop
 
 # CHANGE THE PERMISSIONS
 currentuser=$(who | awk '{print $1}')
@@ -83,5 +85,5 @@ chown -R $currentuser /opt/$APP
 
 # MESSAGE
 echo "
- $APPNAME is provided by https://github.com/$(echo $REPO | sed 's:/[^/]*$::')
+ $APP is provided by https://github.com/$(echo $REPO | sed 's:/[^/]*$::')
 "
