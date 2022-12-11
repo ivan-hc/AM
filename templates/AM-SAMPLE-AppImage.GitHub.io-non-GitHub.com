@@ -69,6 +69,7 @@ chmod a+x /opt/$APP/AM-updater
 # LAUNCHER & ICON
 cd /opt/$APP
 mv $(./$APP --appimage-extract *.desktop) ./$APP.desktop
+if desktop-file-validate --no-hints ./$APP.desktop | grep error; then rm ./$APP.desktop; mv $(./$APP --appimage-extract usr/share/applications/*$APP*.desktop) ./$APP.desktop; fi
 if [ ! -e ./$APP.desktop ]; then rm ./$APP.desktop; mv $(/opt/$APP/$APP --appimage-extract usr/share/applications/*.desktop) ./$APP.desktop; fi
 if [ ! -e ./$APP.desktop ]; then rm ./$APP.desktop; mv $(/opt/$APP/$APP --appimage-extract share/applications/*.desktop) ./$APP.desktop; fi
 if cat ./$APP.desktop | grep Exec | grep AppRun; then rm ./$APP.desktop; mv $(./$APP --appimage-extract usr/share/applications/*$APP*.desktop) ./$APP.desktop; fi
