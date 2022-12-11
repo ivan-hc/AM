@@ -1,72 +1,89 @@
-#!/usr/bin/env bash
+#!/bin/sh
 
 APP=openshot
+REPO="OpenShot/openshot-qt"
 
-mkdir /opt/openshot
-cd /opt/openshot;
+# CREATE THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP
 
-echo '#!/bin/sh
-rm -R -f /usr/share/applications/AM-openshot.desktop /opt/openshot /usr/local/bin/openshot' >> /opt/openshot/remove
-chmod a+x /opt/openshot/remove
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
 
-mkdir tmp;
-cd tmp;
-v=$(wget -q https://api.github.com/repos/OpenShot/openshot-qt/releases/latest -O - | grep -E tag_name | awk -F '[""]' '{print $4}')
-wget https://github.com/OpenShot/openshot-qt/releases/download/$v/OpenShot-$v-x86_64.AppImage;
+# DOWNLOAD THE ARCHIVE
+mkdir tmp
+cd ./tmp
+
+version=$(wget -q https://api.github.com/repos/$REPO/releases/latest -O - | grep -w -v i386 | grep -w -v i686 | grep -w -v arm64 | grep -w -v armv7l | grep browser_download_url | grep -i appimage | cut -d '"' -f 4 | head -1)
+wget $version
+echo "$version" >> /opt/$APP/version
 cd ..
-mv ./tmp/*mage ./openshot
-chmod a+x ./openshot
+mv ./tmp/*mage ./$APP
+chmod a+x /opt/$APP/$APP
 rmdir ./tmp
 
 # LINK
-ln -s /opt/$APP/$APP /usr/local/bin/$APP
+ln -s /opt/$APP/$APP /usr/local/bin/$BINARYNAME
 
 # SCRIPT TO UPDATE THE PROGRAM
-part0='{print $4}'
-part1='[""]'
-function2="grep -E tag_name | awk -F '$part1' '$part0')"
-echo '#!/bin/sh
-version=$(exec /opt/openshot/openshot --version)
-url="https://github.com/OpenShot/openshot-qt/releases/download/v$version/OpenShot-v$version-x86_64.AppImage"
-if curl --output /dev/null --silent --head --fail "$url"; then
-  echo "Update not needed, exit!"
+cat >> /opt/$APP/AM-updater << 'EOF'
+#!/usr/bin/env bash
+APP=openshot
+REPO="OpenShot/openshot-qt"
+version0=$(cat /opt/$APP/version)
+version=$(wget -q https://api.github.com/repos/$REPO/releases/latest -O - | grep -w -v i386 | grep -w -v i686 | grep -w -v arm64 | grep -w -v armv7l | grep browser_download_url | grep -i appimage | cut -d '"' -f 4 | head -1)
+if [ $version = $version0 ]; then
+  echo "Update not needed!"
 else
-  notify-send "A new version of OpenShot is available, please wait!"
-  mkdir /opt/'$APP'/tmp
-  cd /opt/'$APP'/tmp 
-  v=$(wget -q https://api.github.com/repos/OpenShot/openshot-qt/releases/latest -O - | '$function2'
-  wget https://github.com/OpenShot/openshot-qt/releases/download/$v/OpenShot-$v-x86_64.AppImage;
-  cd ..
-  mv ./tmp/*mage ./openshot
-  chmod a+x ./openshot
-  rmdir ./tmp
-fi' >> /opt/$APP/AM-updater
+  notify-send "A new version of $APP is available, please wait"
+  mkdir /opt/$APP/tmp
+  cd /opt/$APP/tmp
+  wget $version
+  if ls . | grep mage; then
+	cd ..
+  	if test -f ./tmp/*mage; then rm ./version
+  	fi
+  	echo $version >> ./version
+  	mv --backup=t ./tmp/*mage ./$APP
+  	chmod a+x /opt/$APP/$APP
+  	rm -R -f ./tmp ./*~
+  fi
+fi
+EOF
 chmod a+x /opt/$APP/AM-updater
 
+# LAUNCHER & ICON
+cd /opt/$APP
+mv $(./$APP --appimage-extract *.desktop) ./$APP.desktop
+if cat ./$APP.desktop | grep Exec | grep AppRun; then rm ./$APP.desktop; mv $(./$APP --appimage-extract usr/share/applications/*$APP*.desktop) ./$APP.desktop; fi
+CHANGEEXEC=$(cat ./$APP.desktop | grep Exec= | tr ' ' '\n' | tr '=' '\n' | tr '/' '\n' | grep $APP | head -1)
+sed -i "s#$CHANGEEXEC#$APP#g" ./$APP.desktop
+CHANGEICON=$(cat ./$APP.desktop | grep Icon= | grep $APP | head -1)
+sed -i "s#$CHANGEICON#Icon=/opt/$APP/icons/$APP#g" ./$APP.desktop
+
+mkdir icons
+mv $(./$APP --appimage-extract *.png) ./icons/$APP 2>/dev/null
+mv $(./$APP --appimage-extract *.svg) ./icons/$APP 2>/dev/null
+mv $(./$APP --appimage-extract usr/share/icons/hicolor/22x22/apps/*$APP*) ./icons/$APP 2>/dev/null
+mv $(./$APP --appimage-extract usr/share/icons/hicolor/24x24/apps/*$APP*) ./icons/$APP 2>/dev/null
+mv $(./$APP --appimage-extract usr/share/icons/hicolor/32x32/apps/*$APP*) ./icons/$APP 2>/dev/null
+mv $(./$APP --appimage-extract usr/share/icons/hicolor/48x48/apps/*$APP*) ./icons/$APP 2>/dev/null
+mv $(./$APP --appimage-extract usr/share/icons/hicolor/64x64/apps/*$APP*) ./icons/$APP 2>/dev/null
+mv $(./$APP --appimage-extract usr/share/icons/hicolor/128x128/apps/*$APP*) ./icons/$APP 2>/dev/null
+mv $(./$APP --appimage-extract usr/share/icons/hicolor/256x256/apps/*$APP*) ./icons/$APP 2>/dev/null
+mv $(./$APP --appimage-extract usr/share/icons/hicolor/512x512/apps/*$APP*) ./icons/$APP 2>/dev/null
+mv $(./$APP --appimage-extract usr/share/icons/hicolor/scalable/apps/*$APP*) ./icons/$APP 2>/dev/null
+
+rm -R -f /opt/$APP/squashfs-root
+mv ./$APP.desktop /usr/share/applications/AM-$APP.desktop
+
+# CHANGE THE PERMISSIONS
 currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/$APP
 
-wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/programs/.icons/openshot.svg
-
-rm -R -f /usr/share/applications/AM-openshot.desktop
-echo '[Desktop Entry]
-Name=OpenShot Video Editor
-GenericName=Video Editor
-X-GNOME-FullName=OpenShot Video Editor
-Comment=Create and edit amazing videos and movies
-Exec=/opt/openshot/openshot %F
-Terminal=false
-Type=Application
-Icon=/opt/openshot/openshot.svg
-Categories=GNOME;GTK;AudioVideo;Video;AudioVideoEditing;
-MimeType=application/vnd.openshot-qt-project;
-X-AppInstall-Package=openshot-qt
-Path=
-StartupNotify=true' >> /usr/share/applications/AM-openshot.desktop
-
-chown -R $currentuser /opt/openshot
 # MESSAGE
 echo "
-
- OpenShot Video Editor is provided by https://www.openshot.org
-
+ $APP is provided by https://github.com/$(echo $REPO | sed 's:/[^/]*$::')
 "
