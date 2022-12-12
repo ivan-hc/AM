@@ -3,16 +3,6 @@
 APP=apk-editor-studio
 REPO="kefir500/apk-editor-studio"
 
-CATEGORIES="Utility"
-ICONURL="https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/programs/.icons/$APP.svg"
-
-USER=$(echo $REPO | sed 's:/[^/]*$::')
-REPO2=$(echo $REPO | sed 's:.*/::')
-FILENAMEEXTENTION="/.*/.*.AppImage"
-URL=https://github.com/$REPO/releases/latest
-COMMENT=$(curl https://api.github.com/repos/$REPO 2>/dev/null | grep description | sed 's/"description": "//' | sed 's/",//')
-APPNAME="APK Editor Studio"
-
 # CREATE THE FOLDER
 mkdir /opt/$APP
 cd /opt/$APP
@@ -26,69 +16,31 @@ chmod a+x /opt/$APP/remove
 mkdir tmp
 cd ./tmp
 
-download=$(wget -q https://api.github.com/repos/$REPO/releases/latest -O - | grep -E browser_download_url | awk -F '[""]' '{print $4}' | grep -w -v i386 | grep -w -v i686 | grep -w -v arm64 | grep -w -v armv7l | egrep ''$FILENAMEEXTENTION'' -o | head -1);
-wget https:$download
-version=$(wget -q https://api.github.com/repos/$REPO/releases/latest -O - | grep -E tag_name | awk -F '[""]' '{print $4}')
+version=$(wget -q https://api.github.com/repos/$REPO/releases/latest -O - | grep -w -v i386 | grep -w -v i686 | grep -w -v arm64 | grep -w -v armv7l | grep browser_download_url | grep -i appimage | cut -d '"' -f 4 | head -1)
+wget $version
 echo "$version" >> /opt/$APP/version
-if ls . | grep mage; then
-	cd ..
-	mv ./tmp/*mage ./$APP
-	chmod a+x /opt/$APP/$APP
-	rmdir ./tmp
-elif ls . | grep .deb; then
-	ar x ./*.deb
-	tar fx ./data.tar.xz
-	cd ..
-	mv ./tmp//* ./
-	rm -R -f ./tmp
-elif ls . | grep .tar.bz2; then
-	tar fx *.tar.bz2
-	dir=$(ls . | grep -w -v *.tar.*)
-	cd ..
-	mv ./tmp/$(echo $dir)/* ./
-	rm -R -f ./tmp
-elif ls . | grep .tar.gz; then
-	tar fx *.tar.gz
-	dir=$(ls . | grep -w -v *.tar.*)
-	cd ..
-	mv ./tmp/$(echo $dir)/* ./
-	rm -R -f ./tmp
-elif ls . | grep .tar.xz; then
-	tar fx *.tar.xz
-	dir=$(ls . | grep -w -v *.tar.*)
-	cd ..
-	mv ./tmp/$(echo $dir)/* ./
-	rm -R -f ./tmp
-elif ls ./tmp/ | grep .zip; then
-	unzip *.zip
-	dir=$(ls . | grep -w -v *.zip)
-	cd ..
-	mv ./tmp/$(echo $dir)/* ./
-	rm -R -f ./tmp
-fi
-
-#-------------------------------------
+cd ..
+mv ./tmp/*mage ./$APP
+chmod a+x /opt/$APP/$APP
+rmdir ./tmp
 
 # LINK
-ln -s /opt/$APP/$APP /usr/local/bin/$APP
+ln -s /opt/$APP/$APP /usr/local/bin/$BINARYNAME
 
 # SCRIPT TO UPDATE THE PROGRAM
 cat >> /opt/$APP/AM-updater << 'EOF'
 #!/usr/bin/env bash
 APP=apk-editor-studio
 REPO="kefir500/apk-editor-studio"
-FILENAMEEXTENTION="/.*/.*.AppImage"
 version0=$(cat /opt/$APP/version)
-url=https://github.com/$REPO/releases/latest
-if curl -L -s $url | grep -ioF "$version0"; then
+version=$(wget -q https://api.github.com/repos/$REPO/releases/latest -O - | grep -w -v i386 | grep -w -v i686 | grep -w -v arm64 | grep -w -v armv7l | grep browser_download_url | grep -i appimage | cut -d '"' -f 4 | head -1)
+if [ $version = $version0 ]; then
   echo "Update not needed!"
 else
   notify-send "A new version of $APP is available, please wait"
   mkdir /opt/$APP/tmp
   cd /opt/$APP/tmp
-  download=$(wget -q https://api.github.com/repos/$REPO/releases/latest -O - | grep -E browser_download_url | awk -F '[""]' '{print $4}' | grep -w -v i386 | grep -w -v i686 | grep -w -v arm64 | grep -w -v armv7l | egrep ''$FILENAMEEXTENTION'' -o | head -1);
-  wget https:$download
-  version=$(wget -q https://api.github.com/repos/$REPO/releases/latest -O - | grep -E tag_name | awk -F '[""]' '{print $4}')
+  wget $version
   if ls . | grep mage; then
 	cd ..
   	if test -f ./tmp/*mage; then rm ./version
@@ -97,70 +49,64 @@ else
   	mv --backup=t ./tmp/*mage ./$APP
   	chmod a+x /opt/$APP/$APP
   	rm -R -f ./tmp ./*~
-  elif ls . | grep .deb; then
-	ar x ./*.deb
-	tar fx ./data.tar.xz
-	cd ..
-  	if test -f ./tmp/*.deb; then rm ./version
-  	fi
-  	echo $version >> ./version
-  	mv --backup=t ./tmp//* ./
-  	rm -R -f ./tmp ./*~
-  elif ls . | grep .tar.bz2; then
-	tar fx *.tar.bz2
-	dir=$(ls . | grep -w -v *.tar.*)
-	cd ..
-  	if test -f ./tmp/*.tar.bz2; then rm ./version
-  	fi
-  	echo $version >> ./version
-	mv --backup=t ./tmp/$(echo $dir)/* ./
-	rm -R -f ./tmp
-  elif ls . | grep .tar.gz; then
-	tar fx *.tar.gz
-	dir=$(ls . | grep -w -v *.tar.*)
-	cd ..
-  	if test -f ./tmp/*.tar.gz; then rm ./version
-  	fi
-  	echo $version >> ./version
-	mv --backup=t ./tmp/$(echo $dir)/* ./
-	rm -R -f ./tmp
-  elif ls . | grep .tar.xz; then
-	tar fx *.tar.xz
-	dir=$(ls . | grep -w -v *.tar.*)
-	cd ..
-  	if test -f ./tmp/*.tar.xz; then rm ./version
-  	fi
-  	echo $version >> ./version
-	mv --backup=t ./tmp/$(echo $dir)/* ./
-	rm -R -f ./tmp
-  elif ls ./tmp/ | grep .zip; then
-	unzip *.zip
-	dir=$(ls . | grep -w -v *.zip)
-	cd ..
-  	if test -f ./tmp/*.zip; then rm ./version
-  	fi
-  	echo $version >> ./version
-	mv --backup=t ./tmp/$(echo $dir)/* ./
-	rm -R -f ./tmp
   fi
 fi
 EOF
 chmod a+x /opt/$APP/AM-updater
 
-# LAUNCHER
-rm /usr/share/applications/AM-$APP.desktop
-echo "[Desktop Entry]
-Name=$APPNAME
-Exec=$APP
-Icon=/opt/$APP/icons/$APP
-Type=Application
-Terminal=false
-Categories=$CATEGORIES;
-Comment=$COMMENT" >> /usr/share/applications/AM-$APP.desktop
+# LAUNCHER & ICON
+app=$(echo $APP | cut -c -3)
+cd /opt/$APP
+./$APP --appimage-extract *.desktop
+./$APP --appimage-extract share/applications/*.desktop
+./$APP --appimage-extract usr/share/applications/*.desktop
+mv squashfs-root/*.desktop ./$APP.desktop
+mv squashfs-root/share/applications/*.desktop ./$APP.desktop
+mv squashfs-root/usr/share/applications/*.desktop ./$APP.desktop
+if [ ! -e ./$APP.desktop ]; then 
+	rm ./$APP.desktop; ./$APP --appimage-extract usr/share/applications/*$app*.desktop 
+	mv squashfs-root/usr/share/applications/*.desktop ./$APP.desktop
+fi
+if [ ! -e ./$APP.desktop ]; then 
+	rm ./$APP.desktop; ./$APP --appimage-extract share/applications/*$app*.desktop 
+	mv squashfs-root/share/applications/*.desktop ./$APP.desktop
+fi
+CHANGEEXEC=$(cat ./$APP.desktop | grep Exec= | tr ' ' '\n' | tr '=' '\n' | tr '/' '\n' | grep $APP | head -1)
+sed -i "s#$CHANGEEXEC#$APP#g" ./$APP.desktop
+sed -i "s#AppRun#$APP#g" ./$APP.desktop
+sed -i "s#Exec=/bin/#Exec=#g" ./$APP.desktop
+sed -i "s#Exec=/usr/bin/#Exec=#g" ./$APP.desktop
+CHANGEICON=$(cat ./$APP.desktop | grep Icon= | grep $app | head -1)
+sed -i "s#$CHANGEICON#Icon=/opt/$APP/icons/$APP#g" ./$APP.desktop
 
-# ICON
-mkdir /opt/$APP/icons
-wget $ICONURL -O /opt/$APP/icons/$APP
+mkdir icons
+mv $(./$APP --appimage-extract *.png) ./icons/$APP 2>/dev/null
+mv $(./$APP --appimage-extract *.svg) ./icons/$APP 2>/dev/null
+./$APP --appimage-extract share/icons/*/*/*
+./$APP --appimage-extract usr/share/icons/*/*/*
+./$APP --appimage-extract share/icons/*/*/*/*
+./$APP --appimage-extract usr/share/icons/*/*/*/*
+mv ./squashfs-root/share/icons/hicolor/22x22/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/24x24/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/32x32/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/48x48/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/64x64/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/128x128/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/256x256/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/512x512/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/scalable/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/22x22/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/24x24/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/32x32/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/48x48/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/64x64/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/128x128/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/256x256/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/512x512/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/scalable/apps/*$app* ./icons/$APP 2>/dev/null
+
+rm -R -f /opt/$APP/squashfs-root
+mv ./$APP.desktop /usr/share/applications/AM-$APP.desktop
 
 # CHANGE THE PERMISSIONS
 currentuser=$(who | awk '{print $1}')
@@ -168,7 +114,5 @@ chown -R $currentuser /opt/$APP
 
 # MESSAGE
 echo "
-
- $APPNAME is provided by https://github.com/$USER
-
+ $APP is provided by https://github.com/$(echo $REPO | sed 's:/[^/]*$::')
 "
