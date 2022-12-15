@@ -69,9 +69,9 @@ chmod a+x /opt/$APP/AM-updater
 # LAUNCHER & ICON
 app=$(echo $APP | cut -c -3)
 cd /opt/$APP
-./$APP --appimage-extract *.desktop
-./$APP --appimage-extract share/applications/*.desktop
-./$APP --appimage-extract usr/share/applications/*.desktop
+./$APP --appimage-extract *.desktop 2>/dev/null
+./$APP --appimage-extract share/applications/*.desktop 2>/dev/null
+./$APP --appimage-extract usr/share/applications/*.desktop 2>/dev/null
 mv squashfs-root/*.desktop ./$APP.desktop
 mv squashfs-root/share/applications/*.desktop ./$APP.desktop
 mv squashfs-root/usr/share/applications/*.desktop ./$APP.desktop
@@ -80,7 +80,7 @@ if [ ! -e ./$APP.desktop ]; then
 	mv squashfs-root/usr/share/applications/*.desktop ./$APP.desktop
 fi
 if [ ! -e ./$APP.desktop ]; then 
-	rm ./$APP.desktop; ./$APP --appimage-extract share/applications/*$app*.desktop 
+	rm ./$APP.desktop; ./$APP --appimage-extract share/applications/*$app*.desktop 2>/dev/null
 	mv squashfs-root/share/applications/*.desktop ./$APP.desktop
 fi
 CHANGEEXEC=$(cat ./$APP.desktop | grep Exec= | tr ' ' '\n' | tr '=' '\n' | tr '/' '\n' | grep $app | head -1)
@@ -94,10 +94,10 @@ sed -i "s#$CHANGEICON#Icon=/opt/$APP/icons/$APP#g" ./$APP.desktop
 mkdir icons
 mv $(./$APP --appimage-extract *.png) ./icons/$APP 2>/dev/null
 mv $(./$APP --appimage-extract *.svg) ./icons/$APP 2>/dev/null
-./$APP --appimage-extract share/icons/*/*/*
-./$APP --appimage-extract usr/share/icons/*/*/*
-./$APP --appimage-extract share/icons/*/*/*/*
-./$APP --appimage-extract usr/share/icons/*/*/*/*
+./$APP --appimage-extract share/icons/*/*/* 2>/dev/null
+./$APP --appimage-extract usr/share/icons/*/*/* 2>/dev/null
+./$APP --appimage-extract share/icons/*/*/*/* 2>/dev/null
+./$APP --appimage-extract usr/share/icons/*/*/*/* 2>/dev/null
 mv ./squashfs-root/share/icons/hicolor/22x22/apps/*$app* ./icons/$APP 2>/dev/null
 mv ./squashfs-root/share/icons/hicolor/24x24/apps/*$app* ./icons/$APP 2>/dev/null
 mv ./squashfs-root/share/icons/hicolor/32x32/apps/*$app* ./icons/$APP 2>/dev/null
