@@ -31,45 +31,32 @@ rmdir ./tmp
 ln -s /opt/$APP/codium /usr/local/bin/$APP
 
 # SCRIPT TO UPDATE THE PROGRAM
-echo '#!/bin/sh' >> /opt/$APP/AM-updater
-echo "APP=$APP" >> /opt/$APP/AM-updater
-echo "cd /opt/$APP" /usr/local/bin/$APP
-echo 'version0=$(cat /opt/$APP/version)
+cat >> /opt/$APP/AM-updater << 'EOF'
+#!/bin/sh
+APP=vscodium
+version0=$(cat /opt/$APP/version)
 
-url=https://github.com/VSCodium/vscodium/releases/latest' >> /opt/$APP/AM-updater
-
-echo 'if curl -L -s $url | grep -ioF "$version0"; then' >> /opt/$APP/AM-updater
-echo '  echo "Update not needed!".'  >> /opt/$APP/AM-updater
-echo 'else' >> /opt/$APP/AM-updater
-echo "  notify-send 'A new version of $APP is available, please wait'" >> /opt/$APP/AM-updater
-echo "  mkdir /opt/$APP/tmp
-  cd /opt/$APP/tmp" >> /opt/$APP/AM-updater
-
-########################################################################################
-
-function1='$(wget -q https://api.github.com/repos/VSCodium/vscodium/releases/latest -O -'
-part0='{print $4}'
-part1='[""]'
-function2="grep -E tag_name | awk -F '$part1' '$part0')"
-function3='$(ls /opt/$APP/tmp)'
-function4='wget https://github.com/VSCodium/vscodium/releases/download/$v/VSCodium-linux-x64-$v.tar.gz'
-
-echo "  v=$function1 | $function2
-  $function4
-  version=$function3" >> /opt/$APP/AM-updater
-
-########################################################################################
-
-echo '  cd ..
+url=https://github.com/VSCodium/vscodium/releases/latest
+if curl -L -s $url | grep -ioF "$version0"; then
+  echo "Update not needed!".
+else
+  notify-send 'A new version of vscodium is available, please wait'
+  mkdir /opt/vscodium/tmp
+  cd /opt/vscodium/tmp
+  v=$(wget -q https://api.github.com/repos/VSCodium/vscodium/releases/latest -O - | grep -E tag_name | awk -F '[""]' '{print $4}')
+  wget https://github.com/VSCodium/vscodium/releases/download/$v/VSCodium-linux-x64-$v.tar.gz
+  version=$(ls /opt/$APP/tmp)
+  cd ..
   if test -f ./tmp/*tar.gz; then rm ./version
   fi
-  echo "$version" >> ./version' >> /opt/$APP/AM-updater
-echo "  tar fx ./tmp/*.tar.gz
+  echo "$version" >> ./version
+  tar fx ./tmp/*.tar.gz
   rm ./tmp/*.tar.gz
   mv ./tmp/* ./
   rmdir ./tmp
-fi" >> /opt/$APP/AM-updater
-chmod a+x /opt/$APP/AM-updater
+fi
+EOF
+chmod a+x ./AM-updater
 
 # LAUNCHER
 rm /usr/share/applications/AM-$APP.desktop
@@ -78,7 +65,7 @@ Name=VSCodium
 Comment=Code Editing. Redefined.
 GenericName=Text Editor
 Exec=vscodium --unity-launch %F
-Icon=/opt/$APP/$APP.svg
+Icon=/opt/$APP/icons/$APP
 Type=Application
 StartupNotify=false
 StartupWMClass=VSCodium
