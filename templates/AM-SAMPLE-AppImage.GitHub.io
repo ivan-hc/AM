@@ -8,7 +8,7 @@ ICONURL="https://appimage.github.io/database/$(curl -L -s https://raw.githubuser
 REPO=$(curl -L -s https://raw.githubusercontent.com/AppImage/appimage.github.io/master/apps/$APPNAME.md | grep -A1 "type: GitHub" | sed -n 2p | cut -c 10-)
 USER=$(echo $REPO | sed 's:/[^/]*$::')
 REPO2=$(echo $REPO | sed 's:.*/::')
-FILENAMEEXTENTION="/.*/.*.$(grep -i appimage)"
+FILENAMEEXTENTION="/.*/.*.*mage"
 URL=https://github.com/$REPO/releases/latest
 COMMENT=$(curl -L -s https://raw.githubusercontent.com/AppImage/appimage.github.io/master/apps/$APPNAME.md | grep "Comment:" | cut -c 14-)
 
