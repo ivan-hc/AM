@@ -71,59 +71,20 @@ sed -i s/FUNCTION3/$REPO2/g /opt/$APP/AM-updater
 sed -i s/FUNCTION4/$FILENAMEEXTENTION/g /opt/$APP/AM-updater
 chmod a+x /opt/$APP/AM-updater
 
-# LAUNCHER & ICON
-app=$(echo $APP | cut -c -3)
-cd /opt/$APP
-./$APP --appimage-extract *.desktop 1>/dev/null
-./$APP --appimage-extract share/applications/*.desktop 1>/dev/null
-./$APP --appimage-extract usr/share/applications/*.desktop 1>/dev/null
-mv squashfs-root/*.desktop ./$APP.desktop
-mv squashfs-root/share/applications/*.desktop ./$APP.desktop
-mv squashfs-root/usr/share/applications/*.desktop ./$APP.desktop
-if [ ! -e ./$APP.desktop ]; then 
-	rm ./$APP.desktop; ./$APP --appimage-extract usr/share/applications/*$app*.desktop 
-	mv squashfs-root/usr/share/applications/*.desktop ./$APP.desktop
-fi
-if [ ! -e ./$APP.desktop ]; then 
-	rm ./$APP.desktop; ./$APP --appimage-extract share/applications/*$app*.desktop 1>/dev/null
-	mv squashfs-root/share/applications/*.desktop ./$APP.desktop
-fi
-CHANGEEXEC=$(cat ./$APP.desktop | grep Exec= | tr ' ' '\n' | tr '=' '\n' | tr '/' '\n' | grep $app | head -1)
-sed -i "s#$CHANGEEXEC#$APP#g" ./$APP.desktop
-sed -i "s#AppRun#$APP#g" ./$APP.desktop
-sed -i "s#Exec=/bin/#Exec=#g" ./$APP.desktop
-sed -i "s#Exec=/usr/bin/#Exec=#g" ./$APP.desktop
-CHANGEICON=$(cat ./$APP.desktop | grep Icon= | head -1)
-sed -i "s#$CHANGEICON#Icon=/opt/$APP/icons/$APP#g" ./$APP.desktop
+# LAUNCHER
+rm /usr/share/applications/AM-$APP.desktop
+echo "[Desktop Entry]
+Name=$APPNAME
+Exec=$APP
+Icon=/opt/$APP/icons/$APP
+Type=Application
+Terminal=false
+Categories=$CATEGORIES;
+Comment=$COMMENT" >> /usr/share/applications/AM-$APP.desktop
 
-mkdir icons
-mv $(./$APP --appimage-extract *.png) ./icons/$APP 2>/dev/null
-mv $(./$APP --appimage-extract *.svg) ./icons/$APP 2>/dev/null
-./$APP --appimage-extract share/icons/*/*/* 1>/dev/null
-./$APP --appimage-extract usr/share/icons/*/*/* 1>/dev/null
-./$APP --appimage-extract share/icons/*/*/*/* 1>/dev/null
-./$APP --appimage-extract usr/share/icons/*/*/*/* 1>/dev/null
-mv ./squashfs-root/share/icons/hicolor/22x22/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/share/icons/hicolor/24x24/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/share/icons/hicolor/32x32/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/share/icons/hicolor/48x48/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/share/icons/hicolor/64x64/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/share/icons/hicolor/128x128/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/share/icons/hicolor/256x256/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/share/icons/hicolor/512x512/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/share/icons/hicolor/scalable/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/usr/share/icons/hicolor/22x22/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/usr/share/icons/hicolor/24x24/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/usr/share/icons/hicolor/32x32/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/usr/share/icons/hicolor/48x48/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/usr/share/icons/hicolor/64x64/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/usr/share/icons/hicolor/128x128/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/usr/share/icons/hicolor/256x256/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/usr/share/icons/hicolor/512x512/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/usr/share/icons/hicolor/scalable/apps/*$app* ./icons/$APP 2>/dev/null
-
-rm -R -f /opt/$APP/squashfs-root
-mv ./$APP.desktop /usr/share/applications/AM-$APP.desktop
+# ICON
+mkdir ./icons
+wget $ICONURL -O /opt/$APP/icons/$APP
 
 # CHANGE THE PERMISSIONS
 currentuser=$(who | awk '{print $1}')
