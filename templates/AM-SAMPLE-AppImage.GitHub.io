@@ -73,8 +73,7 @@ chmod a+x /opt/$APP/AM-updater
 
 # LAUNCHER
 rm /usr/share/applications/AM-$APP.desktop
-wget https://raw.githubusercontent.com/AppImage/appimage.github.io/master/database/$APPNAME/$APP.desktop
-app=$(echo $APP | cut -c -3)
+wget $(wget -q https://api.github.com/repos/AppImage/appimage.github.io/contents/database/$APPNAME/ -O - | grep download_url | head -1 | cut -c 22- | rev | cut -c 3- | rev) -O $APP.desktopapp=$(echo $APP | cut -c -3)
 CHANGEEXEC=$(cat ./$APP.desktop | grep Exec= | tr ' ' '\n' | tr '=' '\n' | tr '/' '\n' | grep $app | head -1)
 sed -i "s#$CHANGEEXEC#$APP#g" ./$APP.desktop
 sed -i "s#AppRun#$APP#g" ./$APP.desktop
