@@ -5,7 +5,7 @@ AMREPO="https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main"
 arch=$(uname -m)
 currentuser=$(who | awk '{print $1}')
 
-for name in "ar" "cat" "chmod" "chown" "curl" "echo" "egrep" "grep" "sed" "tar" "test" "unzip" "wget" "zsync"
+for name in "ar" "cat" "chmod" "chown" "curl" "echo" "egrep" "grep" "sed" "tar" "test" "unzip" "wget" "xterm" "zsync"
 do
   [[ $(which $name 2>/dev/null) ]] || { echo "" && echo -e 'ERROR: "'$name'" not found, required by some installation scripts.';deps=1; }
 done
@@ -172,6 +172,7 @@ case "$1" in
   
   ' | less ;;
   '-a'|'about')
+  	if [ -n "$SUDO_COMMAND" ]; then echo -e "\n WARNING: You don't need to run the option '$1' with SUDO.\n"; exit; fi
 	while [ -n "$1" ]
 	do
 	rm -f $AMPATH/.cache/about-args
@@ -205,6 +206,7 @@ case "$1" in
 	done
 	shift;;
   '-b'|'backup')
+    	if [ -n "$SUDO_COMMAND" ]; then echo -e "\n WARNING: You don't need to run the option '$1' with SUDO.\n"; exit; fi
 	while [ -n "$1" ]
 	do
 	rm -f $AMPATH/.cache/backup-args
@@ -232,10 +234,13 @@ case "$1" in
 	done
 	done
 	shift;;
-  '-c'|'clean') echo ""; echo " CLEANING OF TEMPORARY FILES AND FOLDERS IN PROGRESS" && sleep 1 && echo "" && echo " PRESS CTRL+C TO ABORT." && sleep 1 &&
-	echo "" && for i in {5..1}; do echo -ne " $i\r" && sleep 1; done &&
-	echo ""; rm -R -f $AMPATH/appdb; rm -R -f $AMPATH/.cache/*; rm -R -f /opt/*/tmp; echo "" && echo " DONE!"; echo "" ;;
+  '-c'|'clean') 
+    	if [ -n "$SUDO_COMMAND" ]; then echo -e "\n WARNING: You don't need to run the option '$1' with SUDO.\n"; exit; fi
+  	echo -e "\n Cleaning of temporary files and folders in progress...\n" && sleep 1 &&
+  	for i in {1000..0000}; do echo -ne " $i\r" && sleep 0.0001; done
+  	rm -R -f $AMPATH/appdb; rm -R -f $AMPATH/.cache/*; rm -R -f /opt/*/tmp; echo -e "\n DONE!\n";;
   '-d'|'download')
+    	if [ -n "$SUDO_COMMAND" ]; then echo -e "\n WARNING: You don't need to run the option '$1' with SUDO.\n"; exit; fi
 	while [ -n "$1" ]
 	do
 	rm -f $AMPATH/.cache/download-args
@@ -269,14 +274,16 @@ case "$1" in
 	done
 	done
 	shift;;
-  '-f'|'files') echo ""; echo $(echo "YOU HAVE INSTALLED "; cd /opt && find -name 'remove' -printf "%h\n" | sort -u | wc -l;
+  '-f'|'files')
+    	if [ -n "$SUDO_COMMAND" ]; then echo -e "\n WARNING: You don't need to run the option '$1' with SUDO.\n"; exit; fi
+  	echo ""; echo $(echo "YOU HAVE INSTALLED "; cd /opt && find -name 'remove' -printf "%h\n" | sort -u | wc -l;
   	echo " STANDALONE PROGRAMS MANAGED BY THE 'AM' COMMAND:"); echo "";
   	cd /opt && find -name 'remove' -printf "%h\n" | sort -u | $(xargs -n 1 basename) | du -sh * | awk '{ print " ◆ "$2 " - " $1"iB of disk space used"}'; echo "" ;;
   '-i'|'install')
 	while [ -n "$1" ]
 	do
 	sudo echo ""
-	echo -e "--------------------------------------------------------------------------------\n >> START OF ALL INSTALLATION PROCESSES <<\n--------------------------------------------------------------------------------"
+	echo -e "-----------------------------------------------------------------------\n >> START OF ALL INSTALLATION PROCESSES <<\n-----------------------------------------------------------------------"
 	rm -f $AMPATH/.cache/install-args
 	rm -R -f $AMPATH/.cache/installed
 	echo $@ | tr ' ' '\n' >> $AMPATH/.cache/install-args 
@@ -286,8 +293,8 @@ case "$1" in
 	for var in $arg; do
 	if [ $arg == STOP ]; then
 		if test -f $AMPATH/.cache/installed; then
-			echo -e "\n--------------------------------------------------------------------------------\n >> END OF ALL INSTALLATION PROCESSES <<\n--------------------------------------------------------------------------------\n\n THE FOLLOWING NEW PROGRAMS HAVE BEEN INSTALLED:\n"
-			echo -e "\n--------------------------------------------------------------------------------" >> $AMPATH/.cache/installed
+			echo -e "\n-----------------------------------------------------------------------\n >> END OF ALL INSTALLATION PROCESSES <<\n-----------------------------------------------------------------------\n\n THE FOLLOWING NEW PROGRAMS HAVE BEEN INSTALLED:\n"
+			echo -e "\n-----------------------------------------------------------------------" >> $AMPATH/.cache/installed
 			cat $AMPATH/.cache/installed
 			exit
 		else
@@ -314,14 +321,15 @@ case "$1" in
 			sed -i 's# /opt/$APP/icons/$APP# /opt/$APP/icons/$APP 2> /dev/null#g' $AMPATH/.cache/$arg
 			sed -i 's#.svg;#.svg 2> /dev/null;#g' $AMPATH/.cache/$arg
 			sed -i 's#programs/.icons/$APP.svg#programs/.icons/$APP.svg 2> /dev/null;#g' $AMPATH/.cache/$arg
-			sudo $AMPATH/.cache/$arg | less -E
+			echo " ◆ INSTALLING $(echo '"'$arg'"' | tr a-z A-Z)..."
+			sudo xterm $AMPATH/.cache/$arg
 			sudo chown -R $currentuser /opt/$(cd /opt && ls -td * | head -1) 2> /dev/null
-			echo "◆ $(echo $arg | tr a-z A-Z) INSTALLED ($(du -sm /opt/$(cd /opt && ls -td * | head -1) | awk '{print $1}' ) MB OF DISK SPACE)"
+			echo " ◆ $(echo $arg | tr a-z A-Z) INSTALLED ($(du -sm /opt/$(cd /opt && ls -td * | head -1) | awk '{print $1}' ) MB OF DISK SPACE)"
 			sudo rm $AMPATH/.cache/$arg
 			unset $LATESTDIR
 			LATESTDIR=$(cd /opt && ls -td * | head -1)
 				if test -f /opt/$LATESTDIR/remove; then
-					echo " - $LATESTDIR" >> $AMPATH/.cache/installed &&
+					echo " ◆ $LATESTDIR" >> $AMPATH/.cache/installed &&
 					chown -R $currentuser $AMPATH/.cache/about 2> /dev/null;
 				else
 					echo " INSTALLATION ABORTED!";
@@ -339,12 +347,14 @@ case "$1" in
 	done
 	shift;;
   '-l'|'list')
+    	if [ -n "$SUDO_COMMAND" ]; then echo -e "\n WARNING: You don't need to run the option '$1' with SUDO.\n"; exit; fi
   	rm -R -f $AMPATH/$arch-apps $AMPATH/list && wget -q $AMREPO/programs/$arch-apps -P $AMPATH && echo -e "$(cat $AMPATH/$arch-apps | awk -v FS="(◆ | : )" '{print $2}')" >> $AMPATH/list
 	cd $AMPATH && cat options >> list 2>/dev/null
 	MESSAGE=$(echo " YOU HAVE INSTALLED $(cd /opt && find -name 'remove' -printf "%h\n" | sort -u | wc -l) APPLICATIONS OUT OF $(grep -e "$" -c $AMPATH/$arch-apps) AVAILABLE")
-	echo -e "\n$MESSAGE\n\n LIST OF APPLICATIONS AVAILABLE IN THE 'AM' REPOSITORY:\n\n$(cat $AMPATH/$arch-apps)" | less
+	echo -e "\n$MESSAGE\n\n LIST OF THE $(grep -e "$" -c $AMPATH/$arch-apps) APPLICATIONS AVAILABLE IN THE 'AM' REPOSITORY:\n\n$(cat $AMPATH/$arch-apps)" | less
 	echo -e "\n $MESSAGE\n";;
   '-o'|'overwrite')
+    	if [ -n "$SUDO_COMMAND" ]; then echo -e "\n WARNING: You don't need to run the option '$1' with SUDO.\n"; exit; fi
 	while [ -n "$1" ]
 	do
 	rm -f $AMPATH/.cache/overwrite-args
@@ -385,7 +395,9 @@ case "$1" in
 	done
 	done
 	shift;;
-  '-q'|'query') rm -R -f $AMPATH/$arch-apps $AMPATH/list && wget -q $AMREPO/programs/$arch-apps -P $AMPATH && echo -e "$(cat $AMPATH/$arch-apps | awk -v FS="(◆ | : )" '{print $2}')" >> $AMPATH/list
+  '-q'|'query')
+    	if [ -n "$SUDO_COMMAND" ]; then echo -e "\n WARNING: You don't need to run the option '$1' with SUDO.\n"; exit; fi
+  	rm -R -f $AMPATH/$arch-apps $AMPATH/list && wget -q $AMREPO/programs/$arch-apps -P $AMPATH && echo -e "$(cat $AMPATH/$arch-apps | awk -v FS="(◆ | : )" '{print $2}')" >> $AMPATH/list
 	cd $AMPATH && cat options >> list
 	ARGS=$(echo "$@" | sed 's/-q //')
 	echo ""
@@ -411,8 +423,8 @@ case "$1" in
 	*) for var in $arg; do
 	sudo echo "" > /dev/null; read -p ' ◆ DO YOU WISH TO REMOVE "'$(echo $arg | tr a-z A-Z)'" (Y,n)?' yn
 		case $yn in
-		[Nn]* ) echo " - $arg has not been removed, exiting!"; echo ""; break;;
-		[Yy]*|* ) sudo /opt/$arg/remove && echo ' - "'$(echo $arg | tr a-z A-Z)'" HAS BEEN SUCCESSFULLY REMOVED!' && echo "" && break; break;;
+		[Nn]* ) echo ' - "'$(echo $arg | tr a-z A-Z)'" HAS NOT BEEN REMOVED!'; echo ""; break;;
+		[Yy]*|* ) sudo /opt/$arg/remove && echo ' ◆ "'$(echo $arg | tr a-z A-Z)'" HAS BEEN SUCCESSFULLY REMOVED!' && echo "" && break; break;;
 	esac
 	done;;
 	esac
@@ -440,7 +452,7 @@ case "$1" in
 	if ls /opt/$arg > /dev/null 2>&1; then
 	case $arg in
 	*) for var in $arg; do
-	sudo /opt/$arg/remove && echo ' - "'$(echo $arg | tr a-z A-Z)'" HAS BEEN SUCCESSFULLY REMOVED!' && echo "" && break; break
+	sudo /opt/$arg/remove && echo ' ◆ "'$(echo $arg | tr a-z A-Z)'" HAS BEEN SUCCESSFULLY REMOVED!' && echo "" && break; break
 	done;;
 	esac
 	else
@@ -452,12 +464,15 @@ case "$1" in
 	done
 	done
 	shift;;
-  '-s'|'sync') rm -R -f $AMPATH/$arch-apps $AMPATH/list && wget -q $AMREPO/programs/$arch-apps -P $AMPATH && echo -e "$(cat $AMPATH/$arch-apps | awk -v FS="(◆ | : )" '{print $2}')" >> $AMPATH/list
+  '-s'|'sync')
+    	if [ -n "$SUDO_COMMAND" ]; then echo -e "\n WARNING: You don't need to run the option '$1' with SUDO.\n"; exit; fi
+  	rm -R -f $AMPATH/$arch-apps $AMPATH/list && wget -q $AMREPO/programs/$arch-apps -P $AMPATH && echo -e "$(cat $AMPATH/$arch-apps | awk -v FS="(◆ | : )" '{print $2}')" >> $AMPATH/list
 	cd $AMPATH && cat options >> list
 	echo ""; echo ' SYNCHRONIZING "AM" VERSION '$(am -v)'...'; sleep 1; echo "";
   	rm -R -f $AMPATH/.cache/* 1>/dev/null; cd $AMPATH/.cache; wget -q $AMREPO/APP-MANAGER && chmod a+x ./APP-MANAGER; cd ..;
   	mv $AMPATH/.cache/APP-MANAGER $AMPATH; chmod 777 $AMPATH; echo ' THE "AM" SCRIPT IS NOW UPDATED TO THE '$(am -v)' VERSION! '; echo "";;
   '-t'|'template'|'convert')
+    	if [ -n "$SUDO_COMMAND" ]; then echo -e "\n WARNING: You don't need to run the option '$1' with SUDO.\n"; exit; fi
 	while [ -n "$1" ]
 	do
 	rm -f $AMPATH/.cache/template-args
@@ -655,6 +670,7 @@ case "$1" in
 	done
 	shift;;
   '-u'|'update') 
+    	if [ -n "$SUDO_COMMAND" ]; then echo -e "\n WARNING: You don't need to run the option '$1' with SUDO.\n"; exit; fi
 	while [ -n "$1" ]
 	do
 	case $2 in
@@ -697,6 +713,7 @@ case "$1" in
 	shift
 	done;;
   '-w'|'web')
+    	if [ -n "$SUDO_COMMAND" ]; then echo -e "\n WARNING: You don't need to run the option '$1' with SUDO.\n"; exit; fi
 	while [ -n "$1" ]
 	do
 	if curl --output /dev/null --silent --head --fail $AMREPO/programs/.about/$2  1>/dev/null; then
@@ -749,6 +766,7 @@ case "$1" in
 	esac 
 	fi;;
   'lock')
+    	if [ -n "$SUDO_COMMAND" ]; then echo -e "\n WARNING: You don't need to run the option '$1' with SUDO.\n"; exit; fi
 	while [ -n "$1" ]
 	do
 	if test -f /opt/$2/AM-updater; then
@@ -766,6 +784,7 @@ case "$1" in
 	done
 	shift;;
   'unlock')
+    	if [ -n "$SUDO_COMMAND" ]; then echo -e "\n WARNING: You don't need to run the option '$1' with SUDO.\n"; exit; fi
 	while [ -n "$1" ]
 	do
 	if test -f /opt/$2/AM-LOCK; then
@@ -782,6 +801,7 @@ case "$1" in
 	fi
 	done
 	shift;;
-  'version'|'-v'|'--version') echo "4.0.1-4";;
+  'version'|'-v'|'--version')
+  	echo "4.0.2";;
   *) exec $AMPATH/APP-MANAGER ;;
 esac
