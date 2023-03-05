@@ -1,37 +1,21 @@
 #!/usr/bin/env bash
 
+AMPATH="/opt/am"
+AMREPO="https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main"
+arch=$(uname -m)
+currentuser=$(who | awk '{print $1}')
+
 for name in "ar" "cat" "chmod" "chown" "curl" "echo" "egrep" "grep" "sed" "tar" "test" "unzip" "wget" "zsync"
 do
   [[ $(which $name 2>/dev/null) ]] || { echo "" && echo -e 'ERROR: "'$name'" not found, required by some installation scripts.';deps=1; }
 done
 [[ $deps -ne 1 ]] || { echo -e "\nInstall the above and try again\n";exit 1; }
 
-URL="https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main"
-arch=$(uname -m)
-currentuser=$(who | awk '{print $1}')
-
-rm -R -f /opt/am/options
-echo "about
-backup
-clean
-download
-files
-install
-list
-lock
-overwrite
-query
-remove
-sync
-template
-unlock
-update
-web
---disable-completion
---enable-completion" >> /opt/am/options
+rm -R -f $AMPATH/options
+echo -e "about\nbackup\nclean\ndownload\nfiles\ninstall\nlist\nlock\noverwrite\nquery\nremove\nsync\ntemplate\nunlock\nupdate\nweb\n--disable-completion\n--enable-completion" >> ./options
 
 case "$1" in
-  '') echo "" && echo ' USAGE: "am [option]"' && echo "" && echo ' Run the "am -h" command to find out more' && echo "";;
+  '') echo -e "\n USAGE: 'am [option]'\n        'am [option] [argument]'\n\n Run the 'am -h' command to find out more\n";;
   '-h'|'help') echo '
  ------------------------------------------------------------------------
                     _____                    _____                                                                           
@@ -125,6 +109,11 @@ case "$1" in
   DESCRIPTION: Removes the program and all the other files listed above 
   using the instructions in /opt/$PROGRAM/remove. Confirmation is required
   (Y or N, default is Y).
+  
+  -R
+  USAGE: "[sudo] am -R $PROGRAM"
+  DESCRIPTION: Removes the program and all the other files listed above 
+  using the instructions in /opt/$PROGRAM/remove, without asking.
 
   -s, sync
   USAGE: "am -s"
@@ -181,23 +170,23 @@ case "$1" in
    
   SITE: https://github.com/IVAN-HC/AM-APPLICATION-MANAGER
   
-  ' ;;
+  ' | less ;;
   '-a'|'about')
 	while [ -n "$1" ]
 	do
-	rm -f /opt/am/.cache/about-args
-	echo $@ | tr ' ' '\n' >> /opt/am/.cache/about-args && echo STOP >> /opt/am/.cache/about-args
-	ARGS=$(sed '1d' /opt/am/.cache/about-args)
+	rm -f $AMPATH/.cache/about-args
+	echo $@ | tr ' ' '\n' >> $AMPATH/.cache/about-args && echo STOP >> $AMPATH/.cache/about-args
+	ARGS=$(sed '1d' $AMPATH/.cache/about-args)
 	for arg in $ARGS; do
 	for var in $arg; do
 	if [ $arg == STOP ]; then
 	exit
 	else
-	if curl --output /dev/null --silent --head --fail $URL/programs/.about/$arg  1>/dev/null; then
+	if curl --output /dev/null --silent --head --fail $AMREPO/programs/.about/$arg  1>/dev/null; then
 	echo "-----------------------------------------------------------------------"
 	case $arg in
-	*) rm -R -f /opt/am/.cache/about; mkdir /opt/am/.cache/about;
-		cd /opt/am/.cache/about && wget -q $URL/programs/.about/$arg &&
+	*) rm -R -f $AMPATH/.cache/about; mkdir $AMPATH/.cache/about;
+		cd $AMPATH/.cache/about && wget -q $AMREPO/programs/.about/$arg &&
 		echo " PACKAGE: $(echo $arg | tr a-z A-Z)"
 		if test -f /opt/$arg/remove; then
 			echo " STATUS: INSTALLED, ABOUT $(du -sm /opt/$arg | awk '{print $1}' ) MB OF DISK SPACE IN USE"
@@ -218,9 +207,9 @@ case "$1" in
   '-b'|'backup')
 	while [ -n "$1" ]
 	do
-	rm -f /opt/am/.cache/backup-args
-	echo $@ | tr ' ' '\n' >> /opt/am/.cache/backup-args && echo STOP >> /opt/am/.cache/backup-args
-	ARGS=$(sed '1d' /opt/am/.cache/backup-args)
+	rm -f $AMPATH/.cache/backup-args
+	echo $@ | tr ' ' '\n' >> $AMPATH/.cache/backup-args && echo STOP >> $AMPATH/.cache/backup-args
+	ARGS=$(sed '1d' $AMPATH/.cache/backup-args)
 	for arg in $ARGS; do
 	for var in $arg; do
 	if [ $arg == STOP ]; then
@@ -245,13 +234,13 @@ case "$1" in
 	shift;;
   '-c'|'clean') echo ""; echo " CLEANING OF TEMPORARY FILES AND FOLDERS IN PROGRESS" && sleep 1 && echo "" && echo " PRESS CTRL+C TO ABORT." && sleep 1 &&
 	echo "" && for i in {5..1}; do echo -ne " $i\r" && sleep 1; done &&
-	echo ""; rm -R -f /opt/am/appdb; rm -R -f /opt/am/.cache/*; rm -R -f /opt/*/tmp; echo "" && echo " DONE!"; echo "" ;;
+	echo ""; rm -R -f $AMPATH/appdb; rm -R -f $AMPATH/.cache/*; rm -R -f /opt/*/tmp; echo "" && echo " DONE!"; echo "" ;;
   '-d'|'download')
 	while [ -n "$1" ]
 	do
-	rm -f /opt/am/.cache/download-args
-	echo $@ | tr ' ' '\n' >> /opt/am/.cache/download-args && echo STOP >> /opt/am/.cache/download-args
-	ARGS=$(sed '1d' /opt/am/.cache/download-args)
+	rm -f $AMPATH/.cache/download-args
+	echo $@ | tr ' ' '\n' >> $AMPATH/.cache/download-args && echo STOP >> $AMPATH/.cache/download-args
+	ARGS=$(sed '1d' $AMPATH/.cache/download-args)
 	for arg in $ARGS; do
 	for var in $arg; do
 	if [ $arg == STOP ]; then
@@ -261,16 +250,16 @@ case "$1" in
 	am) for var in $arg;
 		do read -p ' Do you wish to open the main script of "AM" (y,N)?' yn
 			case $yn in
-			[Yy]* ) xdg-open /opt/am/APP-MANAGER; break;;
+			[Yy]* ) xdg-open $AMPATH/APP-MANAGER; break;;
 			[Nn]*|* ) break;;
 		esac
 	done;; 
-	*) if curl --output /dev/null --silent --head --fail $URL/programs/$arch/$arg  1>/dev/null; then
+	*) if curl --output /dev/null --silent --head --fail $AMREPO/programs/$arch/$arg  1>/dev/null; then
 		echo ""; echo ' "'$arg'" installation script downloaded! ' | tr a-z A-Z
-		cd $(xdg-user-dir DESKTOP); wget -q $URL/programs/$arch/$arg; echo ""; break;
-	elif curl --output /dev/null --silent --head --fail $URL/testing/$arch/$arg  1>/dev/null; then
+		cd $(xdg-user-dir DESKTOP); wget -q $AMREPO/programs/$arch/$arg; echo ""; break;
+	elif curl --output /dev/null --silent --head --fail $AMREPO/testing/$arch/$arg  1>/dev/null; then
 		echo ""; echo '  "'$arg'" downloaded from "testing", the unstable branch ' | tr a-z A-Z; echo ""; echo ' WARNING! PROGRAMS COMING FROM "TESTING" ARE BROKEN, USE AT YOUR OWN RISK!'
-		cd $(xdg-user-dir DESKTOP); wget -q $URL/testing/$arch/$arg; echo ""; break;
+		cd $(xdg-user-dir DESKTOP); wget -q $AMREPO/testing/$arch/$arg; echo ""; break;
 	else
 		echo ""; echo ' "'$arg'" is NOT a valid argument, check the list (command "am -l")'; echo ""; break;
 	fi
@@ -286,20 +275,20 @@ case "$1" in
   '-i'|'install')
 	while [ -n "$1" ]
 	do
-	rm -f /opt/am/.cache/install-args
-	rm -R -f /opt/am/.cache/installed
-	echo $@ | tr ' ' '\n' >> /opt/am/.cache/install-args && echo STOP >> /opt/am/.cache/install-args
-	ARGS=$(sed '1d' /opt/am/.cache/install-args)
+	sudo echo ""
+	echo -e "--------------------------------------------------------------------------------\n >> START OF ALL INSTALLATION PROCESSES <<\n--------------------------------------------------------------------------------"
+	rm -f $AMPATH/.cache/install-args
+	rm -R -f $AMPATH/.cache/installed
+	echo $@ | tr ' ' '\n' >> $AMPATH/.cache/install-args 
+	echo STOP >> $AMPATH/.cache/install-args
+	ARGS=$(sed '1d' $AMPATH/.cache/install-args)
 	for arg in $ARGS; do
 	for var in $arg; do
 	if [ $arg == STOP ]; then
-		if test -f /opt/am/.cache/installed; then
-			echo "--------------------------------------------------------------------------------"
-			echo ""; echo " INSTALLATION PROCESS COMPLETED!"; echo "";
-			echo " The following NEW programs have been installed: " | tr a-z A-Z; echo ""
-			echo "" >> /opt/am/.cache/installed
-			echo "--------------------------------------------------------------------------------" >> /opt/am/.cache/installed
-			cat /opt/am/.cache/installed
+		if test -f $AMPATH/.cache/installed; then
+			echo -e "\n--------------------------------------------------------------------------------\n >> END OF ALL INSTALLATION PROCESSES <<\n--------------------------------------------------------------------------------\n\n THE FOLLOWING NEW PROGRAMS HAVE BEEN INSTALLED:\n"
+			echo -e "\n--------------------------------------------------------------------------------" >> $AMPATH/.cache/installed
+			cat $AMPATH/.cache/installed
 			exit
 		else
 			exit
@@ -311,33 +300,29 @@ case "$1" in
 	*) if test -f /opt/$arg/remove; then
 		echo ' ERROR: "'$arg'" is already installed, please try to remove it first' && echo ""; break;
 	else
-		if curl --output /dev/null --silent --head --fail $URL/programs/$arch/$arg  1>/dev/null; then
+		if curl --output /dev/null --silent --head --fail $AMREPO/programs/$arch/$arg  1>/dev/null; then
 		case $arg in
 		*) for var in $arg;
-			do cd /opt/am/.cache; mkdir tmp; cd tmp; wget -q $URL/programs/$arch/$arg; cd ..; mv ./tmp/$arg ./$arg; rmdir ./tmp;
-			chmod a+x /opt/am/.cache/$arg
-			sed -i "s#wget #wget -q --show-progress #g" /opt/am/.cache/$arg
-			sed -i "s#rm #rm -f #g" /opt/am/.cache/$arg; sed -i "s#form -f #form #g" /opt/am/.cache/$arg
-			sed -i "s#unzip #unzip -qq #g" /opt/am/.cache/$arg
-			sed -i 's/currentuser=/#currentuser=/g' /opt/am/.cache/$arg
-			sed -i 's/chown -R $currentuser/#chown -R $currentuser/g' /opt/am/.cache/$arg
-			sed -i '/# MESSAGE/,$d' /opt/am/.cache/$arg
-			sed -i 's# /opt/$APP/icons/$APP# /opt/$APP/icons/$APP 2> /dev/null#g' /opt/am/.cache/$arg
-			sed -i 's#.svg;#.svg 2> /dev/null;#g' /opt/am/.cache/$arg
-			sed -i 's#programs/.icons/$APP.svg#programs/.icons/$APP.svg 2> /dev/null;#g' /opt/am/.cache/$arg
-			sudo echo "◆ INSTALLING $(echo $arg | tr a-z A-Z)..."
-			sudo /opt/am/.cache/$arg
+			do cd $AMPATH/.cache; mkdir tmp; cd tmp; wget -q $AMREPO/programs/$arch/$arg; cd ..; mv ./tmp/$arg ./$arg; rmdir ./tmp;
+			chmod a+x $AMPATH/.cache/$arg
+			sed -i "s#wget #wget -q --show-progress #g" $AMPATH/.cache/$arg
+			sed -i "s#rm #rm -f #g" $AMPATH/.cache/$arg; sed -i "s#form -f #form #g" $AMPATH/.cache/$arg
+			sed -i "s#unzip #unzip -qq #g" $AMPATH/.cache/$arg
+			sed -i 's/currentuser=/#currentuser=/g' $AMPATH/.cache/$arg
+			sed -i 's/chown -R $currentuser/#chown -R $currentuser/g' $AMPATH/.cache/$arg
+			sed -i '/# MESSAGE/,$d' $AMPATH/.cache/$arg
+			sed -i 's# /opt/$APP/icons/$APP# /opt/$APP/icons/$APP 2> /dev/null#g' $AMPATH/.cache/$arg
+			sed -i 's#.svg;#.svg 2> /dev/null;#g' $AMPATH/.cache/$arg
+			sed -i 's#programs/.icons/$APP.svg#programs/.icons/$APP.svg 2> /dev/null;#g' $AMPATH/.cache/$arg
+			sudo $AMPATH/.cache/$arg | less -E
 			sudo chown -R $currentuser /opt/$(cd /opt && ls -td * | head -1) 2> /dev/null
-			echo ""
-			echo "INSTALLATION COMPLETE, DOWNLOADED ABOUT $(du -sm /opt/$(cd /opt && ls -td * | head -1) | awk '{print $1}' ) MB OF FILES!"
-			echo ""
-			echo "--------------------------------------------------------------------------------"
-			sudo rm /opt/am/.cache/$arg
+			echo "◆ $(echo $arg | tr a-z A-Z) INSTALLED ($(du -sm /opt/$(cd /opt && ls -td * | head -1) | awk '{print $1}' ) MB OF DISK SPACE)"
+			sudo rm $AMPATH/.cache/$arg
 			unset $LATESTDIR
 			LATESTDIR=$(cd /opt && ls -td * | head -1)
 				if test -f /opt/$LATESTDIR/remove; then
-					echo " - $LATESTDIR" >> /opt/am/.cache/installed &&
-					chown -R $currentuser /opt/am/.cache/about 2> /dev/null;
+					echo " - $LATESTDIR" >> $AMPATH/.cache/installed &&
+					chown -R $currentuser $AMPATH/.cache/about 2> /dev/null;
 				else
 					echo " INSTALLATION ABORTED!";
 				fi
@@ -353,18 +338,18 @@ case "$1" in
 	done
 	done
 	shift;;
-  '-l'|'list') rm -R -f /opt/am/$arch-apps /opt/am/list && wget -q $URL/programs/$arch-apps -P /opt/am && echo -e "$(cat /opt/am/$arch-apps | awk -v FS="(◆ | : )" '{print $2}')" >> /opt/am/list
-	cd /opt/am && cat options >> list
-	echo ""; echo "  LIST OF APPLICATIONS AVAILABLE IN THE 'AM' REPOSITORY:"; echo "";
-  	cat /opt/am/$arch-apps; echo "";
-  	echo $(echo "ALL:"; grep -e "$" -c /opt/am/$arch-apps);
-  	echo $(echo "INSTALLED:"; cd /opt && find -name 'remove' -printf "%h\n" | sort -u | wc -l); echo "";;
+  '-l'|'list')
+  	rm -R -f $AMPATH/$arch-apps $AMPATH/list && wget -q $AMREPO/programs/$arch-apps -P $AMPATH && echo -e "$(cat $AMPATH/$arch-apps | awk -v FS="(◆ | : )" '{print $2}')" >> $AMPATH/list
+	cd $AMPATH && cat options >> list 2>/dev/null
+	MESSAGE=$(echo " YOU HAVE INSTALLED $(cd /opt && find -name 'remove' -printf "%h\n" | sort -u | wc -l) APPLICATIONS OUT OF $(grep -e "$" -c $AMPATH/$arch-apps) AVAILABLE")
+	echo -e "\n$MESSAGE\n\n LIST OF APPLICATIONS AVAILABLE IN THE 'AM' REPOSITORY:\n\n$(cat $AMPATH/$arch-apps)" | less
+	echo -e "\n $MESSAGE\n";;
   '-o'|'overwrite')
 	while [ -n "$1" ]
 	do
-	rm -f /opt/am/.cache/overwrite-args
-	echo $@ | tr ' ' '\n' >> /opt/am/.cache/overwrite-args && echo STOP >> /opt/am/.cache/overwrite-args
-	ARGS=$(sed '1d' /opt/am/.cache/overwrite-args)
+	rm -f $AMPATH/.cache/overwrite-args
+	echo $@ | tr ' ' '\n' >> $AMPATH/.cache/overwrite-args && echo STOP >> $AMPATH/.cache/overwrite-args
+	ARGS=$(sed '1d' $AMPATH/.cache/overwrite-args)
 	for arg in $ARGS; do
 	for var in $arg; do
 	if [ $arg == STOP ]; then
@@ -400,28 +385,28 @@ case "$1" in
 	done
 	done
 	shift;;
-  '-q'|'query') rm -R -f /opt/am/$arch-apps /opt/am/list && wget -q $URL/programs/$arch-apps -P /opt/am && echo -e "$(cat /opt/am/$arch-apps | awk -v FS="(◆ | : )" '{print $2}')" >> /opt/am/list
-	cd /opt/am && cat options >> list
+  '-q'|'query') rm -R -f $AMPATH/$arch-apps $AMPATH/list && wget -q $AMREPO/programs/$arch-apps -P $AMPATH && echo -e "$(cat $AMPATH/$arch-apps | awk -v FS="(◆ | : )" '{print $2}')" >> $AMPATH/list
+	cd $AMPATH && cat options >> list
 	ARGS=$(echo "$@" | sed 's/-q //')
 	echo ""
 	echo ' Search results for "'$ARGS'" in the list of available programs:' | tr a-z A-Z
 	echo ""
-	grep -i -E "$2" /opt/am/$arch-apps | grep -i -E "$3" | grep -i -E "$4" | grep -i -E "$5" | grep -i -E "$6" | grep -i -E "$7" | grep -i -E "$8" | grep -i -E "$9"
+	grep -i -E "$2" $AMPATH/$arch-apps | grep -i -E "$3" | grep -i -E "$4" | grep -i -E "$5" | grep -i -E "$6" | grep -i -E "$7" | grep -i -E "$8" | grep -i -E "$9"
 	echo ""
 	exit;;
   '-r'|'remove')
 	while [ -n "$1" ]
 	do
 	echo ""
-	rm -f /opt/am/.cache/remove-args
-	echo $@ | tr ' ' '\n' >> /opt/am/.cache/remove-args && echo STOP >> /opt/am/.cache/remove-args
-	ARGS=$(sed '1d' /opt/am/.cache/remove-args)
+	rm -f $AMPATH/.cache/remove-args
+	echo $@ | tr ' ' '\n' >> $AMPATH/.cache/remove-args && echo STOP >> $AMPATH/.cache/remove-args
+	ARGS=$(sed '1d' $AMPATH/.cache/remove-args)
 	for arg in $ARGS; do
 	for var in $arg; do
 	if [ $arg == STOP ]; then
 	exit
 	else
-	if ls /opt/$arg 1>/dev/null; then
+	if ls /opt/$arg > /dev/null 2>&1; then
 	case $arg in
 	*) for var in $arg; do
 	sudo echo "" > /dev/null; read -p ' ◆ DO YOU WISH TO REMOVE "'$(echo $arg | tr a-z A-Z)'" (Y,n)?' yn
@@ -432,8 +417,7 @@ case "$1" in
 	done;;
 	esac
 	else
-	echo ""; echo " '$arg' is not a valid argument or is not installed."; echo "";
-	echo ' LIST OF THE INSTALLED PROGRAMS / VALID ARGUMENTS:'; echo "";
+	echo -e " ERROR: '$arg' is not a valid argument or is not installed! \n\n List of the installed programs / valid arguments:\n"
 	cd /opt && find -name 'remove' -printf "%h\n" | sort -u | xargs -n 1 basename; echo "" ; break;
 	fi
 	fi
@@ -441,17 +425,44 @@ case "$1" in
 	done
 	done
 	shift;;
-  '-s'|'sync') rm -R -f /opt/am/$arch-apps /opt/am/list && wget -q $URL/programs/$arch-apps -P /opt/am && echo -e "$(cat /opt/am/$arch-apps | awk -v FS="(◆ | : )" '{print $2}')" >> /opt/am/list
-	cd /opt/am && cat options >> list
+  '-R')
+	while [ -n "$1" ]
+	do
+	echo ""
+	rm -f $AMPATH/.cache/remove-args
+	echo $@ | tr ' ' '\n' >> $AMPATH/.cache/remove-args && echo STOP >> $AMPATH/.cache/remove-args
+	ARGS=$(sed '1d' $AMPATH/.cache/remove-args)
+	for arg in $ARGS; do
+	for var in $arg; do
+	if [ $arg == STOP ]; then
+	exit
+	else
+	if ls /opt/$arg > /dev/null 2>&1; then
+	case $arg in
+	*) for var in $arg; do
+	sudo /opt/$arg/remove && echo ' - "'$(echo $arg | tr a-z A-Z)'" HAS BEEN SUCCESSFULLY REMOVED!' && echo "" && break; break
+	done;;
+	esac
+	else
+	echo -e " ERROR: '$arg' is not a valid argument or is not installed! \n\n List of the installed programs / valid arguments:\n"
+	cd /opt && find -name 'remove' -printf "%h\n" | sort -u | xargs -n 1 basename; echo "" ; break;
+	fi
+	fi
+	done
+	done
+	done
+	shift;;
+  '-s'|'sync') rm -R -f $AMPATH/$arch-apps $AMPATH/list && wget -q $AMREPO/programs/$arch-apps -P $AMPATH && echo -e "$(cat $AMPATH/$arch-apps | awk -v FS="(◆ | : )" '{print $2}')" >> $AMPATH/list
+	cd $AMPATH && cat options >> list
 	echo ""; echo ' SYNCHRONIZING "AM" VERSION '$(am -v)'...'; sleep 1; echo "";
-  	rm -R -f /opt/am/.cache/* 1>/dev/null; cd /opt/am/.cache; wget -q $URL/APP-MANAGER && chmod a+x ./APP-MANAGER; cd ..;
-  	mv /opt/am/.cache/APP-MANAGER /opt/am; chmod 777 /opt/am; echo ' THE "AM" SCRIPT IS NOW UPDATED TO THE '$(am -v)' VERSION! '; echo "";;
+  	rm -R -f $AMPATH/.cache/* 1>/dev/null; cd $AMPATH/.cache; wget -q $AMREPO/APP-MANAGER && chmod a+x ./APP-MANAGER; cd ..;
+  	mv $AMPATH/.cache/APP-MANAGER $AMPATH; chmod 777 $AMPATH; echo ' THE "AM" SCRIPT IS NOW UPDATED TO THE '$(am -v)' VERSION! '; echo "";;
   '-t'|'template'|'convert')
 	while [ -n "$1" ]
 	do
-	rm -f /opt/am/.cache/template-args
-	echo $@ | tr ' ' '\n' >> /opt/am/.cache/template-args && echo STOP >> /opt/am/.cache/template-args
-	ARGS=$(sed '1d' /opt/am/.cache/template-args)
+	rm -f $AMPATH/.cache/template-args
+	echo $@ | tr ' ' '\n' >> $AMPATH/.cache/template-args && echo STOP >> $AMPATH/.cache/template-args
+	ARGS=$(sed '1d' $AMPATH/.cache/template-args)
 	for arg in $ARGS; do
 	for var in $arg; do
 	if [ $arg == STOP ]; then
@@ -480,15 +491,15 @@ case "$1" in
 	echo " "
 	read -r -p " WHAT KIND OF PROGRAM DO YOU WANT TO WRITE A SCRIPT FOR? : " response
 	case "$response" in
-    	0) mkdir -p ./am-scripts ./am-scripts/$arch ./am-scripts/ABOUT && wget -c -q $URL/templates/AM-SAMPLE-for-appimageupdate -O ./am-scripts/$arch/$arg && sed -i s/SAMPLE/$arg/g ./am-scripts/$arch/$arg &&
+    	0) mkdir -p ./am-scripts ./am-scripts/$arch ./am-scripts/ABOUT && wget -c -q $AMREPO/templates/AM-SAMPLE-for-appimageupdate -O ./am-scripts/$arch/$arg && sed -i s/SAMPLE/$arg/g ./am-scripts/$arch/$arg &&
 		echo " " >> ./am-scripts/ABOUT/$arg; echo " $COMMENT" >> ./am-scripts/ABOUT/$arg; echo " " >> ./am-scripts/ABOUT/$arg; echo " SITE: " >> ./am-scripts/ABOUT/$arg && 
 		echo '◆ '$arg' : '$COMMENT'' >> ./am-scripts/list; echo ""; echo " All files are saved in $(xdg-user-dir DESKTOP)/am-scripts
 		" ;;
-    	1) mkdir -p ./am-scripts ./am-scripts/$arch ./am-scripts/ABOUT && wget -c -q $URL/templates/AM-SAMPLE-for-zsync -O ./am-scripts/$arch/$arg && sed -i s/SAMPLE/$arg/g ./am-scripts/$arch/$arg &&
+    	1) mkdir -p ./am-scripts ./am-scripts/$arch ./am-scripts/ABOUT && wget -c -q $AMREPO/templates/AM-SAMPLE-for-zsync -O ./am-scripts/$arch/$arg && sed -i s/SAMPLE/$arg/g ./am-scripts/$arch/$arg &&
 		echo " " >> ./am-scripts/ABOUT/$arg; echo " $COMMENT" >> ./am-scripts/ABOUT/$arg; echo " " >> ./am-scripts/ABOUT/$arg; echo " SITE: " >> ./am-scripts/ABOUT/$arg && 
 		echo '◆ '$arg' : '$COMMENT'' >> ./am-scripts/list; echo ""; echo " All files are saved in $(xdg-user-dir DESKTOP)/am-scripts
 		" ;;
-    	2) mkdir -p ./am-scripts ./am-scripts/$arch ./am-scripts/ABOUT && wget -c -q $URL/templates/AM-SAMPLE-GitHub-generic -O ./am-scripts/$arch/$arg && sed -i s/SAMPLE/$arg/g ./am-scripts/$arch/$arg &&
+    	2) mkdir -p ./am-scripts ./am-scripts/$arch ./am-scripts/ABOUT && wget -c -q $AMREPO/templates/AM-SAMPLE-GitHub-generic -O ./am-scripts/$arch/$arg && sed -i s/SAMPLE/$arg/g ./am-scripts/$arch/$arg &&
 		echo "-----------------------------------------------------------------------";
 		read -r -p " ◆ ADD THE NAME OF THE REPOSITORY (EXAMPLE 'NAME/REPOSITORY') 
  https://github.com/" RESPONSE
@@ -535,7 +546,7 @@ case "$1" in
 		echo "-----------------------------------------------------------------------";
 		echo ""; echo " All files are saved in $(xdg-user-dir DESKTOP)/am-scripts
 		" ;;
-    	3) mkdir -p ./am-scripts ./am-scripts/$arch ./am-scripts/ABOUT && wget -c -q $URL/templates/AM-SAMPLE-AUR-generic -O ./am-scripts/$arch/$arg && sed -i s/SAMPLE/$arg/g ./am-scripts/$arch/$arg &&
+    	3) mkdir -p ./am-scripts ./am-scripts/$arch ./am-scripts/ABOUT && wget -c -q $AMREPO/templates/AM-SAMPLE-AUR-generic -O ./am-scripts/$arch/$arg && sed -i s/SAMPLE/$arg/g ./am-scripts/$arch/$arg &&
 		echo "-----------------------------------------------------------------------";
 		read -r -p " ◆ NAME OF THE APP: " RESPONSE
 		case "$RESPONSE" in
@@ -582,15 +593,15 @@ case "$1" in
 		echo "-----------------------------------------------------------------------";
 		echo ""; echo " All files are saved in $(xdg-user-dir DESKTOP)/am-scripts
 		" ;;
-    	4) mkdir -p ./am-scripts ./am-scripts/$arch ./am-scripts/ABOUT && wget -c -q $URL/templates/AM-SAMPLE-pkg2appimage -O ./am-scripts/$arch/$arg && sed -i s/SAMPLE/$arg/g ./am-scripts/$arch/$arg &&
+    	4) mkdir -p ./am-scripts ./am-scripts/$arch ./am-scripts/ABOUT && wget -c -q $AMREPO/templates/AM-SAMPLE-pkg2appimage -O ./am-scripts/$arch/$arg && sed -i s/SAMPLE/$arg/g ./am-scripts/$arch/$arg &&
 		echo " " >> ./am-scripts/ABOUT/$arg; echo " $COMMENT" >> ./am-scripts/ABOUT/$arg; echo " " >> ./am-scripts/ABOUT/$arg; echo " SITE: " >> ./am-scripts/ABOUT/$arg && 
 		echo '◆ '$arg' : '$COMMENT'' >> ./am-scripts/list; echo ""; echo " All files are saved in $(xdg-user-dir DESKTOP)/am-scripts
 		" ;;
-    	5) mkdir -p ./am-scripts ./am-scripts/$arch ./am-scripts/ABOUT && wget -c -q $URL/templates/AM-SAMPLE-pkg2appimage-custom -O ./am-scripts/$arch/$arg && sed -i s/SAMPLE/$arg/g ./am-scripts/$arch/$arg &&
+    	5) mkdir -p ./am-scripts ./am-scripts/$arch ./am-scripts/ABOUT && wget -c -q $AMREPO/templates/AM-SAMPLE-pkg2appimage-custom -O ./am-scripts/$arch/$arg && sed -i s/SAMPLE/$arg/g ./am-scripts/$arch/$arg &&
 		echo " " >> ./am-scripts/ABOUT/$arg; echo " $COMMENT" >> ./am-scripts/ABOUT/$arg; echo " " >> ./am-scripts/ABOUT/$arg; echo " SITE: " >> ./am-scripts/ABOUT/$arg && 
 		echo '◆ '$arg' : '$COMMENT'' >> ./am-scripts/list; echo ""; echo " All files are saved in $(xdg-user-dir DESKTOP)/am-scripts
 		" ;;
-    	6) mkdir -p ./am-scripts ./am-scripts/$arch ./am-scripts/ABOUT && wget -c -q $URL/templates/AM-SAMPLE-Firefox-webapp -O ./am-scripts/$arch/ffwa-$arg && sed -i s/SAMPLE/$arg/g ./am-scripts/$arch/ffwa-$arg &&
+    	6) mkdir -p ./am-scripts ./am-scripts/$arch ./am-scripts/ABOUT && wget -c -q $AMREPO/templates/AM-SAMPLE-Firefox-webapp -O ./am-scripts/$arch/ffwa-$arg && sed -i s/SAMPLE/$arg/g ./am-scripts/$arch/ffwa-$arg &&
 		echo "-----------------------------------------------------------------------";
 		read -r -p " ◆ NAME OF THE APP: " RESPONSE
 		case "$RESPONSE" in
@@ -621,7 +632,7 @@ case "$1" in
 		echo "-----------------------------------------------------------------------";
 		echo ""; echo " All files are saved in $(xdg-user-dir DESKTOP)/am-scripts
 		" ;;
-	7) mkdir -p ./am-scripts ./am-scripts/$arch ./am-scripts/ABOUT && wget -c -q $URL/templates/AM-SAMPLE-AppImage-from-GitHub -O ./am-scripts/$arch/$arg && sed -i s/SAMPLE/$arg/g ./am-scripts/$arch/$arg &&
+	7) mkdir -p ./am-scripts ./am-scripts/$arch ./am-scripts/ABOUT && wget -c -q $AMREPO/templates/AM-SAMPLE-AppImage-from-GitHub -O ./am-scripts/$arch/$arg && sed -i s/SAMPLE/$arg/g ./am-scripts/$arch/$arg &&
 		echo "-----------------------------------------------------------------------";
 		read -r -p " ◆ ADD THE NAME OF THE REPOSITORY (EXAMPLE 'NAME/REPOSITORY') 
  https://github.com/" RESPONSE
@@ -661,7 +672,7 @@ case "$1" in
 			echo " "$(echo $f | cut -c 5- | tr -d '/')" is updated!" | tr a-z A-Z && echo " $(($duration / 60)) minutes and $(($duration % 60)) seconds elapsed!" && echo "";
 			else
 			echo ""  > /dev/null 2>&1; fi; done;
-			rm -R -f /opt/am/.cache/* /opt/*/tmp; echo "-----------------------------------------------------------------------"; am -s; 
+			rm -R -f $AMPATH/.cache/* /opt/*/tmp; echo "-----------------------------------------------------------------------"; am -s; 
 			echo "-----------------------------------------------------------------------";
 			echo " >> END OF ALL PROCESSES << "; 
 		  	echo "-----------------------------------------------------------------------";echo ""; sleep 2;
@@ -688,11 +699,11 @@ case "$1" in
   '-w'|'web')
 	while [ -n "$1" ]
 	do
-	if curl --output /dev/null --silent --head --fail $URL/programs/.about/$2  1>/dev/null; then
+	if curl --output /dev/null --silent --head --fail $AMREPO/programs/.about/$2  1>/dev/null; then
 	case $2 in
 	*) for var in $2;
-	do rm -R -f /opt/am/.cache/about; mkdir /opt/am/.cache/about;
-		cd /opt/am/.cache/about && wget -q $URL/programs/.about/$2 && echo "" && echo " SITE/SOURCES:" && echo "" &&
+	do rm -R -f $AMPATH/.cache/about; mkdir $AMPATH/.cache/about;
+		cd $AMPATH/.cache/about && wget -q $AMREPO/programs/.about/$2 && echo "" && echo " SITE/SOURCES:" && echo "" &&
 		grep -o " http[^ ]*" ./$2 && echo "" && exit; done
 	esac
 	else
@@ -724,15 +735,15 @@ case "$1" in
 	read -p ' Do you wish to create a bash completion script for "AM" (y,N)?' yn
 	case $yn in
 		'N'|'n') exit;;
-		'Y'|'y') echo '#!/usr/bin/env bash' >> /opt/am/am-completion.sh; echo 'complete -W "$(cat /opt/am/list 2>/dev/null)" am' >> /opt/am/am-completion.sh
-			 chmod a+x /opt/am/am-completion.sh
-			 rm -R -f /opt/am/remove; echo '#!/bin/sh' >> /opt/am/remove
-			 echo 'rm -R -f /usr/local/bin/am /opt/am /etc/bash_completion.d/am-completion.sh' >> /opt/am/remove
-			 chmod a+x /opt/am/remove; chown -R $currentuser /opt/am/remove 2>/dev/null 
+		'Y'|'y') echo '#!/usr/bin/env bash' >> $AMPATH/am-completion.sh; echo 'complete -W "$(cat $AMPATH/list 2>/dev/null)" am' >> $AMPATH/am-completion.sh
+			 chmod a+x $AMPATH/am-completion.sh
+			 rm -R -f $AMPATH/remove; echo '#!/bin/sh' >> $AMPATH/remove
+			 echo 'rm -R -f /usr/local/bin/am $AMPATH /etc/bash_completion.d/am-completion.sh' >> $AMPATH/remove
+			 chmod a+x $AMPATH/remove; chown -R $currentuser $AMPATH/remove 2>/dev/null 
 			 if test -f /etc/bash_completion.d; then
-				sudo mv /opt/am/am-completion.sh /etc/bash_completion.d/
+				sudo mv $AMPATH/am-completion.sh /etc/bash_completion.d/
 			 else
-				sudo mkdir -p /etc/bash_completion.d; sudo mv /opt/am/am-completion.sh /etc/bash_completion.d/
+				sudo mkdir -p /etc/bash_completion.d; sudo mv $AMPATH/am-completion.sh /etc/bash_completion.d/
 			 fi;;
 		*) exit;;
 	esac 
@@ -771,6 +782,6 @@ case "$1" in
 	fi
 	done
 	shift;;
-  'version'|'-v'|'--version') echo "4.0.1-3";;
-  *) exec /opt/am/APP-MANAGER ;;
+  'version'|'-v'|'--version') echo "4.0.1-4";;
+  *) exec $AMPATH/APP-MANAGER ;;
 esac
