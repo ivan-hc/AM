@@ -130,11 +130,15 @@ case "$1" in
 
   -u, update
   USAGE: "am -u"
-  DESCRIPTION: Update all the installed programs.
+  DESCRIPTION: Update all the installed programs (requires confirmation).
   -u, update
   USAGE: "am -u $PROGRAM"
   DESCRIPTION: Update the selected program, this also allows you to see
   all the logs during the installation process.
+  
+  -U, --force-update
+  USAGE: "am -U"
+  DESCRIPTION: Update all the installed programs without asking.
 
   -v, --version, version
   USAGE: "am -v"
@@ -236,7 +240,7 @@ case "$1" in
 	shift;;
   '-c'|'clean') 
     	if [ -n "$SUDO_COMMAND" ]; then echo -e "\n WARNING: You don't need to run the option '$1' with SUDO.\n"; exit; fi
-  	echo -e "\n Cleaning of temporary files and folders in progress...\n" && sleep 1 &&
+  	echo -e "\n Cleaning of temporary files and folders in progress...\n" && sleep 0.1 &&
   	for i in {1000..0000}; do echo -ne " $i\r" && sleep 0.0001; done
   	rm -R -f $AMPATH/appdb; rm -R -f $AMPATH/.cache/*; rm -R -f /opt/*/tmp; echo -e "\n DONE!\n";;
   '-d'|'download')
@@ -468,7 +472,7 @@ case "$1" in
     	if [ -n "$SUDO_COMMAND" ]; then echo -e "\n WARNING: You don't need to run the option '$1' with SUDO.\n"; exit; fi
   	rm -R -f $AMPATH/$arch-apps $AMPATH/list && wget -q $AMREPO/programs/$arch-apps -P $AMPATH && echo -e "$(cat $AMPATH/$arch-apps | awk -v FS="(◆ | : )" '{print $2}')" >> $AMPATH/list
 	cd $AMPATH && cat options >> list
-	echo ""; echo ' SYNCHRONIZING "AM" VERSION '$(am -v)'...'; sleep 1; echo "";
+	echo ""; echo ' SYNCHRONIZING "AM" VERSION '$(am -v)'...'; sleep 0.5; echo "";
   	rm -R -f $AMPATH/.cache/* 1>/dev/null; cd $AMPATH/.cache; wget -q $AMREPO/APP-MANAGER && chmod a+x ./APP-MANAGER; cd ..;
   	mv $AMPATH/.cache/APP-MANAGER $AMPATH; chmod 777 $AMPATH; echo ' THE "AM" SCRIPT IS NOW UPDATED TO THE '$(am -v)' VERSION! '; echo "";;
   '-t'|'template'|'convert')
@@ -676,11 +680,11 @@ case "$1" in
 	case $2 in
 	'') echo ""; echo ' "AM" CAN MANAGE UPDATES FOR THE FOLLOWING PROGRAMS: '; echo "";
   		cd /opt && find -name 'AM-updater' -printf " %h\n" | sort -u | xargs -n 1 basename; echo "" ;
-		echo ' ALL OTHERS ARE FIXED VERSIONS OR CAN MANAGE UPDATES BY THEMSELF'; echo ""; sleep 1;
+		echo ' ALL OTHERS ARE FIXED VERSIONS OR CAN MANAGE UPDATES BY THEMSELF'; echo ""; sleep 0.1;
 		read -p " This may take several minutes, do you wish to continue (Y,n)?" yn
 		case $yn in
 		[Nn]* ) echo ""; exit;;
-		[Yy]*|* ) echo ""; echo " THE UPDATE VERIFICATION PROCESS IS IN PROGRESS, PLEASE WAIT..."; sleep 2; echo ""; echo "-----------------------------------------------------------------------";
+		[Yy]*|* ) echo ""; echo " THE UPDATE VERIFICATION PROCESS IS IN PROGRESS, PLEASE WAIT..."; sleep 0.2; echo ""; echo "-----------------------------------------------------------------------";
 		  	echo " >> START OF ALL PROCESSES << "; echo "-----------------------------------------------------------------------"; echo "";
 		  	for f in /opt/*/; do cd $f && if test -f ./AM-updater; then
 			echo ' Updating "'$(echo $f | cut -c 5- | tr -d '/')'"...' &&
@@ -691,7 +695,7 @@ case "$1" in
 			rm -R -f $AMPATH/.cache/* /opt/*/tmp; echo "-----------------------------------------------------------------------"; am -s; 
 			echo "-----------------------------------------------------------------------";
 			echo " >> END OF ALL PROCESSES << "; 
-		  	echo "-----------------------------------------------------------------------";echo ""; sleep 2;
+		  	echo "-----------------------------------------------------------------------";echo ""; sleep 0.2;
 		  	echo ' ALL THE PROGRAMS MANAGED BY "AM" ARE UPDATED! '; echo "" && exit; break;;
 		esac;;
 	*) if test -f /opt/$2/AM-updater; then
@@ -712,6 +716,7 @@ case "$1" in
 	esac
 	shift
 	done;;
+  '-U'|'--force-update') echo y | am -u;;
   '-w'|'web')
     	if [ -n "$SUDO_COMMAND" ]; then echo -e "\n WARNING: You don't need to run the option '$1' with SUDO.\n"; exit; fi
 	while [ -n "$1" ]
@@ -802,6 +807,6 @@ case "$1" in
 	done
 	shift;;
   'version'|'-v'|'--version')
-  	echo "4.0.2";;
+  	echo "4.0.2-1";;
   *) exec $AMPATH/APP-MANAGER ;;
 esac
