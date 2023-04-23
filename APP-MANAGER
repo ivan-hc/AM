@@ -12,7 +12,7 @@ done
 [[ $deps -ne 1 ]] || { echo -e "\nInstall the above and try again\n";exit 1; }
 
 rm -R -f $AMPATH/options
-echo -e "about\nbackup\nclean\ndownload\nfiles\ninstall\nlist\nlock\noverwrite\nquery\nremove\nsync\ntemplate\nunlock\nupdate\nweb\n--disable-completion\n--enable-completion" >> $AMPATH/options
+echo -e "about\nbackup\nclean\ndownload\nfiles\ninstall\nlist\nlock\noverwrite\nquery\nremove\nsync\ntemplate\nunlock\nupdate\nweb\n--disable-completion\n--enable-completion\n--home" >> $AMPATH/options
 
 case "$1" in
   '') echo -e "\n USAGE: 'am [option]'\n        'am [option] [argument]'\n\n Run the 'am -h' command to find out more\n";;
@@ -82,6 +82,11 @@ case "$1" in
   -h, help
   USAGE: "am -h"
   DESCRIPTION: Prints this message. 
+  
+  -H, --home
+  USAGE: "am --home $PROGRAM"
+  DESCRIPTION: Setting $HOME to /opt/$PROGRAM/$PROGRAM.home, this command 
+  only works if $PROGRAM is an AppImage package.
   
   -i, install
   USAGE: "[sudo] am -i $PROGRAM"
@@ -158,7 +163,7 @@ case "$1" in
   DESCRIPTION: Create a bash completion script in /etc/bash_completion.d
   to complete a keyword with the TAB key using the names of all installable
   applications in the "AM" repository.
-
+  
   lock
   USAGE: "am lock $PROGRAM"
   DESCRIPTION: Lock the selected $PROGRAM to the current installed version,
@@ -283,6 +288,22 @@ case "$1" in
   	echo ""; echo $(echo "YOU HAVE INSTALLED "; cd /opt && find -name 'remove' -printf "%h\n" | sort -u | wc -l;
   	echo " STANDALONE PROGRAMS MANAGED BY THE 'AM' COMMAND:"); echo "";
   	cd /opt && find -name 'remove' -printf "%h\n" | sort -u | $(xargs -n 1 basename) | du -sh * | awk '{ print " ◆ "$2 " - " $1"iB of disk space used"}'; echo "" ;;
+  '-H'|'--home')
+    	if [ -n "$SUDO_COMMAND" ]; then echo -e "\n WARNING: You don't need to run the option '$1' with SUDO.\n"; exit; fi
+    	if test -f /opt/$2/*-bin; then
+    		echo ' ERROR: "'$2'" is NOT an AppImage'
+    	else
+    		cd /opt/$2
+    		./$2 --appimage-extract AppRun > /dev/null 2>&1
+    		if test -f /opt/$2/squashfs-root/AppRun; then
+    			mkdir -p /opt/$2/$2.home
+    			echo ' Setting $HOME to /opt/'$2'/'$2'.home for this AppImage'
+    			rm -R -f /opt/$2/squashfs-root
+    		else
+    			echo ' ERROR: "'$2'" is NOT an AppImage'
+    		fi
+    		
+    	fi;;
   '-i'|'install')
 	while [ -n "$1" ]
 	do
@@ -807,6 +828,6 @@ case "$1" in
 	done
 	shift;;
   'version'|'-v'|'--version')
-  	echo "4.0.2-1";;
+  	echo "4.0.3";;
   *) exec $AMPATH/APP-MANAGER ;;
 esac
