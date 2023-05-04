@@ -2,83 +2,45 @@
 
 APP=chromium
 
+# CREATING THE FOLDER
 mkdir /opt/$APP
-cd /opt/$APP
+cd /opt/$APP;
 
-echo '#!/bin/sh
-rm -R -f /opt/'$APP' /usr/share/pixmaps/'$APP'-browser.png /usr/share/applications/AM-'$APP'-browser.desktop /usr/bin/'$APP'-browser' >> /opt/$APP/remove
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
 chmod a+x /opt/$APP/remove
 
-mkdir tmp
-cd ./tmp
-
-# DOWNLOADING THE DEPENDENCIES
-#wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-$(uname -m).AppImage -O appimagetool
-# wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/tools/pkg2appimage # 64 BIT ONLY (comment to disable)
-wget https://github.com/ivan-hc/pkg2appimage-32bit/releases/download/continuous/pkg2appimage-i386.AppImage -O pkg2appimage # 32 BIT ONLY (uncomment to enable)
-chmod a+x ./pkg2appimage
-
-# CREATING THE APPIMAGE: APPDIR FROM A RECIPE...
-echo "app: chromium-browser
-binpatch: true
-
-ingredients:
-  dist: bionic
-  sources:
-    - deb http://cz.archive.ubuntu.com/ubuntu bionic-updates main universe
-  packages:
-    - chromium-browser
-    - chromium-browser-l10n
-    - chromium-chromedriver
-    - chromium-codecs-ffmpeg
-    - chromium-codecs-ffmpeg-extra" >> recipe.yml;
-
-cp /opt/$APP/tmp/recipe.yml /opt/$APP/recipe.yml
-
-./pkg2appimage ./recipe.yml;
-
-underscore=_
-mkdir version
-mv ./$APP-browser/$APP-browser$underscore*.deb ./version/
-version=$(ls /opt/$APP/tmp/version)
-echo "$version" >> /opt/$APP/version
-
-cp ./$APP-browser/$APP-browser.AppDir/usr/share/icons/hicolor/128x128/apps/* /usr/share/pixmaps/
-
-cd ..
-
-mv ./tmp/chromium-browser/chromium-browser.AppDir/usr/lib/chromium-browser/* ./
-rm -R -f ./tmp
+# DOWNLOADING THE BUILDER
+version=$(wget -q https://ppa.launchpadcontent.net/savoury1/chromium/ubuntu/pool/main/c/chromium-browser/ -O - | grep "chromium-browser_" | grep '.deb"' | grep "18.04" | grep i386 | cut -c 82- | awk -F '\\i386.deb' '{print $1"i386.deb"}')
+echo $version >> /opt/$APP/version
+wget https://raw.githubusercontent.com/ivan-hc/Chromium-Web-Browser-appimage/main/chromium32
+chmod a+x ./chromium32
+./chromium32
+rm -R -f ./chromium32
 
 # LINK
-ln -s /opt/$APP/$APP-browser /usr/bin/$APP-browser
+ln -s /opt/$APP/$APP /usr/local/bin/$APP
 
 # SCRIPT TO UPDATE THE PROGRAM
-initial=$(echo $APP | head -c 1)
-echo '#!/bin/sh
-version0=$(cat /opt/'$APP'/version)
-url="http://security.ubuntu.com/ubuntu/pool/universe/c/chromium-browser/$version0"
-if curl --output /dev/null --silent --head --fail "$url"; then
-  echo "Update not needed, exit!"
+cat >> /opt/$APP/AM-updater << 'EOF'
+#!/usr/bin/env bash
+APP=chromium
+version=$(wget -q https://ppa.launchpadcontent.net/savoury1/chromium/ubuntu/pool/main/c/chromium-browser/ -O - | grep "chromium_" | grep '.deb"' | grep "18.04" | grep i386 | cut -c 82- | awk -F '\\i386.deb' '{print $1"i386.deb"}')
+version0=$(cat /opt/$APP/version)
+if [ $version = $version0 ]; then
+  echo "Update not needed!"
 else
-  notify-send "A new version of '$APP' is available, please wait!"
-  chmod 755 /opt/'$APP'/chrome-sandbox
-  mkdir /opt/'$APP'/tmp
-  cd /opt/'$APP'/tmp
-  wget https://github.com/ivan-hc/pkg2appimage-32bit/releases/download/continuous/pkg2appimage-i386.AppImage -O pkg2appimage
-  chmod a+x ./pkg2appimage
-  cp /opt/'$APP'/recipe.yml /opt/'$APP'/tmp/recipe.yml
-  ./pkg2appimage ./recipe.yml;
-  mkdir version
-  mv ./'$APP'-browser/'$APP'-browser'$underscore'*.deb ./version/
-  cd ..
-  version=$(ls /opt/'$APP'/tmp/version)
-  if test -f ./tmp/version/$version; then rm -R -f ./version
-  fi
-  echo "$version" >> /opt/'$APP'/version
-  mv --backup=t ./tmp/chromium-browser/chromium-browser.AppDir/usr/lib/chromium-browser/* ./
-  rm -R -f ./tmp ./*~
-fi' >> /opt/$APP/AM-updater
+  notify-send "A new version of $APP is available, please wait!"
+  cd /opt/$APP
+  wget https://raw.githubusercontent.com/ivan-hc/Chromium-Web-Browser-appimage/main/chromium32
+  chmod a+x ./chromium32
+  ./chromium32
+  rm -R -f ./chromium32
+  rm -R -f ./version
+  echo $version >> ./version
+fi
+EOF
 chmod a+x /opt/$APP/AM-updater
 
 # LAUNCHER
@@ -192,7 +154,7 @@ Comment[zh_TW]=連線到網際網路
 Exec=chromium %U
 StartupNotify=true
 Terminal=false
-Icon=chromium
+Icon=/opt/chromium/icons/chromium
 Type=Application
 Categories=Network;WebBrowser;
 MimeType=application/pdf;application/rdf+xml;application/rss+xml;application/xhtml+xml;application/xhtml_xml;application/xml;image/gif;image/jpeg;image/png;image/webp;text/html;text/xml;x-scheme-handler/http;x-scheme-handler/https;
