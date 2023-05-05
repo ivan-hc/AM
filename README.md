@@ -154,6 +154,10 @@ In both cases, the "INSTALL" script will create a dedicated /opt/am directory co
   
     am -h
 -----------------------------------------------------------------------------
+  `-H`, `--home` Setting $HOME to /opt/$PROGRAM/$PROGRAM.home, this command only works if $PROGRAM is an AppImage package:
+  
+    am --home $PROGRAM
+-----------------------------------------------------------------------------
   `-i`, `install` Install a program. This will be downloader/created into a dedicated /opt/$PROGRAM directory (containing a script to remove it and  another one to update it), the command is linked to a $PATH and a launcher AM-$PROGRAM.desktop will be created in /usr/share/applications:
   
     [sudo] am -i $PROGRAM
@@ -174,6 +178,10 @@ In both cases, the "INSTALL" script will create a dedicated /opt/am directory co
   
     [sudo] am -r $PROGRAM
 -----------------------------------------------------------------------------
+  `-R` Removes the program and all the other files listed above using the instructions in /opt/$PROGRAM/remove, without asking:
+  
+    [sudo] am -R
+-----------------------------------------------------------------------------
   `-s`, `sync` Updates "AM" to a more recent version:
   
     am -s
@@ -188,6 +196,10 @@ In both cases, the "INSTALL" script will create a dedicated /opt/am directory co
    To update just one program and read the shell's output:
 
     am -u $PROGRAM
+-----------------------------------------------------------------------------
+  `-U`, `--force-update` Update all the installed programs without asking:
+  
+    am -U
 -----------------------------------------------------------------------------
   `-v`, `--version`, `version` Shows the version of "AM":
   
