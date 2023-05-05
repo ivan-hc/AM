@@ -7,6 +7,8 @@ Being "AM" a bash-based script, it can be used on all the architectures supporte
 
 This repository contains "AM" and the full database of the installation scripts for the applications.
 
+To see the whole catalog of the apps available, visit [portable-linux-apps.github.io](https://portable-linux-apps.github.io/)
+
 For a version of "AM" that works locally and installs/removes the same programs without root privileges, see [AppMan](https://github.com/ivan-hc/AppMan).
 
 ------------------------------------------------------------------------
