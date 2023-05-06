@@ -54,8 +54,26 @@ https://user-images.githubusercontent.com/88724353/197427371-f7911876-a8f1-4f3b-
 "AM" and "AppMan" are two command line tools that can download, install, update, remove and save AppImage and other standalone applications trying to always get the original versions from the main sources, and where necessary, try to create AppImage using [pkg2appimage](https://github.com/AppImage/pkg2appimage) and [appimagetool](https://github.com/AppImage/AppImageKit). Since March 2022 "AM" provides its source code as the base for the newer releases of AppMan, making it a version of "AM" that allows you to install programs locally instead. 
 
 Where `$PROGRAM` is the application we're going to install:
-- "AM" (ie the `am` command, provided by this main repository) installs programs and all related files into a `/opt/$PROGRAM` directory, the launcher in `/usr/share/applications` and the main application link in a`$PATH` (i.e. `/usr/local/bin` or `/usr/games`), this allows multiple users of the same system to be able to use the same installed applications. Root privileges (`sudo`) are required only to install and remove applications;
-- "AppMan" (ie the `appman` command, available at [github.com/ivan-hc/AppMan](https://github.com/ivan-hc/AppMan)) instead does not need root privileges to work, programs and all related files into a local directory named `~/.opt/$PROGRAM` (since the AppMan's 3.0.6.1 release you can set a different directory in your $HOME), the launcher is placed into the `~/.local/share/applications` directory and the main application link is placed into a new `~/.local/bin` directory ( the latter requires to be enabled into the `~/.bashrc` file, by adding the line `export PATH=$PATH:$(xdg-user-dir USER)/.local/bin` at the end of the file), this allows a single user to costumize its local configuration without having to share applications with others in the system.
+- "AM" (ie the `am` command, provided by this main repository) installs programs and works at system level (i.e. for all the users). "AM" requires the `sudo` privileges but only to install and remove the app, all the other commands can be executed as a normal user. This allows multiple users of the same system to be able to use the same installed applications. Root privileges (`sudo`) are required only to install and remove applications. This is what an installation script installs with "AM":
+
+    /opt/$PROGRAM/
+    /opt/$PROGRAM/$PROGRAM
+    /opt/$PROGRAM/AM-updater
+    /opt/$PROGRAM/remove
+    /opt/$PROGRAM/icons/$ICON-NAME
+    /usr/local/bin/$PROGRAM
+    /usr/share/applications/AM-$PROGRAM.desktop
+
+
+- "AppMan" (ie the `appman` command, available at [github.com/ivan-hc/AppMan](https://github.com/ivan-hc/AppMan)) instead does not need root privileges to work, it allows you to choose where to install your applications into your `$HOME` directory. AppMan is also usable as a portable app (i.e. you can download and place it wherever you want) and it is able to ubdate itself, anywhere! At first start it will ask you where to install the apps and it will create the directory for you (the configuration file is in `~/.config/appman`). For example, suppose you want install everything in "Applicazioni" (the italian of "applications"), this is the structure of what an installation scripts installs with "AppMan" instead:
+
+    ~/Applicazioni/$PROGRAM/
+    ~/Applicazioni/$PROGRAM/$PROGRAM
+    ~/Applicazioni/$PROGRAM/AM-updater
+    ~/Applicazioni/$PROGRAM/remove
+    ~/Applicazioni/$PROGRAM/icons/$ICON-NAME
+    ~/.local/bin/$PROGRAM
+    ~/.local/share/applications/AM-$PROGRAM.desktop
 
 For everything else, the controls and operation are always the same for both command line tools. The only thing that changes is that the installation scripts are written only for "AM", while "AppMan" uses the same scripts and includes commands that can modify them to make them work locally during the installation process.
 
@@ -82,10 +100,12 @@ You can consult basic information, links to sites and sources used through the r
 ## How to update all programs, for real
 To update all the programs, just run the command (without `sudo`):
 
-	am -u
+    am -U
+    
 To update just one program (and to read the output from the shell):
 
     am -u $PROGRAM
+
 Here are the ways in which the updates will be made:
 - Updateable AppImages can rely on an [appimageupdatetool](https://github.com/AppImage/AppImageUpdate)-based "updater" or on their external zsync file (if provided by the developer);
 - Non-updateable AppImages and other standalone programs will be replaced only with a more recent version if available, this will be taken by comparing the installed version with the one available on the source (using "curl", "grep" and "cat"), the same is for some AppImages created with [pkg2appimage](https://github.com/AppImage/pkg2appimage) and [appimagetool](https://github.com/AppImage/AppImageKit);
@@ -231,13 +251,13 @@ In both cases, the "INSTALL" script will create a dedicated /opt/am directory co
 # Features
 ------------------------------------------------------------------------
 ### How to enable bash completion
-Since 2.3.1 release "AM" has its inbuilt bash completion script that can be enabled using the following command (as root):
+Since 2.3.1 release "AM" has its inbuilt bash completion script that can be enabled using the following command:
 
-    sudo am --enable-completion
+    am --enable-completion
 This will ceate a bash completion script in /etc/bash_completion.d named `am-completion.sh` needed to complete a keyword with the TAB key using the names of all the main options and the name of the scripts of all the applications available in the "AM" repository.
 To disable bash completion (and to remove the /etc/bash_completion.d/am-completion.sh script):
 
-    sudo am --disable-completion
+    am --disable-completion
 Here you are a video on how to disable/enable bash completion in "AM":
 
 https://user-images.githubusercontent.com/88724353/155971864-783c098c-e696-47b5-aaa8-85dab6ab3b46.mp4
@@ -306,23 +326,10 @@ We can divide the stages of an installation's process as follows:
 
 The most difficult step to overcome is certainly the number "3", given the great variety of methods in which authors distribute their software, while all the other steps are much easier to overcome.
 
-### Helpers
-Some external scripts developed for "AM" are available in the repository:
-- [aih2AM](https://github.com/ivan-hc/aih2AM), a script that helps you porting AppImages from AppImage.github.io in "AM" installation scripts.
-- [github2AM](https://github.com/ivan-hc/github2AM), a script that helps you porting apps from any GitHub repository in "AM" installation scripts.
-
-To install them it is sufficient to run the following command:
-
-    sudo am -i aih2am github2am
-To uninstall them instead:
-
-    sudo am -r aih2am github2am 
-
-------------------------------------------------------------------------
 # Uninstall
 To uninstall "AM" just run the command:
 
-	sudo am -r am
+	am -r am
 
 ------------------------------------------------------------------------	
 # Known issues
