@@ -56,24 +56,24 @@ https://user-images.githubusercontent.com/88724353/197427371-f7911876-a8f1-4f3b-
 Where `$PROGRAM` is the application we're going to install:
 - "AM" (ie the `am` command, provided by this main repository) installs programs and works at system level (i.e. for all the users). "AM" requires the `sudo` privileges but only to install and remove the app, all the other commands can be executed as a normal user. This allows multiple users of the same system to be able to use the same installed applications. Root privileges (`sudo`) are required only to install and remove applications. This is what an installation script installs with "AM":
 
-    /opt/$PROGRAM/
-    /opt/$PROGRAM/$PROGRAM
-    /opt/$PROGRAM/AM-updater
-    /opt/$PROGRAM/remove
-    /opt/$PROGRAM/icons/$ICON-NAME
-    /usr/local/bin/$PROGRAM
-    /usr/share/applications/AM-$PROGRAM.desktop
+      /opt/$PROGRAM/
+      /opt/$PROGRAM/$PROGRAM
+      /opt/$PROGRAM/AM-updater
+      /opt/$PROGRAM/remove
+      /opt/$PROGRAM/icons/$ICON-NAME
+      /usr/local/bin/$PROGRAM
+      /usr/share/applications/AM-$PROGRAM.desktop
 
 
 - "AppMan" (ie the `appman` command, available at [github.com/ivan-hc/AppMan](https://github.com/ivan-hc/AppMan)) instead does not need root privileges to work, it allows you to choose where to install your applications into your `$HOME` directory. AppMan is also usable as a portable app (i.e. you can download and place it wherever you want) and it is able to ubdate itself, anywhere! At first start it will ask you where to install the apps and it will create the directory for you (the configuration file is in `~/.config/appman`). For example, suppose you want install everything in "Applicazioni" (the italian of "applications"), this is the structure of what an installation scripts installs with "AppMan" instead:
 
-    ~/Applicazioni/$PROGRAM/
-    ~/Applicazioni/$PROGRAM/$PROGRAM
-    ~/Applicazioni/$PROGRAM/AM-updater
-    ~/Applicazioni/$PROGRAM/remove
-    ~/Applicazioni/$PROGRAM/icons/$ICON-NAME
-    ~/.local/bin/$PROGRAM
-    ~/.local/share/applications/AM-$PROGRAM.desktop
+      ~/Applicazioni/$PROGRAM/
+      ~/Applicazioni/$PROGRAM/$PROGRAM
+      ~/Applicazioni/$PROGRAM/AM-updater
+      ~/Applicazioni/$PROGRAM/remove
+      ~/Applicazioni/$PROGRAM/icons/$ICON-NAME
+      ~/.local/bin/$PROGRAM
+      ~/.local/share/applications/AM-$PROGRAM.desktop
 
 For everything else, the controls and operation are always the same for both command line tools. The only thing that changes is that the installation scripts are written only for "AM", while "AppMan" uses the same scripts and includes commands that can modify them to make them work locally during the installation process.
 
