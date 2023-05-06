@@ -54,7 +54,7 @@ https://user-images.githubusercontent.com/88724353/197427371-f7911876-a8f1-4f3b-
 "AM" and "AppMan" are two command line tools that can download, install, update, remove and save AppImage and other standalone applications trying to always get the original versions from the main sources, and where necessary, try to create AppImage using [pkg2appimage](https://github.com/AppImage/pkg2appimage) and [appimagetool](https://github.com/AppImage/AppImageKit). Since March 2022 "AM" provides its source code as the base for the newer releases of AppMan, making it a version of "AM" that allows you to install programs locally instead. 
 
 Where `$PROGRAM` is the application we're going to install:
-- "AM" (ie the `am` command, provided by this main repository) installs programs and works at system level (i.e. for all the users). "AM" requires the `sudo` privileges but only to install and remove the app, all the other commands can be executed as a normal user. This allows multiple users of the same system to be able to use the same installed applications. Root privileges (`sudo`) are required only to install and remove applications. This is what an installation script installs with "AM":
+- "AM" (ie the `am` command, provided by this main repository) installs programs and works at system level (i.e. for all the users). "AM" requires the `sudo` privileges but only to install and remove the app, all the other commands can be executed as a normal user. This allows multiple users of the same system to be able to use the same installed applications. This is what an installation script installs with "AM":
 
       /opt/$PROGRAM/
       /opt/$PROGRAM/$PROGRAM
