@@ -62,6 +62,7 @@ wget https:$download
   mv --backup=t ./tmp/*mage ./$APP
   chmod a+x /opt/$APP/$APP
   rm -R -f ./tmp ./*~
+  notify-send "$APP is updated!"
 fi
 EOF
 sed -i s/FUNCTION2/$USER/g /opt/$APP/AM-updater
