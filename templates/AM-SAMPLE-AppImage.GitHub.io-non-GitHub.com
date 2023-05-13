@@ -60,6 +60,7 @@ else
   mv --backup=t ./tmp/*mage ./$APP
   chmod a+x /opt/$APP/$APP
   rm -R -f ./tmp ./*~
+  notify-send "$APP is updated!"
 fi
 EOF
 sed -i s@FUNCTION1@$URL1@g /opt/$APP/AM-updater
