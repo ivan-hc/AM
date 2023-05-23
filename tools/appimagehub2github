@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+
+# THIS IS A SCRIPT i USE TO CONVERT ALL THE OLD SCRIPTS FROM APPIMAGEHUB TO NEW SCRIPTS USING THE STANDARD OF THE APPIMAGES FROM GITHUB
+
+# FIRST OF ALL, WE NEED TO CREATE A FILE CONTAINING ALL THE ARGUMENTS THAT THIS SCRIPT MUST READ
+ARGS=$(sed '1d' ./list)
+
+# THEN WE NEED THE TEMPLATE
+if test -f ./AM-SAMPLE-AppImage-from-GitHub; then
+	echo " The template already exists" 1> /dev/null
+else
+	wget -q https://raw.githubusercontent.com/ivan-hc/AM-Application-Manager/main/templates/AM-SAMPLE-AppImage-from-GitHub
+fi
+
+# THIS IS THE WORKFLOW
+for arg in $ARGS; do
+	for var in $arg; do
+	if [ $arg == STOP ]; then
+		exit
+	else
+		case $arg in
+		*) for var in $arg;
+			do
+			APPNAME=$(cat oldscripts/$arg | grep APPNAME= | head -1 | cut -c 9-)
+			REPO=$(curl -L -s https://raw.githubusercontent.com/AppImage/appimage.github.io/master/apps/$APPNAME.md | grep -A1 "type: GitHub" | sed -n 2p | cut -c 10-)
+			echo -----------------------------------
+			echo $arg
+			echo ""
+			# THE FOLLOWING COMMAND WILL SHOW YOU THE URL OF THE APP YOU WANT TO CONVERT THE SCRIPT FOR
+			wget -q https://api.github.com/repos/$REPO/releases -O - | grep -w -v i386 | grep -w -v i686 | grep -w -v aarch64 | grep -w -v arm64 | grep -w -v armv7l | grep browser_download_url | grep -i appimage | cut -d '"' -f 4 | head -1
+			# IN CASE THE COMMAND ABOVE RETURNS NOT THE APPIMAGE YOU WANT TO DOWNLOAD, ADD ANY COMMAND MANUALLY IN THE GENERATED SCRIPT
+			echo ""
+			read -p " Do you wish to proceed (y,N)?" yn
+			case $yn in
+			'Y'|'y') mkdir -p ./am-scripts && 
+				cp ./AM-SAMPLE-AppImage-from-GitHub ./$arg
+				mv ./$arg ./am-scripts/$arg && 
+				sed -i s/SAMPLE/$arg/g ./am-scripts/$arg &&
+				sed -i s#REPLACETHIS#$REPO#g ./am-scripts/$arg
+				sleep 0.5;;
+			'N'|'n'|*) break;;
+			esac
+			done
+		esac
+fi
+done
+done
