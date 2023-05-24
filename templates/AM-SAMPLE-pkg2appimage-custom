@@ -39,19 +39,21 @@ cp /opt/$APP/tmp/recipe.yml /opt/$APP/recipe.yml
 ./pkg2appimage ./recipe.yml;
 
 # ...DOWNLOADING LIBUNIONPRELOAD...
-wget https://github.com/project-portable/libunionpreload/releases/download/amd64/libunionpreload.so
-chmod a+x libunionpreload.so
-mv ./libunionpreload.so ./$APP/$APP.AppDir/
+#wget https://github.com/project-portable/libunionpreload/releases/download/amd64/libunionpreload.so
+#chmod a+x libunionpreload.so
+#mv ./libunionpreload.so ./$APP/$APP.AppDir/
 
 # ...REPLACING THE EXISTING APPRUN WITH A CUSTOM ONE...
 rm -R -f ./$APP/$APP.AppDir/AppRun
 cat > AppRun << 'EOF'
 #!/bin/sh
+APP=SAMPLE
 HERE="$(dirname "$(readlink -f "${0}")")"
 export UNION_PRELOAD="${HERE}"
-export LD_PRELOAD="${HERE}/libunionpreload.so"
+#export LD_PRELOAD="${HERE}/libunionpreload.so"
 export PATH="${HERE}"/usr/bin/:"${HERE}"/usr/sbin/:"${HERE}"/usr/games/:"${HERE}"/bin/:"${HERE}"/sbin/:"${PATH}"
-export LD_LIBRARY_PATH="${HERE}"/usr/lib/:"${HERE}"/usr/lib/i386-linux-gnu/:"${HERE}"/usr/lib/x86_64-linux-gnu/:"${HERE}"/usr/lib32/:"${HERE}"/usr/lib64/:"${HERE}"/lib/:"${HERE}"/lib/i386-linux-gnu/:"${HERE}"/lib/x86_64-linux-gnu/:"${HERE}"/lib32/:"${HERE}"/lib64/:"${LD_LIBRARY_PATH}"
+##export LD_LIBRARY_PATH="${HERE}"/usr/lib/:"${HERE}"/usr/lib/i386-linux-gnu/:"${HERE}"/usr/lib/x86_64-linux-gnu/:"${HERE}"/lib/:"${HERE}"/lib/i386-linux-gnu/:"${HERE}"/lib/x86_64-linux-gnu/:"${LD_LIBRARY_PATH}"
+#export LD_LIBRARY_PATH=/lib/:/lib64/:/lib/x86_64-linux-gnu/:/usr/lib/:"${HERE}"/usr/lib/:"${HERE}"/usr/lib/i386-linux-gnu/:"${HERE}"/usr/lib/x86_64-linux-gnu/:"${HERE}"/lib/:"${HERE}"/lib/i386-linux-gnu/:"${HERE}"/lib/x86_64-linux-gnu/:"${LD_LIBRARY_PATH}"
 export PYTHONPATH="${HERE}"/usr/share/pyshared/:"${PYTHONPATH}"
 export PYTHONHOME="${HERE}"/usr/
 export XDG_DATA_DIRS="${HERE}"/usr/share/:"${XDG_DATA_DIRS}"
@@ -59,23 +61,32 @@ export PERLLIB="${HERE}"/usr/share/perl5/:"${HERE}"/usr/lib/perl5/:"${PERLLIB}"
 export GSETTINGS_SCHEMA_DIR="${HERE}"/usr/share/glib-2.0/schemas/:"${GSETTINGS_SCHEMA_DIR}"
 export QT_PLUGIN_PATH="${HERE}"/usr/lib/qt4/plugins/:"${HERE}"/usr/lib/i386-linux-gnu/qt4/plugins/:"${HERE}"/usr/lib/x86_64-linux-gnu/qt4/plugins/:"${HERE}"/usr/lib32/qt4/plugins/:"${HERE}"/usr/lib64/qt4/plugins/:"${HERE}"/usr/lib/qt5/plugins/:"${HERE}"/usr/lib/i386-linux-gnu/qt5/plugins/:"${HERE}"/usr/lib/x86_64-linux-gnu/qt5/plugins/:"${HERE}"/usr/lib32/qt5/plugins/:"${HERE}"/usr/lib64/qt5/plugins/:"${QT_PLUGIN_PATH}"
 EXEC=$(grep -e '^Exec=.*' "${HERE}"/*.desktop | head -n 1 | cut -d "=" -f 2- | sed -e 's|%.||g')
-exec ${EXEC} "$@"
+##exec ${EXEC} "$@"
+#exec "${HERE}"CUSTOMPATH "$@"
 EOF
 chmod a+x AppRun
 cp ./AppRun /opt/$APP/
 mv ./AppRun ./$APP/$APP.AppDir
 
-# ...IMPORT THE LAUNCHER AND THE ICON TO THE APPDIR (uncomment if not available)...
-#cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/22x22/apps/* ./$APP/$APP.AppDir/ 2>/dev/null
-#cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/24x24/apps/* ./$APP/$APP.AppDir/ 2>/dev/null
-#cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/32x32/apps/* ./$APP/$APP.AppDir/ 2>/dev/null
-#cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/48x48/apps/* ./$APP/$APP.AppDir/ 2>/dev/null
-#cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/64x64/apps/* ./$APP/$APP.AppDir/ 2>/dev/null
-#cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/128x128/apps/* ./$APP/$APP.AppDir/ 2>/dev/null
-#cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/256x256/apps/* ./$APP/$APP.AppDir/ 2>/dev/null
-#cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/512x512/apps/* ./$APP/$APP.AppDir/ 2>/dev/null
-#cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/scalable/apps/* ./$APP/$APP.AppDir/ 2>/dev/null
-#cp ./$APP/$APP.AppDir/usr/share/applications/* ./$APP/$APP.AppDir/ 2>/dev/null
+# IMPORT THE LAUNCHER AND THE ICON TO THE APPDIR IF THEY NOT EXIST
+if test -f ./$APP/$APP.AppDir/*.desktop; then
+	echo "The desktop file exists"
+else
+	echo "Trying to get the .desktop file"
+	cp ./$APP/$APP.AppDir/usr/share/applications/*$(ls . | grep -i $APP | cut -c -4)*desktop ./$APP/$APP.AppDir/ 2>/dev/null
+fi
+
+ICONNAME=$(cat ./$APP/$APP.AppDir/*desktop | grep "Icon=" | head -1 | cut -c 6-)
+cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/22x22/apps/*$ICONNAME* ./$APP/$APP.AppDir/ 2>/dev/null
+cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/24x24/apps/*$ICONNAME* ./$APP/$APP.AppDir/ 2>/dev/null
+cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/32x32/apps/*$ICONNAME* ./$APP/$APP.AppDir/ 2>/dev/null
+cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/48x48/apps/*$ICONNAME* ./$APP/$APP.AppDir/ 2>/dev/null
+cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/64x64/apps/*$ICONNAME* ./$APP/$APP.AppDir/ 2>/dev/null
+cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/128x128/apps/*$ICONNAME* ./$APP/$APP.AppDir/ 2>/dev/null
+cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/256x256/apps/*$ICONNAME* ./$APP/$APP.AppDir/ 2>/dev/null
+cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/512x512/apps/*$ICONNAME* ./$APP/$APP.AppDir/ 2>/dev/null
+cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/scalable/apps/*$ICONNAME* ./$APP/$APP.AppDir/ 2>/dev/null
+cp ./$APP/$APP.AppDir/usr/share/applications/*$ICONNAME* ./$APP/$APP.AppDir/ 2>/dev/null
 
 # ...EXPORT THE APPDIR TO AN APPIMAGE!
 ARCH=x86_64 ./appimagetool -n ./$APP/$APP.AppDir;
@@ -88,60 +99,113 @@ echo "$version" >> /opt/$APP/version
 cd ..;
 mv ./tmp/*.AppImage ./$APP;
 chmod a+x ./$APP
-
 rm -R -f ./tmp
 
 # LINK
 ln -s /opt/$APP/$APP /usr/local/bin/$APP
 
 # SCRIPT TO UPDATE THE PROGRAM
+cat >> /opt/$APP/AM-updater << 'EOF'
+#!/bin/sh
+APP=SAMPLE
 initial=$(echo $APP | head -c 1)
-echo '#!/bin/sh
-version0=$(cat /opt/'$APP'/version)
-url="http://http.us.debian.org/debian/pool/main/'$initial'/'$APP'/$version0"
+version0=$(cat /opt/$APP/version)
+url="http://http.us.debian.org/debian/pool/main/$initial/$APP/$version0"
 if curl --output /dev/null --silent --head --fail "$url"; then
   echo "Update not needed, exit!"
 else
-  notify-send "A new version of '$APP' is available, please wait!"
-  mkdir /opt/'$APP'/tmp
-  cd /opt/'$APP'/tmp
+  notify-send "A new version of $APP is available, please wait!"
+  mkdir /opt/$APP/tmp
+  cd /opt/$APP/tmp
   wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool
   wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/tools/pkg2appimage # 64 BIT ONLY (comment to disable)
 # wget https://github.com/ivan-hc/pkg2appimage-32bit/releases/download/continuous/pkg2appimage-i386.AppImage -O pkg2appimage # 32 BIT ONLY (uncomment to enable)
   chmod a+x ./appimagetool ./pkg2appimage
-  cp /opt/'$APP'/recipe.yml /opt/'$APP'/tmp/recipe.yml
+  cp /opt/$APP/recipe.yml /opt/$APP/tmp/recipe.yml
   ./pkg2appimage ./recipe.yml;
   wget https://github.com/project-portable/libunionpreload/releases/download/amd64/libunionpreload.so
   chmod a+x libunionpreload.so
-  mv ./libunionpreload.so ./'$APP'/'$APP'.AppDir/
-  rm -R -f ./'$APP'/'$APP'.AppDir/AppRun
-  cp /opt/'$APP'/AppRun ./'$APP'/'$APP'.AppDir/
-  ARCH=x86_64 ./appimagetool -n ./'$APP'/'$APP'.AppDir
+  mv ./libunionpreload.so ./$APP/$APP.AppDir/
+  rm -R -f ./$APP/$APP.AppDir/AppRun
+  cp /opt/$APP/AppRun ./$APP/$APP.AppDir/
+  ARCH=x86_64 ./appimagetool -n ./$APP/$APP.AppDir
+  underscore=_
   mkdir version
-  mv ./'$APP'/'$APP''$underscore'*.deb ./version/
+  mv ./$APP/$APP$underscore*.deb ./version/
   cd ..
-  version=$(ls /opt/'$APP'/tmp/version)
+  version=$(ls /opt/$APP/tmp/version)
   if test -f ./tmp/version/$version; then rm -R -f ./version
   fi
-  echo "$version" >> /opt/'$APP'/version
-  mv ./tmp/*.AppImage ./'$APP';
-  chmod a+x ./'$APP'
+  echo "$version" >> /opt/$APP/version
+  mv ./tmp/*.AppImage ./$APP;
+  chmod a+x ./$APP
   rm -R -f ./tmp
-  notify-send "'$APP' is updated!"
-fi' >> /opt/$APP/AM-updater
+  notify-send "$APP is updated!"
+fi
+EOF
 chmod a+x /opt/$APP/AM-updater
 
-# LAUNCHER
-echo "LAUNCHER" >> /usr/share/applications/AM-$APP.desktop;
+# LAUNCHER & ICON
+app=$(echo $APP | cut -c -3)
+cd /opt/$APP
+./$APP --appimage-extract *.desktop 1>/dev/null
+./$APP --appimage-extract share/applications/*.desktop 1>/dev/null
+./$APP --appimage-extract usr/share/applications/*.desktop 1>/dev/null
+mv squashfs-root/*.desktop ./$APP.desktop
+mv squashfs-root/share/applications/*.desktop ./$APP.desktop
+mv squashfs-root/usr/share/applications/*.desktop ./$APP.desktop
+if [ ! -e ./$APP.desktop ]; then 
+	rm ./$APP.desktop; ./$APP --appimage-extract usr/share/applications/*$app*.desktop 
+	mv squashfs-root/usr/share/applications/*.desktop ./$APP.desktop
+fi
+if [ ! -e ./$APP.desktop ]; then 
+	rm ./$APP.desktop; ./$APP --appimage-extract share/applications/*$app*.desktop 1>/dev/null
+	mv squashfs-root/share/applications/*.desktop ./$APP.desktop
+fi
+CHANGEEXEC=$(cat ./$APP.desktop | grep Exec= | tr ' ' '\n' | tr '=' '\n' | tr '/' '\n' | grep $app | head -1)
+sed -i "s#$CHANGEEXEC#$APP#g" ./$APP.desktop
+sed -i "s#AppRun#$APP#g" ./$APP.desktop
+sed -i "s#Exec=/bin/#Exec=#g" ./$APP.desktop
+sed -i "s#Exec=/usr/bin/#Exec=#g" ./$APP.desktop
+CHANGEICON=$(cat ./$APP.desktop | grep Icon= | head -1)
+sed -i "s#$CHANGEICON#Icon=/opt/$APP/icons/$APP#g" ./$APP.desktop
 
-# ICON
-WGET-THE-ICON
+mkdir icons
+mv $(./$APP --appimage-extract *.png) ./icons/$APP 2>/dev/null
+mv $(./$APP --appimage-extract *.svg) ./icons/$APP 2>/dev/null
+./$APP --appimage-extract share/icons/*/*/* 1>/dev/null
+./$APP --appimage-extract usr/share/icons/*/*/* 1>/dev/null
+./$APP --appimage-extract share/icons/*/*/*/* 1>/dev/null
+./$APP --appimage-extract usr/share/icons/*/*/*/* 1>/dev/null
+mv ./squashfs-root/share/icons/hicolor/22x22/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/24x24/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/32x32/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/48x48/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/64x64/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/128x128/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/256x256/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/512x512/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/scalable/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/22x22/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/24x24/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/32x32/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/48x48/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/64x64/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/128x128/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/256x256/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/512x512/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/scalable/apps/*$app* ./icons/$APP 2>/dev/null
 
+rm -R -f /opt/$APP/squashfs-root
+mv ./$APP.desktop /usr/share/applications/AM-$APP.desktop
+
+# CHANGE THE PERMISSIONS
 currentuser=$(who | awk '{print $1}')
 chown -R $currentuser /opt/$APP
 
+# MESSAGE
 echo "
 
- MESSAGE
+ This AppImage has been built using pkg2appimage and appimagetool
   
 ";
