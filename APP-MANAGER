@@ -679,9 +679,36 @@ case "$1" in
     	# CREATE AN APPIMAGE ON-THE-FLY USING CUSTOM OPTIONS
     	5) mkdir -p ./am-scripts ./am-scripts/$arch ./am-scripts/WEBPAGE &&
     		# DOWNLOAD THE TEMPLATE AND CONVERT THE ARGUMENT INTO A COMMAND
-    		wget -c -q $AMREPO/templates/AM-SAMPLE-pkg2appimage-custom -O ./am-scripts/$arch/$arg && sed -i s/SAMPLE/$arg/g ./am-scripts/$arch/$arg &&
+    		wget -c -q $AMREPO/templates/AM-SAMPLE-pkg2appimage-custom -O ./am-scripts/$arch/$arg &&
+    		sed -i s/SAMPLE/$arg/g ./am-scripts/$arch/$arg &&
+		# LIBUNIONPRELOAD
+		read -p ' Do you wish to add libunionpreload (y,N)?' yn
+		case $yn in
+			'Y'|'y') sed -i 's/#export LD_PRELOAD/export LD_PRELOAD/g' ./am-scripts/$arch/$arg
+				sed -i 's/#chmod/chmod/g' ./am-scripts/$arch/$arg
+				sed -i 's/#mv ./mv ./g' ./am-scripts/$arch/$arg
+				sed -i 's/#wget/wget/g' ./am-scripts/$arch/$arg;;
+			'N'|'n'|*) ;;
+		esac
+		# SYSTEM LIBRARIES
+		read -p ' Do you wish to include system libraries (Y,n)?' yn
+		case $yn in
+			'N'|'n') sed -i 's/##export LD_LIBRARY_PATH/export LD_LIBRARY_PATH/g' ./am-scripts/$arch/$arg;;
+			'Y'|'y'|*) sed -i 's/#export LD_LIBRARY_PATH/export LD_LIBRARY_PATH/g' ./am-scripts/$arch/$arg;;
+		esac
+		# BINARY PATH
+		read -p ' Do you wish to specify the binary`s path manually (y,N)?' yn
+		case $yn in 
+			'Y'|'y') read -r -p " ◆ ADD THE PATH (EXAMPLE '/usr/lib.../$arg') $(echo -e '\n: ')" RESPONSE
+				case "$RESPONSE" in
+				*) sed -i s/#exec/exec/g ./am-scripts/$arch/$arg
+				sed -i s#CUSTOMPATH#$RESPONSE#g ./am-scripts/$arch/$arg
+				esac;;
+			'N'|'n'|*) sed -i s/##exec/exec/g ./am-scripts/$arch/$arg;;
+		esac
+		# CREATE A WEBPAGE FOR https://portable-linux-apps.github.io CONTAINING ALL THE INFO ABOUT THIS APP
 		echo "#$(echo $arg | tr a-z A-Z)" >> ./am-scripts/WEBPAGE/$arg.md
-		echo "\n $COMMENT\n\n SITE: \n\n [Go back](https://portable-linux-apps.github.io/apps.html)" >> ./am-scripts/WEBPAGE/$arg.md &&  
+		echo -e "\n $COMMENT\n\n SITE: \n\n [Go back](https://portable-linux-apps.github.io/apps.html)" >> ./am-scripts/WEBPAGE/$arg.md &&  
 		# CREATE A NEW LINE FOR THE APPLICATION'S LIST
 		echo '◆ '$arg' : '$COMMENT'' >> ./am-scripts/list; echo ""
 		# END OF THIS FUNCTION
@@ -892,6 +919,6 @@ case "$1" in
 	done
 	shift;;
   'version'|'-v'|'--version')
-  	echo "4.0.3-4";;
+  	echo "4.0.3-5";;
   *) exec $AMPATH/APP-MANAGER ;;
 esac
