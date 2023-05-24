@@ -563,17 +563,18 @@ case "$1" in
     	# ANY ARCHIVE ZIP, TAR OR DEB FROM GITHUB, THIS TEMPLATE ALLOWS THE EXTRACTION OF THE ARCHIVE. APPIMAGE ARE SUPPORTED TOO, BUT BEING ON GITHUB I SUGGEST TO USE THE OPTION 7 INSTEAD.
     	2) mkdir -p ./am-scripts ./am-scripts/$arch ./am-scripts/WEBPAGE &&
     		# DOWNLOAD THE TEMPLATE AND CONVERT THE ARGUMENT INTO A COMMAND
-    		wget -c -q $AMREPO/templates/AM-SAMPLE-GitHub-generic -O ./am-scripts/$arch/$arg && sed -i s/SAMPLE/$arg/g ./am-scripts/$arch/$arg &&
+    		wget -c -q $AMREPO/templates/AM-SAMPLE-GitHub-generic -O ./am-scripts/$arch/$arg &&
+    		sed -i s/SAMPLE/$arg/g ./am-scripts/$arch/$arg &&
 		echo "-----------------------------------------------------------------------"
 		# ADD THE NAME OF THE GITHUB REPOSITORY, ALSO ADD SOME BASIC INFO IF AVAILABLE
-		read -r -p " ◆ ADD THE NAME OF THE REPOSITORY (EXAMPLE 'NAME/REPOSITORY') $(echo -e '\n https://github.com/')" RESPONSE
-		case "$RESPONSE" in
-		*) sed -i s#REPLACETHIS#$RESPONSE#g ./am-scripts/$arch/$arg
+		read -r -p " ◆ ADD THE NAME OF THE REPOSITORY (EXAMPLE 'NAME/REPOSITORY') $(echo -e '\n https://github.com/')" GITHUBREPO
+		case "$GITHUBREPO" in
+		*) sed -i s#REPLACETHIS#$GITHUBREPO#g ./am-scripts/$arch/$arg
 		# GET THE DESCRIPTION OF THIS REPOSITORY TO ADD IN ALL CREATED FILES
-		COMMENT=$(curl https://api.github.com/repos/$RESPONSE 2>/dev/null | grep description | sed 's/"description": "//' | sed 's/",//')
+		COMMENT=$(curl https://api.github.com/repos/$GITHUBREPO 2>/dev/null | grep description | sed 's/"description": "//' | sed 's/",//')
 		# CREATE A WEBPAGE FOR https://portable-linux-apps.github.io CONTAINING ALL THE INFO ABOUT THIS APP
 		echo "#$(echo $arg | tr a-z A-Z)" >> ./am-scripts/WEBPAGE/$arg.md
-		echo -e "\n $COMMENT\n\n SITE: https://github.com/$RESPONSE\n\n [Go back](https://portable-linux-apps.github.io/apps.html)" >> ./am-scripts/WEBPAGE/$arg.md && 
+		echo -e "\n $COMMENT\n\n SITE: https://github.com/$GITHUBREPO\n\n [Go back](https://portable-linux-apps.github.io/apps.html)" >> ./am-scripts/WEBPAGE/$arg.md && 
 		# CREATE A NEW LINE FOR THE APPLICATION'S LIST
 		echo "◆ $arg : $COMMENT" >> ./am-scripts/list
 		esac
@@ -610,12 +611,50 @@ case "$1" in
 		*) sed -i s#PATHTOAPP#$RESPONSE#g ./am-scripts/$arch/$arg
 		esac 
 		echo "-----------------------------------------------------------------------"
+		# CHECK THE DOWNLOAD LINK, THE ONE THAT POINTS TO THE LATEST RELEASE, NOTE THAT IT MAY BE A DEVELOPMENT VERSION, ADD "/latest" AFTER "/releases" TO POINT TO THE LAST STABLE VERSION
+		read -p ' Do you wish to check the link to the latest version (Y,n)?' yn
+		case $yn in
+			'N'|'n') ;;
+			'Y'|'y'|*) echo ""; wget -q https://api.github.com/repos/$GITHUBREPO/releases -O - | grep -w -v i386 | grep -w -v i686 | grep -w -v aarch64 | grep -w -v arm64 | grep -w -v armv7l | grep browser_download_url | grep -i appimage | cut -d '"' -f 4 | head -1
+			echo -e "\n The URL above is an example of what both\n the install and update scripts will point to.\n";;
+		esac
+		read -p ' If correct, press "ENTER", otherwise press "N": ' yn
+		case $yn in
+			'N'|'n') read -p ' Press 1 to add something or 2 to remove something: ' response
+				case "$response" in
+				1) read -r -p ' URL must contain ("x64", "x86_64"... or leave blank): ' response
+					case "$response" in
+					'') ;;
+					*) sed -i 's#browser_download_url#browser_download_url | grep -i '$response' #g' ./am-scripts/$arch/$arg
+					read -p ' Do you wish to check the link for the last time (Y,n)?' yn
+					case $yn in
+					'N'|'n') ;;
+					'Y'|'y'|*) echo ""; wget -q https://api.github.com/repos/$GITHUBREPO/releases -O - | grep -w -v i386 | grep -w -v i686 | grep -w -v aarch64 | grep -w -v arm64 | grep -w -v armv7l | grep browser_download_url | grep -i "$response" | grep -i appimage | cut -d '"' -f 4 | head -1
+					echo -e "\n The URL above is an example of what both\n the install and update scripts will point to.\n";;
+					esac;;
+					esac;;
+				2) read -r -p ' URL must NOT contain ("txt", "ARM"... or leave blank): ' response
+					case "$response" in
+					'') ;;
+					*) sed -i 's#browser_download_url#browser_download_url | grep -w -v '$response' #g' ./am-scripts/$arch/$arg
+					read -p ' Do you wish to check the link for the last time (Y,n)?' yn
+					case $yn in
+					'N'|'n') ;;
+					'Y'|'y'|*) echo ""; wget -q https://api.github.com/repos/$GITHUBREPO/releases -O - | grep -w -v i386 | grep -w -v i686 | grep -w -v aarch64 | grep -w -v arm64 | grep -w -v armv7l | grep browser_download_url | grep -w -v "$response" | grep -i appimage | cut -d '"' -f 4 | head -1
+					echo -e "\n The URL above is an example of what both\n the install and update scripts will point to.\n";;
+					esac;;
+					esac;;
+				esac;;
+			'Y'|'y'|*) ;;
+		esac
+		echo "-----------------------------------------------------------------------"
 		# END OF THIS FUNCTION
 		echo -e "\n All files are saved in $(xdg-user-dir DESKTOP)/am-scripts\n";;
     	# ANY ARCHIVE ZIP, TAR, DEB OR APPIMAGE FROM GITHUB, THIS TEMPLATE ALSO ALLOWS THE EXTRACTION OF THE ARCHIVE.
     	3) mkdir -p ./am-scripts ./am-scripts/$arch ./am-scripts/WEBPAGE &&
     		# DOWNLOAD THE TEMPLATE AND CONVERT THE ARGUMENT INTO A COMMAND
-    		wget -c -q $AMREPO/templates/AM-SAMPLE-AUR-generic -O ./am-scripts/$arch/$arg && sed -i s/SAMPLE/$arg/g ./am-scripts/$arch/$arg &&
+    		wget -c -q $AMREPO/templates/AM-SAMPLE-AUR-generic -O ./am-scripts/$arch/$arg &&
+    		sed -i s/SAMPLE/$arg/g ./am-scripts/$arch/$arg &&
 		echo "-----------------------------------------------------------------------"
 		# GIVE A NAME FOR THIS APP, IT WILL APPEAR IN OUR CUSTOM DESKTOP FILE
 		read -r -p " ◆ NAME OF THE APP: " RESPONSE
@@ -668,7 +707,8 @@ case "$1" in
     	# CREATE AN APPIMAGE ON-THE-FLY USING DEFAULT TOOLS
     	4) mkdir -p ./am-scripts ./am-scripts/$arch ./am-scripts/WEBPAGE &&
     		# DOWNLOAD THE TEMPLATE AND CONVERT THE ARGUMENT INTO A COMMAND
-    		wget -c -q $AMREPO/templates/AM-SAMPLE-pkg2appimage -O ./am-scripts/$arch/$arg && sed -i s/SAMPLE/$arg/g ./am-scripts/$arch/$arg &&
+    		wget -c -q $AMREPO/templates/AM-SAMPLE-pkg2appimage -O ./am-scripts/$arch/$arg &&
+    		sed -i s/SAMPLE/$arg/g ./am-scripts/$arch/$arg &&
 		# CREATE A WEBPAGE FOR https://portable-linux-apps.github.io CONTAINING ALL THE INFO ABOUT THIS APP
 		echo "#$(echo $arg | tr a-z A-Z)" >> ./am-scripts/WEBPAGE/$arg.md
 		echo "\n $COMMENT\n\n SITE: \n\n [Go back](https://portable-linux-apps.github.io/apps.html)" >> ./am-scripts/WEBPAGE/$arg.md &&  
@@ -716,7 +756,8 @@ case "$1" in
     	# CREATE A CUSTOM FIREFOX PROFILE ("firefox" MUST BE IN "$PATH" TO MADE IT WORK)
     	6) mkdir -p ./am-scripts ./am-scripts/$arch ./am-scripts/WEBPAGE &&
     		# DOWNLOAD THE TEMPLATE AND CONVERT THE ARGUMENT INTO A COMMAND
-    		wget -c -q $AMREPO/templates/AM-SAMPLE-Firefox-webapp -O ./am-scripts/$arch/ffwa-$arg && sed -i s/SAMPLE/$arg/g ./am-scripts/$arch/ffwa-$arg &&
+    		wget -c -q $AMREPO/templates/AM-SAMPLE-Firefox-webapp -O ./am-scripts/$arch/ffwa-$arg &&
+    		sed -i s/SAMPLE/$arg/g ./am-scripts/$arch/ffwa-$arg &&
 		echo "-----------------------------------------------------------------------"
 		read -r -p " ◆ NAME OF THE APP: " RESPONSE
 		case "$RESPONSE" in
@@ -768,6 +809,45 @@ case "$1" in
 		echo -e "\n $COMMENT\n\n SITE: https://github.com/$RESPONSE\n\n [Go back](https://portable-linux-apps.github.io/apps.html)" >> ./am-scripts/WEBPAGE/$arg.md &&
 		# CREATE A NEW LINE FOR THE APPLICATION'S LIST
 		echo "◆ $arg : $COMMENT" >> ./am-scripts/list
+		esac
+		echo "-----------------------------------------------------------------------"
+		# CHECK THE DOWNLOAD LINK, THE ONE THAT POINTS TO THE LATEST RELEASE, NOTE THAT IT MAY BE A DEVELOPMENT VERSION, ADD "/latest" AFTER "/releases" TO POINT TO THE LAST STABLE VERSION
+		read -p ' Do you wish to check the link to the latest version (Y,n)?' yn
+		APIGITHUB="https://api.github.com/repos"
+		EXCLUDED="grep -w -v i386 | grep -w -v i686 | grep -w -v aarch64 | grep -w -v arm64 | grep -w -v armv7l"
+		case $yn in
+			'N'|'n') ;;
+			'Y'|'y'|*) echo ""; wget -q https://api.github.com/repos/$RESPONSE/releases -O - | grep -w -v i386 | grep -w -v i686 | grep -w -v aarch64 | grep -w -v arm64 | grep -w -v armv7l | grep browser_download_url | grep -i appimage | cut -d '"' -f 4 | head -1
+			echo -e "\n The URL above is an example of what both\n the install and update scripts will point to.\n";;
+		esac
+		read -p ' If correct, press "ENTER", otherwise press "N": ' yn
+		case $yn in
+			'N'|'n') read -p ' Press 1 to add something or 2 to remove something: ' response
+				case "$response" in
+				1) read -r -p ' URL must contain ("x64", "x86_64"... or leave blank): ' response
+					case "$response" in
+					'') ;;
+					*) sed -i 's#browser_download_url#browser_download_url | grep -i '$response' #g' ./am-scripts/$arch/$arg
+					read -p ' Do you wish to check the link for the last time (Y,n)?' yn
+					case $yn in
+					'N'|'n') ;;
+					'Y'|'y'|*) echo ""; wget -q https://api.github.com/repos/$RESPONSE/releases -O - | grep -w -v i386 | grep -w -v i686 | grep -w -v aarch64 | grep -w -v arm64 | grep -w -v armv7l | grep browser_download_url | grep -i "$response" | grep -i appimage | cut -d '"' -f 4 | head -1
+					echo -e "\n The URL above is an example of what both\n the install and update scripts will point to.\n";;
+					esac;;
+					esac;;
+				2) read -r -p ' URL must NOT contain ("txt", "ARM"... or leave blank): ' response
+					case "$response" in
+					'') ;;
+					*) sed -i 's#browser_download_url#browser_download_url | grep -w -v '$response' #g' ./am-scripts/$arch/$arg
+					read -p ' Do you wish to check the link for the last time (Y,n)?' yn
+					case $yn in
+					'N'|'n') ;;
+					'Y'|'y'|*) echo ""; wget -q https://api.github.com/repos/$RESPONSE/releases -O - | grep -w -v i386 | grep -w -v i686 | grep -w -v aarch64 | grep -w -v arm64 | grep -w -v armv7l | grep browser_download_url | grep -w -v "$response" | grep -i appimage | cut -d '"' -f 4 | head -1
+					echo -e "\n The URL above is an example of what both\n the install and update scripts will point to.\n";;
+					esac;;
+					esac;;
+				esac;;
+			'Y'|'y'|*) ;;
 		esac
 		echo "-----------------------------------------------------------------------"
 		# END OF THIS FUNCTION
@@ -919,6 +999,6 @@ case "$1" in
 	done
 	shift;;
   'version'|'-v'|'--version')
-  	echo "4.0.3-5";;
+  	echo "4.1";;
   *) exec $AMPATH/APP-MANAGER ;;
 esac
