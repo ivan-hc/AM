@@ -3,15 +3,6 @@
 APP=python3.6
 REPO="niess/python-appimage"
 
-CATEGORIES="Development"
-ICONURL="https://www.python.org/static/apple-touch-icon-144x144-precomposed.png"
-
-USER=$(echo $REPO | sed 's:/[^/]*$::')
-REPO2=$(echo $REPO | sed 's:.*/::')
-FILENAMEEXTENTION="/.*/.*.AppImage"
-URL=https://github.com/$REPO/releases
-COMMENT=$(curl https://api.github.com/repos/$REPO 2>/dev/null | grep description | sed 's/"description": "//' | sed 's/",//')
-APPNAME=Python3.6
 
 # CREATE THE FOLDER
 mkdir /opt/$APP
@@ -26,48 +17,13 @@ chmod a+x /opt/$APP/remove
 mkdir tmp
 cd ./tmp
 
-download=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep -E browser_download_url | awk -F '[""]' '{print $4}' | grep $APP | grep 2014 | grep x86_64 | egrep ''$FILENAMEEXTENTION'' -o | head -1);
-wget https:$download
-version=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep -E tag_name | awk -F '[""]' '{print $4}')
+version=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep x86_64 | grep $APP | grep 2014 | grep browser_download_url | grep -i appimage | cut -d '"' -f 4 | head -1)
+wget $version
 echo "$version" >> /opt/$APP/version
-if ls . | grep mage; then
-	cd ..
-	mv ./tmp/*mage ./$APP
-	chmod a+x /opt/$APP/$APP
-	rmdir ./tmp
-elif ls . | grep .deb; then
-	ar x ./*.deb
-	tar fx ./data.tar.xz
-	cd ..
-	mv ./tmp//* ./
-	rm -R -f ./tmp
-elif ls . | grep .tar.bz2; then
-	tar fx *.tar.bz2
-	dir=$(ls . | grep -w -v *.tar.*)
-	cd ..
-	mv ./tmp/$(echo $dir)/* ./
-	rm -R -f ./tmp
-elif ls . | grep .tar.gz; then
-	tar fx *.tar.gz
-	dir=$(ls . | grep -w -v *.tar.*)
-	cd ..
-	mv ./tmp/$(echo $dir)/* ./
-	rm -R -f ./tmp
-elif ls . | grep .tar.xz; then
-	tar fx *.tar.xz
-	dir=$(ls . | grep -w -v *.tar.*)
-	cd ..
-	mv ./tmp/$(echo $dir)/* ./
-	rm -R -f ./tmp
-elif ls ./tmp/ | grep .zip; then
-	unzip *.zip
-	dir=$(ls . | grep -w -v *.zip)
-	cd ..
-	mv ./tmp/$(echo $dir)/* ./
-	rm -R -f ./tmp
-fi
-
-#-------------------------------------
+cd ..
+mv ./tmp/*mage ./$APP
+chmod a+x /opt/$APP/$APP
+rmdir ./tmp
 
 # LINK
 ln -s /opt/$APP/$APP /usr/local/bin/$APP
@@ -77,18 +33,15 @@ cat >> /opt/$APP/AM-updater << 'EOF'
 #!/usr/bin/env bash
 APP=python3.6
 REPO="niess/python-appimage"
-FILENAMEEXTENTION="/.*/.*.AppImage"
 version0=$(cat /opt/$APP/version)
-url=https://github.com/$REPO/releases
-if curl -L -s $url | grep -ioF "$version0"; then
+version=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep x86_64 | grep $APP | grep 2014 | grep browser_download_url | grep -i appimage | cut -d '"' -f 4 | head -1)
+if [ $version = $version0 ]; then
   echo "Update not needed!"
 else
   notify-send "A new version of $APP is available, please wait"
   mkdir /opt/$APP/tmp
   cd /opt/$APP/tmp
-  download=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep -E browser_download_url | awk -F '[""]' '{print $4}' | grep $APP | grep 2014 | grep x86_64 | egrep ''$FILENAMEEXTENTION'' -o | head -1);
-  wget https:$download
-  version=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep -E tag_name | awk -F '[""]' '{print $4}')
+  wget $version
   if ls . | grep mage; then
 	cd ..
   	if test -f ./tmp/*mage; then rm ./version
@@ -97,71 +50,11 @@ else
   	mv --backup=t ./tmp/*mage ./$APP
   	chmod a+x /opt/$APP/$APP
   	rm -R -f ./tmp ./*~
-  elif ls . | grep .deb; then
-	ar x ./*.deb
-	tar fx ./data.tar.xz
-	cd ..
-  	if test -f ./tmp/*.deb; then rm ./version
-  	fi
-  	echo $version >> ./version
-  	mv --backup=t ./tmp//* ./
-  	rm -R -f ./tmp ./*~
-  elif ls . | grep .tar.bz2; then
-	tar fx *.tar.bz2
-	dir=$(ls . | grep -w -v *.tar.*)
-	cd ..
-  	if test -f ./tmp/*.tar.bz2; then rm ./version
-  	fi
-  	echo $version >> ./version
-	mv --backup=t ./tmp/$(echo $dir)/* ./
-	rm -R -f ./tmp
-  elif ls . | grep .tar.gz; then
-	tar fx *.tar.gz
-	dir=$(ls . | grep -w -v *.tar.*)
-	cd ..
-  	if test -f ./tmp/*.tar.gz; then rm ./version
-  	fi
-  	echo $version >> ./version
-	mv --backup=t ./tmp/$(echo $dir)/* ./
-	rm -R -f ./tmp
-  elif ls . | grep .tar.xz; then
-	tar fx *.tar.xz
-	dir=$(ls . | grep -w -v *.tar.*)
-	cd ..
-  	if test -f ./tmp/*.tar.xz; then rm ./version
-  	fi
-  	echo $version >> ./version
-	mv --backup=t ./tmp/$(echo $dir)/* ./
-	rm -R -f ./tmp
-  elif ls ./tmp/ | grep .zip; then
-	unzip *.zip
-	dir=$(ls . | grep -w -v *.zip)
-	cd ..
-  	if test -f ./tmp/*.zip; then rm ./version
-  	fi
-  	echo $version >> ./version
-	mv --backup=t ./tmp/$(echo $dir)/* ./
-	rm -R -f ./tmp
   fi
   notify-send "$APP is updated!"
 fi
 EOF
 chmod a+x /opt/$APP/AM-updater
-
-# LAUNCHER
-rm /usr/share/applications/AM-$APP.desktop
-echo "[Desktop Entry]
-Name=$APPNAME
-Exec=$APP
-Icon=/opt/$APP/icons/$APP
-Type=Application
-Terminal=false
-Categories=$CATEGORIES;
-Comment=$COMMENT" >> /usr/share/applications/AM-$APP.desktop
-
-# ICON
-mkdir /opt/$APP/icons
-wget $ICONURL -O /opt/$APP/icons/$APP
 
 # CHANGE THE PERMISSIONS
 currentuser=$(who | awk '{print $1}')
@@ -169,7 +62,5 @@ chown -R $currentuser /opt/$APP
 
 # MESSAGE
 echo "
-
- $APPNAME is provided by https://github.com/$USER
-
+ $APP is provided by https://github.com/$(echo $REPO | sed 's:/[^/]*$::')
 "

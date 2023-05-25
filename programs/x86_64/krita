@@ -11,207 +11,102 @@ echo '#!/bin/sh' >> /opt/$APP/remove
 echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
 chmod a+x /opt/$APP/remove
 
-# DOWNLOAD THE PROGRAM
+# DOWNLOAD THE ARCHIVE
 mkdir tmp
 cd ./tmp
 
 wget https://download.kde.org/$(wget https://krita.org/en/download/krita-desktop/ -O - | grep '/stable/krita/.*/.*appimage' -o)
-
 cd ..
 mv ./tmp/*mage ./$APP
 chmod a+x /opt/$APP/$APP
+version=$(exec /opt/$APP/$APP --version | grep -Eo "[+-]?[0-9]+([.][0-9]+)?+[+-]?")
+echo "$version" >> /opt/$APP/version
 rmdir ./tmp
 
 # LINK
 ln -s /opt/$APP/$APP /usr/local/bin/$APP
 
 # SCRIPT TO UPDATE THE PROGRAM
-
-echo '#!/bin/sh
-
-version=$(exec /opt/'$APP'/'$APP' --version | grep -Eo "[+-]?[0-9]+([.][0-9]+)?+[+-]?")
-
-if curl -L -s https://krita.org/en/download/krita-desktop | grep -ioF "https://download.kde.org/stable/krita/$version/krita-$version-x86_64.appimage"; then
-  echo "Update not needed, exit!"
+cat >> /opt/$APP/AM-updater << 'EOF'
+#!/usr/bin/env bash
+APP=krita
+version0=$(cat /opt/$APP/version)
+version=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep -w -v i386 | grep -w -v i686 | grep -w -v aarch64 | grep -w -v arm64 | grep -w -v armv7l | grep browser_download_url | grep -i appimage | cut -d '"' -f 4 | head -1)
+if [ $version = $version0 ]; then
+  echo "Update not needed!"
 else
-  notify-send "A new version of Krita is available, please wait!"
-  mkdir /opt/'$APP'/tmp
-  cd /opt/'$APP'/tmp' >> /opt/$APP/AM-updater
-
-echo '  wget https://download.kde.org/$(wget https://krita.org/en/download/krita-desktop/ -O - | grep "/stable/krita/.*/.*appimage" -o)' >> /opt/$APP/AM-updater
-
-echo '  cd ..
-  mv ./tmp/*mage ./'$APP'
-  chmod a+x /opt/'$APP'/'$APP'
+  notify-send "A new version of $APP is available, please wait"
+  mkdir /opt/$APP/tmp
+  cd /opt/$APP/tmp
+  wget https://download.kde.org/$(wget https://krita.org/en/download/krita-desktop/ -O - | grep '/stable/krita/.*/.*appimage' -o)
+  if ls . | grep mage; then
+  cd ..
+  if test -f ./tmp/*mage; then rm ./version
+  fi
+  mv ./tmp/*mage ./$APP
+  chmod a+x /opt/$APP/$APP
+  version=$(exec /opt/$APP/$APP --version | grep -Eo "[+-]?[0-9]+([.][0-9]+)?+[+-]?")
+  echo "$version" >> /opt/$APP/version
   rmdir ./tmp
-  notify-send "'$APP' is updated!"
-fi' >> /opt/$APP/AM-updater
-
+  rmdir ./tmp
+  notify-send "$APP is updated!"
+fi
+EOF
 chmod a+x /opt/$APP/AM-updater
 
-# LAUNCHER
-rm /usr/share/applications/AM-$APP.desktop
-echo "[Desktop Entry]
-Name=Krita
-Name[af]=Krita
-Name[ar]=كريتا
-Name[bg]=Krita
-Name[br]=Krita
-Name[bs]=Krita
-Name[ca]=Krita
-Name[ca@valencia]=Krita
-Name[cs]=Krita
-Name[cy]=Krita
-Name[da]=Krita
-Name[de]=Krita
-Name[el]=Krita
-Name[en_GB]=Krita
-Name[eo]=Krita
-Name[es]=Krita
-Name[et]=Krita
-Name[eu]=Krita
-Name[fi]=Krita
-Name[fr]=Krita
-Name[fy]=Krita
-Name[ga]=Krita
-Name[gl]=Krita
-Name[he]=Krita
-Name[hi]=क्रिता
-Name[hne]=केरिता
-Name[hr]=Krita
-Name[hu]=Krita
-Name[ia]=Krita
-Name[is]=Krita
-Name[it]=Krita
-Name[ja]=Krita
-Name[kk]=Krita
-Name[ko]=Krita
-Name[lt]=Krita
-Name[lv]=Krita
-Name[mr]=क्रिटा
-Name[ms]=Krita
-Name[nds]=Krita
-Name[ne]=क्रिता
-Name[nl]=Krita
-Name[nn]=Krita
-Name[pl]=Krita
-Name[pt]=Krita
-Name[pt_BR]=Krita
-Name[ro]=Krita
-Name[ru]=Krita
-Name[se]=Krita
-Name[sk]=Krita
-Name[sl]=Krita
-Name[sv]=Krita
-Name[ta]=கிரிட்டா
-Name[tg]=Krita
-Name[tr]=Krita
-Name[ug]=Krita
-Name[uk]=Krita
-Name[uz]=Krita
-Name[uz@cyrillic]=Krita
-Name[wa]=Krita
-Name[xh]=Krita
-Name[x-test]=xxKritaxx
-Name[zh_CN]=Krita
-Name[zh_TW]=Krita
-Exec=krita %F
-GenericName=Digital Painting
-GenericName[ar]=رسم رقمي
-GenericName[bs]=Digitalno Bojenje
-GenericName[ca]=Dibuix digital
-GenericName[ca@valencia]=Dibuix digital
-GenericName[cs]=Digitální malování
-GenericName[da]=Digital tegning
-GenericName[de]=Digitales Malen
-GenericName[el]=Ψηφιακή ζωγραφική
-GenericName[en_GB]=Digital Painting
-GenericName[es]=Pintura digital
-GenericName[et]=Digitaalne joonistamine
-GenericName[eu]=Margolan digitala
-GenericName[fi]=Digitaalimaalaus
-GenericName[fr]=Peinture numérique
-GenericName[gl]=Debuxo dixital
-GenericName[hi]=डिजिटल चित्रकारी
-GenericName[hu]=Digitális festészet
-GenericName[ia]=Pintura Digital
-GenericName[is]=Stafræn málun
-GenericName[it]=Pittura digitale
-GenericName[ja]=デジタルペインティング
-GenericName[kk]=Цифрлық сурет салу
-GenericName[ko]=디지털 페인팅
-GenericName[lt]=Skaitmeninis piešimas
-GenericName[mr]=डिजिटल पेंटिंग
-GenericName[nl]=Digitaal schilderen
-GenericName[nn]=Digital teikning
-GenericName[pl]=Malowanie cyfrowe
-GenericName[pt]=Pintura Digital
-GenericName[pt_BR]=Pintura digital
-GenericName[ru]=Цифровая живопись
-GenericName[sk]=Digitálne maľovanie
-GenericName[sl]=Digitalno slikanje
-GenericName[sv]=Digital målning
-GenericName[tr]=Sayısal Boyama
-GenericName[ug]=سىفىرلىق رەسىم سىزغۇ
-GenericName[uk]=Цифрове малювання
-GenericName[x-test]=xxDigital Paintingxx
-GenericName[zh_CN]=数字绘画程序
-GenericName[zh_TW]=數位繪畫
-MimeType=application/x-krita;image/openraster;application/x-krita-paintoppreset;
-Comment=Digital Painting
-Comment[ar]=رسم رقمي
-Comment[bs]=Digitalno Bojenje
-Comment[ca]=Dibuix digital
-Comment[ca@valencia]=Dibuix digital
-Comment[cs]=Digitální malování
-Comment[da]=Digital tegning
-Comment[de]=Digitales Malen
-Comment[el]=Ψηφιακή ζωγραφική
-Comment[en_GB]=Digital Painting
-Comment[es]=Pintura digital
-Comment[et]=Digitaalne joonistamine
-Comment[eu]=Margolan digitala
-Comment[fi]=Digitaalimaalaus
-Comment[fr]=Peinture numérique
-Comment[gl]=Debuxo dixital.
-Comment[hi]=डिजिटल चित्रकारी
-Comment[hu]=Digitális festészet
-Comment[ia]=Pintura Digital
-Comment[is]=Stafræn málun
-Comment[it]=Pittura digitale
-Comment[ja]=デジタルペインティング
-Comment[kk]=Цифрлық сурет салу
-Comment[ko]=디지털 페인팅
-Comment[lt]=Skaitmeninis piešimas
-Comment[mr]=डिजिटल पेंटिंग
-Comment[nl]=Digitaal schilderen
-Comment[nn]=Digital teikning
-Comment[pl]=Malowanie cyfrowe
-Comment[pt]=Pintura Digital
-Comment[pt_BR]=Pintura digital
-Comment[ru]=Цифровая живопись
-Comment[sk]=Digitálne maľovanie
-Comment[sl]=Digitalno slikanje
-Comment[sv]=Digitalt målningsverktyg
-Comment[tr]=Sayısal Boyama
-Comment[ug]=سىفىرلىق رەسىم سىزغۇ
-Comment[uk]=Цифрове малювання
-Comment[x-test]=xxDigital Paintingxx
-Comment[zh_CN]=自由开源的专业数字绘画程序
-Comment[zh_TW]=數位繪畫
-Type=Application
-Icon=/opt/$APP/favicon.ico
-Categories=Qt;KDE;Graphics;2DGraphics;RasterGraphics;
-X-KDE-NativeMimeType=application/x-krita
-X-KDE-ExtraNativeMimeTypes=
-StartupNotify=true
-X-Krita-Version=28
-StartupWMClass=krita
-# Always be the preferred handler for .kra files
-InitialPreference=99" >> /usr/share/applications/AM-$APP.desktop
+# LAUNCHER & ICON
+app=$(echo $APP | cut -c -3)
+cd /opt/$APP
+./$APP --appimage-extract *.desktop 1>/dev/null
+./$APP --appimage-extract share/applications/*.desktop 1>/dev/null
+./$APP --appimage-extract usr/share/applications/*.desktop 1>/dev/null
+mv squashfs-root/*.desktop ./$APP.desktop
+mv squashfs-root/share/applications/*.desktop ./$APP.desktop
+mv squashfs-root/usr/share/applications/*.desktop ./$APP.desktop
+if [ ! -e ./$APP.desktop ]; then 
+	rm ./$APP.desktop; ./$APP --appimage-extract usr/share/applications/*$app*.desktop 
+	mv squashfs-root/usr/share/applications/*.desktop ./$APP.desktop
+fi
+if [ ! -e ./$APP.desktop ]; then 
+	rm ./$APP.desktop; ./$APP --appimage-extract share/applications/*$app*.desktop 1>/dev/null
+	mv squashfs-root/share/applications/*.desktop ./$APP.desktop
+fi
+CHANGEEXEC=$(cat ./$APP.desktop | grep Exec= | tr ' ' '\n' | tr '=' '\n' | tr '/' '\n' | grep $app | head -1)
+sed -i "s#$CHANGEEXEC#$APP#g" ./$APP.desktop
+sed -i "s#AppRun#$APP#g" ./$APP.desktop
+sed -i "s#Exec=/bin/#Exec=#g" ./$APP.desktop
+sed -i "s#Exec=/usr/bin/#Exec=#g" ./$APP.desktop
+CHANGEICON=$(cat ./$APP.desktop | grep Icon= | head -1)
+sed -i "s#$CHANGEICON#Icon=/opt/$APP/icons/$APP#g" ./$APP.desktop
 
-# ICON
-wget https://krita.org/wp-content/themes/krita-org-theme/images/favicon.ico
+mkdir icons
+mv $(./$APP --appimage-extract *.png) ./icons/$APP 2>/dev/null
+mv $(./$APP --appimage-extract *.svg) ./icons/$APP 2>/dev/null
+./$APP --appimage-extract share/icons/*/*/* 1>/dev/null
+./$APP --appimage-extract usr/share/icons/*/*/* 1>/dev/null
+./$APP --appimage-extract share/icons/*/*/*/* 1>/dev/null
+./$APP --appimage-extract usr/share/icons/*/*/*/* 1>/dev/null
+mv ./squashfs-root/share/icons/hicolor/22x22/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/24x24/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/32x32/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/48x48/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/64x64/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/128x128/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/256x256/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/512x512/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/scalable/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/22x22/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/24x24/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/32x32/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/48x48/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/64x64/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/128x128/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/256x256/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/512x512/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/scalable/apps/*$app* ./icons/$APP 2>/dev/null
+
+rm -R -f /opt/$APP/squashfs-root
+mv ./$APP.desktop /usr/share/applications/AM-$APP.desktop
 
 # CHANGE THE PERMISSIONS
 currentuser=$(who | awk '{print $1}')
@@ -219,7 +114,5 @@ chown -R $currentuser /opt/$APP
 
 # MESSAGE
 echo "
-
  Krita is provided by https://krita.org
-  
-";
+"

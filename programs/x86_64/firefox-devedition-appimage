@@ -1,14 +1,7 @@
 #!/bin/sh
 
 APP=firefox-devedition-appimage
-APPNAME=Firefox_Developer_Edition
-APPNAME2=Firefox
-
-CATEGORIES=$(curl -L -s https://raw.githubusercontent.com/AppImage/appimage.github.io/master/apps/$APPNAME2.md | grep -E -i categories | cut -c 17-)
-ICONURL="https://appimage.github.io/database/$(curl -L -s https://raw.githubusercontent.com/AppImage/appimage.github.io/master/apps/$APPNAME2.md | grep -E -i icons | sed -n 2p | cut -c 5-)"
-REPO=$(curl -L -s https://raw.githubusercontent.com/AppImage/appimage.github.io/master/apps/$APPNAME2.md | grep -A1 "type: GitHub" | sed -n 2p | cut -c 10-)
-USER=$(echo $REPO | sed 's:/[^/]*$::')
-COMMENT=$(curl -L -s https://raw.githubusercontent.com/AppImage/appimage.github.io/master/apps/$APPNAME2.md | grep "Comment:" | cut -c 14-)
+REPO="srevinsaju/Firefox-Appimage"
 
 # CREATE THE FOLDER
 mkdir /opt/$APP
@@ -19,24 +12,18 @@ echo '#!/bin/sh' >> /opt/$APP/remove
 echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
 chmod a+x /opt/$APP/remove
 
-# DOWNLOAD THE APPIMAGE
+# DOWNLOAD THE ARCHIVE
 mkdir tmp
 cd ./tmp
 
-version=$(curl -s https://api.github.com/repos/$REPO/releases | grep browser_download_url | grep devedition | cut -d '"' -f 4 | head -1)
+version=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep devedition | grep browser_download_url | grep -i appimage | cut -d '"' -f 4 | head -1)
 wget $version
-
 cd ..
 mv ./tmp/*mage ./$APP
 chmod a+x /opt/$APP/$APP
-
-cd ./tmp
-wget https://github.com/AppImage/AppImageUpdate/releases/download/continuous/appimageupdatetool-x86_64.AppImage
-cd ..
-mv ./tmp/appimageupdatetool-x86_64.AppImage ./updater
+rmdir ./tmp
+wget https://github.com/AppImage/AppImageUpdate/releases/download/continuous/appimageupdatetool-x86_64.AppImage -O updater
 chmod a+x ./updater
-
-rm -R -f ./tmp
 
 # LINK
 ln -s /opt/$APP/$APP /usr/local/bin/$APP
@@ -50,28 +37,43 @@ chmod a+x /opt/$APP/$APP
 rm -R -f /opt/$APP/*zs-old && rm -R -f /opt/$APP/*.part' >> /opt/$APP/AM-updater
 chmod a+x /opt/$APP/AM-updater
 
-# LAUNCHER
-rm /usr/share/applications/AM-$APP.desktop
-echo "[Desktop Entry]
-Name=$APPNAME
-Exec=$APP
-Icon=/opt/$APP/icons/$APP
-Type=Application
-Terminal=false
-Categories=$CATEGORIES;
-Comment=$COMMENT" >> /usr/share/applications/AM-$APP.desktop
+# LAUNCHER & ICON
+app=$(echo $APP | cut -c -3)
+cd /opt/$APP
+./$APP --appimage-extract *.desktop 1>/dev/null
+./$APP --appimage-extract share/applications/*.desktop 1>/dev/null
+./$APP --appimage-extract usr/share/applications/*.desktop 1>/dev/null
+mv squashfs-root/*.desktop ./$APP.desktop
+mv squashfs-root/share/applications/*.desktop ./$APP.desktop
+mv squashfs-root/usr/share/applications/*.desktop ./$APP.desktop
+if [ ! -e ./$APP.desktop ]; then 
+	rm ./$APP.desktop; ./$APP --appimage-extract usr/share/applications/*$app*.desktop 
+	mv squashfs-root/usr/share/applications/*.desktop ./$APP.desktop
+fi
+if [ ! -e ./$APP.desktop ]; then 
+	rm ./$APP.desktop; ./$APP --appimage-extract share/applications/*$app*.desktop 1>/dev/null
+	mv squashfs-root/share/applications/*.desktop ./$APP.desktop
+fi
+CHANGEEXEC=$(cat ./$APP.desktop | grep Exec= | tr ' ' '\n' | tr '=' '\n' | tr '/' '\n' | grep $app | head -1)
+sed -i "s#$CHANGEEXEC#$APP#g" ./$APP.desktop
+sed -i "s#AppRun#$APP#g" ./$APP.desktop
+sed -i "s#Exec=/bin/#Exec=#g" ./$APP.desktop
+sed -i "s#Exec=/usr/bin/#Exec=#g" ./$APP.desktop
+CHANGEICON=$(cat ./$APP.desktop | grep Icon= | head -1)
+sed -i "s#$CHANGEICON#Icon=/opt/$APP/icons/$APP#g" ./$APP.desktop
 
-# ICON
-mkdir ./icons
-wget $ICONURL -O /opt/$APP/icons/$APP
+mkdir icons
+./$APP --appimage-extract browser/chrome/icons/default/default128.png 1>/dev/null
+mv ./squashfs-root/browser/chrome/icons/default/default128.png ./icons/$APP 2>/dev/null
+
+rm -R -f /opt/$APP/squashfs-root
+mv ./$APP.desktop /usr/share/applications/AM-$APP.desktop
 
 # CHANGE THE PERMISSIONS
 currentuser=$(who | awk '{print $1}')
 chown -R $currentuser /opt/$APP
 
 # MESSAGE
-echo '
-
- '$APPNAME' AppImage is provided by https://github.com/'$USER'
-
-'
+echo "
+ $APP is provided by https://github.com/$(echo $REPO | sed 's:/[^/]*$::')
+"
