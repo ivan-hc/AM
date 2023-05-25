@@ -15,10 +15,8 @@ chmod a+x /opt/$APP/remove
 mkdir tmp
 cd ./tmp
 
-download=$(wget -q https://api.github.com/repos/Alex313031/Thorium/releases/latest -O - | grep -E browser_download_url | awk -F '[""]' '{print $4}' | egrep '/.*/.*/.*amd64.deb' | head -1)
-wget $download
-
-version=$(ls /opt/$APP/tmp)
+version=$(wget -q https://api.github.com/repos/Alex313031/Thorium/releases/latest -O - | grep -E browser_download_url | awk -F '[""]' '{print $4}' | egrep '/.*/.*/.*amd64.deb' | head -1)
+wget $version
 echo "$version" >> /opt/$APP/version
 
 ar x ./*amd64.deb
@@ -31,40 +29,29 @@ rm -R -f ./tmp
 ln -s /opt/$APP/chrome /usr/local/bin/$APP
 
 # SCRIPT TO LAUNCH AND UPDATE THE PROGRAM
-echo '#!/bin/sh' >> /opt/$APP/AM-updater
-echo "APP=$APP" >> /opt/$APP/AM-updater
-echo 'version0=$(cat /opt/$APP/version)
-
-url=https://github.com/Alex313031/Thorium/releases/latest' >> /opt/$APP/AM-updater
-
-echo 'if curl -L -s $url | grep -ioF "$version0"; then' >> /opt/$APP/AM-updater
-echo '  echo "Update not needed!".'  >> /opt/$APP/AM-updater
-echo 'else' >> /opt/$APP/AM-updater
-echo "  notify-send 'A new version of $APP is available, please wait'" >> /opt/$APP/AM-updater
-echo "  mkdir /opt/$APP/tmp
-  cd /opt/$APP/tmp" >> /opt/$APP/AM-updater
-
-########################################################################################
-
-function1='$(wget https://github.com/Alex313031/Thorium/releases/latest -O -'
-function2="egrep '/.*/.*/.*amd64.deb' -o | head -1)"
-function3='$(ls /opt/$APP/tmp)'
-
-echo "  wget https://github.com/$function1 | $function2
-  version=$function3" >> /opt/$APP/AM-updater
-
-########################################################################################
-
-echo '  cd ..
+cat >> /opt/$APP/AM-updater << 'EOF'
+#!/bin/sh
+APP=thorium
+version0=$(cat /opt/$APP/version)
+version=$(wget -q https://api.github.com/repos/Alex313031/Thorium/releases/latest -O - | grep -E browser_download_url | awk -F '[""]' '{print $4}' | egrep '/.*/.*/.*amd64.deb' | head -1)
+if [ $version = $version0 ]; then
+  echo "Update not needed!"
+else
+  notify-send 'A new version of thorium is available, please wait'
+  mkdir /opt/thorium/tmp
+  cd /opt/thorium/tmp
+  wget $version
+  cd ..
   if test -f ./tmp/*amd64.deb; then rm ./version
   fi
-  echo "$version" >> ./version' >> /opt/$APP/AM-updater
-echo "  ar x ./*amd64.deb
+  echo "$version" >> ./version
+  ar x ./*amd64.deb
   tar fx ./data.tar.xz
   cd ..
   mv --backup=t ./tmp/opt/chromium.org/thorium-unstable/* ./
   rm -R -f ./tmp
-fi" >> /opt/$APP/AM-updater
+fi
+EOF
 chmod a+x /opt/$APP/AM-updater
 
 # LAUNCHER
