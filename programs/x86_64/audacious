@@ -3,16 +3,6 @@
 APP=audacious
 REPO="ivan-hc/Database-of-pkg2appimaged-packages"
 
-CATEGORIES="Audio"
-ICONURL="https://upload.wikimedia.org/wikipedia/commons/3/32/Audacious-2.4-logo.svg"
-
-USER=$(echo $REPO | sed 's:/[^/]*$::')
-REPO2=$(echo $REPO | sed 's:.*/::')
-FILENAMEEXTENTION="/.*/.*.AppImage"
-url=https://github.com/$REPO/releases/download/$APP
-COMMENT=$(curl https://api.github.com/repos/$REPO 2>/dev/null | grep description | sed 's/"description": "//' | sed 's/",//')
-APPNAME=$(echo $REPO2 | sed 's/-/ /g' | sed 's/_/ /g')
-
 # CREATE THE FOLDER
 mkdir /opt/$APP
 cd /opt/$APP
@@ -26,48 +16,13 @@ chmod a+x /opt/$APP/remove
 mkdir tmp
 cd ./tmp
 
-download=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep $APP | grep -E browser_download_url | awk -F '[""]' '{print $4}' | grep -w -v i386 | grep -w -v i686 | grep -w -v arm64 | grep -w -v armv7l | egrep ''$FILENAMEEXTENTION'' -o | head -1);
-wget https:$download
-version=$(ls .)
+version=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep -w -v i386 | grep -w -v i686 | grep -w -v aarch64 | grep -w -v arm64 | grep -w -v armv7l | grep browser_download_url | grep -i audacious  | grep -i appimage | cut -d '"' -f 4 | head -1)
+wget $version
 echo "$version" >> /opt/$APP/version
-if ls . | grep mage; then
-	cd ..
-	mv ./tmp/*mage ./$APP
-	chmod a+x /opt/$APP/$APP
-	rmdir ./tmp
-elif ls . | grep .deb; then
-	ar x ./*.deb
-	tar fx ./data.tar.xz
-	cd ..
-	mv ./tmp//* ./
-	rm -R -f ./tmp
-elif ls . | grep .tar.bz2; then
-	tar fx *.tar.bz2
-	dir=$(ls . | grep -w -v *.tar.*)
-	cd ..
-	mv ./tmp/$(echo $dir)/* ./
-	rm -R -f ./tmp
-elif ls . | grep .tar.gz; then
-	tar fx *.tar.gz
-	dir=$(ls . | grep -w -v *.tar.*)
-	cd ..
-	mv ./tmp/$(echo $dir)/* ./
-	rm -R -f ./tmp
-elif ls . | grep .tar.xz; then
-	tar fx *.tar.xz
-	dir=$(ls . | grep -w -v *.tar.*)
-	cd ..
-	mv ./tmp/$(echo $dir)/* ./
-	rm -R -f ./tmp
-elif ls ./tmp/ | grep .zip; then
-	unzip *.zip
-	dir=$(ls . | grep -w -v *.zip)
-	cd ..
-	mv ./tmp/$(echo $dir)/* ./
-	rm -R -f ./tmp
-fi
-
-#-------------------------------------
+cd ..
+mv ./tmp/*mage ./$APP
+chmod a+x /opt/$APP/$APP
+rmdir ./tmp
 
 # LINK
 ln -s /opt/$APP/$APP /usr/local/bin/$APP
@@ -77,18 +32,15 @@ cat >> /opt/$APP/AM-updater << 'EOF'
 #!/usr/bin/env bash
 APP=audacious
 REPO="ivan-hc/Database-of-pkg2appimaged-packages"
-FILENAMEEXTENTION="/.*/.*.AppImage"
 version0=$(cat /opt/$APP/version)
-url=https://github.com/$REPO/releases/download/$APP
-if wget --spider $url/$version0 2> /dev/null; then
+version=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep -w -v i386 | grep -w -v i686 | grep -w -v aarch64 | grep -w -v arm64 | grep -w -v armv7l | grep browser_download_url | grep -i audacious  | grep -i appimage | cut -d '"' -f 4 | head -1)
+if [ $version = $version0 ]; then
   echo "Update not needed!"
 else
   notify-send "A new version of $APP is available, please wait"
   mkdir /opt/$APP/tmp
   cd /opt/$APP/tmp
-  download=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep $APP | grep -E browser_download_url | awk -F '[""]' '{print $4}' | grep -w -v i386 | grep -w -v i686 | grep -w -v arm64 | grep -w -v armv7l | egrep ''$FILENAMEEXTENTION'' -o | head -1);
-  wget https:$download
-  version=$(ls .)
+  wget $version
   if ls . | grep mage; then
 	cd ..
   	if test -f ./tmp/*mage; then rm ./version
@@ -97,168 +49,65 @@ else
   	mv --backup=t ./tmp/*mage ./$APP
   	chmod a+x /opt/$APP/$APP
   	rm -R -f ./tmp ./*~
-  elif ls . | grep .deb; then
-	ar x ./*.deb
-	tar fx ./data.tar.xz
-	cd ..
-  	if test -f ./tmp/*.deb; then rm ./version
-  	fi
-  	echo $version >> ./version
-  	mv --backup=t ./tmp//* ./
-  	rm -R -f ./tmp ./*~
-  elif ls . | grep .tar.bz2; then
-	tar fx *.tar.bz2
-	dir=$(ls . | grep -w -v *.tar.*)
-	cd ..
-  	if test -f ./tmp/*.tar.bz2; then rm ./version
-  	fi
-  	echo $version >> ./version
-	mv --backup=t ./tmp/$(echo $dir)/* ./
-	rm -R -f ./tmp
-  elif ls . | grep .tar.gz; then
-	tar fx *.tar.gz
-	dir=$(ls . | grep -w -v *.tar.*)
-	cd ..
-  	if test -f ./tmp/*.tar.gz; then rm ./version
-  	fi
-  	echo $version >> ./version
-	mv --backup=t ./tmp/$(echo $dir)/* ./
-	rm -R -f ./tmp
-  elif ls . | grep .tar.xz; then
-	tar fx *.tar.xz
-	dir=$(ls . | grep -w -v *.tar.*)
-	cd ..
-  	if test -f ./tmp/*.tar.xz; then rm ./version
-  	fi
-  	echo $version >> ./version
-	mv --backup=t ./tmp/$(echo $dir)/* ./
-	rm -R -f ./tmp
-  elif ls ./tmp/ | grep .zip; then
-	unzip *.zip
-	dir=$(ls . | grep -w -v *.zip)
-	cd ..
-  	if test -f ./tmp/*.zip; then rm ./version
-  	fi
-  	echo $version >> ./version
-	mv --backup=t ./tmp/$(echo $dir)/* ./
-	rm -R -f ./tmp
   fi
   notify-send "$APP is updated!"
 fi
 EOF
 chmod a+x /opt/$APP/AM-updater
 
-# LAUNCHER
-echo "[Desktop Entry]
-Version=1.0
-Type=Application
-Name=Audacious
-GenericName=Music Player
-Comment=Listen to music
-Exec=$APP
-Icon=/opt/$APP/icons/$APP
-Keywords=audio;player;audacious;music;gtk;
-Categories=AudioVideo;Audio;Player;GTK;
-TryExec=audacious
-StartupNotify=false
-Terminal=false
-MimeType=application/ogg;application/x-cue;application/x-ogg;application/xspf+xml;audio/aac;audio/flac;audio/midi;audio/mp3;audio/mp4;audio/mpeg;audio/mpegurl;audio/ogg;audio/prs.sid;audio/wav;audio/x-flac;audio/x-it;audio/x-mod;audio/x-mp3;audio/x-mpeg;audio/x-mpegurl;audio/x-ms-asx;audio/x-ms-wma;audio/x-musepack;audio/x-s3m;audio/x-scpls;audio/x-stm;audio/x-vorbis+ogg;audio/x-wav;audio/x-wavpack;audio/x-xm;x-content/audio-cdda;
+# LAUNCHER & ICON
+app=$(echo $APP | cut -c -3)
+cd /opt/$APP
+./$APP --appimage-extract *.desktop 1>/dev/null
+./$APP --appimage-extract share/applications/*.desktop 1>/dev/null
+./$APP --appimage-extract usr/share/applications/*.desktop 1>/dev/null
+mv squashfs-root/*.desktop ./$APP.desktop
+mv squashfs-root/share/applications/*.desktop ./$APP.desktop
+mv squashfs-root/usr/share/applications/*.desktop ./$APP.desktop
+if [ ! -e ./$APP.desktop ]; then 
+	rm ./$APP.desktop; ./$APP --appimage-extract usr/share/applications/*$app*.desktop 
+	mv squashfs-root/usr/share/applications/*.desktop ./$APP.desktop
+fi
+if [ ! -e ./$APP.desktop ]; then 
+	rm ./$APP.desktop; ./$APP --appimage-extract share/applications/*$app*.desktop 1>/dev/null
+	mv squashfs-root/share/applications/*.desktop ./$APP.desktop
+fi
+CHANGEEXEC=$(cat ./$APP.desktop | grep Exec= | tr ' ' '\n' | tr '=' '\n' | tr '/' '\n' | grep $app | head -1)
+sed -i "s#$CHANGEEXEC#$APP#g" ./$APP.desktop
+sed -i "s#AppRun#$APP#g" ./$APP.desktop
+sed -i "s#Exec=/bin/#Exec=#g" ./$APP.desktop
+sed -i "s#Exec=/usr/bin/#Exec=#g" ./$APP.desktop
+CHANGEICON=$(cat ./$APP.desktop | grep Icon= | head -1)
+sed -i "s#$CHANGEICON#Icon=/opt/$APP/icons/$APP#g" ./$APP.desktop
 
-Comment[ar]=استمع إلى الموسيقى
-Comment[be]=Слухайце музыку
-Comment[bg]=Слушане на музика
-Comment[ca]=Escolteu música
-Comment[cs]=Poslouchat hudbu
-Comment[da]=Lyt til musik
-Comment[de]=Musik hören
-Comment[el]=Ακρόαση μουσικής
-Comment[eo]=Aŭskulti muzikon
-Comment[es_AR]=Escuchar música
-Comment[es_CL]=Listado de musica
-Comment[es_MX]=Escuchar la música
-Comment[es]=Escuchar música
-Comment[et]=Kuula muusikat
-Comment[fa_IR]=به موسیقی گوش کنید
-Comment[fi]=Kuuntele musiikkia
-Comment[fr]=Écouter de la musique
-Comment[gl]=Escoitar música
-Comment[hr]=Slušanje glazbe
-Comment[hu]=Zenehallgatás
-Comment[id_ID]=Dengarkan musik
-Comment[it]=Ascolta la musica
-Comment[ja]=音楽を聴きます
-Comment[ko]=음악을 들어요
-Comment[lt]=Klausyti muzikos
-Comment[lv]=Klausīties mūziku
-Comment[ms]=Dengar muzik
-Comment[nl]=Luister naar muziek
-Comment[pl]=Słuchaj muzyki
-Comment[pt_BR]=Ouça música
-Comment[pt_PT]=Reprodução de músicas
-Comment[pt]=Escuta musica
-Comment[ro]=Ascultă muzică
-Comment[ru]=Слушать музыку
-Comment[sk]=Počúvajte hudbu
-Comment[sl]=Poslušaj glasbo
-Comment[sq]=Dëgjoni muzikë
-Comment[sr]=Слушајте музику
-Comment[sv]=Lyssna på musik
-Comment[ta]=இசையைக் கேளுங்கள்
-Comment[tr]=Müzik dinleyin
-Comment[uk]=Слухати музику
-Comment[vi]=Nghe nhạc
-Comment[zh_CN]=聆听音乐
-Comment[zh_TW]=音樂鑑賞
+mkdir icons
+mv $(./$APP --appimage-extract *.png) ./icons/$APP 2>/dev/null
+mv $(./$APP --appimage-extract *.svg) ./icons/$APP 2>/dev/null
+./$APP --appimage-extract share/icons/*/*/* 1>/dev/null
+./$APP --appimage-extract usr/share/icons/*/*/* 1>/dev/null
+./$APP --appimage-extract share/icons/*/*/*/* 1>/dev/null
+./$APP --appimage-extract usr/share/icons/*/*/*/* 1>/dev/null
+mv ./squashfs-root/share/icons/hicolor/22x22/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/24x24/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/32x32/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/48x48/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/64x64/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/128x128/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/256x256/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/512x512/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/scalable/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/22x22/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/24x24/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/32x32/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/48x48/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/64x64/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/128x128/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/256x256/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/512x512/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/scalable/apps/*$app* ./icons/$APP 2>/dev/null
 
-GenericName[ar]=مشغل الموسيقى
-GenericName[be]=Музычны прайгравальнік
-GenericName[bg]=Музикален плейър
-GenericName[ca]=Reproductor de música
-GenericName[cs]=Hudební přehrávač
-GenericName[da]=Musikafspiller
-GenericName[de]=Musikspieler
-GenericName[el]=Πρόγραμμα αναπαραγωγής μουσικής
-GenericName[eo]=Muzik-ludilo
-GenericName[es_AR]=Reproductor de Música
-GenericName[es_CL]=Reproductor de musica
-GenericName[es_MX]=Reproductor de Música
-GenericName[es]=Reproductor de música
-GenericName[et]=Muusikaesitaja
-GenericName[fa_IR]=پخش کننده موسیقی
-GenericName[fi]=Musiikkisoitin
-GenericName[fr]=Lecteur audio
-GenericName[gl]=Reprodutor de música
-GenericName[hr]=Svirač glazbe
-GenericName[hu]=Zenelejátszó
-GenericName[id_ID]=Pemutar musik
-GenericName[it]=Lettore musicale
-GenericName[ja]=音楽プレイヤー
-GenericName[ko]=음악 재생기
-GenericName[lt]=Muzikos grotuvas
-GenericName[lv]=Mūzikas atskaņotājs
-GenericName[ms]=Pemain Muzik
-GenericName[nl]=Muziekspeler
-GenericName[pl]=Odtwarzacz muzyczny
-GenericName[pt_BR]=Reprodutor de Música
-GenericName[pt_PT]=Reprodutor áudio
-GenericName[pt]=Reprodutor de musica
-GenericName[ro]=Player de muzică
-GenericName[ru]=Музыкальный проигрыватель
-GenericName[sk]=Hudobný prehrávač
-GenericName[sl]=Glasbeni predvajalnik
-GenericName[sq]=Lojtës Muzike
-GenericName[sr]=Програм за слушање музике
-GenericName[sv]=Musikspelare
-GenericName[ta]=இசைப்பான்
-GenericName[tr]=Müzik Çalar
-GenericName[uk]=Музичний програвач
-GenericName[vi]=Trình chơi nhạc
-GenericName[zh_CN]=音乐播放器
-GenericName[zh_TW]=音樂播放器" >> /usr/share/applications/AM-$APP.desktop;
-
-# ICON
-mkdir /opt/$APP/icons
-wget $ICONURL -O /opt/$APP/icons/$APP
+rm -R -f /opt/$APP/squashfs-root
+mv ./$APP.desktop /usr/share/applications/AM-$APP.desktop
 
 # CHANGE THE PERMISSIONS
 currentuser=$(who | awk '{print $1}')
@@ -266,7 +115,5 @@ chown -R $currentuser /opt/$APP
 
 # MESSAGE
 echo "
-
- This AppImage of $APP is provided by https://github.com/$USER
-
+ $APP is provided by https://github.com/$(echo $REPO | sed 's:/[^/]*$::')
 "
