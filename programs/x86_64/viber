@@ -1,14 +1,7 @@
 #!/bin/sh
 
 APP=viber
-
-CATEGORIES="Network"
-ICONURL="https://www.viber.com/app/themes/viber/assets/images/favicon.png"
-
-URL=https://aur.archlinux.org/packages/$APP
-COMMENT=$(wget -q $URL -O - | grep -A1 Description | tail -1 | cut -c 30- | rev | cut -c 6- | rev)
-UPSTREAMURL=$(wget -q $URL -O - | grep -A3 Upstream | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | head -1)
-APPNAME="Viber"
+SITE="https://www.viber.com"
 
 # CREATE THE FOLDER
 mkdir /opt/$APP
@@ -23,47 +16,13 @@ chmod a+x /opt/$APP/remove
 mkdir tmp
 cd ./tmp
 
-version=$(wget -q https://aur.archlinux.org/cgit/aur.git/plain/PKGBUILD?h=viber -O - | grep  pkgver= | cut -c 8-)
-wget https://download.cdn.viber.com/desktop/Linux/viber.AppImage
+version=$(wget -q https://aur.archlinux.org/cgit/aur.git/plain/PKGBUILD?h=$APP -O - | grep  pkgver= | cut -c 8-)
+wget $(echo $(wget -q https://aur.archlinux.org/packages/$APP -O - | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep -i ".appimage" | grep -w -v ".asc" | grep -w -v ".zsync" | grep -w -v "archlinux.org" | head -1))
 echo "$version" >> /opt/$APP/version
-if ls . | grep mage; then
-	cd ..
-	mv ./tmp/*mage ./$APP
-	chmod a+x /opt/$APP/$APP
-	rmdir ./tmp
-elif ls . | grep .deb; then
-	ar x ./*.deb
-	tar fx ./data.tar.xz
-	cd ..
-	mv ./tmp//* ./
-	rm -R -f ./tmp
-elif ls . | grep .tar.bz2; then
-	tar fx *.tar.bz2
-	dir=$(ls . | grep -w -v *.tar.*)
-	cd ..
-	mv ./tmp/$(echo $dir)/* ./
-	rm -R -f ./tmp
-elif ls . | grep .tar.gz; then
-	tar fx *.tar.gz
-	dir=$(ls . | grep -w -v *.tar.*)
-	cd ..
-	mv ./tmp/$(echo $dir)/* ./
-	rm -R -f ./tmp
-elif ls . | grep .tar.xz; then
-	tar fx *.tar.xz
-	dir=$(ls . | grep -w -v *.tar.*)
-	cd ..
-	mv ./tmp/$(echo $dir)/* ./
-	rm -R -f ./tmp
-elif ls ./tmp/ | grep .zip; then
-	unzip *.zip
-	dir=$(ls . | grep -w -v *.zip)
-	cd ..
-	mv ./tmp/$(echo $dir)/* ./
-	rm -R -f ./tmp
-fi
-
-#-------------------------------------
+cd ..
+mv ./tmp/*mage ./$APP
+chmod a+x /opt/$APP/$APP
+rmdir ./tmp
 
 # LINK
 ln -s /opt/$APP/$APP /usr/local/bin/$APP
@@ -72,17 +31,15 @@ ln -s /opt/$APP/$APP /usr/local/bin/$APP
 cat >> /opt/$APP/AM-updater << 'EOF'
 #!/usr/bin/env bash
 APP=viber
-URL=https://aur.archlinux.org/packages/$APP
-version0=(cat /opt/$APP/version)
-version=$(wget -q https://aur.archlinux.org/cgit/aur.git/plain/PKGBUILD?h=viber -O - | grep  pkgver= | cut -c 8-)
+version0=$(cat /opt/$APP/version)
+version=$(wget -q https://aur.archlinux.org/cgit/aur.git/plain/PKGBUILD?h=$APP -O - | grep  pkgver= | cut -c 8-)
 if [ $version = $version0 ]; then
   echo "Update not needed!"
 else
   notify-send "A new version of $APP is available, please wait"
   mkdir /opt/$APP/tmp
   cd /opt/$APP/tmp
-  version=$(wget -q https://aur.archlinux.org/cgit/aur.git/plain/PKGBUILD?h=viber -O - | grep  pkgver= | cut -c 8-)
-  wget https://download.cdn.viber.com/desktop/Linux/viber.AppImage
+  wget $(echo $(wget -q https://aur.archlinux.org/packages/$APP -O - | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep -i ".appimage" | grep -w -v ".asc" | grep -w -v ".zsync" | grep -w -v "archlinux.org" | head -1))
   if ls . | grep mage; then
 	cd ..
   	if test -f ./tmp/*mage; then rm ./version
@@ -91,72 +48,65 @@ else
   	mv --backup=t ./tmp/*mage ./$APP
   	chmod a+x /opt/$APP/$APP
   	rm -R -f ./tmp ./*~
-  elif ls . | grep .deb; then
-	ar x ./*.deb
-	tar fx ./data.tar.xz
-	cd ..
-  	if test -f ./tmp/*.deb; then rm ./version
-  	fi
-  	echo $version >> ./version
-  	mv --backup=t ./tmp//* ./
-  	rm -R -f ./tmp ./*~
-  elif ls . | grep .tar.bz2; then
-	tar fx *.tar.bz2
-	dir=$(ls . | grep -w -v *.tar.*)
-	cd ..
-  	if test -f ./tmp/*.tar.bz2; then rm ./version
-  	fi
-  	echo $version >> ./version
-	mv --backup=t ./tmp/$(echo $dir)/* ./
-	rm -R -f ./tmp
-  elif ls . | grep .tar.gz; then
-	tar fx *.tar.gz
-	dir=$(ls . | grep -w -v *.tar.*)
-	cd ..
-  	if test -f ./tmp/*.tar.gz; then rm ./version
-  	fi
-  	echo $version >> ./version
-	mv --backup=t ./tmp/$(echo $dir)/* ./
-	rm -R -f ./tmp
-  elif ls . | grep .tar.xz; then
-	tar fx *.tar.xz
-	dir=$(ls . | grep -w -v *.tar.*)
-	cd ..
-  	if test -f ./tmp/*.tar.xz; then rm ./version
-  	fi
-  	echo $version >> ./version
-	mv --backup=t ./tmp/$(echo $dir)/* ./
-	rm -R -f ./tmp
-  elif ls ./tmp/ | grep .zip; then
-	unzip *.zip
-	dir=$(ls . | grep -w -v *.zip)
-	cd ..
-  	if test -f ./tmp/*.zip; then rm ./version
-  	fi
-  	echo $version >> ./version
-	mv --backup=t ./tmp/$(echo $dir)/* ./
-	rm -R -f ./tmp
   fi
   notify-send "$APP is updated!"
 fi
 EOF
-sed -i s/FILENAMEEXTENTION/$FILENAMEEXTENTION/g /opt/$APP/AM-updater
 chmod a+x /opt/$APP/AM-updater
 
-# LAUNCHER
-rm /usr/share/applications/AM-$APP.desktop
-echo "[Desktop Entry]
-Name=$APPNAME
-Exec=$APP
-Icon=/opt/$APP/icons/$APP
-Type=Application
-Terminal=false
-Categories=$CATEGORIES;
-Comment=$COMMENT" >> /usr/share/applications/AM-$APP.desktop
+# LAUNCHER & ICON
+app=$(echo $APP | cut -c -3)
+cd /opt/$APP
+./$APP --appimage-extract *.desktop 1>/dev/null
+./$APP --appimage-extract share/applications/*.desktop 1>/dev/null
+./$APP --appimage-extract usr/share/applications/*.desktop 1>/dev/null
+mv squashfs-root/*.desktop ./$APP.desktop
+mv squashfs-root/share/applications/*.desktop ./$APP.desktop
+mv squashfs-root/usr/share/applications/*.desktop ./$APP.desktop
+if [ ! -e ./$APP.desktop ]; then 
+	rm ./$APP.desktop; ./$APP --appimage-extract usr/share/applications/*$app*.desktop 
+	mv squashfs-root/usr/share/applications/*.desktop ./$APP.desktop
+fi
+if [ ! -e ./$APP.desktop ]; then 
+	rm ./$APP.desktop; ./$APP --appimage-extract share/applications/*$app*.desktop 1>/dev/null
+	mv squashfs-root/share/applications/*.desktop ./$APP.desktop
+fi
+CHANGEEXEC=$(cat ./$APP.desktop | grep Exec= | tr ' ' '\n' | tr '=' '\n' | tr '/' '\n' | grep $app | head -1)
+sed -i "s#$CHANGEEXEC#$APP#g" ./$APP.desktop
+sed -i "s#AppRun#$APP#g" ./$APP.desktop
+sed -i "s#Exec=/bin/#Exec=#g" ./$APP.desktop
+sed -i "s#Exec=/usr/bin/#Exec=#g" ./$APP.desktop
+CHANGEICON=$(cat ./$APP.desktop | grep Icon= | head -1)
+sed -i "s#$CHANGEICON#Icon=/opt/$APP/icons/$APP#g" ./$APP.desktop
 
-# ICON
-mkdir /opt/$APP/icons
-wget $ICONURL -O /opt/$APP/icons/$APP
+mkdir icons
+mv $(./$APP --appimage-extract *.png) ./icons/$APP 2>/dev/null
+mv $(./$APP --appimage-extract *.svg) ./icons/$APP 2>/dev/null
+./$APP --appimage-extract share/icons/*/*/* 1>/dev/null
+./$APP --appimage-extract usr/share/icons/*/*/* 1>/dev/null
+./$APP --appimage-extract share/icons/*/*/*/* 1>/dev/null
+./$APP --appimage-extract usr/share/icons/*/*/*/* 1>/dev/null
+mv ./squashfs-root/share/icons/hicolor/22x22/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/24x24/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/32x32/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/48x48/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/64x64/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/128x128/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/256x256/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/512x512/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/scalable/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/22x22/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/24x24/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/32x32/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/48x48/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/64x64/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/128x128/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/256x256/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/512x512/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/scalable/apps/*$app* ./icons/$APP 2>/dev/null
+
+rm -R -f /opt/$APP/squashfs-root
+mv ./$APP.desktop /usr/share/applications/AM-$APP.desktop
 
 # CHANGE THE PERMISSIONS
 currentuser=$(who | awk '{print $1}')
@@ -164,7 +114,5 @@ chown -R $currentuser /opt/$APP
 
 # MESSAGE
 echo "
-
- $APPNAME is provided by $UPSTREAMURL
-
+ $APP is provided by $SITE
 "
