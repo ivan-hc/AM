@@ -526,12 +526,13 @@ case "$1" in
 	echo '  0) APPIMAGE updatable with "appimageupdatetool"' | tr a-z A-Z
 	echo '  1) APPIMAGE updatable using a separated zsync file' | tr a-z A-Z
 	echo "  2) ANY deb/tar/zip archive from github.com (always updatable)" | tr a-z A-Z
-	echo "  3) APPIMAGE/deb/tar/zip ARCHIVE from AUR (always updatable)" | tr a-z A-Z
+	echo "  3) ANY deb/tar/zip ARCHIVE from AUR (always updatable)" | tr a-z A-Z
 	echo "  4) APPIMAGE, build your own with pkg2appimage and appimagetool" | tr a-z A-Z
 	echo "  5) APPIMAGE, build your own with pkg2appimage using a custom AppRun" | tr a-z A-Z
 	echo '  6) WEBAPP based on a Firefox profile (requires "firefox" in $PATH)' | tr a-z A-Z
 	echo "  7) APPIMAGE from github.com (always updatable)" | tr a-z A-Z
 	echo "  8) APPIMAGE from any website out there (for advanced users)" | tr a-z A-Z
+	echo "  9) APPIMAGE from the AUR (always updatable)" | tr a-z A-Z
 	echo " "
 	read -r -p " WHAT KIND OF PROGRAM DO YOU WANT TO WRITE A SCRIPT FOR? : " response
 	case "$response" in
@@ -931,6 +932,29 @@ case "$1" in
 		echo "-----------------------------------------------------------------------"
 		# END OF THIS FUNCTION
 		echo -e "\n All files are saved in $(xdg-user-dir DESKTOP)/am-scripts\n";;
+	# DOWNLOAD THE APPIMAGE FROM THE ARCH USER REPOSITORY
+	9) mkdir -p ./am-scripts ./am-scripts/$arch ./am-scripts/WEBPAGE &&
+		# DOWNLOAD THE TEMPLATE AND CONVERT THE ARGUMENT INTO A COMMAND, ALSO ADD SOME BASIC INFO IF AVAILABLE
+		wget -c -q $AMREPO/templates/AM-SAMPLE-AppImage-from-AUR -O ./am-scripts/$arch/$arg &&
+		sed -i s/SAMPLE/$arg/g ./am-scripts/$arch/$arg &&
+		echo "-----------------------------------------------------------------------"
+		read -r -p " ◆ ADD THE REAL NAME OF THE PACKAGE BASE, ON AUR$(echo -e '\n : ')" AUR
+		case "$AUR" in
+		*) sed -i s#AURREPO#$AUR#g ./am-scripts/$arch/$arg
+		esac
+		# ADD THE URL TO THE MAIN PAGE OF THE WEBSITE
+		UPSTREAMURL=$(wget -q https://aur.archlinux.org/packages/$AUR -O - | grep -A3 "Upstream URL" | tail -1 | cut -c 30- | cut -f1 -d'"')
+		sed -i s#REPLACETHIS#$UPSTREAMURL#g ./am-scripts/$arch/$arg
+		# ADD A DESCRIPTION FOR THIS APPLICATION
+		COMMENT=$(wget -q https://aur.archlinux.org/packages/$AUR -O - | grep -A1 Description | tail -1 | cut -c 30- | rev | cut -c 6- | rev) 
+		# CREATE A WEBPAGE FOR https://portable-linux-apps.github.io CONTAINING ALL THE INFO ABOUT THIS APP
+		echo "#$(echo $arg | tr a-z A-Z)" >> ./am-scripts/WEBPAGE/$arg.md
+		echo -e "\n $COMMENT\n\n SITE: $UPSTREAMURL\n\n SOURCE: https://aur.archlinux.org/packages/$AUR\n\n [Go back](https://portable-linux-apps.github.io/apps.html)" >> ./am-scripts/WEBPAGE/$arg.md &&
+		# CREATE A NEW LINE FOR THE APPLICATION'S LIST
+		echo "◆ $arg : $COMMENT" >> ./am-scripts/list
+		echo "-----------------------------------------------------------------------"
+		# END OF THIS FUNCTION
+		echo -e "\n All files are saved in $(xdg-user-dir DESKTOP)/am-scripts\n";;
     	*) echo -e "\n No valid argument was chosen: process aborted! \n" | tr a-z A-Z; break;;
 	esac
 	done
@@ -1078,6 +1102,6 @@ case "$1" in
 	done
 	shift;;
   'version'|'-v'|'--version')
-  	echo "4.2";;
+  	echo "4.2.1";;
   *) exec $AMPATH/APP-MANAGER ;;
 esac
