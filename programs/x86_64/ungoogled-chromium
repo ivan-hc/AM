@@ -3,16 +3,6 @@
 APP=ungoogled-chromium
 REPO="clickot/ungoogled-chromium-binaries"
 
-CATEGORIES="Network"
-ICONURL="https://upload.wikimedia.org/wikipedia/commons/2/28/Chromium_Logo.svg"
-
-USER=$(echo $REPO | sed 's:/[^/]*$::')
-REPO2=$(echo $REPO | sed 's:.*/::')
-FILENAMEEXTENTION="/.*/.*.tar.xz"
-URL=https://github.com/$REPO/releases/latest
-COMMENT=$(curl https://api.github.com/repos/$REPO 2>/dev/null | grep description | sed 's/"description": "//' | sed 's/",//')
-APPNAME=$(echo $REPO2 | sed 's/-/ /g' | sed 's/_/ /g')
-
 # CREATE THE FOLDER
 mkdir /opt/$APP
 cd /opt/$APP
@@ -26,48 +16,14 @@ chmod a+x /opt/$APP/remove
 mkdir tmp
 cd ./tmp
 
-download=$(wget -q https://api.github.com/repos/$REPO/releases/latest -O - | grep -E browser_download_url | awk -F '[""]' '{print $4}' | grep -w -v i386 | grep -w -v i686 | grep -w -v arm64 | grep -w -v armv7l | egrep ''$FILENAMEEXTENTION'' -o | head -1);
-wget https:$download
-version=$(wget -q https://api.github.com/repos/$REPO/releases/latest -O - | grep -E tag_name | awk -F '[""]' '{print $4}')
+version=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep -w -v i386 | grep -w -v i686 | grep -w -v aarch64 | grep -w -v arm64 | grep -w -v armv7l | grep browser_download_url | grep -i ".tar.xz" | cut -d '"' -f 4 | head -1)
+wget $version
 echo "$version" >> /opt/$APP/version
-if ls . | grep mage; then
-	cd ..
-	mv ./tmp/*mage ./$APP
-	chmod a+x /opt/$APP/$APP
-	rmdir ./tmp
-elif ls . | grep .deb; then
-	ar x ./*.deb
-	tar fx ./data.tar.xz
-	cd ..
-	mv ./tmp//* ./
-	rm -R -f ./tmp
-elif ls . | grep .tar.bz2; then
-	tar fx *.tar.bz2
-	dir=$(ls . | grep -w -v *.tar.*)
-	cd ..
-	mv ./tmp/$(echo $dir)/* ./
-	rm -R -f ./tmp
-elif ls . | grep .tar.gz; then
-	tar fx *.tar.gz
-	dir=$(ls . | grep -w -v *.tar.*)
-	cd ..
-	mv ./tmp/$(echo $dir)/* ./
-	rm -R -f ./tmp
-elif ls . | grep .tar.xz; then
-	tar fx *.tar.xz
-	dir=$(ls . | grep -w -v *.tar.*)
-	cd ..
-	mv ./tmp/$(echo $dir)/* ./
-	rm -R -f ./tmp
-elif ls ./tmp/ | grep .zip; then
-	unzip *.zip
-	dir=$(ls . | grep -w -v *.zip)
-	cd ..
-	mv ./tmp/$(echo $dir)/* ./
-	rm -R -f ./tmp
-fi
-
-#-------------------------------------
+tar fx *.tar.xz
+dir=$(ls . | grep -w -v *.tar.*)
+cd ..
+mv ./tmp/$(echo $dir)/* ./
+rm -R -f ./tmp
 
 # LINK
 ln -s /opt/$APP/chrome /usr/local/bin/$APP
@@ -77,78 +33,29 @@ cat >> /opt/$APP/AM-updater << 'EOF'
 #!/usr/bin/env bash
 APP=ungoogled-chromium
 REPO="clickot/ungoogled-chromium-binaries"
-FILENAMEEXTENTION="/.*/.*.tar.xz"
-url=https://github.com/$REPO/releases/latest
 version0=$(cat /opt/$APP/version)
-if curl -L -s $url | grep -ioF "$version0"; then
+version=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep -w -v i386 | grep -w -v i686 | grep -w -v aarch64 | grep -w -v arm64 | grep -w -v armv7l | grep browser_download_url | grep -i ".tar.xz" | cut -d '"' -f 4 | head -1)
+if [ $version = $version0 ]; then
   echo "Update not needed!"
 else
   notify-send "A new version of $APP is available, please wait"
   mkdir /opt/$APP/tmp
   cd /opt/$APP/tmp
-  download=$(wget -q https://api.github.com/repos/$REPO/releases/latest -O - | grep -E browser_download_url | awk -F '[""]' '{print $4}' | grep -w -v i386 | grep -w -v i686 | grep -w -v arm64 | grep -w -v armv7l | egrep ''$FILENAMEEXTENTION'' -o | head -1);
-wget https:$download
-  version=$(wget -q https://api.github.com/repos/$REPO/releases/latest -O - | grep -E tag_name | awk -F '[""]' '{print $4}')
-  if ls . | grep mage; then
-	cd ..
-  	if test -f ./tmp/*mage; then rm ./version
-  	fi
-  	echo $version >> ./version
-  	mv --backup=t ./tmp/*mage ./$APP
-  	chmod a+x /opt/$APP/$APP
-  	rm -R -f ./tmp ./*~
-  elif ls . | grep .deb; then
-	ar x ./*.deb
-	tar fx ./data.tar.xz
-	cd ..
-  	if test -f ./tmp/*.deb; then rm ./version
-  	fi
-  	echo $version >> ./version
-  	mv --backup=t ./tmp//* ./
-  	rm -R -f ./tmp ./*~
-  elif ls . | grep .tar.bz2; then
-	tar fx *.tar.bz2
-	dir=$(ls . | grep -w -v *.tar.*)
-	cd ..
-  	if test -f ./tmp/*.tar.bz2; then rm ./version
-  	fi
-  	echo $version >> ./version
-	mv --backup=t ./tmp/$(echo $dir)/* ./
-	rm -R -f ./tmp
-  elif ls . | grep .tar.gz; then
-	tar fx *.tar.gz
-	dir=$(ls . | grep -w -v *.tar.*)
-	cd ..
-  	if test -f ./tmp/*.tar.gz; then rm ./version
-  	fi
-  	echo $version >> ./version
-	mv --backup=t ./tmp/$(echo $dir)/* ./
-	rm -R -f ./tmp
-  elif ls . | grep .tar.xz; then
-	tar fx *.tar.xz
-	dir=$(ls . | grep -w -v *.tar.*)
-	cd ..
-  	if test -f ./tmp/*.tar.xz; then rm ./version
-  	fi
-  	echo $version >> ./version
-	mv --backup=t ./tmp/$(echo $dir)/* ./
-	rm -R -f ./tmp
-  elif ls ./tmp/ | grep .zip; then
-	unzip *.zip
-	dir=$(ls . | grep -w -v *.zip)
-	cd ..
-  	if test -f ./tmp/*.zip; then rm ./version
-  	fi
-  	echo $version >> ./version
-	mv --backup=t ./tmp/$(echo $dir)/* ./
-	rm -R -f ./tmp
-  fi
+  wget $version
+  tar fx *.tar.xz
+  dir=$(ls . | grep -w -v *.tar.*)
+  cd ..
+  mv --backup=t ./tmp/$(echo $dir)/* ./
+  rm ./version
+  echo $version >> ./version
+  rm -R -f ./tmp ./*~
   notify-send "$APP is updated!"
 fi
 EOF
 chmod a+x /opt/$APP/AM-updater
 
-# LAUNCHER
+# LAUNCHER & ICON
+app=$(echo $APP | cut -c -3)
 rm /usr/share/applications/AM-$APP.desktop
 echo "[Desktop Entry]
 Version=1.0
@@ -280,11 +187,11 @@ Comment[vi]=Truy cập Internet
 Comment[zh_CN]=访问互联网
 Comment[zh_HK]=連線到網際網路
 Comment[zh_TW]=連線到網際網路
-Exec=ungoogled-chromium %U
+Exec=$APP %U
 Terminal=false
 X-MultipleArgs=false
 Type=Application
-Icon=/opt/$APP/product_logo_48.png
+Icon=/opt/$APP/icons/$APP
 Categories=Network;WebBrowser;
 MimeType=text/html;text/xml;application/xhtml_xml;application/x-mimearchive;x-scheme-handler/http;x-scheme-handler/https;
 StartupWMClass=ungoogled-chromium
@@ -343,7 +250,7 @@ Name[uk]=Нове вікно
 Name[vi]=Cửa sổ Mới
 Name[zh_CN]=新建窗口
 Name[zh_TW]=開新視窗
-Exec=ungoogled-chromium
+Exec=$APP
 [Desktop Action new-private-window]
 Name=New Incognito Window
 Name[ar]=نافذة جديدة للتصفح المتخفي
@@ -394,11 +301,14 @@ Name[uk]=Нове вікно в режимі анонімного перегля
 Name[vi]=Cửa sổ ẩn danh mới
 Name[zh_CN]=新建隐身窗口
 Name[zh_TW]=新增無痕式視窗
-Exec=ungoogled-chromium --incognito" >> /usr/share/applications/AM-$APP.desktop
+Exec=$APP --incognito" >> /usr/share/applications/AM-$APP.desktop
 
-# ICON
-mkdir /opt/$APP/icons
-wget $ICONURL -O /opt/$APP/icons/$APP
+mkdir icons
+mv ./*.svg ./icons/$APP 2>/dev/null
+mv ./*.png ./icons/$APP 2>/dev/null
+mv ./*$app*.png ./icons/$APP 2>/dev/null
+mv ./*128*.png ./icons/$APP 2>/dev/null
+mv ./*256*.png ./icons/$APP 2>/dev/null
 
 # CHANGE THE PERMISSIONS
 currentuser=$(who | awk '{print $1}')
@@ -406,7 +316,5 @@ chown -R $currentuser /opt/$APP
 
 # MESSAGE
 echo "
-
- $APPNAME is provided by https://github.com/$USER
-
+ $APP is provided by https://github.com/$(echo $REPO | sed 's:/[^/]*$::')
 "
