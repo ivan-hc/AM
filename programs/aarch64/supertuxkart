@@ -1,90 +1,80 @@
 #!/bin/sh
 
 APP=supertuxkart
+REPO="supertuxkart/stk-code"
 
+# CREATE THE FOLDER
 mkdir /opt/$APP
 cd /opt/$APP
 
-echo "#!/bin/sh
-rm -R -f /opt/supertuxkart /usr/share/applications/AM-supertuxkart.desktop /usr/share/pixmaps/supertuxkart.svg /usr/games/supertuxkart" >> /opt/$APP/remove
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
 chmod a+x /opt/$APP/remove
 
+# DOWNLOAD THE ARCHIVE
 mkdir tmp
 cd ./tmp
 
-wget https://github.com/$(wget https://github.com/supertuxkart/stk-code/releases/latest -O - | egrep '/.*/.*/.*linux-arm64.tar.xz' -o)
-
-version=$(ls /opt/$APP/tmp)
+version=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep browser_download_url | echo "$(if grep -i linux-arm64.tar.xz; then echo linux-arm64.tar.xz; else echo linux-aarch64.tar.xz; fi)" | cut -d '"' -f 4 | head -1)
+wget $version
 echo "$version" >> /opt/$APP/version
-
-tar xf ./*.tar.xz
 cd ..
-mv ./tmp/SuperTuxKart-*-linux-64bit/* ./
-rm -R ./tmp
+tar fx ./tmp/*tar.xz -C ./tmp/ && rm -R ./tmp/*tar.xz && mv ./tmp/Super*/* . && mv ./run_game.sh ./$APP && cp ./data/*512.png . && cp ./data/*.desktop .
+rm -R -f ./tmp
 
-ln -s /opt/$APP/run_game.sh /usr/games/$APP
+# LINK
+ln -s /opt/$APP/$APP /usr/local/bin/$APP
 
 # SCRIPT TO UPDATE THE PROGRAM
-echo '#!/bin/sh' >> /opt/$APP/AM-updater
-echo "APP=$APP" >> /opt/$APP/AM-updater
-echo "cd /opt/$APP" /usr/local/bin/$APP
-echo 'version0=$(cat /opt/$APP/version)
-url=https://github.com/supertuxkart/stk-code/releases/latest' >> /opt/$APP/AM-updater
-
-echo 'if curl -L -s $url | grep -ioF "$version0"; then' >> /opt/$APP/AM-updater
-echo '  echo "Update not needed!".'  >> /opt/$APP/AM-updater
-echo 'else' >> /opt/$APP/AM-updater
-echo "  notify-send 'A new version of $APP is available, please wait'" >> /opt/$APP/AM-updater
-echo "  mkdir /opt/$APP/tmp
-  cd /opt/$APP/tmp" >> /opt/$APP/AM-updater
-
-########################################################################################
-
-function1='$(wget https://github.com/supertuxkart/stk-code/releases/latest -O -'
-function2="egrep '/.*/.*/.*linux-arm64.tar.xz' -o)"
-function3='$(ls /opt/$APP/tmp)'
-
-echo "  wget https://github.com/$function1 | $function2
-  version=$function3" >> /opt/$APP/AM-updater
-
-########################################################################################
-
-echo '  cd ..
-  if test -f ./tmp/*tar.xz; then rm ./version
-  fi
-  echo "$version" >> ./version' >> /opt/$APP/AM-updater
-echo "  mv ./tmp/*mage ./$APP
-  chmod a+x /opt/$APP/$APP
-  rmdir ./tmp
-fi" >> /opt/$APP/AM-updater
+cat >> /opt/$APP/AM-updater << 'EOF'
+#!/usr/bin/env bash
+APP=supertuxkart
+REPO="supertuxkart/stk-code"
+version0=$(cat /opt/$APP/version)
+version=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep browser_download_url | echo "$(if grep -i linux-arm64.tar.xz; then echo linux-arm64.tar.xz; else echo linux-aarch64.tar.xz; fi)" | cut -d '"' -f 4 | head -1)
+if [ $version = $version0 ]; then
+  echo "Update not needed!"
+else
+  notify-send "A new version of $APP is available, please wait"
+  mkdir /opt/$APP/tmp
+  cd /opt/$APP/tmp
+  wget $version
+  cd ..
+  tar fx ./tmp/*tar.xz -C ./tmp/ && rm -R ./tmp/*tar.xz && mv ./tmp/Super*/* . && mv ./run_game.sh ./$APP && cp ./data/*512.png . && cp ./data/*.desktop .
+  rm ./version
+  echo $version >> ./version
+  rm -R -f ./tmp ./*~
+  notify-send "$APP is updated!"
+fi
+EOF
 chmod a+x /opt/$APP/AM-updater
 
-# LAUNCHER
+# LAUNCHER & ICON
+app=$(echo $APP | cut -c -3)
+cd /opt/$APP
+mv ./*.desktop ./$APP.desktop 2>/dev/null
+CHANGEEXEC=$(cat ./$APP.desktop | grep Exec= | tr ' ' '\n' | tr '=' '\n' | tr '/' '\n' | grep $app | head -1)
+sed -i "s#$CHANGEEXEC#$APP#g" ./$APP.desktop
+sed -i "s#Exec=/bin/#Exec=#g" ./$APP.desktop
+sed -i "s#Exec=/usr/bin/#Exec=#g" ./$APP.desktop
+CHANGEICON=$(cat ./$APP.desktop | grep Icon= | head -1)
+sed -i "s#$CHANGEICON#Icon=/opt/$APP/icons/$APP#g" ./$APP.desktop
 
-rm -R -f /usr/share/applications/AM-$APP.desktop
-echo "[Desktop Entry]
-Name=SuperTuxKart
-Icon=supertuxkart
-GenericName=A kart racing game
-GenericName[da]=Et kart racerspil
-GenericName[de]=Ein Kart-Rennspiel
-GenericName[fr]=Un jeu de karting
-GenericName[gl]=Xogo de carreiras con karts
-GenericName[pl]=Wyścigi gokartów
-GenericName[ro]=Un joc de curse cu carturi
-Exec=supertuxkart
-Terminal=false
-StartupNotify=false
-Type=Application
-Categories=Game;ArcadeGame;
-Keywords=tux;game;race;" >> /usr/share/applications/AM-$APP.desktop
+mkdir icons
+mv ./*.svg ./icons/$APP 2>/dev/null
+mv ./*.png ./icons/$APP 2>/dev/null
+mv ./*$app*.png ./icons/$APP 2>/dev/null
+mv ./*128*.png ./icons/$APP 2>/dev/null
+mv ./*256*.png ./icons/$APP 2>/dev/null
 
-wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/programs/.icons/$APP/$APP.svg
-mv ./$APP.svg /usr/share/pixmaps/
+mv ./$APP.desktop /usr/share/applications/AM-$APP.desktop
 
+# CHANGE THE PERMISSIONS
 currentuser=$(who | awk '{print $1}')
 chown -R $currentuser /opt/$APP
 
-echo "";
-echo "   SuperTuxKart has been installed!";
-echo "";
+# MESSAGE
+echo "
+ $APP is provided by https://github.com/$(echo $REPO | sed 's:/[^/]*$::')
+"
