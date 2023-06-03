@@ -291,24 +291,40 @@ case "$1" in
   	cd /opt && find -name 'remove' -printf "%h\n" | sort -u | echo $(xargs -n 1 basename 2> /dev/null) | du -sh * | awk '{ print " ◆ "$2 " - " $1"iB of disk space used"}'; echo "" ;;
   '-H'|'--home')
     	if [ -n "$SUDO_COMMAND" ]; then echo -e "\n WARNING: You don't need to run the option '$1' with SUDO.\n"; exit; fi
-    	if test -f /opt/$2/*-bin; then
-    		echo ' ERROR: "'$2'" is NOT an AppImage'
-    	else
-    		cd /opt/$2
-    		./$2 --appimage-extract AppRun > /dev/null 2>&1
-    		if test -f /opt/$2/squashfs-root/AppRun; then
-    			mkdir -p /opt/$2/$2.home
-    			echo ' Setting $HOME to /opt/'$2'/'$2'.home for this AppImage'
-    			rm -R -f /opt/$2/squashfs-root
-    		elif test -h /opt/$2/squashfs-root/AppRun; then
-    			mkdir -p /opt/$2/$2.home
-    			echo ' Setting $HOME to /opt/'$2'/'$2'.home for this AppImage'
-    			rm -R -f /opt/$2/squashfs-root
+    	while [ -n "$1" ]
+	do
+	rm -f $AMPATH/.cache/home-args
+	echo $@ | tr ' ' '\n' >> $AMPATH/.cache/home-args && echo STOP >> $AMPATH/.cache/home-args
+	ARGS=$(sed '1d' $AMPATH/.cache/home-args)
+	for arg in $ARGS; do
+	for var in $arg; do
+	if [ $arg == STOP ]; then
+		exit
+	else
+	cd /opt
+	case $arg in
+    	*) keyword=$(grep -hios appimage ./$arg/AM-updater ./$arg/version | tail -1 | tr A-Z a-z 2> /dev/null)
+    	if [ "$keyword" = "appimage" ]; then
+  		cd ./$arg
+    		./$arg --appimage-extract AppRun > /dev/null 2>&1
+    		if test -f ./squashfs-root/AppRun; then
+    			mkdir -p ./$arg.home
+    			echo ' Setting $HOME to /opt/'$arg'/'$arg'.home for this AppImage'
+    			rm -R -f ./squashfs-root; break
+    		elif test -h ./squashfs-root/AppRun; then
+    			mkdir -p ./$arg.home
+    			echo ' Setting $HOME to /opt/'$arg'/'$arg'.home for this AppImage'
+    			rm -R -f ./squashfs-root; break
     		else
-    			echo ' ERROR: "'$2'" is NOT an AppImage'
+    			echo ' ERROR: "'$arg'" is NOT an AppImage'; break
     		fi
-    		
-    	fi;;
+    		else echo ' ERROR: "'$arg'" is NOT an AppImage'; break
+    	fi
+    	esac
+    	fi
+    	done
+    	done
+    	done;;
   '-i'|'install')
 	while [ -n "$1" ]
 	do
@@ -1081,6 +1097,6 @@ case "$1" in
 	done
 	shift;;
   'version'|'-v'|'--version')
-  	echo "4.2.2-5";;
+  	echo "4.2.2-6";;
   *) exec $AMPATH/APP-MANAGER ;;
 esac
