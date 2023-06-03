@@ -1,6 +1,7 @@
 #!/bin/sh
 
 APP=node
+SITE="https://nodejs.org"
 
 # CREATE THE FOLDER
 mkdir /opt/$APP
@@ -12,41 +13,48 @@ echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/
 cd /usr/local/bin && find . -xtype l -exec rm {} \;" >> /opt/$APP/remove
 chmod a+x /opt/$APP/remove
 
-# DOWNLOAD THE PROGRAM
+# DOWNLOAD THE ARCHIVE
 mkdir tmp
 cd ./tmp
 
-wget -r -erobots=off -l1 -np -A node-*-linux-x64.tar.gz  -nd https://nodejs.org/dist/latest/
+version=$(echo "https://nodejs.org/dist/latest/$(wget -q https://nodejs.org/dist/latest/ -O - | grep "linux-x64.tar.gz" | grep -o -P '(?<=href=").*(?=">node)')")
+wget $version
+echo "$version" >> /opt/$APP/version
 tar fx ./*tar.gz
-
-
 cd ..
 mv ./tmp/node*linux-x64/* ./
-rmdir ./tmp
+rm -R -f ./tmp
 
-# LINK
+# LINKS
 ln -s /opt/$APP/bin/$APP /usr/local/bin/$APP
 ln -s /opt/$APP/bin/npm /usr/local/bin/npm
 ln -s /opt/$APP/bin/npx /usr/local/bin/npx
 ln -s /opt/$APP/bin/corepack /usr/local/bin/corepak
 
 # SCRIPT TO UPDATE THE PROGRAM
-echo '#!/bin/sh
-version=$(exec /opt/'$APP'/bin/'$APP' --version | grep -Eo "[+-]?[0-9]+([.][0-9]+)?+[+-]?[0-9]+([.][0-9]+)?")
-url="https://nodejs.org/en/"
-if curl --output /dev/null --silent --head --fail "$url"; then
-  echo "Update not needed, exit!"
+cat >> /opt/$APP/AM-updater << 'EOF'
+#!/usr/bin/env bash
+APP=node
+version0=$(cat /opt/$APP/version)
+version=$(echo "https://nodejs.org/dist/latest/$(wget -q https://nodejs.org/dist/latest/ -O - | grep "linux-x64.tar.gz" | grep -o -P '(?<=href=").*(?=">node)')")
+if [ $version = $version0 ]; then
+  echo "Update not needed!"
 else
-  notify-send "A new version of '$APP' is available, please wait!"
-  mkdir /opt/'$APP'/tmp
-  cd /opt/'$APP'/tmp
-  wget -r -erobots=off -l1 -np -A node-*-linux-x64.tar.gz  -nd https://nodejs.org/dist/latest/
-  tar xf ./*tar.gz
+  notify-send "A new version of $APP is available, please wait"
+  mkdir /opt/$APP/tmp
+  cd /opt/$APP/tmp
+  wget $version
+  tar fx ./*tar.gz
   cd ..
   mv --backup=t ./tmp/node*linux-x64/* ./
+  rm -R -f ./tmp
+  rm ./version
+  echo $version >> ./version
+  chmod a+x /opt/$APP/$APP
   rm -R -f ./tmp ./*~
-  notify-send "'$APP' is updated!"
-fi' >> /opt/$APP/AM-updater
+  notify-send "$APP is updated!"
+fi
+EOF
 chmod a+x /opt/$APP/AM-updater
 
 # LAUNCHER
@@ -61,7 +69,7 @@ Categories=Development;" >> /usr/share/applications/AM-$APP.desktop
 
 # ICON
 mkdir icons
-wget https://nodejs.org/static/images/favicons/apple-touch-icon.png -O ./icons/$APP
+wget https://nodejs.org/static/images/favicons/apple-touch-icon.png -O ./icons/$APP 2> /dev/null
 
 # CHANGE THE PERMISSIONS
 currentuser=$(who | awk '{print $1}')
@@ -69,7 +77,5 @@ chown -R $currentuser /opt/$APP
 
 # MESSAGE
 echo "
-
- NodeJS is provided by https://nodejs.org
-  
-";
+ NodeJS is provided by $SITE
+"

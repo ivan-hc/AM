@@ -1,88 +1,90 @@
 #!/bin/sh
 
 APP=dropbox
+SITE="https://www.dropbox.com"
 
-# CREATING THE FOLDER
+# CREATE THE FOLDER
 mkdir /opt/$APP
-cd /opt/$APP;
+cd /opt/$APP
 
 # ADD THE REMOVER
 echo '#!/bin/sh' >> /opt/$APP/remove
 echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
 chmod a+x /opt/$APP/remove
 
-mkdir tmp;
-cd tmp;
+# DOWNLOAD THE ARCHIVE
+mkdir tmp
+cd ./tmp
 
-# CREATING THE APPIMAGE & DOWNLOADING THE DEPENDENCIES
-wget -r -A dropbox-*-x86_64.pkg.tar.zst -nd https://aur.andontie.net/x86_64/;
-
-version=$(ls /opt/$APP/tmp)
+version=$(echo "https://aur.andontie.net/x86_64/$(wget -q https://aur.andontie.net/x86_64/ -O - | grep dropbox | head -1 | grep -o -P '(?<=href=").*(?=">dropbox)')")
+wget $version
 echo "$version" >> /opt/$APP/version
-
-wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-$(uname -m).AppImage -O appimagetool
-chmod a+x ./appimagetool
-
-tar xf ./*.tar.zst;
-mkdir $APP.AppDir;
-mv ./opt ./$APP.AppDir;
-mv ./usr ./$APP.AppDir;
-cp ./$APP.AppDir/usr/share/applications/*desktop ./$APP.AppDir;
-cp ./$APP.AppDir/usr/share/pixmaps/*svg ./$APP.AppDir;
-
+tar xf ./*.tar.zst
+mkdir $APP.AppDir
+mv ./opt ./$APP.AppDir
+mv ./usr ./$APP.AppDir
+cp ./$APP.AppDir/usr/share/applications/*desktop ./$APP.AppDir
+cp ./$APP.AppDir/usr/share/pixmaps/*svg ./$APP.AppDir
 echo '#!/bin/sh
 HERE="$(dirname "$(readlink -f "${0}")")"
 export PATH="${HERE}/usr/lib/systemd/system/:${HERE}/usr/lib/systemd/user/:${HERE}/opt/dropbox/:${HERE}/opt/dropbox/resources/:${HERE}/opt/dropbox/plugins/platforms/:${HERE}/opt/dropbox/images/hicolor/16x16/status/:${HERE}/opt/dropbox/images/emblems/${PATH:+:$PATH}"
 export LD_LIBRARY_PATH="${HERE}/opt/dropbox/:${HERE}/opt/dropbox/plugins/platforms/${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 export XDG_DATA_DIRS="${HERE}/usr/share/${XDG_DATA_DIRS:+:$XDG_DATA_DIRS}"
 EXEC="${HERE}/opt/dropbox/dropbox"
-exec "${EXEC}"' >> ./$APP.AppDir/AppRun;
-chmod a+x ./$APP.AppDir/AppRun;
+exec "${EXEC}"' >> ./$APP.AppDir/AppRun
+chmod a+x ./$APP.AppDir/AppRun
 cp ./$APP.AppDir/AppRun /opt/$APP/AppRun
-
 ARCH=x86_64 ./appimagetool -n ./$APP.AppDir > /dev/null 2>&1
 
-cd ..;
-mv ./tmp/*.AppImage ./$APP;
-chmod a+x ./$APP
-
-rm -R -f ./tmp
+cd ..
+mv ./tmp/*mage ./$APP
+rmdir ./tmp
 
 # LINK
 ln -s /opt/$APP/$APP /usr/local/bin/$APP
 
 # SCRIPT TO UPDATE THE PROGRAM
-echo '#!/bin/sh
-version0=$(cat /opt/'$APP'/version)
-url="https://aur.andontie.net/x86_64/"
-if curl -L -s $url | grep -ioF "$version0"; then
-  echo "Update not needed, exit!"
- else
-  notify-send "A new version of '$APP' is available, please wait!"
-  mkdir /opt/'$APP'/tmp
-  cd /opt/'$APP'/tmp
-  wget -r -A dropbox-*-x86_64.pkg.tar.zst -nd https://aur.andontie.net/x86_64/;
-  version=$(ls /opt/'$APP'/tmp)
-  if test -f /opt/'$APP'/tmp/*tar.zst; then rm -R -f /opt/'$APP'/version
-  fi
-  echo "$version" >> /opt/'$APP'/version
-  wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool
-  chmod a+x ./appimagetool
+cat >> /opt/$APP/AM-updater << 'EOF'
+#!/usr/bin/env bash
+APP=dropbox
+version0=$(cat /opt/$APP/version)
+version=$(echo "https://aur.andontie.net/x86_64/$(wget -q https://aur.andontie.net/x86_64/ -O - | grep dropbox | head -1 | grep -o -P '(?<=href=").*(?=">dropbox)')")
+if [ $version = $version0 ]; then
+  echo "Update not needed!"
+else
+  notify-send "A new version of $APP is available, please wait"
+  mkdir /opt/$APP/tmp
+  cd /opt/$APP/tmp
+  wget $version
+  wget $version
+  echo "$version" >> /opt/$APP/version
   tar xf ./*.tar.zst
-  mkdir '$APP'.AppDir
-  mv ./opt ./'$APP'.AppDir
-  mv ./usr ./'$APP'.AppDir
-  cp ./'$APP'.AppDir/usr/share/applications/*desktop ./'$APP'.AppDir
-  cp ./'$APP'.AppDir/usr/share/pixmaps/*svg ./'$APP'.AppDir
-  cp /opt/'$APP'/AppRun ./'$APP'.AppDir/AppRun
-  chmod a+x ./'$APP'.AppDir/AppRun
-  ARCH=x86_64 ./appimagetool -n ./'$APP'.AppDir > /dev/null 2>&1
+  mkdir $APP.AppDir
+  mv ./opt ./$APP.AppDir
+  mv ./usr ./$APP.AppDir
+  cp ./$APP.AppDir/usr/share/applications/*desktop ./$APP.AppDir
+  cp ./$APP.AppDir/usr/share/pixmaps/*svg ./$APP.AppDir
+  echo '#!/bin/sh
+  HERE="$(dirname "$(readlink -f "${0}")")"
+export PATH="${HERE}/usr/lib/systemd/system/:${HERE}/usr/lib/systemd/user/:${HERE}/opt/dropbox/:${HERE}/opt/dropbox/resources/:${HERE}/opt/dropbox/plugins/platforms/:${HERE}/opt/dropbox/images/hicolor/16x16/status/:${HERE}/opt/dropbox/images/emblems/${PATH:+:$PATH}"
+export LD_LIBRARY_PATH="${HERE}/opt/dropbox/:${HERE}/opt/dropbox/plugins/platforms/${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+export XDG_DATA_DIRS="${HERE}/usr/share/${XDG_DATA_DIRS:+:$XDG_DATA_DIRS}"
+EXEC="${HERE}/opt/dropbox/dropbox"
+exec "${EXEC}"' >> ./$APP.AppDir/AppRun
+  chmod a+x ./$APP.AppDir/AppRun
+  cp ./$APP.AppDir/AppRun /opt/$APP/AppRun
+  ARCH=x86_64 ./appimagetool -n ./$APP.AppDir > /dev/null 2>&1
   cd ..
-  mv ./tmp/*.AppImage ./'$APP'
-  chmod a+x ./'$APP'
-  rm -R -f ./tmp
-  notify-send "'$APP' is updated!"
-fi' >> /opt/$APP/AM-updater
+  rm ./version
+  fi
+  echo $version >> ./version
+  mv --backup=t ./tmp/*mage ./$APP
+  chmod a+x /opt/$APP/$APP
+  rm -R -f ./tmp ./*~
+  fi
+  notify-send "$APP is updated!"
+fi
+EOF
 chmod a+x /opt/$APP/AM-updater
 
 # LAUNCHER & ICON
@@ -91,16 +93,16 @@ cd /opt/$APP
 ./$APP --appimage-extract *.desktop 1>/dev/null
 ./$APP --appimage-extract share/applications/*.desktop 1>/dev/null
 ./$APP --appimage-extract usr/share/applications/*.desktop 1>/dev/null
-mv squashfs-root/*.desktop ./$APP.desktop 2>/dev/null
-mv squashfs-root/share/applications/*.desktop ./$APP.desktop 2>/dev/null
-mv squashfs-root/usr/share/applications/*.desktop ./$APP.desktop 2>/dev/null
+mv squashfs-root/*.desktop ./$APP.desktop
+mv squashfs-root/share/applications/*.desktop ./$APP.desktop
+mv squashfs-root/usr/share/applications/*.desktop ./$APP.desktop
 if [ ! -e ./$APP.desktop ]; then 
-	rm ./$APP.desktop; ./$APP --appimage-extract usr/share/applications/*$app*.desktop 1>/dev/null 
-	mv squashfs-root/usr/share/applications/*.desktop ./$APP.desktop 2>/dev/null
+	rm ./$APP.desktop; ./$APP --appimage-extract usr/share/applications/*$app*.desktop 
+	mv squashfs-root/usr/share/applications/*.desktop ./$APP.desktop
 fi
 if [ ! -e ./$APP.desktop ]; then 
-	rm ./$APP.desktop; ./$APP --appimage-extract share/applications/*$app*.desktop 1>/dev/null 
-	mv squashfs-root/share/applications/*.desktop ./$APP.desktop 2>/dev/null
+	rm ./$APP.desktop; ./$APP --appimage-extract share/applications/*$app*.desktop 1>/dev/null
+	mv squashfs-root/share/applications/*.desktop ./$APP.desktop
 fi
 CHANGEEXEC=$(cat ./$APP.desktop | grep Exec= | tr ' ' '\n' | tr '=' '\n' | tr '/' '\n' | grep $app | head -1)
 sed -i "s#$CHANGEEXEC#$APP#g" ./$APP.desktop
@@ -113,8 +115,10 @@ sed -i "s#$CHANGEICON#Icon=/opt/$APP/icons/$APP#g" ./$APP.desktop
 mkdir icons
 mv $(./$APP --appimage-extract *.png) ./icons/$APP 2>/dev/null
 mv $(./$APP --appimage-extract *.svg) ./icons/$APP 2>/dev/null
-./$APP --appimage-extract share/icons/*/*/*/* 1>/dev/null
+./$APP --appimage-extract share/icons/*/*/* 1>/dev/null
 ./$APP --appimage-extract usr/share/icons/*/*/* 1>/dev/null
+./$APP --appimage-extract share/icons/*/*/*/* 1>/dev/null
+./$APP --appimage-extract usr/share/icons/*/*/*/* 1>/dev/null
 mv ./squashfs-root/share/icons/hicolor/22x22/apps/*$app* ./icons/$APP 2>/dev/null
 mv ./squashfs-root/share/icons/hicolor/24x24/apps/*$app* ./icons/$APP 2>/dev/null
 mv ./squashfs-root/share/icons/hicolor/32x32/apps/*$app* ./icons/$APP 2>/dev/null
@@ -137,15 +141,11 @@ mv ./squashfs-root/usr/share/icons/hicolor/scalable/apps/*$app* ./icons/$APP 2>/
 rm -R -f /opt/$APP/squashfs-root
 mv ./$APP.desktop /usr/share/applications/AM-$APP.desktop
 
+# CHANGE THE PERMISSIONS
 currentuser=$(who | awk '{print $1}')
 chown -R $currentuser /opt/$APP
+
 # MESSAGE
 echo "
-
-      Dropbox Unofficial Appimage
- 
-     built from Arch User Repository
- 
-  OFFICIAL SITE: https://www.dropbox.com
-  
-";
+ $APP is provided by $SITE
+"
