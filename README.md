@@ -212,16 +212,12 @@ In both cases, the "INSTALL" script will create a dedicated /opt/am directory co
   
     am -t $PROGRAM
 -----------------------------------------------------------------------------
-  `-u`, `update` Update all the installed programs:
+  `-u`, `-U`, `update` Update all the installed programs:
   
     am -u
    To update just one program and read the shell's output:
 
     am -u $PROGRAM
------------------------------------------------------------------------------
-  `-U`, `--force-update` Update all the installed programs without asking:
-  
-    am -U
 -----------------------------------------------------------------------------
   `-v`, `--version`, `version` Shows the version of "AM":
   
