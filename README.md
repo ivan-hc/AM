@@ -215,7 +215,7 @@ In both cases, the "INSTALL" script will create a dedicated /opt/am directory co
   `-u`, `-U`, `update` Update all the installed programs:
   
     am -u
-   To update just one program and read the shell's output:
+   To update just one program:
 
     am -u $PROGRAM
 -----------------------------------------------------------------------------
