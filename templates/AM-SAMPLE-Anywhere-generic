@@ -1,0 +1,79 @@
+#!/bin/sh
+
+APP=SAMPLE
+SITE="REPLACETHIS"
+
+# CREATE THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP
+
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+
+# DOWNLOAD THE ARCHIVE
+mkdir tmp
+cd ./tmp
+
+version=$(THISISTHEURL)
+wget $version
+echo "$version" >> /opt/$APP/version
+cd ..
+FUNCTION
+rm -R -f ./tmp
+
+# LINK
+ln -s /opt/$APP/$APP /usr/local/bin/$APP
+
+# SCRIPT TO UPDATE THE PROGRAM
+cat >> /opt/$APP/AM-updater << 'EOF'
+#!/usr/bin/env bash
+APP=SAMPLE
+version0=$(cat /opt/$APP/version)
+version=$(THISISTHEURL)
+if [ $version = $version0 ]; then
+  echo "Update not needed!"
+else
+  notify-send "A new version of $APP is available, please wait"
+  mkdir /opt/$APP/tmp
+  cd /opt/$APP/tmp
+  wget $version
+  cd ..
+  FUNCTION
+  rm ./version
+  echo $version >> ./version
+  rm -R -f ./tmp ./*~
+  notify-send "$APP is updated!"
+fi
+EOF
+chmod a+x /opt/$APP/AM-updater
+
+# LAUNCHER & ICON
+app=$(echo $APP | cut -c -3)
+cd /opt/$APP
+mv ./*.desktop ./$APP.desktop 2>/dev/null
+CHANGEEXEC=$(cat ./$APP.desktop | grep Exec= | tr ' ' '\n' | tr '=' '\n' | tr '/' '\n' | grep $app | head -1)
+sed -i "s#$CHANGEEXEC#$APP#g" ./$APP.desktop
+sed -i "s#Exec=/bin/#Exec=#g" ./$APP.desktop
+sed -i "s#Exec=/usr/bin/#Exec=#g" ./$APP.desktop
+CHANGEICON=$(cat ./$APP.desktop | grep Icon= | head -1)
+sed -i "s#$CHANGEICON#Icon=/opt/$APP/icons/$APP#g" ./$APP.desktop
+
+mkdir icons
+mv ./*.svg ./icons/$APP 2>/dev/null
+mv ./*.png ./icons/$APP 2>/dev/null
+mv ./*$app*.png ./icons/$APP 2>/dev/null
+mv ./*128*.png ./icons/$APP 2>/dev/null
+mv ./*256*.png ./icons/$APP 2>/dev/null
+
+mv ./$APP.desktop /usr/share/applications/AM-$APP.desktop
+
+# CHANGE THE PERMISSIONS
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/$APP
+
+# MESSAGE
+echo "
+ $APP is provided by $SITE
+"
