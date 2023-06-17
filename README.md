@@ -94,7 +94,7 @@ These programs are taken:
 
 "AM" can even create Firefox profiles to run as webapps (as an alternative to the countless Electron-based apps/AppImages)!
 
-You can consult basic information, links to sites and sources used through the related `am -a $PROGRAM` command or by clicking [here](https://github.com/ivan-hc/AM-application-manager/tree/main/programs/.about).
+You can consult basic information, links to sites and sources used through the related `am -a $PROGRAM` command or by connecting to https://portable-linux-apps.github.io
 
 -----------------------------------------------------------------------------
 ## How to update all programs, for real
