@@ -101,9 +101,9 @@ You can consult basic information, links to sites and sources used through the r
 ## How to update all programs, for real
 To update all the programs, just run the command (without `sudo`):
 
-    am -U
+    am -u
     
-To update just one program (and to read the output from the shell):
+To update just one program:
 
     am -u $PROGRAM
 
