@@ -158,7 +158,7 @@ Normally the following packages are already installed on your system:
 #### Proceeding
 To install "AM" quickly, just copy/paste the following command:
 	
-    wget https://raw.githubusercontent.com/ivan-hc/APPLICATION-MANAGER/main/INSTALL && chmod a+x ./INSTALL && sudo ./INSTALL
+    wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/INSTALL && chmod a+x ./INSTALL && sudo ./INSTALL
 
 Or use "GIT":
 
