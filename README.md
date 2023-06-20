@@ -142,6 +142,19 @@ If you are interested, you can deliberately join this project.
 -----------------------------------------------------------------------------
 
 # Installation
+#### Requirements
+Normally the following packages are already installed on your system:
+- `binutils`
+- `coreutils`
+- `curl`
+- `grep`
+- `sed`
+- `sudo` (NOTE: non `sudo` users can use "[AppMan](https://github.com/ivan-hc/AppMan)" instead, the portable version of "AM", this also works with `doas` or similar)
+- `tar`
+- `unzip`
+- `wget`
+- `zsync` (this is needed for about 10% of AppImages, those that include update information within them).
+#### Proceeding
 To install "AM" quickly, just copy/paste the following command:
 	
     wget https://raw.githubusercontent.com/ivan-hc/APPLICATION-MANAGER/main/INSTALL && chmod a+x ./INSTALL && sudo ./INSTALL
