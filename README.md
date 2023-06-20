@@ -147,7 +147,7 @@ Normally the following packages are already installed on your system:
 - `binutils`
 - `coreutils`
 - `curl`
-- `fuse` (required by AppImages to run, learn more at [https://docs.appimage.org](https://docs.appimage.org/user-guide/troubleshooting/fuse.html))
+- `fuse` (optional for AM, but strongly required by AppImages to run, learn more at [https://docs.appimage.org](https://docs.appimage.org/user-guide/troubleshooting/fuse.html))
 - `grep`
 - `sed`
 - `sudo` (NOTE: non `sudo` users can use "[AppMan](https://github.com/ivan-hc/AppMan)" instead, the portable version of "AM", this also works with `doas` or similar)
