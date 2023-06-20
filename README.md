@@ -147,6 +147,7 @@ Normally the following packages are already installed on your system:
 - `binutils`
 - `coreutils`
 - `curl`
+- `fuse` (this is only for the AppImages, many distros like Fedora and Ubuntu don't have it installed by default)
 - `grep`
 - `sed`
 - `sudo` (NOTE: non `sudo` users can use "[AppMan](https://github.com/ivan-hc/AppMan)" instead, the portable version of "AM", this also works with `doas` or similar)
