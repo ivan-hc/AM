@@ -1,6 +1,7 @@
 #!/bin/sh
 
 APP=teams
+REPO="IsmaelMartinez/teams-for-linux"
 
 # CREATE THE FOLDER
 mkdir /opt/$APP
@@ -11,111 +12,102 @@ echo '#!/bin/sh' >> /opt/$APP/remove
 echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
 chmod a+x /opt/$APP/remove
 
-# DOWNLOAD THE PROGRAM
+# DOWNLOAD THE ARCHIVE
 mkdir tmp
 cd ./tmp
 
-version=$(wget -q https://aur.archlinux.org/packages/teams -O - | grep -Eo "https://packages.microsoft.com/[a-zA-Z0-9./?=_%:-]*" | head -1)
+version=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep -w -v i386 | grep -w -v i686 | grep -w -v aarch64 | grep -w -v arm64 | grep -w -v armv7l | grep browser_download_url | grep -i appimage | cut -d '"' -f 4 | head -1)
 wget $version
-echo $version >> /opt/$APP/version
-
-ar x ./*.deb
-tar xf ./data.tar.xz
-rm -R -f ./*tar.* ./*.deb
+echo "$version" >> /opt/$APP/version
 cd ..
-cp ./tmp/usr/share/pixmaps/* /opt/$APP/
-mv ./tmp/usr/share/teams/* ./
-rm -R -f ./tmp
+mv ./tmp/*mage ./$APP
+chmod a+x /opt/$APP/$APP
+rmdir ./tmp
 
 # LINK
 ln -s /opt/$APP/$APP /usr/local/bin/$APP
 
 # SCRIPT TO UPDATE THE PROGRAM
-echo '#!/usr/bin/env bash
+cat >> /opt/$APP/AM-updater << 'EOF'
+#!/usr/bin/env bash
 APP=teams
+REPO="IsmaelMartinez/teams-for-linux"
 version0=$(cat /opt/$APP/version)
-version=$(wget -q https://aur.archlinux.org/packages/teams -O - | grep -Eo "https://packages.microsoft.com/[a-zA-Z0-9./?=_%:-]*" | head -1)
+version=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep -w -v i386 | grep -w -v i686 | grep -w -v aarch64 | grep -w -v arm64 | grep -w -v armv7l | grep browser_download_url | grep -i appimage | cut -d '"' -f 4 | head -1)
 if [ $version = $version0 ]; then
-  echo "Update not needed, exit!"
+  echo "Update not needed!"
 else
-  notify-send "A new version of Microsoft Teams is available, please wait!"
+  notify-send "A new version of $APP is available, please wait"
   mkdir /opt/$APP/tmp
   cd /opt/$APP/tmp
   wget $version
-  ar x ./*.deb
-  tar xf ./data.tar.xz
-  rm -R -f ./*tar.* ./*.deb
-  cd ..
-  mv --backup=t ./tmp/usr/share/teams/* ./
-  rm -R -f /opt/$APP/version
-  echo $version >> /opt/$APP/version
-  rm -R -f ./tmp ./*~
+  if ls . | grep mage; then
+	cd ..
+  	if test -f ./tmp/*mage; then rm ./version
+  	fi
+  	echo $version >> ./version
+  	mv --backup=t ./tmp/*mage ./$APP
+  	chmod a+x /opt/$APP/$APP
+  	rm -R -f ./tmp ./*~
+  fi
   notify-send "$APP is updated!"
-fi' >> /opt/$APP/AM-updater
+fi
+EOF
 chmod a+x /opt/$APP/AM-updater
 
-# LAUNCHER
-rm /usr/share/applications/AM-$APP.desktop
-echo "[Desktop Entry]
-Version=1.0
-Type=Application
-Name=Microsoft Teams - Preview
-Comment=Microsoft Teams for Linux is your chat-centered workspace in Office 365.
-Exec=teams %U
-Icon=/opt/$APP/teams.png
-Terminal=false
-StartupNotify=true
-StartupWMClass=Microsoft Teams - Preview
-Categories=Network;
-MimeType=x-scheme-handler/msteams;
-X-KDE-Protocols=teams
-Actions=QuitTeams;
-X-GNOME-UsesNotifications=true;
+# LAUNCHER & ICON
+app=$(echo $APP | cut -c -3)
+cd /opt/$APP
+./$APP --appimage-extract *.desktop 1>/dev/null
+./$APP --appimage-extract share/applications/*.desktop 1>/dev/null
+./$APP --appimage-extract usr/share/applications/*.desktop 1>/dev/null
+mv squashfs-root/*.desktop ./$APP.desktop
+mv squashfs-root/share/applications/*.desktop ./$APP.desktop
+mv squashfs-root/usr/share/applications/*.desktop ./$APP.desktop
+if [ ! -e ./$APP.desktop ]; then 
+	rm ./$APP.desktop; ./$APP --appimage-extract usr/share/applications/*$app*.desktop 
+	mv squashfs-root/usr/share/applications/*.desktop ./$APP.desktop
+fi
+if [ ! -e ./$APP.desktop ]; then 
+	rm ./$APP.desktop; ./$APP --appimage-extract share/applications/*$app*.desktop 1>/dev/null
+	mv squashfs-root/share/applications/*.desktop ./$APP.desktop
+fi
+CHANGEEXEC=$(cat ./$APP.desktop | grep Exec= | tr ' ' '\n' | tr '=' '\n' | tr '/' '\n' | grep $app | head -1)
+sed -i "s#$CHANGEEXEC#$APP#g" ./$APP.desktop
+sed -i "s#AppRun#$APP#g" ./$APP.desktop
+sed -i "s#Exec=/bin/#Exec=#g" ./$APP.desktop
+sed -i "s#Exec=/usr/bin/#Exec=#g" ./$APP.desktop
+CHANGEICON=$(cat ./$APP.desktop | grep Icon= | head -1)
+sed -i "s#$CHANGEICON#Icon=/opt/$APP/icons/$APP#g" ./$APP.desktop
 
-[Desktop Action QuitTeams]
-Name=Quit Teams
-Name[ar]=إنهاء اسكايب
-Name[bg]=Изход от Teams
-Name[ca]=Surt de Teams
-Name[cs]=Ukončit Teams
-Name[da]=Afslut Teams
-Name[en]=Quit Teams
-Name[de]=Teams beenden
-Name[el]=Έξοδος από το Teams
-Name[es]=Salir de Teams
-Name[et]=Sulge Teams
-Name[fi]=Sulje Teams
-Name[fr]=Quitter Teams
-Name[he]=יציאה מסקייפ
-Name[hi]=स्काइप से बाहर निकलें
-Name[hr]=Izađi iz Teamsa
-Name[hu]=A Teams bezárása
-Name[id]=Keluar dari Teams
-Name[it]=Esci da Teams
-Name[ja]=Teams を終了
-Name[ko]=Teams 종료
-Name[lt]=Išjungti „Teams“
-Name[lv]=Iziet no Teams
-Name[ms]=Keluar Teams
-Name[nb]=Avslutt Teams
-Name[nl]=Teams afsluiten
-Name[pl]=Zamknij Teams'a
-Name[pt]=Sair do Teams
-Name[pt_BR]=Encerrar o Teams
-Name[ro]=Închide Teams
-Name[ru]=Выйти из Скайпа
-Name[sk]=Ukončiť aplikáciu Teams
-Name[sl]=Zapusti Teams
-Name[sr_Latn]=Zatvori Teams
-Name[sv]=Avsluta Teams
-Name[th]=จบการทำงาน Teams
-Name[tr]=Teams'tan Çık
-Name[uk]=Вийти зі Teams
-Name[vi]=Thoát Teams
-Name[zh_CN]=退出 Teams
-Name[zh_TW]=結束 Teams
-Exec=teams --quit
-OnlyShowIn=Unity;" >> /usr/share/applications/AM-$APP.desktop
+mkdir icons
+mv $(./$APP --appimage-extract *.png) ./icons/$APP 2>/dev/null
+mv $(./$APP --appimage-extract *.svg) ./icons/$APP 2>/dev/null
+./$APP --appimage-extract share/icons/*/*/* 1>/dev/null
+./$APP --appimage-extract usr/share/icons/*/*/* 1>/dev/null
+./$APP --appimage-extract share/icons/*/*/*/* 1>/dev/null
+./$APP --appimage-extract usr/share/icons/*/*/*/* 1>/dev/null
+mv ./squashfs-root/share/icons/hicolor/22x22/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/24x24/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/32x32/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/48x48/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/64x64/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/128x128/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/256x256/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/512x512/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/scalable/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/22x22/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/24x24/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/32x32/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/48x48/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/64x64/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/128x128/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/256x256/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/512x512/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/scalable/apps/*$app* ./icons/$APP 2>/dev/null
+
+rm -R -f /opt/$APP/squashfs-root
+mv ./$APP.desktop /usr/share/applications/AM-$APP.desktop
 
 # CHANGE THE PERMISSIONS
 currentuser=$(who | awk '{print $1}')
@@ -123,7 +115,5 @@ chown -R $currentuser /opt/$APP
 
 # MESSAGE
 echo "
-
- Microsoft Teams is provided by https://www.microsoft.com 
-  
-";
+ $APP is provided by https://github.com/$(echo $REPO | sed 's:/[^/]*$::')
+"
