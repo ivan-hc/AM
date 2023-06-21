@@ -15,10 +15,9 @@ chmod a+x /opt/$APP/remove
 mkdir tmp
 cd ./tmp
 
-downloadURL="https://inkscape.org$(curl -fs https://inkscape.org$(curl -fsJL https://inkscape.org/release/  | grep "/release/" | grep en | head -n 1 | cut -d '"' -f 6)gnulinux/appimage/dl/ | grep "click here" | cut -d '"' -f 2)"
-wget $downloadURL
-
-version=$(curl -fsJL https://inkscape.org/release/  | grep "<title>" | grep -o -e "[0-9.]*")
+tag=$(wget -q https://inkscape.org/ -O - | grep release | grep -i stable | head -1 | grep -o -P '(?<=info">).*(?=</span)')
+version=$(echo https://inkscape.org/$(wget -q $(echo "https://inkscape.org/release/inkscape-$tag/gnulinux/appimage/dl/") -O - | grep "click here" | grep -o -P '(?<=href=").*(?=">click)'))
+wget $version
 echo "$version" >> /opt/$APP/version
 
 cd ..
@@ -30,26 +29,29 @@ rmdir ./tmp
 ln -s /opt/$APP/$APP /usr/local/bin/$APP
 
 # SCRIPT TO UPDATE THE PROGRAM
-cat > /opt/$APP/AM-updater << 'EOF'
-#!/bin/sh
-version0=$(cat /opt/inkscape/version)
-url='curl -fsJL https://inkscape.org/release/  | grep "<title>" | grep -o -e "[0-9.]*'
-if curl -L -s $url | grep -ioF "$version0"; then
-  echo "Update not needed, exit!"
+cat >> /opt/$APP/AM-updater << 'EOF'
+#!/usr/bin/env bash
+APP=inkscape
+tag=$(wget -q https://inkscape.org/ -O - | grep release | grep -i stable | head -1 | grep -o -P '(?<=info">).*(?=</span)')
+version0=$(cat /opt/$APP/version)
+version=$(echo https://inkscape.org/$(wget -q $(echo "https://inkscape.org/release/inkscape-$tag/gnulinux/appimage/dl/") -O - | grep "click here" | grep -o -P '(?<=href=").*(?=">click)'))
+if [ $version = $version0 ]; then
+  echo "Update not needed!"
 else
-  notify-send "A new version of inkscape is available, please wait!"
-  mkdir /opt/inkscape/tmp
-  cd /opt/inkscape/tmp
-  downloadURL="https://inkscape.org$(curl -fs https://inkscape.org$(curl -fsJL https://inkscape.org/release/  | grep "/release/" | grep en | head -n 1 | cut -d '"' -f 6)gnulinux/appimage/dl/ | grep "click here" | cut -d '"' -f 2)"
-  wget $downloadURL
-  cd ..
-  if test -f ./tmp/*mage; then rm ./version
+  notify-send "A new version of $APP is available, please wait"
+  mkdir /opt/$APP/tmp
+  cd /opt/$APP/tmp
+  wget $version
+  if ls . | grep mage; then
+	cd ..
+  	if test -f ./tmp/*mage; then rm ./version
+  	fi
+  	echo $version >> ./version
+  	mv --backup=t ./tmp/*mage ./$APP
+  	chmod a+x /opt/$APP/$APP
+  	rm -R -f ./tmp ./*~
   fi
-  version=$(curl -fsJL https://inkscape.org/release/  | grep "<title>" | grep -o -e "[0-9.]*")
-  echo "$version" >> /opt/inkscape/version
-  mv ./tmp/*mage ./inkscape
-  chmod a+x /opt/inkscape/inkscape
-  rmdir ./tmp
+  notify-send "$APP is updated!"
 fi
 EOF
 chmod a+x /opt/$APP/AM-updater
