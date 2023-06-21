@@ -1,6 +1,7 @@
 #!/bin/sh
 
 APP=skype
+REPO="ivan-hc/Skype-appimage"
 
 # CREATE THE FOLDER
 mkdir /opt/$APP
@@ -8,163 +9,105 @@ cd /opt/$APP
 
 # ADD THE REMOVER
 echo '#!/bin/sh' >> /opt/$APP/remove
-echo "rm -R -f /usr/share/applications/AM-skypeforlinux.desktop /usr/share/applications/AM-skype*share.desktop /opt/$APP /usr/local/bin/skypeforlinux" >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
 chmod a+x /opt/$APP/remove
 
-# DOWNLOAD THE PROGRAM
+# DOWNLOAD THE ARCHIVE
 mkdir tmp
 cd ./tmp
 
-wget https://go.skype.com/skypeforlinux-64.deb
-ar x skypeforlinux-64.deb
-tar fx data.tar.gz
+version=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep -w -v i386 | grep -w -v i686 | grep -w -v aarch64 | grep -w -v arm64 | grep -w -v armv7l | grep browser_download_url | grep -i appimage | cut -d '"' -f 4 | head -1)
+wget $version
+echo "$version" >> /opt/$APP/version
 cd ..
-mv ./tmp/usr/share/skypeforlinux/* ./
-cp ./tmp/usr/share/pixmaps/skypeforlinux.png ./skypeforlinux.png
-rm -R -f ./tmp
-skypevers=$(curl -v --silent https://repo.skype.com/deb/dists/stable/main/binary-amd64/Packages 2>&1 | grep -m 1 -Eo "Version: [+-]?[0-9]+([.][0-9]+)?+[+-]?[0-9]+([.][0-9]+)?")
-echo $skypevers >> /opt/$APP/skypevers
+mv ./tmp/*mage ./$APP
+chmod a+x /opt/$APP/$APP
+rmdir ./tmp
 
 # LINK
-ln -s /opt/$APP/skypeforlinux /usr/local/bin/skypeforlinux
+ln -s /opt/$APP/$APP /usr/local/bin/$APP
 
 # SCRIPT TO UPDATE THE PROGRAM
-echo '#!/bin/sh
-version=$(cat /opt/skype/skypevers | cut -c 10-)
-skypevers=$(curl -v --silent https://repo.skype.com/deb/dists/stable/main/binary-amd64/Packages 2>&1 | grep -m 1 -Eo "Version: [+-]?[0-9]+([.][0-9]+)?+[+-]?[0-9]+([.][0-9]+)?")
-url=https://aur.archlinux.org/packages/skypeforlinux-stable-bin
-if curl -L -s $url | grep -ioF "stable/skypeforlinux_$version"; then
-  echo "Update not needed, exit!"
+cat >> /opt/$APP/AM-updater << 'EOF'
+#!/usr/bin/env bash
+APP=skype
+REPO="ivan-hc/Skype-appimage"
+version0=$(cat /opt/$APP/version)
+version=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep -w -v i386 | grep -w -v i686 | grep -w -v aarch64 | grep -w -v arm64 | grep -w -v armv7l | grep browser_download_url | grep -i appimage | cut -d '"' -f 4 | head -1)
+if [ $version = $version0 ]; then
+  echo "Update not needed!"
 else
-  notify-send "A new version of skype is available, please wait!"
-  mkdir /opt/skype/tmp
-  cd /opt/skype/tmp
-  wget https://go.skype.com/skypeforlinux-64.deb
-  ar x skypeforlinux-64.deb
-  tar fx data.tar.gz
-  cd ..
-  mv --backup=t ./tmp/usr/share/skypeforlinux/* ./
-  rm -R -f /opt/skype/skypevers
-  echo $skypevers >> /opt/skype/skypevers
-  rm -R -f ./tmp ./*~
+  notify-send "A new version of $APP is available, please wait"
+  mkdir /opt/$APP/tmp
+  cd /opt/$APP/tmp
+  wget $version
+  if ls . | grep mage; then
+	cd ..
+  	if test -f ./tmp/*mage; then rm ./version
+  	fi
+  	echo $version >> ./version
+  	mv --backup=t ./tmp/*mage ./$APP
+  	chmod a+x /opt/$APP/$APP
+  	rm -R -f ./tmp ./*~
+  fi
   notify-send "$APP is updated!"
-fi' >> /opt/$APP/AM-updater
+fi
+EOF
 chmod a+x /opt/$APP/AM-updater
 
-# LAUNCHER STANDARD
-echo "[Desktop Entry]
-Name=Skype
-Comment=Skype Internet Telephony
-Exec=skypeforlinux %U
-Icon=/opt/$APP/skypeforlinux.png
-Terminal=false
-Type=Application
-StartupNotify=true
-StartupWMClass=Skype
-Encoding=UTF-8
-Categories=Network;Application;
-MimeType=x-scheme-handler/skype;x-scheme-handler/tel;x-scheme-handler/callto;
-X-KDE-Protocols=skype,tel,callto
-Actions=QuitSkype;
+# LAUNCHER & ICON
+app=$(echo $APP | cut -c -3)
+cd /opt/$APP
+./$APP --appimage-extract *.desktop 1>/dev/null
+./$APP --appimage-extract share/applications/*.desktop 1>/dev/null
+./$APP --appimage-extract usr/share/applications/*.desktop 1>/dev/null
+mv squashfs-root/*.desktop ./$APP.desktop
+mv squashfs-root/share/applications/*.desktop ./$APP.desktop
+mv squashfs-root/usr/share/applications/*.desktop ./$APP.desktop
+if [ ! -e ./$APP.desktop ]; then 
+	rm ./$APP.desktop; ./$APP --appimage-extract usr/share/applications/*$app*.desktop 
+	mv squashfs-root/usr/share/applications/*.desktop ./$APP.desktop
+fi
+if [ ! -e ./$APP.desktop ]; then 
+	rm ./$APP.desktop; ./$APP --appimage-extract share/applications/*$app*.desktop 1>/dev/null
+	mv squashfs-root/share/applications/*.desktop ./$APP.desktop
+fi
+CHANGEEXEC=$(cat ./$APP.desktop | grep Exec= | tr ' ' '\n' | tr '=' '\n' | tr '/' '\n' | grep $app | head -1)
+sed -i "s#$CHANGEEXEC#$APP#g" ./$APP.desktop
+sed -i "s#AppRun#$APP#g" ./$APP.desktop
+sed -i "s#Exec=/bin/#Exec=#g" ./$APP.desktop
+sed -i "s#Exec=/usr/bin/#Exec=#g" ./$APP.desktop
+CHANGEICON=$(cat ./$APP.desktop | grep Icon= | head -1)
+sed -i "s#$CHANGEICON#Icon=/opt/$APP/icons/$APP#g" ./$APP.desktop
 
-[Desktop Action QuitSkype]
-Name=Quit Skype
-Name[ar]=إنهاء اسكايب
-Name[bg]=Изход от Skype
-Name[ca]=Surt de Skype
-Name[cs]=Ukončit Skype
-Name[da]=Afslut Skype
-Name[en]=Quit Skype
-Name[de]=Skype beenden
-Name[el]=Έξοδος από το Skype
-Name[es]=Salir de Skype
-Name[et]=Sulge Skype
-Name[fi]=Sulje Skype
-Name[fr]=Quitter Skype
-Name[he]=יציאה מסקייפ
-Name[hi]=स्काइप से बाहर निकलें
-Name[hr]=Izađi iz Skypea
-Name[hu]=A Skype bezárása
-Name[id]=Keluar dari Skype
-Name[it]=Esci da Skype
-Name[ja]=Skype を終了
-Name[ko]=Skype 종료
-Name[lt]=Išjungti „Skype“
-Name[lv]=Iziet no Skype
-Name[ms]=Keluar Skype
-Name[nb]=Avslutt Skype
-Name[nl]=Skype afsluiten
-Name[pl]=Zamknij Skype'a
-Name[pt]=Sair do Skype
-Name[pt_BR]=Encerrar o Skype
-Name[ro]=Închide Skype
-Name[ru]=Выйти из Скайпа
-Name[sk]=Ukončiť aplikáciu Skypee
-Name[sl]=Zapusti Skype
-Name[sr_Latn]=Zatvori Skype
-Name[sv]=Avsluta Skype
-Name[th]=จบการทำงาน Skype
-Name[tr]=Skype'tan Çık
-Name[uk]=Вийти зі Skype
-Name[vi]=Thoát Skype
-Name[zh_CN]=退出 Skype
-Name[zh_TW]=結束 Skype
-Exec=skypeforlinux --shutdown
-OnlyShowIn=Unity;" >> /usr/share/applications/AM-skypeforlinux.desktop
+mkdir icons
+mv $(./$APP --appimage-extract *.png) ./icons/$APP 2>/dev/null
+mv $(./$APP --appimage-extract *.svg) ./icons/$APP 2>/dev/null
+./$APP --appimage-extract share/icons/*/*/* 1>/dev/null
+./$APP --appimage-extract usr/share/icons/*/*/* 1>/dev/null
+./$APP --appimage-extract share/icons/*/*/*/* 1>/dev/null
+./$APP --appimage-extract usr/share/icons/*/*/*/* 1>/dev/null
+mv ./squashfs-root/share/icons/hicolor/22x22/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/24x24/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/32x32/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/48x48/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/64x64/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/128x128/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/256x256/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/512x512/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/scalable/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/22x22/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/24x24/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/32x32/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/48x48/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/64x64/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/128x128/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/256x256/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/512x512/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/scalable/apps/*$app* ./icons/$APP 2>/dev/null
 
-# LAUNCHER 2
-echo "[Desktop Entry]
-Name=Share with Skype
-Name[ar]=مشاركة باستخدام Skype
-Name[bg]=Споделяне със Skype
-Name[ca]=Comparteix-ho amb l'Skype
-Name[cs]=Sdílet na Skypu
-Name[da]=Del med Skype
-Name[de]=Mit Skype teilen
-Name[el]=Κοινή χρήση με το Skype
-Name[en]=Share with Skype
-Name[es]=Compartir con Skype
-Name[et]=Jaga Skype'is
-Name[fi]=Jaa Skypessä
-Name[fr]=Partager avec Skype
-Name[he]=שתף באמצעות סקייפ
-Name[hi]=Skype के जरिए साझा करें
-Name[hr]=Zajednički koristi putem Skypea
-Name[hu]=Megosztás a Skype-on keresztül
-Name[id]=Bagikan dengan Skype
-Name[it]=Condividi con Skype
-Name[ja]=Skype で共有
-Name[ko]=Skype와 공유
-Name[lt]=Bendrinti su „Skype“
-Name[lv]=Kopīgot programmā Skype
-Name[ms]=Kongsi dengan Skype
-Name[nb]=Del med Skype
-Name[nl]=Delen met Skype
-Name[pl]=Udostępnij przez Skype'a
-Name[pt]=Partilhar com o Skype
-Name[pt_BR]=Compartilhar com o Skype
-Name[ro]=Partajează cu Skype
-Name[ru]=Поделиться в Skype
-Name[sk]=Zdieľať v Skype
-Name[sl]=Skupna raba s Skypom
-Name[sr_Latn]=Deli sa programom Skype
-Name[sv]=Dela med Skype
-Name[th]=แชร์กับ Skype
-Name[tr]=Skype ile paylaş
-Name[uk]=Поділитись у Skype
-Name[vi]=Chia sẻ qua Skype
-Name[zh_CN]=Skype − 已注销。
-Name[zh_HK]=使用 Skype 共享
-Name[zh_TW]=使用 Skype 分享
-Exec=skypeforlinux --share-file=%f
-Icon=/opt/$APP/skypeforlinux.png
-Terminal=false
-Type=Application
-Encoding=UTF-8
-StartupNotify=false
-MimeType=application/octet-stream;
-NoDisplay=true
-NotShowIn=KDE" >> /usr/share/applications/AM-skype4linux-share.desktop
+rm -R -f /opt/$APP/squashfs-root
+mv ./$APP.desktop /usr/share/applications/AM-$APP.desktop
 
 # CHANGE THE PERMISSIONS
 currentuser=$(who | awk '{print $1}')
@@ -172,7 +115,5 @@ chown -R $currentuser /opt/$APP
 
 # MESSAGE
 echo "
-
- Skype is provided by https://www.skype.com
-  
-";
+ $APP is provided by https://github.com/$(echo $REPO | sed 's:/[^/]*$::')
+"
