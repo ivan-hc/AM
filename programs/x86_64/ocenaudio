@@ -1,6 +1,7 @@
 #!/bin/sh
 
 APP=ocenaudio
+REPO="ivan-hc/ocenaudio-appimage"
 
 # CREATE THE FOLDER
 mkdir /opt/$APP
@@ -13,17 +14,15 @@ chmod a+x /opt/$APP/remove
 
 # DOWNLOAD THE ARCHIVE
 mkdir tmp
-cd tmp
-wget https://raw.githubusercontent.com/ivan-hc/$APP-appimage/main/$APP.sh
-chmod a+x ./$APP.sh
-./$APP.sh > /dev/null 2>&1
-cd ..
-version=$(wget -q https://www.ocenaudio.com/fileinfo/ocenaudio_mint32.deb -O - | grep Versão | cut -c 43- | rev | cut -c 5- | rev)
-echo $version >> ./version
-mv ./tmp/*AppImage ./$APP
-rm -R -f ./tmp
+cd ./tmp
 
-#-------------------------------------
+version=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep -w -v i386 | grep -w -v i686 | grep -w -v aarch64 | grep -w -v arm64 | grep -w -v armv7l | grep browser_download_url | grep -i appimage | cut -d '"' -f 4 | head -1)
+wget $version
+echo "$version" >> /opt/$APP/version
+cd ..
+mv ./tmp/*mage ./$APP
+chmod a+x /opt/$APP/$APP
+rmdir ./tmp
 
 # LINK
 ln -s /opt/$APP/$APP /usr/local/bin/$APP
@@ -32,22 +31,26 @@ ln -s /opt/$APP/$APP /usr/local/bin/$APP
 cat >> /opt/$APP/AM-updater << 'EOF'
 #!/usr/bin/env bash
 APP=ocenaudio
+REPO="ivan-hc/ocenaudio-appimage"
 version0=$(cat /opt/$APP/version)
-version=$(wget -q https://www.ocenaudio.com/fileinfo/ocenaudio_mint32.deb -O - | grep Versão | cut -c 43- | rev | cut -c 5- | rev)
+version=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep -w -v i386 | grep -w -v i686 | grep -w -v aarch64 | grep -w -v arm64 | grep -w -v armv7l | grep browser_download_url | grep -i appimage | cut -d '"' -f 4 | head -1)
 if [ $version = $version0 ]; then
   echo "Update not needed!"
 else
   notify-send "A new version of $APP is available, please wait"
   mkdir /opt/$APP/tmp
   cd /opt/$APP/tmp
-  wget https://raw.githubusercontent.com/ivan-hc/ocenaudio-appimage/main/$APP.sh
-  chmod a+x ./$APP.sh
-  ./$APP.sh
-  cd ..
-  rm ./version
-  echo $version >> ./version
-  mv ./tmp/*AppImage ./$APP
-  rm -R -f ./tmp
+  wget $version
+  if ls . | grep mage; then
+	cd ..
+  	if test -f ./tmp/*mage; then rm ./version
+  	fi
+  	echo $version >> ./version
+  	mv --backup=t ./tmp/*mage ./$APP
+  	chmod a+x /opt/$APP/$APP
+  	rm -R -f ./tmp ./*~
+  fi
+  notify-send "$APP is updated!"
 fi
 EOF
 chmod a+x /opt/$APP/AM-updater
@@ -76,6 +79,7 @@ sed -i "s#Exec=/bin/#Exec=#g" ./$APP.desktop
 sed -i "s#Exec=/usr/bin/#Exec=#g" ./$APP.desktop
 CHANGEICON=$(cat ./$APP.desktop | grep Icon= | head -1)
 sed -i "s#$CHANGEICON#Icon=/opt/$APP/icons/$APP#g" ./$APP.desktop
+sed -i "s#Exec=/opt/$APP/bin/#Exec=#g" ./$APP.desktop
 
 mkdir icons
 mv $(./$APP --appimage-extract *.png) ./icons/$APP 2>/dev/null
@@ -112,7 +116,5 @@ chown -R $currentuser /opt/$APP
 
 # MESSAGE
 echo "
-
- Ocenaudio is provided by https://www.ocenaudio.com
-
+ $APP is provided by https://github.com/$(echo $REPO | sed 's:/[^/]*$::')
 "
