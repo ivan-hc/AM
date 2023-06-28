@@ -34,10 +34,9 @@ cat <<-HEREDOC >> "$AMPATH/options"
 HEREDOC
 
 case "$1" in
-
   '') printf "\n USAGE: 'am [option]'\n        'am [option] [argument]'\n\n Run the 'am -h' command to find out more\n\n";;
 
-  '-h'|'help') echo '
+  '-h'|'help') printf '
  ---------------------------------------------------------------------------
                     _____                    _____                                                                           
                    /\    \                  /\    \         
@@ -147,42 +146,52 @@ case "$1" in
   
   SITE: https://github.com/IVAN-HC/AM-APPLICATION-MANAGER
   
-  ' | less;;
+  \n' | less;;
 
   '-a'|'about')
-  	if [ -n "$SUDO_COMMAND" ]; then echo -e "\n WARNING: You don't need to run the option '$1' with SUDO.\n"; exit; fi
-	while [ -n "$1" ]
-	do
-	rm -f $AMPATH/.cache/about-args
-	echo $@ | tr ' ' '\n' >> $AMPATH/.cache/about-args && echo STOP >> $AMPATH/.cache/about-args
-	ARGS=$(tail +2 $AMPATH/.cache/about-args)
-	for arg in $ARGS; do
-	for var in $arg; do
-	if [ $arg == STOP ]; then
-	exit
-	else
-	if curl --output /dev/null --silent --head --fail https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/main/apps/$arg.md  1>/dev/null; then
-	echo "-----------------------------------------------------------------------"
-	case $arg in
-	*) rm -R -f $AMPATH/.cache/about; mkdir $AMPATH/.cache/about;
-		cd $AMPATH/.cache/about && wget -q https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/main/apps/$arg.md &&
-		sed -i '/^\s*#/ d' $arg.md; sed -i '/^\s*!/ d' $arg.md; sed -i '/\[Applications]/d' $arg.md; sed -i '/\ --- /d' $arg.md
-		echo " PACKAGE: $(echo $arg | tr a-z A-Z)"
-		if test -f /opt/$arg/remove; then
-			echo " STATUS: INSTALLED, ABOUT $(du -sm /opt/$arg | awk '{print $1}' ) MB OF DISK SPACE IN USE"
-		else
-			echo " STATUS: NOT INSTALLED"
-		fi
-		cat ./$arg.md &&
-		echo "-----------------------------------------------------------------------" && break
-	esac
-	else
-	echo ' "'$arg'" is not a valid argument' | tr a-z A-Z && break
+  	if [ -n "$SUDO_COMMAND" ]; then 
+		printf "\n WARNING: You don't need to run the option '$1' with SUDO.\n\n"; 
+		exit 1; 
 	fi
-	fi
+
+	while [ -n "$1" ]; do
+		rm -f "$AMPATH/.cache/about-args"
+		printf "%s\n" "$@" | tr ' ' '\n' >> "$AMPATH/.cache/about-args" && printf "STOP\n" >> "$AMPATH/.cache/about-args"
+		ARGS="$(tail +2 $AMPATH/.cache/about-args)"
+		for arg in $ARGS; do
+			for var in "$arg"; do
+				if [ "$arg" == "STOP" ]; then
+					exit 1;
+				else
+					markdown="https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/main/apps/$arg.md"
+					if curl -o /dev/null -sIf "$markdown" 1>/dev/null; then 
+						printf "%s\n" "-----------------------------------------------------------------------"
+
+						case "$arg" in
+						*) 
+							rm -rf "$AMPATH/.cache/about"; 
+							mkdir -p "$AMPATH/.cache/about";
+							cd "$AMPATH/.cache/about" && wget -q "$markdown" &&
+							sed -i '1,${ /^\s*#/ d; /^\s*!/ d; /\[Applications]/d; /\ --- /d; }' "$arg.md";
+							printf "%s\n" " PACKAGE: $(echo $arg | tr a-z A-Z)";
+
+							if test -f "/opt/$arg/remove"; then 
+								printf "%s\n" " STATUS: INSTALLED, ABOUT $(du -sm /opt/$arg | cut -f1) MB OF DISK SPACE IN USE";
+							else 
+								printf "%s\n" " STATUS: NOT INSTALLED";
+							fi
+
+							cat ./$arg.md && printf "%s\n" "-----------------------------------------------------------------------";
+							;;
+						esac
+					else
+						printf "%s\n" " \"$arg\" is not a valid argument" | tr 'a-z' 'A-Z' && break;
+					fi
+				fi
+			done
+		done
 	done
-	done
-	done
+
 	shift
 	;;
 
