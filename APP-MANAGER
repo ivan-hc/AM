@@ -439,7 +439,11 @@ case "$1" in
 	;;
 
   '-l'|'list')
-    	if [ -n "$SUDO_COMMAND" ]; then echo -e "\n WARNING: You don't need to run the option '$1' with SUDO.\n"; exit; fi
+    	if [ -n "$SUDO_COMMAND" ]; then 
+		echo -e "\n WARNING: You don't need to run the option '$1' with SUDO.\n"; 
+		exit; 
+	fi
+
   	rm -R -f $AMPATH/$arch-apps $AMPATH/list && wget -q $AMREPO/programs/$arch-apps -P $AMPATH && echo -e "$(cat $AMPATH/$arch-apps | awk -v FS="(◆ | : )" '{print $2}')" >> $AMPATH/list
 	cd $AMPATH && cat options >> list 2>/dev/null
 	MESSAGE=$(echo " YOU HAVE INSTALLED $(cd /opt && find -name 'remove' -printf "%h\n" 2>/dev/null | sort -u | wc -l) APPLICATIONS OUT OF $(grep -e "$" -c $AMPATH/$arch-apps) AVAILABLE")
@@ -448,46 +452,59 @@ case "$1" in
 	;;
 
   '-o'|'overwrite')
-    	if [ -n "$SUDO_COMMAND" ]; then echo -e "\n WARNING: You don't need to run the option '$1' with SUDO.\n"; exit; fi
-	while [ -n "$1" ]
-	do
-	rm -f $AMPATH/.cache/overwrite-args
-	echo $@ | tr ' ' '\n' >> $AMPATH/.cache/overwrite-args && echo STOP >> $AMPATH/.cache/overwrite-args
-	ARGS=$(tail +2 $AMPATH/.cache/overwrite-args)
-	for arg in $ARGS; do
-	for var in $arg; do
-	if [ $arg == STOP ]; then
-	exit
-	else
-	case $arg in
-	am) am -s; break;;
-	'') echo " Specify the name of a program to overwrite"; echo ""; break;;
-	*) if test -f /opt/$arg/remove; then
-		echo ""; read -p " Do you wish to overwrite this version of $arg with an old one (y,N)?" yn
-		case $yn in
-		[Yy]* ) echo ""; echo " Please, select a snapshot:"; sleep 1; echo ""; snaps=$(ls "$(xdg-user-dir USER)/.am-snapshots/$arg/" | sort -u); echo "$snaps"; echo ""
-			read -p " ENTER THE NAME OF THE SNAPSHOT?" response;
-			case $response in
-			'') echo ""; echo " NO SNAPSHOT SELECTED, OPERATION ABORTED!"; echo ""; exit;;
-			*) for var in $(echo $snaps); do
-				if [ -d $(xdg-user-dir USER)/.am-snapshots/$arg/$response ]; then
-					cp -r --backup=t $(xdg-user-dir USER)/.am-snapshots/$arg/$response/* /opt/$arg/
-	  				rm -R -f /opt/$arg/*~; echo ""; echo " RESTORE COMPLETED SUCCESSFULLY!"; echo ""; break;
+    	if [ -n "$SUDO_COMMAND" ]; then 
+		echo -e "\n WARNING: You don't need to run the option '$1' with SUDO.\n"; 
+		exit; 
+	fi
+	
+	while [ -n "$1" ]; do
+		rm -f $AMPATH/.cache/overwrite-args
+		echo $@ | tr ' ' '\n' >> $AMPATH/.cache/overwrite-args && echo STOP >> $AMPATH/.cache/overwrite-args
+		ARGS=$(tail +2 $AMPATH/.cache/overwrite-args)
+	
+		for arg in $ARGS; do
+			for var in $arg; do
+				if [ $arg == STOP ]; then
+					exit
 				else
-					echo ""; echo " NO SNAPSHOT SELECTED, RETRY!" >&2;
+					case $arg in
+					am) 
+						am -s; break;;
+					'') 
+						echo " Specify the name of a program to overwrite"; echo ""; break;;
+					*) 
+						if test -f /opt/$arg/remove; then
+							echo ""; read -p " Do you wish to overwrite this version of $arg with an old one (y,N)?" yn
+							case $yn in
+							[Yy]* ) 
+								echo ""; echo " Please, select a snapshot:"; sleep 1; echo ""; snaps=$(ls "$(xdg-user-dir USER)/.am-snapshots/$arg/" | sort -u); echo "$snaps"; echo ""
+								read -p " ENTER THE NAME OF THE SNAPSHOT?" response;
+
+								case $response in
+								'') 
+									echo ""; echo " NO SNAPSHOT SELECTED, OPERATION ABORTED!"; echo ""; exit;;
+								*) 
+									for var in $(echo $snaps); do
+										if [ -d $(xdg-user-dir USER)/.am-snapshots/$arg/$response ]; then
+											cp -r --backup=t $(xdg-user-dir USER)/.am-snapshots/$arg/$response/* /opt/$arg/
+	  										rm -R -f /opt/$arg/*~; echo ""; echo " RESTORE COMPLETED SUCCESSFULLY!"; echo ""; break;
+										else
+											echo ""; echo " NO SNAPSHOT SELECTED, RETRY!" >&2;
+										fi
+									done;;
+								esac;;
+							[Nn]*|* ) 
+								echo ""; echo " OPERATION ABORTED!"; echo ""; break;;	
+							esac
+						else
+							echo ""; echo " '$arg' is not a valid argument or is not installed."; echo ""; break;
+						fi
+					esac
 				fi
-				done;;
-			esac;;
-		[Nn]*|* ) echo ""; echo " OPERATION ABORTED!"; echo ""; break;;	
-		esac
-	else
-		echo ""; echo " '$arg' is not a valid argument or is not installed."; echo ""; break;
-	fi
-	esac
-	fi
+			done
+		done
 	done
-	done
-	done
+
 	shift
 	;;
 
