@@ -509,7 +509,11 @@ case "$1" in
 	;;
 
   '-q'|'query')
-    	if [ -n "$SUDO_COMMAND" ]; then echo -e "\n WARNING: You don't need to run the option '$1' with SUDO.\n"; exit; fi
+    	if [ -n "$SUDO_COMMAND" ]; then 
+		echo -e "\n WARNING: You don't need to run the option '$1' with SUDO.\n"; 
+		exit; 
+	fi
+
   	rm -R -f $AMPATH/$arch-apps $AMPATH/list && wget -q $AMREPO/programs/$arch-apps -P $AMPATH && echo -e "$(cat $AMPATH/$arch-apps | awk -v FS="(◆ | : )" '{print $2}')" >> $AMPATH/list
 	cd $AMPATH && cat options >> list
 	ARGS=$(echo "$@" | sed 's/-q //')
@@ -522,34 +526,39 @@ case "$1" in
 	;;
 
   '-r'|'remove')
-	while [ -n "$1" ]
-	do
-	rm -f $AMPATH/.cache/remove-args
-	echo $@ | tr ' ' '\n' >> $AMPATH/.cache/remove-args && echo STOP >> $AMPATH/.cache/remove-args
-	ARGS=$(tail +2 $AMPATH/.cache/remove-args)
-	for arg in $ARGS; do
-	for var in $arg; do
-	if [ $arg == STOP ]; then
-	exit
-	else
-	if ls /opt/$arg > /dev/null 2>&1; then
-	case $arg in
-	*) for var in $arg; do
-	sudo echo "" > /dev/null; read -p ' ◆ DO YOU WISH TO REMOVE "'$(echo $arg | tr a-z A-Z)'" (Y,n)?' yn
-		case $yn in
-		[Nn]* ) echo ' - "'$(echo $arg | tr a-z A-Z)'" HAS NOT BEEN REMOVED!'; echo ""; break;;
-		[Yy]*|* ) sudo /opt/$arg/remove && echo "" && echo ' ◆ "'$(echo $arg | tr a-z A-Z)'" HAS BEEN SUCCESSFULLY REMOVED!' && break; break;;
-	esac
-	done;;
-	esac
-	else
-	echo -e " ERROR: '$arg' is not a valid argument or is not installed! \n\n List of the installed programs / valid arguments:\n"
-	cd /opt && find -name 'remove' -printf "%h\n" 2>/dev/null | sort -u | xargs -n 1 basename; echo "" ; break;
-	fi
-	fi
+	while [ -n "$1" ]; do
+		rm -f $AMPATH/.cache/remove-args
+		echo $@ | tr ' ' '\n' >> $AMPATH/.cache/remove-args && echo STOP >> $AMPATH/.cache/remove-args
+		ARGS=$(tail +2 $AMPATH/.cache/remove-args)
+	
+		for arg in $ARGS; do
+			for var in $arg; do
+				if [ $arg == STOP ]; then
+					exit
+				else
+					if ls /opt/$arg > /dev/null 2>&1; then
+						case $arg in
+						*) 
+							for var in $arg; do
+								sudo echo "" > /dev/null; read -p ' ◆ DO YOU WISH TO REMOVE "'$(echo $arg | tr a-z A-Z)'" (Y,n)?' yn
+								
+								case $yn in
+								[Nn]* ) 
+									echo ' - "'$(echo $arg | tr a-z A-Z)'" HAS NOT BEEN REMOVED!'; echo ""; break;;
+								[Yy]*|* ) 
+									sudo /opt/$arg/remove && echo "" && echo ' ◆ "'$(echo $arg | tr a-z A-Z)'" HAS BEEN SUCCESSFULLY REMOVED!' && break; break;;
+								esac
+							done;;
+						esac
+					else
+						echo -e " ERROR: '$arg' is not a valid argument or is not installed! \n\n List of the installed programs / valid arguments:\n"
+						cd /opt && find -name 'remove' -printf "%h\n" 2>/dev/null | sort -u | xargs -n 1 basename; echo "" ; break;
+					fi
+				fi
+			done
+		done
 	done
-	done
-	done
+
 	shift
 	;;
 
