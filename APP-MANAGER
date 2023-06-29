@@ -593,7 +593,11 @@ case "$1" in
 	;;
 
   '-s'|'sync')
-    	if [ -n "$SUDO_COMMAND" ]; then echo -e "\n WARNING: You don't need to run the option '$1' with SUDO.\n"; exit; fi
+    	if [ -n "$SUDO_COMMAND" ]; then 
+		echo -e "\n WARNING: You don't need to run the option '$1' with SUDO.\n"; 
+		exit; 
+	fi
+	
   	rm -R -f $AMPATH/$arch-apps $AMPATH/list && wget -q $AMREPO/programs/$arch-apps -P $AMPATH && echo -e "$(cat $AMPATH/$arch-apps | awk -v FS="(◆ | : )" '{print $2}')" >> $AMPATH/list
 	cd $AMPATH && cat options >> list
 	echo ""; echo ' SYNCHRONIZING "AM" VERSION '$(am -v)'...'; sleep 0.5; echo "";
@@ -602,112 +606,135 @@ case "$1" in
 	;;
 
   '-t'|'template'|'convert')
-    	if [ -n "$SUDO_COMMAND" ]; then echo -e "\n WARNING: You don't need to run the option '$1' with SUDO.\n"; exit; fi
-	while [ -n "$1" ]
-	do
-	rm -f $AMPATH/.cache/template-args
-	echo $@ | tr ' ' '\n' >> $AMPATH/.cache/template-args && echo STOP >> $AMPATH/.cache/template-args
-	ARGS=$(tail +2 $AMPATH/.cache/template-args)
-	for arg in $ARGS; do
-	for var in $arg; do
-	if [ $arg == STOP ]; then
-	exit
-	else
-	case $arg in
-	*) for var in $arg
-	do
-	cd $(xdg-user-dir DESKTOP)
-	echo "##############################################################"; echo ""
-	echo ' Create templates for "'$arg'"
-	' | tr a-z A-Z
-	echo "--------------------------------------------------------------"; echo "" 
-	echo " EACH MODEL IS BASED ON A DIFFERENT METHOD OF BUILDING/UPDATING THE PROGRAM.
-	"
-	echo ' PLEASE, SELECT A TEMPLATE FOR "'$(echo $arg | tr a-z A-Z)'": 
-	'
-	echo '  0) APPIMAGE updatable with "appimageupdatetool"' | tr a-z A-Z
-	echo '  1) APPIMAGE updatable using a separated zsync file' | tr a-z A-Z
-	echo "  2) ANY ARCHIVE from github.com (always updatable)" | tr a-z A-Z
-	echo "  3) ANY ARCHIVE from AUR (always updatable)" | tr a-z A-Z
-	echo "  4) APPIMAGE, build your own with pkg2appimage and appimagetool" | tr a-z A-Z
-	echo "  5) APPIMAGE, build your own with pkg2appimage using a custom AppRun" | tr a-z A-Z
-	echo '  6) WEBAPP based on a Firefox profile (requires "firefox" in $PATH)' | tr a-z A-Z
-	echo "  7) APPIMAGE from github.com (always updatable)" | tr a-z A-Z
-	echo "  8) APPIMAGE from any website out there (for advanced users)" | tr a-z A-Z
-	echo "  9) APPIMAGE from the AUR (always updatable)" | tr a-z A-Z
-	echo "  10) ANY PROGRAM from any website (for advanced users)" | tr a-z A-Z
-	echo " "
-	read -r -p " WHAT KIND OF PROGRAM DO YOU WANT TO WRITE A SCRIPT FOR? : " response
-	case "$response" in
-    	# APPIMAGE UPDATABLE USING APPIMAGEUPDATETOOL
-    	0) mkdir -p ./am-scripts ./am-scripts/$arch ./am-scripts/WEBPAGE &&
-    		# DOWNLOAD THE TEMPLATE AND CONVERT THE ARGUMENT INTO A COMMAND
-    		wget -c -q $AMREPO/templates/AM-SAMPLE-for-appimageupdate -O ./am-scripts/$arch/$arg &&
-    		sed -i s/SAMPLE/$arg/g ./am-scripts/$arch/$arg &&
-    		# IF YOU CAN, USE A ONE-LINE COMMAND TO DOWNLOAD THE APPIMAGE
-    		read -r -ep " USE A ONE-LINE COMMAND TO DOWNLOAD THE LATEST APPIMAGE $(echo -e '\n :') " response
-    		case $response in
-			*) mv ./am-scripts/$arch/$arg ./am-scripts/$arch/$arg.old
-			sed -n '1,17p' ./am-scripts/$arch/$arg.old >> ./am-scripts/$arch/$arg
-			echo ''$response'' >> ./am-scripts/$arch/$arg
-			sed -n '19,105p' ./am-scripts/$arch/$arg.old >> ./am-scripts/$arch/$arg
-			rm -f ./am-scripts/$arch/$arg.old;;
-		esac   		
-    		# ADD THE URL TO THE MAIN PAGE OF THE WEBSITE
-		read -r -ep " ◆ ADD THE URL TO THE MAIN PAGE OF THE WEBSITE $(echo -e '\n : ')" RESPONSE
-		case "$RESPONSE" in
-		*) sed -i s#REPLACETHIS#$RESPONSE#g ./am-scripts/$arch/$arg
-		esac
-		echo "-----------------------------------------------------------------------"
-		# ADD A DESCRIPTION FOR THIS APPLICATION
-		read -r -ep " ◆ ADD A BRIEF DESCRIPTION FOR THIS APPLICATION $(echo -e '\n : ')" COMMENT
-		case "$COMMENT" in
-		*) 
-		# CREATE A WEBPAGE FOR https://portable-linux-apps.github.io CONTAINING ALL THE INFO ABOUT THIS APP
-		echo "# $(echo $arg | tr a-z A-Z)" >> ./am-scripts/WEBPAGE/$arg.md
-		echo -e "\n $COMMENT\n\n SITE: $RESPONSE\n\n | [Applications](https://portable-linux-apps.github.io/apps.html) | [Home](https://portable-linux-apps.github.io)\n | --- | --- |" >> ./am-scripts/WEBPAGE/$arg.md &&
-		# CREATE A NEW LINE FOR THE APPLICATION'S LIST
-		echo "◆ $arg : $COMMENT" >> ./am-scripts/list
-		esac
-		echo "-----------------------------------------------------------------------"
-		# END OF THIS FUNCTION
-		echo -e "\n All files are saved in $(xdg-user-dir DESKTOP)/am-scripts\n";;
-    	# APPIMAGE UPDATABLE USING ZSYNC
-    	1) mkdir -p ./am-scripts ./am-scripts/$arch ./am-scripts/WEBPAGE &&
-    		# DOWNLOAD THE TEMPLATE AND CONVERT THE ARGUMENT INTO A COMMAND
-    		wget -c -q $AMREPO/templates/AM-SAMPLE-for-zsync -O ./am-scripts/$arch/$arg &&
-    		sed -i s/SAMPLE/$arg/g ./am-scripts/$arch/$arg &&
-    		# IF YOU CAN, USE A ONE-LINE COMMAND TO DOWNLOAD THE APPIMAGE
-    		read -r -ep " USE A ONE-LINE COMMAND TO CHECK ONLY THE URL TO THE APPIMAGE $(echo -e '\n THE DEFAULT PROGRAM ASSIGNED TO DOWNLOAD THIS LINK WILL BE "WGET"\n USE YOUR BEST SKILLS TO GET THE URL OF THE LATEST VERSION AVAILABLE\n :') " response
-    		case $response in
-			*) mv ./am-scripts/$arch/$arg ./am-scripts/$arch/$arg.old
-			sed -n '1,3p' ./am-scripts/$arch/$arg.old >> ./am-scripts/$arch/$arg
-			echo 'URL=$('$response')' >> ./am-scripts/$arch/$arg
-			sed -n '5,36p' ./am-scripts/$arch/$arg.old >> ./am-scripts/$arch/$arg
-			echo 'URL=$('$response')' >> ./am-scripts/$arch/$arg
-			sed -n '38,118p' ./am-scripts/$arch/$arg.old >> ./am-scripts/$arch/$arg
-			rm -f ./am-scripts/$arch/$arg.old;;
-		esac 	  
-    		# ADD THE URL TO THE MAIN PAGE OF THE WEBSITE
-		read -r -ep " ◆ ADD THE URL TO THE MAIN PAGE OF THE WEBSITE $(echo -e '\n : ')" RESPONSE
-		case "$RESPONSE" in
-		*) sed -i s#REPLACETHIS#$RESPONSE#g ./am-scripts/$arch/$arg
-		esac
-		echo "-----------------------------------------------------------------------"
-		# ADD A DESCRIPTION FOR THIS APPLICATION
-		read -r -ep " ◆ ADD A BRIEF DESCRIPTION FOR THIS APPLICATION $(echo -e '\n : ')" COMMENT
-		case "$COMMENT" in
-		*) 
-		# CREATE A WEBPAGE FOR https://portable-linux-apps.github.io CONTAINING ALL THE INFO ABOUT THIS APP
-		echo "# $(echo $arg | tr a-z A-Z)" >> ./am-scripts/WEBPAGE/$arg.md
-		echo -e "\n $COMMENT\n\n SITE: $RESPONSE\n\n | [Applications](https://portable-linux-apps.github.io/apps.html) | [Home](https://portable-linux-apps.github.io)\n | --- | --- |" >> ./am-scripts/WEBPAGE/$arg.md &&
-		# CREATE A NEW LINE FOR THE APPLICATION'S LIST
-		echo "◆ $arg : $COMMENT" >> ./am-scripts/list
-		esac
-		echo "-----------------------------------------------------------------------"
-		# END OF THIS FUNCTION
-		echo -e "\n All files are saved in $(xdg-user-dir DESKTOP)/am-scripts\n";;
-    	# DOWNLOAD ANY ARCHIVE FROM GITHUB
+    	if [ -n "$SUDO_COMMAND" ]; then 
+		echo -e "\n WARNING: You don't need to run the option '$1' with SUDO.\n"; 
+		exit; 
+	fi
+	
+	while [ -n "$1" ]; do
+			rm -f $AMPATH/.cache/template-args
+			echo $@ | tr ' ' '\n' >> $AMPATH/.cache/template-args && echo STOP >> $AMPATH/.cache/template-args
+			ARGS=$(tail +2 $AMPATH/.cache/template-args)
+	
+			for arg in $ARGS; do
+				for var in $arg; do
+					if [ $arg == STOP ]; then
+						exit
+					else
+						case $arg in
+						*) 
+							for var in $arg; do
+								cd $(xdg-user-dir DESKTOP)
+								echo "##############################################################"; echo ""
+								echo ' Create templates for "'$arg'"
+								' | tr a-z A-Z
+								echo "--------------------------------------------------------------"; echo "" 
+								echo " EACH MODEL IS BASED ON A DIFFERENT METHOD OF BUILDING/UPDATING THE PROGRAM.
+								"
+								echo ' PLEASE, SELECT A TEMPLATE FOR "'$(echo $arg | tr a-z A-Z)'": 
+								'
+								echo '  0) APPIMAGE updatable with "appimageupdatetool"' | tr a-z A-Z
+								echo '  1) APPIMAGE updatable using a separated zsync file' | tr a-z A-Z
+								echo "  2) ANY ARCHIVE from github.com (always updatable)" | tr a-z A-Z
+								echo "  3) ANY ARCHIVE from AUR (always updatable)" | tr a-z A-Z
+								echo "  4) APPIMAGE, build your own with pkg2appimage and appimagetool" | tr a-z A-Z
+								echo "  5) APPIMAGE, build your own with pkg2appimage using a custom AppRun" | tr a-z A-Z
+								echo '  6) WEBAPP based on a Firefox profile (requires "firefox" in $PATH)' | tr a-z A-Z
+								echo "  7) APPIMAGE from github.com (always updatable)" | tr a-z A-Z
+								echo "  8) APPIMAGE from any website out there (for advanced users)" | tr a-z A-Z
+								echo "  9) APPIMAGE from the AUR (always updatable)" | tr a-z A-Z
+								echo "  10) ANY PROGRAM from any website (for advanced users)" | tr a-z A-Z
+								echo " "
+								read -r -p " WHAT KIND OF PROGRAM DO YOU WANT TO WRITE A SCRIPT FOR? : " response
+								
+								case "$response" in
+    								# APPIMAGE UPDATABLE USING APPIMAGEUPDATETOOL
+    								0) 
+									mkdir -p ./am-scripts ./am-scripts/$arch ./am-scripts/WEBPAGE &&
+    									# DOWNLOAD THE TEMPLATE AND CONVERT THE ARGUMENT INTO A COMMAND
+    									wget -c -q $AMREPO/templates/AM-SAMPLE-for-appimageupdate -O ./am-scripts/$arch/$arg &&
+    									sed -i s/SAMPLE/$arg/g ./am-scripts/$arch/$arg &&
+    									# IF YOU CAN, USE A ONE-LINE COMMAND TO DOWNLOAD THE APPIMAGE
+    									read -r -ep " USE A ONE-LINE COMMAND TO DOWNLOAD THE LATEST APPIMAGE $(echo -e '\n :') " response
+    									
+									case $response in
+									*) 
+										mv ./am-scripts/$arch/$arg ./am-scripts/$arch/$arg.old
+										sed -n '1,17p' ./am-scripts/$arch/$arg.old >> ./am-scripts/$arch/$arg
+										echo ''$response'' >> ./am-scripts/$arch/$arg
+										sed -n '19,105p' ./am-scripts/$arch/$arg.old >> ./am-scripts/$arch/$arg
+										rm -f ./am-scripts/$arch/$arg.old;;
+									esac   		
+    									
+									# ADD THE URL TO THE MAIN PAGE OF THE WEBSITE
+									read -r -ep " ◆ ADD THE URL TO THE MAIN PAGE OF THE WEBSITE $(echo -e '\n : ')" RESPONSE
+				
+									case "$RESPONSE" in
+									*) 
+										sed -i s#REPLACETHIS#$RESPONSE#g ./am-scripts/$arch/$arg
+									esac
+		
+									echo "-----------------------------------------------------------------------"
+									# ADD A DESCRIPTION FOR THIS APPLICATION
+									read -r -ep " ◆ ADD A BRIEF DESCRIPTION FOR THIS APPLICATION $(echo -e '\n : ')" COMMENT
+		
+									case "$COMMENT" in
+									*) 
+										# CREATE A WEBPAGE FOR https://portable-linux-apps.github.io CONTAINING ALL THE INFO ABOUT THIS APP
+										echo "# $(echo $arg | tr a-z A-Z)" >> ./am-scripts/WEBPAGE/$arg.md
+										echo -e "\n $COMMENT\n\n SITE: $RESPONSE\n\n | [Applications](https://portable-linux-apps.github.io/apps.html) | [Home](https://portable-linux-apps.github.io)\n | --- | --- |" >> ./am-scripts/WEBPAGE/$arg.md &&
+										# CREATE A NEW LINE FOR THE APPLICATION'S LIST
+										echo "◆ $arg : $COMMENT" >> ./am-scripts/list
+									esac
+
+									echo "-----------------------------------------------------------------------"
+									# END OF THIS FUNCTION
+									echo -e "\n All files are saved in $(xdg-user-dir DESKTOP)/am-scripts\n";;
+    									# APPIMAGE UPDATABLE USING ZSYNC
+    								1) 
+									mkdir -p ./am-scripts ./am-scripts/$arch ./am-scripts/WEBPAGE &&
+    									# DOWNLOAD THE TEMPLATE AND CONVERT THE ARGUMENT INTO A COMMAND
+    									wget -c -q $AMREPO/templates/AM-SAMPLE-for-zsync -O ./am-scripts/$arch/$arg &&
+    									sed -i s/SAMPLE/$arg/g ./am-scripts/$arch/$arg &&
+    									# IF YOU CAN, USE A ONE-LINE COMMAND TO DOWNLOAD THE APPIMAGE
+    									read -r -ep " USE A ONE-LINE COMMAND TO CHECK ONLY THE URL TO THE APPIMAGE $(echo -e '\n THE DEFAULT PROGRAM ASSIGNED TO DOWNLOAD THIS LINK WILL BE "WGET"\n USE YOUR BEST SKILLS TO GET THE URL OF THE LATEST VERSION AVAILABLE\n :') " response
+    		
+									case $response in
+									*) 
+										mv ./am-scripts/$arch/$arg ./am-scripts/$arch/$arg.old
+										sed -n '1,3p' ./am-scripts/$arch/$arg.old >> ./am-scripts/$arch/$arg
+										echo 'URL=$('$response')' >> ./am-scripts/$arch/$arg
+										sed -n '5,36p' ./am-scripts/$arch/$arg.old >> ./am-scripts/$arch/$arg
+										echo 'URL=$('$response')' >> ./am-scripts/$arch/$arg
+										sed -n '38,118p' ./am-scripts/$arch/$arg.old >> ./am-scripts/$arch/$arg
+										rm -f ./am-scripts/$arch/$arg.old;;
+									esac
+
+    									# ADD THE URL TO THE MAIN PAGE OF THE WEBSITE
+									read -r -ep " ◆ ADD THE URL TO THE MAIN PAGE OF THE WEBSITE $(echo -e '\n : ')" RESPONSE
+		
+									case "$RESPONSE" in
+									*) 
+										sed -i s#REPLACETHIS#$RESPONSE#g ./am-scripts/$arch/$arg
+									esac
+		
+									echo "-----------------------------------------------------------------------"
+									# ADD A DESCRIPTION FOR THIS APPLICATION
+									read -r -ep " ◆ ADD A BRIEF DESCRIPTION FOR THIS APPLICATION $(echo -e '\n : ')" COMMENT
+		
+									case "$COMMENT" in
+									*) 
+										# CREATE A WEBPAGE FOR https://portable-linux-apps.github.io CONTAINING ALL THE INFO ABOUT THIS APP
+										echo "# $(echo $arg | tr a-z A-Z)" >> ./am-scripts/WEBPAGE/$arg.md
+										echo -e "\n $COMMENT\n\n SITE: $RESPONSE\n\n | [Applications](https://portable-linux-apps.github.io/apps.html) | [Home](https://portable-linux-apps.github.io)\n | --- | --- |" >> ./am-scripts/WEBPAGE/$arg.md &&
+										# CREATE A NEW LINE FOR THE APPLICATION'S LIST
+										echo "◆ $arg : $COMMENT" >> ./am-scripts/list
+									esac
+										
+									echo "-----------------------------------------------------------------------"
+									# END OF THIS FUNCTION
+									echo -e "\n All files are saved in $(xdg-user-dir DESKTOP)/am-scripts\n";;
+    									# DOWNLOAD ANY ARCHIVE FROM GITHUB
     	2) mkdir -p ./am-scripts ./am-scripts/$arch ./am-scripts/WEBPAGE &&
     		# DOWNLOAD THE TEMPLATE AND CONVERT THE ARGUMENT INTO A COMMAND
     		wget -c -q $AMREPO/templates/AM-SAMPLE-GitHub-generic -O ./am-scripts/$arch/$arg &&
