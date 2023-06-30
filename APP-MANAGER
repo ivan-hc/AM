@@ -1269,43 +1269,52 @@ case "$1" in
 	;;
 
   '-u'|'-U'|'update') 
-    	if [ -n "$SUDO_COMMAND" ]; then echo -e "\n WARNING: You don't need to run the option '$1' with SUDO.\n"; exit; fi
-	while [ -n "$1" ]
-	do
-	case $2 in
-	'') echo ""; echo -e ' "AM" CAN MANAGE UPDATES FOR THE FOLLOWING PROGRAMS: \n'
-  		cd /opt && find -name 'AM-updater' -printf " %h\n" 2>/dev/null | sort -u | xargs -n 1 basename 2>/dev/null
-		echo -e '\n ALL OTHERS ARE FIXED VERSIONS OR CAN MANAGE UPDATES BY THEMSELF'; sleep 0.1
-		echo -e "\n THE UPDATE VERIFICATION PROCESS IS IN PROGRESS, PLEASE WAIT..."; sleep 0.2; echo -e "\n-----------------------------------------------------------------------"
-		echo -e " >> START OF ALL PROCESSES <<\n-----------------------------------------------------------------------"
-		for f in /opt/*/; do 
-			cd $f 2>/dev/null && 
-			if test -f ./AM-updater; then
-				start=$(date +%s); $(sh -x ./AM-updater > /dev/null 2>&1) | echo -ne ' Updating "'$(echo $f | cut -c 5- | tr -d '/')'"...\r'; end=$(date +%s)
-				echo -e " ◆ $(echo $f | cut -c 5- | tr -d '/' | tr a-z A-Z) is updated, $(($end-$start)) seconds elapsed! \n"
-			else
-				echo ""  > /dev/null 2>&1
-			fi
+    	if [ -n "$SUDO_COMMAND" ]; then 
+		echo -e "\n WARNING: You don't need to run the option '$1' with SUDO.\n"; 
+		exit; 
+	fi
+
+	while [ -n "$1" ]; do
+		case $2 in
+		'') 
+			echo ""; echo -e ' "AM" CAN MANAGE UPDATES FOR THE FOLLOWING PROGRAMS: \n'
+  			cd /opt && find -name 'AM-updater' -printf " %h\n" 2>/dev/null | sort -u | xargs -n 1 basename 2>/dev/null
+			echo -e '\n ALL OTHERS ARE FIXED VERSIONS OR CAN MANAGE UPDATES BY THEMSELF'; sleep 0.1
+			echo -e "\n THE UPDATE VERIFICATION PROCESS IS IN PROGRESS, PLEASE WAIT..."; sleep 0.2; echo -e "\n-----------------------------------------------------------------------"
+			echo -e " >> START OF ALL PROCESSES <<\n-----------------------------------------------------------------------"
+
+			for f in /opt/*/; do 
+				cd $f 2>/dev/null && 
+				if test -f ./AM-updater; then
+					start=$(date +%s); $(sh -x ./AM-updater > /dev/null 2>&1) | echo -ne ' Updating "'$(echo $f | cut -c 5- | tr -d '/')'"...\r'; end=$(date +%s)
+					echo -e " ◆ $(echo $f | cut -c 5- | tr -d '/' | tr a-z A-Z) is updated, $(($end-$start)) seconds elapsed! \n"
+				else
+					echo ""  > /dev/null 2>&1
+				fi
 			done
+
 			rm -R -f $AMPATH/.cache/* /opt/*/tmp; echo "-----------------------------------------------------------------------"
 			am -s 
 			echo -e "-----------------------------------------------------------------------\n >> END OF ALL PROCESSES << \n-----------------------------------------------------------------------\n"; sleep 0.2
-		echo -e ' ALL THE PROGRAMS MANAGED BY "AM" ARE UPDATED! \n'
-		exit;;
-	*) if test -f /opt/$2/AM-updater; then
-		start=$(date +%s); /opt/$2/AM-updater > /dev/null 2>&1 | echo -ne "\n UPDATING $(echo $2 | tr a-z A-Z)\r"; end=$(date +%s)
-		echo -e " ◆ $(echo $2 | tr a-z A-Z) is updated, $(($end-$start)) seconds elapsed! \n" && break
-	else
-		echo -e '\n "AM" CANNOT MANAGE UPDATES FOR "'$(echo $2 | tr a-z A-Z)'"'
-		UPDATERS=$(cd /opt/$2 2>/dev/null && find . -name "*update*" -print 2>/dev/null)
-		if [ -n "$UPDATERS" ]; then
-			echo ' This program probably includes its own update system!'
-		else
-			break
-		fi
-		exit
-	fi
-	esac
+			echo -e ' ALL THE PROGRAMS MANAGED BY "AM" ARE UPDATED! \n'
+			exit;;
+		*) 
+			if test -f /opt/$2/AM-updater; then
+				start=$(date +%s); /opt/$2/AM-updater > /dev/null 2>&1 | echo -ne "\n UPDATING $(echo $2 | tr a-z A-Z)\r"; end=$(date +%s)
+				echo -e " ◆ $(echo $2 | tr a-z A-Z) is updated, $(($end-$start)) seconds elapsed! \n" && break
+			else
+				echo -e '\n "AM" CANNOT MANAGE UPDATES FOR "'$(echo $2 | tr a-z A-Z)'"'
+				UPDATERS=$(cd /opt/$2 2>/dev/null && find . -name "*update*" -print 2>/dev/null)
+		
+				if [ -n "$UPDATERS" ]; then
+					echo ' This program probably includes its own update system!'
+				else
+					break
+				fi
+	
+				exit
+			fi
+		esac
 	shift
 	done
 	;;
