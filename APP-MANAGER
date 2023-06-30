@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
-AMPATH="/opt/am"
+APPSPATH="/opt"
+AMPATH="$APPSPATH/am"
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main"
 arch=$(printf '%s\n' "$HOSTTYPE")
 currentuser=$(printf '%s\n' "$USER")
@@ -176,8 +177,8 @@ case "$1" in
 							sed -i '1,${ /^\s*#/ d; /^\s*!/ d; /\[Applications]/d; /\ --- /d; }' "$arg.md";
 							printf "%s\n" " PACKAGE: $(echo $arg | tr a-z A-Z)";
 
-							if test -f "/opt/$arg/remove"; then 
-								printf "%s\n" " STATUS: INSTALLED, ABOUT $(du -sm /opt/$arg | cut -f1) MB OF DISK SPACE IN USE";
+							if test -f "$APPSPATH/$arg/remove"; then 
+								printf "%s\n" " STATUS: INSTALLED, ABOUT $(du -sm $APPSPATH/$arg | cut -f1) MB OF DISK SPACE IN USE";
 							else 
 								printf "%s\n" " STATUS: NOT INSTALLED";
 							fi
@@ -216,12 +217,12 @@ case "$1" in
 					'') 
 						echo " Specify the name of a program to back up"; echo ""; exit;;
 					*) 
-						if test -f /opt/$arg/remove; then
+						if test -f $APPSPATH/$arg/remove; then
 							echo ""; read -p " Do you wish to backup the current version of $arg (y,N)?" yn
 					
 							case $yn in
 							[Yy]* ) 
-								mkdir -p "$(xdg-user-dir USER)/.am-snapshots/$arg"; cp -r /opt/$arg "$(xdg-user-dir USER)/.am-snapshots/$arg/$(date +%F-%X)"; echo ""; echo " SAVED in $(xdg-user-dir USER)/.am-snapshots/$arg"; echo "" ; break;;
+								mkdir -p "$(xdg-user-dir USER)/.am-snapshots/$arg"; cp -r $APPSPATH/$arg "$(xdg-user-dir USER)/.am-snapshots/$arg/$(date +%F-%X)"; echo ""; echo " SAVED in $(xdg-user-dir USER)/.am-snapshots/$arg"; echo "" ; break;;
 							[Nn]*|* ) 
 								echo ""; echo " OPERATION ABORTED!"; echo ""; break;;	
 							esac
@@ -248,7 +249,7 @@ case "$1" in
 		echo -ne " $i\r" && sleep 0.0001; 
 	done
 
-  	rm -R -f $AMPATH/appdb; rm -R -f $AMPATH/.cache/*; rm -R -f /opt/*/tmp; echo -e "\n DONE!\n"
+  	rm -R -f $AMPATH/appdb; rm -R -f $AMPATH/.cache/*; rm -R -f $APPSPATH/*/tmp; echo -e "\n DONE!\n"
 	;;
 
   '-d'|'download')
@@ -305,9 +306,9 @@ case "$1" in
 		exit; 
 	fi
 
-  	echo ""; echo $(echo "YOU HAVE INSTALLED "; cd /opt && find . -type f -name 'remove' 2>/dev/null | sed -r 's|/[^/]+$||' | sort | uniq | wc -l;
+  	echo ""; echo $(echo "YOU HAVE INSTALLED "; cd $APPSPATH && find . -type f -name 'remove' 2>/dev/null | sed -r 's|/[^/]+$||' | sort | uniq | wc -l;
   	echo " STANDALONE PROGRAMS MANAGED BY THE 'AM' COMMAND:"); echo "";
-  	cd /opt && find -name 'remove' -printf "%h\n" 2>/dev/null | sort -u | echo $(xargs -n 1 basename 2> /dev/null) | du -sh $(find . -type f -name 'remove' 2>/dev/null | sed -r 's|/[^/]+$||' | sort | uniq | cut -c 3-) | awk '{ print " ◆ "$2 " - " $1"iB of disk space used"}' | grep -w -v "◆ ."; echo "" 
+  	cd $APPSPATH && find -name 'remove' -printf "%h\n" 2>/dev/null | sort -u | echo $(xargs -n 1 basename 2> /dev/null) | du -sh $(find . -type f -name 'remove' 2>/dev/null | sed -r 's|/[^/]+$||' | sort | uniq | cut -c 3-) | awk '{ print " ◆ "$2 " - " $1"iB of disk space used"}' | grep -w -v "◆ ."; echo "" 
 	;;
 
   '-H'|'--home')
@@ -326,7 +327,7 @@ case "$1" in
 				if [ $arg == STOP ]; then
 					exit
 				else
-					cd /opt
+					cd $APPSPATH
 					if ! test -d ./$arg; then
 						echo ' ERROR: "'$arg'" is not installed'
 					else
@@ -339,11 +340,11 @@ case "$1" in
     								./$arg --appimage-extract AppRun > /dev/null 2>&1
     								if test -f ./squashfs-root/AppRun; then
     									mkdir -p ./$arg.home
-    									echo ' Setting $HOME to /opt/'$arg'/'$arg'.home for this AppImage'
+    									echo ' Setting $HOME to '$APPSPATH'/'$arg'/'$arg'.home for this AppImage'
     									rm -R -f ./squashfs-root; break
     								elif test -h ./squashfs-root/AppRun; then
     									mkdir -p ./$arg.home
-    									echo ' Setting $HOME to /opt/'$arg'/'$arg'.home for this AppImage'
+    									echo ' Setting $HOME to '$APPSPATH'/'$arg'/'$arg'.home for this AppImage'
     									rm -R -f ./squashfs-root; break
     								else
     									echo ' ERROR: "'$arg'" is NOT an AppImage'; break
@@ -386,7 +387,7 @@ case "$1" in
 					am) 
 						echo '"AM" IS ALREADY INSTALLED!'; break;;
 					*) 
-						if test -f /opt/$arg/remove; then
+						if test -f $APPSPATH/$arg/remove; then
 							echo ' ERROR: "'$arg'" is already installed, please try to remove it first' && echo ""; break;
 						else
 							if curl --output /dev/null --silent --head --fail $AMREPO/programs/$arch/$arg  1>/dev/null; then
@@ -411,13 +412,13 @@ case "$1" in
 										echo -ne " ◆ RUNNING THE INSTALLATION SCRIPT FOR $(echo '"'$arg'"' | tr a-z A-Z)... \r" && sleep 3 &&
 										sudo ./$arg | less -E && echo -ne "                                                                          \r" &&
 										echo -ne " ◆ CONFIGURING $(echo '"'$arg'"' | tr a-z A-Z)...\r" && sleep 2 && echo -ne "                                                                          \r" &&
-										sudo chown -R $currentuser /opt/$(cd /opt && ls -td * | head -1) 2> /dev/null
-										echo -ne " ◆ $(echo '"'$arg'"' | tr a-z A-Z) INSTALLED ($(du -sm /opt/$(cd /opt && ls -td * | head -1) | awk '{print $1}' ) MB OF DISK SPACE)\n"
+										sudo chown -R $currentuser $APPSPATH/$(cd $APPSPATH && ls -td * | head -1) 2> /dev/null
+										echo -ne " ◆ $(echo '"'$arg'"' | tr a-z A-Z) INSTALLED ($(du -sm $APPSPATH/$(cd $APPSPATH && ls -td * | head -1) | awk '{print $1}' ) MB OF DISK SPACE)\n"
 										sudo rm $AMPATH/.cache/$arg
 										unset $LATESTDIR
-										LATESTDIR=$(cd /opt && ls -td * | head -1)
+										LATESTDIR=$(cd $APPSPATH && ls -td * | head -1)
 
-										if test -f /opt/$LATESTDIR/remove; then
+										if test -f $APPSPATH/$LATESTDIR/remove; then
 											echo " ◆ $LATESTDIR" >> $AMPATH/.cache/installed &&
 											chown -R $currentuser $AMPATH/.cache/about 2> /dev/null;
 										else
@@ -446,7 +447,7 @@ case "$1" in
 
   	rm -R -f $AMPATH/$arch-apps $AMPATH/list && wget -q $AMREPO/programs/$arch-apps -P $AMPATH && echo -e "$(cat $AMPATH/$arch-apps | awk -v FS="(◆ | : )" '{print $2}')" >> $AMPATH/list
 	cd $AMPATH && cat options >> list 2>/dev/null
-	MESSAGE=$(echo " YOU HAVE INSTALLED $(cd /opt && find -name 'remove' -printf "%h\n" 2>/dev/null | sort -u | wc -l) APPLICATIONS OUT OF $(grep -e "$" -c $AMPATH/$arch-apps) AVAILABLE")
+	MESSAGE=$(echo " YOU HAVE INSTALLED $(cd $APPSPATH && find -name 'remove' -printf "%h\n" 2>/dev/null | sort -u | wc -l) APPLICATIONS OUT OF $(grep -e "$" -c $AMPATH/$arch-apps) AVAILABLE")
 	echo -e "\n$MESSAGE\n\n LIST OF THE $(grep -e "$" -c $AMPATH/$arch-apps) APPLICATIONS AVAILABLE IN THE 'AM' REPOSITORY:\n\n$(cat $AMPATH/$arch-apps)" | less -I
 	echo -e "\n $MESSAGE\n"
 	;;
@@ -473,7 +474,7 @@ case "$1" in
 					'') 
 						echo " Specify the name of a program to overwrite"; echo ""; break;;
 					*) 
-						if test -f /opt/$arg/remove; then
+						if test -f $APPSPATH/$arg/remove; then
 							echo ""; read -p " Do you wish to overwrite this version of $arg with an old one (y,N)?" yn
 							case $yn in
 							[Yy]* ) 
@@ -486,8 +487,8 @@ case "$1" in
 								*) 
 									for var in $(echo $snaps); do
 										if [ -d $(xdg-user-dir USER)/.am-snapshots/$arg/$response ]; then
-											cp -r --backup=t $(xdg-user-dir USER)/.am-snapshots/$arg/$response/* /opt/$arg/
-	  										rm -R -f /opt/$arg/*~; echo ""; echo " RESTORE COMPLETED SUCCESSFULLY!"; echo ""; break;
+											cp -r --backup=t $(xdg-user-dir USER)/.am-snapshots/$arg/$response/* $APPSPATH/$arg/
+	  										rm -R -f $APPSPATH/$arg/*~; echo ""; echo " RESTORE COMPLETED SUCCESSFULLY!"; echo ""; break;
 										else
 											echo ""; echo " NO SNAPSHOT SELECTED, RETRY!" >&2;
 										fi
@@ -536,7 +537,7 @@ case "$1" in
 				if [ $arg == STOP ]; then
 					exit
 				else
-					if ls /opt/$arg > /dev/null 2>&1; then
+					if ls $APPSPATH/$arg > /dev/null 2>&1; then
 						case $arg in
 						*) 
 							for var in $arg; do
@@ -546,13 +547,13 @@ case "$1" in
 								[Nn]* ) 
 									echo ' - "'$(echo $arg | tr a-z A-Z)'" HAS NOT BEEN REMOVED!'; echo ""; break;;
 								[Yy]*|* ) 
-									sudo /opt/$arg/remove && echo "" && echo ' ◆ "'$(echo $arg | tr a-z A-Z)'" HAS BEEN SUCCESSFULLY REMOVED!' && break; break;;
+									sudo $APPSPATH/$arg/remove && echo "" && echo ' ◆ "'$(echo $arg | tr a-z A-Z)'" HAS BEEN SUCCESSFULLY REMOVED!' && break; break;;
 								esac
 							done;;
 						esac
 					else
 						echo -e " ERROR: '$arg' is not a valid argument or is not installed! \n\n List of the installed programs / valid arguments:\n"
-						cd /opt && find -name 'remove' -printf "%h\n" 2>/dev/null | sort -u | xargs -n 1 basename; echo "" ; break;
+						cd $APPSPATH && find -name 'remove' -printf "%h\n" 2>/dev/null | sort -u | xargs -n 1 basename 2> /dev/null; echo "" ; break;
 					fi
 				fi
 			done
@@ -573,16 +574,16 @@ case "$1" in
 				if [ $arg == STOP ]; then
 					exit
 				else
-					if ls /opt/$arg > /dev/null 2>&1; then
+					if ls $APPSPATH/$arg > /dev/null 2>&1; then
 						case $arg in
 						*) 
 							for var in $arg; do
-								sudo /opt/$arg/remove && echo "" && echo ' ◆ "'$(echo $arg | tr a-z A-Z)'" HAS BEEN SUCCESSFULLY REMOVED!' && break; break
+								sudo $APPSPATH/$arg/remove && echo "" && echo ' ◆ "'$(echo $arg | tr a-z A-Z)'" HAS BEEN SUCCESSFULLY REMOVED!' && break; break
 							done;;
 						esac
 					else
 						echo -e " ERROR: '$arg' is not a valid argument or is not installed! \n\n List of the installed programs / valid arguments:\n"
-						cd /opt && find -name 'remove' -printf "%h\n" 2>/dev/null | sort -u | xargs -n 1 basename; echo "" ; break;
+						cd $APPSPATH && find -name 'remove' -printf "%h\n" 2>/dev/null | sort -u | xargs -n 1 basename 2> /dev/null; echo "" ; break;
 					fi
 				fi
 			done
@@ -1279,12 +1280,12 @@ case "$1" in
 		case $2 in
 		'') 
 			echo ""; echo -e ' "AM" CAN MANAGE UPDATES FOR THE FOLLOWING PROGRAMS: \n'
-  			cd /opt && find -name 'AM-updater' -printf " %h\n" 2>/dev/null | sort -u | xargs -n 1 basename 2>/dev/null
+  			cd $APPSPATH && find -name 'AM-updater' -printf " %h\n" 2>/dev/null | sort -u | xargs -n 1 basename 2>/dev/null
 			echo -e '\n ALL OTHERS ARE FIXED VERSIONS OR CAN MANAGE UPDATES BY THEMSELF'; sleep 0.1
 			echo -e "\n THE UPDATE VERIFICATION PROCESS IS IN PROGRESS, PLEASE WAIT..."; sleep 0.2; echo -e "\n-----------------------------------------------------------------------"
 			echo -e " >> START OF ALL PROCESSES <<\n-----------------------------------------------------------------------"
 
-			for f in /opt/*/; do 
+			for f in $APPSPATH/*/; do 
 				cd $f 2>/dev/null && 
 				if test -f ./AM-updater; then
 					start=$(date +%s); $(sh -x ./AM-updater > /dev/null 2>&1) | echo -ne ' Updating "'$(echo $f | cut -c 5- | tr -d '/')'"...\r'; end=$(date +%s)
@@ -1294,18 +1295,18 @@ case "$1" in
 				fi
 			done
 
-			rm -R -f $AMPATH/.cache/* /opt/*/tmp; echo "-----------------------------------------------------------------------"
+			rm -R -f $AMPATH/.cache/* $APPSPATH/*/tmp; echo "-----------------------------------------------------------------------"
 			am -s 
 			echo -e "-----------------------------------------------------------------------\n >> END OF ALL PROCESSES << \n-----------------------------------------------------------------------\n"; sleep 0.2
 			echo -e ' ALL THE PROGRAMS MANAGED BY "AM" ARE UPDATED! \n'
 			exit;;
 		*) 
-			if test -f /opt/$2/AM-updater; then
-				start=$(date +%s); /opt/$2/AM-updater > /dev/null 2>&1 | echo -ne "\n UPDATING $(echo $2 | tr a-z A-Z)\r"; end=$(date +%s)
+			if test -f $APPSPATH/$2/AM-updater; then
+				start=$(date +%s); $APPSPATH/$2/AM-updater > /dev/null 2>&1 | echo -ne "\n UPDATING $(echo $2 | tr a-z A-Z)\r"; end=$(date +%s)
 				echo -e " ◆ $(echo $2 | tr a-z A-Z) is updated, $(($end-$start)) seconds elapsed! \n" && break
 			else
 				echo -e '\n "AM" CANNOT MANAGE UPDATES FOR "'$(echo $2 | tr a-z A-Z)'"'
-				UPDATERS=$(cd /opt/$2 2>/dev/null && find . -name "*update*" -print 2>/dev/null)
+				UPDATERS=$(cd $APPSPATH/$2 2>/dev/null && find . -name "*update*" -print 2>/dev/null)
 		
 				if [ -n "$UPDATERS" ]; then
 					echo ' This program probably includes its own update system!'
@@ -1396,7 +1397,7 @@ case "$1" in
 	fi
 
 	while [ -n "$1" ]; do
-		if test -f /opt/$2/AM-updater; then
+		if test -f $APPSPATH/$2/AM-updater; then
 			case $2 in
 			*) 
 				for var in $2; do 
@@ -1404,7 +1405,7 @@ case "$1" in
 		
 					case $yn in
 					[Yy]* ) 
-						echo "";  mv /opt/$2/AM-updater /opt/$2/AM-LOCK 1>/dev/null &&
+						echo "";  mv $APPSPATH/$2/AM-updater $APPSPATH/$2/AM-LOCK 1>/dev/null &&
 						echo " $2 has been locked at current version!" && echo "" && exit; break;;
 					[Nn]*|* ) 
 						echo ""; echo " $2 is still updatable, exiting!"; echo ""; exit;; esac done;;
@@ -1424,7 +1425,7 @@ case "$1" in
 	fi
 
 	while [ -n "$1" ]; do
-		if test -f /opt/$2/AM-LOCK; then
+		if test -f $APPSPATH/$2/AM-LOCK; then
 			case $2 in
 			*) 
 			for var in $2; do 
@@ -1434,7 +1435,7 @@ case "$1" in
 				[Nn]* ) 
 					echo ""; echo " $2 is still locked at current version!"; echo ""; exit;;
 				[Yy]*|* ) 
-					echo "";  mv /opt/$2/AM-LOCK /opt/$2/AM-updater 1>/dev/null &&
+					echo "";  mv $APPSPATH/$2/AM-LOCK $APPSPATH/$2/AM-updater 1>/dev/null &&
 					echo ' '$2' can now receive updates, use the "am -u" command to update everything!' && echo "" && exit; break;; esac done;;
 				esac
 		else
@@ -1446,7 +1447,7 @@ case "$1" in
 	;;
 
   'version'|'-v'|'--version')
-  	echo "4.3.2~3";;
+  	echo "4.3.2~2";;
 
   *) exec $AMPATH/APP-MANAGER ;;
 
