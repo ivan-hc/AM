@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 
+AMCLI="am"
+AMCLIPATH=$AMCLI
+SUDOCOMMAND="sudo"
+
 APPSPATH="/opt"
-AMPATH="$APPSPATH/am"
+AMPATH="$APPSPATH/$AMCLI"
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main"
 arch=$(printf '%s\n' "$HOSTTYPE")
 currentuser=$(printf '%s\n' "$USER")
@@ -35,7 +39,8 @@ cat <<-HEREDOC >> "$AMPATH/options"
 HEREDOC
 
 case "$1" in
-  '') printf "\n USAGE: 'am [option]'\n        'am [option] [argument]'\n\n Run the 'am -h' command to find out more\n\n";;
+
+  '') printf "\n USAGE: '$AMCLI [option]'\n        '$AMCLI [option] [argument]'\n\n Run the '$AMCLI -h' command to find out more\n\n";;
 
   '-h'|'help') printf '
                     _____                    _____ 
@@ -74,9 +79,9 @@ case "$1" in
  
  				USAGE:
  
- 	am {OPTION}
+ 	'$AMCLI' {OPTION}
  
- 	am {OPTION} {PROGRAM}
+ 	'$AMCLI' {OPTION} {PROGRAM}
  ___________________________________________________________________________
  
  ###########################################################################
@@ -434,17 +439,6 @@ case "$1" in
 					exit
 				else
 					case $arg in
-					am) 
-						for var in $arg; do 
-							read -p ' Do you wish to open the main script of "AM" (y,N)?' yn
-
-							case $yn in
-							[Yy]* ) 
-								xdg-open $AMPATH/APP-MANAGER; break;;
-							[Nn]*|* ) 
-								break;;
-							esac
-						done;; 
 
 					*) 
 						if curl --output /dev/null --silent --head --fail $AMREPO/programs/$arch/$arg  1>/dev/null; then
@@ -454,7 +448,7 @@ case "$1" in
 							echo ""; echo '  "'$arg'" downloaded from "testing", the unstable branch ' | tr a-z A-Z; echo ""; echo ' WARNING! PROGRAMS COMING FROM "TESTING" ARE BROKEN, USE AT YOUR OWN RISK!'
 							cd $(xdg-user-dir DESKTOP); wget -q $AMREPO/testing/$arch/$arg; echo ""; break;
 						else
-							echo ""; echo ' "'$arg'" is NOT a valid argument, check the list (command "am -l")'; echo ""; break;
+							echo ""; echo ' "'$arg'" is NOT a valid argument, check the list (command "'$AMCLI' -l")'; echo ""; break;
 						fi
 					esac
 				fi
@@ -472,7 +466,7 @@ case "$1" in
 	fi
 
   	echo ""; echo $(echo "YOU HAVE INSTALLED "; cd $APPSPATH && find . -type f -name 'remove' 2>/dev/null | sed -r 's|/[^/]+$||' | sort | uniq | wc -l;
-  	echo " STANDALONE PROGRAMS MANAGED BY THE 'AM' COMMAND:"); echo "";
+  	echo " STANDALONE PROGRAMS MANAGED BY '$(echo $AMCLI | tr a-z A-Z)':"); echo "";
   	cd $APPSPATH && find -name 'remove' -printf "%h\n" 2>/dev/null | sort -u | echo $(xargs -n 1 basename 2> /dev/null) | du -sh $(find . -type f -name 'remove' 2>/dev/null | sed -r 's|/[^/]+$||' | sort | uniq | cut -c 3-) | awk '{ print " ◆ "$2 " - " $1"iB of disk space used"}' | grep -w -v "◆ ."; echo "" 
 	;;
 
@@ -527,7 +521,7 @@ case "$1" in
 
   '-i'|'install')
 	while [ -n "$1" ]; do
-		sudo echo ""
+		$SUDOCOMMAND echo ""
 		echo -e "-----------------------------------------------------------------------\n >> START OF ALL INSTALLATION PROCESSES <<\n-----------------------------------------------------------------------"
 		rm -f $AMPATH/.cache/install-args
 		rm -R -f $AMPATH/.cache/installed
@@ -550,7 +544,7 @@ case "$1" in
 					echo ""
 					case $arg in
 					am) 
-						echo '"AM" IS ALREADY INSTALLED!'; break;;
+						echo '"'$(echo $AMCLI | tr a-z A-Z)'" IS ALREADY INSTALLED!'; break;;
 					*) 
 						if test -f $APPSPATH/$arg/remove; then
 							echo ' ERROR: "'$arg'" is already installed, please try to remove it first' && echo ""; break;
@@ -575,11 +569,11 @@ case "$1" in
 										sed -i 's#programs/.icons/$APP.svg#programs/.icons/$APP.svg 2> /dev/null;#g' ./$arg
 										sed -i 's#*.desktop ./$APP.desktop#*.desktop ./$APP.desktop 2> /dev/null;#g' ./$arg
 										echo -ne " ◆ RUNNING THE INSTALLATION SCRIPT FOR $(echo '"'$arg'"' | tr a-z A-Z)... \r" && sleep 3 &&
-										sudo ./$arg | less -E && echo -ne "                                                                          \r" &&
+										$SUDOCOMMAND ./$arg | less -E && echo -ne "                                                                          \r" &&
 										echo -ne " ◆ CONFIGURING $(echo '"'$arg'"' | tr a-z A-Z)...\r" && sleep 2 && echo -ne "                                                                          \r" &&
-										sudo chown -R $currentuser $APPSPATH/$(cd $APPSPATH && ls -td * | head -1) 2> /dev/null
+										$SUDOCOMMAND chown -R $currentuser $APPSPATH/$(cd $APPSPATH && ls -td * | head -1) 2> /dev/null
 										echo -ne " ◆ $(echo '"'$arg'"' | tr a-z A-Z) INSTALLED ($(du -sm $APPSPATH/$(cd $APPSPATH && ls -td * | head -1) | awk '{print $1}' ) MB OF DISK SPACE)\n"
-										sudo rm $AMPATH/.cache/$arg
+										$SUDOCOMMAND rm $AMPATH/.cache/$arg
 										unset $LATESTDIR
 										LATESTDIR=$(cd $APPSPATH && ls -td * | head -1)
 
@@ -634,8 +628,8 @@ case "$1" in
 					exit
 				else
 					case $arg in
-					am) 
-						am -s; break;;
+					$AMCLI) 
+						$AMCLIPATH -s; break;;
 					'') 
 						echo " Specify the name of a program to overwrite"; echo ""; break;;
 					*) 
@@ -706,13 +700,13 @@ case "$1" in
 						case $arg in
 						*) 
 							for var in $arg; do
-								sudo echo "" > /dev/null; read -p ' ◆ DO YOU WISH TO REMOVE "'$(echo $arg | tr a-z A-Z)'" (Y,n)?' yn
+								$SUDOCOMMAND echo "" > /dev/null; read -p ' ◆ DO YOU WISH TO REMOVE "'$(echo $arg | tr a-z A-Z)'" (Y,n)?' yn
 								
 								case $yn in
 								[Nn]* ) 
 									echo ' - "'$(echo $arg | tr a-z A-Z)'" HAS NOT BEEN REMOVED!'; echo ""; break;;
 								[Yy]*|* ) 
-									sudo $APPSPATH/$arg/remove && echo "" && echo ' ◆ "'$(echo $arg | tr a-z A-Z)'" HAS BEEN SUCCESSFULLY REMOVED!' && break; break;;
+									$SUDOCOMMAND $APPSPATH/$arg/remove && echo "" && echo ' ◆ "'$(echo $arg | tr a-z A-Z)'" HAS BEEN SUCCESSFULLY REMOVED!' && break; break;;
 								esac
 							done;;
 						esac
@@ -743,7 +737,7 @@ case "$1" in
 						case $arg in
 						*) 
 							for var in $arg; do
-								sudo $APPSPATH/$arg/remove && echo "" && echo ' ◆ "'$(echo $arg | tr a-z A-Z)'" HAS BEEN SUCCESSFULLY REMOVED!' && break; break
+								$SUDOCOMMAND $APPSPATH/$arg/remove && echo "" && echo ' ◆ "'$(echo $arg | tr a-z A-Z)'" HAS BEEN SUCCESSFULLY REMOVED!' && break; break
 							done;;
 						esac
 					else
@@ -766,9 +760,9 @@ case "$1" in
 	
   	rm -R -f $AMPATH/$arch-apps $AMPATH/list && wget -q $AMREPO/programs/$arch-apps -P $AMPATH && echo -e "$(cat $AMPATH/$arch-apps | awk -v FS="(◆ | : )" '{print $2}')" >> $AMPATH/list
 	cd $AMPATH && cat options >> list
-	echo ""; echo ' SYNCHRONIZING "AM" VERSION '$(am -v)'...'; sleep 0.5; echo "";
+	echo ""; echo ' SYNCHRONIZING "'$(echo $AMCLI | tr a-z A-Z)'" VERSION '$($AMCLIPATH -v)'...'; sleep 0.5; echo "";
   	rm -R -f $AMPATH/.cache/* 1>/dev/null; cd $AMPATH/.cache; wget -q $AMREPO/APP-MANAGER && chmod a+x ./APP-MANAGER; cd ..;
-  	mv $AMPATH/.cache/APP-MANAGER $AMPATH; chmod 777 $AMPATH; echo ' THE "AM" SCRIPT IS NOW UPDATED TO THE '$(am -v)' VERSION! '; echo ""
+  	mv $AMPATH/.cache/APP-MANAGER $AMPATH; chmod 777 $AMPATH; echo ' THE "'$(echo $AMCLI | tr a-z A-Z)'" SCRIPT IS NOW UPDATED TO THE '$($AMCLIPATH -v)' VERSION! '; echo ""
 	;;
 
   '-t'|'template'|'convert')
@@ -1444,7 +1438,7 @@ case "$1" in
 	while [ -n "$1" ]; do
 		case $2 in
 		'') 
-			echo ""; echo -e ' "AM" CAN MANAGE UPDATES FOR THE FOLLOWING PROGRAMS: \n'
+			echo ""; echo -e ' "'$(echo $AMCLI | tr a-z A-Z)'" CAN MANAGE UPDATES FOR THE FOLLOWING PROGRAMS: \n'
   			cd $APPSPATH && find -name 'AM-updater' -printf " %h\n" 2>/dev/null | sort -u | xargs -n 1 basename 2>/dev/null
 			echo -e '\n ALL OTHERS ARE FIXED VERSIONS OR CAN MANAGE UPDATES BY THEMSELF'; sleep 0.1
 			echo -e "\n THE UPDATE VERIFICATION PROCESS IS IN PROGRESS, PLEASE WAIT..."; sleep 0.2; echo -e "\n-----------------------------------------------------------------------"
@@ -1461,16 +1455,16 @@ case "$1" in
 			done
 
 			rm -R -f $AMPATH/.cache/* $APPSPATH/*/tmp; echo "-----------------------------------------------------------------------"
-			am -s 
+			$AMCLIPATH -s 
 			echo -e "-----------------------------------------------------------------------\n >> END OF ALL PROCESSES << \n-----------------------------------------------------------------------\n"; sleep 0.2
-			echo -e ' ALL THE PROGRAMS MANAGED BY "AM" ARE UPDATED! \n'
+			echo -e ' ALL THE PROGRAMS MANAGED BY "'$(echo $AMCLI | tr a-z A-Z)'" ARE UPDATED! \n'
 			exit;;
 		*) 
 			if test -f $APPSPATH/$2/AM-updater; then
 				start=$(date +%s); $APPSPATH/$2/AM-updater > /dev/null 2>&1 | echo -ne "\n UPDATING $(echo $2 | tr a-z A-Z)\r"; end=$(date +%s)
 				echo -e " ◆ $(echo $2 | tr a-z A-Z) is updated, $(($end-$start)) seconds elapsed! \n" && break
 			else
-				echo -e '\n "AM" CANNOT MANAGE UPDATES FOR "'$(echo $2 | tr a-z A-Z)'"'
+				echo -e '\n "'$(echo $AMCLI | tr a-z A-Z)'" CANNOT MANAGE UPDATES FOR "'$(echo $2 | tr a-z A-Z)'"'
 				UPDATERS=$(cd $APPSPATH/$2 2>/dev/null && find . -name "*update*" -print 2>/dev/null)
 		
 				if [ -n "$UPDATERS" ]; then
@@ -1505,9 +1499,9 @@ case "$1" in
 			esac
 		else
 			echo ""; 
-			echo ' "'$2'" IS NOT A VALID ARGUMENT, PLEASE RUN THE "am -l" COMMAND'; echo ""; 
+			echo ' "'$2'" IS NOT A VALID ARGUMENT, PLEASE RUN THE "'$AMCLI' -l" COMMAND'; echo ""; 
 			echo ' TO SEE THE LIST OF ALL THE APPLICATIONS AVAILABLE FOR '$arch''; echo "";
-			echo ' OR START A SEARCH (WITH KEYWORDS) BY USING THE "am -q" COMMAND'; echo "";
+			echo ' OR START A SEARCH (WITH KEYWORDS) BY USING THE "'$AMCLI' -q" COMMAND'; echo "";
 			exit;
 		fi
 	done
@@ -1517,7 +1511,7 @@ case "$1" in
 
   '--disable-completion')
 	if test -f /etc/bash_completion.d/am-completion.sh; then
-		sudo rm -R -f /etc/bash_completion.d/am-completion.sh;
+		$SUDOCOMMAND rm -R -f /etc/bash_completion.d/am-completion.sh;
 	else
 		echo " Completion script is NOT enabled! "
 	fi
@@ -1546,9 +1540,9 @@ case "$1" in
 				 chmod a+x $AMPATH/remove; chown -R $currentuser $AMPATH/remove 2>/dev/null 
 
 				 if test -f /etc/bash_completion.d; then
-					sudo mv $AMPATH/am-completion.sh /etc/bash_completion.d/
+					$SUDOCOMMAND mv $AMPATH/am-completion.sh /etc/bash_completion.d/
 				 else
-					sudo mkdir -p /etc/bash_completion.d; sudo mv $AMPATH/am-completion.sh /etc/bash_completion.d/
+					$SUDOCOMMAND mkdir -p /etc/bash_completion.d; $SUDOCOMMAND mv $AMPATH/am-completion.sh /etc/bash_completion.d/
 				 fi;;
 		*) exit;;
 		esac 
@@ -1576,7 +1570,7 @@ case "$1" in
 						echo ""; echo " $2 is still updatable, exiting!"; echo ""; exit;; esac done;;
 					esac
 		else
-			echo ""; echo ' AM cannot manage updates for '$2', "AM-updater" file not found!'; echo ""; exit;
+			echo ""; echo ' '$(echo $AMCLI | tr a-z A-Z)' cannot manage updates for '$2', "AM-updater" file not found!'; echo ""; exit;
 		fi
 	done
 
@@ -1601,7 +1595,7 @@ case "$1" in
 					echo ""; echo " $2 is still locked at current version!"; echo ""; exit;;
 				[Yy]*|* ) 
 					echo "";  mv $APPSPATH/$2/AM-LOCK $APPSPATH/$2/AM-updater 1>/dev/null &&
-					echo ' '$2' can now receive updates, use the "am -u" command to update everything!' && echo "" && exit; break;; esac done;;
+					echo ' '$2' can now receive updates, use the "'$AMCLI' -u" command to update everything!' && echo "" && exit; break;; esac done;;
 				esac
 		else
 			echo ""; echo ' '$2' cannot be unlocked, "AM-LOCK" file not found!'; echo ""; exit;
@@ -1612,8 +1606,8 @@ case "$1" in
 	;;
 
   'version'|'-v'|'--version')
-  	echo "4.3.2~4";;
+  	echo "4.3.2~5";;
 
-  *) exec $AMPATH/APP-MANAGER ;;
+  *) exec $AMCLIPATH ;;
 
 esac
