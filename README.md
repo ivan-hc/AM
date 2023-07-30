@@ -29,7 +29,6 @@ For a version of "AM" that works locally and installs/removes the same programs 
 - [Install/update/remove programs without "AM"](#installupdateremove-programs-without-am)
 
 [Create your own script](#create-your-own-script)
-- [Helpers](#helpers)
 
 [Uninstall](#uninstall)
 
@@ -170,98 +169,237 @@ Or use "GIT":
 In both cases, the "INSTALL" script will create a dedicated /opt/am directory containing the ["APP-MANAGER"](https://github.com/ivan-hc/AM-application-manager/blob/main/APP-MANAGER) script (ie "AM" itself), a symlink for it in /usr/local/bin named `am` and the /opt/am/remove script needed to [uninstall](#uninstall) "AM" itself, if needed. A temporary folder named /opt/am/.cache will be created too, in wich each installation script or list of available applications (for your architecture) is downloaded.
 
 -----------------------------------------------------------------------------
-# Usage
-  `-a`, `about` Shows the basic information, links and source of each app:
-  
-    am -a $PROGRAM
------------------------------------------------------------------------------
-  `-b`, `backup` Save the current version of a program you are interested in, the snapshot will be stored in /home/$USER/.am-snapshots/$PROGRAM (see "-o"): 
-  
-    am -b $PROGRAM
------------------------------------------------------------------------------
-  `-c`, `clean` Removes all the unnecessary files:
-  
-    am -c
------------------------------------------------------------------------------
-  `-d`, `download` Download an installation script from the "AM" repository to your desktop without installing it:
-  
-    am -d $PROGRAM
------------------------------------------------------------------------------  
-  `-f`, `files` Shows the installed programs managed by "AM":
-  
-    am -f
------------------------------------------------------------------------------
-  `-h`, `help` Prints this message:
-  
-    am -h
------------------------------------------------------------------------------
-  `-H`, `--home` Setting $HOME to /opt/$PROGRAM/$PROGRAM.home, this command only works if $PROGRAM is an AppImage package:
-  
-    am --home $PROGRAM
------------------------------------------------------------------------------
-  `-i`, `install` Install a program. This will be downloader/created into a dedicated /opt/$PROGRAM directory (containing a script to remove it and  another one to update it), the command is linked to a $PATH and a launcher AM-$PROGRAM.desktop will be created in /usr/share/applications:
-  
-    [sudo] am -i $PROGRAM
------------------------------------------------------------------------------
-  `-l`, `list` Shows the list of apps available in the repository:
-  
-    am -l
------------------------------------------------------------------------------
-  `-o`, `overwrite` Overwrite the existing version of the program with a saved snapshot from /home/$USER/.am-snapshots/$PROGRAM (see "-b"):
-  
-    am -o $PROGRAM
------------------------------------------------------------------------------
-  `-q`, `query` Use one or more keywords to search for in the list of available applications:
-  
-    am -q $KEYWORD
------------------------------------------------------------------------------
-  `-r`, `remove` Removes the program and all the other files listed above using the instructions in /opt/$PROGRAM/remove. Confirmation is required (Y or N, default is Y):
-  
-    [sudo] am -r $PROGRAM
------------------------------------------------------------------------------
-  `-R` Removes the program and all the other files listed above using the instructions in /opt/$PROGRAM/remove, without asking:
-  
-    [sudo] am -R
------------------------------------------------------------------------------
-  `-s`, `sync` Updates "AM" to a more recent version:
-  
-    am -s
------------------------------------------------------------------------------
-  `-t`, `template` This option allows you to generate a custom script from a list of different templates that may be vary according to the kind of $PROGRAM you want to create/install/update. Once you choose a number, the script will download the template by renaming it using the argument "$PROGRAM" you provided above:
-  
-    am -t $PROGRAM
------------------------------------------------------------------------------
-  `-u`, `-U`, `update` Update all the installed programs:
-  
-    am -u
-   To update just one program:
 
-    am -u $PROGRAM
------------------------------------------------------------------------------
-  `-v`, `--version`, `version` Shows the version of "AM":
-  
-    am -v
------------------------------------------------------------------------------
-  `-w`, `web` Shows the URLs of the sites/sources of $PROGRAM:
-  
-    am -w $PROGRAM
------------------------------------------------------------------------------
-  `--disable-completion` Removes the /etc/bash_completion.d/am-completion.sh script previously created with the "[sudo] am --enable-completion" command:
-  
-    [sudo] am --disable-completion  
------------------------------------------------------------------------------
-  `--enable-completion` Create a bash completion script in /etc/bash_completion.d to complete a keyword with the TAB key using the names of all installable applications in the "AM" repository:
-  
-    [sudo] am --enable-completion
------------------------------------------------------------------------------
-  `lock` Lock the selected $PROGRAM to the current installed version, this only works if a dedicated "AM-updater" script exists:
-  
-    am lock $PROGRAM
------------------------------------------------------------------------------
-  `unlock` Unlock updates for the selected $PROGRAM. This option nulls "lock", the update file is renamed as "AM-updater" again, so that it can be intercepted when executing the "am -u" command (see "-u"):
-  
-    am unlock $PROGRAM
------------------------------------------------------------------------------
+# USAGE
+ 
+ `am {OPTION}`
+ 
+ `am {OPTION} {PROGRAM}`
+ ___________________________________________________________________________
+ 
+ ###########################################################################
+ ___________________________________________________________________________
+ 
+ OPTIONS 
+ 				
+ (standard, for both "AM" AND "APPMAN")
+ ___________________________________________________________________________
+ ___________________________________________________________________________
+ 
+ `-a`, `about`
+ 
+ SYNOPSIS:
+
+ `-a {PROGRAM}`
+ 
+ DESCRIPTION: 	Shows more info about one or more apps, all the pages are downloaded from https://portable-linux-apps.github.io
+ ___________________________________________________________________________
+ 
+ `-b`, `backup`
+ 
+ SYNOPSIS:
+
+ `-b {PROGRAM}`
+ 
+ DESCRIPTION:	Save the current version of one or more apps, each snapshot is stored into a dedicated directory, under $HOME/.am-snapshots/$PROGRAM
+ 
+ To restore the snapshots see the "-o" option.
+ ___________________________________________________________________________
+ 
+ `-c`, `clean`
+ 
+ SYNOPSIS:
+
+ `-c`
+ 
+ DESCRIPTION:	Removes all the unnecessary files and folders.
+ ___________________________________________________________________________
+ 
+ `-d`, `download`
+ 
+ SYNOPSIS:
+
+ `-d {PROGRAM}`
+ 
+ DESCRIPTION:	Download one or more installation scripts to your desktop.
+ ___________________________________________________________________________
+ 
+ `-f`, `files`
+ 
+ SYNOPSIS:
+
+ `-f`
+ 
+ DESCRIPTION:	Shows the list of all installed programs, with sizes.
+ ___________________________________________________________________________
+ 
+ `-h`, `help`
+ 
+ SYNOPSIS:
+
+ `-h`
+ 
+ DESCRIPTION:	Prints this message.
+ ___________________________________________________________________________
+ 
+ `-H`, `--home`
+ 
+ SYNOPSIS:
+
+ `-H {PROGRAM}`
+ 
+ DESCRIPTION:	Set a dedicated $HOME directory for one or more AppImages.
+ ___________________________________________________________________________
+ 
+ `-i`, `install`
+ 
+ SYNOPSIS:
+
+ `-i {PROGRAM}`
+ 
+ DESCRIPTION:	Install one or more programs.
+ ___________________________________________________________________________
+ 
+ `-l`, `list`
+ 
+ SYNOPSIS:
+
+ `-l`
+ 
+ DESCRIPTION:	Shows the list of all the apps available in the repository.
+ ___________________________________________________________________________
+ 
+ `-o`, `overwrite`
+ 
+ SYNOPSIS:
+
+ `-o {PROGRAM}`
+ 
+ DESCRIPTION:	Overwrite the existing version of the app with a snapshot saved previously (see the option "-b", above).
+ ___________________________________________________________________________
+ 
+ `-q`, `query`
+ 
+ SYNOPSIS:
+
+ `-q {KEYWORD}`
+ 
+ DESCRIPTION:	Can be used to search for keywords and terms in the list of available applications packages to display matches. This can be useful if you are looking for applications having a specific feature.
+ ___________________________________________________________________________
+ 
+ `-r`, `remove`
+ 
+ SYNOPSIS:
+
+ `-r {PROGRAM}`
+ 
+ DESCRIPTION:	Removes one or more apps, requires confirmation.
+ ___________________________________________________________________________
+ 
+ `-R`
+ 
+ SYNOPSIS:
+
+ `-R {PROGRAM}`
+ 
+ DESCRIPTION:	Removes one or more apps without asking.
+ ___________________________________________________________________________
+ 
+ `-s`, `sync`
+ 
+ SYNOPSIS:
+
+ `-s`
+ 
+ DESCRIPTION:	Updates this script to the latest version hosted.
+ ___________________________________________________________________________
+ 
+ `-t`, `template`
+ 
+ SYNOPSIS:
+
+ `-t {PROGRAM}`
+ 
+ DESCRIPTION:	This option allows you to generate a custom script from a list of different templates that may be vary according to the kind of app you want to upload to the "AM" repo, and the source where it is available.
+ ___________________________________________________________________________
+ 
+ `-u`, `-U`, `update`
+ 
+ SYNOPSIS:
+
+ `-u`
+ 
+ `-u {PROGRAM}`
+ 		
+ DESCRIPTION: Update all the apps or just one.
+ ___________________________________________________________________________
+ 
+ `-v`, `version`
+ 
+ SYNOPSIS:
+
+ `-v`
+ 
+ DESCRIPTION:	Shows the version.
+ ___________________________________________________________________________
+ 
+ `-w`, `web`
+ 
+ SYNOPSIS:
+
+ `-w`
+ 
+ DESCRIPTION:	Shows the URLs of the sites/sources of then app.
+ ___________________________________________________________________________
+ 
+ `--disable-completion`
+ 
+ SYNOPSIS:
+
+ `--disable-completion`
+ 
+ DESCRIPTION:	Disable bash-completion.
+ ___________________________________________________________________________
+ 
+ `--enable-completion`
+ 
+ SYNOPSIS:
+
+ `--enable-completion`
+ 
+ DESCRIPTION:	Enable bash-completion to complete a keyword with the "TAB" key, using the names of all installable applications available.
+ ___________________________________________________________________________
+ 
+ `lock`
+ 
+ SYNOPSIS:
+
+ `lock {PROGRAM}`
+ 
+ DESCRIPTION:	Lock the selected app to the current version installed, this only works if exists a dedicated "AM-updater" installed with the app.
+ ___________________________________________________________________________
+ 
+ `unlock`
+ 
+ SYNOPSIS:
+
+ `unlock {PROGRAM}`
+ 
+ DESCRIPTION:	Unlock updates for the selected program. This option nulls the option "lock" (see above).
+ ___________________________________________________________________________
+ ___________________________________________________________________________
+
+ EXTRA OPTIONS (only available for "APPMAN")
+ ___________________________________________________________________________
+
+ `conv`, `convert`
+ 
+ SYNOPSIS:
+
+ `conv {PROGRAM}`
+ 
+ DESCRIPTION:	Download the installation scripts for "AM" and converts them to rootless installation scripts that can be installed locally. 
+ ___________________________________________________________________________
 
 # Features
 ------------------------------------------------------------------------
