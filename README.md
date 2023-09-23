@@ -9,11 +9,12 @@ This repository contains "AM" and the full database of the installation scripts 
 
 To see the whole catalog of the apps available, visit [portable-linux-apps.github.io](https://portable-linux-apps.github.io/)
 
-For a version of "AM" that works locally and installs/removes the same programs without root privileges, see [AppMan](https://github.com/ivan-hc/AppMan).
+For a version of "AM" that works locally and installs/removes the same programs without root privileges, see [AppMan](https://github.com/ivan-hc/AppMan) or use te inbuilt option `--user` (jump to "[Use AM locally like AppMan does](#use-am-locally-like-appman-does)").
 
 ------------------------------------------------------------------------
 [Introducing "AM"](#introducing-am)
 - [Differences between "AM" and "AppMan"](#differences-between-am-and-appman)
+- [Use AM locally like AppMan does](#use-am-locally-like-appman-does)
 - [What programs can be installed](#what-programs-can-be-installed)
 - [How to update all programs, for real](#how-to-update-all-programs-for-real)
 - [Repository and Multiarchitecture](#repository-and-multiarchitecture)
@@ -78,6 +79,18 @@ Where `$PROGRAM` is the application we're going to install:
 For everything else, the controls and operation are always the same for both command line tools. The only thing that changes is that the installation scripts are written only for "AM", while "AppMan" uses the same scripts and includes commands that can modify them to make them work locally during the installation process.
 
 More details about AppMan on the official repository, at https://github.com/ivan-hc/AppMan
+
+-----------------------------------------------------------------------------
+## Use AM locally like AppMan does
+Since version 4.3.3-1 the new `--user` option allows you to create an alias to install and manage apps in your $HOME folder. When executing the `am --user` command you will be suggested an alias to use temporarily or if you want you can add it in your ~/.bashrc to make it permanent. "AppMan" will be used while still using the usual `am` command.
+
+This is a minor update for those who want to use the `am` command to install applications locally and who were not aware of AppMan, the AM clone.
+
+The new option does not immediately enable "AppMan Mode", instead it will show you an alias to use temporarily in the current session or to add to your ~/.bashrc to make it permanent:
+```
+alias am=/opt/am/appman
+```
+AppMan is downloaded to the AM's installation folder, but without affecting the existing installation.
 
 -----------------------------------------------------------------------------
 ## What programs can be installed
@@ -369,6 +382,14 @@ In both cases, the "INSTALL" script will create a dedicated /opt/am directory co
  DESCRIPTION:	Enable bash-completion to complete a keyword with the "TAB" key, using the names of all installable applications available.
  ___________________________________________________________________________
  
+ `--user`, `appman`
+ 
+ SYNOPSIS:
+
+ `--user`
+ 
+ DESCRIPTION:	Run "AM" as an unprivileged user making it act as "AppMan".
+ ___________________________________________________________________________ 
  `lock`
  
  SYNOPSIS:
