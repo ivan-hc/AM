@@ -28,6 +28,7 @@ For a version of "AM" that works locally and installs/removes the same programs 
 - [How to enable bash completion](#how-to-enable-bash-completion)
 - [Snapshots: backup your app and restore to a previous version](#snapshots-backup-your-app-and-restore-to-a-previous-version)
 - [Install/update/remove programs without "AM"](#installupdateremove-programs-without-am)
+- [Rollback](#rollback)
 
 [Create your own script](#create-your-own-script)
 
@@ -382,6 +383,15 @@ In both cases, the "INSTALL" script will create a dedicated /opt/am directory co
  DESCRIPTION:	Enable bash-completion to complete a keyword with the "TAB" key, using the names of all installable applications available.
  ___________________________________________________________________________
  
+ `--rollback`
+ 
+ SYNOPSIS:
+
+ `--rollback {PROGRAM}`
+ 
+ DESCRIPTION:	Download an older or specific version of the software you are interested in (only works with Github).
+ ___________________________________________________________________________ 
+ 
  `--user`, `appman`
  
  SYNOPSIS:
@@ -390,6 +400,7 @@ In both cases, the "INSTALL" script will create a dedicated /opt/am directory co
  
  DESCRIPTION:	Run "AM" as an unprivileged user making it act as "AppMan".
  ___________________________________________________________________________ 
+ 
  `lock`
  
  SYNOPSIS:
@@ -503,6 +514,14 @@ The most difficult step to overcome is certainly the number "3", given the great
 To uninstall "AM" just run the command:
 
 	am -r am
+
+------------------------------------------------------------------------
+# Rollback
+From version 4.4 it is possible to directly select from a list of URLs the version of the app that interests you most from the main source. Use the `--rollback` option in this mode:
+```
+am --rollback ${PROGRAM}
+```
+This only works with the apps hosted on Github.
 
 ------------------------------------------------------------------------	
 # Known issues
