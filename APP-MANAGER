@@ -36,6 +36,7 @@ cat <<-HEREDOC >> "$AMPATH/options"
 	--disable-completion
 	--enable-completion
 	--home
+	--rollback
 	--user
 HEREDOC
 
@@ -253,6 +254,15 @@ case "$1" in
  key, using the names of all installable applications available.
  ___________________________________________________________________________
 
+ --rollback
+ 
+ SYNOPSIS:	--rollback {PROGRAM}
+
+ DESCRIPTION:	Download an older or specific version of the software you 
+ 
+ are interested in (only works with Github).
+ ___________________________________________________________________________ 
+ 
  --user, appman
  
  SYNOPSIS:	--user
@@ -1610,6 +1620,45 @@ case "$1" in
 	fi
 	;;
 
+  '--rollback')
+  	if [ -n "$SUDO_COMMAND" ]; then 
+		echo -e "\n WARNING: You don't need to run the option '$1' with SUDO.\n"; 
+		exit; 
+	fi
+
+	case $2 in
+	'') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
+	esac
+
+	while [ -n "$1" ]; do
+		if test -f $APPSPATH/$2/AM-updater; then
+			if grep -q "api.github.com" $APPSPATH/$2/AM-updater; then
+				rm -f "$AMPATH/.cache/rollback-args";
+				REPO=$(grep -i "REPO=" $APPSPATH/$2/AM-updater | grep -o -P '(?<=").*(?=")')
+				printf "%s\n" "$(wget -q https://api.github.com/repos/$REPO/releases?per_page=100 -O - | grep browser_download_url | grep -v ".zsync" | grep -i appimage | cut -d '"' -f 4)" | tr ' ' '\n' >> "$AMPATH/.cache/rollback-args" &&
+				echo -e "-----------------------------------------------------------------------\nYou have chosen to roll back $2.\nRollback will be done from https://github.com/$REPO\n-----------------------------------------------------------------------"
+				printf "Select a URL from this menu (read carefully):\n-----------------------------------------------------------------------\n"; sleep 1;
+				select d in $(cat "$AMPATH/.cache/rollback-args"); do test -n "$d" && break; echo ">>> Invalid Selection"; done
+				cp $APPSPATH/$2/AM-updater $APPSPATH/$2/AM-rollback
+				sed -i 's/version0/#version0/g' $APPSPATH/$2/AM-rollback
+				sed -i '/show-progress/c\wget -q --show-progress '$d'' $APPSPATH/$2/AM-rollback
+				$APPSPATH/$2/AM-rollback
+				rm -f $APPSPATH/$2/AM-rollback
+				rm -f $APPSPATH/$2/version
+				echo $d >> $APPSPATH/$2/version
+				echo -e "\nROLLBACK SUCCESSFUL!"
+				exit
+			else
+				echo " The option '$1' only works for https://github.com"; exit
+			fi
+		else
+			echo ' No AM-updater available for '$2', cannot detect any URL!'; exit
+		fi
+	done
+
+	shift
+	;;
+
   '--user'|'appman')
   	RED='\033[0;31m'; LightBlue='\033[1;34m'
   	if test -f /opt/am/appman; then
@@ -1696,7 +1745,7 @@ case "$1" in
 	;;
 
   'version'|'-v'|'--version')
-  	echo "4.3.3-1";;
+  	echo "4.4";;
 
   *) exec $AMCLIPATH ;;
 
