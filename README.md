@@ -9,7 +9,7 @@ This repository contains "AM" and the full database of the installation scripts 
 
 To see the whole catalog of the apps available, visit [portable-linux-apps.github.io](https://portable-linux-apps.github.io/)
 
-For a version of "AM" that works locally and installs/removes the same programs without root privileges, see [AppMan](https://github.com/ivan-hc/AppMan) or use te inbuilt option `--user` (jump to "[Use AM locally like AppMan does](#use-am-locally-like-appman-does)").
+For a version of "AM" that works locally and installs/removes the same programs without root privileges, see [AppMan](https://github.com/ivan-hc/AppMan) or use the inbuilt option `--user` (jump to "[Use AM locally like AppMan does](#use-am-locally-like-appman-does)").
 
 ------------------------------------------------------------------------
 [Introducing "AM"](#introducing-am)
