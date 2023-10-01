@@ -207,7 +207,7 @@ In both cases, the "INSTALL" script will create a dedicated /opt/am directory co
  
  OPTIONS 
  				
- (standard, for both "AM" AND "APPMAN")
+ (standard, for both "AM" and "APPMAN")
  ___________________________________________________________________________
  ___________________________________________________________________________
  
