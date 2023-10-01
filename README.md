@@ -23,8 +23,8 @@ For a version of "AM" that works locally and installs/removes the same programs 
 [Installation](#installation)
 - [Recommended requirements](#recommended-requirements)
 - [For non-sudo users](#for-non-sudo-users)
-- [Proceeding](#proceeding)
 - [Note for users of immutable distributions](#note-for-users-of-immutable-distributions)
+- [Proceeding](#proceeding)
 
 [Usage](#usage)
 
@@ -159,18 +159,21 @@ If you are interested, you can deliberately join this project.
 -----------------------------------------------------------------------------
 
 # Installation
-#### Recommended requirements
-Normally the following packages are already installed on your system:
+### Recommended requirements
+A warning message will prevent you from using "AM" if the following packages are not installed on your system:
 - `binutils` and `coreutils`, contain core programs for GNU/Linux
 - `curl` and `wget`, needed to check URLs and download files
 - `grep` and `sed`, to check lists and edit/adapt files
 - `tar` and `unzip`, to extract various storage formats
 - `zsync`, about 10% of AppImages depend on this to be updated
 
-#### For non-sudo users
+### For non-sudo users
 "AM" requires `sudo` installed on your system by default, if for some reason you need to use commands like `doas` or whatever, just use "[AppMan](https://github.com/ivan-hc/AppMan)" instead.
 
-#### Proceeding
+### Note for users of immutable distributions
+App launchers (files with the .desktop extension) are installed in /usr/share/applications by default with the suffix "AM-". If your distribution is immutable, you may not have privileges to write to /usr/share. Use the `--user` option to "AM" and add the suggested alias in your ~/.bashrc file to use AppMan but using the `am` command (go back to "[Use AM locally like AppMan does](#use-am-locally-like-appman-does)", after the introduction).
+
+## Proceeding
 To install "AM" quickly, just copy/paste the following command:
 	
     wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/INSTALL && chmod a+x ./INSTALL && sudo ./INSTALL
@@ -183,9 +186,6 @@ Or use "GIT":
     sudo ./INSTALL
     
 In both cases, the "INSTALL" script will create a dedicated /opt/am directory containing the ["APP-MANAGER"](https://github.com/ivan-hc/AM-application-manager/blob/main/APP-MANAGER) script (ie "AM" itself), a symlink for it in /usr/local/bin named `am` and the /opt/am/remove script needed to [uninstall](#uninstall) "AM" itself, if needed. A temporary folder named /opt/am/.cache will be created too, in wich each installation script or list of available applications (for your architecture) is downloaded.
-
-#### Note for users of immutable distributions
-App launchers (files with the .desktop extension) are installed in /usr/share/applications by default with the suffix "AM-". If your distribution is immutable, you may not have privileges to write to /usr/share. Use the `--user` option to "AM" and add the suggested alias in your ~/.bashrc file to use AppMan but using the `am` command (go back to "[Use AM locally like AppMan does](#use-am-locally-like-appman-does)", after the introduction).
 
 -----------------------------------------------------------------------------
 
