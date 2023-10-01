@@ -21,7 +21,7 @@ For a version of "AM" that works locally and installs/removes the same programs 
 - [Comparison with other AppImage managers](#comparison-with-other-appimage-managers)
 
 [Installation](#installation)
-- [Recommended requirements](#recommended-requirements)
+- [Requirements](#requirements)
 - [For non-sudo users](#for-non-sudo-users)
 - [Note for users of immutable distributions](#note-for-users-of-immutable-distributions)
 - [Proceeding](#proceeding)
@@ -159,11 +159,12 @@ If you are interested, you can deliberately join this project.
 -----------------------------------------------------------------------------
 
 # Installation
-### Recommended requirements
+### Requirements
 A warning message will prevent you from using "AM" if the following packages are not installed on your system:
 - `binutils` and `coreutils`, contain core programs for GNU/Linux
 - `curl` and `wget`, needed to check URLs and download files
 - `grep` and `sed`, to check lists and edit/adapt files
+- `sudo` (see "[For non-sudo users](#for-non-sudo-users)", i.e. the next paragraph)
 - `tar` and `unzip`, to extract various storage formats
 - `zsync`, about 10% of AppImages depend on this to be updated
 
