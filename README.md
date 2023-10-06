@@ -43,6 +43,7 @@ For a version of "AM" that works locally and installs/removes the same programs 
 - [Cannot download or update an application](#cannot-download-or-update-an-application)
 - [Cannot mount and run AppImages](#cannot-mount-and-run-appimages)
 - [Missing dependences](#missing-dependences)
+- [Spyware, malware and dangerous software](#spyware-malware-and-dangerous-software)
 - [Wrong download link](#wrong-download-link)
 
 [Related projects](#related-projects)
@@ -552,6 +553,13 @@ See https://docs.appimage.org/user-guide/troubleshooting/fuse.html
 
 ### Missing dependences
 See "[Requirements](#requirements)"
+
+### Spyware, malware and dangerous software
+Before installing any application, try to know where it comes from first. This program provides you with two basic options for this purpose:
+- Option `-a` or `about` (medium safety), allows you to read a short description and know the links from the pages of the site [https://portable-linux-apps.github.io](https://portable-linux-apps.github.io) locally, however these links may be inaccurate due to continuous updates of the initial scripts (you can provide additional info yourself by modifying the pages of the site, [here](https://github.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io), it is also open source);
+- Option `-d` or `download` (absolute safety), this allows you to get the installation script directly on your desktop, so you can read the mechanisms and how it performs the downloads from the sources (in most cases there is a header for each step that explains what the listed commands do).
+
+“AM” and AppMan are just tools to easily install all listed programs, but what you choose to install is your complete responsibility. **Use at your own risk**!
 
 ### Wrong download link
 The reasons may be two:
