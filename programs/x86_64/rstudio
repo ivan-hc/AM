@@ -1,0 +1,88 @@
+#!/bin/sh
+
+APP=rstudio
+SITE="https://github.com/rstudio/rstudio"
+
+# CREATE THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP
+
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+
+# DOWNLOAD THE ARCHIVE
+mkdir tmp
+cd ./tmp
+
+version=$(wget -q https://posit.co/download/rstudio-desktop/ -O - | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | sort -u | grep -i tar.gz | grep -i deb | head -1)
+wget $version
+echo "$version" >> /opt/$APP/rversion
+cd ..
+tar fx ./tmp/*tar.gz -C ./tmp/ && mv ./tmp/*/* ./ && mkdir icons && cp ./resources/app/*.png ./icons/$APP
+rm -R -f ./tmp
+
+# LINK
+ln -s /opt/$APP/$APP /usr/local/bin/$APP
+
+# LAUNCHER
+echo "[Desktop Entry]
+Exec=$APP %F
+Icon=/opt/$APP/icons/$APP
+Type=Application
+Terminal=false
+Name=RStudio
+Categories=Development;IDE;" >> /usr/share/applications/AM-$APP.desktop
+
+# SCRIPT TO UPDATE THE PROGRAM
+cat >> /opt/$APP/AM-updater << 'EOF'
+#!/usr/bin/env bash
+APP=rstudio
+version0=$(cat /opt/$APP/rversion)
+version=$(wget -q https://posit.co/download/rstudio-desktop/ -O - | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | sort -u | grep -i tar.gz | grep -i deb | head -1)
+if [ $version = $version0 ]; then
+  echo "Update not needed!"
+else
+  notify-send "A new version of $APP is available, please wait"
+  mkdir /opt/$APP/tmp
+  cd /opt/$APP/tmp
+  wget $version
+  cd ..
+  tar fx ./tmp/*tar.gz -C ./tmp/ && mv --backup=t ./tmp/*/*
+  rm ./rversion
+  echo $version >> ./rversion
+  rm -R -f ./tmp ./*~
+  notify-send "$APP is updated!"
+fi
+EOF
+chmod a+x /opt/$APP/AM-updater
+
+# LAUNCHER & ICON
+app=$(echo $APP | cut -c -3)
+cd /opt/$APP
+mv ./*.desktop ./$APP.desktop 2>/dev/null
+CHANGEEXEC=$(cat ./$APP.desktop | grep Exec= | tr ' ' '\n' | tr '=' '\n' | tr '/' '\n' | grep $app | head -1)
+sed -i "s#$CHANGEEXEC#$APP#g" ./$APP.desktop
+sed -i "s#Exec=/bin/#Exec=#g" ./$APP.desktop
+sed -i "s#Exec=/usr/bin/#Exec=#g" ./$APP.desktop
+CHANGEICON=$(cat ./$APP.desktop | grep Icon= | head -1)
+sed -i "s#$CHANGEICON#Icon=/opt/$APP/icons/$APP#g" ./$APP.desktop
+
+mkdir icons
+mv ./*.svg ./icons/$APP 2>/dev/null
+mv ./*.png ./icons/$APP 2>/dev/null
+mv ./*$app*.png ./icons/$APP 2>/dev/null
+mv ./*128*.png ./icons/$APP 2>/dev/null
+mv ./*256*.png ./icons/$APP 2>/dev/null
+
+mv ./$APP.desktop /usr/share/applications/AM-$APP.desktop
+
+# CHANGE THE PERMISSIONS
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/$APP
+
+# MESSAGE
+echo "
+ $APP is provided by $SITE
+"
