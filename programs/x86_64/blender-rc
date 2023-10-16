@@ -59,6 +59,32 @@ EOF
 sed -i s/DEVELOPMENTBRANCH/$branch/g /opt/$APP/AM-updater
 chmod a+x /opt/$APP/AM-updater
 
+# ADD SCRIPT TO ROLLBACK
+cat >> /opt/$APP/$APP-rollback << 'EOF'
+#!/usr/bin/env bash
+branch=DEVELOPMENTBRANCH
+APP=BLENDEDITION
+rm -f ./rollback-args ./AM-rollback
+URL=https://builder.blender.org/download/daily/archive/
+SITE=https://www.blender.org
+printf "%s\n" $(wget -q $URL -O - | grep -Eo "$url[a-zA-Z0-9./?=_%:-]+[+a-zA-Z0-9./?=_%:-]*" | grep .tar.xz | grep -w -v sha256 | grep $branch) >> "./rollback-args" &&
+echo -e "-----------------------------------------------------------------------\nYou have chosen to roll back $APP.\nRollback will be done from $SITE\n-----------------------------------------------------------------------"
+printf "Select a URL from this menu (read carefully) or press CTRL+C to abort:\n-----------------------------------------------------------------------\n"; sleep 1;
+select d in $(cat "./rollback-args"); do test -n "$d" && break; echo ">>> Invalid Selection"; done
+cp ./AM-updater ./AM-rollback
+sed -i 's/version0/#version0/g' ./AM-rollback
+sed -i '/show-progress/c\wget -q --show-progress '$d'' ./AM-rollback
+./AM-rollback
+rm -f ./version
+echo $d >> ./version
+rm -f ./rollback-args ./AM-rollback
+echo -e "\nROLLBACK SUCCESSFUL!"
+exit
+EOF
+sed -i s/DEVELOPMENTBRANCH/$branch/g /opt/$APP/$APP-rollback
+sed -i s/BLENDEDITION/$APP/g /opt/$APP/$APP-rollback
+chmod a+x /opt/$APP/$APP-rollback
+
 # ICON
 icon=$(ls /opt/$APP/ | grep .svg | head -1)
 
