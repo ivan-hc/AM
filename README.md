@@ -174,6 +174,8 @@ A warning message will prevent you from using "AM" if the following packages are
 - `tar` and `unzip`, to extract various storage formats
 - `zsync`, about 10% of AppImages depend on this to be updated
 
+For more details, jump to the paragraph "[Missing dependences](#missing-dependences)", under the section "[Troubleshooting](#troubleshooting)".
+
 ### For non-sudo users
 "AM" requires `sudo` installed on your system by default, if for some reason you need to use commands like `doas` or whatever, just use "[AppMan](https://github.com/ivan-hc/AppMan)" instead.
 
@@ -552,7 +554,21 @@ There can be many reasons:
 See https://docs.appimage.org/user-guide/troubleshooting/fuse.html
 
 ### Missing dependences
-See "[Requirements](#requirements)"
+See "[Requirements](#requirements)", alternativelly you can use this workaround, open the file /opt/am/APP-MANAGER with a text editor and change the following line:
+```
+for name in "ar" "cat" "chmod" "chown" "curl" "grep" "sed" "tar" "unzip" "wget" "zsync"; do
+```
+do this for each update.
+
+Example, "`ar`" is included in `binutils`, if you don't plan to use Vivaldi in aarch64 or "`windows95`" in x86_64, change the line like this:
+```
+for name in "cat" "chmod" "chown" "curl" "grep" "sed" "tar" "unzip" "wget" "zsync"; do
+```
+In addition, you must know that more than 200 installation scripts for x86_64 use `zsync`, this command is needed to update all that these AppImage packages. If you remove it you wont be able to update them, so you can chamge the line above like this:
+```
+for name in "cat" "chmod" "chown" "curl" "grep" "sed" "tar" "unzip" "wget"; do
+```
+I don't recommend to remove all other commands, being them mainly used also inside the "AM" itself. 
 
 ### Spyware, malware and dangerous software
 Before installing any application, try to know where it comes from first. This program provides you with two basic options for this purpose:
