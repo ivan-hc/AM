@@ -182,6 +182,8 @@ For more details, jump to the paragraph "[Missing dependences](#missing-dependen
 ### Note for users of immutable distributions
 App launchers (files with the .desktop extension) are installed in /usr/share/applications by default with the suffix "AM-". If your distribution is immutable, you may not have privileges to write to /usr/share. Use the `--user` option to "AM" and add the suggested alias in your ~/.bashrc file to use AppMan but using the `am` command (go back to "[Use AM locally like AppMan does](#use-am-locally-like-appman-does)", after the introduction).
 
+However, if you want to set /usr/local/share as your directory and customize "AM" to keep your configurations intact, just follow my instructions [here](https://github.com/ivan-hc/AM-Application-Manager/issues/86).
+
 ## Proceeding
 To install "AM" quickly, just copy/paste the following command:
 	
