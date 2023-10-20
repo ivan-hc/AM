@@ -15,8 +15,8 @@ mkdir tmp;
 cd tmp;
 
 # DOWNLOADING THE DEPENDENCIES
-version=$(curl -s https://aur.archlinux.org/packages/$APP-bin | grep -Eo "$APP-bin [+-]?[0-9]+([.][0-9]+)?+[.]?[0-9]" | head -1 | cut -c 19-)
-wget https://github.com/brave/brave-browser/releases/download/v$version/brave-browser-nightly-$version-linux-amd64.zip
+version=$(wget -q https://api.github.com/repos/brave/brave-browser/releases?per_page=100 -O - | grep browser_download_url | grep linux-amd64.zip | cut -d '"' -f 4 | grep -v sha | grep nightly | head -1)
+wget $version
 unzip ./*.zip
 rm ./*.zip
 cd ..
@@ -28,16 +28,19 @@ rm -R -f ./tmp
 ln -s /opt/$APP/brave /usr/local/bin/$APP
 
 # SCRIPT TO UPDATE THE PROGRAM
-echo '#!/usr/bin/env bash
-version0=$(cat /opt/'$APP'/version)
-version=$(curl -s https://aur.archlinux.org/packages/'$APP'-bin | grep -Eo "'$APP'-bin [+-]?[0-9]+([.][0-9]+)?+[.]?[0-9]" | head -1 | cut -c 19-)
+cat >> /opt/$APP/AM-updater << 'EOF'
+#!/usr/bin/env bash
+APP=brave-nightly
+
+version0=$(cat /opt/$APP/version)
+version=$(wget -q https://api.github.com/repos/brave/brave-browser/releases?per_page=100 -O - | grep browser_download_url | grep linux-amd64.zip | cut -d '"' -f 4 | grep -v sha | grep nightly | head -1)
 if [[ "$version0" == "$version" ]]; then
   echo "Update not needed, exit!"
  else
-  notify-send "A new version of '$APP' is available, please wait!"
-  mkdir /opt/'$APP'/tmp
-  cd /opt/'$APP'/tmp
-  wget https://github.com/brave/brave-browser/releases/download/v$version/brave-browser-nightly-$version-linux-amd64.zip
+  notify-send "A new version of $APP is available, please wait!"
+  mkdir /opt/$APP/tmp
+  cd /opt/$APP/tmp
+  wget $version
   unzip ./*.zip
   rm -R -f ./*.zip
   cd ..
@@ -45,8 +48,9 @@ if [[ "$version0" == "$version" ]]; then
   mv --backup=t ./tmp/* ./
   echo $version >> ./version
   rm -R -f ./tmp ./*~
-  notify-send "'$APP' is updated!"
-fi' >> /opt/$APP/AM-updater
+  notify-send "$APP is updated!"
+fi
+EOF
 chmod a+x /opt/$APP/AM-updater
 
 # LAUNCHER
