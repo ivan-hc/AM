@@ -1,30 +1,59 @@
 #!/bin/sh
 
 APP=steam
+REPO="ivan-hc/Steam-appimage"
 
-# CREATING THE FOLDER
+# CREATE THE FOLDER
 mkdir /opt/$APP
-cd /opt/$APP;
+cd /opt/$APP
 
 # ADD THE REMOVER
 echo '#!/bin/sh' >> /opt/$APP/remove
-echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/games/$APP /usr/share/pixmaps/$APP.png" >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
 chmod a+x /opt/$APP/remove
 
-# DOWNLOAD THE APPIMAGE
-mkdir tmp;
-cd tmp;
+# DOWNLOAD THE ARCHIVE
+mkdir tmp
+cd ./tmp
 
-wget https://github.com/ivan-hc/Steam-appimage/releases/download/continuous/Steam-x86_64.AppImage
-cd ..;
-mv ./tmp/*.AppImage ./$APP;
-chmod a+x ./$APP
-echo "appimage" >> /opt/$APP/version
-
-rm -R -f ./tmp
+version=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep -w -v i386 | grep -w -v i686 | grep -w -v aarch64 | grep -w -v arm64 | grep -w -v armv7l | grep browser_download_url | grep -i appimage | cut -d '"' -f 4 | head -1)
+wget $version
+echo "$version" >> /opt/$APP/version
+cd ..
+mv ./tmp/*mage ./$APP
+chmod a+x /opt/$APP/$APP
+rmdir ./tmp
 
 # LINK
-ln -s /opt/$APP/$APP /usr/games/$APP
+ln -s /opt/$APP/$APP /usr/local/bin/$APP
+
+# SCRIPT TO UPDATE THE PROGRAM
+cat >> /opt/$APP/AM-updater << 'EOF'
+#!/usr/bin/env bash
+APP=steam
+REPO="ivan-hc/Steam-appimage"
+version0=$(cat /opt/$APP/version)
+version=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep -w -v i386 | grep -w -v i686 | grep -w -v aarch64 | grep -w -v arm64 | grep -w -v armv7l | grep browser_download_url | grep -i appimage | cut -d '"' -f 4 | head -1)
+if [ $version = $version0 ]; then
+  echo "Update not needed!"
+else
+  notify-send "A new version of $APP is available, please wait"
+  mkdir /opt/$APP/tmp
+  cd /opt/$APP/tmp
+  wget $version
+  if ls . | grep mage; then
+	cd ..
+  	if test -f ./tmp/*mage; then rm ./version
+  	fi
+  	echo $version >> ./version
+  	mv --backup=t ./tmp/*mage ./$APP
+  	chmod a+x /opt/$APP/$APP
+  	rm -R -f ./tmp ./*~
+  fi
+  notify-send "$APP is updated!"
+fi
+EOF
+chmod a+x /opt/$APP/AM-updater
 
 # LAUNCHER & ICON
 app=$(echo $APP | cut -c -3)
@@ -86,7 +115,5 @@ chown -R $currentuser /opt/$APP
 
 # MESSAGE
 echo "
-
- Steam is provided by https://store.steampowered.com
-  
-";
+ $APP is provided by https://github.com/$(echo $REPO | sed 's:/[^/]*$::')
+"
