@@ -16,15 +16,15 @@ chmod a+x /opt/$APP/remove
 mkdir tmp
 cd ./tmp
 
-pkgver=$(wget -q https://aur.archlinux.org/cgit/aur.git/plain/PKGBUILD?h=apifox-appimage -O - | grep -A1 pkgver | head -1 | cut -c 8-)
-version=$(echo $(wget -q https://aur.archlinux.org/packages/apifox-appimage -O - | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep -i ".zip" | grep -w -v ".asc" | grep -w -v ".zsync" | grep -w -v "archlinux.org" | head -1))
-wget $version
+url=$(echo "https://cdn.apifox.cn/download/Apifox-linux-latest.zip")
+version=$(wget -q https://aur.archlinux.org/cgit/aur.git/plain/PKGBUILD?h=apifox-bin -O - | grep -A1 pkgver | head -1 | cut -c 8-)
+wget $url
 unzip ./*.zip
-echo "$pkgver" >> /opt/$APP/version
+echo "$version" >> /opt/$APP/version
 cd ..
 mv ./tmp/*mage ./$APP
 chmod a+x /opt/$APP/$APP
-rmdir ./tmp
+rm -R -f ./tmp
 
 # LINK
 ln -s /opt/$APP/$APP /usr/local/bin/$APP
@@ -34,22 +34,25 @@ cat >> /opt/$APP/AM-updater << 'EOF'
 #!/usr/bin/env bash
 APP=apifox
 version0=$(cat /opt/$APP/version)
-pkgver=$(wget -q https://aur.archlinux.org/cgit/aur.git/plain/PKGBUILD?h=apifox-appimage -O - | grep -A1 pkgver | head -1 | cut -c 8-)
-version=$(echo $(wget -q https://aur.archlinux.org/packages/apifox-appimage -O - | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep -i ".zip" | grep -w -v ".asc" | grep -w -v ".zsync" | grep -w -v "archlinux.org" | head -1))
-if [ $pkgver = $version0 ]; then
+version=$(wget -q https://aur.archlinux.org/cgit/aur.git/plain/PKGBUILD?h=apifox-bin -O - | grep -A1 pkgver | head -1 | cut -c 8-)
+url=$(echo "https://cdn.apifox.cn/download/Apifox-linux-latest.zip")
+if [ $version = $version0 ]; then
   echo "Update not needed!"
 else
   notify-send "A new version of $APP is available, please wait"
   mkdir /opt/$APP/tmp
   cd /opt/$APP/tmp
-  wget $version
+  wget $url
   unzip ./*.zip
-  cd ..
-  rm ./version
-  echo $pkgver >> ./version
-  mv --backup=t ./tmp/*mage ./$APP
-  chmod a+x /opt/$APP/$APP
-  rm -R -f ./tmp ./*~
+  if ls . | grep mage; then
+	cd ..
+  	if test -f ./tmp/*mage; then rm ./version
+  	fi
+  	echo $version >> ./version
+  	mv --backup=t ./tmp/*mage ./$APP
+  	chmod a+x /opt/$APP/$APP
+  	rm -R -f ./tmp ./*~
+  fi
   notify-send "$APP is updated!"
 fi
 EOF
