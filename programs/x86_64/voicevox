@@ -1,14 +1,7 @@
 #!/bin/sh
 
 APP=voicevox
-SITE="https://voicevox.hiroshiba.jp/"
-
-# CHECK FOR DEPENDENCY
-for name in "pzip"
-do
-  [[ $(which $name 2>/dev/null) ]] || { echo "" && echo -e 'ERROR: "'$name'" not found, required by some installation scripts.';deps=1; }
-done
-[[ $deps -ne 1 ]] || { echo -e "\nInstall the above and try again\n";exit 1; }
+REPO="VOICEVOX/voicevox"
 
 # CREATE THE FOLDER
 mkdir /opt/$APP
@@ -23,9 +16,9 @@ chmod a+x /opt/$APP/remove
 mkdir tmp
 cd ./tmp
 
-version=$(echo $(wget -q https://aur.archlinux.org/packages/voicevox-appimage -O - | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep -i ".appimage" | grep -w -v ".asc" | grep -w -v ".zsync" | grep 001 | grep -w -v "archlinux.org" | head -1))
-version2=$(echo $(wget -q https://aur.archlinux.org/packages/voicevox-appimage -O - | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep -i ".appimage" | grep -w -v ".asc" | grep -w -v ".zsync" | grep 002 | grep -w -v "archlinux.org" | head -1))
-version3=$(echo $(wget -q https://aur.archlinux.org/packages/voicevox-appimage -O - | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep -i ".appimage" | grep -w -v ".asc" | grep -w -v ".zsync" | grep 003 | grep -w -v "archlinux.org" | head -1))
+version=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep -w -v i386 | grep -w -v i686 | grep -w -v aarch64 | grep -w -v arm64 | grep -w -v armv7l | grep browser_download_url | grep -i voicevox.appimage.7z.001  | grep -i appimage | cut -d '"' -f 4 | head -1)
+version2=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep -w -v i386 | grep -w -v i686 | grep -w -v aarch64 | grep -w -v arm64 | grep -w -v armv7l | grep browser_download_url | grep -i voicevox.appimage.7z.002  | grep -i appimage | cut -d '"' -f 4 | head -1)
+version3=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep -w -v i386 | grep -w -v i686 | grep -w -v aarch64 | grep -w -v arm64 | grep -w -v armv7l | grep browser_download_url | grep -i voicevox.appimage.7z.003  | grep -i appimage | cut -d '"' -f 4 | head -1)
 wget $version
 wget $version2
 wget $version3
@@ -34,7 +27,7 @@ echo "$version" >> /opt/$APP/version
 cd ..
 mv ./tmp/*mage ./$APP
 chmod a+x /opt/$APP/$APP
-rmdir ./tmp
+rm -R -f ./tmp
 
 # LINK
 ln -s /opt/$APP/$APP /usr/local/bin/$APP
@@ -43,26 +36,30 @@ ln -s /opt/$APP/$APP /usr/local/bin/$APP
 cat >> /opt/$APP/AM-updater << 'EOF'
 #!/usr/bin/env bash
 APP=voicevox
+REPO="VOICEVOX/voicevox"
 version0=$(cat /opt/$APP/version)
-version=$(echo $(wget -q https://aur.archlinux.org/packages/voicevox-appimage -O - | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep -i ".appimage" | grep -w -v ".asc" | grep -w -v ".zsync" | grep -w -v "archlinux.org" | head -1))
+version=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep -w -v i386 | grep -w -v i686 | grep -w -v aarch64 | grep -w -v arm64 | grep -w -v armv7l | grep browser_download_url | grep -i voicevox.appimage.7z.001  | grep -i appimage | cut -d '"' -f 4 | head -1)
 if [ $version = $version0 ]; then
   echo "Update not needed!"
 else
-  notify-send "A new version of $APP is available, about 3GB of archives will be downloaded, please wait"
+  notify-send "A new version of $APP is available, please wait"
   mkdir /opt/$APP/tmp
   cd /opt/$APP/tmp
-  version2=$(echo $(wget -q https://aur.archlinux.org/packages/voicevox-appimage -O - | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep -i ".appimage" | grep -w -v ".asc" | grep -w -v ".zsync" | grep 002 | grep -w -v "archlinux.org" | head -1))
-  version3=$(echo $(wget -q https://aur.archlinux.org/packages/voicevox-appimage -O - | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep -i ".appimage" | grep -w -v ".asc" | grep -w -v ".zsync" | grep 003 | grep -w -v "archlinux.org" | head -1))
+  version2=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep -w -v i386 | grep -w -v i686 | grep -w -v aarch64 | grep -w -v arm64 | grep -w -v armv7l | grep browser_download_url | grep -i voicevox.appimage.7z.002  | grep -i appimage | cut -d '"' -f 4 | head -1)
+  version3=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep -w -v i386 | grep -w -v i686 | grep -w -v aarch64 | grep -w -v arm64 | grep -w -v armv7l | grep browser_download_url | grep -i voicevox.appimage.7z.003  | grep -i appimage | cut -d '"' -f 4 | head -1)
   wget $version
   wget $version2
   wget $version3
   7z x ./*7z.001
-  cd ..
-  rm ./version
-  echo $version >> ./version
-  mv --backup=t ./tmp/*mage ./$APP
-  chmod a+x /opt/$APP/$APP
-  rm -R -f ./tmp ./*~
+  if ls . | grep mage; then
+	cd ..
+  	if test -f ./tmp/*mage; then rm ./version
+  	fi
+  	echo $version >> ./version
+  	mv --backup=t ./tmp/*mage ./$APP
+  	chmod a+x /opt/$APP/$APP
+  	rm -R -f ./tmp ./*~
+  fi
   notify-send "$APP is updated!"
 fi
 EOF
@@ -128,5 +125,5 @@ chown -R $currentuser /opt/$APP
 
 # MESSAGE
 echo "
- $APP is provided by $SITE
+ $APP is provided by https://github.com/$(echo $REPO | sed 's:/[^/]*$::')
 "
