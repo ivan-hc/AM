@@ -33,6 +33,7 @@ For a version of "AM" that works locally and installs/removes the same programs 
 - [Snapshots: backup your app and restore to a previous version](#snapshots-backup-your-app-and-restore-to-a-previous-version)
 - [Install/update/remove programs without "AM"](#installupdateremove-programs-without-am)
 - [Rollback](#rollback)
+- [Manage local AppImages](#manage-local-appimages)
 
 [Create your own script](#create-your-own-script)
 
@@ -548,6 +549,12 @@ From version 4.4 it is possible to directly select from a list of URLs the versi
 am --rollback ${PROGRAM}
 ```
 This only works with the apps hosted on Github.
+
+------------------------------------------------------------------------
+# Manage local AppImages
+Since version 4.4.2 you can use the `--launcher` option to integrate your local AppImage packages by simply dragging and dropping them into the terminal (see video).
+
+https://github.com/ivan-hc/AM-Application-Manager/assets/88724353/c4b889f4-8504-4853-8918-44d52084fe6c
 
 ------------------------------------------------------------------------	
 # Troubleshooting
