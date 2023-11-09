@@ -36,6 +36,7 @@ cat <<-HEREDOC >> "$AMPATH/options"
 	--disable-completion
 	--enable-completion
 	--home
+	--launcher
 	--rollback
 	--user
 HEREDOC
@@ -252,6 +253,17 @@ case "$1" in
  DESCRIPTION:	Enable bash-completion to complete a keyword with the "TAB"
  
  key, using the names of all installable applications available.
+ ___________________________________________________________________________
+
+ --launcher
+ 
+ SYNOPSIS:	--launcher /path/to/${APPIMAGE}
+
+ DESCRIPTION:	Embed one or more local AppImages in the applications menu.
+ 
+ I suggest dragging the files into the terminal to get the desired effect.
+ 
+ Launchers are located in ~/.local/share/applications/AppImages by default.
  ___________________________________________________________________________
 
  --rollback
@@ -1614,6 +1626,75 @@ case "$1" in
 	fi
 	;;
 
+  '--launcher')
+    	if [ -n "$SUDO_COMMAND" ]; then 
+		echo -e "\n WARNING: You don't need to run the option '$1' with SUDO.\n"; 
+		exit; 
+	fi
+
+	case $2 in
+	'') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
+	esac
+
+	while [ -n "$1" ]; do
+		rm -f $AMPATH/.cache/tolaunch-args;
+		echo $@ | tr ' ' '\n' >> $AMPATH/.cache/tolaunch-args && echo STOP >> $AMPATH/.cache/tolaunch-args;
+		ARGS=$(tail -n +2 $AMPATH/.cache/tolaunch-args)
+
+		for arg in $ARGS; do
+			for var in $arg; do
+				if [ $arg == STOP ]; then
+					exit
+				else
+					if [ -z $(strings -d "$arg" 2>/dev/null | grep -m 1 "AppImage") ]; then
+    						echo ' ERROR: "'$arg'" is NOT an AppImage'; break
+    					else
+  						mkdir -p $HOME/.local/share/applications/AppImages
+  						mkdir -p $HOME/.local/share/icons
+  						cd "$(dirname "$arg")"
+  						"$arg" --appimage-extract share/icons/*/*/* 1>/dev/null
+						"$arg" --appimage-extract usr/share/icons/*/*/* 1>/dev/null
+						"$arg" --appimage-extract share/icons/*/*/*/* 1>/dev/null
+						"$arg" --appimage-extract usr/share/icons/*/*/*/* 1>/dev/null
+						"$arg" --appimage-extract *.svg 1>/dev/null
+						"$arg" --appimage-extract *.png 1>/dev/null
+    						"$arg" --appimage-extract *.desktop 1>/dev/null
+    						"$arg" --appimage-extract share/applications/*.desktop 1>/dev/null
+    						"$arg" --appimage-extract usr/share/applications/*.desktop 1>/dev/null
+    						CHANGEEXEC=$(cat ./squashfs-root/*.desktop | grep Exec= | grep -v TryExec= | head -1)
+    						sed -i "s#$CHANGEEXEC#Exec=$arg %U#g" ./squashfs-root/*.desktop 2>/dev/null
+    						mv ./squashfs-root/*.desktop $HOME/.local/share/applications/AppImages/ 2>/dev/null
+    						mv ./squashfs-root/*.png $HOME/.local/share/icons/ 2>/dev/null
+    						mv ./squashfs-root/*.svg $HOME/.local/share/icons/ 2>/dev/null
+    						mv ./squashfs-root/share/icons/hicolor/22x22/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
+    						mv ./squashfs-root/share/icons/hicolor/24x24/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
+    						mv ./squashfs-root/share/icons/hicolor/32x32/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
+    						mv ./squashfs-root/share/icons/hicolor/48x48/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
+    						mv ./squashfs-root/share/icons/hicolor/64x64/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
+    						mv ./squashfs-root/share/icons/hicolor/128x128/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
+    						mv ./squashfs-root/share/icons/hicolor/256x256/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
+    						mv ./squashfs-root/share/icons/hicolor/512x512/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
+    						mv ./squashfs-root/share/icons/hicolor/scalable/apps/*.svg $HOME/.local/share/icons/ 2>/dev/null
+    						mv ./squashfs-root/usr/share/icons/hicolor/22x22/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
+    						mv ./squashfs-root/usr/share/icons/hicolor/24x24/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
+    						mv ./squashfs-root/usr/share/icons/hicolor/32x32/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
+    						mv ./squashfs-root/usr/share/icons/hicolor/48x48/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
+    						mv ./squashfs-root/usr/share/icons/hicolor/64x64/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
+    						mv ./squashfs-root/usr/share/icons/hicolor/128x128/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
+    						mv ./squashfs-root/usr/share/icons/hicolor/256x256/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
+    						mv ./squashfs-root/usr/share/icons/hicolor/512x512/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
+    						mv ./squashfs-root/usr/share/icons/hicolor/scalable/apps/*.svg $HOME/.local/share/icons/ 2>/dev/null
+						rm -R -f ./squashfs-root
+    						break
+    					fi
+				fi
+			done
+		done
+	done
+
+	shift
+	;;
+
   '--rollback')
   	if [ -n "$SUDO_COMMAND" ]; then 
 		echo -e "\n WARNING: You don't need to run the option '$1' with SUDO.\n"; 
@@ -1749,7 +1830,7 @@ case "$1" in
 	;;
 
   'version'|'-v'|'--version')
-  	echo "4.4.1~4";;
+  	echo "4.4.2";;
 
   *) exec $AMCLIPATH ;;
 
