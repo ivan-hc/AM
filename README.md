@@ -399,6 +399,15 @@ In both cases, the "INSTALL" script will create a dedicated /opt/am directory co
  
  DESCRIPTION:	Enable bash-completion to complete a keyword with the "TAB" key, using the names of all installable applications available.
  ___________________________________________________________________________
+
+ `--launcher`
+ 
+ SYNOPSIS:
+ 
+ `--launcher /path/to/${APPIMAGE}`
+
+ DESCRIPTION:	Embed one or more local AppImages in the applications menu. I suggest dragging the files into the terminal to get the desired effect. Launchers are located in ~/.local/share/applications/AppImages by default.
+ ___________________________________________________________________________
  
  `--rollback`
  
