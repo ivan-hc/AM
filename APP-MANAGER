@@ -22,6 +22,7 @@ cat <<-HEREDOC >> "$AMPATH/options"
 	about
 	backup
 	clean
+	convert
 	download
 	files
 	install
@@ -277,13 +278,6 @@ case "$1" in
  are interested in (only works with Github).
  ___________________________________________________________________________ 
  
- --user, appman
- 
- SYNOPSIS:	--user
-
- DESCRIPTION:	Run "AM" as an unprivileged user making it act as "AppMan".
- ___________________________________________________________________________ 
- 
  lock
  
  SYNOPSIS:	lock {PROGRAM}
@@ -304,11 +298,9 @@ case "$1" in
  ___________________________________________________________________________
 
  			       EXTRA OPTIONS 
- 				
- 		       (only available for "APPMAN")
  ___________________________________________________________________________
 
- conv, convert
+ conv, convert					( only works with "AppMan" )
  
  SYNOPSIS:	conv {PROGRAM}
  
@@ -316,6 +308,13 @@ case "$1" in
  
  to rootless installation scripts that can be installed locally. 
  ___________________________________________________________________________
+ 
+ --user, appman					( only works with "AM" )
+ 
+ SYNOPSIS:	--user
+
+ DESCRIPTION:	Run "AM" as an unprivileged user making it act as "AppMan".
+ ___________________________________________________________________________ 
 
  ###########################################################################
  ___________________________________________________________________________
@@ -460,6 +459,70 @@ case "$1" in
 	done
 
   	rm -R -f $AMPATH/appdb; rm -R -f $AMPATH/.cache/*; rm -R -f $APPSPATH/*/tmp; echo -e "\n DONE!\n"
+	;;
+
+  '-conv'|'convert')
+  	while [ -n "$1" ]; do
+  		
+  		if [ $AMCLI == am ] 2>/dev/null; then
+  			echo " This function only works for AppMan"
+  			exit
+  		fi
+  		
+		rm -f $AMPATH/.cache/convert-args
+		echo $@ | tr ' ' '\n' >> $AMPATH/.cache/convert-args && echo STOP >> $AMPATH/.cache/convert-args
+		ARGS=$(tail -n +2 $AMPATH/.cache/convert-args)
+
+		case $2 in
+		'') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
+		esac
+
+		for arg in $ARGS; do
+			for var in $arg; do
+				if [ $arg == STOP ]; then
+					exit
+				else
+					case $arg in
+					'') 	echo " Specify the name of one or more programs to convert"; echo ""; break;;
+					*) 	if curl --output /dev/null --silent --head --fail $AMREPO/programs/$arch/$arg  1>/dev/null; then
+  							cd $(xdg-user-dir DESKTOP); wget -q $AMREPO/programs/$arch/$arg; echo " Converting $arg to an AppMan-compatible script";
+  							sed -i "s# /usr/local/bin# $(xdg-user-dir USER)/.local/bin#g" ./$arg
+							sed -i "s# /usr/bin# $(xdg-user-dir USER)/.local/bin#g" ./$arg
+							sed -i "s# /usr/games# $(xdg-user-dir USER)/.local/bin#g" ./$arg
+							sed -i "s# /usr/local/games# $(xdg-user-dir USER)/.local/bin#g" ./$arg
+							sed -i "s# /usr/share/applications# $(xdg-user-dir USER)/.local/share/applications#g" ./$arg
+							sed -i "s# /usr/local/share/applications# $(xdg-user-dir USER)/.local/share/applications#g" ./$arg
+							sed -i "s# /usr/share/pixmaps# $(xdg-user-dir USER)/.local/share/icons#g" ./$arg
+							sed -i "s# /usr/local/share/pixmaps# $(xdg-user-dir USER)/.local/share/icons#g" ./$arg
+							sed -i "s# /opt# $APPSPATH#g" ./$arg
+							sed -i "s#/opt/#$APPSPATH/#g" ./$arg
+							echo -e '\n# CHANGE THE PATH OF ICONS AND EXECUTABLES IN LOCALLY INSTALLED AM*.DESKTOP FILES\nAPPSDIR=$(cat ~/.config/appman/appman-config)\nsed -i "s#Icon=/opt#Icon=$(xdg-user-dir USER)/$APPSDIR#g" ~/.local/share/applications/AM*.desktop\nsed -i "s#Exec=$APP#Exec=$(xdg-user-dir USER)/.local/bin/$APP#g" ~/.local/share/applications/AM*.desktop\nsed -i "s#Exec=/usr/bin/#Exec=$(xdg-user-dir USER)/.local/bin/#g" ~/.local/share/applications/AM*.desktop\nsed -i "s#Exec=/opt/firefox#Exec=$(xdg-user-dir USER)/$APPSDIR/firefox#g" ~/.local/share/applications/AM*.desktop\nsed -i "s#Exec=/opt/kdegames#Exec=$(xdg-user-dir USER)/$APPSDIR/kdegames#g" ~/.local/share/applications/AM*.desktop\nsed -i "s#Exec=/opt/kdeutils#Exec=$(xdg-user-dir USER)/$APPSDIR/kdeutils#g" ~/.local/share/applications/AM*.desktop' >> ./$arg
+							break;
+  						elif test -f $(xdg-user-dir DESKTOP)/am-scripts/$arch/$arg; then
+  							cd $(xdg-user-dir DESKTOP); cp ./am-scripts/$arch/$arg ./$arg
+  							echo " Converting $arg to an AppMan-compatible script";
+  							sed -i "s# /usr/local/bin# $(xdg-user-dir USER)/.local/bin#g" ./$arg
+							sed -i "s# /usr/bin# $(xdg-user-dir USER)/.local/bin#g" ./$arg
+							sed -i "s# /usr/games# $(xdg-user-dir USER)/.local/bin#g" ./$arg
+							sed -i "s# /usr/local/games# $(xdg-user-dir USER)/.local/bin#g" ./$arg
+							sed -i "s# /usr/share/applications# $(xdg-user-dir USER)/.local/share/applications#g" ./$arg
+							sed -i "s# /usr/local/share/applications# $(xdg-user-dir USER)/.local/share/applications#g" ./$arg
+							sed -i "s# /usr/share/pixmaps# $(xdg-user-dir USER)/.local/share/icons#g" ./$arg
+							sed -i "s# /usr/local/share/pixmaps# $(xdg-user-dir USER)/.local/share/icons#g" ./$arg
+							sed -i "s# /opt# $APPSPATH#g" ./$arg
+							sed -i "s#/opt/#$APPSPATH/#g" ./$arg
+							echo -e '\n# CHANGE THE PATH OF ICONS AND EXECUTABLES IN LOCALLY INSTALLED AM*.DESKTOP FILES\nAPPSDIR=$(cat ~/.config/appman/appman-config)\nsed -i "s#Icon=/opt#Icon=$(xdg-user-dir USER)/$APPSDIR#g" ~/.local/share/applications/AM*.desktop\nsed -i "s#Exec=$APP#Exec=$(xdg-user-dir USER)/.local/bin/$APP#g" ~/.local/share/applications/AM*.desktop\nsed -i "s#Exec=/usr/bin/#Exec=$(xdg-user-dir USER)/.local/bin/#g" ~/.local/share/applications/AM*.desktop\nsed -i "s#Exec=/opt/firefox#Exec=$(xdg-user-dir USER)/$APPSDIR/firefox#g" ~/.local/share/applications/AM*.desktop\nsed -i "s#Exec=/opt/kdegames#Exec=$(xdg-user-dir USER)/$APPSDIR/kdegames#g" ~/.local/share/applications/AM*.desktop\nsed -i "s#Exec=/opt/kdeutils#Exec=$(xdg-user-dir USER)/$APPSDIR/kdeutils#g" ~/.local/share/applications/AM*.desktop' >> ./$arg
+							break;
+						else
+							echo ""; echo ' "'$arg'" is NOT a valid argument'; echo ""; break;
+						fi
+					esac
+				fi
+			done
+		done
+	done
+	
+	shift
 	;;
 
   '-d'|'download')
@@ -1792,6 +1855,12 @@ case "$1" in
 	;;
 
   '--user'|'appman')
+  
+  	if [ $AMCLI == appman ] 2>/dev/null; then
+  		echo " This function only works for AM"
+  		exit
+  	fi
+  	
   	RED='\033[0;31m'; LightBlue='\033[1;34m'
   	if test -f /opt/am/appman; then
 		echo -e "Please run '${RED}alias am=/opt/am/appman\033[0m' to made 'AM' act exactly like 'AppMan' for\nthe current session or save this command to your '"'~/.bashrc'"' file to make the\nchanges permanent. Visit ${LightBlue}https://github.com/ivan-hc/appman\033[0m for more!"
@@ -1877,7 +1946,7 @@ case "$1" in
 	;;
 
   'version'|'-v'|'--version')
-  	echo "4.4.3-3";;
+  	echo "4.4.3-4";;
 
   *) exec $AMCLIPATH ;;
 
