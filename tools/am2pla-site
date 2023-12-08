@@ -3,7 +3,7 @@
 # THIS IS A SCRIPT i USE TO CREATE AND UPDATE THE APPLICATION LIST ON https://portable-linux-apps.github.io/
 # ONCE CREATED, THE PAGE WILL APPEAR LIKE THIS: https://portable-linux-apps.github.io/apps.html
 # FIRST OF ALL, WE NEED TO CREATE A FILE CONTAINING ALL THE ARGUMENTS THAT THIS SCRIPT MUST READ
-cd ~/Scrivania
+cd $(xdg-user-dir DESKTOP)
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main"
 arch="x86_64"
 echo "" >> args
@@ -67,4 +67,28 @@ wget https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.g
 sed -n '1,6p' ./README.old >> ./README.md
 echo "##### This site lists **$(echo $(($(wc -l ./args | tail -5 | head -1 | grep -Eo "[0-9]*") - 4)))** Appimage packages and standalone applications. From here you can download them, install them, update them (for real), get more information about the sources and their developers... and if you want, you can contribute yourself by adding the missing information, because this site is **open source**!" >> ./README.md
 sed -n '8,150p' ./README.old >> ./README.md
+
+# ADD A JSON VERSION OF THE LIST ABOVE
+echo "[" >> apps.json
+for arg in $ARGS; do
+	for var in $arg; do
+	if [ $arg == STOP ]; then
+		break
+	else
+	case $arg in
+	am) ;;
+	appman) ;;
+	*) for var in $arg;
+		do
+		description=$(cat $arch-apps | grep "◆ $arg :" | sed 's/"//g' | sed 's/^.*: //')
+		echo -e '  {\n    "packageName": "'$arg'",\n    "description": "'$description'..",\n    "icon": "https://portable-linux-apps.github.io/icons/'$arg'.png"\n  },' >> apps.json
+		sleep 0.005
+		done;;
+	esac
+	fi
+done
+done
+sed -i '$s/,$//' apps.json
+echo -e "]" >> apps.json
+
 rm ./args ./README.old ./$arch-apps
