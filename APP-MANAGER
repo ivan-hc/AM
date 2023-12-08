@@ -626,9 +626,13 @@ case "$1" in
 		'') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
 		esac
 
-		$SUDOCOMMAND echo "" 2>/dev/null
-		if $SUDOCOMMAND -n true 2>/dev/null; then 
-
+		if [ $AMCLI == am ] 2>/dev/null; then
+  			$SUDOCOMMAND echo "" 2>/dev/null
+  			if ! $SUDOCOMMAND -n true 2>/dev/null; then
+				exit
+  			fi
+  		fi
+		
 		echo -e "-----------------------------------------------------------------------\n >> START OF ALL INSTALLATION PROCESSES <<\n-----------------------------------------------------------------------"
 		rm -f $AMPATH/.cache/install-args
 		rm -R -f $AMPATH/.cache/installed
@@ -650,8 +654,7 @@ case "$1" in
 				else
 					echo ""
 					case $arg in
-					am) 
-						echo '"'$(echo $AMCLI | tr a-z A-Z)'" IS ALREADY INSTALLED!'; break;;
+
 					*) 
 						if test -f $APPSPATH/$arg/remove; then
 							echo ' ERROR: "'$arg'" is already installed, please try to remove it first' && echo ""; break;
@@ -660,22 +663,49 @@ case "$1" in
 								case $arg in
 								*) 
 									for var in $arg; do 
-										cd $AMPATH/.cache; mkdir -p tmp; cd tmp; wget -q $AMREPO/programs/$arch/$arg; cd ..; mv ./tmp/$arg ./$arg; rmdir ./tmp;
-										SHA=$(wget -q https://api.github.com/repos/ivan-hc/AM-Application-Manager/contents/programs/$arch/$arg -O - | grep sha | cut -d '"' -f 4)
+										cd $AMPATH/.cache; mkdir -p tmp; cd tmp; wget -q $AMREPO/programs/$arch/$arg; cd ..; mv ./tmp/$arg ./$arg; rmdir ./tmp
 										chmod a+x ./$arg
-										sed -i "s#wget #wget -q --show-progress #g" ./$arg
-										sed -i 's#$(wget -q --show-progress #$(wget -q #g' ./$arg
-										sed -i 's#wget http#wget -q http#g' ./$arg
-										sed -i "s#rm #rm -f #g" ./$arg
-										sed -i "s#form -f #form #g" ./$arg
-										sed -i "s#unzip #unzip -qq #g" ./$arg
-										sed -i 's/currentuser=/#currentuser=/g' ./$arg
-										sed -i 's/chown -R $currentuser/#chown -R $currentuser/g' ./$arg
-										sed -i '/# MESSAGE/,$d' ./$arg
-										sed -i 's# /opt/$APP/icons/$APP# /opt/$APP/icons/$APP 2> /dev/null#g' ./$arg
-										sed -i 's#.svg;#.svg 2> /dev/null;#g' ./$arg
-										sed -i 's#programs/.icons/$APP.svg#programs/.icons/$APP.svg 2> /dev/null;#g' ./$arg
-										sed -i 's#*.desktop ./$APP.desktop#*.desktop ./$APP.desktop 2> /dev/null;#g' ./$arg
+										
+										if [ $AMCLI == appman ] 2>/dev/null; then
+											sed -i "s# /opt# $APPSPATH#g" ./$arg
+											sed -i "s#/opt/#$APPSPATH/#g" ./$arg
+											sed -i "s#wget #wget -q --show-progress #g" ./$arg
+											sed -i 's#$(wget -q --show-progress #$(wget -q #g' ./$arg
+											sed -i 's#wget http#wget -q http#g' ./$arg
+											sed -i "s#rm #rm -f #g" ./$arg
+											sed -i "s#form -f #form #g" ./$arg
+											sed -i "s#unzip #unzip -qq #g" ./$arg
+											sed -i 's/currentuser=/#currentuser=/g' ./$arg
+											sed -i 's/chown -R $currentuser/#chown -R $currentuser/g' ./$arg
+											sed -i '/# MESSAGE/,$d' ./$arg
+											sed -i 's# /opt/$APP/icons/$APP# /opt/$APP/icons/$APP 2> /dev/null#g' ./$arg
+											sed -i 's#.svg;#.svg 2> /dev/null;#g' ./$arg
+											sed -i 's#programs/.icons/$APP.svg#programs/.icons/$APP.svg 2> /dev/null;#g' ./$arg
+											sed -i 's#*.desktop ./$APP.desktop#*.desktop ./$APP.desktop 2> /dev/null;#g' ./$arg
+											sed -i "s# /usr/local/bin# $(xdg-user-dir USER)/.local/bin#g" ./$arg
+											sed -i "s# /usr/bin# $(xdg-user-dir USER)/.local/bin#g" ./$arg
+											sed -i "s# /usr/local/games# $(xdg-user-dir USER)/.local/bin#g" ./$arg
+											sed -i "s# /usr/games# $(xdg-user-dir USER)/.local/bin#g" ./$arg
+											sed -i "s# /usr/share/applications# $(xdg-user-dir USER)/.local/share/applications#g" ./$arg
+											sed -i "s# /usr/local/share/applications# $(xdg-user-dir USER)/.local/share/applications#g" ./$arg
+											sed -i "s# /usr/share/pixmaps# $(xdg-user-dir USER)/.local/share/icons#g" ./$arg
+											sed -i "s# /usr/local/share/pixmaps# $(xdg-user-dir USER)/.local/share/icons#g" ./$arg
+										else
+											sed -i "s#wget #wget -q --show-progress #g" ./$arg
+											sed -i 's#$(wget -q --show-progress #$(wget -q #g' ./$arg
+											sed -i 's#wget http#wget -q http#g' ./$arg
+											sed -i "s#rm #rm -f #g" ./$arg
+											sed -i "s#form -f #form #g" ./$arg
+											sed -i "s#unzip #unzip -qq #g" ./$arg
+											sed -i 's/currentuser=/#currentuser=/g' ./$arg
+											sed -i 's/chown -R $currentuser/#chown -R $currentuser/g' ./$arg
+											sed -i '/# MESSAGE/,$d' ./$arg
+											sed -i 's# /opt/$APP/icons/$APP# /opt/$APP/icons/$APP 2> /dev/null#g' ./$arg
+											sed -i 's#.svg;#.svg 2> /dev/null;#g' ./$arg
+											sed -i 's#programs/.icons/$APP.svg#programs/.icons/$APP.svg 2> /dev/null;#g' ./$arg
+											sed -i 's#*.desktop ./$APP.desktop#*.desktop ./$APP.desktop 2> /dev/null;#g' ./$arg
+										fi
+										
 										echo -ne " ◆ RUNNING THE INSTALLATION SCRIPT FOR $(echo '"'$arg'"' | tr a-z A-Z)... \r" && sleep 3 &&
 										$SUDOCOMMAND ./$arg | less -E && echo -ne "                                                                          \r" &&
 										echo -ne " ◆ CONFIGURING $(echo '"'$arg'"' | tr a-z A-Z)...\r" && sleep 2 && echo -ne "                                                                          \r" &&
@@ -689,6 +719,15 @@ case "$1" in
    												wget -q https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/main/icons/$arg.png -O $APPSPATH/$(cd $APPSPATH && ls -td * | head -1)/icons/$arg
 											fi 
 										fi &&
+										
+										if [ $AMCLI == appman ] 2>/dev/null; then
+											sed -i "s#Icon=/opt#Icon=$(xdg-user-dir USER)/$APPSDIR#g" ~/.local/share/applications/AM*.desktop 2> /dev/null
+											sed -i "s#Exec=$arg#Exec=$(xdg-user-dir USER)/.local/bin/$arg#g" ~/.local/share/applications/AM*.desktop 2> /dev/null
+											sed -i 's#Exec=$APP#Exec='$(xdg-user-dir USER)'/.local/bin/$APP#g' ~/.local/share/applications/AM*.desktop 2> /dev/null
+											sed -i "s#Exec=/usr/bin/#Exec=$(xdg-user-dir USER)/.local/bin/#g" ~/.local/share/applications/AM*.desktop 2> /dev/null
+											sed -i "s#Exec=/opt/#Exec=$(xdg-user-dir USER)/$APPSDIR/#g" ~/.local/share/applications/AM*.desktop 2> /dev/null
+										fi
+																			
 										echo -ne " ◆ $(echo '"'$arg'"' | tr a-z A-Z) INSTALLED ($(du -sm $APPSPATH/$(cd $APPSPATH && ls -td * | head -1) | awk '{print $1}' ) MB OF DISK SPACE)\n"
 										$SUDOCOMMAND rm $AMPATH/.cache/$arg
 										unset $LATESTDIR
@@ -715,10 +754,6 @@ case "$1" in
 				fi
 			done
 		done
-		
-		else
-    			exit
-		fi
 	done
 
 	shift
@@ -1957,7 +1992,7 @@ case "$1" in
 	;;
 
   'version'|'-v'|'--version')
-  	echo "4.4.3-5";;
+  	echo "4.4.3-6";;
 
   *) exec $AMCLIPATH ;;
 
