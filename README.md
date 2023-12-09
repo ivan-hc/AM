@@ -82,7 +82,9 @@ Where `$PROGRAM` is the application we're going to install:
       /opt/$PROGRAM/icons/$ICON-NAME
       /usr/local/bin/$PROGRAM
       /usr/share/applications/AM-$PROGRAM.desktop
+If the distro is immutable instead, the path of the launcher (the last line above) will change like this (see "[Note for users of immutable distributions](#note-for-users-of-immutable-distributions)"):
 
+      /usr/local/share/applications/AM-$PROGRAM.desktop
 
 - "AppMan" (ie the `appman` command, available at [github.com/ivan-hc/AppMan](https://github.com/ivan-hc/AppMan)) instead does not need root privileges to work, it allows you to choose where to install your applications into your `$HOME` directory. AppMan is also usable as a portable app (i.e. you can download and place it wherever you want) and it is able to update itself, anywhere! At first start it will ask you where to install the apps and it will create the directory for you (the configuration file is in `~/.config/appman`). For example, suppose you want install everything in "Applicazioni" (the italian of "applications"), this is the structure of what an installation scripts installs with "AppMan" instead:
 
@@ -189,9 +191,9 @@ For more details, jump to the paragraph "[Missing dependences](#missing-dependen
 "AM" requires `sudo` installed on your system by default, if for some reason you need to use commands like `doas` or whatever, just use "[AppMan](https://github.com/ivan-hc/AppMan)" instead.
 
 ### Note for users of immutable distributions
-App launchers (files with the .desktop extension) are installed in /usr/share/applications by default with the suffix "AM-". If your distribution is immutable, you may not have privileges to write to /usr/share. Use the `--user` option to "AM" and add the suggested alias in your ~/.bashrc file to use AppMan but using the `am` command (go back to "[Use AM locally like AppMan does](#use-am-locally-like-appman-does)", after the introduction).
+App launchers (files with the .desktop extension) are installed in /usr/share/applications by default with the suffix "AM-".
 
-However, if you want to set /usr/local/share as your directory and customize "AM" to keep your configurations intact, just follow my instructions [here](https://github.com/ivan-hc/AM-Application-Manager/issues/86).
+Since version 5.1 the installation process have introduced a check to find read-only filesystems (`grep "[[:space:]]ro[[:space:],]" /proc/mounts`), if there are mountpoints like this, your distro may be an immutable one, so an /usr/local/share/applications directory will be created and the installation script will be patched to redirect the installation of launchers in that path to solve the issue.
 
 ## Proceeding
 "AM" is ment to be installed at system level to manage apps using `sudo` privileges.
