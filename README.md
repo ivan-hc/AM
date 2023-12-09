@@ -193,6 +193,7 @@ The following dependences are optional for "AM" and AppMan themself, but to prev
 - "`unzip`", to extract .zip packages;
 - "`tar`", to extract .tar* packages;
 - "`zsync`", about 10% of AppImages depend on this to be updated.
+
 From version 5.2 you can continue to use "AM"/AppMan without the aforementioned dependencies, but a message will appear recommending you to install them, to avoid problems in the future.
 
 For more details, jump to the paragraph "[Missing dependences](#missing-dependences)", under the section "[Troubleshooting](#troubleshooting)".
