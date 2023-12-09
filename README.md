@@ -24,6 +24,8 @@ Since version 5, AM can be used exactly like AppMan if not installed regularly. 
 
 [Installation](#installation)
 - [Requirements](#requirements)
+  - [Dependences](#dependences)
+  - [Optional-dependences](#optional-dependences)
 - [For non-sudo users](#for-non-sudo-users)
 - [Note for users of immutable distributions](#note-for-users-of-immutable-distributions)
 - [Proceeding](#proceeding)
@@ -177,13 +179,21 @@ If you are interested, you can deliberately join this project.
 
 # Installation
 ### Requirements
+#### Dependences
 A warning message will prevent you from using "AM" if the following packages are not installed on your system:
-- `binutils` and `coreutils`, contain core programs for GNU/Linux
-- `curl` and `wget`, needed to check URLs and download files
-- `grep` and `sed`, to check lists and edit/adapt files
-- `sudo` (see "[For non-sudo users](#for-non-sudo-users)", i.e. the next paragraph)
-- `tar` and `unzip`, to extract various storage formats
-- `zsync`, about 10% of AppImages depend on this to be updated
+- "`cat`", "`chmod`" and "`chown`" (available in "`coreutils`");
+- "`curl`", to check URLs;
+- "`grep`", to check files;
+- "`sed`", to edit/adapt installed files;
+- "`wget`" to download all programs and update "AM"/AppMan itself.
+
+#### Optional dependences
+The following dependences are optional for "AM" and AppMan themself, but to prevent installation/update errors for some kind of packages, its strongly recommended to install them:
+- "`ar`" (available in "`binutils`") is needed to extract .deb packages (that are very few in this repository);
+- "`unzip`", to extract .zip packages;
+- "`tar`", to extract .tar* packages;
+- "`zsync`", about 10% of AppImages depend on this to be updated.
+From version 5.2 you can continue to use "AM"/AppMan without the aforementioned dependencies, but a message will appear recommending you to install them, to avoid problems in the future.
 
 For more details, jump to the paragraph "[Missing dependences](#missing-dependences)", under the section "[Troubleshooting](#troubleshooting)".
 
@@ -592,18 +602,18 @@ To prevent any issue is strongly recommended to install all dependences listed a
 
 Open the file `/opt/am/APP-MANAGER` with a text editor and change the following line (do this for each update):
 ```
-for name in "ar" "cat" "chmod" "chown" "curl" "grep" "sed" "tar" "unzip" "wget" "zsync"; do
+for name in "ar" "unzip" "tar" "zsync"; do
 ```
 
 Example, "`ar`" is included in `binutils` and it is used by few installation scripts to extract .deb packages. If you don't plan to install "`vivaldi`" in aarch64, "`windows95`" in x86_64 or "`ocenaudio`" in i686, change the line above like this:
 ```
-for name in "cat" "chmod" "chown" "curl" "grep" "sed" "tar" "unzip" "wget" "zsync"; do
+for name in "unzip" "tar" "zsync"; do
 ```
 In addition, the command "`zsync`" is used to update some AppImage packages. Until now the installation scripts for x86_64 that include this as a dependence are more than 220, so without it you can't update these Appimages. If this is not a problem for you, can chamge the line above like this:
 ```
-for name in "cat" "chmod" "chown" "curl" "grep" "sed" "tar" "unzip" "wget"; do
+for name in "unzip" "tar"; do
 ```
-I don't recommend to remove all other commands, being them mainly used in "AM" itself. 
+I don't recommend to remove all other commands, being them mainly used. 
 
 ### Spyware, malware and dangerous software
 Before installing any application, try to know where it comes from first. This program provides you with two basic options for this purpose:
