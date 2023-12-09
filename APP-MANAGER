@@ -1,13 +1,38 @@
 #!/usr/bin/env bash
 
-AMCLI="am"
-AMCLIPATH=$AMCLI
-SUDOCOMMAND="sudo"
-COMPLETIONPATH="/etc/bash_completion.d"
-COMPLETIONFILE="am-completion.sh"
+DIR="$( cd "$( dirname "$0" )" && pwd )"
+CLI=$(echo $(basename "$0"))
 
-APPSPATH="/opt"
-AMPATH="$APPSPATH/$AMCLI"
+if [ "$DIR/$CLI" == "/usr/local/bin/am" ] 2>/dev/null; then
+	AMCLI="am"
+	AMCLIPATH=$AMCLI
+	SUDOCOMMAND="sudo"
+	COMPLETIONPATH="/etc/bash_completion.d"
+	COMPLETIONFILE="am-completion.sh"
+	APPSPATH="/opt"
+	AMPATH="$APPSPATH/$AMCLI"
+else
+	AMCLI="appman"
+	AMCLIPATH="$DIR/$AMCLI"
+	SUDOCOMMAND=""
+	COMPLETIONPATH="$HOME"
+	COMPLETIONFILE=".bash_completion"
+	if test -f ~/.config/appman/appman-config; then
+		break 2>/dev/null
+	else
+		echo -e "-----------------------------------------------------------------------\n>>> Thank you for choosing AppMan!\n-----------------------------------------------------------------------\nBefore proceeding with any task, write the name of the directory in which\nyou will install the programs, for example 'Programs', 'My-apps'... you\ncan also choose a subfolder, for example '.local/AppMan-apps', or whatever\nname you want, as long as it doesn't contain spaces.\n\nThe destination folder will be created in $HOME\n-----------------------------------------------------------------------\n"
+		read -r -ep "Please, write the name or the path of your custom application's folder$(echo -e '\n> ')" location
+		case $location in
+		'.local/bin') echo "Choose different path!" && read -r -ep "Please, write the name or the path of your custom application's folder$(echo -e '\n : ')" location;;
+		*) echo $location >> ~/.config/appman/appman-config
+		echo -e '-----------------------------------------------------------------------\nOK, you have chosen to install apps in '$HOME'/'$location'\nTo change this edit the configuration file ~/.config/appman/appman-config\n\nIn case of problems, use the option "-h".\n-----------------------------------------------------------------------\nYou are ready! Start installing your favorite apps locally!!\n-----------------------------------------------------------------------'
+		exit;;
+		esac
+	fi
+	APPSPATH="$HOME/$APPSDIR"
+	AMPATH="$HOME/$APPSDIR/$AMCLI"
+fi
+
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main"
 arch=$(printf '%s\n' "$HOSTTYPE")
 currentuser=$(printf '%s\n' "$USER")
@@ -1985,7 +2010,7 @@ case "$1" in
 	;;
 
   'version'|'-v'|'--version')
-  	echo "4.4.3-6";;
+  	echo "5";;
 
   *) exec $AMCLIPATH ;;
 
