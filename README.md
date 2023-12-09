@@ -11,6 +11,8 @@ To see the whole catalog of the apps available, visit [portable-linux-apps.githu
 
 For a version of "AM" that works locally and installs/removes the same programs without root privileges, see [AppMan](https://github.com/ivan-hc/AppMan) or use the inbuilt option `--user` (jump to "[Use AM locally like AppMan does](#use-am-locally-like-appman-does)").
 
+Since version 5, AM can be used exactly like AppMan if not installed regularly. See "[Proceeding](#proceeding)", under "[Installation](#installation)".
+
 ------------------------------------------------------------------------
 [Introducing "AM"](#introducing-am)
 - [Differences between "AM" and "AppMan"](#differences-between-am-and-appman)
@@ -64,7 +66,11 @@ https://github.com/ivan-hc/AM-Application-Manager/assets/88724353/b2dd8ca6-5ee7-
 
 -----------------------------------------------------------------------------
 ## Differences between "AM" and "AppMan"
-"AM" and "AppMan" are two command line tools that can download, install, update, remove and save AppImage and other standalone applications trying to always get the original versions from the main sources, and where necessary, try to create AppImage using [pkg2appimage](https://github.com/AppImage/pkg2appimage) and [appimagetool](https://github.com/AppImage/AppImageKit). Since March 2022 "AM" provides its source code as the base for the newer releases of AppMan, making it a version of "AM" that allows you to install programs locally instead. 
+"AM" and "AppMan" are two command line tools that can download, install, update, remove and save AppImage and other standalone applications trying to always get the original versions from the main sources, and where necessary, try to create AppImage using [pkg2appimage](https://github.com/AppImage/pkg2appimage) and [appimagetool](https://github.com/AppImage/AppImageKit).
+
+Since March 2022 "AM" provides its source code as the base for the newer releases of AppMan, making it a version of "AM" that allows you to install programs locally instead and since version 5 both AM and AppMan are equal! All that changes is the way they act once istalled.
+
+In fact, to manage programs system wide, AM needs to be installed in /opt/am with a /usr/local/bin/am as a symlink (see "[Proceeding](#proceeding)", under "[Installation](#installation)").
 
 Where `$PROGRAM` is the application we're going to install:
 - "AM" (ie the `am` command, provided by this main repository) installs programs and works at system level (i.e. for all the users). "AM" requires the `sudo` privileges but only to install and remove the app, all the other commands can be executed as a normal user. This allows multiple users of the same system to be able to use the same installed applications. This is what an installation script installs with "AM":
@@ -90,15 +96,17 @@ Where `$PROGRAM` is the application we're going to install:
 
 For everything else, the controls and operation are always the same for both command line tools. The only thing that changes is that the installation scripts are written only for "AM", while "AppMan" uses the same scripts and includes commands that can modify them to make them work locally during the installation process.
 
+As I have already said above, AM (since version 5) can work as a portable app, just like AppMan, but to use the same options as AppMan, you have to rename the main script "APP-MANAGER" as "appman" or it will not completelly act like AppMan (for example, to use "bash-completion" with the dedicated options).
+
 More details about AppMan on the official repository, at https://github.com/ivan-hc/AppMan
 
 -----------------------------------------------------------------------------
 ## Use AM locally like AppMan does
-Since version 4.3.3-1 the new `--user` option allows you to create an alias to install and manage apps in your $HOME folder. When executing the `am --user` command you will be suggested an alias to use temporarily or if you want you can add it in your ~/.bashrc to make it permanent. "AppMan" will be used while still using the usual `am` command.
+Being AM v5+ a portable script, it can be used just like AppMan, being the internal code the same. However, the best way to use it is to install regularly to manage apps at system level. You should rename it as "appman" to mande it work like it. 
 
-This is a minor update for those who want to use the `am` command to install applications locally and who were not aware of AppMan, the AM clone.
+But if you have the needing of installing apps at system level and locally, use the option `--user` that allows you to create an alias to install and manage apps in your $HOME folder. When executing the `am --user` command you will be suggested an alias to use temporarily or if you want you can add it in your ~/.bashrc to make it permanent. "AppMan" will be used while still using the usual `am` command.
 
-The new option does not immediately enable "AppMan Mode", instead it will show you an alias to use temporarily in the current session or to add to your ~/.bashrc to make it permanent:
+The `--user` option does not immediately enable "AppMan Mode", instead it will show you an alias to use temporarily in the current session or to add to your ~/.bashrc to make it permanent:
 ```
 alias am=/opt/am/appman
 ```
@@ -186,6 +194,7 @@ App launchers (files with the .desktop extension) are installed in /usr/share/ap
 However, if you want to set /usr/local/share as your directory and customize "AM" to keep your configurations intact, just follow my instructions [here](https://github.com/ivan-hc/AM-Application-Manager/issues/86).
 
 ## Proceeding
+"AM" is ment to be installed at system level to manage apps using `sudo` privileges.
 To install "AM" quickly, just copy/paste the following command:
 	
     wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/INSTALL && chmod a+x ./INSTALL && sudo ./INSTALL
@@ -198,6 +207,11 @@ Or use "GIT":
     sudo ./INSTALL
     
 In both cases, the "INSTALL" script will create a dedicated /opt/am directory containing the ["APP-MANAGER"](https://github.com/ivan-hc/AM-application-manager/blob/main/APP-MANAGER) script (ie "AM" itself), a symlink for it in /usr/local/bin named `am` and the /opt/am/remove script needed to [uninstall](#uninstall) "AM" itself, if needed. A temporary folder named /opt/am/.cache will be created too, in wich each installation script or list of available applications (for your architecture) is downloaded.
+
+However, if you want to use it to manage apps locally and without installing it, use the following command:
+
+    wget https://raw.githubusercontent.com/ivan-hc/AM-Application-Manager/main/APP-MANAGER -O ./appman && chmod a+x ./appman
+NOTE: to mantain the name "appman" in this case is important to use some dedicated options. If you need to use the "am" command instead, install "AM" regularly as suggested above and use the option `--user`.
 
 -----------------------------------------------------------------------------
 
