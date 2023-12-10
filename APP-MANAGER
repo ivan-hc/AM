@@ -45,11 +45,6 @@ for name in "cat" "chmod" "chown" "curl" "grep" "sed" "wget"; do
   || { printf "\n%s\n" 'ERROR: command "'$name'" not found, strongly needed by "'$AMCLI'"!'; deps=1; };
 done; [ "$deps" != "1" ] || { printf "\nInstall the above and try again\n\n"; exit 1; }
 
-for name in "ar" "unzip" "tar" "zsync"; do
-  test -x "$(command -v $name 2>/dev/null)" \
-  || { printf "\n%s\n" 'NOTE: command "'$name'" not found, strongly needed by some installation scripts!'; deps=1; };
-done; [ "$deps" != "1" ] || { printf '\nThe above are optional for "'$AMCLI'" itself, but to prevent installation/update\nerrors for some kind of packages, its strongly recommended to install them!\n\n'; }
-
 rm -rf "$AMPATH/options"
 cat <<-HEREDOC >> "$AMPATH/options"
 	about
@@ -688,9 +683,37 @@ case "$1" in
 							if curl --output /dev/null --silent --head --fail $AMREPO/programs/$arch/$arg  1>/dev/null; then
 								case $arg in
 								*) 
-									for var in $arg; do 
+									for var in $arg; do
 										cd $AMPATH/.cache; mkdir -p tmp; cd tmp; wget -q $AMREPO/programs/$arch/$arg; cd ..; mv ./tmp/$arg ./$arg; rmdir ./tmp
 										chmod a+x ./$arg
+										
+										if grep -q '.deb' ./$arg; then
+											if ! command -v zsync 1>/dev/null; then
+												echo ' 💀 ERROR: YOU CANNOT INSTALL "'$(echo '"'$arg'"' | tr a-z A-Z)'" WITHOUT INSTALLING "BINUTILS"!'
+												break
+											fi
+										fi
+										
+										if grep -q '.tar' ./$arg; then
+											if ! command -v zsync 1>/dev/null; then
+												echo ' 💀 ERROR: YOU CANNOT INSTALL "'$(echo '"'$arg'"' | tr a-z A-Z)'" WITHOUT INSTALLING "TAR"!'
+												break
+											fi
+										fi
+										
+										if grep -q '.zip' ./$arg; then
+											if ! command -v zsync 1>/dev/null; then
+												echo ' 💀 ERROR: YOU CANNOT INSTALL "'$(echo '"'$arg'"' | tr a-z A-Z)'" WITHOUT INSTALLING "UNZIP"!'
+												break
+											fi
+										fi
+										
+										if grep -q 'zsync /opt' ./$arg; then
+											if ! command -v zsync 1>/dev/null; then
+												echo ' 💀 ERROR: YOU CANNOT INSTALL "'$(echo '"'$arg'"' | tr a-z A-Z)'" WITHOUT INSTALLING "ZSYNC"!'
+												break
+											fi
+										fi
 										
 										if [ $AMCLI == appman ] 2>/dev/null; then
 											sed -i "s# /opt# $APPSPATH#g" ./$arg
@@ -2023,7 +2046,7 @@ case "$1" in
 	;;
 
   'version'|'-v'|'--version')
-  	echo "5.2";;
+  	echo "5.2.1";;
 
   *) exec $AMCLIPATH ;;
 
