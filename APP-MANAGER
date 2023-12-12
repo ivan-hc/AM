@@ -66,9 +66,11 @@ cat <<-HEREDOC >> "$AMPATH/options"
 	web
 	--disable-completion
 	--enable-completion
+	--firejail
 	--home
 	--launcher
 	--rollback
+	--sandbox
 	--user
 HEREDOC
 
@@ -277,6 +279,13 @@ case "$1" in
  DESCRIPTION:	Enable bash-completion to complete a keyword with the "TAB"
  
  key, using the names of all installable applications available.
+ __________________________________________________________________________
+ 
+ --firejail, --sandbox
+ 
+ SYNOPSIS:	--firejail {PROGRAM}
+ 
+ DESCRIPTION:	Run an AppImage in a sandbox using Firejail.
  __________________________________________________________________________
 
  --launcher
@@ -1823,6 +1832,112 @@ case "$1" in
 	fi
 	;;
 
+  '--firejail'|'--sandbox')
+    	if [ -n "$SUDO_COMMAND" ]; then 
+		echo -e "\n WARNING: You don't need to run the option '$1' with SUDO.\n"; 
+		exit; 
+	fi
+	
+	if ! command -v firejail 1>/dev/null; then
+  		printf "\n%s\n" 'ERROR: "firejail" is not installed!'; deps=1
+		[ "$deps" != "1" ] || { printf "\nInstall the above from your package manager and try again\n\n"; exit 1; }
+	fi
+	
+	case $2 in
+	'') 	
+		echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
+	esac
+	
+	while [ -n "$1" ]; do
+	
+		if ! test -f $APPSPATH/$2/remove; then
+			echo " '$2' is not a valid argument or is not installed."; exit
+		fi
+	
+		if [ -z $(strings -d $APPSPATH/$2/"$2" 2>/dev/null | grep -m 1 "AppImage") ]; then
+	    		echo ' ERROR: "'$2'" is NOT an AppImage'; exit
+	    	fi
+		
+		echo -e '---------------------------------------------------------------------\nYOU ARE USING FIREJAIL VIA "'$(echo $AMCLI | tr a-z A-Z)'".\n---------------------------------------------------------------------'
+		
+		if ! test -f $APPSPATH/$2/firejail.profile; then
+				cp /etc/firejail/default.profile $APPSPATH/$2/firejail.profile
+				echo -e "◆ Created $APPSPATH/$2/firejail.profile, do what you will with it! \n---------------------------------------------------------------------"
+		fi
+		
+		
+		DESKTOPFILEANDPATH=$(cat $APPSPATH/$2/remove | tr " " "\n" | grep "/share/applications" | head -1)
+		LAUNCHERPATH=$(echo $DESKTOPFILEANDPATH | sed 's:/[^/]*$::')
+		
+		if ! test -f $APPSPATH/$2/firejail.profile; then
+			cp /etc/firejail/default.profile $APPSPATH/$2/firejail.profile
+			echo -e "◆ Created $APPSPATH/$2/firejail.profile\n---------------------------------------------------------------------"
+		else
+			echo -e "◆ Found $APPSPATH/$2/firejail.profile\n---------------------------------------------------------------------"
+		fi
+		
+		echo -e "\n Choose to run once using Firejail (options 1 & 2) or make the\n changes permanent by editing the available .desktop files, if\n available (options 3 & 4).\n\n NOTE, once that the .desktop files are patched, they will be\n saved in ~/.local/share/applications, which means that if you\n use AppMan, the originals will be overwritten.\n"
+		echo -e ' Supported text editors (option 5) are "vim" and "nano".\n'
+		echo -e "1) Sandbox once using Firejail's defaults"
+		echo -e "2) Sandbox once using the custom profile"
+		echo -e "3) Patch the .desktop file using Firejail's defaults"
+		echo -e "4) Patch the .desktop file using the custom profile"
+		echo -e "5) Edit the custom $APPSPATH/$2/firejail.profile file\n"
+		read -p 'CHOOSE BETWEEN 1, 2, 3, 4 AND 5, OR LEAVE BLANK TO EXIT: ' response
+		
+		case $response in
+		
+		1)	echo -e "\n############################### START FIREJAIL ###############################\n"
+			firejail --appimage $APPSPATH/$2/$2
+			echo -e "\n############################### STOP FIREJAIL ###############################\n"
+			;;
+		
+		2)	echo -e "\n############################### START FIREJAIL ###############################\n"
+			firejail --appimage --profile=$APPSPATH/$2/firejail.profile $APPSPATH/$2/$2
+			echo -e "\n############################### STOP FIREJAIL ###############################\n"
+			;;
+		
+		3)	mkdir -p ~/.local/share/applications; mkdir -p .am-patchinglauncher
+			cp $DESKTOPFILEANDPATH ./.am-patchinglauncher/
+			for f in ./.am-patchinglauncher/*; do
+				for var in $f; do
+					EXEC=$(grep -e '^Exec=.*' $f | head -n 1 | cut -d "=" -f 2- | sed -e 's|%.||g')
+					sed -i "s#Exec=$CHANGEEXEC#Exec=firejail --appimage $APPSPATH/$2/$EXEC#g" ./$f
+				done
+			done
+			mv ./.am-patchinglauncher/* ~/.local/share/applications/ 2> /dev/null;	rmdir .am-patchinglauncher
+			break
+			;;
+		
+		4)	mkdir -p ~/.local/share/applications; mkdir -p .am-patchinglauncher
+			cp $DESKTOPFILEANDPATH ./.am-patchinglauncher/
+			for f in ./.am-patchinglauncher/*; do
+				for var in $f; do
+					EXEC=$(grep -e '^Exec=.*' $f | head -n 1 | cut -d "=" -f 2- | sed -e 's|%.||g')
+					sed -i "s#Exec=$CHANGEEXEC#Exec=firejail --appimage --profile=$APPSPATH/$2/firejail.profile $APPSPATH/$2/$EXEC#g" ./$f
+				done
+			done
+			mv ./.am-patchinglauncher/* ~/.local/share/applications/ 2> /dev/null;	rmdir .am-patchinglauncher
+			break
+			;;
+		
+		5)	if command -v vim 1>/dev/null; then
+				vim $APPSPATH/$2/firejail.profile
+			else
+				nano $APPSPATH/$2/firejail.profile
+			fi
+			;;
+						
+		*)	exit
+			;;
+		esac
+	
+	
+	done
+
+	shift
+	;;
+
   '--launcher')
     	if [ -n "$SUDO_COMMAND" ]; then 
 		echo -e "\n WARNING: You don't need to run the option '$1' with SUDO.\n"; 
@@ -2054,7 +2169,7 @@ case "$1" in
 	;;
 
   'version'|'-v'|'--version')
-  	echo "5.2.1-2";;
+  	echo "5.3";;
 
   *) exec $AMCLIPATH ;;
 
