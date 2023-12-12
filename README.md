@@ -49,6 +49,7 @@ Since version 5, AM can be used exactly like AppMan if not installed regularly. 
 - [Cannot mount and run AppImages](#cannot-mount-and-run-appimages)
 - [Missing dependences](#missing-dependences)
 - [Spyware, malware and dangerous software](#spyware-malware-and-dangerous-software)
+- [Stop AppImage prompt to create its own launcher, desktop integration and doubled launchers](#stop-appimage-prompt-to-create-its-own-launcher-desktop-integration-and-doubled-launchers)
 - [Wrong download link](#wrong-download-link)
 
 [Related projects](#related-projects)
