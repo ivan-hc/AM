@@ -617,6 +617,14 @@ for name in "unzip" "tar"; do
 ```
 I don't recommend to remove all other commands, being them mainly used. 
 
+### Stop AppImage prompt to create its own launcher, desktop integration and doubled launchers
+Some developers insist on creating Appimages that create their own launcher on first launch (like WALC and OpenShot). If the official solution proposed [here](https://discourse.appimage.org/t/stop-appimage-from-asking-to-integrate/488) doesn't work, create a .home directory with the `-H` option, launch the app and accept the request. For example:
+```
+am -H walc
+walc
+```
+Accept the integration request, the launcher will be saved in the walc.home directory located next to the AppImage file.
+
 ### Spyware, malware and dangerous software
 Before installing any application, try to know where it comes from first. This program provides you with two basic options for this purpose:
 - Option `-a` or `about` (medium safety), allows you to read a short description and know the links from the pages of the site [https://portable-linux-apps.github.io](https://portable-linux-apps.github.io) locally, however these links may be inaccurate due to continuous updates of the initial scripts (you can provide additional info yourself by modifying the pages of the site, [here](https://github.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io), it is also open source);
