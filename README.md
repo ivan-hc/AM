@@ -38,6 +38,7 @@ Since version 5, AM can be used exactly like AppMan if not installed regularly. 
 - [Install/update/remove programs without "AM"](#installupdateremove-programs-without-am)
 - [Rollback](#rollback)
 - [Manage local AppImages](#manage-local-appimages)
+- [Sandbox using Firejail](#sandbox-using-firejail)
 
 [Create your own script](#create-your-own-script)
 
@@ -428,6 +429,15 @@ NOTE: to mantain the name "appman" in this case is important to use some dedicat
  
  DESCRIPTION:	Enable bash-completion to complete a keyword with the "TAB" key, using the names of all installable applications available.
  ___________________________________________________________________________
+ 
+ `--firejail`, `--sandbox`
+ 
+ SYNOPSIS:
+
+ `--firejail {PROGRAM}`
+ 
+ DESCRIPTION:	Run an AppImage in a sandbox using Firejail.
+ ___________________________________________________________________________
 
  `--launcher`
  
@@ -583,6 +593,16 @@ This only works with the apps hosted on Github.
 Since version 4.4.2 you can use the `--launcher` option to integrate your local AppImage packages by simply dragging and dropping them into the terminal (see video).
 
 https://github.com/ivan-hc/AM-Application-Manager/assets/88724353/c4b889f4-8504-4853-8918-44d52084fe6c
+
+------------------------------------------------------------------------
+# Sandbox using Firejail
+Since version 5.3 you can use the `--firejail` option to run AppImages using a sandbox (requires Firejail installed on the host).
+
+At first start a copy of /etc/firejail/default.profile will be saved in your application's directory, so you're free to launch the AppImage once using the default Firejail profile (option 1) or the custom one (2), you can also patch the .desktop files (if available) to in sandbox-mode always (options 3 and 4). You can handle the custom firejail.profile file of the app using `vim` or `nano` using the option 5 (the first selection is `vim`).
+
+Options 1, 2 and 5 are continuous to let you edit the file and test your changes immediately. Press any key to exit.
+
+NOTE: once patched the .desktop files (options 3 and 4), they will be placed in ~/.local/share/applications, this means that if you have installed apps using AppMan, the original launchers will be overwrited.
 
 ------------------------------------------------------------------------	
 # Troubleshooting
