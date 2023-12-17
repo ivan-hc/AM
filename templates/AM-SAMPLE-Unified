@@ -1,0 +1,133 @@
+#!/bin/sh
+# UNIFIED TEMPLATE FOR APPIMAGE/TAR/ZIP ARCHIVES
+
+APP=SAMPLE
+site="REPLACETHIS"
+url="CHECKTHEURL"
+version="CHECKTHEVERSION"
+
+# CREATE THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP
+
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+
+# FUNCTIONS
+mkdir tmp
+cd ./tmp
+
+_appimage(){
+	wget "$url" -O $APP.AppImage; cd ..; mv --backup=t ./tmp/*mage ./$APP 2> /dev/null; chmod a+x /opt/$APP/$APP	
+}
+
+_tar(){
+	wget "$url"; cd .. tar xf ./tmp/*tar.xz -C ./tmp/ && mv --backup=t ./tmp/*/* . 2> /dev/null
+}
+
+_zip(){
+	wget "$url"; unzip ./*.zip; rm ./*.zip; cd ..; mv --backup=t ./tmp/* ./ 2> /dev/null
+}
+
+#_appimage
+#_tar
+#_zip
+
+rm -R -f ./version
+rm -R -f ./tmp
+echo "$version" >> ./version
+
+# LINK (be sure that it redirects to the correct binary in case of tar/zip packages)
+ln -s /opt/$APP/$APP /usr/local/bin/$APP
+
+# SCRIPT TO UPDATE THE PROGRAM
+cat >> /opt/$APP/AM-updater << 'EOF'
+#!/usr/bin/env bash
+APP=SAMPLE
+version0=$(cat /opt/$APP/version)
+version="CHECKTHEVERSION"
+URL="CHECKTHEURL"
+if [ $version = $version0 ]; then
+	echo "Update not needed!"
+else
+	notify-send "A new version of $APP is available, please wait"
+	mkdir /opt/$APP/tmp
+	cd /opt/$APP/tmp
+	
+	_appimage(){
+		wget "$url" -O $APP.AppImage; cd ..; mv --backup=t ./tmp/*mage ./$APP 2> /dev/null; chmod a+x /opt/$APP/$APP	
+	}
+
+	_tar(){
+		wget "$url"; cd .. tar xf ./tmp/*tar.xz -C ./tmp/ && mv --backup=t ./tmp/*/* . 2> /dev/null
+	}
+
+	_zip(){
+		wget "$url"; unzip ./*.zip; rm ./*.zip; cd ..; mv --backup=t ./tmp/* ./ 2> /dev/null
+	}
+
+	#_appimage
+	#_tar
+	#_zip
+  		
+  	rm ./version	
+  	echo "$version" >> /opt/$APP/version
+  	rm -R -f ./tmp ./*~
+  	notify-send "$APP is updated!"
+fi
+EOF
+chmod a+x /opt/$APP/AM-updater
+
+# LAUNCHER
+app=$(echo $APP | cut -c -3)
+cd /opt/$APP
+
+# IF THE APP IS AN APPIMAGE, USE THIS FUNCTION
+_appimage_launcher(){
+	./$APP --appimage-extract *.desktop 1>/dev/null
+	./$APP --appimage-extract share/applications/*.desktop 1>/dev/null
+	./$APP --appimage-extract usr/share/applications/*.desktop 1>/dev/null
+	mv squashfs-root/*.desktop ./$APP.desktop 2>/dev/null
+	mv squashfs-root/share/applications/*.desktop ./$APP.desktop 2>/dev/null
+	mv squashfs-root/usr/share/applications/*.desktop ./$APP.desktop 2>/dev/null
+	if [ ! -e ./$APP.desktop ]; then 
+		rm ./$APP.desktop; ./$APP --appimage-extract usr/share/applications/*$app*.desktop 
+		mv squashfs-root/usr/share/applications/*.desktop ./$APP.desktop 2>/dev/null
+	fi
+	if [ ! -e ./$APP.desktop ]; then 
+		rm ./$APP.desktop; ./$APP --appimage-extract share/applications/*$app*.desktop 1>/dev/null
+		mv squashfs-root/share/applications/*.desktop ./$APP.desktop 2>/dev/null
+	fi
+	rm -R -f /opt/$APP/squashfs-root
+}
+
+#_appimage_launcher
+
+# IF THE APP IS ANOTHER KIND OF APP, USE THIS SPACE TO DOWNLOAD OR CREATE THE LAUNCHER
+#wget DESKTOPFILE -O $APP.desktop 2> /dev/null
+
+# PACH THE LAUNCHER
+CHANGEEXEC=$(cat ./$APP.desktop | grep Exec= | tr ' ' '\n' | tr '=' '\n' | tr '/' '\n' | grep $app | head -1)
+sed -i "s#$CHANGEEXEC#$APP#g" ./$APP.desktop 2>/dev/null
+sed -i "s#AppRun#$APP#g" ./$APP.desktop 2>/dev/null
+sed -i "s#Exec=/bin/#Exec=#g" ./$APP.desktop 2>/dev/null
+sed -i "s#Exec=/usr/bin/#Exec=#g" ./$APP.desktop 2>/dev/null
+CHANGEICON=$(cat ./$APP.desktop | grep Icon= | head -1)
+sed -i "s#$CHANGEICON#Icon=/opt/$APP/icons/$APP#g" ./$APP.desktop 2>/dev/null
+
+mv ./$APP.desktop /usr/share/applications/AM-$APP.desktop 2>/dev/null
+
+# ICON
+mkdir icons
+wget https://portable-linux-apps.github.io/icons/$APP.png -O ./icons/$APP 2>/dev/null
+
+# CHANGE THE PERMISSIONS
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/$APP
+
+# MESSAGE
+echo "
+ $APP is provided by $site
+"
