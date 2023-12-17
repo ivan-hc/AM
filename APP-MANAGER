@@ -731,14 +731,14 @@ case "$1" in
 											fi
 										fi
 										
-										function _common_patch(){
+										function _install_common_patch(){
 											sed -i "s#wget #wget -q --show-progress #g" ./$arg; sed -i 's#$(wget -q --show-progress #$(wget -q #g' ./$arg; sed -i "s# -q -q # -q #g" ./$arg
 											sed -i 's/currentuser=/#currentuser=/g' ./$arg
 											sed -i 's/chown -R $currentuser/#chown -R $currentuser/g' ./$arg
 											sed -i '/# MESSAGE/,$d' ./$arg
 										}
 										
-										function _appman_local_patch(){
+										function _install_appman_local_patch(){
 											sed -i "s# /opt# $APPSPATH#g" ./$arg
 											sed -i "s#/opt/#$APPSPATH/#g" ./$arg
 											sed -i "s# /usr/local/bin# $(xdg-user-dir USER)/.local/bin#g" ./$arg
@@ -752,14 +752,14 @@ case "$1" in
 										}
 										
 										if [ $AMCLI == appman ] 2>/dev/null; then
-											_common_patch
-											_appman_local_patch
+											_install_common_patch
+											_install_appman_local_patch
 										else
 											if [[ $(grep "[[:space:]]ro[[:space:],]" /proc/mounts) ]]; then
 												$SUDOCOMMAND mkdir -p /usr/local/share/applications
 												sed -i 's#/usr/share/applications#/usr/local/share/applications#g' ./$arg
 											fi
-											_common_patch
+											_install_common_patch
 										fi
 
 										echo -ne " ◆ RUNNING THE INSTALLATION SCRIPT FOR $(echo '"'$arg'"' | tr a-z A-Z)... \r" &&
@@ -1953,7 +1953,8 @@ case "$1" in
   						mkdir -p $HOME/.local/share/icons
 						chmod a+x "$arg"
   						cd "$(dirname "$arg")"
-  						function _appimage_extract(){
+  						
+  						function _launcher_appimage_extract(){
   							"$arg" --appimage-extract share/icons/*/*/* 1>/dev/null
 							"$arg" --appimage-extract usr/share/icons/*/*/* 1>/dev/null
 							"$arg" --appimage-extract share/icons/*/*/*/* 1>/dev/null
@@ -1964,47 +1965,53 @@ case "$1" in
     							"$arg" --appimage-extract share/applications/*.desktop 1>/dev/null
     							"$arg" --appimage-extract usr/share/applications/*.desktop 1>/dev/null
     						}
-    						_appimage_extract 2>/dev/null
-    						echo "[Desktop Entry]" >> ./"$appimage".desktop
-    						echo "Version=1.0" >> ./"$appimage".desktop
-    						echo "Type=Application" >> ./"$appimage".desktop
-    						echo "Terminal=false" >> ./"$appimage".desktop
-    						echo "StartupNotify=true" >> ./"$appimage".desktop
-    						echo "Exec=$arg %U" >> ./"$appimage".desktop
-    						cat ./squashfs-root/*.desktop | grep Name= | head -1 >> ./"$appimage".desktop
-    						cat ./squashfs-root/*.desktop | grep -F 'Name[' >> ./"$appimage".desktop
-    						cat ./squashfs-root/*.desktop | grep Categories= >> ./"$appimage".desktop
-    						cat ./squashfs-root/*.desktop | grep Comment= | head -1 >> ./"$appimage".desktop
-    						cat ./squashfs-root/*.desktop | grep -F 'Comment[' >> ./"$appimage".desktop
-    						cat ./squashfs-root/*.desktop | grep Icon= | head -1 >> ./"$appimage".desktop
-    						cat ./squashfs-root/*.desktop | grep MimeType= | head -1 >> ./"$appimage".desktop
-    						cat ./"$appimage".desktop | uniq > ./"$appimage"-1.desktop && mv ./"$appimage"-1.desktop ./"$appimage".desktop
-    						mv ./"$appimage".desktop $HOME/.local/share/applications/AppImages/"$appimage".desktop 2>/dev/null
-    						mv ./squashfs-root/*.png $HOME/.local/share/icons/ 2>/dev/null
-    						mv ./squashfs-root/*.svg $HOME/.local/share/icons/ 2>/dev/null
-    						mv ./squashfs-root/share/icons/hicolor/0x0/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
-    						mv ./squashfs-root/share/icons/hicolor/22x22/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
-    						mv ./squashfs-root/share/icons/hicolor/24x24/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
-    						mv ./squashfs-root/share/icons/hicolor/32x32/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
-    						mv ./squashfs-root/share/icons/hicolor/48x48/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
-    						mv ./squashfs-root/share/icons/hicolor/64x64/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
-    						mv ./squashfs-root/share/icons/hicolor/128x128/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
-    						mv ./squashfs-root/share/icons/hicolor/256x256/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
-    						mv ./squashfs-root/share/icons/hicolor/512x512/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
-    						mv ./squashfs-root/share/icons/hicolor/scalable/apps/*.svg $HOME/.local/share/icons/ 2>/dev/null
-    						mv ./squashfs-root/share/pixmaps/*.png $HOME/.local/share/icons/ 2>/dev/null
-    						mv ./squashfs-root/usr/share/icons/hicolor/0x0/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
-    						mv ./squashfs-root/usr/share/icons/hicolor/22x22/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
-    						mv ./squashfs-root/usr/share/icons/hicolor/24x24/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
-    						mv ./squashfs-root/usr/share/icons/hicolor/32x32/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
-    						mv ./squashfs-root/usr/share/icons/hicolor/48x48/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
-    						mv ./squashfs-root/usr/share/icons/hicolor/64x64/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
-    						mv ./squashfs-root/usr/share/icons/hicolor/128x128/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
-    						mv ./squashfs-root/usr/share/icons/hicolor/256x256/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
-    						mv ./squashfs-root/usr/share/icons/hicolor/512x512/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
-    						mv ./squashfs-root/usr/share/icons/hicolor/scalable/apps/*.svg $HOME/.local/share/icons/ 2>/dev/null
-    						mv ./squashfs-root/usr/share/pixmaps/*.png $HOME/.local/share/icons/ 2>/dev/null
-						rm -R -f ./squashfs-root
+    						
+    						function _launcher_appimage_integration(){
+    							echo "[Desktop Entry]" >> ./"$appimage".desktop
+    							echo "Version=1.0" >> ./"$appimage".desktop
+    							echo "Type=Application" >> ./"$appimage".desktop
+    							echo "Terminal=false" >> ./"$appimage".desktop
+    							echo "StartupNotify=true" >> ./"$appimage".desktop
+    							echo "Exec=$arg %U" >> ./"$appimage".desktop
+    							cat ./squashfs-root/*.desktop | grep Name= | head -1 >> ./"$appimage".desktop
+    							cat ./squashfs-root/*.desktop | grep -F 'Name[' >> ./"$appimage".desktop
+    							cat ./squashfs-root/*.desktop | grep Categories= >> ./"$appimage".desktop
+    							cat ./squashfs-root/*.desktop | grep Comment= | head -1 >> ./"$appimage".desktop
+    							cat ./squashfs-root/*.desktop | grep -F 'Comment[' >> ./"$appimage".desktop
+    							cat ./squashfs-root/*.desktop | grep Icon= | head -1 >> ./"$appimage".desktop
+    							cat ./squashfs-root/*.desktop | grep MimeType= | head -1 >> ./"$appimage".desktop
+    							cat ./"$appimage".desktop | uniq > ./"$appimage"-1.desktop && mv ./"$appimage"-1.desktop ./"$appimage".desktop
+    							mv ./"$appimage".desktop $HOME/.local/share/applications/AppImages/"$appimage".desktop 2>/dev/null
+    							mv ./squashfs-root/*.png $HOME/.local/share/icons/ 2>/dev/null
+    							mv ./squashfs-root/*.svg $HOME/.local/share/icons/ 2>/dev/null
+    							mv ./squashfs-root/share/icons/hicolor/0x0/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
+    							mv ./squashfs-root/share/icons/hicolor/22x22/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
+    							mv ./squashfs-root/share/icons/hicolor/24x24/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
+    							mv ./squashfs-root/share/icons/hicolor/32x32/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
+    							mv ./squashfs-root/share/icons/hicolor/48x48/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
+    							mv ./squashfs-root/share/icons/hicolor/64x64/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
+    							mv ./squashfs-root/share/icons/hicolor/128x128/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
+    							mv ./squashfs-root/share/icons/hicolor/256x256/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
+    							mv ./squashfs-root/share/icons/hicolor/512x512/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
+    							mv ./squashfs-root/share/icons/hicolor/scalable/apps/*.svg $HOME/.local/share/icons/ 2>/dev/null
+    							mv ./squashfs-root/share/pixmaps/*.png $HOME/.local/share/icons/ 2>/dev/null
+    							mv ./squashfs-root/usr/share/icons/hicolor/0x0/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
+    							mv ./squashfs-root/usr/share/icons/hicolor/22x22/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
+    							mv ./squashfs-root/usr/share/icons/hicolor/24x24/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
+    							mv ./squashfs-root/usr/share/icons/hicolor/32x32/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
+    							mv ./squashfs-root/usr/share/icons/hicolor/48x48/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
+    							mv ./squashfs-root/usr/share/icons/hicolor/64x64/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
+    							mv ./squashfs-root/usr/share/icons/hicolor/128x128/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
+    							mv ./squashfs-root/usr/share/icons/hicolor/256x256/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
+    							mv ./squashfs-root/usr/share/icons/hicolor/512x512/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
+    							mv ./squashfs-root/usr/share/icons/hicolor/scalable/apps/*.svg $HOME/.local/share/icons/ 2>/dev/null
+    							mv ./squashfs-root/usr/share/pixmaps/*.png $HOME/.local/share/icons/ 2>/dev/null
+							rm -R -f ./squashfs-root
+    						}
+    						
+    						_launcher_appimage_extract 2>/dev/null
+    						_launcher_appimage_integration 2>/dev/null
+    						
     						break
     					fi
 				fi
