@@ -731,22 +731,16 @@ case "$1" in
 											fi
 										fi
 										
-										if [ $AMCLI == appman ] 2>/dev/null; then
-											sed -i "s# /opt# $APPSPATH#g" ./$arg
-											sed -i "s#/opt/#$APPSPATH/#g" ./$arg
-											sed -i "s#wget #wget -q --show-progress #g" ./$arg
-											sed -i 's#$(wget -q --show-progress #$(wget -q #g' ./$arg
-											sed -i 's#wget http#wget -q http#g' ./$arg
-											sed -i "s#rm #rm -f #g" ./$arg
-											sed -i "s#form -f #form #g" ./$arg
-											sed -i "s#unzip #unzip -qq #g" ./$arg
+										function _common_patch(){
+											sed -i "s#wget #wget -q --show-progress #g" ./$arg; sed -i 's#$(wget -q --show-progress #$(wget -q #g' ./$arg; sed -i "s# -q -q # -q #g" ./$arg
 											sed -i 's/currentuser=/#currentuser=/g' ./$arg
 											sed -i 's/chown -R $currentuser/#chown -R $currentuser/g' ./$arg
 											sed -i '/# MESSAGE/,$d' ./$arg
-											sed -i 's# /opt/$APP/icons/$APP# /opt/$APP/icons/$APP 2> /dev/null#g' ./$arg
-											sed -i 's#.svg;#.svg 2> /dev/null;#g' ./$arg
-											sed -i 's#programs/.icons/$APP.svg#programs/.icons/$APP.svg 2> /dev/null;#g' ./$arg
-											sed -i 's#*.desktop ./$APP.desktop#*.desktop ./$APP.desktop 2> /dev/null;#g' ./$arg
+										}
+										
+										function _appman_local_patch(){
+											sed -i "s# /opt# $APPSPATH#g" ./$arg
+											sed -i "s#/opt/#$APPSPATH/#g" ./$arg
 											sed -i "s# /usr/local/bin# $(xdg-user-dir USER)/.local/bin#g" ./$arg
 											sed -i "s# /usr/bin# $(xdg-user-dir USER)/.local/bin#g" ./$arg
 											sed -i "s# /usr/local/games# $(xdg-user-dir USER)/.local/bin#g" ./$arg
@@ -755,48 +749,21 @@ case "$1" in
 											sed -i "s# /usr/local/share/applications# $(xdg-user-dir USER)/.local/share/applications#g" ./$arg
 											sed -i "s# /usr/share/pixmaps# $(xdg-user-dir USER)/.local/share/icons#g" ./$arg
 											sed -i "s# /usr/local/share/pixmaps# $(xdg-user-dir USER)/.local/share/icons#g" ./$arg
-											sed -i "s# -q -q # -q #g" ./$arg
-											sed -i "s# -f -R -f # -R -f #g" ./$arg
-											sed -i "s# 2> /dev/null; 2>/dev/null# 2> /dev/null#g" ./$arg
+										}
+										
+										if [ $AMCLI == appman ] 2>/dev/null; then
+											_common_patch
+											_appman_local_patch
 										else
 											if [[ $(grep "[[:space:]]ro[[:space:],]" /proc/mounts) ]]; then
 												$SUDOCOMMAND mkdir -p /usr/local/share/applications
 												sed -i 's#/usr/share/applications#/usr/local/share/applications#g' ./$arg
 											fi
-											sed -i "s#wget #wget -q --show-progress #g" ./$arg
-											sed -i 's#$(wget -q --show-progress #$(wget -q #g' ./$arg
-											sed -i 's#wget http#wget -q http#g' ./$arg
-											sed -i "s#rm #rm -f #g" ./$arg
-											sed -i "s#form -f #form #g" ./$arg
-											sed -i "s#unzip #unzip -qq #g" ./$arg
-											sed -i 's/currentuser=/#currentuser=/g' ./$arg
-											sed -i 's/chown -R $currentuser/#chown -R $currentuser/g' ./$arg
-											sed -i '/# MESSAGE/,$d' ./$arg
-											sed -i 's# /opt/$APP/icons/$APP# /opt/$APP/icons/$APP 2> /dev/null#g' ./$arg
-											sed -i 's#.svg;#.svg 2> /dev/null;#g' ./$arg
-											sed -i 's#programs/.icons/$APP.svg#programs/.icons/$APP.svg 2> /dev/null;#g' ./$arg
-											sed -i 's#*.desktop ./$APP.desktop#*.desktop ./$APP.desktop 2> /dev/null;#g' ./$arg
-											sed -i "s# -q -q # -q #g" ./$arg
-											sed -i "s# -f -R -f # -R -f #g" ./$arg
-											sed -i "s# 2> /dev/null; 2>/dev/null# 2> /dev/null#g" ./$arg
+											_common_patch
 										fi
-										
-										function install_arg(){
-										#if grep -q 'read -r' ./$arg; then
-											$SUDOCOMMAND ./$arg | less -E
-										#else
-										#	outputlines=$($SUDOCOMMAND ./$arg | wc -l)
-										#	for i in "$outputlines"; do
-										#		printf '\033['$i'A\033[K'
-										#	done
-										#	for i in "*"; do
-										#		echo $* 2>&1
-										#	done
-										#fi
-										}
-										
+
 										echo -ne " ◆ RUNNING THE INSTALLATION SCRIPT FOR $(echo '"'$arg'"' | tr a-z A-Z)... \r" &&
-										install_arg && echo -ne "                                                                          \r" &&
+										$SUDOCOMMAND ./$arg | less -E && echo -ne "                                                                          \r" &&
 										echo -ne " ◆ CONFIGURING $(echo '"'$arg'"' | tr a-z A-Z)...\r" && echo -ne "                                                                          \r" &&
 										$SUDOCOMMAND chown -R $currentuser $APPSPATH/$(cd $APPSPATH && ls -td * | head -1) 2> /dev/null
 										if test -f $APPSPATH/$(cd $APPSPATH && ls -td * | head -1)/AM-updater; then
@@ -1986,18 +1953,18 @@ case "$1" in
   						mkdir -p $HOME/.local/share/icons
 						chmod a+x "$arg"
   						cd "$(dirname "$arg")"
-  						function appimage_extract(){
-  						"$arg" --appimage-extract share/icons/*/*/* 1>/dev/null
-						"$arg" --appimage-extract usr/share/icons/*/*/* 1>/dev/null
-						"$arg" --appimage-extract share/icons/*/*/*/* 1>/dev/null
-						"$arg" --appimage-extract usr/share/icons/*/*/*/* 1>/dev/null
-						"$arg" --appimage-extract *.svg 1>/dev/null
-						"$arg" --appimage-extract *.png 1>/dev/null
-    						"$arg" --appimage-extract *.desktop 1>/dev/null
-    						"$arg" --appimage-extract share/applications/*.desktop 1>/dev/null
-    						"$arg" --appimage-extract usr/share/applications/*.desktop 1>/dev/null
+  						function _appimage_extract(){
+  							"$arg" --appimage-extract share/icons/*/*/* 1>/dev/null
+							"$arg" --appimage-extract usr/share/icons/*/*/* 1>/dev/null
+							"$arg" --appimage-extract share/icons/*/*/*/* 1>/dev/null
+							"$arg" --appimage-extract usr/share/icons/*/*/*/* 1>/dev/null
+							"$arg" --appimage-extract *.svg 1>/dev/null
+							"$arg" --appimage-extract *.png 1>/dev/null
+    							"$arg" --appimage-extract *.desktop 1>/dev/null
+    							"$arg" --appimage-extract share/applications/*.desktop 1>/dev/null
+    							"$arg" --appimage-extract usr/share/applications/*.desktop 1>/dev/null
     						}
-    						appimage_extract 2>/dev/null
+    						_appimage_extract 2>/dev/null
     						echo "[Desktop Entry]" >> ./"$appimage".desktop
     						echo "Version=1.0" >> ./"$appimage".desktop
     						echo "Type=Application" >> ./"$appimage".desktop
@@ -2189,7 +2156,7 @@ case "$1" in
 	;;
 
   'version'|'-v'|'--version')
-  	echo "5.3";;
+  	echo "5.3-1";;
 
   *) exec $AMCLIPATH ;;
 
