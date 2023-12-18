@@ -118,6 +118,8 @@ alias am=/opt/am/appman
 ```
 AppMan is downloaded to the AM's installation folder, but without affecting the existing installation.
 
+NOTE: using AM with the --user option enabled and the alias for AppMan, "sudo" allows normal use of AM, absence allows use of AppMan.
+
 -----------------------------------------------------------------------------
 ## What programs can be installed
 AM installs/removes/updates/manages only standalone programs, ie those programs that can be run from a single directory in which they are contained (where `$PROGRAM` is the name of the application, AM installs them always into a dedicated folder named `/opt/$PROGRAM`).
