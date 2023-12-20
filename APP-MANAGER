@@ -394,7 +394,7 @@ case "$1" in
   '-a'|'about')
 
 	_no_sudo
-	
+
 	case $2 in
 	'') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
 	esac
@@ -406,33 +406,35 @@ case "$1" in
 
 		for arg in $ARGS; do
 			for var in "$arg"; do
-				if [ "$arg" == "STOP" ]; then
-					exit 1;
-				else
+			
+				function _about(){
 					markdown="https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/main/apps/$arg.md"
 					if curl -o /dev/null -sIf "$markdown" 1>/dev/null; then 
-						printf "%s\n" "-----------------------------------------------------------------------"
+					printf "%s\n" "-----------------------------------------------------------------------"
 
-						case "$arg" in
-						*) 
-							rm -rf "$AMPATH/.cache/about"; 
-							mkdir -p "$AMPATH/.cache/about";
-							cd "$AMPATH/.cache/about" && wget -q "$markdown" &&
-							sed -i '1,${ /^\s*#/ d; /^\s*!/ d; /\[Applications]/d; /\ --- /d; }' "$arg.md";
-							printf "%s\n" " PACKAGE: $(echo $arg | tr a-z A-Z)";
-
+					case "$arg" in
+					*) 
+						rm -rf "$AMPATH/.cache/about"; 
+						mkdir -p "$AMPATH/.cache/about";
+						cd "$AMPATH/.cache/about" && wget -q "$markdown" &&
+						sed -i '1,${ /^\s*#/ d; /^\s*!/ d; /\[Applications]/d; /\ --- /d; }' "$arg.md";
+						printf "%s\n" " PACKAGE: $(echo $arg | tr a-z A-Z)";
 							if test -f "$APPSPATH/$arg/remove"; then 
-								printf "%s\n" " STATUS: INSTALLED, ABOUT $(du -sm $APPSPATH/$arg | cut -f1) MB OF DISK SPACE IN USE";
-							else 
-								printf "%s\n" " STATUS: NOT INSTALLED";
-							fi
-
+							printf "%s\n" " STATUS: INSTALLED, ABOUT $(du -sm $APPSPATH/$arg | cut -f1) MB OF DISK SPACE IN USE";
+						else 
+							printf "%s\n" " STATUS: NOT INSTALLED";
+						fi
 							cat ./$arg.md && printf "%s\n" "-----------------------------------------------------------------------";
-							;;
-						esac
-					else
-						printf "%s\n" " \"$arg\" is not a valid argument" | tr 'a-z' 'A-Z' && break;
-					fi
+						;;
+					esac
+				else
+					printf "%s\n" " \"$arg\" is not a valid argument" | tr 'a-z' 'A-Z' && break;
+				fi
+				}
+				if [ "$arg" == "STOP" ]; then
+					exit 1
+				else
+					_about
 				fi
 			done
 		done
@@ -444,7 +446,7 @@ case "$1" in
   '-b'|'backup')
 
 	_no_sudo
-	
+
 	case $2 in
 	'') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
 	esac
@@ -456,26 +458,30 @@ case "$1" in
 
 		for arg in $ARGS; do
 			for var in $arg; do
+
+				function _backup(){
+					case $arg in
+						'') 
+							echo " Specify the name of a program to back up"; echo ""; exit;;
+						*) 
+							if test -f $APPSPATH/$arg/remove; then
+								echo ""; read -p " Do you wish to backup the current version of $arg (y,N)?" yn
+								case $yn in
+								[Yy]* ) 
+									mkdir -p "$(xdg-user-dir USER)/.am-snapshots/$arg"; cp -r $APPSPATH/$arg "$(xdg-user-dir USER)/.am-snapshots/$arg/$(date +%F-%X | sed 's/://g' | sed 's/-//g')"; echo ""; echo " SAVED in $(xdg-user-dir USER)/.am-snapshots/$arg"; echo "";;
+								[Nn]*|* ) 
+									echo ""; echo " OPERATION ABORTED!"; echo "";;	
+								esac
+							else
+								echo ""; echo " '$arg' is not a valid argument or is not installed."; echo ""; break;
+							fi
+						esac
+				}
+
 				if [ $arg == STOP ]; then
 					exit
 				else
-					case $arg in
-					'') 
-						echo " Specify the name of a program to back up"; echo ""; exit;;
-					*) 
-						if test -f $APPSPATH/$arg/remove; then
-							echo ""; read -p " Do you wish to backup the current version of $arg (y,N)?" yn
-					
-							case $yn in
-							[Yy]* ) 
-								mkdir -p "$(xdg-user-dir USER)/.am-snapshots/$arg"; cp -r $APPSPATH/$arg "$(xdg-user-dir USER)/.am-snapshots/$arg/$(date +%F-%X | sed 's/://g' | sed 's/-//g')"; echo ""; echo " SAVED in $(xdg-user-dir USER)/.am-snapshots/$arg"; echo "" ; break;;
-							[Nn]*|* ) 
-								echo ""; echo " OPERATION ABORTED!"; echo ""; break;;	
-							esac
-						else
-							echo ""; echo " '$arg' is not a valid argument or is not installed."; echo ""; break;
-						fi
-					esac
+					_backup
 				fi
 			done
 		done
@@ -487,26 +493,29 @@ case "$1" in
   '-c'|'clean')
 
   	_no_sudo
-  	
-  	echo -e "\n Cleaning of temporary files and folders in progress...\n" && sleep 0.1 &&
-  	for i in {1000..0000}; do 
-		echo -ne " $i\r" && sleep 0.0001; 
-	done
 
-  	rm -R -f $AMPATH/appdb; rm -R -f $AMPATH/.cache/*; rm -R -f $APPSPATH/*/tmp; echo -e "\n DONE!\n"
+  	function _clean(){
+  		echo -e "\n Cleaning of temporary files and folders in progress...\n" && sleep 0.1 &&
+  		for i in {1000..0000}; do 
+			echo -ne " $i\r" && sleep 0.0001; 
+		done
+  		rm -R -f $AMPATH/appdb; rm -R -f $AMPATH/.cache/*; rm -R -f $APPSPATH/*/tmp; echo -e "\n DONE!\n"
+  	}
+
+  	_clean
 	;;
 
   '-conv'|'convert')
 
   	_no_sudo
-  	
+
   	while [ -n "$1" ]; do
-  		
+
   		if [ $AMCLI == am ] 2>/dev/null; then
   			echo " This function only works for AppMan"
   			exit
   		fi
-  		
+
 		rm -f $AMPATH/.cache/convert-args
 		echo $@ | tr ' ' '\n' >> $AMPATH/.cache/convert-args && echo STOP >> $AMPATH/.cache/convert-args
 		ARGS=$(tail -n +2 $AMPATH/.cache/convert-args)
@@ -517,9 +526,8 @@ case "$1" in
 
 		for arg in $ARGS; do
 			for var in $arg; do
-				if [ $arg == STOP ]; then
-					exit
-				else
+
+				function _convert(){
 					case $arg in
 					'') 	echo " Specify the name of one or more programs to convert"; echo ""; break;;
 					*) 	
@@ -537,35 +545,39 @@ case "$1" in
 							sed -i "s#/opt/#$APPSPATH/#g" ./$arg
 							echo -e '\n# CHANGE THE PATH OF ICONS AND EXECUTABLES IN LOCALLY INSTALLED AM*.DESKTOP FILES\nAPPSDIR=$(cat ~/.config/appman/appman-config)\nsed -i "s#Icon=/opt#Icon=$(xdg-user-dir USER)/$APPSDIR#g" ~/.local/share/applications/AM*.desktop\nsed -i "s#Exec=$APP#Exec=$(xdg-user-dir USER)/.local/bin/$APP#g" ~/.local/share/applications/AM*.desktop\nsed -i "s#Exec=/usr/bin/#Exec=$(xdg-user-dir USER)/.local/bin/#g" ~/.local/share/applications/AM*.desktop\nsed -i "s#Exec=/opt/firefox#Exec=$(xdg-user-dir USER)/$APPSDIR/firefox#g" ~/.local/share/applications/AM*.desktop\nsed -i "s#Exec=/opt/kdegames#Exec=$(xdg-user-dir USER)/$APPSDIR/kdegames#g" ~/.local/share/applications/AM*.desktop\nsed -i "s#Exec=/opt/kdeutils#Exec=$(xdg-user-dir USER)/$APPSDIR/kdeutils#g" ~/.local/share/applications/AM*.desktop' >> ./$arg
 						}
-						
+
 						if curl --output /dev/null --silent --head --fail $AMREPO/programs/$arch/$arg  1>/dev/null; then
   							cd $(xdg-user-dir DESKTOP); wget -q $AMREPO/programs/$arch/$arg
   							_convert_to_appman_compatible_script
-  							break
   						elif test -f $(xdg-user-dir DESKTOP)/am-scripts/$arch/$arg; then
   							cd $(xdg-user-dir DESKTOP); cp ./am-scripts/$arch/$arg ./$arg
   							_convert_to_appman_compatible_script
-  							break
 						else
-							echo ""; echo ' "'$arg'" is NOT a valid argument'; echo ""; break;
+							echo ""; echo ' "'$arg'" is NOT a valid argument'; echo ""
 						fi
 					esac
+				}
+
+				if [ $arg == STOP ]; then
+					exit
+				else
+					_convert
 				fi
 			done
 		done
 	done
-	
+
 	shift
 	;;
 
   '-d'|'download')
 
 	_no_sudo
-	
+
 	case $2 in
 	'') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
 	esac
-	
+
 	while [ -n "$1" ]; do
 		rm -f $AMPATH/.cache/download-args
 		echo $@ | tr ' ' '\n' >> $AMPATH/.cache/download-args && echo STOP >> $AMPATH/.cache/download-args
@@ -573,22 +585,26 @@ case "$1" in
 
 		for arg in $ARGS; do
 			for var in $arg; do
+
+			function _download(){
+				case $arg in
+				*) 
+					if curl --output /dev/null --silent --head --fail $AMREPO/programs/$arch/$arg  1>/dev/null; then
+						echo ""; echo ' "'$arg'" installation script downloaded! ' | tr a-z A-Z
+						cd $(xdg-user-dir DESKTOP); wget -q $AMREPO/programs/$arch/$arg; echo ""
+					elif curl --output /dev/null --silent --head --fail $AMREPO/testing/$arch/$arg  1>/dev/null; then
+						echo ""; echo '  "'$arg'" downloaded from "testing", the unstable branch ' | tr a-z A-Z; echo ""; echo ' WARNING! PROGRAMS COMING FROM "TESTING" ARE BROKEN, USE AT YOUR OWN RISK!'
+						cd $(xdg-user-dir DESKTOP); wget -q $AMREPO/testing/$arch/$arg; echo ""
+					else
+						echo ""; echo ' "'$arg'" is NOT a valid argument, check the list (command "'$AMCLI' -l")'; echo ""
+					fi
+				esac
+			}
+
 				if [ $arg == STOP ]; then
 					exit
 				else
-					case $arg in
-
-					*) 
-						if curl --output /dev/null --silent --head --fail $AMREPO/programs/$arch/$arg  1>/dev/null; then
-							echo ""; echo ' "'$arg'" installation script downloaded! ' | tr a-z A-Z
-							cd $(xdg-user-dir DESKTOP); wget -q $AMREPO/programs/$arch/$arg; echo ""; break;
-						elif curl --output /dev/null --silent --head --fail $AMREPO/testing/$arch/$arg  1>/dev/null; then
-							echo ""; echo '  "'$arg'" downloaded from "testing", the unstable branch ' | tr a-z A-Z; echo ""; echo ' WARNING! PROGRAMS COMING FROM "TESTING" ARE BROKEN, USE AT YOUR OWN RISK!'
-							cd $(xdg-user-dir DESKTOP); wget -q $AMREPO/testing/$arch/$arg; echo ""; break;
-						else
-							echo ""; echo ' "'$arg'" is NOT a valid argument, check the list (command "'$AMCLI' -l")'; echo ""; break;
-						fi
-					esac
+					_download
 				fi
 			done
 		done
@@ -600,16 +616,21 @@ case "$1" in
   '-f'|'files')
 
   	_no_sudo
-  	
-  	echo ""; echo $(echo "YOU HAVE INSTALLED "; cd $APPSPATH && find . -type f -name 'remove' 2>/dev/null | sed -r 's|/[^/]+$||' | sort | uniq | wc -l;
-  	echo " STANDALONE PROGRAMS MANAGED BY '$(echo $AMCLI | tr a-z A-Z)':"); echo "";
-  	cd $APPSPATH && find -name 'remove' -printf "%h\n" 2>/dev/null | sort -u | echo $(xargs -n 1 basename 2> /dev/null) | du -sh $(find . -type f -name 'remove' 2>/dev/null | sed -r 's|/[^/]+$||' | sort | uniq | cut -c 3-) | awk '{ print " ◆ "$2 " - " $1"iB of disk space used"}' | grep -w -v "◆ ."; echo "" 
+
+  	function _files(){
+		echo ""; echo $(echo "YOU HAVE INSTALLED "; cd $APPSPATH && find . -type f -name 'remove' 2>/dev/null | sed -r 's|/[^/]+$||' | sort | uniq | wc -l
+		echo " STANDALONE PROGRAMS MANAGED BY '$(echo $AMCLI | tr a-z A-Z)':"); echo ""
+		cd $APPSPATH && find -name 'remove' -printf "%h\n" 2>/dev/null | sort -u | echo $(xargs -n 1 basename 2> /dev/null) | du -sh $(find . -type f -name 'remove' 2>/dev/null | sed -r 's|/[^/]+$||' | sort | uniq | cut -c 3-) | awk '{ print " ◆ "$2 " - " $1"iB of disk space used"}' | grep -w -v "◆ ."; echo ""
+	}
+
+	_files
+
 	;;
 
   '-H'|'--home')
 
 	_no_sudo
-	
+
 	case $2 in
 	'') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
 	esac
@@ -621,25 +642,29 @@ case "$1" in
 
 		for arg in $ARGS; do
 			for var in $arg; do
-				if [ $arg == STOP ]; then
-					exit
-				else
+
+				function _home(){
 					cd $APPSPATH
 					if ! test -d ./$arg; then
 						echo ' ERROR: "'$arg'" is not installed'
 					else
 						case $arg in
-    						*) 
+    						*)
     							if [ -z $(strings -d "./$arg/$arg" 2>/dev/null | grep -m 1 "AppImage") ]; then
-    								echo ' ERROR: "'$arg'" is NOT an AppImage'; break
+    								echo ' ERROR: "'$arg'" is NOT an AppImage'
     							else
   								cd ./$arg
     								mkdir -p ./$arg.home
     								echo ' Setting $HOME to '$APPSPATH'/'$arg'/'$arg'.home for this AppImage'
-    								break
     							fi
     						esac
     					fi
+				}
+
+				if [ $arg == STOP ]; then
+					exit
+				else
+					_home
     				fi
     			done
     		done
@@ -660,26 +685,18 @@ case "$1" in
 				exit
   			fi
   		fi
-		
+
 		echo -e "-----------------------------------------------------------------------\n >> START OF ALL INSTALLATION PROCESSES <<\n-----------------------------------------------------------------------"
 		rm -f $AMPATH/.cache/install-args
 		rm -R -f $AMPATH/.cache/installed
 		echo $@ | tr ' ' '\n' >> $AMPATH/.cache/install-args 
 		echo STOP >> $AMPATH/.cache/install-args
 		ARGS=$(tail -n +2 $AMPATH/.cache/install-args)
-	
+
 		for arg in $ARGS; do
 			for var in $arg; do
-				if [ $arg == STOP ]; then
-					if test -f $AMPATH/.cache/installed; then
-						echo -e "\n-----------------------------------------------------------------------\n >> END OF ALL INSTALLATION PROCESSES <<\n-----------------------------------------------------------------------\n\n THE FOLLOWING NEW PROGRAMS HAVE BEEN INSTALLED:\n"
-						echo -e "\n-----------------------------------------------------------------------" >> $AMPATH/.cache/installed
-						cat $AMPATH/.cache/installed | grep -w -v "◆ am"
-						exit
-					else
-						exit
-					fi
-				else
+
+				function _install(){
 					echo ""
 					case $arg in
 
@@ -693,51 +710,51 @@ case "$1" in
 									for var in $arg; do
 										cd $AMPATH/.cache; mkdir -p tmp; cd tmp; wget -q $AMREPO/programs/$arch/$arg; cd ..; mv ./tmp/$arg ./$arg; rmdir ./tmp
 										chmod a+x ./$arg
-										
+
 										if [ $arg == appman ]; then
 											if [ $AMCLI == appman ] 2>/dev/null; then
 												echo ' 💀 ERROR: YOU CANNOT INSTALL APPMAN USING APPMAN'
 												break
 											fi
 										fi
-										
+
 										if grep -q '.deb' ./$arg; then
 											if ! command -v ar 1>/dev/null; then
 												echo ' 💀 ERROR: YOU CANNOT INSTALL "'$(echo '"'$arg'"' | tr a-z A-Z)'" WITHOUT INSTALLING "BINUTILS"!'; break
 											fi
 										fi
-										
+
 										if grep -q 'ffwa-' ./$arg; then
 											if ! command -v firefox 1>/dev/null; then
 												echo ' 💀 ERROR: YOU CANNOT INSTALL "'$(echo '"'$arg'"' | tr a-z A-Z)'" WITHOUT INSTALLING "FIREFOX"!'; break
 											fi
 										fi
-										
+
 										if grep -q '.tar' ./$arg; then
 											if ! command -v tar 1>/dev/null; then
 												echo ' 💀 ERROR: YOU CANNOT INSTALL "'$(echo '"'$arg'"' | tr a-z A-Z)'" WITHOUT INSTALLING "TAR"!'; break
 											fi
 										fi
-										
+
 										if grep -q '.zip' ./$arg; then
 											if ! command -v unzip 1>/dev/null; then
 												echo ' 💀 ERROR: YOU CANNOT INSTALL "'$(echo '"'$arg'"' | tr a-z A-Z)'" WITHOUT INSTALLING "UNZIP"!'; break
 											fi
 										fi
-										
+
 										if grep -q 'zsync /opt' ./$arg; then
 											if ! command -v zsync 1>/dev/null; then
 												echo ' 💀 ERROR: YOU CANNOT INSTALL "'$(echo '"'$arg'"' | tr a-z A-Z)'" WITHOUT INSTALLING "ZSYNC"!'; break
 											fi
 										fi
-										
+
 										function _install_common_patch(){
 											sed -i "s#wget #wget -q --show-progress #g" ./$arg; sed -i 's#$(wget -q --show-progress #$(wget -q #g' ./$arg; sed -i "s# -q -q # -q #g" ./$arg
 											sed -i 's/currentuser=/#currentuser=/g' ./$arg
 											sed -i 's/chown -R $currentuser/#chown -R $currentuser/g' ./$arg
 											sed -i '/# MESSAGE/,$d' ./$arg
 										}
-										
+
 										function _install_appman_local_patch(){
 											sed -i "s# /opt# $APPSPATH#g" ./$arg
 											sed -i "s#/opt/#$APPSPATH/#g" ./$arg
@@ -750,7 +767,7 @@ case "$1" in
 											sed -i "s# /usr/share/pixmaps# $(xdg-user-dir USER)/.local/share/icons#g" ./$arg
 											sed -i "s# /usr/local/share/pixmaps# $(xdg-user-dir USER)/.local/share/icons#g" ./$arg
 										}
-										
+
 										if [ $AMCLI == appman ] 2>/dev/null; then
 											_install_common_patch
 											_install_appman_local_patch
@@ -776,7 +793,7 @@ case "$1" in
    												wget -q https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/main/icons/$arg.png -O $APPSPATH/$(cd $APPSPATH && ls -td * | head -1)/icons/$arg
 											fi 
 										fi &&
-										
+
 										if [ $AMCLI == appman ] 2>/dev/null; then
 											sed -i "s#Icon=/opt#Icon=$(xdg-user-dir USER)/$APPSDIR#g" ~/.local/share/applications/AM*.desktop 2> /dev/null
 											sed -i "s#Exec=$arg#Exec=$(xdg-user-dir USER)/.local/bin/$arg#g" ~/.local/share/applications/AM*.desktop 2> /dev/null
@@ -784,7 +801,7 @@ case "$1" in
 											sed -i "s#Exec=/usr/bin/#Exec=$(xdg-user-dir USER)/.local/bin/#g" ~/.local/share/applications/AM*.desktop 2> /dev/null
 											sed -i "s#Exec=/opt/#Exec=$(xdg-user-dir USER)/$APPSDIR/#g" ~/.local/share/applications/AM*.desktop 2> /dev/null
 										fi
-																			
+									
 										echo -ne " ◆ $(echo '"'$arg'"' | tr a-z A-Z) INSTALLED ($(du -sm $APPSPATH/$(cd $APPSPATH && ls -td * | head -1) | awk '{print $1}' ) MB OF DISK SPACE)\n"
 										$SUDOCOMMAND rm $AMPATH/.cache/$arg
 										unset $LATESTDIR
@@ -799,15 +816,28 @@ case "$1" in
 												chown -R $currentuser $AMPATH/.cache/about 2> /dev/null
 											fi
 										else
-											echo " INSTALLATION ABORTED!";
+											echo " INSTALLATION ABORTED!"
 										fi
 										break; done
 								esac
 							else
-								echo ' "'$arg'" is NOT a valid argument, please try again!'; echo ""; break;
+								echo ' "'$arg'" is NOT a valid argument, please try again!'; echo ""; break
 							fi			
 						fi
 					esac
+				}
+
+				if [ $arg == STOP ]; then
+					if test -f $AMPATH/.cache/installed; then
+						echo -e "\n-----------------------------------------------------------------------\n >> END OF ALL INSTALLATION PROCESSES <<\n-----------------------------------------------------------------------\n\n THE FOLLOWING NEW PROGRAMS HAVE BEEN INSTALLED:\n"
+						echo -e "\n-----------------------------------------------------------------------" >> $AMPATH/.cache/installed
+						cat $AMPATH/.cache/installed | grep -w -v "◆ am"
+						exit
+					else
+						exit
+					fi
+				else
+					_install
 				fi
 			done
 		done
@@ -819,37 +849,40 @@ case "$1" in
   '-l'|'list')
 
   	_no_sudo
-  	
-  	rm -R -f $AMPATH/$arch-apps $AMPATH/list && wget -q $AMREPO/programs/$arch-apps -P $AMPATH && echo -e "$(cat $AMPATH/$arch-apps | awk -v FS="(◆ | : )" '{print $2}')" >> $AMPATH/list
-	cd $AMPATH && cat options >> list 2>/dev/null
-	MESSAGE=$(echo " YOU HAVE INSTALLED $(cd $APPSPATH && find -name 'remove' -printf "%h\n" 2>/dev/null | sort -u | wc -l) APPLICATIONS OUT OF $(grep -e "$" -c $AMPATH/$arch-apps) AVAILABLE")
-	echo -e "\n$MESSAGE\n\n LIST OF THE $(grep -e "$" -c $AMPATH/$arch-apps) APPLICATIONS AVAILABLE IN THE 'AM' REPOSITORY:\n\n$(cat $AMPATH/$arch-apps)" | less -I
-	echo -e "\n $MESSAGE\n"
+
+	function _list(){
+		rm -R -f $AMPATH/$arch-apps $AMPATH/list && wget -q $AMREPO/programs/$arch-apps -P $AMPATH && echo -e "$(cat $AMPATH/$arch-apps | awk -v FS="(◆ | : )" '{print $2}')" >> $AMPATH/list
+		cd $AMPATH && cat options >> list 2>/dev/null
+		MESSAGE=$(echo " YOU HAVE INSTALLED $(cd $APPSPATH && find -name 'remove' -printf "%h\n" 2>/dev/null | sort -u | wc -l) APPLICATIONS OUT OF $(grep -e "$" -c $AMPATH/$arch-apps) AVAILABLE")
+		echo -e "\n$MESSAGE\n\n LIST OF THE $(grep -e "$" -c $AMPATH/$arch-apps) APPLICATIONS AVAILABLE IN THE 'AM' REPOSITORY:\n\n$(cat $AMPATH/$arch-apps)" | less -I
+		echo -e "\n $MESSAGE\n"
+	}
+
+	_list
 	;;
 
   '-o'|'overwrite')
 
 	_no_sudo
-	
+
 	case $2 in
 	'') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
 	esac
-	
+
 	while [ -n "$1" ]; do
 		rm -f $AMPATH/.cache/overwrite-args
 		echo $@ | tr ' ' '\n' >> $AMPATH/.cache/overwrite-args && echo STOP >> $AMPATH/.cache/overwrite-args
 		ARGS=$(tail -n +2 $AMPATH/.cache/overwrite-args)
-	
+
 		for arg in $ARGS; do
 			for var in $arg; do
-				if [ $arg == STOP ]; then
-					exit
-				else
+
+				function _overwrite(){
 					case $arg in
 					$AMCLI) 
 						$AMCLIPATH -s; break;;
 					'') 
-						echo " Specify the name of a program to overwrite"; echo ""; break;;
+						echo " Specify the name of a program to overwrite"; echo "";;
 					*) 
 						if test -f $APPSPATH/$arg/remove; then
 							echo ""; read -p " Do you wish to overwrite this version of $arg with an old one (y,N)?" yn
@@ -858,14 +891,20 @@ case "$1" in
 								echo ""; printf " Please, select a snapshot or press CTRL+C to abort:\n"; sleep 1;
 								select d in $(xdg-user-dir USER)/.am-snapshots/$arg/*; do test -n "$d" && break; echo ">>> Invalid Selection"; done
 								cp -r --backup=t $d/* $APPSPATH/$arg/
-	  							echo " RESTORE COMPLETED SUCCESSFULLY!"; echo ""; break;;
+	  							echo " RESTORE COMPLETED SUCCESSFULLY!"; echo "";;
 							[Nn]*|* ) 
-								echo ""; echo " OPERATION ABORTED!"; echo ""; break;;	
+								echo ""; echo " OPERATION ABORTED!"; echo "";;	
 							esac
 						else
-							echo ""; echo " '$arg' is not a valid argument or is not installed."; echo ""; break;
+							echo ""; echo " '$arg' is not a valid argument or is not installed."; echo ""
 						fi
 					esac
+				}
+
+				if [ $arg == STOP ]; then
+					exit
+				else
+					_overwrite
 				fi
 			done
 		done
@@ -903,9 +942,30 @@ case "$1" in
 		case $2 in
 		'') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
 		esac
-	
+
 		for arg in $ARGS; do
 			for var in $arg; do
+
+				function _remove(){
+					if ls $APPSPATH/$arg > /dev/null 2>&1; then
+						case $arg in
+						*) 
+							for var in $arg; do
+								$SUDOCOMMAND echo "" > /dev/null; read -p ' ◆ DO YOU WISH TO REMOVE "'$(echo $arg | tr a-z A-Z)'" (Y,n)?' yn
+
+								case $yn in
+								[Nn]* ) 
+									echo ' - "'$(echo $arg | tr a-z A-Z)'" HAS NOT BEEN REMOVED!'; echo "";;
+								[Yy]*|* ) 
+									$SUDOCOMMAND $APPSPATH/$arg/remove && echo ' ◆ "'$(echo $arg | tr a-z A-Z)'" HAS BEEN SUCCESSFULLY REMOVED!' && break;;
+								esac
+							done;;
+						esac
+					else
+						echo '"'$arg'",' >> $AMPATH/.cache/unavailable-args
+					fi
+				}
+
 				if [ $arg == STOP ]; then
 					if test -f $AMPATH/.cache/unavailable-args; then
 						echo -e "-----------------------------------------------------------------------"
@@ -917,23 +977,7 @@ case "$1" in
 						exit
 					fi
 				else
-					if ls $APPSPATH/$arg > /dev/null 2>&1; then
-						case $arg in
-						*) 
-							for var in $arg; do
-								$SUDOCOMMAND echo "" > /dev/null; read -p ' ◆ DO YOU WISH TO REMOVE "'$(echo $arg | tr a-z A-Z)'" (Y,n)?' yn
-								
-								case $yn in
-								[Nn]* ) 
-									echo ' - "'$(echo $arg | tr a-z A-Z)'" HAS NOT BEEN REMOVED!'; echo ""; break;;
-								[Yy]*|* ) 
-									$SUDOCOMMAND $APPSPATH/$arg/remove && echo ' ◆ "'$(echo $arg | tr a-z A-Z)'" HAS BEEN SUCCESSFULLY REMOVED!' && break; break;;
-								esac
-							done;;
-						esac
-					else
-						echo '"'$arg'",' >> $AMPATH/.cache/unavailable-args; break;
-					fi
+					_remove
 				fi
 			done
 		done
@@ -952,9 +996,23 @@ case "$1" in
 		case $2 in
 		'') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
 		esac
-	
+
 		for arg in $ARGS; do
 			for var in $arg; do
+
+				function _REMOVE(){
+					if ls $APPSPATH/$arg > /dev/null 2>&1; then
+						case $arg in
+						*) 
+							for var in $arg; do
+								$SUDOCOMMAND $APPSPATH/$arg/remove && echo ' ◆ "'$(echo $arg | tr a-z A-Z)'" HAS BEEN SUCCESSFULLY REMOVED!' && break; break
+							done;;
+						esac
+					else
+						echo '"'$arg'",' >> $AMPATH/.cache/unavailable-args
+					fi
+				}
+
 				if [ $arg == STOP ]; then
 					if test -f $AMPATH/.cache/unavailable-args; then
 						echo -e "-----------------------------------------------------------------------"
@@ -966,16 +1024,7 @@ case "$1" in
 						exit
 					fi
 				else
-					if ls $APPSPATH/$arg > /dev/null 2>&1; then
-						case $arg in
-						*) 
-							for var in $arg; do
-								$SUDOCOMMAND $APPSPATH/$arg/remove && echo ' ◆ "'$(echo $arg | tr a-z A-Z)'" HAS BEEN SUCCESSFULLY REMOVED!' && break; break
-							done;;
-						esac
-					else
-						echo '"'$arg'",' >> $AMPATH/.cache/unavailable-args; break;
-					fi
+					_REMOVE
 				fi
 			done
 		done
