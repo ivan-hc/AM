@@ -515,18 +515,30 @@ case "$1" in
 
   	_no_sudo
 
-  	function _clean(){
+	function _clean_launchers(){
+		for var in $HOME/.local/share/applications/AppImages/*.desktop; do
+			for arg in "$var"; do
+				APPIMAGENAME=$(cat "$var" 2>/dev/null | grep "Exec=" | head -1 | cut -c 6- | sed 's/\s.*$//')
+				if $( ! test -f "$APPIMAGENAME" 2> /dev/null); then
+					rm -f "$var"
+				fi
+			done
+		done
+	}
+
+  	function _clean_all(){
   		echo -e "\n Cleaning of temporary files and folders in progress...\n" && sleep 0.1 &&
-  		for i in {1000..0000}; do 
+  		for i in {100..000}; do 
 			echo -ne " $i\r" && sleep 0.0001
 		done
   		rm -R -f $AMPATH/appdb | echo " ◆ Removed old $AMPATH/appdb directory, if exists"
   		rm -R -f $AMPATH/.cache/* | echo " ◆ Cleaning up the content of $AMPATH/.cache"
   		rm -R -f $APPSPATH/*/tmp | echo ' ◆ Removed all '$APPSPATH'/*/tmp directories'
+  		_clean_launchers | echo ' ◆ Removed orphaned launchers produced with the "--launcher" option'
   		echo -ne "\n DONE!\n"
   	}
 
-  	_clean
+  	_clean_all
 	;;
 
   '-conv'|'convert')
@@ -2229,7 +2241,7 @@ case "$1" in
 
   'version'|'-v'|'--version')
 
-  	echo "5.3-7";;
+  	echo "5.3.1";;
 
   *) exec $AMCLIPATH ;;
 
