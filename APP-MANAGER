@@ -518,9 +518,18 @@ case "$1" in
 	function _clean_launchers(){
 		for var in $HOME/.local/share/applications/AppImages/*.desktop; do
 			for arg in "$var"; do
-				APPIMAGENAME=$(cat "$var" 2>/dev/null | grep "Exec=" | head -1 | cut -c 6- | sed 's/\s.*$//')
+				APPIMAGENAME=$(cat "$var" 2> /dev/null | grep "Exec=" | head -1 | cut -c 6- | sed 's/\s.*$//')
+				MOUNTPOINTS=$(echo "$APPIMAGENAME" | cut -d'/' -f1-4)
 				if $( ! test -f "$APPIMAGENAME" 2> /dev/null); then
-					rm -f "$var"
+					if $(! test -d "$(echo $MOUNTPOINTS)" 2> /dev/null); then
+						if $(echo $MOUNTPOINTS | grep -q "/media/"); then
+							echo -e "\n 💀ERROR: cannot remove $(basename $var)\n   related AppImage is located in an unmounted path of /media\n"
+						elif $(echo $MOUNTPOINTS | grep -q "/mnt/"); then
+							echo -e "\n 💀ERROR: cannot remove $(basename $var)\n   related AppImage is located in an unmounted path of /mnt\n"
+						fi
+					else
+						rm -f "$var"
+					fi
 				fi
 			done
 		done
@@ -534,7 +543,7 @@ case "$1" in
   		rm -R -f $AMPATH/.cache/* | echo " ◆ Cleaning up the content of $AMPATH/.cache"
   		rm -R -f $APPSPATH/*/tmp | echo ' ◆ Removed all '$APPSPATH'/*/tmp directories'
   		rm -R -f $AMPATH/appdb | echo " ◆ Removed old $AMPATH/appdb directory, if exists"
-  		_clean_launchers | echo ' ◆ Removed orphaned launchers produced with the "--launcher" option'
+  		_clean_launchers && echo ' ◆ Removed orphaned launchers produced with the "--launcher" option'
   		echo -e "\n DONE!\n"
   	}
 
@@ -2241,7 +2250,7 @@ case "$1" in
 
   'version'|'-v'|'--version')
 
-  	echo "5.3.1";;
+  	echo "5.3.1-1";;
 
   *) exec $AMCLIPATH ;;
 
