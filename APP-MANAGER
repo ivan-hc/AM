@@ -44,6 +44,14 @@ else
 	_appman
 fi
 
+function _online_check(){
+	wget -q --tries=10 --timeout=20 --spider https://github.com
+	if [[ ! $? -eq 0 ]]; then
+		echo -e '\n '$AMCLI' is offline, please check your internet connection and try again\n'
+		exit
+	fi
+}
+
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main"
 arch=$(printf '%s\n' "$HOSTTYPE")
 currentuser=$(printf '%s\n' "$USER")
@@ -415,6 +423,7 @@ case "$1" in
   '-a'|'about')
 
 	_no_sudo
+	_online_check
 
 	case $2 in
 	'') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
@@ -449,7 +458,7 @@ case "$1" in
 						;;
 					esac
 				else
-					printf "%s\n" " \"$arg\" is not a valid argument" | tr 'a-z' 'A-Z' && break;
+					printf "%s\n" " \"$arg\" is not a valid argument" | tr 'a-z' 'A-Z';
 				fi
 				}
 				if [ "$arg" == "STOP" ]; then
@@ -592,6 +601,7 @@ case "$1" in
 						}
 
 						if curl --output /dev/null --silent --head --fail $AMREPO/programs/$arch/$arg  1>/dev/null; then
+  							_online_check
   							cd $(xdg-user-dir DESKTOP); wget -q $AMREPO/programs/$arch/$arg
   							_convert_to_appman_compatible_script
   						elif test -f $(xdg-user-dir DESKTOP)/am-scripts/$arch/$arg; then
@@ -618,6 +628,7 @@ case "$1" in
   '-d'|'download')
 
 	_no_sudo
+	_online_check
 
 	case $2 in
 	'') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
@@ -717,6 +728,8 @@ case "$1" in
 	;;
 
   '-i'|'install')
+
+	_online_check
 
 	while [ -n "$1" ]; do
 
@@ -894,6 +907,7 @@ case "$1" in
   '-l'|'list')
 
   	_no_sudo
+  	_online_check
 
 	function _list(){
 		rm -R -f $AMPATH/$arch-apps $AMPATH/list && wget -q $AMREPO/programs/$arch-apps -P $AMPATH && echo -e "$(cat $AMPATH/$arch-apps | awk -v FS="(◆ | : )" '{print $2}')" >> $AMPATH/list
@@ -962,6 +976,7 @@ case "$1" in
   '-q'|'query')
 
 	_no_sudo
+	_online_check
 	
 	case $2 in
 	'') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
@@ -1082,6 +1097,7 @@ case "$1" in
   '-s'|'sync')
 
 	_no_sudo
+	_online_check
 
 	echo "-----------------------------------------------------------------------"
 	echo -e " Check for any changes between the installation scripts\n in the repository and those used previously..."	
@@ -1141,6 +1157,7 @@ case "$1" in
   '-t'|'template')
 
 	_no_sudo
+	_online_check
 
 	case $2 in
 	'') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
@@ -1807,6 +1824,7 @@ case "$1" in
   '-u'|'-U'|'update') 
 
 	_no_sudo
+	_online_check
 	
 	while [ -n "$1" ]; do
 		case $2 in
@@ -1857,7 +1875,8 @@ case "$1" in
   '-w'|'web')
 
 	_no_sudo
-	
+	_online_check
+
 	case $2 in
 	'') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
 	esac
@@ -2115,7 +2134,8 @@ case "$1" in
   '--rollback')
 
 	_no_sudo
-	
+	_online_check
+
 	case $2 in
 	'') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
 	esac
@@ -2162,7 +2182,7 @@ case "$1" in
   '--user'|'appman')
 
   	_no_sudo
-  	
+
   	if [ $AMCLI == appman ] 2>/dev/null; then
   		echo " This function only works for AM"
   		exit
@@ -2183,6 +2203,7 @@ case "$1" in
   		case $yn in
   			'N'|'n') exit;;
   			'Y'|'y') 
+  				_online_check
   				wget -q https://raw.githubusercontent.com/ivan-hc/AppMan/main/appman -O /opt/am/appman && chmod a+x /opt/am/appman
   				echo -e "\nPlease run '${RED}alias am=/opt/am/appman\033[0m' to made 'AM' act exactly like 'AppMan' for\nthe current session or save this command to your '"'~/.bashrc'"' file to make the\nchanges permanent."
   		esac
@@ -2250,7 +2271,7 @@ case "$1" in
 
   'version'|'-v'|'--version')
 
-  	echo "5.3.1-1";;
+  	echo "5.3.1-2";;
 
   *) exec $AMCLIPATH ;;
 
