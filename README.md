@@ -125,13 +125,13 @@ NOTE: using AM with the --user option enabled and the alias for AppMan, "sudo" a
 AM installs/removes/updates/manages only standalone programs, ie those programs that can be run from a single directory in which they are contained (where `$PROGRAM` is the name of the application, AM installs them always into a dedicated folder named `/opt/$PROGRAM`).
 
 These programs are taken:
-- from official sources (see Firefox, Thunderbird, Blender, NodeJS, Chromium Latest...);
-- from official .deb packages (see Brave, Vivaldi, Google Chrome...);
-- from the repositories and official sites of individual developers (if an archive is not available, an official AppImage is used, see Libreoffice, OnlyOffice);
-- from tar archives of other GNU/Linux distributions (see Chromium, Chromium Ungoogled...);
-- from AUR or other Arch Linux-related sources (see Palemoon, Spotify, WhatsApp...);
-- from AppImage recipes to be compiled with [pkg2appimage](https://github.com/AppImage/pkg2appimage) and [appimagetool](https://github.com/AppImage/AppImageKit) (see Anydesk, qBittorrent, Dropbox, all the games from the "KDE Games" suite...);
-- from unofficial repositories of developers external to the project concerned (most of the time they are programs in AppImage format), but only if an official release is not available (see the various WINE, Zoom, VLC, GIMP...).
+- from official sources (see Firefox, Thunderbird, Blender, NodeJS, Chromium Latest, Platform Tools...);
+- from official .deb packages;
+- from the repositories and official sites of individual developers;
+- from tar archives of other GNU/Linux distributions;
+- from AUR or other Arch Linux-related sources;
+- from AppImage recipes to be compiled with [pkg2appimage](https://github.com/AppImage/pkg2appimage) and [appimagetool](https://github.com/AppImage/AppImageKit);
+- from unofficial repositories of developers external to the project concerned (most of the time they are programs in AppImage format), but only if an official release is not available (see the various WINE, Zoom, VLC, GIMP, OBS Studio...).
 
 "AM" can even create Firefox profiles to run as webapps (as an alternative to the countless Electron-based apps/AppImages)!
 
@@ -202,14 +202,17 @@ From version 5.2 you can continue to use "AM"/AppMan without the aforementioned 
 
 For more details, jump to the paragraph "[Missing dependences](#missing-dependences)", under the section "[Troubleshooting](#troubleshooting)".
 
+-----------------------------------------------------------------------------
 ### For non-sudo users
 "AM" requires `sudo` installed on your system by default, if for some reason you need to use commands like `doas` or whatever, just use "[AppMan](https://github.com/ivan-hc/AppMan)" instead.
 
+-----------------------------------------------------------------------------
 ### Note for users of immutable distributions
 App launchers (files with the .desktop extension) are installed in /usr/share/applications by default with the suffix "AM-".
 
 Since version 5.1 the installation process have introduced a check to find read-only filesystems (`grep "[[:space:]]ro[[:space:],]" /proc/mounts`), if there are mountpoints like this, your distro may be an immutable one, so an /usr/local/share/applications directory will be created and the installation script will be patched to redirect the installation of launchers in that path to solve the issue.
 
+-----------------------------------------------------------------------------
 ## Proceeding
 "AM" is ment to be installed at system level to manage apps using `sudo` privileges.
 To install "AM" quickly, just copy/paste the following command:
@@ -551,6 +554,30 @@ Note that this works only if the program has a /opt/$PROGRAM/AM-updater script, 
 	  sudo /opt/$PROGRAM/remove
 
 ------------------------------------------------------------------------
+# Rollback
+From version 4.4 it is possible to directly select from a list of URLs the version of the app that interests you most from the main source. Use the `--rollback` option in this mode:
+```
+am --rollback ${PROGRAM}
+```
+This only works with the apps hosted on Github.
+
+------------------------------------------------------------------------
+# Manage local AppImages
+Since version 4.4.2 you can use the `--launcher` option to integrate your local AppImage packages by simply dragging and dropping them into the terminal (see video).
+
+https://github.com/ivan-hc/AM-Application-Manager/assets/88724353/c4b889f4-8504-4853-8918-44d52084fe6c
+
+------------------------------------------------------------------------
+# Sandbox using Firejail
+Since version 5.3 you can use the `--firejail` option to run AppImages using a sandbox (requires Firejail installed on the host).
+
+At first start a copy of /etc/firejail/default.profile will be saved in your application's directory, so you're free to launch the AppImage once using the default Firejail profile (option 1) or the custom one (2), you can also patch the .desktop files (if available) to in sandbox-mode always (options 3 and 4). You can handle the custom firejail.profile file of the app using `vim` or `nano` using the option 5 (the first selection is `vim`).
+
+Options 1, 2 and 5 are continuous to let you edit the file and test your changes immediately. Press any key to exit.
+
+NOTE: once patched the .desktop files (options 3 and 4), they will be placed in ~/.local/share/applications, this means that if you have installed apps using AppMan, the original launchers will be overwrited.
+
+------------------------------------------------------------------------
 # Create your own script
 "AM" has a `-t` option (or `template`) with which you can get a script to customize according to your needs. With this option, you can quickly create scripts to download existing programs or even create AppImage or AppDir through tools such as appimagetool and pkg2appimage.
 
@@ -577,40 +604,20 @@ We can divide the stages of an installation's process as follows:
 
 The most difficult step to overcome is certainly the number "3", given the great variety of methods in which authors distribute their software, while all the other steps are much easier to overcome.
 
+-----------------------------------------------------------------------------
 # Uninstall
 To uninstall "AM" just run the command:
 
 	am -r am
 
-------------------------------------------------------------------------
-# Rollback
-From version 4.4 it is possible to directly select from a list of URLs the version of the app that interests you most from the main source. Use the `--rollback` option in this mode:
-```
-am --rollback ${PROGRAM}
-```
-This only works with the apps hosted on Github.
-
-------------------------------------------------------------------------
-# Manage local AppImages
-Since version 4.4.2 you can use the `--launcher` option to integrate your local AppImage packages by simply dragging and dropping them into the terminal (see video).
-
-https://github.com/ivan-hc/AM-Application-Manager/assets/88724353/c4b889f4-8504-4853-8918-44d52084fe6c
-
-------------------------------------------------------------------------
-# Sandbox using Firejail
-Since version 5.3 you can use the `--firejail` option to run AppImages using a sandbox (requires Firejail installed on the host).
-
-At first start a copy of /etc/firejail/default.profile will be saved in your application's directory, so you're free to launch the AppImage once using the default Firejail profile (option 1) or the custom one (2), you can also patch the .desktop files (if available) to in sandbox-mode always (options 3 and 4). You can handle the custom firejail.profile file of the app using `vim` or `nano` using the option 5 (the first selection is `vim`).
-
-Options 1, 2 and 5 are continuous to let you edit the file and test your changes immediately. Press any key to exit.
-
-NOTE: once patched the .desktop files (options 3 and 4), they will be placed in ~/.local/share/applications, this means that if you have installed apps using AppMan, the original launchers will be overwrited.
-
 ------------------------------------------------------------------------	
 # Troubleshooting
+
+-----------------------------------------------------------------------------
 ### An application does not work, is old and unsupported
 Use the `-a` option and go to the developer's site to report the problem. The task of "AM" is solely to install / remove / update the applications managed by it. Problems related to the failure of an installed program or any related bugs are attributable solely to its developers.
 
+-----------------------------------------------------------------------------
 ### Cannot download or update an application
 There can be many reasons:
 - check your internet connection;
@@ -618,9 +625,11 @@ There can be many reasons:
 - the referring link may have been changed, try the `--rollback` option;
 - the reference site has changed, report any changes at https://github.com/ivan-hc/AM-Application-Manager/issues
 
+-----------------------------------------------------------------------------
 ### Cannot mount and run AppImages
 See https://docs.appimage.org/user-guide/troubleshooting/fuse.html
 
+-----------------------------------------------------------------------------
 ### Missing dependences
 To prevent any issue is strongly recommended to install all dependences listed at the paragraph "[Requirements](#requirements)", alternativelly you can use this workaround.
 
@@ -639,14 +648,7 @@ for name in "unzip" "tar"; do
 ```
 I don't recommend to remove all other commands, being them mainly used. 
 
-### Stop AppImage prompt to create its own launcher, desktop integration and doubled launchers
-Some developers insist on creating Appimages that create their own launcher on first launch (like WALC and OpenShot). If the official solution proposed [here](https://discourse.appimage.org/t/stop-appimage-from-asking-to-integrate/488) doesn't work, create a .home directory with the `-H` option, launch the app and accept the request. For example:
-```
-am -H walc
-walc
-```
-Accept the integration request, the launcher will be saved in the walc.home directory located next to the AppImage file.
-
+-----------------------------------------------------------------------------
 ### Spyware, malware and dangerous software
 Before installing any application, try to know where it comes from first. This program provides you with two basic options for this purpose:
 - Option `-a` or `about` (medium safety), allows you to read a short description and know the links from the pages of the site [https://portable-linux-apps.github.io](https://portable-linux-apps.github.io) locally, however these links may be inaccurate due to continuous updates of the initial scripts (you can provide additional info yourself by modifying the pages of the site, [here](https://github.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io), it is also open source);
@@ -654,10 +656,18 @@ Before installing any application, try to know where it comes from first. This p
 
 “AM” and AppMan are just tools to easily install all listed programs, but what you choose to install is your complete responsibility. **Use at your own risk**!
 
+-----------------------------------------------------------------------------
 ### Wrong download link
 The reasons may be two:
 - the referring link may have been changed, try the `--rollback` option;
 - the reference site has changed, report any changes at https://github.com/ivan-hc/AM-Application-Manager/issues
+### Stop AppImage prompt to create its own launcher, desktop integration and doubled launchers
+Some developers insist on creating Appimages that create their own launcher on first launch (like WALC and OpenShot). If the official solution proposed [here](https://discourse.appimage.org/t/stop-appimage-from-asking-to-integrate/488) doesn't work, create a .home directory with the `-H` option, launch the app and accept the request. For example:
+```
+am -H walc
+walc
+```
+Accept the integration request, the launcher will be saved in the walc.home directory located next to the AppImage file.
 
 ------------------------------------------------------------------------
 # Related projects
@@ -669,7 +679,7 @@ The reasons may be two:
 - [pkg2appimage-32bit](https://github.com/ivan-hc/pkg2appimage-32bit) (fork)
 
 #### My other projects
-- [AppMan](https://github.com/ivan-hc/AppMan), a clone of "AM" that works in the user's $HOME instead;
+- [AppMan](https://github.com/ivan-hc/AppMan), "AM" that works in the user's $HOME instead;
 - [AppImaGen](https://github.com/ivan-hc/AppImaGen), a script that generates AppImages from Debian or from a PPA for the previous Ubuntu LTS;
 - [ArchImage](https://github.com/ivan-hc/ArchImage), build AppImage packages for all distributions but including Arch Linux packages. Powered by JuNest;
 - [Firefox for Linux scripts](https://github.com/ivan-hc/Firefox-for-Linux-scripts), easily install the official releases of Firefox for Linux.
