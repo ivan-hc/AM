@@ -64,6 +64,7 @@ done; [ "$deps" != "1" ] || { printf "\nInstall the above and try again\n\n"; ex
 rm -rf "$AMPATH/options"
 cat <<-HEREDOC >> "$AMPATH/options"
 	about
+	apikey
 	backup
 	clean
 	convert
@@ -112,7 +113,9 @@ if [ $AMCLI == appman ] 2>/dev/null; then
 	_patch_bashrc_and_profile
 fi
 
-
+if test -f $AMPATH/ghapikey.txt; then
+		HeaderAuthWithGITPAT=' --header "Authorization: token '$(cat $AMPATH/ghapikey.txt)'" '
+fi
 
 case "$1" in
 
@@ -375,6 +378,20 @@ case "$1" in
  are interested in (only works with Github).
  __________________________________________________________________________
  
+ apikey
+ 
+ SYNOPSIS:	apikey {Github Token}
+ 		apikey delete
+ 
+ DESCRIPTION:	Get unlimited access to https://api.github.com using your 
+ 
+ personal access tokens. The configuration file named "ghapikey.txt" will 
+ 
+ be saved in '$AMPATH' .
+ 
+ Use the command "'$AMCLI' apikey delete/del/remove" to remove the file. 
+ __________________________________________________________________________
+ 
  lock
  
  SYNOPSIS:	lock {PROGRAM}
@@ -624,6 +641,7 @@ case "$1" in
 							sed -i "s# /usr/local/share/pixmaps# $(xdg-user-dir USER)/.local/share/icons#g" ./$arg
 							sed -i "s# /opt# $APPSPATH#g" ./$arg
 							sed -i "s#/opt/#$APPSPATH/#g" ./$arg
+							sed -i "s# https://api.github.com#$HeaderAuthWithGITPAT https://api.github.com#g" ./$arg
 							echo -e '\n# CHANGE THE PATH OF ICONS AND EXECUTABLES IN LOCALLY INSTALLED AM*.DESKTOP FILES\nAPPSDIR=$(cat ~/.config/appman/appman-config)\nsed -i "s#Icon=/opt#Icon=$(xdg-user-dir USER)/$APPSDIR#g" ~/.local/share/applications/AM*.desktop\nsed -i "s#Exec=$APP#Exec=$(xdg-user-dir USER)/.local/bin/$APP#g" ~/.local/share/applications/AM*.desktop\nsed -i "s#Exec=/usr/bin/#Exec=$(xdg-user-dir USER)/.local/bin/#g" ~/.local/share/applications/AM*.desktop\nsed -i "s#Exec=/opt/firefox#Exec=$(xdg-user-dir USER)/$APPSDIR/firefox#g" ~/.local/share/applications/AM*.desktop\nsed -i "s#Exec=/opt/kdegames#Exec=$(xdg-user-dir USER)/$APPSDIR/kdegames#g" ~/.local/share/applications/AM*.desktop\nsed -i "s#Exec=/opt/kdeutils#Exec=$(xdg-user-dir USER)/$APPSDIR/kdeutils#g" ~/.local/share/applications/AM*.desktop' >> ./$arg
 						}
 
@@ -838,6 +856,7 @@ case "$1" in
 											sed -i 's/currentuser=/#currentuser=/g' ./$arg
 											sed -i 's/chown -R $currentuser/#chown -R $currentuser/g' ./$arg
 											sed -i '/# MESSAGE/,$d' ./$arg
+											sed -i "s# https://api.github.com#$HeaderAuthWithGITPAT https://api.github.com#g" ./$arg
 										}
 
 										function _install_appman_local_patch(){
@@ -1646,9 +1665,7 @@ case "$1" in
 								echo "-----------------------------------------------------------------------"
 								# CHECK THE DOWNLOAD LINK, THE ONE THAT POINTS TO THE LATEST RELEASE, NOTE THAT IT MAY BE A DEVELOPMENT VERSION, ADD "/latest" AFTER "/releases" TO POINT TO THE LAST STABLE VERSION
 								read -p ' Do you wish to check the link to the latest version (Y,n)?' yn
-								APIGITHUB="https://api.github.com/repos"
-								EXCLUDED="grep -w -v i386 | grep -w -v i686 | grep -w -v aarch64 | grep -w -v arm64 | grep -w -v armv7l"
-		
+
 								case $yn in
 								'N'|'n') ;;
 								'Y'|'y'|*) 
@@ -2245,6 +2262,45 @@ case "$1" in
   		esac
   	fi;;
 
+  'apikey')
+
+	case $2 in
+	'') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
+	esac
+
+	while [ -n "$1" ]; do
+		case $2 in
+		del|delete|remove)
+			if test -f $AMPATH/ghapikey.txt; then
+				rm -f $AMPATH/ghapikey.txt
+				echo "The file $AMPATH/ghapikey.txt has been deleted"; exit
+			else
+				echo "No file named $AMPATH/ghapikey.txt has been found"; exit
+			fi;;
+		*)
+			if [[ "$2" =~ ^(gh[ps]_[a-zA-Z0-9]{36}|github_pat_[a-zA-Z0-9]{22}_[a-zA-Z0-9]{59})$ ]]; then
+				
+				test_apikey_output_with_wget=$(wget -q --header "Authorization: token $2" 'https://api.github.com/repos/ivan-hc/AM-Application-Manager/releases' -O - | head -1)
+				if [[ $(echo "$test_apikey_output_with_wget") ]]; then
+					rm -f $AMPATH/ghapikey.txt
+					echo "$2" >> $AMPATH/ghapikey.txt
+					echo "Validation successful!"
+					exit
+				else
+					echo "ERROR: This is not a valid key!"
+    					exit
+    				fi
+			else
+    				echo "ERROR: Wrong expression, validation failed!"
+    				exit
+			fi
+			;;
+		esac
+	done
+
+	shift
+	;;
+
   'lock')
 
 	_no_sudo
@@ -2307,7 +2363,7 @@ case "$1" in
 
   'version'|'-v'|'--version')
 
-  	echo "5.3.1-5";;
+  	echo "5.4";;
 
   *) exec $AMCLIPATH ;;
 
