@@ -1,7 +1,6 @@
 #!/bin/sh
 
 APP=fchat-appimage
-SITE="https://wiki.f-list.net/F-Chat_3.0/"
 
 # CREATE THE FOLDER
 mkdir /opt/$APP
@@ -12,46 +11,32 @@ echo '#!/bin/sh' >> /opt/$APP/remove
 echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
 chmod a+x /opt/$APP/remove
 
-# DOWNLOAD THE ARCHIVE
+# DOWNLOAD THE APPIMAGE
 mkdir tmp
 cd ./tmp
 
-version=$(echo $(wget -q https://aur.archlinux.org/packages/$APP -O - | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep -i ".appimage" | grep -w -v ".asc" | grep -w -v ".zsync" | grep -w -v "archlinux.org" | head -1))
-wget $version
-echo "$version" >> /opt/$APP/version
+echo "https://client.f-list.net/fchat.AppImage"
+
 cd ..
 mv ./tmp/*mage ./$APP
 chmod a+x /opt/$APP/$APP
-rmdir ./tmp
+
+cd ./tmp
+wget https://github.com/AppImage/AppImageUpdate/releases/download/continuous/appimageupdatetool-x86_64.AppImage 2> /dev/null
+cd ..
+mv ./tmp/appimageupdatetool-x86_64.AppImage ./updater 2> /dev/null
+chmod a+x ./updater
 
 # LINK
 ln -s /opt/$APP/$APP /usr/local/bin/$APP
 
-# SCRIPT TO UPDATE THE PROGRAM
-cat >> /opt/$APP/AM-updater << 'EOF'
-#!/usr/bin/env bash
-APP=fchat-appimage
-version0=$(cat /opt/$APP/version)
-version=$(echo $(wget -q https://aur.archlinux.org/packages/$APP -O - | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep -i ".appimage" | grep -w -v ".asc" | grep -w -v ".zsync" | grep -w -v "archlinux.org" | head -1))
-if [ $version = $version0 ]; then
-  echo "Update not needed!"
-else
-  notify-send "A new version of $APP is available, please wait"
-  mkdir /opt/$APP/tmp
-  cd /opt/$APP/tmp
-  wget $version
-  if ls . | grep mage; then
-	cd ..
-  	if test -f ./tmp/*mage; then rm ./version
-  	fi
-  	echo $version >> ./version
-  	mv --backup=t ./tmp/*mage ./$APP
-  	chmod a+x /opt/$APP/$APP
-  	rm -R -f ./tmp ./*~
-  fi
-  notify-send "$APP is updated!"
-fi
-EOF
+# SCRIPT TO UPDATE
+echo '#!/bin/sh
+APP='$APP'
+cd /opt/$APP
+./updater -O ./$APP
+chmod a+x /opt/$APP/$APP
+rm -R -f /opt/$APP/*zs-old && rm -R -f /opt/$APP/*.part' >> /opt/$APP/AM-updater
 chmod a+x /opt/$APP/AM-updater
 
 # LAUNCHER & ICON
@@ -114,5 +99,7 @@ chown -R $currentuser /opt/$APP
 
 # MESSAGE
 echo "
- $APP is provided by $SITE
+
+	$APP is provided by https://wiki.f-list.net
+
 "

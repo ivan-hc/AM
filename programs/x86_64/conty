@@ -2,6 +2,7 @@
 
 APP=conty
 REPO="Kron4ek/Conty"
+URL=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep -w -v zsync | grep browser_download_url | grep -i "conty.sh" | cut -d '"' -f 4 | head -1)
 
 # CREATE THE FOLDER
 mkdir /opt/$APP
@@ -12,43 +13,35 @@ echo '#!/bin/sh' >> /opt/$APP/remove
 echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
 chmod a+x /opt/$APP/remove
 
-# DOWNLOAD THE ARCHIVE
+# DOWNLOAD THE APPIMAGE
 mkdir tmp
-cd ./tmp
-
-version=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep -w -v zsync | grep browser_download_url | grep -i "conty.sh" | cut -d '"' -f 4 | head -1)
-wget $version
-echo "$version" >> /opt/$APP/version
+wget $URL -O $APP
+cd tmp
+wget $URL.zsync 2> /dev/null
 cd ..
-
-rm -R -f ./tmp
+chmod a+x /opt/$APP/$APP
+mv ./tmp/*.zsync ./$APP.zsync 2> /dev/null
+rmdir ./tmp
 
 # LINK
 ln -s /opt/$APP/$APP /usr/local/bin/$APP
 
 # SCRIPT TO UPDATE THE PROGRAM
-# NOTE: CONTY HAS AN INTERNAL "-u" OPTION WHICH REBUILD CONTAINER WITH NEW UPDATE, BUT THIS CAUSES A BIG WORK OF THE CPU
-# SO DOWNLOADING EVERYTHING AGAIN IS THE BEST OPTION, SEE https://github.com/Kron4ek/Conty#how-to-update
 cat >> /opt/$APP/AM-updater << 'EOF'
-#!/usr/bin/env bash
+#!/bin/sh
 APP=conty
 REPO="Kron4ek/Conty"
-version0=$(cat /opt/$APP/version)
-version=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep -w -v zsync | grep browser_download_url | grep -i "conty.sh" | cut -d '"' -f 4 | head -1)
-if [ $version = $version0 ]; then
-  echo "Update not needed!"
-else
-  notify-send "A new version of $APP is available, please wait"
-  mkdir /opt/$APP/tmp
-  cd /opt/$APP/tmp
-  wget $version
-  cd ..
-  
-  rm ./version
-  echo $version >> ./version
-  rm -R -f ./tmp ./*~
-  notify-send "$APP is updated!"
-fi
+URL=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep -w -v zsync | grep browser_download_url | grep -i "conty.sh" | cut -d '"' -f 4 | head -1)
+cd /opt/$APP
+mkdir tmp
+cd ./tmp
+wget $URL.zsync 2> /dev/null
+cd ..
+mv ./tmp/*.zsync ./$APP.zsync
+rmdir ./tmp
+zsync /opt/$APP/$APP.zsync
+rm -R -f /opt/$APP/*zs-old /opt/$APP/*.part
+chmod a+x /opt/$APP/$APP
 EOF
 chmod a+x /opt/$APP/AM-updater
 
@@ -58,5 +51,7 @@ chown -R $currentuser /opt/$APP
 
 # MESSAGE
 echo "
- $APP is provided by https://github.com/$(echo $REPO | sed 's:/[^/]*$::')
+
+	$APP is provided by 
+	
 "

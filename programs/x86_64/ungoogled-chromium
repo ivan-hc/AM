@@ -1,7 +1,7 @@
 #!/bin/sh
 
 APP=ungoogled-chromium
-REPO="clickot/ungoogled-chromium-binaries"
+REPO="ungoogled-software/ungoogled-chromium-portablelinux"
 
 # CREATE THE FOLDER
 mkdir /opt/$APP
@@ -16,25 +16,24 @@ chmod a+x /opt/$APP/remove
 mkdir tmp
 cd ./tmp
 
-version=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep -w -v i386 | grep -w -v i686 | grep -w -v aarch64 | grep -w -v arm64 | grep -w -v armv7l | grep browser_download_url | grep -i ".tar.xz" | cut -d '"' -f 4 | head -1)
+version=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep -w -v i386 | grep -w -v i686 | grep -w -v aarch64 | grep -w -v arm64 | grep -w -v armv7l | grep browser_download_url | grep -i appimage | cut -d '"' -f 4 | head -1)
 wget $version
 echo "$version" >> /opt/$APP/version
-tar fx *.tar.xz
-dir=$(ls . | grep -w -v *.tar.*)
 cd ..
-mv ./tmp/$(echo $dir)/* ./
-rm -R -f ./tmp
+mv ./tmp/*mage ./$APP
+chmod a+x /opt/$APP/$APP
+rmdir ./tmp
 
 # LINK
-ln -s /opt/$APP/chrome /usr/local/bin/$APP
+ln -s /opt/$APP/$APP /usr/local/bin/$APP
 
 # SCRIPT TO UPDATE THE PROGRAM
 cat >> /opt/$APP/AM-updater << 'EOF'
 #!/usr/bin/env bash
 APP=ungoogled-chromium
-REPO="clickot/ungoogled-chromium-binaries"
+REPO="ungoogled-software/ungoogled-chromium-portablelinux"
 version0=$(cat /opt/$APP/version)
-version=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep -w -v i386 | grep -w -v i686 | grep -w -v aarch64 | grep -w -v arm64 | grep -w -v armv7l | grep browser_download_url | grep -i ".tar.xz" | cut -d '"' -f 4 | head -1)
+version=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep -w -v i386 | grep -w -v i686 | grep -w -v aarch64 | grep -w -v arm64 | grep -w -v armv7l | grep browser_download_url | grep -i appimage | cut -d '"' -f 4 | head -1)
 if [ $version = $version0 ]; then
   echo "Update not needed!"
 else
@@ -42,13 +41,15 @@ else
   mkdir /opt/$APP/tmp
   cd /opt/$APP/tmp
   wget $version
-  tar fx *.tar.xz
-  dir=$(ls . | grep -w -v *.tar.*)
-  cd ..
-  mv --backup=t ./tmp/$(echo $dir)/* ./
-  rm ./version
-  echo $version >> ./version
-  rm -R -f ./tmp ./*~
+  if ls . | grep mage; then
+	cd ..
+  	if test -f ./tmp/*mage; then rm ./version
+  	fi
+  	echo $version >> ./version
+  	mv --backup=t ./tmp/*mage ./$APP
+  	chmod a+x /opt/$APP/$APP
+  	rm -R -f ./tmp ./*~
+  fi
   notify-send "$APP is updated!"
 fi
 EOF
@@ -56,259 +57,57 @@ chmod a+x /opt/$APP/AM-updater
 
 # LAUNCHER & ICON
 app=$(echo $APP | cut -c -3)
-rm /usr/share/applications/AM-$APP.desktop
-echo "[Desktop Entry]
-Version=1.0
-Name=Chromium (ungoogled) Web Browser
-Name[ast]=Restolador web Chromium (ungoogled)
-Name[ca]=Navegador web Chromium (ungoogled)
-Name[de]=Chromium (ungoogled)-Webbrowser
-Name[es]=Navegador web Chromium (ungoogled)
-Name[fr]=Navigateur Web Chromium (ungoogled)
-Name[gl]=Navegador web Chromium (ungoogled)
-Name[he]=דפדפן האינטרנט Chromium (ungoogled)
-Name[hr]=Chromium (ungoogled) web preglednik
-Name[hu]=Chromium (ungoogled) webböngésző
-Name[id]=Peramban Web Chromium (ungoogled)
-Name[it]=Browser web Chromium (ungoogled)
-Name[ja]=Chromium (ungoogled) ウェブ・ブラウザ
-Name[ko]=Chromium (ungoogled) 웹 브라우저
-Name[pt_BR]=Chromium (ungoogled) Navegador da Internet
-Name[ru]=Веб-браузер Chromium (ungoogled)
-Name[sl]=Chromium (ungoogled) spletni brskalnik
-Name[sv]=Webbläsaren Chromium (ungoogled)
-Name[ug]=Chromium (ungoogled) توركۆرگۈ
-Name[zh_CN]=Chromium (ungoogled) 网页浏览器
-Name[zh_HK]=Chromium (ungoogled) 網頁瀏覽器
-Name[zh_TW]=Chromium (ungoogled) 網頁瀏覽器
-GenericName=Web Browser
-GenericName[ar]=متصفح الشبكة
-GenericName[ast]=Restolador web
-GenericName[bg]=Уеб браузър
-GenericName[bn]=ওয়েব ব্রাউজার
-GenericName[ca]=Navegador web
-GenericName[cs]=WWW prohlížeč
-GenericName[da]=Browser
-GenericName[de]=Webbrowser
-GenericName[el]=Περιηγητής ιστού
-GenericName[en_GB]=Web Browser
-GenericName[es]=Navegador web
-GenericName[et]=Veebibrauser
-GenericName[fi]=WWW-selain
-GenericName[fil]=Web Browser
-GenericName[fr]=Navigateur Web
-GenericName[gl]=Navegador web
-GenericName[gu]=વેબ બ્રાઉઝર
-GenericName[he]=דפדפן אינטרנט
-GenericName[hi]=वेब ब्राउज़र
-GenericName[hr]=Web preglednik
-GenericName[hu]=Webböngésző
-GenericName[id]=Peramban Web
-GenericName[it]=Browser web
-GenericName[ja]=ウェブ・ブラウザ
-GenericName[kn]=ಜಾಲ ವೀಕ್ಷಕ
-GenericName[ko]=웹 브라우저
-GenericName[lt]=Žiniatinklio naršyklė
-GenericName[lv]=Tīmekļa pārlūks
-GenericName[ml]=വെബ് ബ്രൌസര്‍
-GenericName[mr]=वेब ब्राऊजर
-GenericName[nb]=Nettleser
-GenericName[nl]=Webbrowser
-GenericName[or]=ଓ୍ବେବ ବ୍ରାଉଜର
-GenericName[pl]=Przeglądarka WWW
-GenericName[pt]=Navegador Web
-GenericName[pt_BR]=Navegador da Internet
-GenericName[ro]=Navigator de Internet
-GenericName[ru]=Веб-браузер
-GenericName[sk]=WWW prehliadač
-GenericName[sl]=Spletni brskalnik
-GenericName[sr]=Интернет прегледник
-GenericName[sv]=Webbläsare
-GenericName[ta]=இணைய உலாவி
-GenericName[te]=మహాతల అన్వేషి
-GenericName[th]=เว็บเบราว์เซอร์
-GenericName[tr]=Web Tarayıcı
-GenericName[ug]=توركۆرگۈ
-GenericName[uk]=Навігатор Тенет
-GenericName[vi]=Bộ duyệt Web
-GenericName[zh_CN]=网页浏览器
-GenericName[zh_HK]=網頁瀏覽器
-GenericName[zh_TW]=網頁瀏覽器
-Comment=Access the Internet
-Comment[ar]=الدخول إلى الإنترنت
-Comment[ast]=Accesu a Internet
-Comment[bg]=Достъп до интернет
-Comment[bn]=ইন্টারনেটটি অ্যাক্সেস করুন 
-Comment[ca]=Accediu a Internet
-Comment[cs]=Přístup k internetu
-Comment[da]=Få adgang til internettet
-Comment[de]=Internetzugriff
-Comment[el]=Πρόσβαση στο Διαδίκτυο
-Comment[en_GB]=Access the Internet
-Comment[es]=Acceda a Internet
-Comment[et]=Pääs Internetti
-Comment[fi]=Käytä internetiä
-Comment[fil]=I-access ang Internet
-Comment[fr]=Explorer le Web
-Comment[gl]=Acceda a Internet
-Comment[gu]=ઇંટરનેટ ઍક્સેસ કરો
-Comment[he]=גישה לאינטרנט
-Comment[hi]=इंटरनेट तक पहुंच स्थापित करें
-Comment[hr]=Pristupite Internetu
-Comment[hu]=Az internet elérése
-Comment[id]=Akses Internet
-Comment[it]=Accesso a Internet
-Comment[ja]=インターネットにアクセス
-Comment[kn]=ಇಂಟರ್ನೆಟ್ ಅನ್ನು ಪ್ರವೇಶಿಸಿ
-Comment[ko]=인터넷에 연결합니다
-Comment[lt]=Interneto prieiga
-Comment[lv]=Piekļūt internetam
-Comment[ml]=ഇന്റര്‍‌നെറ്റ് ആക്‌സസ് ചെയ്യുക
-Comment[mr]=इंटरनेटमध्ये प्रवेश करा
-Comment[nb]=Gå til Internett
-Comment[nl]=Verbinding maken met internet
-Comment[or]=ଇଣ୍ଟର୍ନେଟ୍ ପ୍ରବେଶ କରନ୍ତୁ
-Comment[pl]=Skorzystaj z internetu
-Comment[pt]=Aceder à Internet
-Comment[pt_BR]=Acessar a internet
-Comment[ro]=Accesaţi Internetul
-Comment[ru]=Доступ в Интернет
-Comment[sk]=Prístup do siete Internet
-Comment[sl]=Dostop do interneta
-Comment[sr]=Приступите Интернету
-Comment[sv]=Surfa på Internet
-Comment[ta]=இணையத்தை அணுகுதல்
-Comment[te]=ఇంటర్నెట్‌ను ఆక్సెస్ చెయ్యండి
-Comment[th]=เข้าถึงอินเทอร์เน็ต
-Comment[tr]=İnternet'e erişin
-Comment[ug]=ئىنتېرنېتنى زىيارەت قىلىش
-Comment[uk]=Доступ до Інтернету
-Comment[vi]=Truy cập Internet
-Comment[zh_CN]=访问互联网
-Comment[zh_HK]=連線到網際網路
-Comment[zh_TW]=連線到網際網路
-Exec=$APP %U
-Terminal=false
-X-MultipleArgs=false
-Type=Application
-Icon=/opt/$APP/icons/$APP
-Categories=Network;WebBrowser;
-MimeType=text/html;text/xml;application/xhtml_xml;application/x-mimearchive;x-scheme-handler/http;x-scheme-handler/https;
-StartupWMClass=ungoogled-chromium
-StartupNotify=true
-Keywords=browser;
-Actions=new-window;new-private-window;
-[Desktop Action new-window]
-Name=New Window
-Name[am]=አዲስ መስኮት
-Name[ar]=نافذة جديدة
-Name[bg]=Нов прозорец
-Name[bn]=নতুন উইন্ডো
-Name[ca]=Finestra nova
-Name[cs]=Nové okno
-Name[da]=Nyt vindue
-Name[de]=Neues Fenster
-Name[el]=Νέο Παράθυρο
-Name[en_GB]=New Window
-Name[es]=Nueva ventana
-Name[et]=Uus aken
-Name[fa]=پنجره جدید
-Name[fi]=Uusi ikkuna
-Name[fil]=New Window
-Name[fr]=Nouvelle fenêtre
-Name[gu]=નવી વિંડો
-Name[hi]=नई विंडो
-Name[hr]=Novi prozor
-Name[hu]=Új ablak
-Name[id]=Jendela Baru
-Name[it]=Nuova finestra
-Name[iw]=חלון חדש
-Name[ja]=新規ウインドウ
-Name[kn]=ಹೊಸ ವಿಂಡೊ
-Name[ko]=새 창
-Name[lt]=Naujas langas
-Name[lv]=Jauns logs
-Name[ml]=പുതിയ വിന്‍ഡോ
-Name[mr]=नवीन विंडो
-Name[nl]=Nieuw venster
-Name[no]=Nytt vindu
-Name[pl]=Nowe okno
-Name[pt]=Nova janela
-Name[pt_BR]=Nova janela
-Name[ro]=Fereastră nouă
-Name[ru]=Новое окно
-Name[sk]=Nové okno
-Name[sl]=Novo okno
-Name[sr]=Нови прозор
-Name[sv]=Nytt fönster
-Name[sw]=Dirisha Jipya
-Name[ta]=புதிய சாளரம்
-Name[te]=క్రొత్త విండో
-Name[th]=หน้าต่างใหม่
-Name[tr]=Yeni Pencere
-Name[uk]=Нове вікно
-Name[vi]=Cửa sổ Mới
-Name[zh_CN]=新建窗口
-Name[zh_TW]=開新視窗
-Exec=$APP
-[Desktop Action new-private-window]
-Name=New Incognito Window
-Name[ar]=نافذة جديدة للتصفح المتخفي
-Name[bg]=Нов прозорец „инкогнито“
-Name[bn]=নতুন ছদ্মবেশী উইন্ডো
-Name[ca]=Finestra d'incògnit nova
-Name[cs]=Nové anonymní okno
-Name[da]=Nyt inkognitovindue
-Name[de]=Neues Inkognito-Fenster
-Name[el]=Νέο παράθυρο για ανώνυμη περιήγηση
-Name[en_GB]=New Incognito window
-Name[es]=Nueva ventana de incógnito
-Name[et]=Uus inkognito aken
-Name[fa]=پنجره جدید حالت ناشناس
-Name[fi]=Uusi incognito-ikkuna
-Name[fil]=Bagong Incognito window
-Name[fr]=Nouvelle fenêtre de navigation privée
-Name[gu]=નવી છુપી વિંડો
-Name[hi]=नई गुप्त विंडो
-Name[hr]=Novi anoniman prozor
-Name[hu]=Új Inkognitóablak
-Name[id]=Jendela Penyamaran baru
-Name[it]=Nuova finestra di navigazione in incognito
-Name[iw]=חלון חדש לגלישה בסתר
-Name[ja]=新しいシークレット ウィンドウ
-Name[kn]=ಹೊಸ ಅಜ್ಞಾತ ವಿಂಡೋ
-Name[ko]=새 시크릿 창
-Name[lt]=Naujas inkognito langas
-Name[lv]=Jauns inkognito režīma logs
-Name[ml]=പുതിയ വേഷ പ്രച്ഛന്ന വിന്‍ഡോ
-Name[mr]=नवीन गुप्त विंडो
-Name[nl]=Nieuw incognitovenster
-Name[no]=Nytt inkognitovindu
-Name[pl]=Nowe okno incognito
-Name[pt]=Nova janela de navegação anónima
-Name[pt_BR]=Nova janela anônima
-Name[ro]=Fereastră nouă incognito
-Name[ru]=Новое окно в режиме инкогнито
-Name[sk]=Nové okno inkognito
-Name[sl]=Novo okno brez beleženja zgodovine
-Name[sr]=Нови прозор за прегледање без архивирања
-Name[sv]=Nytt inkognitofönster
-Name[ta]=புதிய மறைநிலைச் சாளரம்
-Name[te]=క్రొత్త అజ్ఞాత విండో
-Name[th]=หน้าต่างใหม่ที่ไม่ระบุตัวตน
-Name[tr]=Yeni Gizli pencere
-Name[uk]=Нове вікно в режимі анонімного перегляду
-Name[vi]=Cửa sổ ẩn danh mới
-Name[zh_CN]=新建隐身窗口
-Name[zh_TW]=新增無痕式視窗
-Exec=$APP --incognito" >> /usr/share/applications/AM-$APP.desktop
+cd /opt/$APP
+./$APP --appimage-extract *.desktop 1>/dev/null
+./$APP --appimage-extract share/applications/*.desktop 1>/dev/null
+./$APP --appimage-extract usr/share/applications/*.desktop 1>/dev/null
+mv squashfs-root/*.desktop ./$APP.desktop
+mv squashfs-root/share/applications/*.desktop ./$APP.desktop
+mv squashfs-root/usr/share/applications/*.desktop ./$APP.desktop
+if [ ! -e ./$APP.desktop ]; then 
+	rm ./$APP.desktop; ./$APP --appimage-extract usr/share/applications/*$app*.desktop 
+	mv squashfs-root/usr/share/applications/*.desktop ./$APP.desktop
+fi
+if [ ! -e ./$APP.desktop ]; then 
+	rm ./$APP.desktop; ./$APP --appimage-extract share/applications/*$app*.desktop 1>/dev/null
+	mv squashfs-root/share/applications/*.desktop ./$APP.desktop
+fi
+CHANGEEXEC=$(cat ./$APP.desktop | grep Exec= | tr ' ' '\n' | tr '=' '\n' | tr '/' '\n' | grep $app | head -1)
+sed -i "s#$CHANGEEXEC#$APP#g" ./$APP.desktop
+sed -i "s#AppRun#$APP#g" ./$APP.desktop
+sed -i "s#Exec=/bin/#Exec=#g" ./$APP.desktop
+sed -i "s#Exec=/usr/bin/#Exec=#g" ./$APP.desktop
+CHANGEICON=$(cat ./$APP.desktop | grep Icon= | head -1)
+sed -i "s#$CHANGEICON#Icon=/opt/$APP/icons/$APP#g" ./$APP.desktop
 
 mkdir icons
-mv ./*.svg ./icons/$APP 2>/dev/null
-mv ./*.png ./icons/$APP 2>/dev/null
-mv ./*$app*.png ./icons/$APP 2>/dev/null
-mv ./*128*.png ./icons/$APP 2>/dev/null
-mv ./*256*.png ./icons/$APP 2>/dev/null
+mv $(./$APP --appimage-extract *.png) ./icons/$APP 2>/dev/null
+mv $(./$APP --appimage-extract *.svg) ./icons/$APP 2>/dev/null
+./$APP --appimage-extract share/icons/*/*/* 1>/dev/null
+./$APP --appimage-extract usr/share/icons/*/*/* 1>/dev/null
+./$APP --appimage-extract share/icons/*/*/*/* 1>/dev/null
+./$APP --appimage-extract usr/share/icons/*/*/*/* 1>/dev/null
+mv ./squashfs-root/share/icons/hicolor/22x22/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/24x24/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/32x32/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/48x48/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/64x64/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/128x128/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/256x256/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/512x512/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/scalable/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/22x22/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/24x24/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/32x32/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/48x48/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/64x64/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/128x128/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/256x256/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/512x512/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/scalable/apps/*$app* ./icons/$APP 2>/dev/null
+
+rm -R -f /opt/$APP/squashfs-root
+mv ./$APP.desktop /usr/share/applications/AM-$APP.desktop
 
 # CHANGE THE PERMISSIONS
 currentuser=$(who | awk '{print $1}')

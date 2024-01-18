@@ -1,7 +1,7 @@
 #!/bin/sh
 
 APP=vircadia
-SITE="https://vircadia.com/"
+REPO="vircadia/vircadia-native-core"
 
 # CREATE THE FOLDER
 mkdir /opt/$APP
@@ -16,11 +16,11 @@ chmod a+x /opt/$APP/remove
 mkdir tmp
 cd ./tmp
 
-version=$(echo $(wget -q https://aur.archlinux.org/packages/vircadia-appimage -O - | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep -i ".appimage" | grep -w -v arm64 | grep -w -v armv7l | grep -w -v ".asc" | grep -w -v ".zsync" | grep -w -v "archlinux.org" | head -1))
+version=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep -w -v i386 | grep -w -v i686 | grep -w -v aarch64 | grep -w -v arm64 | grep -w -v armv7l | grep browser_download_url | grep -i appimage | cut -d '"' -f 4 | head -1)
 wget $version
 echo "$version" >> /opt/$APP/version
 cd ..
-mv ./tmp/* ./$APP
+mv ./tmp/*mage ./$APP
 chmod a+x /opt/$APP/$APP
 rmdir ./tmp
 
@@ -31,8 +31,9 @@ ln -s /opt/$APP/$APP /usr/local/bin/$APP
 cat >> /opt/$APP/AM-updater << 'EOF'
 #!/usr/bin/env bash
 APP=vircadia
+REPO="vircadia/vircadia-native-core"
 version0=$(cat /opt/$APP/version)
-version=$(echo $(wget -q https://aur.archlinux.org/packages/vircadia-appimage -O - | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep -i ".appimage" | grep -w -v arm64 | grep -w -v armv7l | grep -w -v ".asc" | grep -w -v ".zsync" | grep -w -v "archlinux.org" | head -1))
+version=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep -w -v i386 | grep -w -v i686 | grep -w -v aarch64 | grep -w -v arm64 | grep -w -v armv7l | grep browser_download_url | grep -i appimage | cut -d '"' -f 4 | head -1)
 if [ $version = $version0 ]; then
   echo "Update not needed!"
 else
@@ -40,12 +41,15 @@ else
   mkdir /opt/$APP/tmp
   cd /opt/$APP/tmp
   wget $version
-  cd ..
-  rm ./version
-  echo $version >> ./version
-  mv --backup=t ./tmp/* ./$APP
-  chmod a+x /opt/$APP/$APP
-  rm -R -f ./tmp ./*~
+  if ls . | grep mage; then
+	cd ..
+  	if test -f ./tmp/*mage; then rm ./version
+  	fi
+  	echo $version >> ./version
+  	mv --backup=t ./tmp/*mage ./$APP
+  	chmod a+x /opt/$APP/$APP
+  	rm -R -f ./tmp ./*~
+  fi
   notify-send "$APP is updated!"
 fi
 EOF
@@ -111,5 +115,5 @@ chown -R $currentuser /opt/$APP
 
 # MESSAGE
 echo "
- $APP is provided by $SITE
+ $APP is provided by https://github.com/$(echo $REPO | sed 's:/[^/]*$::')
 "

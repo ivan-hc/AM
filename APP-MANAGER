@@ -3,7 +3,7 @@
 DIR="$( cd "$( dirname "$0" )" && pwd )"
 CLI=$(echo $(basename "$0"))
 
-if [ "$DIR/$CLI" == "/usr/local/bin/am" ] 2>/dev/null; then
+function _am(){
 	AMCLI="am"
 	AMCLIPATH=$AMCLI
 	SUDOCOMMAND="sudo"
@@ -11,7 +11,9 @@ if [ "$DIR/$CLI" == "/usr/local/bin/am" ] 2>/dev/null; then
 	COMPLETIONFILE="am-completion.sh"
 	APPSPATH="/opt"
 	AMPATH="$APPSPATH/$AMCLI"
-else
+}
+
+function _appman(){
 	if test -f ~/.config/appman/appman-config; then
 		break 2>/dev/null
 	else
@@ -34,7 +36,21 @@ else
 	COMPLETIONFILE=".bash_completion"
 	APPSPATH="$HOME/$APPSDIR"
 	AMPATH="$HOME/$APPSDIR/$AMCLI"
+}
+
+if [ "$DIR/$CLI" == "/usr/local/bin/am" ] 2>/dev/null; then
+	_am
+else
+	_appman
 fi
+
+function _online_check(){
+	wget -q --tries=10 --timeout=20 --spider https://github.com
+	if [[ ! $? -eq 0 ]]; then
+		echo -e '\n '$AMCLI' is offline, please check your internet connection and try again\n'
+		exit
+	fi
+}
 
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main"
 arch=$(printf '%s\n' "$HOSTTYPE")
@@ -66,11 +82,37 @@ cat <<-HEREDOC >> "$AMPATH/options"
 	web
 	--disable-completion
 	--enable-completion
+	--firejail
 	--home
 	--launcher
 	--rollback
+	--sandbox
 	--user
 HEREDOC
+
+function _no_sudo(){
+	if [ -n "$SUDO_COMMAND" ]; then 
+		printf "\n WARNING: You don't need to use SUDO for this.\n\n"; 
+		exit 1; 
+	fi
+}
+
+function _patch_bashrc_and_profile(){
+	if $(! grep -q 'export PATH=$PATH:$(xdg-user-dir USER)/.local/bin' $HOME/.bashrc); then
+		echo 'export PATH=$(echo $PATH | tr ":" "\n" | grep -v "/.local/bin" | tr "\n" ":" | sed ''s/.$//'')' >> $HOME/.bashrc
+		echo -e 'export PATH=$PATH:$(xdg-user-dir USER)/.local/bin\n' >> $HOME/.bashrc
+	fi
+	if $( grep -q 'PATH="$HOME/.local/bin:$PATH"' $HOME/.profile); then
+		sed -i 's#PATH="$HOME/.local/bin:$PATH"#PATH="$PATH:$HOME/.local/bin"#g' $HOME/.profile
+	fi
+}
+
+if [ $AMCLI == appman ] 2>/dev/null; then
+	_no_sudo
+	_patch_bashrc_and_profile
+fi
+
+
 
 case "$1" in
 
@@ -101,6 +143,33 @@ case "$1" in
 							
   >> 𝘋𝘢𝘵𝘢𝘣𝘢𝘴𝘦 & 𝘴𝘰𝘭𝘶𝘵𝘪𝘰𝘯𝘴 𝘧𝘰𝘳 𝘢𝘭𝘭 𝘈𝘱𝘱𝘐𝘮𝘢𝘨𝘦𝘴 𝘢𝘯𝘥 𝘱𝘰𝘳𝘵𝘢𝘣𝘭𝘦 𝘢𝘱𝘱𝘴 𝘧𝘰𝘳 𝘎𝘕𝘜/𝘓𝘪𝘯𝘶𝘹 << 
   
+ ##########################################################################
+ 
+ 𝙋𝙇𝙀𝘼𝙎𝙀 𝙎𝙃𝘼𝙍𝙀 𝙏𝙃𝙄𝙎 𝙋𝙍𝙊𝙅𝙀𝘾𝙏 & 𝙎𝙋𝙍𝙀𝘼𝘿 𝙄𝙏 𝙏𝙊 𝙏𝙃𝙀 𝙇𝙄𝙉𝙐𝙓 𝙒𝙊𝙍𝙇𝘿❗❗❗
+ 	
+ 𝙃𝙀𝙇𝙋 𝙈𝙀 𝙆𝙀𝙀𝙋 𝙏𝙃𝙄𝙎 𝙋𝙍𝙊𝙅𝙀𝘾𝙏 𝘼𝙇𝙄𝙑𝙀❗❗❗
+ 
+ This AppImage package management method can help developers spread their
+ creations to the masses, improve them via bug report, and build new ones.
+ 
+ My goal here is to provide a centralized system for finding otherwise
+ unobtainable AppImage packages, thus giving them a home to stay.
+ 
+ Share the repository https://github.com/ivan-hc/AM-Application-Manager
+
+ Or the catalog on the website https://portable-linux-apps.github.io
+
+ It does not cost you anything, for us its a great help that can help us
+ save the AppImage packaging format, inviting new developers to join the
+ development, build and improve more and more packages!
+ 
+ ████████╗██╗░░██╗░█████╗░███╗░░██╗██╗░░██╗  ██╗░░░██╗░█████╗░██╗░░░██╗██╗
+ ╚══██╔══╝██║░░██║██╔══██╗████╗░██║██║░██╔╝  ╚██╗░██╔╝██╔══██╗██║░░░██║██║
+ ░░░██║░░░███████║███████║██╔██╗██║█████═╝░  ░╚████╔╝░██║░░██║██║░░░██║██║
+ ░░░██║░░░██╔══██║██╔══██║██║╚████║██╔═██╗░  ░░╚██╔╝░░██║░░██║██║░░░██║╚═╝
+ ░░░██║░░░██║░░██║██║░░██║██║░╚███║██║░╚██╗  ░░░██║░░░╚█████╔╝╚██████╔╝██╗
+ ░░░╚═╝░░░╚═╝░░╚═╝╚═╝░░╚═╝╚═╝░░╚══╝╚═╝░░╚═╝  ░░░╚═╝░░░░╚════╝░░╚═════╝░╚═╝
+ 
  ##########################################################################
  __________________________________________________________________________
  
@@ -278,6 +347,13 @@ case "$1" in
  
  key, using the names of all installable applications available.
  __________________________________________________________________________
+ 
+ --firejail, --sandbox
+ 
+ SYNOPSIS:	--firejail {PROGRAM}
+ 
+ DESCRIPTION:	Run an AppImage in a sandbox using Firejail.
+ __________________________________________________________________________
 
  --launcher
  
@@ -372,10 +448,9 @@ case "$1" in
  ##########################################################################' | less;;
 
   '-a'|'about')
-  	if [ -n "$SUDO_COMMAND" ]; then 
-		printf "\n WARNING: You don't need to run the option '$1' with SUDO.\n\n"; 
-		exit 1; 
-	fi
+
+	_no_sudo
+	_online_check
 
 	case $2 in
 	'') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
@@ -388,33 +463,35 @@ case "$1" in
 
 		for arg in $ARGS; do
 			for var in "$arg"; do
-				if [ "$arg" == "STOP" ]; then
-					exit 1;
-				else
+			
+				function _about(){
 					markdown="https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/main/apps/$arg.md"
 					if curl -o /dev/null -sIf "$markdown" 1>/dev/null; then 
-						printf "%s\n" "-----------------------------------------------------------------------"
+					printf "%s\n" "-----------------------------------------------------------------------"
 
-						case "$arg" in
-						*) 
-							rm -rf "$AMPATH/.cache/about"; 
-							mkdir -p "$AMPATH/.cache/about";
-							cd "$AMPATH/.cache/about" && wget -q "$markdown" &&
-							sed -i '1,${ /^\s*#/ d; /^\s*!/ d; /\[Applications]/d; /\ --- /d; }' "$arg.md";
-							printf "%s\n" " PACKAGE: $(echo $arg | tr a-z A-Z)";
-
+					case "$arg" in
+					*) 
+						rm -rf "$AMPATH/.cache/about"; 
+						mkdir -p "$AMPATH/.cache/about";
+						cd "$AMPATH/.cache/about" && wget -q "$markdown" &&
+						sed -i '1,${ /^\s*#/ d; /^\s*!/ d; /\[Applications]/d; /\ --- /d; }' "$arg.md";
+						printf "%s\n" " PACKAGE: $(echo $arg | tr a-z A-Z)";
 							if test -f "$APPSPATH/$arg/remove"; then 
-								printf "%s\n" " STATUS: INSTALLED, ABOUT $(du -sm $APPSPATH/$arg | cut -f1) MB OF DISK SPACE IN USE";
-							else 
-								printf "%s\n" " STATUS: NOT INSTALLED";
-							fi
-
+							printf "%s\n" " STATUS: INSTALLED, ABOUT $(du -sm $APPSPATH/$arg | cut -f1) MB OF DISK SPACE IN USE";
+						else 
+							printf "%s\n" " STATUS: NOT INSTALLED";
+						fi
 							cat ./$arg.md && printf "%s\n" "-----------------------------------------------------------------------";
-							;;
-						esac
-					else
-						printf "%s\n" " \"$arg\" is not a valid argument" | tr 'a-z' 'A-Z' && break;
-					fi
+						;;
+					esac
+				else
+					printf "%s\n" " \"$arg\" is not a valid argument" | tr 'a-z' 'A-Z';
+				fi
+				}
+				if [ "$arg" == "STOP" ]; then
+					exit 1
+				else
+					_about
 				fi
 			done
 		done
@@ -424,10 +501,8 @@ case "$1" in
 	;;
 
   '-b'|'backup')
-    	if [ -n "$SUDO_COMMAND" ]; then 
-		echo -e "\n WARNING: You don't need to run the option '$1' with SUDO.\n"; 
-		exit; 
-	fi
+
+	_no_sudo
 
 	case $2 in
 	'') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
@@ -440,26 +515,30 @@ case "$1" in
 
 		for arg in $ARGS; do
 			for var in $arg; do
+
+				function _backup(){
+					case $arg in
+						'') 
+							echo " Specify the name of a program to back up"; echo ""; exit;;
+						*) 
+							if test -f $APPSPATH/$arg/remove; then
+								echo ""; read -p " Do you wish to backup the current version of $arg (y,N)?" yn
+								case $yn in
+								[Yy]* ) 
+									mkdir -p "$(xdg-user-dir USER)/.am-snapshots/$arg"; cp -r $APPSPATH/$arg "$(xdg-user-dir USER)/.am-snapshots/$arg/$(date +%F-%X | sed 's/://g' | sed 's/-//g')"; echo ""; echo " SAVED in $(xdg-user-dir USER)/.am-snapshots/$arg"; echo "";;
+								[Nn]*|* ) 
+									echo ""; echo " OPERATION ABORTED!"; echo "";;	
+								esac
+							else
+								echo ""; echo " '$arg' is not a valid argument or is not installed."; echo ""; break;
+							fi
+						esac
+				}
+
 				if [ $arg == STOP ]; then
 					exit
 				else
-					case $arg in
-					'') 
-						echo " Specify the name of a program to back up"; echo ""; exit;;
-					*) 
-						if test -f $APPSPATH/$arg/remove; then
-							echo ""; read -p " Do you wish to backup the current version of $arg (y,N)?" yn
-					
-							case $yn in
-							[Yy]* ) 
-								mkdir -p "$(xdg-user-dir USER)/.am-snapshots/$arg"; cp -r $APPSPATH/$arg "$(xdg-user-dir USER)/.am-snapshots/$arg/$(date +%F-%X | sed 's/://g' | sed 's/-//g')"; echo ""; echo " SAVED in $(xdg-user-dir USER)/.am-snapshots/$arg"; echo "" ; break;;
-							[Nn]*|* ) 
-								echo ""; echo " OPERATION ABORTED!"; echo ""; break;;	
-							esac
-						else
-							echo ""; echo " '$arg' is not a valid argument or is not installed."; echo ""; break;
-						fi
-					esac
+					_backup
 				fi
 			done
 		done
@@ -468,28 +547,56 @@ case "$1" in
 	shift
 	;;
 
-  '-c'|'clean') 
-    	if [ -n "$SUDO_COMMAND" ]; then 
-		echo -e "\n WARNING: You don't need to run the option '$1' with SUDO.\n"; 
-		exit; 
-	fi
+  '-c'|'clean')
 
-  	echo -e "\n Cleaning of temporary files and folders in progress...\n" && sleep 0.1 &&
-  	for i in {1000..0000}; do 
-		echo -ne " $i\r" && sleep 0.0001; 
-	done
+  	_no_sudo
 
-  	rm -R -f $AMPATH/appdb; rm -R -f $AMPATH/.cache/*; rm -R -f $APPSPATH/*/tmp; echo -e "\n DONE!\n"
+	function _clean_launchers(){
+		for var in $HOME/.local/share/applications/AppImages/*.desktop; do
+			for arg in "$var"; do
+				APPIMAGENAME=$(grep "Exec=" 0<"$var" 2>/dev/null | head -1 | cut -c 6- | sed 's/\s.*$//')
+				MOUNTPOINTS=$(echo "$APPIMAGENAME" | cut -d'/' -f1-4)
+				if $( ! test -f "$APPIMAGENAME" 2> /dev/null); then
+					if $(! test -d "$(echo $MOUNTPOINTS)" 2> /dev/null); then
+						if $(echo $MOUNTPOINTS | grep -q "/media/"); then
+							echo -e "\n 💀ERROR: cannot remove $(basename $var)\n   related AppImage is located in an unmounted path of /media\n"
+						elif $(echo $MOUNTPOINTS | grep -q "/mnt/"); then
+							echo -e "\n 💀ERROR: cannot remove $(basename $var)\n   related AppImage is located in an unmounted path of /mnt\n"
+						fi
+					else
+						rm -f "$var"
+					fi
+				fi
+			done
+		done
+	}
+
+  	function _clean_all(){
+  		echo -e "\n Cleaning of temporary files and folders in progress...\n" && sleep 0.1 &&
+  		for i in {1000..0000}; do 
+			echo -ne " $i\r" && sleep 0.0001
+		done
+  		rm -R -f $AMPATH/.cache/* | echo " ◆ Cleaning up the content of $AMPATH/.cache"
+  		rm -R -f $APPSPATH/*/tmp | echo ' ◆ Removed all '$APPSPATH'/*/tmp directories'
+  		rm -R -f $AMPATH/appdb | echo " ◆ Removed old $AMPATH/appdb directory, if exists"
+  		_clean_launchers && echo ' ◆ Removed orphaned launchers produced with the "--launcher" option'
+  		echo -e "\n DONE!\n"
+  	}
+
+  	_clean_all
 	;;
 
   '-conv'|'convert')
+
+  	_no_sudo
+
   	while [ -n "$1" ]; do
-  		
+
   		if [ $AMCLI == am ] 2>/dev/null; then
   			echo " This function only works for AppMan"
   			exit
   		fi
-  		
+
 		rm -f $AMPATH/.cache/convert-args
 		echo $@ | tr ' ' '\n' >> $AMPATH/.cache/convert-args && echo STOP >> $AMPATH/.cache/convert-args
 		ARGS=$(tail -n +2 $AMPATH/.cache/convert-args)
@@ -500,62 +607,60 @@ case "$1" in
 
 		for arg in $ARGS; do
 			for var in $arg; do
+
+				function _convert(){
+					case $arg in
+					'') 	echo " Specify the name of one or more programs to convert"; echo ""; break;;
+					*) 	
+						function _convert_to_appman_compatible_script(){
+							echo " Converting $arg to an AppMan-compatible script"
+  							sed -i "s# /usr/local/bin# $(xdg-user-dir USER)/.local/bin#g" ./$arg
+							sed -i "s# /usr/bin# $(xdg-user-dir USER)/.local/bin#g" ./$arg
+							sed -i "s# /usr/games# $(xdg-user-dir USER)/.local/bin#g" ./$arg
+							sed -i "s# /usr/local/games# $(xdg-user-dir USER)/.local/bin#g" ./$arg
+							sed -i "s# /usr/share/applications# $(xdg-user-dir USER)/.local/share/applications#g" ./$arg
+							sed -i "s# /usr/local/share/applications# $(xdg-user-dir USER)/.local/share/applications#g" ./$arg
+							sed -i "s# /usr/share/pixmaps# $(xdg-user-dir USER)/.local/share/icons#g" ./$arg
+							sed -i "s# /usr/local/share/pixmaps# $(xdg-user-dir USER)/.local/share/icons#g" ./$arg
+							sed -i "s# /opt# $APPSPATH#g" ./$arg
+							sed -i "s#/opt/#$APPSPATH/#g" ./$arg
+							echo -e '\n# CHANGE THE PATH OF ICONS AND EXECUTABLES IN LOCALLY INSTALLED AM*.DESKTOP FILES\nAPPSDIR=$(cat ~/.config/appman/appman-config)\nsed -i "s#Icon=/opt#Icon=$(xdg-user-dir USER)/$APPSDIR#g" ~/.local/share/applications/AM*.desktop\nsed -i "s#Exec=$APP#Exec=$(xdg-user-dir USER)/.local/bin/$APP#g" ~/.local/share/applications/AM*.desktop\nsed -i "s#Exec=/usr/bin/#Exec=$(xdg-user-dir USER)/.local/bin/#g" ~/.local/share/applications/AM*.desktop\nsed -i "s#Exec=/opt/firefox#Exec=$(xdg-user-dir USER)/$APPSDIR/firefox#g" ~/.local/share/applications/AM*.desktop\nsed -i "s#Exec=/opt/kdegames#Exec=$(xdg-user-dir USER)/$APPSDIR/kdegames#g" ~/.local/share/applications/AM*.desktop\nsed -i "s#Exec=/opt/kdeutils#Exec=$(xdg-user-dir USER)/$APPSDIR/kdeutils#g" ~/.local/share/applications/AM*.desktop' >> ./$arg
+						}
+
+						if curl --output /dev/null --silent --head --fail $AMREPO/programs/$arch/$arg  1>/dev/null; then
+  							_online_check
+  							cd $(xdg-user-dir DESKTOP); wget -q $AMREPO/programs/$arch/$arg
+  							_convert_to_appman_compatible_script
+  						elif test -f $(xdg-user-dir DESKTOP)/am-scripts/$arch/$arg; then
+  							cd $(xdg-user-dir DESKTOP); cp ./am-scripts/$arch/$arg ./$arg
+  							_convert_to_appman_compatible_script
+						else
+							echo ""; echo ' "'$arg'" is NOT a valid argument'; echo ""
+						fi
+					esac
+				}
+
 				if [ $arg == STOP ]; then
 					exit
 				else
-					case $arg in
-					'') 	echo " Specify the name of one or more programs to convert"; echo ""; break;;
-					*) 	if curl --output /dev/null --silent --head --fail $AMREPO/programs/$arch/$arg  1>/dev/null; then
-  							cd $(xdg-user-dir DESKTOP); wget -q $AMREPO/programs/$arch/$arg; echo " Converting $arg to an AppMan-compatible script";
-  							sed -i "s# /usr/local/bin# $(xdg-user-dir USER)/.local/bin#g" ./$arg
-							sed -i "s# /usr/bin# $(xdg-user-dir USER)/.local/bin#g" ./$arg
-							sed -i "s# /usr/games# $(xdg-user-dir USER)/.local/bin#g" ./$arg
-							sed -i "s# /usr/local/games# $(xdg-user-dir USER)/.local/bin#g" ./$arg
-							sed -i "s# /usr/share/applications# $(xdg-user-dir USER)/.local/share/applications#g" ./$arg
-							sed -i "s# /usr/local/share/applications# $(xdg-user-dir USER)/.local/share/applications#g" ./$arg
-							sed -i "s# /usr/share/pixmaps# $(xdg-user-dir USER)/.local/share/icons#g" ./$arg
-							sed -i "s# /usr/local/share/pixmaps# $(xdg-user-dir USER)/.local/share/icons#g" ./$arg
-							sed -i "s# /opt# $APPSPATH#g" ./$arg
-							sed -i "s#/opt/#$APPSPATH/#g" ./$arg
-							echo -e '\n# CHANGE THE PATH OF ICONS AND EXECUTABLES IN LOCALLY INSTALLED AM*.DESKTOP FILES\nAPPSDIR=$(cat ~/.config/appman/appman-config)\nsed -i "s#Icon=/opt#Icon=$(xdg-user-dir USER)/$APPSDIR#g" ~/.local/share/applications/AM*.desktop\nsed -i "s#Exec=$APP#Exec=$(xdg-user-dir USER)/.local/bin/$APP#g" ~/.local/share/applications/AM*.desktop\nsed -i "s#Exec=/usr/bin/#Exec=$(xdg-user-dir USER)/.local/bin/#g" ~/.local/share/applications/AM*.desktop\nsed -i "s#Exec=/opt/firefox#Exec=$(xdg-user-dir USER)/$APPSDIR/firefox#g" ~/.local/share/applications/AM*.desktop\nsed -i "s#Exec=/opt/kdegames#Exec=$(xdg-user-dir USER)/$APPSDIR/kdegames#g" ~/.local/share/applications/AM*.desktop\nsed -i "s#Exec=/opt/kdeutils#Exec=$(xdg-user-dir USER)/$APPSDIR/kdeutils#g" ~/.local/share/applications/AM*.desktop' >> ./$arg
-							break;
-  						elif test -f $(xdg-user-dir DESKTOP)/am-scripts/$arch/$arg; then
-  							cd $(xdg-user-dir DESKTOP); cp ./am-scripts/$arch/$arg ./$arg
-  							echo " Converting $arg to an AppMan-compatible script";
-  							sed -i "s# /usr/local/bin# $(xdg-user-dir USER)/.local/bin#g" ./$arg
-							sed -i "s# /usr/bin# $(xdg-user-dir USER)/.local/bin#g" ./$arg
-							sed -i "s# /usr/games# $(xdg-user-dir USER)/.local/bin#g" ./$arg
-							sed -i "s# /usr/local/games# $(xdg-user-dir USER)/.local/bin#g" ./$arg
-							sed -i "s# /usr/share/applications# $(xdg-user-dir USER)/.local/share/applications#g" ./$arg
-							sed -i "s# /usr/local/share/applications# $(xdg-user-dir USER)/.local/share/applications#g" ./$arg
-							sed -i "s# /usr/share/pixmaps# $(xdg-user-dir USER)/.local/share/icons#g" ./$arg
-							sed -i "s# /usr/local/share/pixmaps# $(xdg-user-dir USER)/.local/share/icons#g" ./$arg
-							sed -i "s# /opt# $APPSPATH#g" ./$arg
-							sed -i "s#/opt/#$APPSPATH/#g" ./$arg
-							echo -e '\n# CHANGE THE PATH OF ICONS AND EXECUTABLES IN LOCALLY INSTALLED AM*.DESKTOP FILES\nAPPSDIR=$(cat ~/.config/appman/appman-config)\nsed -i "s#Icon=/opt#Icon=$(xdg-user-dir USER)/$APPSDIR#g" ~/.local/share/applications/AM*.desktop\nsed -i "s#Exec=$APP#Exec=$(xdg-user-dir USER)/.local/bin/$APP#g" ~/.local/share/applications/AM*.desktop\nsed -i "s#Exec=/usr/bin/#Exec=$(xdg-user-dir USER)/.local/bin/#g" ~/.local/share/applications/AM*.desktop\nsed -i "s#Exec=/opt/firefox#Exec=$(xdg-user-dir USER)/$APPSDIR/firefox#g" ~/.local/share/applications/AM*.desktop\nsed -i "s#Exec=/opt/kdegames#Exec=$(xdg-user-dir USER)/$APPSDIR/kdegames#g" ~/.local/share/applications/AM*.desktop\nsed -i "s#Exec=/opt/kdeutils#Exec=$(xdg-user-dir USER)/$APPSDIR/kdeutils#g" ~/.local/share/applications/AM*.desktop' >> ./$arg
-							break;
-						else
-							echo ""; echo ' "'$arg'" is NOT a valid argument'; echo ""; break;
-						fi
-					esac
+					_convert
 				fi
 			done
 		done
 	done
-	
+
 	shift
 	;;
 
   '-d'|'download')
-    	if [ -n "$SUDO_COMMAND" ]; then 
-		echo -e "\n WARNING: You don't need to run the option '$1' with SUDO.\n"; 
-		exit; 
-	fi
+
+	_no_sudo
+	_online_check
 
 	case $2 in
 	'') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
 	esac
-	
+
 	while [ -n "$1" ]; do
 		rm -f $AMPATH/.cache/download-args
 		echo $@ | tr ' ' '\n' >> $AMPATH/.cache/download-args && echo STOP >> $AMPATH/.cache/download-args
@@ -563,22 +668,26 @@ case "$1" in
 
 		for arg in $ARGS; do
 			for var in $arg; do
+
+			function _download(){
+				case $arg in
+				*) 
+					if curl --output /dev/null --silent --head --fail $AMREPO/programs/$arch/$arg  1>/dev/null; then
+						echo ""; echo ' "'$arg'" installation script downloaded! ' | tr a-z A-Z
+						cd $(xdg-user-dir DESKTOP); wget -q $AMREPO/programs/$arch/$arg; echo ""
+					elif curl --output /dev/null --silent --head --fail $AMREPO/testing/$arch/$arg  1>/dev/null; then
+						echo ""; echo '  "'$arg'" downloaded from "testing", the unstable branch ' | tr a-z A-Z; echo ""; echo ' WARNING! PROGRAMS COMING FROM "TESTING" ARE BROKEN, USE AT YOUR OWN RISK!'
+						cd $(xdg-user-dir DESKTOP); wget -q $AMREPO/testing/$arch/$arg; echo ""
+					else
+						echo ""; echo ' "'$arg'" is NOT a valid argument, check the list (command "'$AMCLI' -l")'; echo ""
+					fi
+				esac
+			}
+
 				if [ $arg == STOP ]; then
 					exit
 				else
-					case $arg in
-
-					*) 
-						if curl --output /dev/null --silent --head --fail $AMREPO/programs/$arch/$arg  1>/dev/null; then
-							echo ""; echo ' "'$arg'" installation script downloaded! ' | tr a-z A-Z
-							cd $(xdg-user-dir DESKTOP); wget -q $AMREPO/programs/$arch/$arg; echo ""; break;
-						elif curl --output /dev/null --silent --head --fail $AMREPO/testing/$arch/$arg  1>/dev/null; then
-							echo ""; echo '  "'$arg'" downloaded from "testing", the unstable branch ' | tr a-z A-Z; echo ""; echo ' WARNING! PROGRAMS COMING FROM "TESTING" ARE BROKEN, USE AT YOUR OWN RISK!'
-							cd $(xdg-user-dir DESKTOP); wget -q $AMREPO/testing/$arch/$arg; echo ""; break;
-						else
-							echo ""; echo ' "'$arg'" is NOT a valid argument, check the list (command "'$AMCLI' -l")'; echo ""; break;
-						fi
-					esac
+					_download
 				fi
 			done
 		done
@@ -588,21 +697,22 @@ case "$1" in
 	;;
 
   '-f'|'files')
-    	if [ -n "$SUDO_COMMAND" ]; then 
-		echo -e "\n WARNING: You don't need to run the option '$1' with SUDO.\n"; 
-		exit; 
-	fi
 
-  	echo ""; echo $(echo "YOU HAVE INSTALLED "; cd $APPSPATH && find . -type f -name 'remove' 2>/dev/null | sed -r 's|/[^/]+$||' | sort | uniq | wc -l;
-  	echo " STANDALONE PROGRAMS MANAGED BY '$(echo $AMCLI | tr a-z A-Z)':"); echo "";
-  	cd $APPSPATH && find -name 'remove' -printf "%h\n" 2>/dev/null | sort -u | echo $(xargs -n 1 basename 2> /dev/null) | du -sh $(find . -type f -name 'remove' 2>/dev/null | sed -r 's|/[^/]+$||' | sort | uniq | cut -c 3-) | awk '{ print " ◆ "$2 " - " $1"iB of disk space used"}' | grep -w -v "◆ ."; echo "" 
+  	_no_sudo
+
+  	function _files(){
+		echo ""; echo $(echo "YOU HAVE INSTALLED "; cd $APPSPATH && find . -type f -name 'remove' 2>/dev/null | sed -r 's|/[^/]+$||' | sort | uniq | wc -l
+		echo " STANDALONE PROGRAMS MANAGED BY '$(echo $AMCLI | tr a-z A-Z)':"); echo ""
+		cd $APPSPATH && find -name 'remove' -printf "%h\n" 2>/dev/null | sort -u | echo $(xargs -n 1 basename 2> /dev/null) | du -sh $(find . -type f -name 'remove' 2>/dev/null | sed -r 's|/[^/]+$||' | sort | uniq | cut -c 3-) | awk '{ print " ◆ "$2 " - " $1"iB of disk space used"}' | grep -w -v "◆ ."; echo ""
+	}
+
+	_files
+
 	;;
 
   '-H'|'--home')
-    	if [ -n "$SUDO_COMMAND" ]; then 
-		echo -e "\n WARNING: You don't need to run the option '$1' with SUDO.\n"; 
-		exit; 
-	fi
+
+	_no_sudo
 
 	case $2 in
 	'') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
@@ -615,25 +725,29 @@ case "$1" in
 
 		for arg in $ARGS; do
 			for var in $arg; do
-				if [ $arg == STOP ]; then
-					exit
-				else
+
+				function _home(){
 					cd $APPSPATH
 					if ! test -d ./$arg; then
 						echo ' ERROR: "'$arg'" is not installed'
 					else
 						case $arg in
-    						*) 
-    							if [ -z $(strings -d "./$arg/$arg" 2>/dev/null | grep -m 1 "AppImage") ]; then
-    								echo ' ERROR: "'$arg'" is NOT an AppImage'; break
+    						*)
+    							if [ -z $(strings -d "./$arg/$arg" 2>/dev/null | grep -m 1 "AppImage") ] 2>/dev/null; then
+    								echo ' ERROR: "'$arg'" is NOT an AppImage'
     							else
   								cd ./$arg
     								mkdir -p ./$arg.home
     								echo ' Setting $HOME to '$APPSPATH'/'$arg'/'$arg'.home for this AppImage'
-    								break
     							fi
     						esac
     					fi
+				}
+
+				if [ $arg == STOP ]; then
+					exit
+				else
+					_home
     				fi
     			done
     		done
@@ -641,6 +755,9 @@ case "$1" in
 	;;
 
   '-i'|'install')
+
+	_online_check
+
 	while [ -n "$1" ]; do
 
 		case $2 in
@@ -653,26 +770,18 @@ case "$1" in
 				exit
   			fi
   		fi
-		
+
 		echo -e "-----------------------------------------------------------------------\n >> START OF ALL INSTALLATION PROCESSES <<\n-----------------------------------------------------------------------"
 		rm -f $AMPATH/.cache/install-args
 		rm -R -f $AMPATH/.cache/installed
 		echo $@ | tr ' ' '\n' >> $AMPATH/.cache/install-args 
 		echo STOP >> $AMPATH/.cache/install-args
 		ARGS=$(tail -n +2 $AMPATH/.cache/install-args)
-	
+
 		for arg in $ARGS; do
 			for var in $arg; do
-				if [ $arg == STOP ]; then
-					if test -f $AMPATH/.cache/installed; then
-						echo -e "\n-----------------------------------------------------------------------\n >> END OF ALL INSTALLATION PROCESSES <<\n-----------------------------------------------------------------------\n\n THE FOLLOWING NEW PROGRAMS HAVE BEEN INSTALLED:\n"
-						echo -e "\n-----------------------------------------------------------------------" >> $AMPATH/.cache/installed
-						cat $AMPATH/.cache/installed | grep -w -v "◆ am"
-						exit
-					else
-						exit
-					fi
-				else
+
+				function _install(){
 					echo ""
 					case $arg in
 
@@ -686,58 +795,54 @@ case "$1" in
 									for var in $arg; do
 										cd $AMPATH/.cache; mkdir -p tmp; cd tmp; wget -q $AMREPO/programs/$arch/$arg; cd ..; mv ./tmp/$arg ./$arg; rmdir ./tmp
 										chmod a+x ./$arg
-										
+
 										if [ $arg == appman ]; then
 											if [ $AMCLI == appman ] 2>/dev/null; then
 												echo ' 💀 ERROR: YOU CANNOT INSTALL APPMAN USING APPMAN'
 												break
 											fi
 										fi
-										
+
 										if grep -q '.deb' ./$arg; then
 											if ! command -v ar 1>/dev/null; then
-												echo ' 💀 ERROR: YOU CANNOT INSTALL "'$(echo '"'$arg'"' | tr a-z A-Z)'" WITHOUT INSTALLING "BINUTILS"!'
-												break
+												echo ' 💀 ERROR: YOU CANNOT INSTALL "'$(echo '"'$arg'"' | tr a-z A-Z)'" WITHOUT INSTALLING "BINUTILS"!'; break
 											fi
 										fi
-										
+
+										if grep -q 'ffwa-' ./$arg; then
+											if ! command -v firefox 1>/dev/null; then
+												echo ' 💀 ERROR: YOU CANNOT INSTALL "'$(echo '"'$arg'"' | tr a-z A-Z)'" WITHOUT INSTALLING "FIREFOX"!'; break
+											fi
+										fi
+
 										if grep -q '.tar' ./$arg; then
 											if ! command -v tar 1>/dev/null; then
-												echo ' 💀 ERROR: YOU CANNOT INSTALL "'$(echo '"'$arg'"' | tr a-z A-Z)'" WITHOUT INSTALLING "TAR"!'
-												break
+												echo ' 💀 ERROR: YOU CANNOT INSTALL "'$(echo '"'$arg'"' | tr a-z A-Z)'" WITHOUT INSTALLING "TAR"!'; break
 											fi
 										fi
-										
+
 										if grep -q '.zip' ./$arg; then
 											if ! command -v unzip 1>/dev/null; then
-												echo ' 💀 ERROR: YOU CANNOT INSTALL "'$(echo '"'$arg'"' | tr a-z A-Z)'" WITHOUT INSTALLING "UNZIP"!'
-												break
+												echo ' 💀 ERROR: YOU CANNOT INSTALL "'$(echo '"'$arg'"' | tr a-z A-Z)'" WITHOUT INSTALLING "UNZIP"!'; break
 											fi
 										fi
-										
+
 										if grep -q 'zsync /opt' ./$arg; then
 											if ! command -v zsync 1>/dev/null; then
-												echo ' 💀 ERROR: YOU CANNOT INSTALL "'$(echo '"'$arg'"' | tr a-z A-Z)'" WITHOUT INSTALLING "ZSYNC"!'
-												break
+												echo ' 💀 ERROR: YOU CANNOT INSTALL "'$(echo '"'$arg'"' | tr a-z A-Z)'" WITHOUT INSTALLING "ZSYNC"!'; break
 											fi
 										fi
-										
-										if [ $AMCLI == appman ] 2>/dev/null; then
-											sed -i "s# /opt# $APPSPATH#g" ./$arg
-											sed -i "s#/opt/#$APPSPATH/#g" ./$arg
-											sed -i "s#wget #wget -q --show-progress #g" ./$arg
-											sed -i 's#$(wget -q --show-progress #$(wget -q #g' ./$arg
-											sed -i 's#wget http#wget -q http#g' ./$arg
-											sed -i "s#rm #rm -f #g" ./$arg
-											sed -i "s#form -f #form #g" ./$arg
-											sed -i "s#unzip #unzip -qq #g" ./$arg
+
+										function _install_common_patch(){
+											sed -i "s#wget #wget -q --show-progress #g" ./$arg; sed -i 's#$(wget -q --show-progress #$(wget -q #g' ./$arg; sed -i "s# -q -q # -q #g" ./$arg
 											sed -i 's/currentuser=/#currentuser=/g' ./$arg
 											sed -i 's/chown -R $currentuser/#chown -R $currentuser/g' ./$arg
 											sed -i '/# MESSAGE/,$d' ./$arg
-											sed -i 's# /opt/$APP/icons/$APP# /opt/$APP/icons/$APP 2> /dev/null#g' ./$arg
-											sed -i 's#.svg;#.svg 2> /dev/null;#g' ./$arg
-											sed -i 's#programs/.icons/$APP.svg#programs/.icons/$APP.svg 2> /dev/null;#g' ./$arg
-											sed -i 's#*.desktop ./$APP.desktop#*.desktop ./$APP.desktop 2> /dev/null;#g' ./$arg
+										}
+
+										function _install_appman_local_patch(){
+											sed -i "s# /opt# $APPSPATH#g" ./$arg
+											sed -i "s#/opt/#$APPSPATH/#g" ./$arg
 											sed -i "s# /usr/local/bin# $(xdg-user-dir USER)/.local/bin#g" ./$arg
 											sed -i "s# /usr/bin# $(xdg-user-dir USER)/.local/bin#g" ./$arg
 											sed -i "s# /usr/local/games# $(xdg-user-dir USER)/.local/bin#g" ./$arg
@@ -746,40 +851,35 @@ case "$1" in
 											sed -i "s# /usr/local/share/applications# $(xdg-user-dir USER)/.local/share/applications#g" ./$arg
 											sed -i "s# /usr/share/pixmaps# $(xdg-user-dir USER)/.local/share/icons#g" ./$arg
 											sed -i "s# /usr/local/share/pixmaps# $(xdg-user-dir USER)/.local/share/icons#g" ./$arg
+										}
+
+										if [ $AMCLI == appman ] 2>/dev/null; then
+											_install_common_patch
+											_install_appman_local_patch
 										else
 											if [[ $(grep "[[:space:]]ro[[:space:],]" /proc/mounts) ]]; then
 												$SUDOCOMMAND mkdir -p /usr/local/share/applications
 												sed -i 's#/usr/share/applications#/usr/local/share/applications#g' ./$arg
 											fi
-											sed -i "s#wget #wget -q --show-progress #g" ./$arg
-											sed -i 's#$(wget -q --show-progress #$(wget -q #g' ./$arg
-											sed -i 's#wget http#wget -q http#g' ./$arg
-											sed -i "s#rm #rm -f #g" ./$arg
-											sed -i "s#form -f #form #g" ./$arg
-											sed -i "s#unzip #unzip -qq #g" ./$arg
-											sed -i 's/currentuser=/#currentuser=/g' ./$arg
-											sed -i 's/chown -R $currentuser/#chown -R $currentuser/g' ./$arg
-											sed -i '/# MESSAGE/,$d' ./$arg
-											sed -i 's# /opt/$APP/icons/$APP# /opt/$APP/icons/$APP 2> /dev/null#g' ./$arg
-											sed -i 's#.svg;#.svg 2> /dev/null;#g' ./$arg
-											sed -i 's#programs/.icons/$APP.svg#programs/.icons/$APP.svg 2> /dev/null;#g' ./$arg
-											sed -i 's#*.desktop ./$APP.desktop#*.desktop ./$APP.desktop 2> /dev/null;#g' ./$arg
+											_install_common_patch
 										fi
-										
-										echo -ne " ◆ RUNNING THE INSTALLATION SCRIPT FOR $(echo '"'$arg'"' | tr a-z A-Z)... \r" && sleep 3 &&
+
+										echo -ne " ◆ RUNNING THE INSTALLATION SCRIPT FOR $(echo '"'$arg'"' | tr a-z A-Z)... \r" &&
 										$SUDOCOMMAND ./$arg | less -E && echo -ne "                                                                          \r" &&
-										echo -ne " ◆ CONFIGURING $(echo '"'$arg'"' | tr a-z A-Z)...\r" && sleep 2 && echo -ne "                                                                          \r" &&
+										echo -ne " ◆ CONFIGURING $(echo '"'$arg'"' | tr a-z A-Z)...\r" && echo -ne "                                                                          \r" &&
 										$SUDOCOMMAND chown -R $currentuser $APPSPATH/$(cd $APPSPATH && ls -td * | head -1) 2> /dev/null
 										if test -f $APPSPATH/$(cd $APPSPATH && ls -td * | head -1)/AM-updater; then
-											mkdir $APPSPATH/$(cd $APPSPATH && ls -td * | head -1)/.am-installer &&
+											mkdir $APPSPATH/$(cd $APPSPATH && ls -td * | head -1)/.am-installer 2> /dev/null &&
 											wget -q $AMREPO/programs/$arch/$arg -O $APPSPATH/$(cd $APPSPATH && ls -td * | head -1)/.am-installer/$arg
 										fi &&
+
 										if test -d $APPSPATH/$(cd $APPSPATH && ls -td * | head -1)/icons; then
+											find $APPSPATH/$(cd $APPSPATH && ls -td * | head -1)/icons/* -xtype l -delete 2> /dev/null
 											if [ -z "$(ls -A $APPSPATH/$(cd $APPSPATH && ls -td * | head -1)/icons)" ]; then
    												wget -q https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/main/icons/$arg.png -O $APPSPATH/$(cd $APPSPATH && ls -td * | head -1)/icons/$arg
 											fi 
 										fi &&
-										
+
 										if [ $AMCLI == appman ] 2>/dev/null; then
 											sed -i "s#Icon=/opt#Icon=$(xdg-user-dir USER)/$APPSDIR#g" ~/.local/share/applications/AM*.desktop 2> /dev/null
 											sed -i "s#Exec=$arg#Exec=$(xdg-user-dir USER)/.local/bin/$arg#g" ~/.local/share/applications/AM*.desktop 2> /dev/null
@@ -787,7 +887,7 @@ case "$1" in
 											sed -i "s#Exec=/usr/bin/#Exec=$(xdg-user-dir USER)/.local/bin/#g" ~/.local/share/applications/AM*.desktop 2> /dev/null
 											sed -i "s#Exec=/opt/#Exec=$(xdg-user-dir USER)/$APPSDIR/#g" ~/.local/share/applications/AM*.desktop 2> /dev/null
 										fi
-																			
+									
 										echo -ne " ◆ $(echo '"'$arg'"' | tr a-z A-Z) INSTALLED ($(du -sm $APPSPATH/$(cd $APPSPATH && ls -td * | head -1) | awk '{print $1}' ) MB OF DISK SPACE)\n"
 										$SUDOCOMMAND rm $AMPATH/.cache/$arg
 										unset $LATESTDIR
@@ -802,15 +902,28 @@ case "$1" in
 												chown -R $currentuser $AMPATH/.cache/about 2> /dev/null
 											fi
 										else
-											echo " INSTALLATION ABORTED!";
+											echo " INSTALLATION ABORTED!"
 										fi
 										break; done
 								esac
 							else
-								echo ' "'$arg'" is NOT a valid argument, please try again!'; echo ""; break;
+								echo ' 💀 "'$arg'" is NOT a valid argument, please try again!'
 							fi			
 						fi
 					esac
+				}
+
+				if [ $arg == STOP ]; then
+					if test -f $AMPATH/.cache/installed; then
+						echo -e "\n-----------------------------------------------------------------------\n >> END OF ALL INSTALLATION PROCESSES <<\n-----------------------------------------------------------------------\n\n THE FOLLOWING NEW PROGRAMS HAVE BEEN INSTALLED:\n"
+						echo -e "\n-----------------------------------------------------------------------" >> $AMPATH/.cache/installed
+						grep -w -v "◆ am" 0<$AMPATH/.cache/installed; 
+						exit
+					else
+						exit
+					fi
+				else
+					_install
 				fi
 			done
 		done
@@ -820,43 +933,47 @@ case "$1" in
 	;;
 
   '-l'|'list')
-    	if [ -n "$SUDO_COMMAND" ]; then 
-		echo -e "\n WARNING: You don't need to run the option '$1' with SUDO.\n"; 
-		exit; 
-	fi
 
-  	rm -R -f $AMPATH/$arch-apps $AMPATH/list && wget -q $AMREPO/programs/$arch-apps -P $AMPATH && echo -e "$(cat $AMPATH/$arch-apps | awk -v FS="(◆ | : )" '{print $2}')" >> $AMPATH/list
-	cd $AMPATH && cat options >> list 2>/dev/null
-	MESSAGE=$(echo " YOU HAVE INSTALLED $(cd $APPSPATH && find -name 'remove' -printf "%h\n" 2>/dev/null | sort -u | wc -l) APPLICATIONS OUT OF $(grep -e "$" -c $AMPATH/$arch-apps) AVAILABLE")
-	echo -e "\n$MESSAGE\n\n LIST OF THE $(grep -e "$" -c $AMPATH/$arch-apps) APPLICATIONS AVAILABLE IN THE 'AM' REPOSITORY:\n\n$(cat $AMPATH/$arch-apps)" | less -I
-	echo -e "\n $MESSAGE\n"
+  	_no_sudo
+
+	function _list(){
+		wget -q --tries=10 --timeout=20 --spider https://github.com
+		if [[ $? -eq 0 ]]; then
+			rm -R -f $AMPATH/$arch-apps $AMPATH/list
+			wget -q $AMREPO/programs/$arch-apps -P $AMPATH
+		fi
+		echo -e "$(awk -v FS="(◆ | : )" '{print $2}' 0<$AMPATH/$arch-apps)" >> $AMPATH/list
+		cd $AMPATH && cat options >> list 2>/dev/null
+		MESSAGE=$(echo " YOU HAVE INSTALLED $(cd $APPSPATH && find -name 'remove' -printf "%h\n" 2>/dev/null | sort -u | wc -l) APPLICATIONS OUT OF $(grep -e "$" -c $AMPATH/$arch-apps) AVAILABLE")
+		echo -e "\n$MESSAGE\n\n LIST OF THE $(grep -e "$" -c $AMPATH/$arch-apps) APPLICATIONS AVAILABLE IN THE 'AM' REPOSITORY:\n\n$(cat $AMPATH/$arch-apps)" | less -I
+		echo -e "\n $MESSAGE\n"
+	}
+
+	_list
 	;;
 
   '-o'|'overwrite')
-    	if [ -n "$SUDO_COMMAND" ]; then 
-		echo -e "\n WARNING: You don't need to run the option '$1' with SUDO.\n"; 
-		exit; 
-	fi
+
+	_no_sudo
 
 	case $2 in
 	'') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
 	esac
-	
+
 	while [ -n "$1" ]; do
 		rm -f $AMPATH/.cache/overwrite-args
 		echo $@ | tr ' ' '\n' >> $AMPATH/.cache/overwrite-args && echo STOP >> $AMPATH/.cache/overwrite-args
 		ARGS=$(tail -n +2 $AMPATH/.cache/overwrite-args)
-	
+
 		for arg in $ARGS; do
 			for var in $arg; do
-				if [ $arg == STOP ]; then
-					exit
-				else
+
+				function _overwrite(){
 					case $arg in
 					$AMCLI) 
 						$AMCLIPATH -s; break;;
 					'') 
-						echo " Specify the name of a program to overwrite"; echo ""; break;;
+						echo " Specify the name of a program to overwrite"; echo "";;
 					*) 
 						if test -f $APPSPATH/$arg/remove; then
 							echo ""; read -p " Do you wish to overwrite this version of $arg with an old one (y,N)?" yn
@@ -865,14 +982,21 @@ case "$1" in
 								echo ""; printf " Please, select a snapshot or press CTRL+C to abort:\n"; sleep 1;
 								select d in $(xdg-user-dir USER)/.am-snapshots/$arg/*; do test -n "$d" && break; echo ">>> Invalid Selection"; done
 								cp -r --backup=t $d/* $APPSPATH/$arg/
-	  							echo " RESTORE COMPLETED SUCCESSFULLY!"; echo ""; break;;
+								rm -R -f ./tmp $APPSPATH/$arg/*~
+	  							echo " RESTORE COMPLETED SUCCESSFULLY!"; echo "";;
 							[Nn]*|* ) 
-								echo ""; echo " OPERATION ABORTED!"; echo ""; break;;	
+								echo ""; echo " OPERATION ABORTED!"; echo "";;	
 							esac
 						else
-							echo ""; echo " '$arg' is not a valid argument or is not installed."; echo ""; break;
+							echo ""; echo " '$arg' is not a valid argument or is not installed."; echo ""
 						fi
 					esac
+				}
+
+				if [ $arg == STOP ]; then
+					exit
+				else
+					_overwrite
 				fi
 			done
 		done
@@ -882,16 +1006,19 @@ case "$1" in
 	;;
 
   '-q'|'query')
-    	if [ -n "$SUDO_COMMAND" ]; then 
-		echo -e "\n WARNING: You don't need to run the option '$1' with SUDO.\n"; 
-		exit; 
-	fi
 
+	_no_sudo
+	
 	case $2 in
 	'') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
 	esac
 
-  	rm -R -f $AMPATH/$arch-apps $AMPATH/list && wget -q $AMREPO/programs/$arch-apps -P $AMPATH && echo -e "$(cat $AMPATH/$arch-apps | awk -v FS="(◆ | : )" '{print $2}')" >> $AMPATH/list
+  	wget -q --tries=10 --timeout=20 --spider https://github.com
+	if [[ $? -eq 0 ]]; then
+		rm -R -f $AMPATH/$arch-apps $AMPATH/list
+		wget -q $AMREPO/programs/$arch-apps -P $AMPATH
+	fi
+  	echo -e "$(awk -v FS="(◆ | : )" '{print $2}' 0<$AMPATH/$arch-apps)" >> $AMPATH/list
 	cd $AMPATH && cat options >> list
 	ARGS=$(echo "$@" | sed 's/-q //')
 	echo ""
@@ -903,6 +1030,7 @@ case "$1" in
 	;;
 
   '-r'|'remove')
+
 	while [ -n "$1" ]; do
 		rm -f $AMPATH/.cache/remove-args
 		echo $@ | tr ' ' '\n' >> $AMPATH/.cache/remove-args && echo STOP >> $AMPATH/.cache/remove-args
@@ -911,9 +1039,30 @@ case "$1" in
 		case $2 in
 		'') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
 		esac
-	
+
 		for arg in $ARGS; do
 			for var in $arg; do
+
+				function _remove(){
+					if ls $APPSPATH/$arg > /dev/null 2>&1; then
+						case $arg in
+						*) 
+							for var in $arg; do
+								$SUDOCOMMAND echo "" > /dev/null; read -p ' ◆ DO YOU WISH TO REMOVE "'$(echo $arg | tr a-z A-Z)'" (Y,n)?' yn
+
+								case $yn in
+								[Nn]* ) 
+									echo ' - "'$(echo $arg | tr a-z A-Z)'" HAS NOT BEEN REMOVED!'; echo "";;
+								[Yy]*|* ) 
+									$SUDOCOMMAND $APPSPATH/$arg/remove && echo ' ◆ "'$(echo $arg | tr a-z A-Z)'" HAS BEEN SUCCESSFULLY REMOVED!' && break;;
+								esac
+							done;;
+						esac
+					else
+						echo '"'$arg'",' >> $AMPATH/.cache/unavailable-args
+					fi
+				}
+
 				if [ $arg == STOP ]; then
 					if test -f $AMPATH/.cache/unavailable-args; then
 						echo -e "-----------------------------------------------------------------------"
@@ -925,23 +1074,7 @@ case "$1" in
 						exit
 					fi
 				else
-					if ls $APPSPATH/$arg > /dev/null 2>&1; then
-						case $arg in
-						*) 
-							for var in $arg; do
-								$SUDOCOMMAND echo "" > /dev/null; read -p ' ◆ DO YOU WISH TO REMOVE "'$(echo $arg | tr a-z A-Z)'" (Y,n)?' yn
-								
-								case $yn in
-								[Nn]* ) 
-									echo ' - "'$(echo $arg | tr a-z A-Z)'" HAS NOT BEEN REMOVED!'; echo ""; break;;
-								[Yy]*|* ) 
-									$SUDOCOMMAND $APPSPATH/$arg/remove && echo ' ◆ "'$(echo $arg | tr a-z A-Z)'" HAS BEEN SUCCESSFULLY REMOVED!' && break; break;;
-								esac
-							done;;
-						esac
-					else
-						echo '"'$arg'",' >> $AMPATH/.cache/unavailable-args; break;
-					fi
+					_remove
 				fi
 			done
 		done
@@ -951,6 +1084,7 @@ case "$1" in
 	;;
 
   '-R')
+
 	while [ -n "$1" ]; do
 		rm -f $AMPATH/.cache/remove-args
 		echo $@ | tr ' ' '\n' >> $AMPATH/.cache/remove-args && echo STOP >> $AMPATH/.cache/remove-args
@@ -959,9 +1093,23 @@ case "$1" in
 		case $2 in
 		'') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
 		esac
-	
+
 		for arg in $ARGS; do
 			for var in $arg; do
+
+				function _REMOVE(){
+					if ls $APPSPATH/$arg > /dev/null 2>&1; then
+						case $arg in
+						*) 
+							for var in $arg; do
+								$SUDOCOMMAND $APPSPATH/$arg/remove && echo ' ◆ "'$(echo $arg | tr a-z A-Z)'" HAS BEEN SUCCESSFULLY REMOVED!' && break; break
+							done;;
+						esac
+					else
+						echo '"'$arg'",' >> $AMPATH/.cache/unavailable-args
+					fi
+				}
+
 				if [ $arg == STOP ]; then
 					if test -f $AMPATH/.cache/unavailable-args; then
 						echo -e "-----------------------------------------------------------------------"
@@ -973,16 +1121,7 @@ case "$1" in
 						exit
 					fi
 				else
-					if ls $APPSPATH/$arg > /dev/null 2>&1; then
-						case $arg in
-						*) 
-							for var in $arg; do
-								$SUDOCOMMAND $APPSPATH/$arg/remove && echo ' ◆ "'$(echo $arg | tr a-z A-Z)'" HAS BEEN SUCCESSFULLY REMOVED!' && break; break
-							done;;
-						esac
-					else
-						echo '"'$arg'",' >> $AMPATH/.cache/unavailable-args; break;
-					fi
+					_REMOVE
 				fi
 			done
 		done
@@ -992,65 +1131,69 @@ case "$1" in
 	;;
 
   '-s'|'sync')
-    	if [ -n "$SUDO_COMMAND" ]; then 
-		echo -e "\n WARNING: You don't need to run the option '$1' with SUDO.\n"; 
-		exit; 
-	fi
+
+	_no_sudo
+	_online_check
 
 	echo "-----------------------------------------------------------------------"
-	echo -e " Check for any changes between the installation scripts\n in the repository and those used previously:"	
+	echo -e " Check for any changes between the installation scripts\n in the repository and those used previously..."	
 	rm -R -f $AMPATH/.cache/sync-args && echo "" >> $AMPATH/.cache/sync-args
 	cd $APPSPATH && find -name 'AM-updater' -printf "%h\n" 2>/dev/null | sort -u | cut -c 3- > $AMPATH/.cache/sync-args
 	ARGS=$(cat $AMPATH/.cache/sync-args)
 	
 	for arg in $ARGS; do
 		for var in $arg; do
+
+			function _sync_all(){
 			if test -d $APPSPATH/$arg/.am-installer; then
-				INSTALLER=$(ls -A1 $APPSPATH/$arg/.am-installer)
-				CURRENT=$(cat $APPSPATH/$arg/.am-installer/$INSTALLER)
-				rm -R -f $AMPATH/.cache/$arg
-				wget -q $AMREPO/programs/$arch/$INSTALLER -O $AMPATH/.cache/$INSTALLER
-				SOURCE=$(cat $AMPATH/.cache/$INSTALLER)
-				if [ "$CURRENT" == "$SOURCE" ]; then
-					break
+					INSTALLER=$(ls -A1 $APPSPATH/$arg/.am-installer)
+					CURRENT=$(cat $APPSPATH/$arg/.am-installer/$INSTALLER)
+					rm -R -f $AMPATH/.cache/$arg
+					wget -q $AMREPO/programs/$arch/$INSTALLER -O $AMPATH/.cache/$INSTALLER
+					SOURCE=$(cat $AMPATH/.cache/$INSTALLER)
+					if [ "$CURRENT" == "$SOURCE" ]; then
+						echo -ne "\r" 2> /dev/null
+					else
+						echo -e "\n The installer of $INSTALLER has been changed! \n See https://github.com/ivan-hc/AM-Application-Manager/blob/main/programs/$arch/$INSTALLER"
+					fi
+					rm -R -f $AMPATH/.cache/$INSTALLER
 				else
-					echo -e "\n The installer of $INSTALLER has been changed! \n See https://github.com/ivan-hc/AM-Application-Manager/blob/main/programs/$arch/$INSTALLER"
+					echo -e "\n ◆ No installation script for $arg...\n downloading one to $APPSPATH/$arg/.am-installer for this entry"
+					mkdir -p $APPSPATH/$arg/.am-installer
+					wget -q $AMREPO/programs/$arch/$arg -O /$APPSPATH/$arg/.am-installer/$arg
 				fi
-				rm -R -f $AMPATH/.cache/$INSTALLER
-				break
-			else
-				echo -e "\n ◆ No installation script for $arg...\n downloading one to $APPSPATH/$arg/.am-installer for this entry"
-				mkdir -p $APPSPATH/$arg/.am-installer
-				wget -q $AMREPO/programs/$arch/$arg -O /$APPSPATH/$arg/.am-installer/$arg
-				break
-			fi
+			}
+
+			_sync_all
 		done
 	done
-	echo "-----------------------------------------------------------------------"
-	
-  	rm -R -f $AMPATH/$arch-apps $AMPATH/list && wget -q $AMREPO/programs/$arch-apps -P $AMPATH && echo -e "$(cat $AMPATH/$arch-apps | awk -v FS="(◆ | : )" '{print $2}')" >> $AMPATH/list
-	cd $AMPATH && cat options >> list
-	echo ""; echo ' SYNCHRONIZING "'$(echo $AMCLI | tr a-z A-Z)'" VERSION '$($AMCLIPATH -v)'...'; sleep 0.5; echo "";
-  	rm -R -f $AMPATH/.cache/* 1>/dev/null; cd $AMPATH/.cache
-  	
-  	if [ $AMCLI == am ] 2>/dev/null; then
-  		wget -q $AMREPO/APP-MANAGER && chmod a+x ./APP-MANAGER
-  		cd ..
-  		mv $AMPATH/.cache/APP-MANAGER $AMPATH; chmod 777 $AMPATH
-  	else
-  		wget -q https://raw.githubusercontent.com/ivan-hc/AppMan/main/appman && chmod a+x ./$AMCLI
-  		cd ..
-  		mv $AMPATH/.cache/$AMCLI $AMCLIPATH
-  	fi
-  	
-  	echo ' THE "'$(echo $AMCLI | tr a-z A-Z)'" SCRIPT IS NOW UPDATED TO THE '$($AMCLIPATH -v)' VERSION! '; echo ""
+
+	function _sync_amcli(){
+		echo "-----------------------------------------------------------------------"
+	  	rm -R -f $AMPATH/$arch-apps $AMPATH/list && wget -q $AMREPO/programs/$arch-apps -P $AMPATH && echo -e "$(awk -v FS="(◆ | : )" '{print $2}' 0<$AMPATH/$arch-apps)" >> $AMPATH/list
+		cd $AMPATH && cat options >> list
+		echo ""; echo ' SYNCHRONIZING "'$(echo $AMCLI | tr a-z A-Z)'" VERSION '$($AMCLIPATH -v)'...'; sleep 0.5; echo "";
+	  	rm -R -f $AMPATH/.cache/* 1>/dev/null; cd $AMPATH/.cache
+	  	if [ $AMCLI == am ] 2>/dev/null; then
+	  		wget -q $AMREPO/APP-MANAGER && chmod a+x ./APP-MANAGER
+	  		cd ..
+	  		mv $AMPATH/.cache/APP-MANAGER $AMPATH; chmod 777 $AMPATH
+	  	else
+	  		wget -q $AMREPO/APP-MANAGER -O appman && chmod a+x ./$AMCLI
+	  		cd ..
+	  		mv $AMPATH/.cache/$AMCLI $AMCLIPATH
+	  	fi
+	 	echo ' THE "'$(echo $AMCLI | tr a-z A-Z)'" SCRIPT IS NOW UPDATED TO THE '$($AMCLIPATH -v)' VERSION! '
+	 	echo -e "\n See https://github.com/ivan-hc/AM-Application-Manager/commits/main/APP-MANAGER\n"
+	}
+
+	_sync_amcli
 	;;
 
   '-t'|'template')
-    	if [ -n "$SUDO_COMMAND" ]; then 
-		echo -e "\n WARNING: You don't need to run the option '$1' with SUDO.\n"; 
-		exit; 
-	fi
+
+	_no_sudo
+	_online_check
 
 	case $2 in
 	'') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
@@ -1095,7 +1238,7 @@ case "$1" in
 							case "$response" in
     							# APPIMAGE UPDATABLE USING APPIMAGEUPDATETOOL
     							0) 
-								mkdir -p ./am-scripts ./am-scripts/$arch ./am-scripts/WEBPAGE &&
+								mkdir -p ./am-scripts ./am-scripts/$arch ./am-scripts/portable-linux-apps.github.io/apps &&
     								# DOWNLOAD THE TEMPLATE AND CONVERT THE ARGUMENT INTO A COMMAND
     								wget -c -q $AMREPO/templates/AM-SAMPLE-for-appimageupdate -O ./am-scripts/$arch/$arg &&
     								sed -i s/SAMPLE/$arg/g ./am-scripts/$arch/$arg &&
@@ -1126,8 +1269,8 @@ case "$1" in
 								case "$COMMENT" in
 								*) 
 									# CREATE A WEBPAGE FOR https://portable-linux-apps.github.io CONTAINING ALL THE INFO ABOUT THIS APP
-									echo "# $(echo $arg | tr a-z A-Z)" >> ./am-scripts/WEBPAGE/$arg.md
-									echo -e "\n $COMMENT\n\n SITE: $RESPONSE\n\n | [Applications](https://portable-linux-apps.github.io/apps.html) | [Home](https://portable-linux-apps.github.io)\n | --- | --- |" >> ./am-scripts/WEBPAGE/$arg.md &&
+									echo "# $(echo $arg | tr a-z A-Z)" >> ./am-scripts/portable-linux-apps.github.io/apps/$arg.md
+									echo -e "\n $COMMENT\n\n SITE: $RESPONSE\n\n | [Applications](https://portable-linux-apps.github.io/apps.html) | [Home](https://portable-linux-apps.github.io)\n | --- | --- |" >> ./am-scripts/portable-linux-apps.github.io/apps/$arg.md &&
 									# CREATE A NEW LINE FOR THE APPLICATION'S LIST
 									echo "◆ $arg : $COMMENT" >> ./am-scripts/list
 								esac
@@ -1138,7 +1281,7 @@ case "$1" in
     								
 							# APPIMAGE UPDATABLE USING ZSYNC
     							1) 
-								mkdir -p ./am-scripts ./am-scripts/$arch ./am-scripts/WEBPAGE &&
+								mkdir -p ./am-scripts ./am-scripts/$arch ./am-scripts/portable-linux-apps.github.io/apps &&
     								# DOWNLOAD THE TEMPLATE AND CONVERT THE ARGUMENT INTO A COMMAND
     								wget -c -q $AMREPO/templates/AM-SAMPLE-for-zsync -O ./am-scripts/$arch/$arg &&
     								sed -i s/SAMPLE/$arg/g ./am-scripts/$arch/$arg &&
@@ -1171,8 +1314,8 @@ case "$1" in
 								case "$COMMENT" in
 								*) 
 									# CREATE A WEBPAGE FOR https://portable-linux-apps.github.io CONTAINING ALL THE INFO ABOUT THIS APP
-									echo "# $(echo $arg | tr a-z A-Z)" >> ./am-scripts/WEBPAGE/$arg.md
-									echo -e "\n $COMMENT\n\n SITE: $RESPONSE\n\n | [Applications](https://portable-linux-apps.github.io/apps.html) | [Home](https://portable-linux-apps.github.io)\n | --- | --- |" >> ./am-scripts/WEBPAGE/$arg.md &&
+									echo "# $(echo $arg | tr a-z A-Z)" >> ./am-scripts/portable-linux-apps.github.io/apps/$arg.md
+									echo -e "\n $COMMENT\n\n SITE: $RESPONSE\n\n | [Applications](https://portable-linux-apps.github.io/apps.html) | [Home](https://portable-linux-apps.github.io)\n | --- | --- |" >> ./am-scripts/portable-linux-apps.github.io/apps/$arg.md &&
 									# CREATE A NEW LINE FOR THE APPLICATION'S LIST
 									echo "◆ $arg : $COMMENT" >> ./am-scripts/list
 								esac
@@ -1183,7 +1326,7 @@ case "$1" in
 
     							# DOWNLOAD ANY ARCHIVE FROM GITHUB
     							2) 
-								mkdir -p ./am-scripts ./am-scripts/$arch ./am-scripts/WEBPAGE &&
+								mkdir -p ./am-scripts ./am-scripts/$arch ./am-scripts/portable-linux-apps.github.io/apps &&
     								# DOWNLOAD THE TEMPLATE AND CONVERT THE ARGUMENT INTO A COMMAND
     								wget -c -q $AMREPO/templates/AM-SAMPLE-GitHub-generic -O ./am-scripts/$arch/$arg &&
     								sed -i s/SAMPLE/$arg/g ./am-scripts/$arch/$arg &&
@@ -1197,8 +1340,8 @@ case "$1" in
 									# GET THE DESCRIPTION OF THIS REPOSITORY TO ADD IN ALL CREATED FILES
 									COMMENT=$(curl https://api.github.com/repos/$GITHUBREPO 2>/dev/null | grep description | sed 's/"description": "//' | sed 's/",//')
 									# CREATE A WEBPAGE FOR https://portable-linux-apps.github.io CONTAINING ALL THE INFO ABOUT THIS APP
-									echo "# $(echo $arg | tr a-z A-Z)" >> ./am-scripts/WEBPAGE/$arg.md
-									echo -e "\n $COMMENT\n\n SITE: https://github.com/$GITHUBREPO\n\n | [Applications](https://portable-linux-apps.github.io/apps.html) | [Home](https://portable-linux-apps.github.io)\n | --- | --- |" >> ./am-scripts/WEBPAGE/$arg.md && 
+									echo "# $(echo $arg | tr a-z A-Z)" >> ./am-scripts/portable-linux-apps.github.io/apps/$arg.md
+									echo -e "\n $COMMENT\n\n SITE: https://github.com/$GITHUBREPO\n\n | [Applications](https://portable-linux-apps.github.io/apps.html) | [Home](https://portable-linux-apps.github.io)\n | --- | --- |" >> ./am-scripts/portable-linux-apps.github.io/apps/$arg.md && 
 									# CREATE A NEW LINE FOR THE APPLICATION'S LIST
 									echo "◆ $arg : $COMMENT" >> ./am-scripts/list
 								esac
@@ -1285,7 +1428,7 @@ case "$1" in
     								
 							# DOWNLOAD ANY ARCHIVE FROM THE ARCH USER REPOSITORY
 							3) 
-								mkdir -p ./am-scripts ./am-scripts/$arch ./am-scripts/WEBPAGE &&
+								mkdir -p ./am-scripts ./am-scripts/$arch ./am-scripts/portable-linux-apps.github.io/apps &&
 								# DOWNLOAD THE TEMPLATE AND CONVERT THE ARGUMENT INTO A COMMAND, ALSO ADD SOME BASIC INFO IF AVAILABLE
 								wget -c -q $AMREPO/templates/AM-SAMPLE-AUR-generic -O ./am-scripts/$arch/$arg &&
 								sed -i s/SAMPLE/$arg/g ./am-scripts/$arch/$arg &&
@@ -1311,8 +1454,8 @@ case "$1" in
 								# ADD A DESCRIPTION FOR THIS APPLICATION
 								COMMENT=$(wget -q https://aur.archlinux.org/packages/$AUR -O - | grep -A1 Description | tail -1 | cut -c 30- | rev | cut -c 6- | rev) 
 								# CREATE A WEBPAGE FOR https://portable-linux-apps.github.io CONTAINING ALL THE INFO ABOUT THIS APP
-								echo "# $(echo $arg | tr a-z A-Z)" >> ./am-scripts/WEBPAGE/$arg.md
-								echo -e "\n $COMMENT\n\n SITE: $UPSTREAMURL\n\n SOURCE: https://aur.archlinux.org/packages/$AUR\n\n | [Applications](https://portable-linux-apps.github.io/apps.html) | [Home](https://portable-linux-apps.github.io)\n | --- | --- |" >> ./am-scripts/WEBPAGE/$arg.md &&
+								echo "# $(echo $arg | tr a-z A-Z)" >> ./am-scripts/portable-linux-apps.github.io/apps/$arg.md
+								echo -e "\n $COMMENT\n\n SITE: $UPSTREAMURL\n\n SOURCE: https://aur.archlinux.org/packages/$AUR\n\n | [Applications](https://portable-linux-apps.github.io/apps.html) | [Home](https://portable-linux-apps.github.io)\n | --- | --- |" >> ./am-scripts/portable-linux-apps.github.io/apps/$arg.md &&
 								# CREATE A NEW LINE FOR THE APPLICATION'S LIST
 								echo "◆ $arg : $COMMENT" >> ./am-scripts/list
 								echo "-----------------------------------------------------------------------"
@@ -1340,13 +1483,13 @@ case "$1" in
 
     							# CREATE AN APPIMAGE ON-THE-FLY USING DEFAULT TOOLS
     							4) 
-								mkdir -p ./am-scripts ./am-scripts/$arch ./am-scripts/WEBPAGE &&
+								mkdir -p ./am-scripts ./am-scripts/$arch ./am-scripts/portable-linux-apps.github.io/apps &&
     								# DOWNLOAD THE TEMPLATE AND CONVERT THE ARGUMENT INTO A COMMAND
     								wget -c -q $AMREPO/templates/AM-SAMPLE-pkg2appimage -O ./am-scripts/$arch/$arg &&
     								sed -i s/SAMPLE/$arg/g ./am-scripts/$arch/$arg &&
 								# CREATE A WEBPAGE FOR https://portable-linux-apps.github.io CONTAINING ALL THE INFO ABOUT THIS APP
-								echo "# $(echo $arg | tr a-z A-Z)" >> ./am-scripts/WEBPAGE/$arg.md
-								echo "\n $COMMENT\n\n SITE: \n\n | [Applications](https://portable-linux-apps.github.io/apps.html) | [Home](https://portable-linux-apps.github.io)\n | --- | --- |" >> ./am-scripts/WEBPAGE/$arg.md &&  
+								echo "# $(echo $arg | tr a-z A-Z)" >> ./am-scripts/portable-linux-apps.github.io/apps/$arg.md
+								echo "\n $COMMENT\n\n SITE: \n\n | [Applications](https://portable-linux-apps.github.io/apps.html) | [Home](https://portable-linux-apps.github.io)\n | --- | --- |" >> ./am-scripts/portable-linux-apps.github.io/apps/$arg.md &&  
 								# CREATE A NEW LINE FOR THE APPLICATION'S LIST
 								echo '◆ '$arg' : '$COMMENT'' >> ./am-scripts/list
 								# END OF THIS FUNCTION
@@ -1354,7 +1497,7 @@ case "$1" in
     									
 							# CREATE AN APPIMAGE ON-THE-FLY USING CUSTOM OPTIONS
     							5) 
-								mkdir -p ./am-scripts ./am-scripts/$arch ./am-scripts/WEBPAGE &&
+								mkdir -p ./am-scripts ./am-scripts/$arch ./am-scripts/portable-linux-apps.github.io/apps &&
     								# DOWNLOAD THE TEMPLATE AND CONVERT THE ARGUMENT INTO A COMMAND
     								wget -c -q $AMREPO/templates/AM-SAMPLE-pkg2appimage-custom -O ./am-scripts/$arch/$arg &&
     								sed -i s/SAMPLE/$arg/g ./am-scripts/$arch/$arg &&
@@ -1397,8 +1540,8 @@ case "$1" in
 								esac
 
 								# CREATE A WEBPAGE FOR https://portable-linux-apps.github.io CONTAINING ALL THE INFO ABOUT THIS APP
-								echo "# $(echo $arg | tr a-z A-Z)" >> ./am-scripts/WEBPAGE/$arg.md
-								echo -e "\n $COMMENT\n\n SITE: \n\n | [Applications](https://portable-linux-apps.github.io/apps.html) | [Home](https://portable-linux-apps.github.io)\n | --- | --- |" >> ./am-scripts/WEBPAGE/$arg.md &&  
+								echo "# $(echo $arg | tr a-z A-Z)" >> ./am-scripts/portable-linux-apps.github.io/apps/$arg.md
+								echo -e "\n $COMMENT\n\n SITE: \n\n | [Applications](https://portable-linux-apps.github.io/apps.html) | [Home](https://portable-linux-apps.github.io)\n | --- | --- |" >> ./am-scripts/portable-linux-apps.github.io/apps/$arg.md &&  
 								# CREATE A NEW LINE FOR THE APPLICATION'S LIST
 								echo '◆ '$arg' : '$COMMENT'' >> ./am-scripts/list; echo ""
 								# END OF THIS FUNCTION
@@ -1406,7 +1549,7 @@ case "$1" in
     									
 							# CREATE A CUSTOM FIREFOX PROFILE ("firefox" MUST BE IN "$PATH" TO MADE IT WORK)
     							6) 
-								mkdir -p ./am-scripts ./am-scripts/$arch ./am-scripts/WEBPAGE &&
+								mkdir -p ./am-scripts ./am-scripts/$arch ./am-scripts/portable-linux-apps.github.io/apps &&
     								# DOWNLOAD THE TEMPLATE AND CONVERT THE ARGUMENT INTO A COMMAND
     								wget -c -q $AMREPO/templates/AM-SAMPLE-Firefox-webapp -O ./am-scripts/$arch/ffwa-$arg &&
     								sed -i s/SAMPLE/$arg/g ./am-scripts/$arch/ffwa-$arg &&
@@ -1417,8 +1560,8 @@ case "$1" in
 								*) 
 									sed -i s#GIVEMEANAME#$RESPONSE#g ./am-scripts/$arch/ffwa-$arg
 									# CREATE A WEBPAGE FOR https://portable-linux-apps.github.io CONTAINING ALL THE INFO ABOUT THIS APP
-									echo "# $(echo ffwa-$arg | tr a-z A-Z)" >> ./am-scripts/WEBPAGE/ffwa-$arg.md
-									echo -e "\n WebApp & Firefox Profile for $RESPONSE.\n\n SITE: MYWEBSITE\n\n | [Applications](https://portable-linux-apps.github.io/apps.html) | [Home](https://portable-linux-apps.github.io)\n | --- | --- |" >> ./am-scripts/WEBPAGE/ffwa-$arg.md &&  
+									echo "# $(echo ffwa-$arg | tr a-z A-Z)" >> ./am-scripts/portable-linux-apps.github.io/apps/ffwa-$arg.md
+									echo -e "\n WebApp & Firefox Profile for $RESPONSE.\n\n SITE: MYWEBSITE\n\n | [Applications](https://portable-linux-apps.github.io/apps.html) | [Home](https://portable-linux-apps.github.io)\n | --- | --- |" >> ./am-scripts/portable-linux-apps.github.io/apps/ffwa-$arg.md &&  
 									# CREATE A NEW LINE FOR THE APPLICATION'S LIST
 									echo "◆ ffwa-$arg : WebApp & Firefox Profile for $RESPONSE." >> ./am-scripts/list
 								esac
@@ -1462,7 +1605,7 @@ case "$1" in
 						
 								case "$RESPONSE" in
 								*) 
-									sed -i s#MYWEBSITE#$RESPONSE#g ./am-scripts/$arch/ffwa-$arg; sed -i s#MYWEBSITE#$RESPONSE#g ./am-scripts/WEBPAGE/ffwa-$arg.md;;
+									sed -i s#MYWEBSITE#$RESPONSE#g ./am-scripts/$arch/ffwa-$arg; sed -i s#MYWEBSITE#$RESPONSE#g ./am-scripts/portable-linux-apps.github.io/apps/ffwa-$arg.md;;
 								esac 
 
 								echo "-----------------------------------------------------------------------"
@@ -1480,7 +1623,7 @@ case "$1" in
 
 							# DOWNLOAD THE APPIMAGE FROM GITHUB AND KEEP IT ALWAYS UPDATED (BEST WAY)
 							7) 
-								mkdir -p ./am-scripts ./am-scripts/$arch ./am-scripts/WEBPAGE &&
+								mkdir -p ./am-scripts ./am-scripts/$arch ./am-scripts/portable-linux-apps.github.io/apps &&
 								# DOWNLOAD THE TEMPLATE AND CONVERT THE ARGUMENT INTO A COMMAND, ALSO ADD SOME BASIC INFO IF AVAILABLE
 								wget -c -q $AMREPO/templates/AM-SAMPLE-AppImage-from-GitHub -O ./am-scripts/$arch/$arg &&
 								sed -i s/SAMPLE/$arg/g ./am-scripts/$arch/$arg &&
@@ -1494,8 +1637,8 @@ case "$1" in
 									# GET THE DESCRIPTION OF THIS REPOSITORY TO ADD IN ALL CREATED FILES
 									COMMENT=$(curl https://api.github.com/repos/$RESPONSE 2>/dev/null | grep description | sed 's/"description": "//' | sed 's/",//')
 									# CREATE A WEBPAGE FOR https://portable-linux-apps.github.io CONTAINING ALL THE INFO ABOUT THIS APP
-									echo "# $(echo $arg | tr a-z A-Z)" >> ./am-scripts/WEBPAGE/$arg.md
-									echo -e "\n $COMMENT\n\n SITE: https://github.com/$RESPONSE\n\n | [Applications](https://portable-linux-apps.github.io/apps.html) | [Home](https://portable-linux-apps.github.io)\n | --- | --- |" >> ./am-scripts/WEBPAGE/$arg.md &&
+									echo "# $(echo $arg | tr a-z A-Z)" >> ./am-scripts/portable-linux-apps.github.io/apps/$arg.md
+									echo -e "\n $COMMENT\n\n SITE: https://github.com/$RESPONSE\n\n | [Applications](https://portable-linux-apps.github.io/apps.html) | [Home](https://portable-linux-apps.github.io)\n | --- | --- |" >> ./am-scripts/portable-linux-apps.github.io/apps/$arg.md &&
 									# CREATE A NEW LINE FOR THE APPLICATION'S LIST
 									echo "◆ $arg : $COMMENT" >> ./am-scripts/list
 								esac
@@ -1562,7 +1705,7 @@ case "$1" in
 								
 							# DOWNLOAD THE APPIMAGE FROM ANY WEBSITE
 							8) 
-								mkdir -p ./am-scripts ./am-scripts/$arch ./am-scripts/WEBPAGE &&
+								mkdir -p ./am-scripts ./am-scripts/$arch ./am-scripts/portable-linux-apps.github.io/apps &&
 								# DOWNLOAD THE TEMPLATE AND CONVERT THE ARGUMENT INTO A COMMAND, ALSO ADD SOME BASIC INFO IF AVAILABLE
 								wget -c -q $AMREPO/templates/AM-SAMPLE-AppImage-from-Anywhere -O ./am-scripts/$arch/$arg &&
 								sed -i s/SAMPLE/$arg/g ./am-scripts/$arch/$arg &&
@@ -1582,8 +1725,8 @@ case "$1" in
 								case "$COMMENT" in
 								*) 
 									# CREATE A WEBPAGE FOR https://portable-linux-apps.github.io CONTAINING ALL THE INFO ABOUT THIS APP
-									echo "# $(echo $arg | tr a-z A-Z)" >> ./am-scripts/WEBPAGE/$arg.md
-									echo -e "\n $COMMENT\n\n SITE: $RESPONSE\n\n | [Applications](https://portable-linux-apps.github.io/apps.html) | [Home](https://portable-linux-apps.github.io)\n | --- | --- |" >> ./am-scripts/WEBPAGE/$arg.md &&
+									echo "# $(echo $arg | tr a-z A-Z)" >> ./am-scripts/portable-linux-apps.github.io/apps/$arg.md
+									echo -e "\n $COMMENT\n\n SITE: $RESPONSE\n\n | [Applications](https://portable-linux-apps.github.io/apps.html) | [Home](https://portable-linux-apps.github.io)\n | --- | --- |" >> ./am-scripts/portable-linux-apps.github.io/apps/$arg.md &&
 									# CREATE A NEW LINE FOR THE APPLICATION'S LIST
 									echo "◆ $arg : $COMMENT" >> ./am-scripts/list
 								esac
@@ -1609,7 +1752,7 @@ case "$1" in
 									
 							# DOWNLOAD THE APPIMAGE FROM THE ARCH USER REPOSITORY
 							9) 
-								mkdir -p ./am-scripts ./am-scripts/$arch ./am-scripts/WEBPAGE &&
+								mkdir -p ./am-scripts ./am-scripts/$arch ./am-scripts/portable-linux-apps.github.io/apps &&
 								# DOWNLOAD THE TEMPLATE AND CONVERT THE ARGUMENT INTO A COMMAND, ALSO ADD SOME BASIC INFO IF AVAILABLE
 								wget -c -q $AMREPO/templates/AM-SAMPLE-AppImage-from-AUR -O ./am-scripts/$arch/$arg &&
 								sed -i s/SAMPLE/$arg/g ./am-scripts/$arch/$arg &&
@@ -1627,8 +1770,8 @@ case "$1" in
 								# ADD A DESCRIPTION FOR THIS APPLICATION
 								COMMENT=$(wget -q https://aur.archlinux.org/packages/$AUR -O - | grep -A1 Description | tail -1 | cut -c 30- | rev | cut -c 6- | rev) 
 								# CREATE A WEBPAGE FOR https://portable-linux-apps.github.io CONTAINING ALL THE INFO ABOUT THIS APP
-								echo "# $(echo $arg | tr a-z A-Z)" >> ./am-scripts/WEBPAGE/$arg.md
-								echo -e "\n $COMMENT\n\n SITE: $UPSTREAMURL\n\n SOURCE: https://aur.archlinux.org/packages/$AUR\n\n | [Applications](https://portable-linux-apps.github.io/apps.html) | [Home](https://portable-linux-apps.github.io)\n | --- | --- |" >> ./am-scripts/WEBPAGE/$arg.md &&
+								echo "# $(echo $arg | tr a-z A-Z)" >> ./am-scripts/portable-linux-apps.github.io/apps/$arg.md
+								echo -e "\n $COMMENT\n\n SITE: $UPSTREAMURL\n\n SOURCE: https://aur.archlinux.org/packages/$AUR\n\n | [Applications](https://portable-linux-apps.github.io/apps.html) | [Home](https://portable-linux-apps.github.io)\n | --- | --- |" >> ./am-scripts/portable-linux-apps.github.io/apps/$arg.md &&
 								# CREATE A NEW LINE FOR THE APPLICATION'S LIST
 								echo "◆ $arg : $COMMENT" >> ./am-scripts/list
 								echo "-----------------------------------------------------------------------"
@@ -1640,7 +1783,7 @@ case "$1" in
 									
 							# DOWNLOAD ANY ARCHIVE FROM ANY WEBSITE
 							10) 
-								mkdir -p ./am-scripts ./am-scripts/$arch ./am-scripts/WEBPAGE &&
+								mkdir -p ./am-scripts ./am-scripts/$arch ./am-scripts/portable-linux-apps.github.io/apps &&
 								# DOWNLOAD THE TEMPLATE AND CONVERT THE ARGUMENT INTO A COMMAND, ALSO ADD SOME BASIC INFO IF AVAILABLE
 								wget -c -q $AMREPO/templates/AM-SAMPLE-Anywhere-generic -O ./am-scripts/$arch/$arg &&
 								sed -i s/SAMPLE/$arg/g ./am-scripts/$arch/$arg &&
@@ -1660,8 +1803,8 @@ case "$1" in
 								case "$COMMENT" in
 								*) 
 									# CREATE A WEBPAGE FOR https://portable-linux-apps.github.io CONTAINING ALL THE INFO ABOUT THIS APP
-									echo "# $(echo $arg | tr a-z A-Z)" >> ./am-scripts/WEBPAGE/$arg.md
-									echo -e "\n $COMMENT\n\n SITE: $RESPONSE\n\n | [Applications](https://portable-linux-apps.github.io/apps.html) | [Home](https://portable-linux-apps.github.io)\n | --- | --- |" >> ./am-scripts/WEBPAGE/$arg.md &&
+									echo "# $(echo $arg | tr a-z A-Z)" >> ./am-scripts/portable-linux-apps.github.io/apps/$arg.md
+									echo -e "\n $COMMENT\n\n SITE: $RESPONSE\n\n | [Applications](https://portable-linux-apps.github.io/apps.html) | [Home](https://portable-linux-apps.github.io)\n | --- | --- |" >> ./am-scripts/portable-linux-apps.github.io/apps/$arg.md &&
 									# CREATE A NEW LINE FOR THE APPLICATION'S LIST
 									echo "◆ $arg : $COMMENT" >> ./am-scripts/list
 								esac
@@ -1715,11 +1858,10 @@ case "$1" in
 	;;
 
   '-u'|'-U'|'update') 
-    	if [ -n "$SUDO_COMMAND" ]; then 
-		echo -e "\n WARNING: You don't need to run the option '$1' with SUDO.\n"; 
-		exit; 
-	fi
 
+	_no_sudo
+	_online_check
+	
 	while [ -n "$1" ]; do
 		case $2 in
 		'') 
@@ -1767,10 +1909,9 @@ case "$1" in
 	;;
 
   '-w'|'web')
-    	if [ -n "$SUDO_COMMAND" ]; then 
-		echo -e "\n WARNING: You don't need to run the option '$1' with SUDO.\n"; 
-		exit; 
-	fi
+
+	_no_sudo
+	_online_check
 
 	case $2 in
 	'') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
@@ -1800,7 +1941,8 @@ case "$1" in
 	;;
 
   '--disable-completion')
-  	if [ $(cat $COMPLETIONPATH/$COMPLETIONFILE | grep -o $AMCLI | head -1) == $AMCLI 2>/dev/null ]; then
+
+  	if [ $(grep -o $AMCLI 0<$COMPLETIONPATH/$COMPLETIONFILE | head -1) == $AMCLI 2>/dev/null ]; then
   		grep -v 'complete -W "$(cat '$AMPATH'/list 2>/dev/null)" '$AMCLI'' $COMPLETIONPATH/$COMPLETIONFILE > $AMPATH/$COMPLETIONFILE.backup &&
 		$SUDOCOMMAND mv $AMPATH/$COMPLETIONFILE.backup $COMPLETIONPATH/$COMPLETIONFILE
 		echo " Completion disabled! "
@@ -1810,7 +1952,8 @@ case "$1" in
 	;;
 
   '--enable-completion')
-	if [ $(cat $COMPLETIONPATH/$COMPLETIONFILE | grep -o $AMCLI | head -1) == $AMCLI 2>/dev/null ]; then
+
+	if [ $(grep -o $AMCLI 0<$COMPLETIONPATH/$COMPLETIONFILE | head -1) == $AMCLI 2>/dev/null ]; then
 		echo " Completion script is already enabled!"
 	else
 		$SUDOCOMMAND mkdir -p $COMPLETIONPATH
@@ -1822,11 +1965,113 @@ case "$1" in
 	fi
 	;;
 
-  '--launcher')
-    	if [ -n "$SUDO_COMMAND" ]; then 
-		echo -e "\n WARNING: You don't need to run the option '$1' with SUDO.\n"; 
-		exit; 
+  '--firejail'|'--sandbox')
+
+	_no_sudo
+	
+	if ! command -v firejail 1>/dev/null; then
+  		printf "\n%s\n" 'ERROR: "firejail" is not installed!'; deps=1
+		[ "$deps" != "1" ] || { printf "\nInstall the above from your package manager and try again\n\n"; exit 1; }
 	fi
+	
+	case $2 in
+	'') 	
+		echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
+	esac
+	
+	while [ -n "$1" ]; do
+	
+		if ! test -f $APPSPATH/$2/remove; then
+			echo " '$2' is not a valid argument or is not installed."; exit
+		fi
+	
+		if [ -z $(strings -d $APPSPATH/$2/"$2" 2>/dev/null | grep -m 1 "AppImage") ]; then
+	    		echo ' ERROR: "'$2'" is NOT an AppImage'; exit
+	    	fi
+		
+		echo -e '---------------------------------------------------------------------\nYOU ARE USING FIREJAIL VIA "'$(echo $AMCLI | tr a-z A-Z)'".\n---------------------------------------------------------------------'
+		
+		if ! test -f $APPSPATH/$2/firejail.profile; then
+				cp /etc/firejail/default.profile $APPSPATH/$2/firejail.profile
+				echo -e "◆ Created $APPSPATH/$2/firejail.profile, do what you will with it! \n---------------------------------------------------------------------"
+		fi
+		
+		
+		DESKTOPFILEANDPATH=$(cat $APPSPATH/$2/remove | tr " " "\n" | grep "/share/applications" | head -1)
+		LAUNCHERPATH=$(echo $DESKTOPFILEANDPATH | sed 's:/[^/]*$::')
+		
+		if ! test -f $APPSPATH/$2/firejail.profile; then
+			cp /etc/firejail/default.profile $APPSPATH/$2/firejail.profile
+			echo -e "◆ Created $APPSPATH/$2/firejail.profile\n---------------------------------------------------------------------"
+		else
+			echo -e "◆ Found $APPSPATH/$2/firejail.profile\n---------------------------------------------------------------------"
+		fi
+		
+		echo -e "\n Choose to run once using Firejail (options 1 & 2) or make the\n changes permanent by editing the available .desktop files, if\n available (options 3 & 4).\n\n NOTE, once that the .desktop files are patched, they will be\n saved in ~/.local/share/applications, which means that if you\n use AppMan, the originals will be overwritten.\n"
+		echo -e ' Supported text editors (option 5) are "vim" and "nano".\n'
+		echo -e "1) Sandbox once using Firejail's defaults"
+		echo -e "2) Sandbox once using the custom profile"
+		echo -e "3) Patch the .desktop file using Firejail's defaults"
+		echo -e "4) Patch the .desktop file using the custom profile"
+		echo -e "5) Edit the custom $APPSPATH/$2/firejail.profile file\n"
+		read -p 'CHOOSE BETWEEN 1, 2, 3, 4 AND 5, OR LEAVE BLANK TO EXIT: ' response
+		
+		case $response in
+		
+		1)	echo -e "\n############################### START FIREJAIL ###############################\n"
+			firejail --appimage $APPSPATH/$2/$2
+			echo -e "\n############################### STOP FIREJAIL ###############################\n"
+			;;
+		
+		2)	echo -e "\n############################### START FIREJAIL ###############################\n"
+			firejail --appimage --profile=$APPSPATH/$2/firejail.profile $APPSPATH/$2/$2
+			echo -e "\n############################### STOP FIREJAIL ###############################\n"
+			;;
+		
+		3)	mkdir -p ~/.local/share/applications; mkdir -p .am-patchinglauncher
+			cp $DESKTOPFILEANDPATH ./.am-patchinglauncher/
+			for f in ./.am-patchinglauncher/*; do
+				for var in $f; do
+					EXEC=$(grep -e '^Exec=.*' $f | head -n 1 | cut -d "=" -f 2- | sed -e 's|%.||g')
+					sed -i "s#Exec=$CHANGEEXEC#Exec=firejail --appimage $APPSPATH/$2/$EXEC#g" ./$f
+				done
+			done
+			mv ./.am-patchinglauncher/* ~/.local/share/applications/ 2> /dev/null;	rmdir .am-patchinglauncher
+			break
+			;;
+		
+		4)	mkdir -p ~/.local/share/applications; mkdir -p .am-patchinglauncher
+			cp $DESKTOPFILEANDPATH ./.am-patchinglauncher/
+			for f in ./.am-patchinglauncher/*; do
+				for var in $f; do
+					EXEC=$(grep -e '^Exec=.*' $f | head -n 1 | cut -d "=" -f 2- | sed -e 's|%.||g')
+					sed -i "s#Exec=$CHANGEEXEC#Exec=firejail --appimage --profile=$APPSPATH/$2/firejail.profile $APPSPATH/$2/$EXEC#g" ./$f
+				done
+			done
+			mv ./.am-patchinglauncher/* ~/.local/share/applications/ 2> /dev/null;	rmdir .am-patchinglauncher
+			break
+			;;
+		
+		5)	if command -v vim 1>/dev/null; then
+				vim $APPSPATH/$2/firejail.profile
+			else
+				nano $APPSPATH/$2/firejail.profile
+			fi
+			;;
+						
+		*)	exit
+			;;
+		esac
+	
+	
+	done
+
+	shift
+	;;
+
+  '--launcher')
+
+	_no_sudo
 
 	case $2 in
 	'') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
@@ -1839,9 +2084,8 @@ case "$1" in
 
 		for arg in $ARGS; do
 			for var in $arg; do
-				if [ $arg == STOP ]; then
-					exit
-				else
+
+				function _launcher(){
 					if [ -z $(strings -d "$arg" 2>/dev/null | grep -m 1 "AppImage") ]; then
     						echo ' ERROR: "'$arg'" is NOT an AppImage'; break
     					else
@@ -1850,60 +2094,71 @@ case "$1" in
   						mkdir -p $HOME/.local/share/icons
 						chmod a+x "$arg"
   						cd "$(dirname "$arg")"
-  						function appimage_extract(){
-  						"$arg" --appimage-extract share/icons/*/*/* 1>/dev/null
-						"$arg" --appimage-extract usr/share/icons/*/*/* 1>/dev/null
-						"$arg" --appimage-extract share/icons/*/*/*/* 1>/dev/null
-						"$arg" --appimage-extract usr/share/icons/*/*/*/* 1>/dev/null
-						"$arg" --appimage-extract *.svg 1>/dev/null
-						"$arg" --appimage-extract *.png 1>/dev/null
-    						"$arg" --appimage-extract *.desktop 1>/dev/null
-    						"$arg" --appimage-extract share/applications/*.desktop 1>/dev/null
-    						"$arg" --appimage-extract usr/share/applications/*.desktop 1>/dev/null
+  						
+  						function _launcher_appimage_extract(){
+  							"$arg" --appimage-extract share/icons/*/*/* 1>/dev/null
+							"$arg" --appimage-extract usr/share/icons/*/*/* 1>/dev/null
+							"$arg" --appimage-extract share/icons/*/*/*/* 1>/dev/null
+							"$arg" --appimage-extract usr/share/icons/*/*/*/* 1>/dev/null
+							"$arg" --appimage-extract *.svg 1>/dev/null
+							"$arg" --appimage-extract *.png 1>/dev/null
+    							"$arg" --appimage-extract *.desktop 1>/dev/null
+    							"$arg" --appimage-extract share/applications/*.desktop 1>/dev/null
+    							"$arg" --appimage-extract usr/share/applications/*.desktop 1>/dev/null
     						}
-    						appimage_extract 2>/dev/null
-    						echo "[Desktop Entry]" >> ./"$appimage".desktop
-    						echo "Version=1.0" >> ./"$appimage".desktop
-    						echo "Type=Application" >> ./"$appimage".desktop
-    						echo "Terminal=false" >> ./"$appimage".desktop
-    						echo "StartupNotify=true" >> ./"$appimage".desktop
-    						echo "Exec=$arg %U" >> ./"$appimage".desktop
-    						cat ./squashfs-root/*.desktop | grep Name= | head -1 >> ./"$appimage".desktop
-    						cat ./squashfs-root/*.desktop | grep -F 'Name[' >> ./"$appimage".desktop
-    						cat ./squashfs-root/*.desktop | grep Categories= >> ./"$appimage".desktop
-    						cat ./squashfs-root/*.desktop | grep Comment= | head -1 >> ./"$appimage".desktop
-    						cat ./squashfs-root/*.desktop | grep -F 'Comment[' >> ./"$appimage".desktop
-    						cat ./squashfs-root/*.desktop | grep Icon= | head -1 >> ./"$appimage".desktop
-    						cat ./squashfs-root/*.desktop | grep MimeType= | head -1 >> ./"$appimage".desktop
-    						cat ./"$appimage".desktop | uniq > ./"$appimage"-1.desktop && mv ./"$appimage"-1.desktop ./"$appimage".desktop
-    						mv ./"$appimage".desktop $HOME/.local/share/applications/AppImages/"$appimage".desktop 2>/dev/null
-    						mv ./squashfs-root/*.png $HOME/.local/share/icons/ 2>/dev/null
-    						mv ./squashfs-root/*.svg $HOME/.local/share/icons/ 2>/dev/null
-    						mv ./squashfs-root/share/icons/hicolor/0x0/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
-    						mv ./squashfs-root/share/icons/hicolor/22x22/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
-    						mv ./squashfs-root/share/icons/hicolor/24x24/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
-    						mv ./squashfs-root/share/icons/hicolor/32x32/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
-    						mv ./squashfs-root/share/icons/hicolor/48x48/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
-    						mv ./squashfs-root/share/icons/hicolor/64x64/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
-    						mv ./squashfs-root/share/icons/hicolor/128x128/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
-    						mv ./squashfs-root/share/icons/hicolor/256x256/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
-    						mv ./squashfs-root/share/icons/hicolor/512x512/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
-    						mv ./squashfs-root/share/icons/hicolor/scalable/apps/*.svg $HOME/.local/share/icons/ 2>/dev/null
-    						mv ./squashfs-root/share/pixmaps/*.png $HOME/.local/share/icons/ 2>/dev/null
-    						mv ./squashfs-root/usr/share/icons/hicolor/0x0/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
-    						mv ./squashfs-root/usr/share/icons/hicolor/22x22/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
-    						mv ./squashfs-root/usr/share/icons/hicolor/24x24/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
-    						mv ./squashfs-root/usr/share/icons/hicolor/32x32/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
-    						mv ./squashfs-root/usr/share/icons/hicolor/48x48/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
-    						mv ./squashfs-root/usr/share/icons/hicolor/64x64/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
-    						mv ./squashfs-root/usr/share/icons/hicolor/128x128/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
-    						mv ./squashfs-root/usr/share/icons/hicolor/256x256/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
-    						mv ./squashfs-root/usr/share/icons/hicolor/512x512/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
-    						mv ./squashfs-root/usr/share/icons/hicolor/scalable/apps/*.svg $HOME/.local/share/icons/ 2>/dev/null
-    						mv ./squashfs-root/usr/share/pixmaps/*.png $HOME/.local/share/icons/ 2>/dev/null
-						rm -R -f ./squashfs-root
-    						break
+    						
+    						function _launcher_appimage_integration(){
+    							echo "[Desktop Entry]" >> ./"$appimage".desktop
+    							echo "Version=1.0" >> ./"$appimage".desktop
+    							echo "Type=Application" >> ./"$appimage".desktop
+    							echo "Terminal=false" >> ./"$appimage".desktop
+    							echo "StartupNotify=true" >> ./"$appimage".desktop
+    							echo "Exec=$arg %U" >> ./"$appimage".desktop
+    							cat ./squashfs-root/*.desktop | grep Name= | head -1 >> ./"$appimage".desktop
+    							cat ./squashfs-root/*.desktop | grep -F 'Name[' >> ./"$appimage".desktop
+    							cat ./squashfs-root/*.desktop | grep Categories= >> ./"$appimage".desktop
+    							cat ./squashfs-root/*.desktop | grep Comment= | head -1 >> ./"$appimage".desktop
+    							cat ./squashfs-root/*.desktop | grep -F 'Comment[' >> ./"$appimage".desktop
+    							cat ./squashfs-root/*.desktop | grep Icon= | head -1 >> ./"$appimage".desktop
+    							cat ./squashfs-root/*.desktop | grep MimeType= | head -1 >> ./"$appimage".desktop
+    							cat ./"$appimage".desktop | uniq > ./"$appimage"-1.desktop && mv ./"$appimage"-1.desktop ./"$appimage".desktop
+    							mv ./"$appimage".desktop $HOME/.local/share/applications/AppImages/"$appimage".desktop 2>/dev/null
+    							mv ./squashfs-root/*.png $HOME/.local/share/icons/ 2>/dev/null
+    							mv ./squashfs-root/*.svg $HOME/.local/share/icons/ 2>/dev/null
+    							mv ./squashfs-root/share/icons/hicolor/0x0/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
+    							mv ./squashfs-root/share/icons/hicolor/22x22/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
+    							mv ./squashfs-root/share/icons/hicolor/24x24/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
+    							mv ./squashfs-root/share/icons/hicolor/32x32/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
+    							mv ./squashfs-root/share/icons/hicolor/48x48/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
+    							mv ./squashfs-root/share/icons/hicolor/64x64/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
+    							mv ./squashfs-root/share/icons/hicolor/128x128/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
+    							mv ./squashfs-root/share/icons/hicolor/256x256/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
+    							mv ./squashfs-root/share/icons/hicolor/512x512/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
+    							mv ./squashfs-root/share/icons/hicolor/scalable/apps/*.svg $HOME/.local/share/icons/ 2>/dev/null
+    							mv ./squashfs-root/share/pixmaps/*.png $HOME/.local/share/icons/ 2>/dev/null
+    							mv ./squashfs-root/usr/share/icons/hicolor/0x0/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
+    							mv ./squashfs-root/usr/share/icons/hicolor/22x22/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
+    							mv ./squashfs-root/usr/share/icons/hicolor/24x24/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
+    							mv ./squashfs-root/usr/share/icons/hicolor/32x32/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
+    							mv ./squashfs-root/usr/share/icons/hicolor/48x48/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
+    							mv ./squashfs-root/usr/share/icons/hicolor/64x64/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
+    							mv ./squashfs-root/usr/share/icons/hicolor/128x128/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
+    							mv ./squashfs-root/usr/share/icons/hicolor/256x256/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
+    							mv ./squashfs-root/usr/share/icons/hicolor/512x512/apps/*.png $HOME/.local/share/icons/ 2>/dev/null
+    							mv ./squashfs-root/usr/share/icons/hicolor/scalable/apps/*.svg $HOME/.local/share/icons/ 2>/dev/null
+    							mv ./squashfs-root/usr/share/pixmaps/*.png $HOME/.local/share/icons/ 2>/dev/null
+							rm -R -f ./squashfs-root
+    						}
+    						
+    						_launcher_appimage_extract 2>/dev/null
+    						_launcher_appimage_integration 2>/dev/null
     					fi
+    				}
+
+				if [ $arg == STOP ]; then
+					exit
+				else
+					_launcher
 				fi
 			done
 		done
@@ -1913,10 +2168,9 @@ case "$1" in
 	;;
 
   '--rollback')
-  	if [ -n "$SUDO_COMMAND" ]; then 
-		echo -e "\n WARNING: You don't need to run the option '$1' with SUDO.\n"; 
-		exit; 
-	fi
+
+	_no_sudo
+	_online_check
 
 	case $2 in
 	'') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
@@ -1962,7 +2216,9 @@ case "$1" in
 	;;
 
   '--user'|'appman')
-  
+
+  	_no_sudo
+
   	if [ $AMCLI == appman ] 2>/dev/null; then
   		echo " This function only works for AM"
   		exit
@@ -1972,7 +2228,7 @@ case "$1" in
   	if test -f /opt/am/appman; then
 		echo -e "Please run '${RED}alias am=/opt/am/appman\033[0m' to made 'AM' act exactly like 'AppMan' for\nthe current session or save this command to your '"'~/.bashrc'"' file to make the\nchanges permanent. Visit ${LightBlue}https://github.com/ivan-hc/appman\033[0m for more!"
   	else
-  		echo -e 'USE "AM" AS A NON-PRIVILIGED USER, JUST AS YOU WOULD WITH "APPMAN"\n'
+  		echo -e 'USE "AM" AS A NON-PRIVILEGED USER, JUST AS YOU WOULD WITH "APPMAN"\n'
   		echo 'Hi '$USER'! You have decided to run "AM" as a non-privileged user.'
   		echo 'We will use "AppMan" for this purpose, it will be downloaded as /opt/am/appman'
   		echo 'After the download, an alias will be suggested, you will choose how to use it.'
@@ -1983,17 +2239,16 @@ case "$1" in
   		case $yn in
   			'N'|'n') exit;;
   			'Y'|'y') 
-  				wget -q https://raw.githubusercontent.com/ivan-hc/AppMan/main/appman -O /opt/am/appman && chmod a+x /opt/am/appman
+  				_online_check
+  				wget -q $AMREPO/APP-MANAGER -O /opt/am/appman && chmod a+x /opt/am/appman
   				echo -e "\nPlease run '${RED}alias am=/opt/am/appman\033[0m' to made 'AM' act exactly like 'AppMan' for\nthe current session or save this command to your '"'~/.bashrc'"' file to make the\nchanges permanent."
   		esac
   	fi;;
 
   'lock')
-    	if [ -n "$SUDO_COMMAND" ]; then 
-		echo -e "\n WARNING: You don't need to run the option '$1' with SUDO.\n"; 
-		exit; 
-	fi
 
+	_no_sudo
+	
 	case $2 in
 	'') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
 	esac
@@ -2021,11 +2276,9 @@ case "$1" in
 	;;
 
   'unlock')
-    	if [ -n "$SUDO_COMMAND" ]; then 
-		echo -e "\n WARNING: You don't need to run the option '$1' with SUDO.\n"; 
-		exit; 
-	fi
 
+	_no_sudo
+	
 	case $2 in
 	'') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
 	esac
@@ -2053,7 +2306,8 @@ case "$1" in
 	;;
 
   'version'|'-v'|'--version')
-  	echo "5.2.1-1";;
+
+  	echo "5.3.1-5";;
 
   *) exec $AMCLIPATH ;;
 
