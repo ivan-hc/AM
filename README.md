@@ -478,7 +478,15 @@ NOTE: to mantain the name "appman" in this case is important to use some dedicat
  `lock {PROGRAM}`
  
  DESCRIPTION:	Lock the selected app to the current version installed, this only works if exists a dedicated "AM-updater" installed with the app.
- ___________________________________________________________________________
+ __________________________________________________________________________
+ 
+ `apikey`
+ 
+ SYNOPSIS:	`apikey {Github Token}`
+ 		`apikey delete`
+ 
+ DESCRIPTION:	Get unlimited access to https://api.github.com using your personal access tokens. The configuration file named "ghapikey.txt" will be saved in '$AMPATH' . Use the command "'$AMCLI' apikey delete/del/remove" to remove the file.
+ __________________________________________________________________________
  
  `unlock`
  
