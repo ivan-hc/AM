@@ -488,6 +488,14 @@ NOTE: to mantain the name "appman" in this case is important to use some dedicat
  DESCRIPTION:	Get unlimited access to https://api.github.com using your personal access tokens. The configuration file named "ghapikey.txt" will be saved in '$AMPATH' . Use the command "'$AMCLI' apikey delete/del/remove" to remove the file.
  __________________________________________________________________________
  
+ `dev`, `devmode`
+ 
+ SYNOPSIS:	`dev off`
+ 		`dev on`
+ 
+ DESCRIPTION:	View the installer output during installation, use "on". It can be disabled with "off" or with the "`-s`" and "`-u`" options.
+ __________________________________________________________________________
+ 
  `unlock`
  
  SYNOPSIS:
