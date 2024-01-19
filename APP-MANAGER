@@ -68,6 +68,8 @@ cat <<-HEREDOC >> "$AMPATH/options"
 	backup
 	clean
 	convert
+	dev
+	devmode
 	download
 	files
 	install
@@ -389,8 +391,19 @@ case "$1" in
  
  be saved in '$AMPATH' .
  
- Use the command "'$AMCLI' apikey delete/del/remove" to remove the file. 
+ Use the command "'$AMCLI' apikey delete/del/remove" to remove the file.
  __________________________________________________________________________
+ 
+ dev, devmode
+ 
+ SYNOPSIS:	dev off
+ 		dev on
+ 
+ DESCRIPTION:	View the installer output during installation, use "on".
+ 
+ It can be disabled with "off" or with the "-s" and "-u" options.
+ __________________________________________________________________________
+ 
  
  lock
  
@@ -2302,6 +2315,44 @@ case "$1" in
 	shift
 	;;
 
+  'dev'|'devmode')
+
+	_no_sudo
+	_online_check
+
+	while [ -n "$1" ]; do
+		case $2 in
+		on)
+			if [ $AMCLI == am ] 2>/dev/null; then
+				AMCLI="APP-MANAGER"
+			fi
+			
+			sed -i 's#$SUDOCOMMAND ./$arg | less -E #$SUDOCOMMAND ./$arg #g' $AMPATH/$AMCLI
+			echo " Developer Mode is ENABLED!"
+			exit;;
+		off)
+			cd $AMPATH/.cache
+			if [ $AMCLI == am ] 2>/dev/null; then
+	  			wget -q $AMREPO/APP-MANAGER && chmod a+x ./APP-MANAGER
+	  			cd ..
+	  			mv $AMPATH/.cache/APP-MANAGER $AMPATH; chmod 777 $AMPATH
+	  		else
+	  			wget -q $AMREPO/APP-MANAGER -O appman && chmod a+x ./$AMCLI
+	  			cd ..
+	  			mv $AMPATH/.cache/$AMCLI $AMCLIPATH
+	  		fi
+			echo " Developer Mode is DISABLED!"
+			exit;;
+		''|*)
+			echo -e " USAGE: $AMCLI $1 off	(to disable Developer Mode)\n        $AMCLI $1 on	(to enable Developer Mode)"
+			exit
+			;;
+		esac
+	done
+
+	shift
+	;;
+
   'lock')
 
 	_no_sudo
@@ -2363,7 +2414,7 @@ case "$1" in
 
   'version'|'-v'|'--version')
 
-  	echo "5.4";;
+  	echo "5.5";;
 
   *) exec $AMCLIPATH ;;
 
