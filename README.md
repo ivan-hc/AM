@@ -469,15 +469,6 @@ NOTE: to mantain the name "appman" in this case is important to use some dedicat
  `--user`
  
  DESCRIPTION:	Run "AM" as an unprivileged user making it act as "AppMan".
- ___________________________________________________________________________ 
- 
- `lock`
- 
- SYNOPSIS:
-
- `lock {PROGRAM}`
- 
- DESCRIPTION:	Lock the selected app to the current version installed, this only works if exists a dedicated "AM-updater" installed with the app.
  __________________________________________________________________________
  
  `apikey`
@@ -494,6 +485,15 @@ NOTE: to mantain the name "appman" in this case is important to use some dedicat
  		`dev on`
  
  DESCRIPTION:	View the installer output during installation, use "on". It can be disabled with "off" or with the "`-s`" and "`-u`" options.
+ __________________________________________________________________________ 
+ 
+ `lock`
+ 
+ SYNOPSIS:
+
+ `lock {PROGRAM}`
+ 
+ DESCRIPTION:	Lock the selected app to the current version installed, this only works if exists a dedicated "AM-updater" installed with the app.
  __________________________________________________________________________
  
  `unlock`
