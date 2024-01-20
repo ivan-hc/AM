@@ -35,7 +35,6 @@
 - [An application does not work, is old and unsupported](#an-application-does-not-work-is-old-and-unsupported)
 - [Cannot download or update an application](#cannot-download-or-update-an-application)
 - [Cannot mount and run AppImages](#cannot-mount-and-run-appimages)
-- [Missing dependences](#missing-dependences)
 - [Spyware, malware and dangerous software](#spyware-malware-and-dangerous-software)
 - [Stop AppImage prompt to create its own launcher, desktop integration and doubled launchers](#stop-appimage-prompt-to-create-its-own-launcher-desktop-integration-and-doubled-launchers)
 - [Wrong download link](#wrong-download-link)
@@ -663,6 +662,9 @@ To uninstall "AM" just run the command:
 ------------------------------------------------------------------------	
 # Troubleshooting
 
+<details>
+  <summary>Click here</summary>
+
 -----------------------------------------------------------------------------
 ### An application does not work, is old and unsupported
 Use the `-a` option and go to the developer's site to report the problem. The task of "AM" is solely to install / remove / update the applications managed by it. Problems related to the failure of an installed program or any related bugs are attributable solely to its developers.
@@ -680,25 +682,6 @@ There can be many reasons:
 See https://docs.appimage.org/user-guide/troubleshooting/fuse.html
 
 -----------------------------------------------------------------------------
-### Missing dependences
-To prevent any issue is strongly recommended to install all dependences listed at the paragraph "[Requirements](#requirements)", alternativelly you can use this workaround.
-
-Open the file `/opt/am/APP-MANAGER` with a text editor and change the following line (do this for each update):
-```
-for name in "ar" "unzip" "tar" "zsync"; do
-```
-
-Example, "`ar`" is included in `binutils` and it is used by few installation scripts to extract .deb packages. If you don't plan to install "`vivaldi`" in aarch64, "`windows95`" in x86_64 or "`ocenaudio`" in i686, change the line above like this:
-```
-for name in "unzip" "tar" "zsync"; do
-```
-In addition, the command "`zsync`" is used to update some AppImage packages. Until now the installation scripts for x86_64 that include this as a dependence are more than 220, so without it you can't update these Appimages. If this is not a problem for you, can chamge the line above like this:
-```
-for name in "unzip" "tar"; do
-```
-I don't recommend to remove all other commands, being them mainly used. 
-
------------------------------------------------------------------------------
 ### Spyware, malware and dangerous software
 Before installing any application, try to know where it comes from first. This program provides you with two basic options for this purpose:
 - Option `-a` or `about` (medium safety), allows you to read a short description and know the links from the pages of the site [https://portable-linux-apps.github.io](https://portable-linux-apps.github.io) locally, however these links may be inaccurate due to continuous updates of the initial scripts (you can provide additional info yourself by modifying the pages of the site, [here](https://github.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io), it is also open source);
@@ -712,12 +695,16 @@ The reasons may be two:
 - the referring link may have been changed, try the `--rollback` option;
 - the reference site has changed, report any changes at https://github.com/ivan-hc/AM-Application-Manager/issues
 ### Stop AppImage prompt to create its own launcher, desktop integration and doubled launchers
-Some developers insist on creating Appimages that create their own launcher on first launch (like WALC and OpenShot). If the official solution proposed [here](https://discourse.appimage.org/t/stop-appimage-from-asking-to-integrate/488) doesn't work, create a .home directory with the `-H` option, launch the app and accept the request. For example:
+Some developers insist on creating Appimages that create their own launcher on first launch (like WALC and OpenShot). If the official solution proposed [here](https://discourse.appimage.org/t/stop-appimage-from-asking-to-integrate/488) doesn't work, create a .home directory with the `-H` option, launch the app and accept the request. For example (with "AM"):
 ```
 am -H walc
 walc
 ```
 Accept the integration request, the launcher will be saved in the walc.home directory located next to the AppImage file.
+
+------------------------------------------------------------------------
+
+</details>
 
 ------------------------------------------------------------------------
 # Related projects
@@ -729,7 +716,6 @@ Accept the integration request, the launcher will be saved in the walc.home dire
 - [pkg2appimage-32bit](https://github.com/ivan-hc/pkg2appimage-32bit) (fork)
 
 #### My other projects
-- [AppMan](https://github.com/ivan-hc/AppMan), "AM" that works in the user's $HOME instead;
 - [AppImaGen](https://github.com/ivan-hc/AppImaGen), a script that generates AppImages from Debian or from a PPA for the previous Ubuntu LTS;
 - [ArchImage](https://github.com/ivan-hc/ArchImage), build AppImage packages for all distributions but including Arch Linux packages. Powered by JuNest;
 - [Firefox for Linux scripts](https://github.com/ivan-hc/Firefox-for-Linux-scripts), easily install the official releases of Firefox for Linux.
