@@ -12,8 +12,9 @@ echo '#!/bin/sh' >> /opt/$APP/remove
 echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
 chmod a+x /opt/$APP/remove
 
-mkdir tmp;
-cd tmp;
+mkdir /opt/$APP/tmp
+cd /opt/$APP/tmp
+
 
 # DOWNLOADING THE DEPENDENCIES
 wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-$(uname -m).AppImage -O appimagetool
@@ -77,8 +78,8 @@ if [ $version = $version0 ]; then
 else
   notify-send "A new version of $APP is available, please wait!"
   
-  mkdir tmp;
-  cd tmp;
+  mkdir /opt/$APP/tmp
+  cd /opt/$APP/tmp
 
   # DOWNLOADING THE DEPENDENCIES
   wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-$(uname -m).AppImage -O appimagetool
@@ -88,7 +89,6 @@ else
   # DOWNLOAD THE ARCHIVE
   version=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep -w -v i386 | grep -w -v i686 | grep -w -v aarch64 | grep -w -v arm64 | grep -w -v armv7l | grep browser_download_url | grep -i "x86_64.txz" | cut -d '"' -f 4 | head -1)
   wget $version
-  echo "$version" >> /opt/$APP/version
   
   # CREATING THE APPIMAGE
   mkdir $APP.AppDir/
@@ -102,11 +102,14 @@ else
 
   ARCH=x86_64 ./appimagetool -n ./$APP.AppDir;
 
-  cd ..;
-  mv ./tmp/*.AppImage ./$APP;
-  chmod a+x ./$APP
-
-  rm -R -f ./tmp
+  if ls ./ | grep mage; then
+  cd ..
+  rm ./version
+  echo $version >> ./version
+  mv --backup=t ./tmp/*.AppImage ./$APP; 
+  chmod a+x /opt/$APP/${APP}
+  rm -R -f ./tmp ./*~
+  fi
 
   notify-send "$APP is updated!"
 fi
