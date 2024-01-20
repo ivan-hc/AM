@@ -75,6 +75,9 @@ https://github.com/ivan-hc/AM-Application-Manager/releases
 
 ------------------------------------------------------------------------
 
+<details>
+  <summary>Learn more</summary>
+
 ## Differences between "AM" and "AppMan"
 Initially the two projects traveled in parallel to each other, until version 5, in which the codes merged. However, depending on whether it is installed permanently using a specific method ("AM") or downloaded portablely ("AppMan", if renamed "`appman`") the two CLIs work slightly differently.
 
@@ -188,7 +191,11 @@ If you are interested, you can deliberately join this project to improve the lis
 - There are many other AppImage managers around, and almost all of them support their database on appimagehub or other official AppImage resources, but the big problem is at the base of the compilation of these packages, being very often without an integrated update system. Furthermore, AppImage is a format that many developers are abandoning in favor of Flatpak, also because there were no centralized repositories or software that managed its updates in a universal way... at least until the invention of the first draft of [AppMan](https://github.com/ivan-hc/AppMan);
 - With "AM"/"AppMan" each installed program has its own script (AM-updater) that compares the installed version with the one available in the sources or uses official tools to update the AppImages ([see above](#how-to-update-all-programs-for-real)), there is support for multiple architectures (including i686 and aarch64) and anyone can create a script to install that particular program (if available for its architecture).
 
------------------------------------------------------------------------------
+------------------------------------------------------------------------
+
+</details>
+
+------------------------------------------------------------------------
 # Installation
 ### Dependences
 #### *Below are the essential dependencies for both "AM" and "AppMan"!*
