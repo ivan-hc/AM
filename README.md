@@ -261,8 +261,8 @@ am -R {PROGRAM1} {PROGRAM2} {PROGRAM3}...
 ```
 to have a list of the installed programs use the option `-f` or `files` (syntax `am -f` or `appman -f`).
 
-- To uninstall "AM" just run the command `am -r am` (with a prompt) or `am -R am` (quick)
-- To uninstall "AppMan" just remove it and the directory $HOME/.config/appman
+- To uninstall "AM" just run the command `am -R am`
+- To uninstall "AppMan" just remove it, also remove the directory $HOME/.config/appman
 
 ------------------------------------------------------------------------	
 # USAGE
