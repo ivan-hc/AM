@@ -25,8 +25,7 @@
 - [Rollback](#rollback)
 - [Manage local AppImages](#manage-local-appimages)
 - [Sandbox using Firejail](#sandbox-using-firejail)
-
-[Create your own script](#create-your-own-script)
+- [Create and test your own installation script](#create-and-test-your-own-installation-script)
 
 [Troubleshooting](#troubleshooting)
 - [An application does not work, is old and unsupported](#an-application-does-not-work-is-old-and-unsupported)
@@ -614,18 +613,18 @@ Options 1, 2 and 5 are continuous to let you edit the file and test your changes
 NOTE: once patched the .desktop files (options 3 and 4), they will be placed in ~/.local/share/applications, this means that if you have installed apps using AppMan, the original launchers will be overwrited.
 
 ------------------------------------------------------------------------
-# Create your own script
-"AM" has a `-t` option (or `template`) with which you can get a script to customize according to your needs. With this option, you can quickly create scripts to download existing programs or even create AppImage or AppDir through tools such as appimagetool and pkg2appimage.
+# Create and test your own installation script
+"AM"/"AppMan" has a `-t` option (or `template`) with which you can get a script to customize according to your needs. With this option, you can quickly create scripts to download existing programs or even create AppImage or AppDirs through tools such as [appimagetool](https://github.com/AppImage/AppImageKit) and [pkg2appimage](https://github.com/AppImage/pkg2appimage).
 
 The following video shows how to create and test an AppImage of "Abiword" from Debian Unstable repository with a custom AppRun (option 5):
 
 https://user-images.githubusercontent.com/88724353/150619523-a45455f6-a656-4753-93fe-aa99babc1083.mp4
 
-The currently available templates are stored [here](https://github.com/ivan-hc/AM-application-manager/tree/main/templates), more will be added with the next versions of "AM".
+The currently available templates are stored [here](https://github.com/ivan-hc/AM-application-manager/tree/main/templates).
 
 A wiki is also available, here I will try to explain the installation script's workflow for a program to be better managed by "AM", trying to use a language that is as simple and elementary as possible.
 
-Each script is written exclusively for "AM" (and is structured in such a way that even "[AppMan](https://github.com/ivan-hc/AppMan)", the non-root version of "AM", can modify it to manage programs locally).
+Each script is written exclusively for "AM" and is structured in such a way that even "[AppMan](https://github.com/ivan-hc/AppMan)" can modify it to manage programs locally.
 
 We can divide the stages of an installation's process as follows:
 
@@ -640,10 +639,11 @@ We can divide the stages of an installation's process as follows:
 
 The most difficult step to overcome is certainly the number "3", given the great variety of methods in which authors distribute their software, while all the other steps are much easier to overcome.
 
-To install your own script, use the command `am test /path/to/your-script`, this way:
+To install and test your own script, use the command `am test /path/to/your-script` or `appman test /path/to/your-script` depending on your CLI, this way:
 
 https://github.com/ivan-hc/AM-Application-Manager/assets/88724353/fa0e8627-6beb-47fc-a52f-0d32e392c7ce
 
+-----------------------------------------------------------------------------
 -----------------------------------------------------------------------------
 # Troubleshooting
 -----------------------------------------------------------------------------
