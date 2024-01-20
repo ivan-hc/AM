@@ -385,7 +385,7 @@ NOTE: to mantain the name "appman" in this case is important to use some dedicat
 
  `-t {PROGRAM}`
  
- DESCRIPTION:	This option allows you to generate a custom script from a list of different templates that may be vary according to the kind of app you want to upload to the "AM" repo, and the source where it is available.
+ DESCRIPTION:	This option allows you to generate a custom script from a list of different templates that may be vary according to the kind of app you want to upload to the "AM" repo, and the source where it is available. You can install it using the `am test /path/to/your-script` command.
  ___________________________________________________________________________
  
  `-u`, `-U`, `update`
@@ -496,6 +496,13 @@ NOTE: to mantain the name "appman" in this case is important to use some dedicat
  DESCRIPTION:	Lock the selected app to the current version installed, this only works if exists a dedicated "AM-updater" installed with the app.
  __________________________________________________________________________
  
+ `test`
+ 
+ SYNOPSIS:	`test {FILE}`
+ 
+ DESCRIPTION:	Install a local installation script, or test your own.
+ __________________________________________________________________________
+ 
  `unlock`
  
  SYNOPSIS:
@@ -515,7 +522,7 @@ NOTE: to mantain the name "appman" in this case is important to use some dedicat
 
  `conv {PROGRAM}`
  
- DESCRIPTION:	Download the installation scripts for "AM" and converts them to rootless installation scripts that can be installed locally. 
+ DESCRIPTION:	Downloads the installation scripts for "AM" and converts them to rootless installation scripts that can be installed locally. 
  ___________________________________________________________________________
 
 # Features
@@ -619,6 +626,10 @@ We can divide the stages of an installation's process as follows:
 * [Step 8 (optional): your signature](https://github.com/ivan-hc/AM-Application-Manager/wiki/Step-8-(optional):-your-signature)
 
 The most difficult step to overcome is certainly the number "3", given the great variety of methods in which authors distribute their software, while all the other steps are much easier to overcome.
+
+To install your own script, use the command `am test /path/to/your-script`, this way:
+
+https://github.com/ivan-hc/AM-Application-Manager/assets/88724353/fa0e8627-6beb-47fc-a52f-0d32e392c7ce
 
 -----------------------------------------------------------------------------
 # Uninstall
