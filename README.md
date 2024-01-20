@@ -1,3 +1,6 @@
+# "AM"/"AppMan" Application Manager
+### *Database & solutions for all AppImages and portable apps for GNU/Linux!*
+
 ------------------------------------------------------------------------
 [Introducing "AM"](#introducing-am)
 - [Differences between "AM" and "AppMan"](#differences-between-am-and-appman)
