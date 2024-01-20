@@ -14,7 +14,8 @@
 - [Dependences](#dependences)
 - [How to install "AM"](#how-to-install-am)
 - [How to install "AppMan"](#how-to-install-appman)
-- - [Portable Mode](#portable-mode)
+  - [Portable Mode](#portable-mode)
+  - [Choose the directory for your applications](#choose-the-directory-for-your-applications)
 
 [Usage](#usage)
 
@@ -247,6 +248,11 @@ https://github.com/ivan-hc/AppMan/assets/88724353/83b552a2-97bc-4567-bbc4-026e05
 
 -----------------------------------------------------------------------------
 
+#### Choose the directory for your applications
+Run `appman` (if in `$PATH`) or `./appman`, you'll read a prompt that asks for a destination directory or path for your installed Applications.
+You can always modify the destination folder by editing the "`appman-config`" file under `~/.config/appman`.
+
+-----------------------------------------------------------------------------
 # USAGE
  
  `am {OPTION}`
