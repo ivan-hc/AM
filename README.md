@@ -17,6 +17,8 @@
   - [Portable Mode](#portable-mode)
   - [Choose the directory for your applications](#choose-the-directory-for-your-applications)
 
+[Uninstall](#uninstall)
+
 [Usage](#usage)
 
 [Features](#features)
@@ -252,6 +254,17 @@ Run `appman` (if in `$PATH`) or `./appman`, you'll read a prompt that asks for a
 You can always modify the destination folder by editing the "`appman-config`" file under `~/.config/appman`.
 
 -----------------------------------------------------------------------------
+# Uninstall
+Before you remove "AM"/AppMan, use the option `-R` to remove the apps installed using the following syntax (for example using "AM"):
+```
+am -R {PROGRAM1} {PROGRAM2} {PROGRAM3}...
+```
+to have a list of the installed programs use the option `-f` or `files` (syntax `am -f` or `appman -f`).
+
+- To uninstall "AM" just run the command `am -r am` (with a prompt) or `am -R am` (quick)
+- To uninstall "AppMan" just remove it and the directory $HOME/.config/appman
+
+------------------------------------------------------------------------	
 # USAGE
 ```
  am {OPTION}
@@ -654,12 +667,6 @@ To install your own script, use the command `am test /path/to/your-script`, this
 https://github.com/ivan-hc/AM-Application-Manager/assets/88724353/fa0e8627-6beb-47fc-a52f-0d32e392c7ce
 
 -----------------------------------------------------------------------------
-# Uninstall
-To uninstall "AM" just run the command:
-
-	am -r am
-
-------------------------------------------------------------------------	
 # Troubleshooting
 
 <details>
