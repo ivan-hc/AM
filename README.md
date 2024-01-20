@@ -163,9 +163,9 @@ Here are the ways in which the updates will be made:
 - Non-updateable AppImages and other standalone programs will be replaced only with a more recent version if available, this will be taken by comparing the installed version with the one available on the source (using "curl", "grep" and "cat"), the same is for some AppImages created with [pkg2appimage](https://github.com/AppImage/pkg2appimage) and [appimagetool](https://github.com/AppImage/AppImageKit);
 - Fixed versions will be listed with their build number (e.g. $PROGRAM-1.1.1). Note that most of the programs are updateable, so fixed versions will only be added upon request (or if it is really difficult to find a right wget/curl command to download the latest version).
 
-With "AM", during the first installation, the main user (`$currentuser`) will take the necessary permissions on each `/opt/$PROGRAM` directory, in this way all updates will be automatic and without root permissions.
+***NOTE, with "AM", during the first installation, the main user (`$currentuser`) will take the necessary permissions on each `/opt/$PROGRAM` directory, in this way all updates will be automatic and without root permissions.***
 
-###### In this video I'll show you how to test an update on "Avidemux" (I use my custom AppImage I have built from "deb-multimedia", for my use case, but don't worry, the official Avidemux AppImage is also available on this repository). Firefox, on the other hand, is not affected by this management, as it can be updated automatically:
+###### *In this video I'll show you how to test an update on "Avidemux" using "AM" (I use my custom AppImage I have built from "deb-multimedia", for my use case, but don't worry, the official Avidemux AppImage is also available on this repository). Firefox, on the other hand, is not affected by this management, as it can be updated automatically*:
 
 https://github.com/ivan-hc/AM-Application-Manager/assets/88724353/7e1845e7-bd02-495a-a1b5-735867a765d1
 
