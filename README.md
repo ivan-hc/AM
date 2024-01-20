@@ -142,7 +142,11 @@ These programs are taken:
 
 "AM"/"AppMan" can even create Firefox profiles to run as webapps (as an alternative to the countless Electron-based apps/AppImages)!
 
-You can consult basic information, links to sites and sources used through the related `am -a $PROGRAM` command or by connecting to https://portable-linux-apps.github.io
+You can consult basic information, links to sites and sources used through the related `am -a $PROGRAM` command or by connecting to the main site of this project:
+
+# [*https://portable-linux-apps.github.io*](https://portable-linux-apps.github.io)
+
+The "AM" repository aims to be a reference point where you can download all the AppImage packages scattered around the web, otherwise unobtainable, as you would expect from any package manager, through specific installation scripts for each application, as happens with the AUR PKGBUILDs, on Arch Linux. "AM" is intended to be a kind of Arch User Repository (AUR) of AppImage packages, providing them a home to stay. An both "AM" and "AppMan" are the key of this home.
 
 -----------------------------------------------------------------------------
 ## How to update all programs, for real
