@@ -482,15 +482,6 @@ You can always modify the destination folder by editing the "`appman-config`" fi
  DESCRIPTION:	Download an older or specific version of the software you are interested in (only works with Github).
  ___________________________________________________________________________ 
  
- `--user`, `appman`
- 
- SYNOPSIS:
-
- `--user`
- 
- DESCRIPTION:	Run "AM" as an unprivileged user making it act as "AppMan".
- __________________________________________________________________________
- 
  `apikey`
  
  SYNOPSIS:	`apikey {Github Token}`
@@ -533,17 +524,26 @@ You can always modify the destination folder by editing the "`appman-config`" fi
  ___________________________________________________________________________
  ___________________________________________________________________________
 
- EXTRA OPTIONS (only available for "APPMAN")
+ EXTRA OPTIONS
  ___________________________________________________________________________
 
- `conv`, `convert`
+ `conv`, `convert`			 (only available for "APPMAN")
  
  SYNOPSIS:
 
  `conv {PROGRAM}`
  
  DESCRIPTION:	Downloads the installation scripts for "AM" and converts them to rootless installation scripts that can be installed locally. 
- ___________________________________________________________________________
+ ___________________________________________________________________________ 
+ 
+ `--user`, `appman`			(only available for "AM")
+ 
+ SYNOPSIS:
+
+ `--user`
+ 
+ DESCRIPTION:	Run "AM" as an unprivileged user making it act as "AppMan".
+ __________________________________________________________________________
 
 </details>
 
