@@ -28,8 +28,6 @@
 
 [Create your own script](#create-your-own-script)
 
-[Uninstall](#uninstall)
-
 [Troubleshooting](#troubleshooting)
 - [An application does not work, is old and unsupported](#an-application-does-not-work-is-old-and-unsupported)
 - [Cannot download or update an application](#cannot-download-or-update-an-application)
