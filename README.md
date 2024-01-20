@@ -713,7 +713,6 @@ Accept the integration request, the launcher will be saved in the walc.home dire
 - [appimageupdatetool](https://github.com/AppImage/AppImageUpdate)
 - [libunionpreload](https://github.com/project-portable/libunionpreload)
 - [pkg2appimage](https://github.com/AppImage/pkg2appimage)
-- [pkg2appimage-32bit](https://github.com/ivan-hc/pkg2appimage-32bit) (fork)
 
 #### My other projects
 - [AppImaGen](https://github.com/ivan-hc/AppImaGen), a script that generates AppImages from Debian or from a PPA for the previous Ubuntu LTS;
