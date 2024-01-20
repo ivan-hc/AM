@@ -203,19 +203,23 @@ A warning message will prevent you from using "AM"/"AppMan" if the following pac
 - "`sed`", to edit/adapt installed files;
 - "`wget`" to download all programs and update "AM"/AppMan itself;
 
-#### *Below is a dependency needed only by "AM"*
-- "`sudo`" (only "AM")
+- "`sudo`" (only required by "AM")
 
 ###### *NOTE, if for some reason you don't use `sudo` and you prefer to gain administration privileges using alternative commands such as `doas` or similar, simply use "AppMan"*
 
+<details>
+  <summary>See also optional dependencies, click here!</summary>
+
 #### *Listed below are optional dependencies that are needed only by some programs*
 Don't worry, if you come across one of these programs, a message will warn you that the program cannot be installed, skipping the installation process just for that script:
-- "`ar`" (available in "`binutils`") is needed to extract .deb packages (that are very few in this repository);
+- "`binutils`", contains a series of basic commands, including "`ar`" which extracts .deb packages (which are very few here);
 - "`unzip`", to extract .zip packages;
 - "`tar`", to extract .tar* packages;
 - "`zsync`", about 10% of AppImages depend on this to be updated.
 
------------------------------------------------------------------------------
+</details>
+
+------------------------------------------------------------------------
 # Proceed
 "AM" is ment to be installed at system level to manage apps using `sudo` privileges.
 
