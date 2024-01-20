@@ -254,16 +254,18 @@ You can always modify the destination folder by editing the "`appman-config`" fi
 
 -----------------------------------------------------------------------------
 # USAGE
+```
+ am {OPTION}
  
- `am {OPTION}`
- 
- `am {OPTION} {PROGRAM}`
+ am {OPTION} {ARGUMENT}
+```
+
+<details>
+  <summary>Click here to see the full list of options</summary>
+
  ___________________________________________________________________________
  
- ###########################################################################
- ___________________________________________________________________________
- 
- OPTIONS 
+ ## OPTIONS 
  				
  (standard, for both "AM" and "APPMAN")
  ___________________________________________________________________________
@@ -543,6 +545,9 @@ You can always modify the destination folder by editing the "`appman-config`" fi
  DESCRIPTION:	Downloads the installation scripts for "AM" and converts them to rootless installation scripts that can be installed locally. 
  ___________________________________________________________________________
 
+</details>
+
+------------------------------------------------------------------------
 # Features
 ------------------------------------------------------------------------
 ### How to enable bash completion
