@@ -51,6 +51,8 @@ This project is the set of two Command Line Interfaces that coexist in the same 
 
 **This repository is focused on using "AM" and contains the full database of the installation scripts for the applications managed by both "AM" and "AppMan"!**
 
+*For specific guide on using "AppMan", see https://github.com/ivan-hc/AppMan*
+
 *See "AM" in action (version 4.3.2):*
 
 https://github.com/ivan-hc/AM-Application-Manager/assets/88724353/b2dd8ca6-5ee7-4bb2-8480-9a53f5cfcf56
@@ -72,10 +74,6 @@ https://github.com/ivan-hc/AM-Application-Manager/commits/main/APP-MANAGER
 - ***For a summary of the new versions, consult the "releases" section of the "AM" repository at the following link***:
 
 https://github.com/ivan-hc/AM-Application-Manager/releases
-
-- ***For more information on using "AppMan", access the following link***:
-
-https://github.com/ivan-hc/AppMan
 
 ------------------------------------------------------------------------
 
