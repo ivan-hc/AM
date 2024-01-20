@@ -202,7 +202,7 @@ A warning message will prevent you from using "AM"/"AppMan" if the following pac
 #### *Below is a dependency needed only by "AM"*
 - "`sudo`" (only "AM")
 
-*****NOTE, if for some reason you don't use `sudo` and prefer to gain administration privileges using alternative commands such as `doas` or similar, simply use "AppMan"*****
+###### *NOTE, if for some reason you don't use `sudo` and prefer to gain administration privileges using alternative commands such as `doas` or similar, simply use "AppMan"*
 
 #### *Listed below are optional dependencies that are needed only by some programs*
 Don't worry, if you come across one of these programs, a message will warn you that the program cannot be installed, skipping the installation process just for that script:
