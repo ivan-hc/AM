@@ -59,7 +59,7 @@ https://github.com/ivan-hc/AM-Application-Manager/assets/88724353/b2dd8ca6-5ee7-
 
 Being "[APP-MANAGER](https://github.com/ivan-hc/AM-Application-Manager/blob/main/APP-MANAGER)" a bash-based script, it can be used on all the architectures supported by the Linux kernel and works with all the GNU/Linux distributions.
 
-The main goal of this tool is to provide the same updated applications to multiple GNU/Linux distributions without having to change the package manager or the distro itself. This means that whatever distro you use, you will not miss your favorite programs or the need for a more updated version.
+The main goal of this tool is to provide the same updated applications (in AppImage format or as a standalone and portable bundle) to multiple GNU/Linux distributions without having to change the package manager or the distro itself. This means that whatever distro you use, you will not miss your favorite programs or the need for a more updated version.
 
 "AM"/"AppMan" also aims to be a merger for GNU/Linux distributions, using not just AppImage as the main package format, but also other standalone programs, so without having to risk breaking anything on your system: no daemons, no shared libraries. Just your program!
 
