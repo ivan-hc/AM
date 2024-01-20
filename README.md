@@ -594,20 +594,25 @@ All the snapshots are stored into an hidden `/home/$USER/.am-snapshots` folder c
 # Install/update/remove programs without "AM"
 "AM" focuses a lot on the autonomy of its programs, so much that you can install, update and remove them without necessarily having "AM" installed on your system.
 - To install a program without "am", replace "SAMPLE" at the line 2 with the name of the program you want to install:
-	
-	  ARCH=$(uname -m)
-	  PROGRAM=SAMPLE
-	  wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/programs/$ARCH/$PROGRAM
-	  chmod a+x ./$PROGRAM
-	  sudo ./$PROGRAM
+```
+ARCH=$(uname -m)
+PROGRAM=SAMPLE
+wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/programs/$ARCH/$PROGRAM
+chmod a+x ./$PROGRAM
+ sudo ./$PROGRAM
+```
 - To update a program without "am" instead, just run:
-	
-	  /opt/$PROGRAM/AM-updater
+```
+/opt/$PROGRAM/AM-updater
+```
 Note that this works only if the program has a /opt/$PROGRAM/AM-updater script, other programs like Firefox and Thunderbird are auto-updatable. 
 	
 - To uninstall a program without "am":
-	
-	  sudo /opt/$PROGRAM/remove
+```
+sudo /opt/$PROGRAM/remove
+```
+
+***NOTE, to do the same thing but locally, without `sudo`, you must necessarily use "AppMan". Installation scripts are written for system-wide installation only. To convert them to AppMan style installation scripts use the `appman convert {PROGRAM}` command to download and patch them.***
 
 ------------------------------------------------------------------------
 # Rollback
