@@ -43,8 +43,6 @@
 
 [Related projects](#related-projects)
 
-[Conclusions](#conclusions)
-
 -----------------------------------------------------------------------------
 # Introducing "AM"
 This project is the set of two Command Line Interfaces that coexist in the same body, "[APP-MANAGER](https://github.com/ivan-hc/AM-Application-Manager/blob/main/APP-MANAGER)". This script, depending on how it is installed and renamed, allows you to install and manage any AppImage package, but also the official versions of Firefox, Thunderbird, Brave, Blender and hundreds of other programs provided on their official sites... in the same way but with different installation methods, at system level as super user or locally. These two CLIs, or entities, are "AM" (`am` command) and "AppMan" (`appman` command), respectively.
@@ -727,7 +725,9 @@ Accept the integration request, the launcher will be saved in the walc.home dire
 - [Firefox for Linux scripts](https://github.com/ivan-hc/Firefox-for-Linux-scripts), easily install the official releases of Firefox for Linux.
 
 ------------------------------------------------------------------------
-# Conclusions
-Having encouraged you to visit this page is already a huge achievement for me, being this my second creation after AppMan. This project is much more demanding than AppMan, as each individual program requires a different script to check the version of the installed program and compare it to the source link, so each individual program can take hours of testing before being published in the repository, and between my real job and other family commitments, I try to carve up some free time for this project.
 
-If you wish, you can support me, this work and my passion with a small [donation](https://paypal.me/ivanalexhc), I will gladly appreciate it. Thank you.
+###### *You can support me and my work on [**ko-fi.com**](https://ko-fi.com/IvanAlexHC) and [**PayPal.me**](https://paypal.me/IvanAlexHC). Thank you!*
+
+--------
+
+*© 2020-present Ivan Alesandro Sala aka 'Ivan-HC'* - I'm here just for fun! 
