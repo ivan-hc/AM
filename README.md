@@ -12,10 +12,7 @@
 
 [Installation](#installation)
 - [Dependences](#dependences)
-- [How to install "AM"](#how-to-install-am)
-- [How to install "AppMan"](#how-to-install-appman)
-  - [Portable Mode](#portable-mode)
-  - [Choose the directory for your applications](#choose-the-directory-for-your-applications)
+- [Proceed](#proceed)
 
 [Uninstall](#uninstall)
 
@@ -219,7 +216,7 @@ Don't worry, if you come across one of these programs, a message will warn you t
 - "`zsync`", about 10% of AppImages depend on this to be updated.
 
 -----------------------------------------------------------------------------
-# How to install "AM"
+# Proceed
 "AM" is ment to be installed at system level to manage apps using `sudo` privileges.
 
 To install "AM" quickly, just copy/paste the following command:
@@ -234,29 +231,6 @@ chmod a+x INSTALL
 sudo ./INSTALL
 ```    
 In both cases, the "INSTALL" script will create a dedicated /opt/am directory containing the ["APP-MANAGER"](https://github.com/ivan-hc/AM-application-manager/blob/main/APP-MANAGER) script (ie "AM" itself), a symlink for it in /usr/local/bin named `am` and the /opt/am/remove script needed to [uninstall](#uninstall) "AM" itself, if needed. A temporary folder named /opt/am/.cache will be created too, in wich each installation script or list of available applications (for your architecture) is downloaded.
-
------------------------------------------------------------------------------
-# How to install "AppMan"
-To install "AppMan" in `~/.local/bin` you must first enable that path in `$PATH` by adding `export PATH=$PATH:$(xdg-user-dir USER)/.local/bin` in the ` ~/.bashrc`. Obviously you need to create the `~/.local/bin` directory if it is not available.
-
-To do all this simply copy/paste the following command:
-```
-mkdir -p ~/.local/bin && echo 'export PATH=$PATH:$(xdg-user-dir USER)/.local/bin' >> ~/.bashrc && wget https://raw.githubusercontent.com/ivan-hc/AM-Application-Manager/main/APP-MANAGER -O appman && chmod a+x ./appman && mv ./appman ~/.local/bin/appman
-```
-#### Portable Mode
-"AppMan" can run in any directory you download it, copy/paste the following command to download "APP-MANAGER", rename it to `appman` and make it executable:
-```
-wget https://raw.githubusercontent.com/ivan-hc/AM-Application-Manager/main/APP-MANAGER -O appman && chmod a+x ./appman
-```
-###### *In this video I'll show you how it is easy to use AppMan quickly and without installation:*
-
-https://github.com/ivan-hc/AppMan/assets/88724353/83b552a2-97bc-4567-bbc4-026e05d6f392
-
------------------------------------------------------------------------------
-
-#### Choose the directory for your applications
-Run `appman` (if in `$PATH`) or `./appman`, you'll read a prompt that asks for a destination directory or path for your installed Applications.
-You can always modify the destination folder by editing the "`appman-config`" file under `~/.config/appman`.
 
 -----------------------------------------------------------------------------
 # Uninstall
