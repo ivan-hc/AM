@@ -80,6 +80,7 @@ cat <<-HEREDOC >> "$AMPATH/options"
 	remove
 	sync
 	template
+	test
 	unlock
 	update
 	web
@@ -313,6 +314,8 @@ case "$1" in
  list of different templates that may be vary according to the kind of app 
  
  you want to upload to the "AM" repo, and the source where it is available.
+ 
+ You can install it using the "'$AMCLI' test /path/to/your-script" command.
  __________________________________________________________________________
  
  -u, -U, update
@@ -414,6 +417,13 @@ case "$1" in
  only works if exists a dedicated "AM-updater" installed with the app.
  __________________________________________________________________________
  
+ test
+ 
+ SYNOPSIS:	test {FILE}
+ 
+ DESCRIPTION:	Install a local installation script, or test your own.
+ __________________________________________________________________________
+ 
  unlock
  
  SYNOPSIS:	unlock {PROGRAM}
@@ -431,7 +441,7 @@ case "$1" in
  
  SYNOPSIS:	conv {PROGRAM}
  
- DESCRIPTION:	Download the installation scripts for "AM" and converts 
+ DESCRIPTION:	Downloads the installation scripts for "AM" and converts 
  
  them to rootless installation scripts that can be installed locally. 
  __________________________________________________________________________
@@ -2382,6 +2392,117 @@ case "$1" in
 	shift
 	;;
 
+  'test')
+
+	_online_check
+
+	while [ -n "$1" ]; do
+
+		case $2 in
+		'') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
+		esac
+
+		if [ $AMCLI == am ] 2>/dev/null; then
+  			$SUDOCOMMAND echo "" 2>/dev/null
+  			if ! $SUDOCOMMAND -n true 2>/dev/null; then
+				exit
+  			fi
+  		fi
+
+		path2test="$2"
+		arg=$(echo "$path2test" | sed 's:.*/::')
+
+		function _test(){
+			if test -f $APPSPATH/$arg/remove; then
+				echo -e ' ERROR: an item named "'$arg'" is already installed!\n\n Please, use the command "'$AMCLI' -R '$arg'" to remove it!' && echo ""; exit
+			else
+				echo -e "-----------------------------------------------------------------------\n >> TEST THE INSTALLATION PROCESSES <<\n-----------------------------------------------------------------------"
+				rm -R -f $AMPATH/.cache/installed
+				mkdir -p $AMPATH/.cache; cp "$path2test" "$AMPATH"/.cache/"$arg"; cd $AMPATH/.cache
+				chmod a+x ./$arg
+
+				function _test_common_patch(){
+					sed -i "s#wget #wget -q --show-progress #g" ./$arg; sed -i 's#$(wget -q --show-progress #$(wget -q #g' ./$arg; sed -i "s# -q -q # -q #g" ./$arg
+					sed -i 's/currentuser=/#currentuser=/g' ./$arg
+					sed -i 's/chown -R $currentuser/#chown -R $currentuser/g' ./$arg
+					sed -i '/# MESSAGE/,$d' ./$arg
+					sed -i "s# https://api.github.com#$HeaderAuthWithGITPAT https://api.github.com#g" ./$arg
+				}
+
+				function _test_appman_local_patch(){
+					sed -i "s# /opt# $APPSPATH#g" ./$arg
+					sed -i "s#/opt/#$APPSPATH/#g" ./$arg
+					sed -i "s# /usr/local/bin# $(xdg-user-dir USER)/.local/bin#g" ./$arg
+					sed -i "s# /usr/bin# $(xdg-user-dir USER)/.local/bin#g" ./$arg
+					sed -i "s# /usr/local/games# $(xdg-user-dir USER)/.local/bin#g" ./$arg
+					sed -i "s# /usr/games# $(xdg-user-dir USER)/.local/bin#g" ./$arg
+					sed -i "s# /usr/share/applications# $(xdg-user-dir USER)/.local/share/applications#g" ./$arg
+					sed -i "s# /usr/local/share/applications# $(xdg-user-dir USER)/.local/share/applications#g" ./$arg
+					sed -i "s# /usr/share/pixmaps# $(xdg-user-dir USER)/.local/share/icons#g" ./$arg
+					sed -i "s# /usr/local/share/pixmaps# $(xdg-user-dir USER)/.local/share/icons#g" ./$arg
+				}
+
+				if [ $AMCLI == appman ] 2>/dev/null; then
+					sed -i "s#Icon=/opt#Icon=$(xdg-user-dir USER)/$APPSDIR#g" ~/.local/share/applications/AM*.desktop 2> /dev/null
+					sed -i "s#Exec=$arg#Exec=$(xdg-user-dir USER)/.local/bin/$arg#g" ~/.local/share/applications/AM*.desktop 2> /dev/null
+					sed -i 's#Exec=$APP#Exec='$(xdg-user-dir USER)'/.local/bin/$APP#g' ~/.local/share/applications/AM*.desktop 2> /dev/null
+					sed -i "s#Exec=/usr/bin/#Exec=$(xdg-user-dir USER)/.local/bin/#g" ~/.local/share/applications/AM*.desktop 2> /dev/null
+					sed -i "s#Exec=/opt/#Exec=$(xdg-user-dir USER)/$APPSDIR/#g" ~/.local/share/applications/AM*.desktop 2> /dev/null
+				fi
+
+				if [ $AMCLI == appman ] 2>/dev/null; then
+					_test_common_patch
+					_test_appman_local_patch
+				else
+					if [[ $(grep "[[:space:]]ro[[:space:],]" /proc/mounts) ]]; then
+						$SUDOCOMMAND mkdir -p /usr/local/share/applications
+						sed -i 's#/usr/share/applications#/usr/local/share/applications#g' ./$arg
+					fi
+					_test_common_patch
+				fi
+
+				echo -ne " ◆ RUNNING YOUR INSTALLATION SCRIPT FOR $(echo '"'$arg'"' | tr a-z A-Z)... \r" &&
+				$SUDOCOMMAND ./$arg && echo -ne "                                                                          \r" &&
+				echo -ne " ◆ CONFIGURING $(echo '"'$arg'"' | tr a-z A-Z)...\r" && echo -ne "                                                                          \r" &&
+				$SUDOCOMMAND chown -R $currentuser $APPSPATH/$(cd $APPSPATH && ls -td * | head -1) 2> /dev/null
+
+				if test -d $APPSPATH/$(cd $APPSPATH && ls -td * | head -1)/icons; then
+					find $APPSPATH/$(cd $APPSPATH && ls -td * | head -1)/icons/* -xtype l -delete 2> /dev/null
+					if [ -z "$(ls -A $APPSPATH/$(cd $APPSPATH && ls -td * | head -1)/icons)" ]; then
+						echo " Icon not found"
+					fi 
+				fi &&
+
+				echo -ne " ◆ $(echo '"'$arg'"' | tr a-z A-Z) TESTED AND INSTALLED ($(du -sm $APPSPATH/$(cd $APPSPATH && ls -td * | head -1) | awk '{print $1}' ) MB OF DISK SPACE)\n"
+				$SUDOCOMMAND rm $AMPATH/.cache/$arg
+				unset $LATESTDIR
+				LATESTDIR=$(cd $APPSPATH && ls -td * | head -1)
+
+				if test -f $APPSPATH/$LATESTDIR/remove; then
+					if test -d $APPSPATH/$LATESTDIR/tmp; then
+						echo -e " 💀 ERROR DURING INSTALLATION TEST, REMOVED $(echo '"'$arg'"' | tr a-z A-Z)!"
+						$AMCLIPATH -R $LATESTDIR 1> /dev/null
+					else
+						echo " ◆ $LATESTDIR" >> $AMPATH/.cache/installed &&
+						chown -R $currentuser $AMPATH/.cache/about 2> /dev/null
+					fi
+				else
+					echo " INSTALLATION TEST ABORTED!"
+				fi
+			fi
+		}
+
+		_test
+
+		echo -e "\n-----------------------------------------------------------------------\n >> END OF ALL INSTALLATION TEST <<\n-----------------------------------------------------------------------\n\n THE FOLLOWING NEW PROGRAM HAVE BEEN INSTALLED:\n"
+		echo -e "\n-----------------------------------------------------------------------" >> $AMPATH/.cache/installed
+		grep -w -v "◆ am" 0<$AMPATH/.cache/installed;
+		exit
+	done
+
+	shift
+	;;
+
   'unlock')
 
 	_no_sudo
@@ -2414,7 +2535,7 @@ case "$1" in
 
   'version'|'-v'|'--version')
 
-  	echo "5.5-1";;
+  	echo "5.6";;
 
   *) exec $AMCLIPATH ;;
 
