@@ -559,6 +559,10 @@ to have a list of the installed programs use the option `-f` or `files` (syntax 
 
 ------------------------------------------------------------------------
 # Features
+
+<details>
+  <summary>Click here</summary>
+
 ------------------------------------------------------------------------
 ### How to enable bash completion
 Since 2.3.1 release "AM" has its inbuilt bash completion script that can be enabled using the following command:
@@ -637,6 +641,10 @@ At first start a copy of /etc/firejail/default.profile will be saved in your app
 Options 1, 2 and 5 are continuous to let you edit the file and test your changes immediately. Press any key to exit.
 
 NOTE: once patched the .desktop files (options 3 and 4), they will be placed in ~/.local/share/applications, this means that if you have installed apps using AppMan, the original launchers will be overwrited.
+
+------------------------------------------------------------------------
+
+</details>
 
 ------------------------------------------------------------------------
 # Create your own script
