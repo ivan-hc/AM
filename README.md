@@ -11,11 +11,10 @@
 - [Comparison with other AppImage managers](#comparison-with-other-appimage-managers)
 
 [Installation](#installation)
-- [Requirements](#requirements)
-  - [Dependences](#dependences)
-  - [Optional-dependences](#optional-dependences)
-- [For non-sudo users](#for-non-sudo-users)
-- [Proceeding](#proceeding)
+- [Dependences](#dependences)
+- [How to install "AM"](#how-to-install-am)
+- [How to install "AppMan"](#how-to-install-appman)
+- - [Portable Mode](#portable-mode)
 
 [Usage](#usage)
 
@@ -190,50 +189,60 @@ If you are interested, you can deliberately join this project to improve the lis
 - With "AM"/"AppMan" each installed program has its own script (AM-updater) that compares the installed version with the one available in the sources or uses official tools to update the AppImages ([see above](#how-to-update-all-programs-for-real)), there is support for multiple architectures (including i686 and aarch64) and anyone can create a script to install that particular program (if available for its architecture).
 
 -----------------------------------------------------------------------------
-
 # Installation
-### Requirements
-#### Dependences
-A warning message will prevent you from using "AM" if the following packages are not installed on your system:
-- "`cat`", "`chmod`" and "`chown`" (available in "`coreutils`");
+### Dependences
+#### *Below are the essential dependencies for both "AM" and "AppMan"!*
+A warning message will prevent you from using "AM"/"AppMan" if the following packages are not installed on your system:
+- "`coreutils`", is usually installed by default in all distributions as it contains basic commands ("`cat`", "`chmod`", "`chown`"...);
 - "`curl`", to check URLs;
 - "`grep`", to check files;
 - "`sed`", to edit/adapt installed files;
-- "`wget`" to download all programs and update "AM"/AppMan itself.
+- "`wget`" to download all programs and update "AM"/AppMan itself;
 
-#### Optional dependences
-The following dependences are optional for "AM" and AppMan themself, but to prevent installation/update errors for some kind of packages, its strongly recommended to install them:
+#### *Below is a dependency needed only by "AM"*
+- "`sudo`" (only "AM")
+****NOTE, if for some reason you don't use `sudo` and prefer to gain administration privileges using alternative commands such as `doas` or similar, simply use "AppMan"****
+
+#### *Listed below are optional dependencies that are needed only by some programs*
+Don't worry, if you come across one of these programs, a message will warn you that the program cannot be installed, skipping the installation process just for that script:
 - "`ar`" (available in "`binutils`") is needed to extract .deb packages (that are very few in this repository);
 - "`unzip`", to extract .zip packages;
 - "`tar`", to extract .tar* packages;
 - "`zsync`", about 10% of AppImages depend on this to be updated.
 
-For more details, jump to the paragraph "[Missing dependences](#missing-dependences)", under the section "[Troubleshooting](#troubleshooting)".
-
 -----------------------------------------------------------------------------
-### For non-sudo users
-"AM" requires `sudo` installed on your system by default, if for some reason you need to use commands like `doas` or whatever, just use "[AppMan](https://github.com/ivan-hc/AppMan)" instead.
-
------------------------------------------------------------------------------
-## Proceeding
+# How to install "AM"
 "AM" is ment to be installed at system level to manage apps using `sudo` privileges.
+
 To install "AM" quickly, just copy/paste the following command:
-	
-    wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/INSTALL && chmod a+x ./INSTALL && sudo ./INSTALL
-
+```
+wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/INSTALL && chmod a+x ./INSTALL && sudo ./INSTALL
+```
 Or use "GIT":
-
-    git clone https://github.com/ivan-hc/AM-application-manager.git
-    cd AM-application-manager
-    chmod a+x INSTALL
-    sudo ./INSTALL
-    
+```
+git clone https://github.com/ivan-hc/AM-application-manager.git
+cd AM-application-manager
+chmod a+x INSTALL
+sudo ./INSTALL
+```    
 In both cases, the "INSTALL" script will create a dedicated /opt/am directory containing the ["APP-MANAGER"](https://github.com/ivan-hc/AM-application-manager/blob/main/APP-MANAGER) script (ie "AM" itself), a symlink for it in /usr/local/bin named `am` and the /opt/am/remove script needed to [uninstall](#uninstall) "AM" itself, if needed. A temporary folder named /opt/am/.cache will be created too, in wich each installation script or list of available applications (for your architecture) is downloaded.
 
-However, if you want to use it to manage apps locally and without installing it, use the following command to have it as "AppMan":
+-----------------------------------------------------------------------------
+# How to install "AppMan"
+To install "AppMan" in `~/.local/bin` you must first enable that path in `$PATH` by adding `export PATH=$PATH:$(xdg-user-dir USER)/.local/bin` in the ` ~/.bashrc`. Obviously you need to create the `~/.local/bin` directory if it is not available.
 
-    wget https://raw.githubusercontent.com/ivan-hc/AM-Application-Manager/main/APP-MANAGER -O ./appman && chmod a+x ./appman
-***NOTE: again, to mantain the name "`appman`" in this case is important to use some dedicated options. If you need to use the "`am`" command instead, install "AM" regularly as suggested above and use the option "`--user`" (see https://github.com/ivan-hc/AM-Application-Manager#use-am-locally-like-appman-does).***
+To do this simply copy/paste the following command:
+```
+mkdir -p ~/.local/bin && echo 'export PATH=$PATH:$(xdg-user-dir USER)/.local/bin' >> ~/.bashrc && wget https://raw.githubusercontent.com/ivan-hc/AM-Application-Manager/main/APP-MANAGER -O appman && chmod a+x ./appman && mv ./appman ~/.local/bin/appman
+```
+#### Portable Mode
+"AppMan" can run in any directory you download it, copy/paste the following command to download "APP-MANAGER", rename it to `appman` and make it executable:
+```
+wget https://raw.githubusercontent.com/ivan-hc/AM-Application-Manager/main/APP-MANAGER -O appman && chmod a+x ./appman
+```
+###### *In this video I'll show you how it is easy to use AppMan quickly and without installation:*
+
+https://github.com/ivan-hc/AppMan/assets/88724353/83b552a2-97bc-4567-bbc4-026e05d6f392
 
 -----------------------------------------------------------------------------
 
