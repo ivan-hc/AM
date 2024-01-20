@@ -232,7 +232,7 @@ In both cases, the "INSTALL" script will create a dedicated /opt/am directory co
 # How to install "AppMan"
 To install "AppMan" in `~/.local/bin` you must first enable that path in `$PATH` by adding `export PATH=$PATH:$(xdg-user-dir USER)/.local/bin` in the ` ~/.bashrc`. Obviously you need to create the `~/.local/bin` directory if it is not available.
 
-To do this simply copy/paste the following command:
+To do all this simply copy/paste the following command:
 ```
 mkdir -p ~/.local/bin && echo 'export PATH=$PATH:$(xdg-user-dir USER)/.local/bin' >> ~/.bashrc && wget https://raw.githubusercontent.com/ivan-hc/AM-Application-Manager/main/APP-MANAGER -O appman && chmod a+x ./appman && mv ./appman ~/.local/bin/appman
 ```
