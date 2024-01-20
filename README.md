@@ -53,7 +53,7 @@ This project is the set of two Command Line Interfaces that coexist in the same 
 
 *For specific guide on using "AppMan", see https://github.com/ivan-hc/AppMan*
 
-*See "AM" in action (version 4.3.2):*
+*See it in action ("AM" version 4.3.2):*
 
 https://github.com/ivan-hc/AM-Application-Manager/assets/88724353/b2dd8ca6-5ee7-4bb2-8480-9a53f5cfcf56
 
