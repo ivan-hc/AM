@@ -596,7 +596,7 @@ All the snapshots are stored into an hidden `/home/$USER/.am-snapshots` folder c
 </details>
 
 ------------------------------------------------------------------------
-# Install/update/remove programs without "AM"
+### Install/update/remove programs without "AM"
 <details>
   <summary>Click here to find out more</summary>
 "AM" focuses a lot on the autonomy of its programs, so much that you can install, update and remove them without necessarily having "AM" installed on your system.
@@ -624,7 +624,7 @@ sudo /opt/$PROGRAM/remove
 </details>
 
 ------------------------------------------------------------------------
-# Rollback
+### Rollback
 <details>
   <summary>Click here to find out more</summary>
 From version 4.4 it is possible to directly select from a list of URLs the version of the app that interests you most from the main source. Use the `--rollback` option in this mode:
@@ -636,7 +636,7 @@ This only works with the apps hosted on Github.
 </details>
 
 ------------------------------------------------------------------------
-# Manage local AppImages
+### Manage local AppImages
 <details>
   <summary>Click here to find out more</summary>
 Since version 4.4.2 you can use the `--launcher` option to integrate your local AppImage packages by simply dragging and dropping them into the terminal (see video).
@@ -646,7 +646,7 @@ https://github.com/ivan-hc/AM-Application-Manager/assets/88724353/c4b889f4-8504-
 </details>
 
 ------------------------------------------------------------------------
-# Sandbox using Firejail
+### Sandbox using Firejail
 <details>
   <summary>Click here to find out more</summary>
 Since version 5.3 you can use the `--firejail` option to run AppImages using a sandbox (requires Firejail installed on the host).
@@ -660,7 +660,7 @@ NOTE: once patched the .desktop files (options 3 and 4), they will be placed in 
 </details>
 
 ------------------------------------------------------------------------
-# Create and test your own installation script
+### Create and test your own installation script
 <details>
   <summary>Click here to find out more</summary>
 "AM"/"AppMan" has a `-t` option (or `template`) with which you can get a script to customize according to your needs. With this option, you can quickly create scripts to download existing programs or even create AppImage or AppDirs through tools such as [appimagetool](https://github.com/AppImage/AppImageKit) and [pkg2appimage](https://github.com/AppImage/pkg2appimage).
