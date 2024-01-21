@@ -1,4 +1,4 @@
-# "AM"/"AppMan" Application Manager
+# "AM" Application Manager
 ### *Database & solutions for all AppImages and portable apps for GNU/Linux!*
 
 ------------------------------------------------------------------------
