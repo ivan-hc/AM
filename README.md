@@ -738,13 +738,9 @@ Before installing any application, try to know where it comes from first. This p
 </details>
 
 -----------------------------------------------------------------------------
-### Wrong download link
+### Stop AppImage prompt to create its own launcher, desktop integration and doubled launchers
 <details>
   <summary></summary>
-The reasons may be two:
-- the referring link may have been changed, try the `--rollback` option;
-- the reference site has changed, report any changes at https://github.com/ivan-hc/AM-Application-Manager/issues
-### Stop AppImage prompt to create its own launcher, desktop integration and doubled launchers
 Some developers insist on creating Appimages that create their own launcher on first launch (like WALC and OpenShot). If the official solution proposed [here](https://discourse.appimage.org/t/stop-appimage-from-asking-to-integrate/488) doesn't work, create a .home directory with the `-H` option, launch the app and accept the request. For example (with "AM"):
 ```
 am -H walc
@@ -755,9 +751,13 @@ Accept the integration request, the launcher will be saved in the walc.home dire
 </details>
 
 -----------------------------------------------------------------------------
-### Stop AppImage prompt to create its own launcher, desktop integration and doubled launchers
+### Wrong download link
 <details>
   <summary></summary>
+The reasons may be two:
+- the referring link may have been changed, try the `--rollback` option;
+- the reference site has changed, report any changes at https://github.com/ivan-hc/AM-Application-Manager/issues
+### Stop AppImage prompt to create its own launcher, desktop integration and doubled launchers
 Some developers insist on creating Appimages that create their own launcher on first launch (like WALC and OpenShot). If the official solution proposed [here](https://discourse.appimage.org/t/stop-appimage-from-asking-to-integrate/488) doesn't work, create a .home directory with the `-H` option, launch the app and accept the request. For example (with "AM"):
 ```
 am -H walc
