@@ -69,6 +69,8 @@ https://github.com/ivan-hc/AM-Application-Manager/releases
 
 ------------------------------------------------------------------------
 ## Differences between "AM" and "AppMan"
+<details>
+  <summary>Click here to find out more</summary>
 Initially the two projects traveled in parallel to each other, until version 5, in which the codes merged. However, depending on whether it is installed permanently using a specific method ("AM") or downloaded portablely ("AppMan", if renamed "`appman`") the two CLIs work slightly differently.
 
 #### In short:
@@ -107,8 +109,12 @@ Since version 5.1 the installation process have introduced a check to find read-
 
 For everything else, the controls and operation are always the same for both command line tools. The only thing that changes is that the installation scripts are written only for "AM", while "AppMan" uses the same scripts and includes commands that can modify them to make them work locally during the installation process.
 
+</details>
+
 -----------------------------------------------------------------------------
 ## Use AM locally like AppMan does
+<details>
+  <summary>Click here to find out more</summary>
 If you usa "AM" and have the needing of installing apps at system level and locally, use the option `--user` that allows you to create an alias to install and manage apps in your $HOME folder. When executing the `am --user` command you will be suggested an alias to use temporarily or if you want you can add it in your ~/.bashrc to make it permanent. "AppMan" will be used while still using the usual `am` command.
 
 The `--user` option does not immediately enable "AppMan Mode", instead it will show you an alias to use temporarily in the current session or to add to your ~/.bashrc to make it permanent:
@@ -119,8 +125,12 @@ AppMan is downloaded to the AM's installation folder, but without affecting the 
 
 ***NOTE: using AM with the `--user` option enabled and the alias for AppMan, "sudo" allows normal use of AM, absence allows use of AppMan.***
 
+</details>
+
 -----------------------------------------------------------------------------
 ## What programs can be installed
+<details>
+  <summary>Click here to find out more</summary>
 "AM"/"AppMan" installs/removes/updates/manages only standalone programs, ie those programs that can be run from a single directory in which they are contained (where `$PROGRAM` is the name of the application, "AM" installs them always into a dedicated folder named `/opt/$PROGRAM`, while "AppMan" lets you choose to install them in a dedicated directory in your `$HOME`).
 
 These programs are taken:
@@ -140,8 +150,12 @@ You can consult basic information, links to sites and sources used through the r
 
 The "AM" repository aims to be a reference point where you can download all the AppImage packages scattered around the web, otherwise unobtainable, as you would expect from any package manager, through specific installation scripts for each application, as happens with the AUR PKGBUILDs, on Arch Linux. "AM" is intended to be a kind of Arch User Repository (AUR) of AppImage packages, providing them a home to stay. An both "AM" and "AppMan" are the key of this home.
 
+</details>
+
 -----------------------------------------------------------------------------
 ## How to update all programs, for real
+<details>
+  <summary>Click here to find out more</summary>
 To update all the programs, just run the command (without `sudo`):
 
     am -u
@@ -161,8 +175,12 @@ Here are the ways in which the updates will be made:
 
 https://github.com/ivan-hc/AM-Application-Manager/assets/88724353/7e1845e7-bd02-495a-a1b5-735867a765d1
 
+</details>
+
 -----------------------------------------------------------------------------
 ## Repository and Multiarchitecture
+<details>
+  <summary>Click here to find out more</summary>
 Each program is installed through a dedicated script, and all these scripts are listed in the "[repository](https://github.com/ivan-hc/AM-application-manager/tree/main/programs)" and divided by architecture.
 
 ***NOTE that currently my work focuses on applications for x86_64 architecture, but it is possible to extend "AM" to all other available architectures.***
@@ -175,11 +193,16 @@ Click on the link of your architecture to see the list of all the apps available
 
 If you are interested, you can deliberately join this project to improve the lists above.
 
------------------------------------------------------------------------------
-# Comparison with other AppImage managers
+</details>
 
+-----------------------------------------------------------------------------
+## Comparison with other AppImage managers
+<details>
+  <summary>Click here to find out more</summary>
 - There are many other AppImage managers around, and almost all of them support their database on appimagehub or other official AppImage resources, but the big problem is at the base of the compilation of these packages, being very often without an integrated update system. Furthermore, AppImage is a format that many developers are abandoning in favor of Flatpak, also because there were no centralized repositories or software that managed its updates in a universal way... at least until the invention of the first draft of [AppMan](https://github.com/ivan-hc/AppMan);
 - With "AM"/"AppMan" each installed program has its own script (AM-updater) that compares the installed version with the one available in the sources or uses official tools to update the AppImages ([see above](#how-to-update-all-programs-for-real)), there is support for multiple architectures (including i686 and aarch64) and anyone can create a script to install that particular program (if available for its architecture).
+
+</details>
 
 ------------------------------------------------------------------------
 # Installation
@@ -535,6 +558,8 @@ to have a list of the installed programs use the option `-f` or `files` (syntax 
 # Features
 ------------------------------------------------------------------------
 ### How to enable bash completion
+<details>
+  <summary>Click here to find out more</summary>
 Since 2.3.1 release "AM" has its inbuilt bash completion script that can be enabled using the following command:
 
     am --enable-completion
@@ -548,8 +573,12 @@ https://user-images.githubusercontent.com/88724353/155971864-783c098c-e696-47b5-
 
 A more detailed guide on how to create your own bash completion script for your project is available [here](https://iridakos.com/programming/2018/03/01/bash-programmable-completion-tutorial).
 
+</details>
+
 ------------------------------------------------------------------------
 ### Snapshots: backup your app and restore to a previous version
+<details>
+  <summary>Click here to find out more</summary>
 Since 2.6.1 release, "AM" supports snapshots of all installed applications. A selected program can be copied locally into your home folder.
 
 Here you are a video on how to backup/restore works in "AM":
@@ -564,8 +593,12 @@ https://user-images.githubusercontent.com/88724353/157094646-0e29ddbe-6cb7-4880-
       am -o $PROGRAM
 All the snapshots are stored into an hidden `/home/$USER/.am-snapshots` folder containing other subfolders, each one has the name of the programs you've done a backup before. Each snapshot is named with the date and time you have done the backup. To restore the application to a previous version, copy/paste the name of the snapshot when the `-o` option will prompt it.
 
+</details>
+
 ------------------------------------------------------------------------
 # Install/update/remove programs without "AM"
+<details>
+  <summary>Click here to find out more</summary>
 "AM" focuses a lot on the autonomy of its programs, so much that you can install, update and remove them without necessarily having "AM" installed on your system.
 - To install a program without "am", replace "SAMPLE" at the line 2 with the name of the program you want to install:
 ```
@@ -588,22 +621,34 @@ sudo /opt/$PROGRAM/remove
 
 ***NOTE, to do the same thing but locally, without `sudo`, you must necessarily use "AppMan". Installation scripts are written for system-wide installation only. To convert them to AppMan style installation scripts use the `appman convert {PROGRAM}` command to download and patch them.***
 
+</details>
+
 ------------------------------------------------------------------------
 # Rollback
+<details>
+  <summary>Click here to find out more</summary>
 From version 4.4 it is possible to directly select from a list of URLs the version of the app that interests you most from the main source. Use the `--rollback` option in this mode:
 ```
 am --rollback ${PROGRAM}
 ```
 This only works with the apps hosted on Github.
 
+</details>
+
 ------------------------------------------------------------------------
 # Manage local AppImages
+<details>
+  <summary>Click here to find out more</summary>
 Since version 4.4.2 you can use the `--launcher` option to integrate your local AppImage packages by simply dragging and dropping them into the terminal (see video).
 
 https://github.com/ivan-hc/AM-Application-Manager/assets/88724353/c4b889f4-8504-4853-8918-44d52084fe6c
 
+</details>
+
 ------------------------------------------------------------------------
 # Sandbox using Firejail
+<details>
+  <summary>Click here to find out more</summary>
 Since version 5.3 you can use the `--firejail` option to run AppImages using a sandbox (requires Firejail installed on the host).
 
 At first start a copy of /etc/firejail/default.profile will be saved in your application's directory, so you're free to launch the AppImage once using the default Firejail profile (option 1) or the custom one (2), you can also patch the .desktop files (if available) to in sandbox-mode always (options 3 and 4). You can handle the custom firejail.profile file of the app using `vim` or `nano` using the option 5 (the first selection is `vim`).
@@ -612,8 +657,12 @@ Options 1, 2 and 5 are continuous to let you edit the file and test your changes
 
 NOTE: once patched the .desktop files (options 3 and 4), they will be placed in ~/.local/share/applications, this means that if you have installed apps using AppMan, the original launchers will be overwrited.
 
+</details>
+
 ------------------------------------------------------------------------
 # Create and test your own installation script
+<details>
+  <summary>Click here to find out more</summary>
 "AM"/"AppMan" has a `-t` option (or `template`) with which you can get a script to customize according to your needs. With this option, you can quickly create scripts to download existing programs or even create AppImage or AppDirs through tools such as [appimagetool](https://github.com/AppImage/AppImageKit) and [pkg2appimage](https://github.com/AppImage/pkg2appimage).
 
 The following video shows how to create and test an AppImage of "Abiword" from Debian Unstable repository with a custom AppRun (option 5):
@@ -643,35 +692,55 @@ To install and test your own script, use the command `am test /path/to/your-scri
 
 https://github.com/ivan-hc/AM-Application-Manager/assets/88724353/fa0e8627-6beb-47fc-a52f-0d32e392c7ce
 
+</details>
+
 -----------------------------------------------------------------------------
 -----------------------------------------------------------------------------
 # Troubleshooting
 -----------------------------------------------------------------------------
 ### An application does not work, is old and unsupported
+<details>
+  <summary>Click here to find out more</summary>
 Use the `-a` option and go to the developer's site to report the problem. The task of "AM" is solely to install / remove / update the applications managed by it. Problems related to the failure of an installed program or any related bugs are attributable solely to its developers.
+
+</details>
 
 -----------------------------------------------------------------------------
 ### Cannot download or update an application
+<details>
+  <summary>Click here to find out more</summary>
 There can be many reasons:
 - check your internet connection;
 - if the app is hosted on github.com, you have probably exceeded the hourly limit of API calls;
 - the referring link may have been changed, try the `--rollback` option;
 - the reference site has changed, report any changes at https://github.com/ivan-hc/AM-Application-Manager/issues
 
+</details>
+
 -----------------------------------------------------------------------------
 ### Cannot mount and run AppImages
+<details>
+  <summary>Click here to find out more</summary>
 See https://docs.appimage.org/user-guide/troubleshooting/fuse.html
+
+</details>
 
 -----------------------------------------------------------------------------
 ### Spyware, malware and dangerous software
+<details>
+  <summary>Click here to find out more</summary>
 Before installing any application, try to know where it comes from first. This program provides you with two basic options for this purpose:
 - Option `-a` or `about` (medium safety), allows you to read a short description and know the links from the pages of the site [https://portable-linux-apps.github.io](https://portable-linux-apps.github.io) locally, however these links may be inaccurate due to continuous updates of the initial scripts (you can provide additional info yourself by modifying the pages of the site, [here](https://github.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io), it is also open source);
 - Option `-d` or `download` (absolute safety), this allows you to get the installation script directly on your desktop, so you can read the mechanisms and how it performs the downloads from the sources (in most cases there is a header for each step that explains what the listed commands do).
 
 “AM” and AppMan are just tools to easily install all listed programs, but what you choose to install is your complete responsibility. **Use at your own risk**!
 
+</details>
+
 -----------------------------------------------------------------------------
 ### Wrong download link
+<details>
+  <summary>Click here to find out more</summary>
 The reasons may be two:
 - the referring link may have been changed, try the `--rollback` option;
 - the reference site has changed, report any changes at https://github.com/ivan-hc/AM-Application-Manager/issues
@@ -682,6 +751,8 @@ am -H walc
 walc
 ```
 Accept the integration request, the launcher will be saved in the walc.home directory located next to the AppImage file.
+
+</details>
 
 ------------------------------------------------------------------------
 # Related projects
