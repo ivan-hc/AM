@@ -742,9 +742,21 @@ case "$1" in
   	_no_sudo
 
   	function _files(){
+		rm -f $AMPATH/.cache/files-args
 		echo ""; echo $(echo "YOU HAVE INSTALLED "; cd $APPSPATH && find . -type f -name 'remove' 2>/dev/null | sed -r 's|/[^/]+$||' | sort | uniq | wc -l
 		echo " STANDALONE PROGRAMS MANAGED BY '$(echo $AMCLI | tr a-z A-Z)':"); echo ""
-		cd $APPSPATH && find -name 'remove' -printf "%h\n" 2>/dev/null | sort -u | echo $(xargs -n 1 basename 2> /dev/null) | du -sh $(find . -type f -name 'remove' 2>/dev/null | sed -r 's|/[^/]+$||' | sort | uniq | cut -c 3-) | awk '{ print " ◆ "$2 " - " $1"iB of disk space used"}' | grep -w -v "◆ ."; echo ""
+		cd $APPSPATH &&
+		APP=$(find -name 'remove' -printf "%h\n" 2>/dev/null | du -sh -- * | sort -rh | sed 's@.*	@@')
+		SIZE=$(find -name 'remove' -printf "%h\n" 2>/dev/null | du -sh -- * | sort -rh)
+		echo "- APPNAME | SIZE " >> $AMPATH/.cache/files-args
+		echo "- ------- | ---- " >> $AMPATH/.cache/files-args
+		for arg in $APP; do
+			 for var in $arg; do
+			 	echo " ◆ $var	$(echo "$SIZE" | grep $var | cut -f1 -d"	" | sed 's/.$/ &/' | sed 's/$/iB/')" | sed 's/	/	|	/g' >> $AMPATH/.cache/files-args
+			 done
+		done
+		cat $AMPATH/.cache/files-args | column -t
+		echo ""
 	}
 
 	_files
@@ -2535,7 +2547,7 @@ case "$1" in
 
   'version'|'-v'|'--version')
 
-  	echo "5.6-1";;
+  	echo "5.6-2";;
 
   *) exec $AMCLIPATH ;;
 
