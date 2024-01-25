@@ -784,6 +784,35 @@ case "$1" in
     							echo " ◆ $var	|	binary/executable	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
     						elif echo "$string" | grep -q "#!"; then
     							echo " ◆ $var	|	script	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
+    						elif ! test -f  "./$var/$var"; then
+    							link_in_path=$(cat "./$var/remove" | tr " " "\n" | grep 'local/bin' | tail -1)
+    							realpath=$(realpath "$link_in_path")
+    							realstring=$(strings -d "$realpath" 2>/dev/null | head -1 )
+    							if [[ -L "$link_in_path" ]]; then
+    								if echo "$realstring" | grep -q "ld-linux"; then
+    									echo " ◆ $var	|	binary/executable	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
+    								elif echo "$realstring" | grep -q "#!"; then
+    									echo " ◆ $var	|	script	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
+    								else
+    									echo " ◆ $var	|	unknown	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
+    								fi
+    							elif cat "./$var/remove" | tail -1 | grep -q 'xtype l -exec rm'; then
+    									echo " ◆ $var	|	set/tools	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
+    							elif echo "$realstring" | grep -q "#!"; then
+    								script2path=$(cat "$link_in_path" | tail -1 | sed 's#$APP#'$var'#g' | sed 's#exec ##g')
+    								realrealstring=$(strings -d "$script2path" 2>/dev/null | head -1 )
+    								if echo "$realrealstring" | grep -q "ld-linux"; then
+    									echo " ◆ $var	|	binary/executable	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
+    								elif echo "$realrealstring" | grep -q "#!"; then
+    									echo " ◆ $var	|	script	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
+    								elif [[ $(test -f "$link_in_path") != 0 ]]; then
+    									echo " ◆ $var	|	launcher	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
+    								else
+    									echo " ◆ $var	|	unknown	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
+    								fi
+    							else
+    								echo " ◆ $var	|	other	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
+    							fi
     						else
     							echo " ◆ $var	|	other	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
     						fi
@@ -2604,7 +2633,7 @@ case "$1" in
 
   'version'|'-v'|'--version')
 
-  	echo "5.6.1-4";;
+  	echo "5.6.1-5";;
 
   *) exec $AMCLIPATH ;;
 
