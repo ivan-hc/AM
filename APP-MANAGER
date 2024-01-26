@@ -446,6 +446,7 @@ case "$1" in
  newrepo
  
  SYNOPSIS:	newrepo {URL}
+ 		newrepo {PATH}
  		newrepo off
  		newrepo on
  
@@ -2520,9 +2521,11 @@ case "$1" in
   'newrepo')
 
 	_no_sudo
+	_online_check
 
 	case $2 in
 	'') echo -e "\n USAGE: $AMCLI $1 [URL]	# Set a new repository"
+	    echo "        $AMCLI $1 [PATH]	# Set a local directory as a new repository"
 	    echo "        $AMCLI $1 off		# Disable the custom repository"
 	    echo -e "        $AMCLI $1 on		# Enable the custom repository\n"
 	    echo -e " [URL] EXAMPLE:\n\n https://raw.githubusercontent.com/IVAN-HC/AM-APPLICATION-MANAGER/main\n"; exit;;
@@ -2551,12 +2554,31 @@ case "$1" in
 			fi
 			exit;;
 		*)
-			rm -R -f $AMPATH/new-repo.txt
-			echo "$2" >> $AMPATH/new-repo.txt
-			echo -e "\n Your NEW custom repository is:\n\n $2\n\n This will replace the main one!\n"
-			echo -e ' Use the command "'$AMCLI' newrepo off" to restore the default one!\n'
-			echo -e ' Repeat this command with a new URL to replace the one you just set!\n'
-			exit
+			if echo "$2" | grep -q "raw.githubusercontent.com"; then
+				rm -R -f $AMPATH/new-repo.txt
+				echo "$2" | sed 's/\/*$//g' >> $AMPATH/new-repo.txt
+				echo -e "\n Your NEW custom repository is:\n\n $2\n\n This will replace the main one!\n"
+				echo -e ' Use the command "'$AMCLI' newrepo off" to restore the default one!\n'
+				echo -e ' Repeat this command with a new URL to replace the one you just set!\n'
+				exit
+			elif curl --output /dev/null --silent --head --fail "$2"  1>/dev/null; then
+				rm -R -f $AMPATH/new-repo.txt
+				echo "$2" | sed 's/\/*$//g' >> $AMPATH/new-repo.txt
+				echo -e "\n Your NEW custom repository is:\n\n $2\n\n This will replace the main one!\n"
+				echo -e ' Use the command "'$AMCLI' newrepo off" to restore the default one!\n'
+				echo -e ' Repeat this command with a new URL to replace the one you just set!\n'
+				exit
+			elif test -d "$2"; then
+				rm -R -f $AMPATH/new-repo.txt
+				echo "$2" | sed 's/\/*$//g' >> $AMPATH/new-repo.txt
+				echo -e "\n Your NEW local/offline custom repository is:\n\n $2\n\n This will replace the main one!\n"
+				echo -e ' Use the command "'$AMCLI' newrepo off" to restore the default one!\n'
+				echo -e ' Repeat this command with a new URL to replace the one you just set!\n'
+				exit
+			else
+				echo "Invalid URL/PATH, try again"
+				exit
+			fi
 			;;
 		esac
 	done
@@ -2707,7 +2729,7 @@ case "$1" in
 
   'version'|'-v'|'--version')
 
-  	echo "5.6.2";;
+  	echo "5.6.2-1";;
 
   *) exec $AMCLIPATH ;;
 
