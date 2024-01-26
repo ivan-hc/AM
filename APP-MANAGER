@@ -66,7 +66,15 @@ function _online_check(){
 	fi
 }
 
-AMREPO="https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main"
+if test -f $AMPATH/new-repo.txt; then
+	AMREPO=$(cat $AMPATH/new-repo.txt)
+	if [[ ! "$@" == "newrepo off" ]]; then
+		echo -e '\n WARNING, you are using "'$AMCLI'" with a different repository!\n'
+	fi
+else
+	AMREPO="https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main"
+fi
+
 arch=$(printf '%s\n' "$HOSTTYPE")
 currentuser=$(printf '%s\n' "$USER")
 
@@ -89,6 +97,7 @@ cat <<-HEREDOC >> "$AMPATH/options"
 	install
 	list
 	lock
+	newrepo
 	overwrite
 	query
 	remove
@@ -429,6 +438,17 @@ case "$1" in
  DESCRIPTION:	Lock the selected app to the current version installed, 
  
  only works if exists a dedicated "AM-updater" installed with the app.
+ __________________________________________________________________________
+ 
+ newrepo
+ 
+ SYNOPSIS:	newrepo {URL}
+ 		newrepo off
+ 		newrepo on
+ 
+ DESCRIPTION:	Set the variable "$AMREPO" to a new custom repository.
+ 
+ Use "off" to restore the default one or overwrite it with a new one.
  __________________________________________________________________________
  
  test
@@ -2494,6 +2514,52 @@ case "$1" in
 	shift
 	;;
 
+  'newrepo')
+
+	_no_sudo
+
+	case $2 in
+	'') echo -e "\n USAGE: $AMCLI $1 [URL]	# Set a new repository"
+	    echo "        $AMCLI $1 off		# Disable the custom repository"
+	    echo -e "        $AMCLI $1 on		# Enable the custom repository\n"; exit;;
+	esac
+
+	while [ -n "$1" ]; do
+		case $2 in
+		off|OFF)
+			if test -f $AMPATH/new-repo.txt; then
+				mv $AMPATH/new-repo.txt $AMPATH/new-repo.old
+				echo "Custom repository DISABLED!"
+			elif test -f $AMPATH/new-repo.old; then
+				echo "Custom repository DISABLED!"
+			else
+				echo "You have not a custom repository!"
+			fi
+			exit;;
+		on|ON)
+			if test -f $AMPATH/new-repo.old; then
+				mv $AMPATH/new-repo.old $AMPATH/new-repo.txt
+				echo "Custom repository ENABLED!"
+			elif test -f $AMPATH/new-repo.txt; then
+				echo "Custom repository ENABLED!"
+			else
+				echo "You have not a custom repository!"
+			fi
+			exit;;
+		*)
+			rm -R -f $AMPATH/new-repo.txt
+			echo "$2" >> $AMPATH/new-repo.txt
+			echo -e "\n Your NEW custom repository is:\n\n $2\n\n This will replace the main one!\n"
+			echo -e ' Use the command "'$AMCLI' newrepo off" to restore the default one!\n'
+			echo -e ' Repeat this command with a new URL to replace the one you just set!\n'
+			exit
+			;;
+		esac
+	done
+
+	shift
+	;;
+
   'test')
 
 	_online_check
@@ -2637,7 +2703,7 @@ case "$1" in
 
   'version'|'-v'|'--version')
 
-  	echo "5.6.1-5";;
+  	echo "5.6.2";;
 
   *) exec $AMCLIPATH ;;
 
