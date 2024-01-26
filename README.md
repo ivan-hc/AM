@@ -520,6 +520,15 @@ to have a list of the installed programs use the option `-f` or `files` (syntax 
  DESCRIPTION:	Lock the selected app to the current version installed, this only works if exists a dedicated "AM-updater" installed with the app.
  __________________________________________________________________________
  
+ `newrepo`
+ 
+ SYNOPSIS:      `newrepo {URL}`
+                `newrepo off`
+                `newrepo on`
+ 
+ DESCRIPTION:   Set the variable "$AMREPO" to a new custom repository. Use "off" to restore the default one or overwrite it with a new one.
+ __________________________________________________________________________
+ 
  `test`
  
  SYNOPSIS:	`test {FILE}`
