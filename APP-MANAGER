@@ -146,6 +146,13 @@ if test -f $AMPATH/ghapikey.txt; then
 		HeaderAuthWithGITPAT=' --header "Authorization: token '$(cat $AMPATH/ghapikey.txt)'" '
 fi
 
+function _completion_lists(){
+	rm -R -f $AMPATH/$arch-apps $AMPATH/list &&
+	wget -q $AMREPO/programs/$arch-apps -P $AMPATH &&
+	echo -e "$(awk -v FS="(◆ | : )" '{print $2}' 0<$AMPATH/$arch-apps)" >> $AMPATH/list
+	cd $AMPATH && cat options >> list
+}
+
 case "$1" in
 
   '') printf "\n USAGE: '$AMCLI [option]'\n        '$AMCLI [option] [argument]'\n\n Run the '$AMCLI -h' command to find out more\n\n";;
@@ -1082,11 +1089,8 @@ case "$1" in
 	function _list(){
 		wget -q --tries=10 --timeout=20 --spider https://github.com
 		if [[ $? -eq 0 ]]; then
-			rm -R -f $AMPATH/$arch-apps $AMPATH/list
-			wget -q $AMREPO/programs/$arch-apps -P $AMPATH
+			_completion_lists
 		fi
-		echo -e "$(awk -v FS="(◆ | : )" '{print $2}' 0<$AMPATH/$arch-apps)" >> $AMPATH/list
-		cd $AMPATH && cat options >> list 2>/dev/null
 		MESSAGE=$(echo " YOU HAVE INSTALLED $(cd $APPSPATH && find -name 'remove' -printf "%h\n" 2>/dev/null | sort -u | wc -l) APPLICATIONS OUT OF $(grep -e "$" -c $AMPATH/$arch-apps) AVAILABLE")
 		echo -e "\n$MESSAGE\n\n LIST OF THE $(grep -e "$" -c $AMPATH/$arch-apps) APPLICATIONS AVAILABLE IN THE 'AM' REPOSITORY:\n\n$(cat $AMPATH/$arch-apps)" | less -I
 		echo -e "\n $MESSAGE\n"
@@ -1158,12 +1162,9 @@ case "$1" in
 
   	wget -q --tries=10 --timeout=20 --spider https://github.com
 	if [[ $? -eq 0 ]]; then
-		rm -R -f $AMPATH/$arch-apps $AMPATH/list
-		wget -q $AMREPO/programs/$arch-apps -P $AMPATH
+		_completion_lists
 	fi
-  	echo -e "$(awk -v FS="(◆ | : )" '{print $2}' 0<$AMPATH/$arch-apps)" >> $AMPATH/list
-	cd $AMPATH && cat options >> list
-	ARGS=$(echo "$@" | sed 's/-q //')
+  	ARGS=$(echo "$@" | sed 's/-q //')
 	echo ""
 	echo ' Search results for "'$ARGS'" in the list of available programs:' | tr a-z A-Z
 	echo ""
@@ -1319,8 +1320,7 @@ case "$1" in
 
 	function _sync_amcli(){
 		echo "-----------------------------------------------------------------------"
-	  	rm -R -f $AMPATH/$arch-apps $AMPATH/list && wget -q $AMREPO/programs/$arch-apps -P $AMPATH && echo -e "$(awk -v FS="(◆ | : )" '{print $2}' 0<$AMPATH/$arch-apps)" >> $AMPATH/list
-		cd $AMPATH && cat options >> list
+	  	_completion_lists
 		echo ""; echo ' SYNCHRONIZING "'$(echo $AMCLI | tr a-z A-Z)'" VERSION '$($AMCLIPATH -v)'...'; sleep 0.5; echo "";
 	  	rm -R -f $AMPATH/.cache/* 1>/dev/null; cd $AMPATH/.cache
 	  	if [ $AMCLI == am ] 2>/dev/null; then
@@ -2729,7 +2729,7 @@ case "$1" in
 
   'version'|'-v'|'--version')
 
-  	echo "5.6.2-1";;
+  	echo "5.6.2-2";;
 
   *) exec $AMCLIPATH ;;
 
