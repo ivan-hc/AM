@@ -1,0 +1,79 @@
+#!/bin/sh
+
+APP=cosmonium
+REPO="cosmonium/cosmonium"
+
+# CREATE THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP
+
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+
+# DOWNLOAD THE ARCHIVE
+mkdir tmp
+cd ./tmp
+
+version=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep -w -v i386 | grep -w -v i686 | grep -w -v aarch64 | grep -w -v arm64 | grep -w -v armv7l | grep browser_download_url | grep -i linux  | grep -i "x86_64.tar.gz" | cut -d '"' -f 4 | head -1)
+wget $version
+echo "$version" >> /opt/$APP/version
+cd ..
+tar fx tmp/*tar.gz -C ./tmp/; mv tmp/*/* .
+rm -R -f ./tmp
+
+# LINK
+echo '#!/bin/sh
+APP='$APP'
+cd /opt/$APP
+./$APP $@' >> /usr/local/bin/$APP
+chmod a+x /usr/local/bin/$APP
+
+# SCRIPT TO UPDATE THE PROGRAM
+cat >> /opt/$APP/AM-updater << 'EOF'
+#!/usr/bin/env bash
+APP=cosmonium
+REPO="cosmonium/cosmonium"
+version0=$(cat /opt/$APP/version)
+version=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep -w -v i386 | grep -w -v i686 | grep -w -v aarch64 | grep -w -v arm64 | grep -w -v armv7l | grep browser_download_url | grep -i linux  | grep -i "x86_64.tar.gz" | cut -d '"' -f 4 | head -1)
+if [ $version = $version0 ]; then
+  echo "Update not needed!"
+else
+  notify-send "A new version of $APP is available, please wait"
+  mkdir /opt/$APP/tmp
+  cd /opt/$APP/tmp
+  wget $version
+  cd ..
+  tar fx tmp/*tar.gz -C ./tmp/; mv --backup=t tmp/*/* .
+  rm ./version
+  echo $version >> ./version
+  rm -R -f ./tmp ./*~
+  notify-send "$APP is updated!"
+fi
+EOF
+chmod a+x /opt/$APP/AM-updater
+
+# LAUNCHER & ICON
+mkdir icons
+wget https://raw.githubusercontent.com/cosmonium/cosmonium/develop/textures/cosmonium-128.png -O ./icons/$APP 2>/dev/null
+
+echo "[Desktop Entry]
+Version=1.0
+Type=Application
+Exec=$APP %f
+Icon=/opt/$APP/icons/$APP
+Terminal=false
+Name=Cosmonium
+GenericName=Space Simulator
+Comment=3D astronomy and space exploration program
+Categories=Astronomy;Education;Science;" >> /usr/share/applications/AM-$APP.desktop
+
+# CHANGE THE PERMISSIONS
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/$APP
+
+# MESSAGE
+echo "
+ $APP is provided by https://github.com/$(echo $REPO | sed 's:/[^/]*$::')
+"
