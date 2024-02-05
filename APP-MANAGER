@@ -1307,8 +1307,8 @@ case "$1" in
 	_no_sudo
 	_online_check
 
-	echo "-----------------------------------------------------------------------"
-	echo -e " Check for any changes between the installation scripts\n in the repository and those used previously..."
+	echo "-----------------------------------------------------------------------------"
+	echo -e " Checking for changes of the installation scripts in the online database..."
 	rm -R -f $AMPATH/.cache/sync-args && echo "" >> $AMPATH/.cache/sync-args
 	cd $APPSPATH && find -name 'AM-updater' -printf "%h\n" 2>/dev/null | sort -u | cut -c 3- > $AMPATH/.cache/sync-args
 	ARGS=$(cat $AMPATH/.cache/sync-args)
@@ -1326,7 +1326,7 @@ case "$1" in
 					if [ "$CURRENT" == "$SOURCE" ]; then
 						echo -ne "\r" 2> /dev/null
 					else
-						echo -e "\n The installer of $INSTALLER has been changed! \n See https://github.com/ivan-hc/AM-Application-Manager/blob/main/programs/$arch/$INSTALLER"
+						echo -e "\n ◆ $INSTALLER : The installer has changed, consider reinstalling! \n See https://github.com/ivan-hc/AM/blob/main/programs/$arch/$INSTALLER"
 					fi
 					rm -R -f $AMPATH/.cache/$INSTALLER
 				else
@@ -1341,9 +1341,10 @@ case "$1" in
 	done
 
 	function _sync_amcli(){
-		echo "-----------------------------------------------------------------------"
+		echo "-----------------------------------------------------------------------------"
 	  	_completion_lists
-		echo ""; echo ' SYNCHRONIZING "'$(echo $AMCLI | tr a-z A-Z)'" VERSION '$($AMCLIPATH -v)'...'; sleep 0.5; echo "";
+		CURRENT_AM_VERSION=$($AMCLIPATH -v)
+		echo -ne '\n ◆ SYNCHRONIZING "'$(echo $AMCLI | tr a-z A-Z)'" VERSION '$CURRENT_AM_VERSION'...\r'; sleep 1
 	  	rm -R -f $AMPATH/.cache/* 1>/dev/null; cd $AMPATH/.cache
 	  	if [ $AMCLI == am ] 2>/dev/null; then
 	  		wget -q $AMREPO/APP-MANAGER && chmod a+x ./APP-MANAGER
@@ -1354,8 +1355,13 @@ case "$1" in
 	  		cd ..
 	  		mv $AMPATH/.cache/$AMCLI $AMCLIPATH
 	  	fi
-	 	echo ' THE "'$(echo $AMCLI | tr a-z A-Z)'" SCRIPT IS NOW UPDATED TO THE '$($AMCLIPATH -v)' VERSION! '
-	 	echo -e "\n See https://github.com/ivan-hc/AM-Application-Manager/commits/main/APP-MANAGER\n"
+	  	if [ ! $CURRENT_AM_VERSION == $($AMCLIPATH -v) ] ; then
+	 		echo -e ' ◆ "'$(echo $AMCLI | tr a-z A-Z)'" IS NOW UPDATED TO THE BRAND NEW '$($AMCLIPATH -v)' VERSION!\n\n  Replacement of version '$CURRENT_AM_VERSION' currently in use, COMPLETED!'
+	 		echo -e "\n See https://github.com/ivan-hc/AM-Application-Manager/commits/main/APP-MANAGER\n"
+	 	else
+	 		echo -e ' ◆ "'$(echo $AMCLI | tr a-z A-Z)'" IS ALREADY UPDATED, CURRENT VERSION '$CURRENT_AM_VERSION''
+	 		echo -e "\n See https://github.com/ivan-hc/AM-Application-Manager/commits/main/APP-MANAGER\n"
+	 	fi
 	}
 
 	_sync_amcli
@@ -2041,33 +2047,34 @@ case "$1" in
 	while [ -n "$1" ]; do
 		case $2 in
 		'') 
-			echo ""; echo -e ' "'$(echo $AMCLI | tr a-z A-Z)'" CAN MANAGE UPDATES FOR THE FOLLOWING PROGRAMS: \n'
-  			cd $APPSPATH && find -name 'AM-updater' -printf " %h\n" 2>/dev/null | sort -u | xargs -n 1 basename 2>/dev/null
-			echo -e '\n ALL OTHERS ARE FIXED VERSIONS OR CAN MANAGE UPDATES BY THEMSELF'; sleep 0.1
-			echo -e "\n THE UPDATE VERIFICATION PROCESS IS IN PROGRESS, PLEASE WAIT..."; sleep 0.2; echo -e "\n-----------------------------------------------------------------------"
-			echo -e " >> START OF ALL PROCESSES <<\n-----------------------------------------------------------------------"
+			echo "-----------------------------------------------------------------------------"
+			echo -e ' "'$(echo $AMCLI | tr a-z A-Z)'" CAN MANAGE UPDATES FOR THE FOLLOWING PROGRAMS:\n'
+  			cd $APPSPATH && find -name 'AM-updater' -printf " %h\n" 2>/dev/null | sort -u | xargs -n 1 basename 2>/dev/null | sed 's/^/ ◆ /'
+			echo -e '\n All programs with fixed versions or self-updatable are excluded'; sleep 0.1
+			echo "-----------------------------------------------------------------------------"
+			echo -e " >> START OF ALL PROCESSES <<\n-----------------------------------------------------------------------------"
 
 			for f in $APPSPATH/*/; do 
 				cd $f 2>/dev/null && 
 				if test -f ./AM-updater; then
 					start=$(date +%s); $(sh -x ./AM-updater > /dev/null 2>&1) | echo -ne ' Updating "'$(printf '%s\n' "${PWD##*/}")'"...\r'; end=$(date +%s)
-					echo -e " ◆ $(echo $(printf '%s\n' "${PWD##*/}") | tr a-z A-Z) is updated, $(($end-$start)) seconds elapsed! \n"
+					echo -e " ◆ $(echo $(printf '%s\n' "${PWD##*/}") | tr a-z A-Z) is updated, $(($end-$start)) seconds elapsed!"
 				else
 					echo ""  > /dev/null 2>&1
 				fi
 			done
 
-			rm -R -f $AMPATH/.cache/* $APPSPATH/*/tmp; echo "-----------------------------------------------------------------------"
+			rm -R -f $AMPATH/.cache/* $APPSPATH/*/tmp; echo "-----------------------------------------------------------------------------"
 			$AMCLIPATH -s 
-			echo -e "-----------------------------------------------------------------------\n >> END OF ALL PROCESSES << \n-----------------------------------------------------------------------\n"; sleep 0.2
-			echo -e ' ALL THE PROGRAMS MANAGED BY "'$(echo $AMCLI | tr a-z A-Z)'" ARE UPDATED! \n'
+			echo -e "-----------------------------------------------------------------------------\n >> END OF ALL PROCESSES << \n-----------------------------------------------------------------------------\n"; sleep 0.2
+			echo -e ' ALL THE PROGRAMS MANAGED BY "'$(echo $AMCLI | tr a-z A-Z)'" ARE UPDATED! \n\n-----------------------------------------------------------------------------'
 			exit;;
 		*) 
 			if test -f $APPSPATH/$2/AM-updater; then
-				start=$(date +%s); $APPSPATH/$2/AM-updater > /dev/null 2>&1 | echo -ne "\n UPDATING $(echo $2 | tr a-z A-Z)\r"; end=$(date +%s)
-				echo -e " ◆ $(echo $2 | tr a-z A-Z) is updated, $(($end-$start)) seconds elapsed! \n" && break
+				start=$(date +%s); $APPSPATH/$2/AM-updater > /dev/null 2>&1 | echo -ne " UPDATING $(echo $2 | tr a-z A-Z)\r"; end=$(date +%s)
+				echo -e " ◆ $(echo $2 | tr a-z A-Z) is updated, $(($end-$start)) seconds elapsed!" && break
 			else
-				echo -e '\n "'$(echo $AMCLI | tr a-z A-Z)'" CANNOT MANAGE UPDATES FOR "'$(echo $2 | tr a-z A-Z)'"'
+				echo ' "'$(echo $AMCLI | tr a-z A-Z)'" CANNOT MANAGE UPDATES FOR "'$(echo $2 | tr a-z A-Z)'"'
 				UPDATERS=$(cd $APPSPATH/$2 2>/dev/null && find . -name "*update*" -print 2>/dev/null)
 
 				if [ -n "$UPDATERS" ]; then
@@ -2751,7 +2758,7 @@ case "$1" in
 
   'version'|'-v'|'--version')
 
-  	echo "5.6.2-4";;
+  	echo "5.6.2-5";;
 
   *) exec $AMCLIPATH ;;
 
