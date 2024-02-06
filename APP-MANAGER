@@ -931,7 +931,11 @@ case "$1" in
   			fi
   		fi
 
-		echo -e "-----------------------------------------------------------------------\n >> START OF ALL INSTALLATION PROCESSES <<\n-----------------------------------------------------------------------"
+		echo " ############################################################################"
+		echo " ##                                                                        ##"
+		echo " ##                  START OF ALL INSTALLATION PROCESSES                   ##"
+		echo " ##                                                                        ##"
+		echo " ############################################################################"
 		rm -f $AMPATH/.cache/install-args
 		rm -R -f $AMPATH/.cache/installed
 		echo $@ | tr ' ' '\n' >> $AMPATH/.cache/install-args 
@@ -947,7 +951,7 @@ case "$1" in
 
 					*) 
 						if test -f $APPSPATH/$arg/remove; then
-							echo ' ERROR: "'$arg'" is already installed, please try to remove it first' && echo ""
+							echo " ◆ $(echo '"'$arg'"' | tr a-z A-Z): app already installed previously! Try removing it."
 						else
 							if curl --output /dev/null --silent --head --fail $AMREPO/programs/$arch/$arg  1>/dev/null; then
 								case $arg in
@@ -994,7 +998,7 @@ case "$1" in
 										fi
 
 										function _install_common_patch(){
-											sed -i "s#wget #wget -q --show-progress #g" ./$arg; sed -i 's#$(wget -q --show-progress #$(wget -q #g' ./$arg; sed -i "s# -q -q # -q #g" ./$arg
+											sed -i "s#wget #wget -q --no-verbose --show-progress --progress=dot:mega #g" ./$arg; sed -i 's#$(wget -q --no-verbose --show-progress --progress=dot:mega #$(wget -q #g' ./$arg; sed -i "s# -q -q # -q #g" ./$arg
 											sed -i 's/currentuser=/#currentuser=/g' ./$arg
 											sed -i 's/chown -R $currentuser/#chown -R $currentuser/g' ./$arg
 											sed -i '/# MESSAGE/,$d' ./$arg
@@ -1025,12 +1029,11 @@ case "$1" in
 											_install_common_patch
 										fi
 
-										echo -ne " ◆ RUNNING THE INSTALLATION SCRIPT FOR $(echo '"'$arg'"' | tr a-z A-Z)... \r" &&
+										echo -e " ◆ $(echo '"'$arg'"' | tr a-z A-Z): starting installation script" &&
 
-										$SUDOCOMMAND ./$arg | less -E
+										$SUDOCOMMAND ./$arg 2>&1 | grep -v ": "
 
-										echo -ne "                                                                          \r" &&
-										echo -ne " ◆ CONFIGURING $(echo '"'$arg'"' | tr a-z A-Z)...\r" && echo -ne "                                                                          \r" &&
+										echo -ne " Configuring $(echo '"'$arg'"' | tr a-z A-Z)...\r" && echo -ne "                                                                          \r" &&
 										$SUDOCOMMAND chown -R $currentuser $APPSPATH/$(cd $APPSPATH && ls -td * | head -1) 2> /dev/null
 										if test -f $APPSPATH/$(cd $APPSPATH && ls -td * | head -1)/AM-updater; then
 											mkdir $APPSPATH/$(cd $APPSPATH && ls -td * | head -1)/.am-installer 2> /dev/null &&
@@ -1052,7 +1055,7 @@ case "$1" in
 											sed -i "s#Exec=/opt/#Exec=$(xdg-user-dir USER)/$APPSDIR/#g" ~/.local/share/applications/AM*.desktop 2> /dev/null
 										fi
 
-										echo -ne " ◆ $(echo '"'$arg'"' | tr a-z A-Z) INSTALLED ($(du -sm $APPSPATH/$(cd $APPSPATH && ls -td * | head -1) | awk '{print $1}' ) MB OF DISK SPACE)\n"
+										echo -ne " $(echo '"'$arg'"' | tr a-z A-Z) INSTALLED ($(du -sm $APPSPATH/$(cd $APPSPATH && ls -td * | head -1) | awk '{print $1}' ) MB OF DISK SPACE)\n"
 										$SUDOCOMMAND rm $AMPATH/.cache/$arg
 										unset $LATESTDIR
 										LATESTDIR=$(cd $APPSPATH && ls -td * | head -1)
@@ -1071,17 +1074,20 @@ case "$1" in
 										break; done
 								esac
 							else
-								echo ' 💀 "'$arg'" is NOT a valid argument, please try again!'
+								echo ' 💀 ERROR: "'$arg'" does NOT exist in the database, see "'$AMCLI' -l"'
 							fi
 						fi
+						echo " ____________________________________________________________________________"
 					esac
 				}
 
 				if [ $arg == STOP ]; then
 					if test -f $AMPATH/.cache/installed; then
-						echo -e "\n-----------------------------------------------------------------------\n >> END OF ALL INSTALLATION PROCESSES <<\n-----------------------------------------------------------------------\n\n THE FOLLOWING NEW PROGRAMS HAVE BEEN INSTALLED:\n"
-						echo -e "\n-----------------------------------------------------------------------" >> $AMPATH/.cache/installed
-						grep -w -v "◆ am" 0<$AMPATH/.cache/installed; 
+						echo " ############################################################################"
+						echo -e "\n                  END OF ALL INSTALLATION PROCESSES\n"
+						echo -e "             The following new programs have been installed:\n"
+						grep -w -v "◆ am" 0<$AMPATH/.cache/installed
+						echo -e "\n ############################################################################"
 						exit
 					else
 						exit
@@ -2489,9 +2495,9 @@ case "$1" in
 		case $2 in
 		on)
 			if [ $AMCLI == am ] 2>/dev/null; then
-				sed -i 's#$SUDOCOMMAND ./$arg | less -E#$SUDOCOMMAND ./$arg #g' $AMPATH/APP-MANAGER
+				sed -i 's#$SUDOCOMMAND ./$arg 2>&1 | grep -v ": "#$SUDOCOMMAND ./$arg #g' $AMPATH/APP-MANAGER
 			else
-				sed -i 's#$SUDOCOMMAND ./$arg | less -E#$SUDOCOMMAND ./$arg #g' $DIR/appman
+				sed -i 's#$SUDOCOMMAND ./$arg 2>&1 | grep -v ": "#$SUDOCOMMAND ./$arg #g' $DIR/appman
 			fi
 			echo " Developer Mode is ENABLED!"
 			exit;;
@@ -2758,7 +2764,7 @@ case "$1" in
 
   'version'|'-v'|'--version')
 
-  	echo "5.6.2-5";;
+  	echo "5.6.3";;
 
   *) exec $AMCLIPATH ;;
 
