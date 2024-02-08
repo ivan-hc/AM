@@ -33,6 +33,7 @@
 - [Cannot mount and run AppImages](#cannot-mount-and-run-appimages)
 - [Spyware, malware and dangerous software](#spyware-malware-and-dangerous-software)
 - [Stop AppImage prompt to create its own launcher, desktop integration and doubled launchers](#stop-appimage-prompt-to-create-its-own-launcher-desktop-integration-and-doubled-launchers)
+- [The script points to "releases" instead of downloading the latest stable](#the-script-points-to-releases-instead-of-downloading-the-latest-stable)
 - [Wrong download link](#wrong-download-link)
 
 [Related projects](#related-projects)
@@ -476,6 +477,15 @@ to have a list of the installed programs use the option `-f` or `files` (syntax 
  
  DESCRIPTION:	Run an AppImage in a sandbox using Firejail.
  ___________________________________________________________________________
+ 
+ `--force-latest`
+ 
+ SYNOPSIS:
+
+ `--force-latest {PROGRAM}` 
+ 
+ DESCRIPTION:	Downgrade an app from alpha/beta/pre-release to the"latest" stable release and get updates only for that development branch. Typically scripts are directed to "releases" to allow downloading of the latest build available for GNU/Linux, if the developer has not uploaded one in "releases/latest".
+ ___________________________________________________________________________
 
  `--launcher`
  
@@ -778,6 +788,33 @@ Accept the integration request, the launcher will be saved in the walc.home dire
 </details>
 
 -----------------------------------------------------------------------------
+### The script points to "releases" instead of downloading the latest stable
+<details>
+  <summary></summary>
+
+This is a choice I made as many developers have abandoned support for AppImage or GNU/Linux in general. My aim here is to introduce you to other developers' applications, then it's up to you to contact them, support them, help improve the software through forks and pull requests, opening issues and encouraging developers to keep the software in the format you prefer.
+
+In case you are sure that the upstream developer will maintain the package for each stable release, you can fix this in several ways:
+#### Method 1: Direct installation by combining `-d` and `test` options 
+```
+am -d $PROGRAM
+sed -i 's#releases -O -#releases/latest -O -#g' $(xdg-user-dir DESKTOP)/$PROGRAM
+am test appman test $(xdg-user-dir DESKTOP)/$PROGRAM
+```
+#### Method 2: "Downgrade" the installed app to "latest"
+Use the option `--force-latest` to patch the AM-updater and perform the "update"/"downgrade":
+```
+am --force-latest $APP
+```
+or do it manually:
+```
+sed -i 's#releases -O -#releases/latest -O -#g' $HOME$(cat ~/.config/appman/appman-config)/$PROGRAM/AM-updater
+appman -u $PROGRAM
+```
+
+</details>
+
+------------------------------------------------------------------------
 ### Wrong download link
 <details>
   <summary></summary>
