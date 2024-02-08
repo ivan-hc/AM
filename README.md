@@ -804,7 +804,7 @@ am test appman test $(xdg-user-dir DESKTOP)/$PROGRAM
 #### Method 2: "Downgrade" the installed app to "latest"
 Use the option `--force-latest` to patch the AM-updater and perform the "update"/"downgrade":
 ```
-am --force-latest $APP
+am --force-latest $PROGRAM
 ```
 or do it manually:
 ```
