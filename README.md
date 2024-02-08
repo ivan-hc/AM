@@ -355,8 +355,10 @@ to have a list of the installed programs use the option `-f` or `files` (syntax 
  SYNOPSIS:
 
  `-i {PROGRAM}`
+
+ `-i --force-latest {PROGRAM}`
  
- DESCRIPTION:	Install one or more programs.
+ DESCRIPTION:	Install one or more programs (see also "--force-latest").
  ___________________________________________________________________________
  
  `-l`, `list`
@@ -482,9 +484,11 @@ to have a list of the installed programs use the option `-f` or `files` (syntax 
  
  SYNOPSIS:
 
- `--force-latest {PROGRAM}` 
+ `--force-latest {PROGRAM}`
+
+ `-i --force-latest {PROGRAM}`
  
- DESCRIPTION:	Downgrade an app from alpha/beta/pre-release to the"latest" stable release and get updates only for that development branch. Typically scripts are directed to "releases" to allow downloading of the latest build available for GNU/Linux, if the developer has not uploaded one in "releases/latest".
+ DESCRIPTION:	Downgrades an installed app from pre-release to "latest". This can be used with "-i" to force the installation of apps from "latest". Many scripts point to "releases" to find the latest build for GNU/Linux if the developer has not uploaded one in "latest".
  ___________________________________________________________________________
 
  `--launcher`
@@ -507,16 +511,22 @@ to have a list of the installed programs use the option `-f` or `files` (syntax 
  
  `apikey`
  
- SYNOPSIS:	`apikey {Github Token}`
- 		`apikey delete`
+ SYNOPSIS:
+ 
+ `apikey {Github Token}`
+ 
+ `apikey delete`
  
  DESCRIPTION:	Get unlimited access to https://api.github.com using your personal access tokens. The configuration file named "ghapikey.txt" will be saved in '$AMPATH' . Use the command "'$AMCLI' apikey delete/del/remove" to remove the file.
  __________________________________________________________________________
  
  `dev`, `devmode`
  
- SYNOPSIS:	`dev off`
- 		`dev on`
+ SYNOPSIS:
+ 
+ `dev off`
+ 
+ `dev on`
  
  DESCRIPTION:	View the installer output during installation, use "on". It can be disabled with "off" or with the "`-s`" and "`-u`" options.
  __________________________________________________________________________ 
@@ -532,9 +542,13 @@ to have a list of the installed programs use the option `-f` or `files` (syntax 
  
  `newrepo`
  
- SYNOPSIS:      `newrepo {URL}`
-                `newrepo off`
-                `newrepo on`
+ SYNOPSIS:
+ 
+ `newrepo {URL}`
+ 
+ `newrepo off`
+ 
+ `newrepo on`
  
  DESCRIPTION:   Set the variable "$AMREPO" to a new custom repository. Use "off" to restore the default one or overwrite it with a new one.
  __________________________________________________________________________
