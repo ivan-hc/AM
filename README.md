@@ -808,8 +808,8 @@ am --force-latest $PROGRAM
 ```
 or do it manually:
 ```
-sed -i 's#releases -O -#releases/latest -O -#g' $HOME$(cat ~/.config/appman/appman-config)/$PROGRAM/AM-updater
-appman -u $PROGRAM
+sed -i 's#releases -O -#releases/latest -O -#g' /opt/$PROGRAM/AM-updater
+am -u $PROGRAM
 ```
 
 </details>
