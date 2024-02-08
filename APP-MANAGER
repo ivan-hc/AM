@@ -124,6 +124,7 @@ cat <<-HEREDOC >> "$AMPATH/options"
 	--disable-completion
 	--enable-completion
 	--firejail
+	--force-latest
 	--home
 	--launcher
 	--rollback
@@ -276,6 +277,13 @@ case "$1" in
  -w, web		Shows the URLs of the sites/sources of then app.
  
  --firejail, --sandbox	Run an AppImage in a sandbox using Firejail.
+ 
+ --force-latest		Downgrade an app from alpha/beta/pre-release to the 
+ 			"latest" stable release and get updates only for that 
+ 			development branch. Typically scripts are directed to 
+ 			"releases" to allow downloading of the latest build 
+ 			available for GNU/Linux, if the developer has not 
+ 			uploaded one in "releases/latest".
  
  --launcher		Embed one or more local AppImages in the applications
  			menu. I suggest dragging the files into the terminal to
@@ -2065,6 +2073,30 @@ case "$1" in
 	shift
 	;;
 
+  '--force-latest')
+
+	_no_sudo
+
+	case $2 in
+	'') 
+		echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit
+		;;
+	*)
+		if ! test -d $APPSPATH/$2; then
+			echo ' ERROR: "'$2'" is not installed, see "-f"'
+		elif ! test -f $APPSPATH/$2/AM-updater; then
+			echo ' ERROR: "'$AMCLI'" cannot manage updates for "'$2'"'
+		elif ! grep -q "api.github.com" $APPSPATH/$2/AM-updater; then
+			echo ' ERROR: "'$2'" source is not on Github'
+		elif ! grep -q "releases -O -" $APPSPATH/$2/AM-updater; then
+			echo ' ERROR: "'$2'" does not redirect to a generic "releases"'
+		else
+			sed -i 's#releases -O -#releases/latest -O -#g' $APPSPATH/$2/AM-updater
+			$AMCLIPATH -u $2
+		fi
+		;;
+	esac;;
+
   '--launcher')
 
 	_no_sudo
@@ -2567,7 +2599,7 @@ case "$1" in
 
   'version'|'-v'|'--version')
 
-  	echo "5.6.3";;
+  	echo "5.6.4";;
 
   *) exec $AMCLIPATH ;;
 
