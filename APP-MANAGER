@@ -279,8 +279,9 @@ case "$1" in
  -i, install
  
  SYNOPSIS:	-i {PROGRAM}
+ 		-i --force-latest {PROGRAM}
  
- DESCRIPTION:	Install one or more programs.
+ DESCRIPTION:	Install one or more programs (see also "--force-latest").
  __________________________________________________________________________
  
  -l, list
@@ -380,14 +381,15 @@ case "$1" in
  --force-latest
  
  SYNOPSIS:	--force-latest {PROGRAM}
+ 		-i --force-latest {PROGRAM}
  
- DESCRIPTION:	Downgrade an app from alpha/beta/pre-release to the "latest" 
+ DESCRIPTION:	Downgrades an installed app from pre-release to "latest". 
  
- stable release and get updates only for that development branch. Typically 
+ This can be used with "-i" to force the installation of apps from "latest".
  
- scripts are directed to "releases" to allow downloading of the latest build 
+ Many scripts point to "releases" to find the latest build for GNU/Linux if 
  
- available for GNU/Linux, if the developer has not uploaded one in "latest".
+ the developer has not uploaded one in "latest".
  __________________________________________________________________________
  
  --launcher
@@ -898,7 +900,15 @@ case "$1" in
 	while [ -n "$1" ]; do
 
 		case $2 in
-		'') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
+		'')
+			echo " USAGE: $AMCLI $1 [ARGUMENT]"
+			echo " USAGE: $AMCLI $1 --force-latest [ARGUMENT]"; exit
+			;;
+		'--force-latest')
+			case $3 in
+				'')
+					echo " USAGE: $AMCLI $1 --force-latest [ARGUMENT]"; exit;;
+			esac
 		esac
 
 		if [ $AMCLI == am ] 2>/dev/null; then
@@ -926,6 +936,7 @@ case "$1" in
 					echo ""
 					case $arg in
 
+					'--force-latest')	;;
 					*) 
 						if test -f $APPSPATH/$arg/remove; then
 							echo " ◆ $(echo '"'$arg'"' | tr a-z A-Z): app already installed previously! Try removing it."
@@ -972,6 +983,10 @@ case "$1" in
 											if ! command -v zsync 1>/dev/null; then
 												echo ' 💀 ERROR: YOU CANNOT INSTALL "'$(echo '"'$arg'"' | tr a-z A-Z)'" WITHOUT INSTALLING "ZSYNC"!'; break
 											fi
+										fi
+
+										if grep -q 'force-latest' $AMPATH/.cache/install-args; then
+											sed -i 's#releases -O -#releases/latest -O -#g' ./$arg
 										fi
 
 										function _install_common_patch(){
@@ -2765,7 +2780,7 @@ case "$1" in
 
   'version'|'-v'|'--version')
 
-  	echo "5.6.4";;
+  	echo "5.7";;
 
   *) exec $AMCLIPATH ;;
 
