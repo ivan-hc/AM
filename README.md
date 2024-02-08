@@ -799,7 +799,7 @@ In case you are sure that the upstream developer will maintain the package for e
 ```
 am -d $PROGRAM
 sed -i 's#releases -O -#releases/latest -O -#g' $(xdg-user-dir DESKTOP)/$PROGRAM
-am test appman test $(xdg-user-dir DESKTOP)/$PROGRAM
+am test $(xdg-user-dir DESKTOP)/$PROGRAM
 ```
 #### Method 2: "Downgrade" the installed app to "latest"
 Use the option `--force-latest` to patch the AM-updater and perform the "update"/"downgrade":
