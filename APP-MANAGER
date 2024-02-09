@@ -2394,27 +2394,30 @@ case "$1" in
 			else
 				if grep -q "api.github.com" $APPSPATH/$2/AM-updater; then
 					rm -f "$AMPATH/.cache/rollback-args";
+					extension=$(cat $APPSPATH/$2/version | tr '.' '\n' | tail -1)
 					REPO=$(grep -i "REPO=" $APPSPATH/$2/AM-updater | grep -o -P '(?<=").*(?=")')
 					printf "%s\n" "$(wget -q $HeaderAuthWithGITPAT https://api.github.com/repos/$REPO/releases?per_page=100 -O - \
-						| grep browser_download_url | grep -v ".apk" | grep -v ".deb" | grep -v ".dmg" | grep -v ".exe" \
-						| grep -v ".flatpak" | grep -v ".flatpakref" | grep -v ".rpm" | grep -v ".sha256sum" | grep -v ".torrent" \
-						| grep -v ".verify" | grep -v ".zsync" | grep -i '.appimage\|.zip\|.tar.bz2|.tar.gz\|.tar.xf' \
-						| cut -d '"' -f 4)" | tr ' ' '\n' >> "$AMPATH/.cache/rollback-args" &&
-					echo "-----------------------------------------------------------------------"
-					echo "You have chosen to roll back $2."
-					echo "Rollback will be done from https://github.com/$REPO"
-					echo "-----------------------------------------------------------------------"
-					printf "Select a URL from this menu (read carefully) or press CTRL+C to abort:\n-----------------------------------------------------------------------\n"; sleep 1;
-					select d in $(cat "$AMPATH/.cache/rollback-args"); do test -n "$d" && break; echo ">>> Invalid Selection"; done
-					cp $APPSPATH/$2/AM-updater $APPSPATH/$2/AM-rollback
-					sed -i 's/version0/#version0/g' $APPSPATH/$2/AM-rollback
-					sed -i '/show-progress/c\wget -q --show-progress '$d'' $APPSPATH/$2/AM-rollback
-					$APPSPATH/$2/AM-rollback
-					rm -f $APPSPATH/$2/AM-rollback
-					rm -f $APPSPATH/$2/version
-					echo $d >> $APPSPATH/$2/version
-					echo -e "\nROLLBACK SUCCESSFUL!"
-					exit
+						| grep browser_download_url | cut -d '"' -f 4)" | tr ' ' '\n' | grep -i "$extension$" >> "$AMPATH/.cache/rollback-args"
+					if ! grep -q "[0-9]" $AMPATH/.cache/rollback-args; then
+						echo " ERROR: No valid links found, sorry!"
+						exit
+					else
+						echo "-----------------------------------------------------------------------"
+						echo "You have chosen to roll back $2."
+						echo "Rollback will be done from https://github.com/$REPO"
+						echo "-----------------------------------------------------------------------"
+						printf "Select a URL from this menu (read carefully) or press CTRL+C to abort:\n-----------------------------------------------------------------------\n"; sleep 1;
+						select d in $(cat "$AMPATH/.cache/rollback-args"); do test -n "$d" && break; echo ">>> Invalid Selection"; done
+						cp $APPSPATH/$2/AM-updater $APPSPATH/$2/AM-rollback
+						sed -i 's/version0/#version0/g' $APPSPATH/$2/AM-rollback
+						sed -i '/show-progress/c\wget -q --show-progress '$d'' $APPSPATH/$2/AM-rollback
+						$APPSPATH/$2/AM-rollback
+						rm -f $APPSPATH/$2/AM-rollback
+						rm -f $APPSPATH/$2/version
+						echo $d >> $APPSPATH/$2/version
+						echo -e "\nROLLBACK SUCCESSFUL!"
+						exit
+					fi
 				elif test -f $APPSPATH/$2/$2-rollback; then
 					cd $APPSPATH/$2
 					./$2-rollback
@@ -2780,7 +2783,7 @@ case "$1" in
 
   'version'|'-v'|'--version')
 
-  	echo "5.7";;
+  	echo "5.7-1";;
 
   *) exec $AMCLIPATH ;;
 
