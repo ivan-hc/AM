@@ -137,22 +137,33 @@ AppMan is downloaded to the AM's installation folder, but without affecting the 
 
 "AM"/"AppMan" installs/removes/updates/manages only standalone programs, ie those programs that can be run from a single directory in which they are contained (where `$PROGRAM` is the name of the application, "AM" installs them always into a dedicated folder named `/opt/$PROGRAM`, while "AppMan" lets you choose to install them in a dedicated directory in your `$HOME`).
 
-These programs are taken:
-- from official sources (see Firefox, Thunderbird, Blender, NodeJS, Chromium Latest, Platform Tools...);
-- from official .deb packages;
-- from the repositories and official sites of individual developers;
-- from tar archives of other GNU/Linux distributions;
-- from AUR or other Arch Linux-related sources;
-- from AppImage recipes to be compiled with [pkg2appimage](https://github.com/AppImage/pkg2appimage) and [appimagetool](https://github.com/AppImage/AppImageKit);
-- from unofficial repositories of developers external to the project concerned (most of the time they are programs in AppImage format), but only if an official release is not available (see the various WINE, Zoom, VLC, GIMP, OBS Studio...).
-
-"AM"/"AppMan" can even create Firefox profiles to run as webapps (as an alternative to the countless Electron-based apps/AppImages)!
-
-You can consult basic information, links to sites and sources used through the related `am -a $PROGRAM` command or by connecting to the main site of this project:
+The "AM" repository aims to be a reference point where you can download all the AppImage packages scattered around the web, otherwise unobtainable, as you would expect from any package manager, through specific installation scripts for each application, as happens with the AUR PKGBUILDs, on Arch Linux. "AM" is intended to be a kind of Arch User Repository (AUR) of AppImage packages, providing them a home to stay. An both "AM" and "AppMan" are the key of this home. Visit...
 
 # [*https://portable-linux-apps.github.io*](https://portable-linux-apps.github.io)
 
-The "AM" repository aims to be a reference point where you can download all the AppImage packages scattered around the web, otherwise unobtainable, as you would expect from any package manager, through specific installation scripts for each application, as happens with the AUR PKGBUILDs, on Arch Linux. "AM" is intended to be a kind of Arch User Repository (AUR) of AppImage packages, providing them a home to stay. An both "AM" and "AppMan" are the key of this home.
+... for more!
+
+### STANDALONE PROGRAMS
+The programs are taken:
+- from official sources (see Firefox, Thunderbird, Blender, NodeJS, Chromium Latest, Platform Tools...);
+- extracted from official .deb/tar/zip packages;
+- from the repositories and official sites of individual developers.
+
+### APPIMAGES
+The vast majority of scripts target AppImage packages:
+- from official sources (if the upstream developers provide them);
+- from AppImage recipes to be compiled on-the-fly with [pkg2appimage](https://github.com/AppImage/pkg2appimage) and [appimagetool](https://github.com/AppImage/AppImageKit);
+- from unofficial third-party developers, but only if an official release is not available.
+
+You can consult basic information, links to sites and sources used through the related `am -a $PROGRAM` command.
+
+### FIREFOX PROFILES
+You even create Firefox profiles to run as webapps, the ones with suffix "ffwa-" in the apps list.
+
+### THIRD-PARTY LIBRARIES
+From version 5.8 it is also possible to install [third-party libraries](https://github.com/ivan-hc/AM/tree/main/libraries) if they are not provided in your distribution's repositories.
+
+The full list is [here](https://github.com/ivan-hc/AM/blob/main/libraries/libs-list).
 
 </details>
 
@@ -770,7 +781,19 @@ There can be many reasons:
 <details>
   <summary></summary>
 
-See https://docs.appimage.org/user-guide/troubleshooting/fuse.html
+If by running it in the terminal you get an error message about "FUSE" or "libfuse"/"libfuse2" missing, take a look at the official documentation:
+
+https://docs.appimage.org/user-guide/troubleshooting/fuse.html
+
+If your distro does not provide `libfuse2`, you can install it using the command:
+```
+am -i libfuse2
+```
+or
+```
+appman -i libfuse2
+```
+NOTE, in AppMan you still need to use your password (`sudo`) to install the library at system level, in /usr/local/lib
 
 </details>
 
