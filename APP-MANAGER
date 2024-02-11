@@ -13,57 +13,78 @@ function _am(){
 	AMPATH="$APPSPATH/$AMCLI"
 }
 
-function _appman(){
-	if test -f ~/.config/appman/appman-config; then
-		break 2>/dev/null
-	else
-		echo "--------------------------------------------------------------------------"
-		echo " >>> Thank you for choosing AppMan!"
-		echo "--------------------------------------------------------------------------"
-		echo " Before proceeding with any task, write the name of the directory in which"
-		echo ' you will install the apps, for example "Programs" or "My-apps", you can '
-		echo ' also choose a subfolder, for example ".local/My-apps" or a deeper path.'
-		echo -e "\n The destination folder will be created in $HOME"
-		echo -e "\n SYNTAX:	PATH/TO/DIRNAME\n"
-		echo ' NOTE, any spaces or "/" at the beginning and end will be removed. If you '
-		echo ' decide to change your choice in the future, first remove all the programs'
-		echo ' and then edit the ~/.config/appman/appman-config text file.'
-		echo -e "--------------------------------------------------------------------------\n"
-		read -r -ep " Please, write the name or the path of your custom application's folder:$(echo -e '\n\n '$HOME'/')" location
-		case $location in
-			'')	echo -e "--------------------------------------------------------------------------"
-				echo " OPERATION ABORTED!"
-				exit;;
-			*)	location_appman=$(echo "$location" | sed 's#'$HOME'##g' | sed 's# #-#g' | sed 's/^\///;s/\/$//' )
-				if [ "$location_appman" == ".local/bin" ]; then
-					echo -e "--------------------------------------------------------------------------\n"
-					echo -e " 💀 ERROR, you can't install applications into a "'$PATH'"\n\n The directory ~/.local/bin and 'bin' folders are used for executables.\n\n Please, choose a different path and retry! \n"
-					echo -e "--------------------------------------------------------------------------\n"
-					exit
-				else
-					mkdir -p ~/.config/appman; echo "$location_appman" >> ~/.config/appman/appman-config
-					echo '--------------------------------------------------------------------------'
-					echo ' You are ready! Start installing your favorite apps locally!!'
-					echo ' All apps will be installed in '$HOME'/'$location_appman''
-					echo -e '\n In case of problems, use the option "-h".'
-					echo '--------------------------------------------------------------------------'
-					exit
-				fi;;
-		esac
-	fi
-	APPSDIR=$(cat ~/.config/appman/appman-config)
-	mkdir -p ~/$APPSDIR/appman/.cache
-	mkdir -p ~/.local/bin ~/.local/share/applications ~/.local/share/icons
-	AMCLI="appman"
-	AMCLIPATH="$DIR/$AMCLI"
-	SUDOCOMMAND=""
-	COMPLETIONPATH="$HOME"
-	COMPLETIONFILE=".bash_completion"
-	APPSPATH="$HOME/$APPSDIR"
-	AMPATH="$HOME/$APPSDIR/$AMCLI"
+function _appman() {
+    # Helper functions defined inside the parent function
+    function prompt_for_directory() {
+        local location
+        read -r -ep "Please, write the name or the path of your custom application's folder: $(echo -e '\n\n '$HOME'/')" location
+        echo "$location"
+    }
+
+    function validate_directory() {
+        local location=$1
+        if [[ "$location" == "" ]]; then
+            echo -e "--------------------------------------------------------------------------"
+            echo "OPERATION ABORTED!"
+            exit  1
+        elif [[ "$location" == ".local/bin" ]]; then
+            echo -e "--------------------------------------------------------------------------\n"
+            echo -e " 💀 ERROR, you can't install applications into a '$PATH'\n\n The directory ~/.local/bin and 'bin' folders are used for executables.\n\n Please, choose a different path and retry! \n"
+            echo -e "--------------------------------------------------------------------------\n"
+            exit  1
+        else
+            local location_appman="${location/#$HOME}"
+            location_appman="${location_appman// /-}"
+            location_appman="${location_appman#/}"
+            location_appman="${location_appman%/}"
+            echo "$location_appman"
+        fi
+    }
+
+    function initialize_appman() {
+        APPSDIR=$1
+        mkdir -p ~/$APPSDIR/appman/.cache
+        mkdir -p ~/.local/bin ~/.local/share/applications ~/.local/share/icons
+        AMCLI="appman"
+        AMCLIPATH="$DIR/$AMCLI"
+        SUDOCOMMAND=""
+        COMPLETIONPATH="$HOME"
+        COMPLETIONFILE=".bash_completion"
+        APPSPATH="$HOME/$APPSDIR"
+        AMPATH="$HOME/$APPSDIR/$AMCLI"
+    }
+
+    # Main execution
+    if [[ ! -f ~/.config/appman/appman-config ]]; then
+        echo "--------------------------------------------------------------------------"
+        echo " >>> Thank you for choosing AppMan!"
+        echo "--------------------------------------------------------------------------"
+        echo "Before proceeding with any task, write the name of the directory in which"
+        echo 'you will install the apps, for example "Programs" or "My-apps", you can '
+        echo 'also choose a subfolder, for example ".local/My-apps" or a deeper path.'
+        echo -e "\nThe destination folder will be created in $HOME"
+        echo -e "\nSYNTAX: PATH/TO/DIRNAME\n"
+        echo 'NOTE, any spaces or "/" at the beginning and end will be removed. If you '
+        echo 'decide to change your choice in the future, first remove all the programs'
+        echo 'and then edit the ~/.config/appman/appman-config text file.'
+        echo -e "--------------------------------------------------------------------------\n"
+
+        local location=$(prompt_for_directory)
+        local validated_location=$(validate_directory "$location")
+        mkdir -p ~/.config/appman
+        echo "$validated_location" >> ~/.config/appman/appman-config
+        echo '--------------------------------------------------------------------------'
+        echo 'You are ready! Start installing your favorite apps locally!!'
+        echo "All apps will be installed in $HOME/$validated_location"
+        echo -e '\nIn case of problems, use the option "-h".'
+        echo '--------------------------------------------------------------------------'
+        initialize_appman "$validated_location"
+    else
+        exit  2> /dev/null #Fix syntax error
+    fi
 }
 
-if [ "$DIR/$CLI" == "/usr/local/bin/am" ] 2>/dev/null; then
+if [[ "$DIR/$CLI" == "/usr/local/bin/am" ]] 2>/dev/null; then
 	_am
 else
 	_appman
