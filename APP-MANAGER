@@ -127,6 +127,7 @@ cat <<-HEREDOC >> "$AMPATH/options"
 	--force-latest
 	--home
 	--launcher
+	--libs
 	--rollback
 	--sandbox
 	--user
@@ -289,8 +290,11 @@ case "$1" in
  -l, list
  
  SYNOPSIS:	-l
+ 		-l --libs
  
  DESCRIPTION:	Shows the list of all the apps available in the repository.
+ 
+ Adding "--libs" instead shows the list of available third-party libraries.
  __________________________________________________________________________
  
  -o, overwrite
@@ -1148,7 +1152,7 @@ case "$1" in
 
   	_no_sudo
 
-	function _list(){
+	function _list_apps(){
 		wget -q --tries=10 --timeout=20 --spider https://github.com
 		if [[ $? -eq 0 ]]; then
 			_completion_lists
@@ -1157,11 +1161,24 @@ case "$1" in
 		ITEMSNUMBER=$(cd $APPSPATH && find -name 'remove' -printf "%h\n" 2>/dev/null | sort -u | wc -l)
 		APPSNUMBER=$(echo "$(($ITEMSNUMBER - $LIBNUMBER))")
 		MESSAGE=$(echo " YOU HAVE INSTALLED $APPSNUMBER APPLICATIONS OUT OF $(grep -e "$" -c $AMPATH/$arch-apps) AVAILABLE")
-		echo -e "\n$MESSAGE\n\n LIST OF THE $(grep -e "$" -c $AMPATH/$arch-apps) APPLICATIONS AVAILABLE IN THE 'AM' REPOSITORY:\n\n$(cat $AMPATH/$arch-apps)" | less -I
+		echo -e "\n$MESSAGE\n\n LIST OF THE $(grep -e "$" -c $AMPATH/$arch-apps) APPLICATIONS AVAILABLE IN THE 'AM' REPOSITORY:\n\n$(cat $AMPATH/$arch-apps)\n" | less -I
 		echo -e "\n $MESSAGE\n"
 	}
 
-	_list
+	function _list_libs(){
+		wget -q --tries=10 --timeout=20 --spider https://github.com
+		if [[ $? -eq 0 ]]; then
+			_completion_lists
+		fi
+		LIBNUMBER=$(cat $APPSPATH/*/remove 2> /dev/null | grep "usr/local/lib" | wc -l)
+		MESSAGE=$(echo " YOU HAVE INSTALLED $LIBNUMBER LIBRARIES OUT OF $(grep -e "$" -c $AMPATH/libs-list) AVAILABLE")
+		echo -e "\n$MESSAGE\n\n LIST OF THE $(grep -e "$" -c $AMPATH/libs-list) LIBRARIES AVAILABLE IN THE 'AM' REPOSITORY:\n\n$(cat $AMPATH/libs-list)\n"
+	}
+
+	case $2 in
+	'--libs')	_list_libs;;
+	''|*)		_list_apps;;
+	esac
 	;;
 
   '-o'|'overwrite')
@@ -2852,7 +2869,7 @@ case "$1" in
 
   'version'|'-v'|'--version')
 
-  	echo "5.8";;
+  	echo "5.8-1";;
 
   *) exec $AMCLIPATH ;;
 
