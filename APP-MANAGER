@@ -132,8 +132,6 @@ cat <<-HEREDOC >> "$AMPATH/options"
 	backup
 	clean
 	convert
-	dev
-	devmode
 	download
 	files
 	install
@@ -149,6 +147,7 @@ cat <<-HEREDOC >> "$AMPATH/options"
 	unlock
 	update
 	web
+	--debug
 	--disable-completion
 	--enable-completion
 	--firejail
@@ -318,9 +317,14 @@ case "$1" in
  -i, install
  
  SYNOPSIS:	-i {PROGRAM}
+ 		-i --debug {PROGRAM}
  		-i --force-latest {PROGRAM}
  
- DESCRIPTION:	Install one or more programs (see also "--force-latest").
+ DESCRIPTION:	Install one or more programs or libraries from the list.
+ 
+ With the "--debug" option you can see log messages to debug the script.
+ 
+ For more details on "--force-latest", see the dedicated option, below.
  __________________________________________________________________________
  
  -l, list
@@ -461,17 +465,6 @@ case "$1" in
  
  Use the command "'$AMCLI' apikey delete/del/remove" to remove the file.
  __________________________________________________________________________
- 
- dev, devmode
- 
- SYNOPSIS:	dev off
- 		dev on
- 
- DESCRIPTION:	View the installer output during installation, use "on". 
- 
- It can be disabled with "off" or with the "-s" and "-u" options.
- __________________________________________________________________________
- 
  
  lock
  
@@ -1014,7 +1007,7 @@ case "$1" in
 					echo ""
 					case $arg in
 
-					'--force-latest')	;;
+					'--debug'|'--force-latest')	;;
 					*) 
 						function _install_arg(){
 							case $arg in
@@ -1058,7 +1051,9 @@ case "$1" in
 									fi
 
 									function _install_common_patch(){
-										sed -i "s#wget #wget -q --no-verbose --show-progress --progress=dot:mega #g" ./$arg; sed -i 's#$(wget -q --no-verbose --show-progress --progress=dot:mega #$(wget -q #g' ./$arg; sed -i "s# -q -q # -q #g" ./$arg
+										if ! grep -q -- "--debug" $AMPATH/.cache/install-args; then
+											sed -i "s#wget #wget -q --no-verbose --show-progress --progress=dot:mega #g" ./$arg; sed -i 's#$(wget -q --no-verbose --show-progress --progress=dot:mega #$(wget -q #g' ./$arg; sed -i "s# -q -q # -q #g" ./$arg
+										fi
 										sed -i 's/currentuser=/#currentuser=/g' ./$arg
 										sed -i 's/chown -R $currentuser/#chown -R $currentuser/g' ./$arg
 										sed -i '/# MESSAGE/,$d' ./$arg
@@ -1102,7 +1097,11 @@ case "$1" in
 										esac	
 									fi
 
-									$SUDOCOMMAND ./$arg 2>&1 | grep -v ": "
+									if grep -q -- "--debug" $AMPATH/.cache/install-args; then
+										$SUDOCOMMAND ./$arg
+									else
+										$SUDOCOMMAND ./$arg 2>&1 | grep -v ": "
+									fi
 
 									echo -ne " Configuring $(echo '"'$arg'"' | tr a-z A-Z)...\r" && echo -ne "                                                                          \r" &&
 									$SUDOCOMMAND chown -R $currentuser $APPSPATH/$(cd $APPSPATH && ls -td * | head -1) 2> /dev/null
@@ -2621,44 +2620,6 @@ case "$1" in
 	shift
 	;;
 
-  'dev'|'devmode')
-
-	_no_sudo
-	_online_check
-
-	while [ -n "$1" ]; do
-		case $2 in
-		on)
-			if [ $AMCLI == am ] 2>/dev/null; then
-				sed -i 's#$SUDOCOMMAND ./$arg 2>&1 | grep -v ": "#$SUDOCOMMAND ./$arg #g' $AMPATH/APP-MANAGER
-			else
-				sed -i 's#$SUDOCOMMAND ./$arg 2>&1 | grep -v ": "#$SUDOCOMMAND ./$arg #g' $DIR/appman
-			fi
-			echo " Developer Mode is ENABLED!"
-			exit;;
-		off)
-			cd $AMPATH/.cache
-			if [ $AMCLI == am ] 2>/dev/null; then
-	  			wget -q $AMREPO/APP-MANAGER && chmod a+x ./APP-MANAGER
-	  			cd ..
-	  			mv $AMPATH/.cache/APP-MANAGER $AMPATH; chmod 777 $AMPATH
-	  		else
-	  			wget -q $AMREPO/APP-MANAGER -O appman && chmod a+x ./$AMCLI
-	  			cd ..
-	  			mv $AMPATH/.cache/$AMCLI $AMCLIPATH
-	  		fi
-			echo " Developer Mode is DISABLED!"
-			exit;;
-		''|*)
-			echo -e " USAGE: $AMCLI $1 off	(to disable Developer Mode)\n        $AMCLI $1 on	(to enable Developer Mode)"
-			exit
-			;;
-		esac
-	done
-
-	shift
-	;;
-
   'lock')
 
 	_no_sudo
@@ -2905,7 +2866,7 @@ case "$1" in
 
   'version'|'-v'|'--version')
 
-  	echo "5.8-1";;
+  	echo "5.8.1";;
 
   *) exec $AMCLIPATH ;;
 
