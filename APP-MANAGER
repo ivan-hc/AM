@@ -91,32 +91,39 @@ else
 fi
 
 function _online_check(){
-	wget -q --tries=10 --timeout=20 --spider https://github.com
-	if [[ ! $? -eq 0 ]]; then
-		echo -e '\n '$AMCLI' is offline, please check your internet connection and try again\n'
+	if ! wget -q --tries=10 --timeout=20 --spider https://github.com; then
+		echo -e "\n $AMCLI is offline, please check your internet connection and try again\n"
 		exit
 	fi
 }
 
-if test -f $AMPATH/new-repo.txt; then
-	AMREPO=$(cat $AMPATH/new-repo.txt)
-	if [[ ! "$@" == "newrepo off" ]]; then
-		echo -e '\n WARNING, custom repository ENABLED!\n Use the command "'$AMCLI' newrepo off" to restore the default repo!\n'
-	fi
+if [[ -f $AMPATH/new-repo.txt ]]; then
+    AMREPO=$(<"$AMPATH/new-repo.txt") # Utilizing command substitution with < for more efficient file reading
+    if [[ "$@" != "newrepo off" ]]; then
+        echo -e "\n WARNING, custom repository ENABLED!\n Use the command '$AMCLI newrepo off' to restore the default repo!\n"
+    fi
 else
-	PROJECT_OWNER="IVAN-HC"
-	PROJECT_NAME="AM"
-	PROJECT_branch="main"
-	AMREPO="https://raw.githubusercontent.com/$PROJECT_OWNER/$PROJECT_NAME/$PROJECT_branch"
+    AMREPO="https://raw.githubusercontent.com/IVAN-HC/AM/main" # Consolidating variable assignments for clarity and brevity
 fi
 
-arch=$(printf '%s\n' "$HOSTTYPE")
-currentuser=$(printf '%s\n' "$USER")
+# Determine system architecture and current user
+arch="$HOSTTYPE"
+currentuser="$USER"
 
-for name in "cat" "chmod" "chown" "curl" "grep" "sed" "wget"; do
-  test -x "$(command -v $name 2>/dev/null)" \
-  || { printf "\n%s\n" 'ERROR: command "'$name'" not found, strongly needed by "'$AMCLI'"!'; deps=1; };
-done; [ "$deps" != "1" ] || { printf "\nInstall the above and try again\n\n"; exit 1; }
+# Check for essential commands required by the application
+missing_deps=()
+for name in cat chmod chown curl grep sed wget; do
+  if ! command -v "$name" &>/dev/null; then
+    printf "\nERROR: command \"%s\" not found, strongly needed by \"%s\"!\n" "$name" "$AMCLI"
+    missing_deps+=("$name")
+  fi
+done
+
+# Exit if any essential command is missing
+if [ ! -z "$missing_deps" ]; then
+  printf "\nMissing essential commands: %s\nInstall the above and try again\n\n" "${missing_deps[*]}"
+  exit 1
+fi
 
 rm -rf "$AMPATH/options"
 cat <<-HEREDOC >> "$AMPATH/options"
@@ -162,31 +169,39 @@ function _no_sudo(){
 }
 
 function _patch_bashrc_and_profile(){
-	if $(! grep -q 'export PATH=$PATH:$(xdg-user-dir USER)/.local/bin' $HOME/.bashrc); then
-		echo 'export PATH=$(echo $PATH | tr ":" "\n" | grep -v "/.local/bin" | tr "\n" ":" | sed ''s/.$//'')' >> $HOME/.bashrc
-		echo -e 'export PATH=$PATH:$(xdg-user-dir USER)/.local/bin\n' >> $HOME/.bashrc
-	fi
-	if $( grep -q 'PATH="$HOME/.local/bin:$PATH"' $HOME/.profile); then
-		sed -i 's#PATH="$HOME/.local/bin:$PATH"#PATH="$PATH:$HOME/.local/bin"#g' $HOME/.profile
-	fi
+    # Check if the custom PATH is not already in .bashrc, then append it (fix - exclamation mark negates the entire command substitution)
+    if ! grep -q 'export PATH=$PATH:$(xdg-user-dir USER)/.local/bin' "$HOME/.bashrc"; then
+        echo 'export PATH=$(echo $PATH | tr ":" "\n" | grep -v "/.local/bin" | tr "\n" ":" | sed ''s/.$//'')' >> "$HOME/.bashrc"
+        echo -e 'export PATH=$PATH:$(xdg-user-dir USER)/.local/bin\n' >> "$HOME/.bashrc"
+    fi
+    # Correct the order of .local/bin in .profile if necessary
+    if grep -q 'PATH="$HOME/.local/bin:$PATH"' "$HOME/.profile"; then
+        sed -i 's#PATH="$HOME/.local/bin:$PATH"#PATH="$PATH:$HOME/.local/bin"#g' "$HOME/.profile"
+    fi
 }
 
-if [ $AMCLI == appman ] 2>/dev/null; then
+# Check if the script is called with 'appman' and if so, perform initial setup
+[ "$AMCLI" = "appman" ] && {
 	_no_sudo
 	_patch_bashrc_and_profile
-fi
+}
 
-if test -f $AMPATH/ghapikey.txt; then
-		HeaderAuthWithGITPAT=' --header "Authorization: token '$(cat $AMPATH/ghapikey.txt)'" '
-fi
+# Set header authorization if GitHub API key file exists
+[ -f "$AMPATH/ghapikey.txt" ] && HeaderAuthWithGITPAT=" --header \"Authorization: token $(<"$AMPATH/ghapikey.txt")\" "
 
 function _completion_lists(){
-	rm -R -f $AMPATH/$arch-apps $AMPATH/list $AMPATH/libs-list &&
+	# Remove existing lists and download new ones
+	rm -Rf $AMPATH/{$arch-apps,list,libs-list} &&
 	wget -q $AMREPO/programs/$arch-apps -P $AMPATH &&
-	wget -q $AMREPO/libraries/libs-list -P $AMPATH &&
-	echo -e "$(awk -v FS="(◆ | : )" '{print $2}' 0<$AMPATH/$arch-apps)" >> $AMPATH/list
-	echo -e "$(awk -v FS="(◆ | : )" '{print $2}' 0<$AMPATH/libs-list)" >> $AMPATH/list
-	cd $AMPATH && cat options >> list
+	wget -q $AMREPO/libraries/libs-list -P $AMPATH
+	
+	# Extract and append program and library names to the list
+	for file in $arch-apps libs-list; do
+		awk -v FS="(◆ | : )" '{print $2}' <$AMPATH/$file >> $AMPATH/list
+	done
+	
+	# Append options to the list
+	cat $AMPATH/options >> $AMPATH/list
 }
 
 case "$1" in
