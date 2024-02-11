@@ -367,9 +367,11 @@ to have a list of the installed programs use the option `-f` or `files` (syntax 
 
  `-i {PROGRAM}`
 
+ `-i --debug {PROGRAM}`
+
  `-i --force-latest {PROGRAM}`
  
- DESCRIPTION:	Install one or more programs (see also "--force-latest").
+ DESCRIPTION:   Install one or more programs or libraries from the list. With the "--debug" option you can see log messages to debug the script. For more details on "--force-latest", see the dedicated option, below.
  ___________________________________________________________________________
  
  `-l`, `list`
