@@ -377,8 +377,10 @@ to have a list of the installed programs use the option `-f` or `files` (syntax 
  SYNOPSIS:
 
  `-l`
+
+ `-l --libs`
  
- DESCRIPTION:	Shows the list of all the apps available in the repository.
+ DESCRIPTION:	Shows the list of all the apps available in the repository. Adding "--libs" instead shows the list of available third-party libraries.
  ___________________________________________________________________________
  
  `-o`, `overwrite`
