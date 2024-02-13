@@ -78,8 +78,6 @@ function _appman() {
 		echo "All apps will be installed in $HOME/$validated_location"
 		echo -e '\nIn case of problems, use the option "-h".'
 		echo '--------------------------------------------------------------------------'
-	else
-		break  2> /dev/null
 	fi
 	initialize_appman $(<~/.config/appman/appman-config)
 }
@@ -652,7 +650,7 @@ case "$1" in
 									echo ""; echo " OPERATION ABORTED!"; echo "";;
 								esac
 							else
-								echo ""; echo " '$arg' is not a valid argument or is not installed."; echo ""; break;
+								echo -e "\n '$arg' is not a valid argument or is not installed.\n"
 							fi
 						esac
 				}
@@ -732,11 +730,9 @@ case "$1" in
 
 				function _convert(){
 					case $arg in
-					'') 	echo " Specify the name of one or more programs to convert"; echo ""; break;;
 					*) 
 						function _convert_to_appman_compatible_script(){
-							echo " Converting $arg to an AppMan-compatible script"
-  							sed -i "s# /usr/local/bin# $(xdg-user-dir USER)/.local/bin#g" ./$arg
+							sed -i "s# /usr/local/bin# $(xdg-user-dir USER)/.local/bin#g" ./$arg
 							sed -i "s# /usr/bin# $(xdg-user-dir USER)/.local/bin#g" ./$arg
 							sed -i "s# /usr/games# $(xdg-user-dir USER)/.local/bin#g" ./$arg
 							sed -i "s# /usr/local/games# $(xdg-user-dir USER)/.local/bin#g" ./$arg
@@ -747,12 +743,11 @@ case "$1" in
 							sed -i "s# /opt# $APPSPATH#g" ./$arg
 							sed -i "s#/opt/#$APPSPATH/#g" ./$arg
 							sed -i "s# https://api.github.com#$HeaderAuthWithGITPAT https://api.github.com#g" ./$arg
-							echo '# CHANGE THE PATH OF ICONS AND EXECUTABLES IN LOCALLY INSTALLED AM*.DESKTOP FILES'
-							echo 'APPSDIR=$(cat ~/.config/appman/appman-config)'
 							echo 'sed -i "s#Icon=/opt#Icon=$(xdg-user-dir USER)/$APPSDIR#g" ~/.local/share/applications/AM*.desktop' >> ./$arg
 							echo 'sed -i "s#Exec=$APP#Exec=$(xdg-user-dir USER)/.local/bin/$APP#g" ~/.local/share/applications/AM*.desktop' >> ./$arg
 							echo 'sed -i "s#Exec=/usr/bin/#Exec=$(xdg-user-dir USER)/.local/bin/#g" ~/.local/share/applications/AM*.desktop' >> ./$arg
 							echo 'sed -i "s#Exec=/opt/#Exec=$(xdg-user-dir USER)/$APPSDIR/#g" ~/.local/share/applications/AM*.desktop' >> ./$arg
+							echo " Script $arg converted to an AppMan-compatible script"
 						}
 
 						if curl --output /dev/null --silent --head --fail $AMREPO/programs/$arch/$arg  1>/dev/null; then
@@ -835,7 +830,7 @@ case "$1" in
 	echo $(echo "YOU HAVE INSTALLED "
 	cd $APPSPATH &&
 	find . -type f -name 'remove' 2>/dev/null | sed -r 's|/[^/]+$||' | sort | uniq | wc -l
-	if grep -q 'usr/local/lib' $APPSPATH/*/remove; then
+	if grep -q 'usr/local/lib' $APPSPATH/*/remove 2> /dev/null; then
 		echo " STANDALONE PROGRAMS AND LIBRARIES MANAGED BY '$(echo $AMCLI | tr a-z A-Z)':"
 	else
 		echo " STANDALONE PROGRAMS MANAGED BY '$(echo $AMCLI | tr a-z A-Z)':"
@@ -850,9 +845,7 @@ case "$1" in
 		echo "- ------- | ---- | ----" >> $AMPATH/.cache/files-args
 		for arg in $INSTALLED_APPS; do
 			 for var in $arg; do
-			 	if ! test -f ./$var/remove 2>/dev/null; then
-			 		break
-			 	else
+			 	if test -f ./$var/remove 2>/dev/null; then
 			 		if grep -q "usr/local/lib" ./$var/remove; then
 			 			LIBNAME=$(cat $APPSPATH/$arg/remove | tr ' ' '\n' | grep "usr/local/lib" | head -1)
 						SIZE=$(du -sh $LIBNAME | cut -f1 | sort -rh | head -1)
@@ -1135,7 +1128,8 @@ case "$1" in
 									else
 										echo " INSTALLATION ABORTED!"
 									fi
-									break; done
+									break
+								done
 							esac
 						}
 
@@ -1233,8 +1227,6 @@ case "$1" in
 
 				function _overwrite(){
 					case $arg in
-					$AMCLI) 
-						$AMCLIPATH -s; break;;
 					'') 
 						echo " Specify the name of a program to overwrite"; echo "";;
 					*) 
@@ -1315,7 +1307,7 @@ case "$1" in
 								[Nn]* ) 
 									echo ' - "'$(echo $arg | tr a-z A-Z)'" HAS NOT BEEN REMOVED!'; echo "";;
 								[Yy]*|* ) 
-									$SUDOCOMMAND $APPSPATH/$arg/remove && sleep 0.5 && echo ' ◆ "'$(echo $arg | tr a-z A-Z)'" HAS BEEN SUCCESSFULLY REMOVED!' && break;;
+									$SUDOCOMMAND $APPSPATH/$arg/remove && sleep 0.5 && echo ' ◆ "'$(echo $arg | tr a-z A-Z)'" HAS BEEN SUCCESSFULLY REMOVED!'; break;;
 								esac
 							done;;
 						esac
@@ -1370,7 +1362,7 @@ case "$1" in
 						case $arg in
 						*) 
 							for var in $arg; do
-								$SUDOCOMMAND $APPSPATH/$arg/remove && sleep 0.5 && echo ' ◆ "'$(echo $arg | tr a-z A-Z)'" HAS BEEN SUCCESSFULLY REMOVED!' && break; break
+								$SUDOCOMMAND $APPSPATH/$arg/remove && sleep 0.5 && echo ' ◆ "'$(echo $arg | tr a-z A-Z)'" HAS BEEN SUCCESSFULLY REMOVED!'; break
 							done;;
 						esac
 					else
@@ -2182,8 +2174,6 @@ case "$1" in
 
 				if [ -n "$UPDATERS" ]; then
 					echo ' This program probably includes its own update system!'
-				else
-					break
 				fi
 
 				exit
@@ -2410,7 +2400,7 @@ case "$1" in
 
 				function _launcher(){
 					if ! strings -d "$arg" 2>/dev/null | grep -F -q 'appimage-help                 Print this help'; then
-    						echo ' ERROR: "'$arg'" is NOT an AppImage'; break
+    						echo ' ERROR: "'$arg'" is NOT an AppImage'
     					else
   						appimage=$(basename -- "$arg")
   						mkdir -p $HOME/.local/share/applications/AppImages
@@ -2632,14 +2622,16 @@ case "$1" in
 			case $2 in
 			*) 
 				for var in $2; do 
-					echo ""; read -p " Do you wish to keep $2  at the current version (y,N)?" yn
+					read -p " Do you wish to keep $2  at the current version (y,N)?" yn
 					case $yn in
 					[Yy]* ) 
-						echo "";  mv $APPSPATH/$2/AM-updater $APPSPATH/$2/AM-LOCK 1>/dev/null &&
-						echo " $2 has been locked at current version!" && echo "" && exit; break;;
+						mv $APPSPATH/$2/AM-updater $APPSPATH/$2/AM-LOCK 1>/dev/null &&
+						echo " $2 has been locked at current version!"; exit;;
 					[Nn]*|* ) 
-						echo ""; echo " $2 is still updatable, exiting!"; echo ""; exit;; esac done;;
+						echo " Operation aborted!"; exit;;
 					esac
+				done;;
+			esac
 		else
 			echo ""; echo ' '$(echo $AMCLI | tr a-z A-Z)' cannot manage updates for '$2', "AM-updater" file not found!'; echo ""; exit;
 		fi
@@ -2728,18 +2720,20 @@ case "$1" in
 		if test -f $APPSPATH/$2/AM-LOCK; then
 			case $2 in
 			*) 
-			for var in $2; do 
-				echo ""; read -p " Do you wish to unlock updates for $2 (Y,n)?" yn
+				for var in $2; do 
+					read -p " Do you wish to unlock updates for $2 (Y,n)?" yn
 
-				case $yn in
-				[Nn]* ) 
-					echo ""; echo " $2 is still locked at current version!"; echo ""; exit;;
-				[Yy]*|* ) 
-					echo "";  mv $APPSPATH/$2/AM-LOCK $APPSPATH/$2/AM-updater 1>/dev/null &&
-					echo ' '$2' can now receive updates, use the "'$AMCLI' -u" command to update everything!' && echo "" && exit; break;; esac done;;
-				esac
+					case $yn in
+					[Nn]* ) 
+						echo " $2 is still locked at current version!"; exit;;
+					[Yy]*|* ) 
+						mv $APPSPATH/$2/AM-LOCK $APPSPATH/$2/AM-updater 1>/dev/null
+						echo ' '$2' can now receive updates!'; exit;;
+					esac
+				done;;
+			esac
 		else
-			echo ""; echo ' '$2' cannot be unlocked, "AM-LOCK" file not found!'; echo ""; exit;
+			echo ' '$2' cannot be unlocked, "AM-LOCK" file not found!'; exit
 		fi
 	done
 
