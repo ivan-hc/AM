@@ -1368,8 +1368,8 @@ case "$1" in
 	for arg in $ARGS; do
 		for var in $arg; do
 
-			function _sync_all(){
-			if test -d $APPSPATH/$arg/.am-installer; then
+			function _sync_installation_scripts(){
+				if test -d $APPSPATH/$arg/.am-installer; then
 					INSTALLER=$(ls -A1 $APPSPATH/$arg/.am-installer)
 					CURRENT=$(cat $APPSPATH/$arg/.am-installer/$INSTALLER)
 					rm -R -f $AMPATH/.cache/$arg
@@ -1388,9 +1388,30 @@ case "$1" in
 				fi
 			}
 
-			_sync_all
+			_sync_installation_scripts
+
 		done
 	done
+
+	echo "-----------------------------------------------------------------------------"
+	echo -e " Update modules..."
+
+	function _sync_modules(){
+		MODULES=$(wget -q https://api.github.com/repos/ivan-hc/AM/contents/modules -O - | grep download_url | cut -d '"' -f 4)
+		for module in $MODULES; do
+			for v in $module; do
+				cd $AMPATH/modules
+				mkdir tmp
+				cd tmp
+				wget -q "$v"
+				cd ..
+				mv tmp/*.am ./
+				rmdir tmp
+			done
+		done
+	}
+
+	_sync_modules
 
 	function _sync_amcli(){
 		echo "-----------------------------------------------------------------------------"
@@ -2063,7 +2084,7 @@ case "$1" in
 
   'version'|'-v'|'--version')
 
-  	echo "5.8.3-1";;
+  	echo "5.8.3-2";;
 
   *) exec $AMCLIPATH ;;
 
