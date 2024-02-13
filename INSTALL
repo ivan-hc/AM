@@ -1,8 +1,14 @@
 #!/bin/sh
 
 # CREATING THE MAIN FOLDER FOR "AM"
-mkdir /opt/am /opt/am/.cache
+mkdir /opt/am /opt/am/.cache /opt/am/modules
 cd /opt/am
+
+# CREATE THE SCRIPT NEEDED TO UNINSTALL "AM"
+rm -R -f /opt/am/remove
+echo "#!/bin/sh
+rm -R -f /usr/local/bin/am /opt/am /etc/bash_completion.d/am-completion.sh" >> /opt/am/remove
+chmod a+x /opt/am/remove
 
 # DOWNLOAD THE MAIN SCRIPT
 wget -q https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/APP-MANAGER
@@ -11,15 +17,24 @@ chmod a+x /opt/am/APP-MANAGER
 # LINK THE MAIN SCRIPT TO A KNOWN PATH
 ln -s /opt/am/APP-MANAGER /usr/local/bin/am
 
-# CREATE THE SCRIPT NEEDED TO UNINSTALL "AM"
-rm -R -f /opt/am/remove
-echo "#!/bin/sh
-rm -R -f /usr/local/bin/am /opt/am /etc/bash_completion.d/am-completion.sh" >> /opt/am/remove
-chmod a+x /opt/am/remove
-
 # DOWNLOAD THE LIST OF THE AVAILABLE PROGRAMS
 arch=$(uname -m)
 wget -q https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/programs/$arch-apps
+
+# DOWNLOAD MODULES
+MODULES=$(wget -q https://api.github.com/repos/ivan-hc/AM/contents/modules -O - | grep download_url | cut -d '"' -f 4)
+for module in $MODULES; do
+	for v in $module; do
+		cd /opt/am/modules
+		mkdir tmp
+		cd tmp
+		wget -q "$v"
+		cd ..
+		mv tmp/*.am ./
+		chmod a+x ./*.am
+		rmdir tmp
+	done
+done
 
 # ENABLE NON-ROOT PERMISSIONS TO THE MAIN FOLDER FOR THE CURRENT USER
 currentuser=$(who | awk '{print $1}')
