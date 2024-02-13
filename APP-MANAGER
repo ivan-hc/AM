@@ -131,7 +131,6 @@ cat <<-HEREDOC >> "$AMPATH/options"
 	apikey
 	backup
 	clean
-	convert
 	download
 	files
 	install
@@ -147,6 +146,7 @@ cat <<-HEREDOC >> "$AMPATH/options"
 	unlock
 	update
 	web
+	--convert
 	--debug
 	--disable-completion
 	--enable-completion
@@ -289,8 +289,13 @@ case "$1" in
  -d, download
  
  SYNOPSIS:	-d {PROGRAM}
+ 		-d --convert {PROGRAM}
  
  DESCRIPTION:	Download one or more installation scripts to your desktop.
+ 
+ With the option "--convert" its converted to a standalone local installer,
+ 
+ but AM requires AppMan to be installed to add custom directory settings.
  __________________________________________________________________________
  
  -f, files
@@ -497,15 +502,6 @@ case "$1" in
 
  			       EXTRA OPTIONS
  __________________________________________________________________________
-
- conv, convert				( only works with "AppMan" )
- 
- SYNOPSIS:	conv {PROGRAM}
- 
- DESCRIPTION:	Download and convert the installation scripts for "AM". 
- 
- Use them as rootless installation scripts that can be installed locally.
- __________________________________________________________________________
  
  --user, appman				( only works with "AM" )
  
@@ -708,82 +704,14 @@ case "$1" in
   	_clean_all
 	;;
 
-  '-conv'|'convert')
-
-  	_no_sudo
-
-  	while [ -n "$1" ]; do
-
-  		if [ $AMCLI == am ] 2>/dev/null; then
-  			echo " This function only works for AppMan"
-  			exit
-  		fi
-
-		rm -f $AMPATH/.cache/convert-args
-		echo $@ | tr ' ' '\n' >> $AMPATH/.cache/convert-args && echo STOP >> $AMPATH/.cache/convert-args
-		ARGS=$(tail -n +2 $AMPATH/.cache/convert-args)
-
-		case $2 in
-		'') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
-		esac
-
-		for arg in $ARGS; do
-			for var in $arg; do
-
-				function _convert(){
-					case $arg in
-					*) 
-						function _convert_to_appman_compatible_script(){
-							sed -i "s# /usr/local/bin# $(xdg-user-dir USER)/.local/bin#g" ./$arg
-							sed -i "s# /usr/bin# $(xdg-user-dir USER)/.local/bin#g" ./$arg
-							sed -i "s# /usr/games# $(xdg-user-dir USER)/.local/bin#g" ./$arg
-							sed -i "s# /usr/local/games# $(xdg-user-dir USER)/.local/bin#g" ./$arg
-							sed -i "s# /usr/share/applications# $(xdg-user-dir USER)/.local/share/applications#g" ./$arg
-							sed -i "s# /usr/local/share/applications# $(xdg-user-dir USER)/.local/share/applications#g" ./$arg
-							sed -i "s# /usr/share/pixmaps# $(xdg-user-dir USER)/.local/share/icons#g" ./$arg
-							sed -i "s# /usr/local/share/pixmaps# $(xdg-user-dir USER)/.local/share/icons#g" ./$arg
-							sed -i "s# /opt# $APPSPATH#g" ./$arg
-							sed -i "s#/opt/#$APPSPATH/#g" ./$arg
-							sed -i "s# https://api.github.com#$HeaderAuthWithGITPAT https://api.github.com#g" ./$arg
-							echo 'sed -i "s#Icon=/opt#Icon=$(xdg-user-dir USER)/$APPSDIR#g" ~/.local/share/applications/AM*.desktop' >> ./$arg
-							echo 'sed -i "s#Exec=$APP#Exec=$(xdg-user-dir USER)/.local/bin/$APP#g" ~/.local/share/applications/AM*.desktop' >> ./$arg
-							echo 'sed -i "s#Exec=/usr/bin/#Exec=$(xdg-user-dir USER)/.local/bin/#g" ~/.local/share/applications/AM*.desktop' >> ./$arg
-							echo 'sed -i "s#Exec=/opt/#Exec=$(xdg-user-dir USER)/$APPSDIR/#g" ~/.local/share/applications/AM*.desktop' >> ./$arg
-							echo " Script $arg converted to an AppMan-compatible script"
-						}
-
-						if curl --output /dev/null --silent --head --fail $AMREPO/programs/$arch/$arg  1>/dev/null; then
-  							_online_check
-  							cd $(xdg-user-dir DESKTOP); wget -q $AMREPO/programs/$arch/$arg
-  							_convert_to_appman_compatible_script
-  						elif test -f $(xdg-user-dir DESKTOP)/am-scripts/$arch/$arg; then
-  							cd $(xdg-user-dir DESKTOP); cp ./am-scripts/$arch/$arg ./$arg
-  							_convert_to_appman_compatible_script
-						else
-							echo ""; echo ' "'$arg'" is NOT a valid argument'; echo ""
-						fi
-					esac
-				}
-
-				if [ $arg == STOP ]; then
-					exit
-				else
-					_convert
-				fi
-			done
-		done
-	done
-
-	shift
-	;;
-
   '-d'|'download')
 
 	_no_sudo
 	_online_check
 
 	case $2 in
-	'') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
+	'')	echo " USAGE: $AMCLI $1 [ARGUMENT]"
+		echo "        $AMCLI $1 --convert [ARGUMENT]"; exit;;
 	esac
 
 	while [ -n "$1" ]; do
@@ -796,18 +724,44 @@ case "$1" in
 
 			function _download(){
 				case $arg in
+				'--convert')	;;
 				*) 
+					function _convert_to_appman_compatible_script(){
+						if grep -q -- "--convert" $AMPATH/.cache/download-args; then
+							if test -f $HOME/.config/appman/appman-config; then
+								sed -i "s# /usr/local/bin# $(xdg-user-dir USER)/.local/bin#g" ./$arg
+								sed -i "s# /usr/bin# $(xdg-user-dir USER)/.local/bin#g" ./$arg
+								sed -i "s# /usr/games# $(xdg-user-dir USER)/.local/bin#g" ./$arg
+								sed -i "s# /usr/local/games# $(xdg-user-dir USER)/.local/bin#g" ./$arg
+								sed -i "s# /usr/share/applications# $(xdg-user-dir USER)/.local/share/applications#g" ./$arg
+								sed -i "s# /usr/local/share/applications# $(xdg-user-dir USER)/.local/share/applications#g" ./$arg
+								sed -i "s# /usr/share/pixmaps# $(xdg-user-dir USER)/.local/share/icons#g" ./$arg
+								sed -i "s# /usr/local/share/pixmaps# $(xdg-user-dir USER)/.local/share/icons#g" ./$arg
+								sed -i "s# /opt# $APPSPATH#g" ./$arg
+								sed -i "s#/opt/#$APPSPATH/#g" ./$arg
+								sed -i "s# https://api.github.com#$HeaderAuthWithGITPAT https://api.github.com#g" ./$arg
+								echo 'sed -i "s#Icon=/opt#Icon=$(xdg-user-dir USER)/$APPSDIR#g" ~/.local/share/applications/AM*.desktop' >> ./$arg
+								echo 'sed -i "s#Exec=$APP#Exec=$(xdg-user-dir USER)/.local/bin/$APP#g" ~/.local/share/applications/AM*.desktop' >> ./$arg
+								echo 'sed -i "s#Exec=/usr/bin/#Exec=$(xdg-user-dir USER)/.local/bin/#g" ~/.local/share/applications/AM*.desktop' >> ./$arg
+								echo 'sed -i "s#Exec=/opt/#Exec=$(xdg-user-dir USER)/$APPSDIR/#g" ~/.local/share/applications/AM*.desktop' >> ./$arg
+								echo " ...also converted to an AppMan-compatible script"
+							else
+								echo ' 💀 ERROR: "--convert" requires a configuration file in ~/.config/appman'
+							fi
+						fi
+					}
+					
 					if curl --output /dev/null --silent --head --fail $AMREPO/programs/$arch/$arg  1>/dev/null; then
-						echo ""; echo ' "'$arg'" installation script downloaded! ' | tr a-z A-Z
-						cd $(xdg-user-dir DESKTOP); wget -q $AMREPO/programs/$arch/$arg; echo ""
+						echo ' ◆ "'$arg'" installation script downloaded! ' | tr a-z A-Z
+						cd $(xdg-user-dir DESKTOP); wget -q $AMREPO/programs/$arch/$arg;  _convert_to_appman_compatible_script; echo " --------------------------------------------------"
 					elif curl --output /dev/null --silent --head --fail $AMREPO/libraries/any/$arg  1>/dev/null; then
-						echo ""; echo ' "'$arg'" installation script downloaded! ' | tr a-z A-Z
-						cd $(xdg-user-dir DESKTOP); wget -q $AMREPO/libraries/any/$arg; echo ""
+						echo ' ◆ "'$arg'" installation script downloaded! ' | tr a-z A-Z
+						cd $(xdg-user-dir DESKTOP); wget -q $AMREPO/libraries/any/$arg; _convert_to_appman_compatible_script; echo " --------------------------------------------------"
 					elif curl --output /dev/null --silent --head --fail $AMREPO/testing/$arch/$arg  1>/dev/null; then
-						echo ""; echo '  "'$arg'" downloaded from "testing", the unstable branch ' | tr a-z A-Z; echo ""; echo ' WARNING! PROGRAMS COMING FROM "TESTING" ARE BROKEN, USE AT YOUR OWN RISK!'
-						cd $(xdg-user-dir DESKTOP); wget -q $AMREPO/testing/$arch/$arg; echo ""
+						echo ' ⚠️ "'$arg'" downloaded from "testing", the unstable branch ' | tr a-z A-Z; echo ""; echo ' WARNING! PROGRAMS COMING FROM "TESTING" ARE BROKEN, USE AT YOUR OWN RISK!'
+						cd $(xdg-user-dir DESKTOP); wget -q $AMREPO/testing/$arch/$arg; _convert_to_appman_compatible_script; echo " --------------------------------------------------"
 					else
-						echo ""; echo ' "'$arg'" is NOT a valid argument, check the list (command "'$AMCLI' -l")'; echo ""
+						echo ' 💀 ERROR: "'$arg'" is NOT a valid argument'; echo ""
 					fi
 				esac
 			}
@@ -2108,7 +2062,7 @@ case "$1" in
 
   'version'|'-v'|'--version')
 
-  	echo "5.8.2-1";;
+  	echo "5.8.3";;
 
   *) exec $AMCLIPATH ;;
 
