@@ -330,8 +330,10 @@ to have a list of the installed programs use the option `-f` or `files` (syntax 
  SYNOPSIS:
 
  `-d {PROGRAM}`
+
+  `-d --convert {PROGRAM}`
  
- DESCRIPTION:	Download one or more installation scripts to your desktop.
+ DESCRIPTION:	Download one or more installation scripts to your desktop. With the option "--convert" its converted to a standalone local installer, but AM requires AppMan to be installed to add custom directory settings.
  ___________________________________________________________________________
  
  `-f`, `files`
@@ -580,15 +582,6 @@ to have a list of the installed programs use the option `-f` or `files` (syntax 
 
 ## EXTRA OPTIONS
  ___________________________________________________________________________
-
- `conv`, `convert`			 (only available for "APPMAN")
- 
- SYNOPSIS:
-
- `conv {PROGRAM}`
- 
- DESCRIPTION:	Downloads the installation scripts for "AM" and converts them to rootless installation scripts that can be installed locally. 
- ___________________________________________________________________________ 
  
  `--user`, `appman`			(only available for "AM")
  
