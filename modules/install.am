@@ -1,0 +1,220 @@
+#!/usr/bin/env bash
+
+while [ -n "$1" ]; do
+
+	case $2 in
+	'')
+		echo " USAGE: $AMCLI $1 [ARGUMENT]"
+		echo " USAGE: $AMCLI $1 --debug [ARGUMENT]"
+		echo " USAGE: $AMCLI $1 --force-latest [ARGUMENT]"; exit
+		;;
+	'--debug'|'--force-latest')
+		case $3 in
+			'')	echo " USAGE: $AMCLI $1 --debug [ARGUMENT]"
+				echo " USAGE: $AMCLI $1 --force-latest [ARGUMENT]"; exit;;
+		esac
+	esac
+
+	if [ $AMCLI == am ] 2>/dev/null; then
+  		$SUDOCOMMAND echo "" 2>/dev/null
+  		if ! $SUDOCOMMAND -n true 2>/dev/null; then
+			exit
+  		fi
+  	fi
+
+	echo " ############################################################################"
+	echo " ##                                                                        ##"
+	echo " ##                  START OF ALL INSTALLATION PROCESSES                   ##"
+	echo " ##                                                                        ##"
+	echo " ############################################################################"
+	rm -f $AMPATH/.cache/install-args
+	rm -R -f $AMPATH/.cache/installed
+	echo $@ | tr ' ' '\n' >> $AMPATH/.cache/install-args 
+	echo STOP >> $AMPATH/.cache/install-args
+	ARGS=$(tail -n +2 $AMPATH/.cache/install-args)
+
+	for arg in $ARGS; do
+		for var in $arg; do
+
+			function _install(){
+				echo ""
+				case $arg in
+
+				'--debug'|'--force-latest')	;;
+				*) 
+					function _install_arg(){
+						case $arg in
+						*) 
+							for var in $arg; do
+								chmod a+x ./$arg
+
+								if [ $arg == appman ]; then
+									if [ $AMCLI == appman ] 2>/dev/null; then
+										echo ' 💀 ERROR: YOU CANNOT INSTALL APPMAN USING APPMAN'
+										break
+									fi
+								fi
+									if grep -q '.deb' ./$arg; then
+									if ! command -v ar 1>/dev/null; then
+										echo ' 💀 ERROR: YOU CANNOT INSTALL "'$(echo '"'$arg'"' | tr a-z A-Z)'" WITHOUT INSTALLING "BINUTILS"!'; break
+									fi
+								fi
+								if grep -q 'ffwa-' ./$arg; then
+									if ! command -v firefox 1>/dev/null; then
+										echo ' 💀 ERROR: YOU CANNOT INSTALL "'$(echo '"'$arg'"' | tr a-z A-Z)'" WITHOUT INSTALLING "FIREFOX"!'; break
+									fi
+								fi
+									if grep -q '.tar' ./$arg; then
+									if ! command -v tar 1>/dev/null; then
+										echo ' 💀 ERROR: YOU CANNOT INSTALL "'$(echo '"'$arg'"' | tr a-z A-Z)'" WITHOUT INSTALLING "TAR"!'; break
+									fi
+								fi
+									if grep -q '.zip' ./$arg; then
+									if ! command -v unzip 1>/dev/null; then
+										echo ' 💀 ERROR: YOU CANNOT INSTALL "'$(echo '"'$arg'"' | tr a-z A-Z)'" WITHOUT INSTALLING "UNZIP"!'; break
+									fi
+								fi
+									if grep -q 'zsync /opt' ./$arg; then
+									if ! command -v zsync 1>/dev/null; then
+										echo ' 💀 ERROR: YOU CANNOT INSTALL "'$(echo '"'$arg'"' | tr a-z A-Z)'" WITHOUT INSTALLING "ZSYNC"!'; break
+									fi
+								fi
+									if grep -q 'force-latest' $AMPATH/.cache/install-args; then
+									sed -i 's#releases -O -#releases/latest -O -#g' ./$arg
+								fi
+
+								function _install_common_patch(){
+									if ! grep -q -- "--debug" $AMPATH/.cache/install-args; then
+										sed -i "s#wget #wget -q --no-verbose --show-progress --progress=dot:mega #g" ./$arg; sed -i 's#$(wget -q --no-verbose --show-progress --progress=dot:mega #$(wget -q #g' ./$arg; sed -i "s# -q -q # -q #g" ./$arg
+									fi
+									sed -i 's/currentuser=/#currentuser=/g' ./$arg
+									sed -i 's/chown -R $currentuser/#chown -R $currentuser/g' ./$arg
+									sed -i '/# MESSAGE/,$d' ./$arg
+									sed -i "s# https://api.github.com#$HeaderAuthWithGITPAT https://api.github.com#g" ./$arg
+								}
+
+								function _install_appman_local_patch(){
+									sed -i "s# /opt# $APPSPATH#g" ./$arg
+									sed -i "s#/opt/#$APPSPATH/#g" ./$arg
+									sed -i "s# /usr/local/bin# $(xdg-user-dir USER)/.local/bin#g" ./$arg
+									sed -i "s# /usr/bin# $(xdg-user-dir USER)/.local/bin#g" ./$arg
+									sed -i "s# /usr/local/games# $(xdg-user-dir USER)/.local/bin#g" ./$arg
+									sed -i "s# /usr/games# $(xdg-user-dir USER)/.local/bin#g" ./$arg
+									sed -i "s# /usr/share/applications# $(xdg-user-dir USER)/.local/share/applications#g" ./$arg
+									sed -i "s# /usr/local/share/applications# $(xdg-user-dir USER)/.local/share/applications#g" ./$arg
+									sed -i "s# /usr/share/pixmaps# $(xdg-user-dir USER)/.local/share/icons#g" ./$arg
+									sed -i "s# /usr/local/share/pixmaps# $(xdg-user-dir USER)/.local/share/icons#g" ./$arg
+								}
+
+								if [ $AMCLI == appman ] 2>/dev/null; then
+									_install_common_patch
+									_install_appman_local_patch
+								else
+									if [[ $(grep "[[:space:]]ro[[:space:],]" /proc/mounts) ]]; then
+										$SUDOCOMMAND mkdir -p /usr/local/share/applications
+										sed -i 's#/usr/share/applications#/usr/local/share/applications#g' ./$arg
+									fi
+									_install_common_patch
+								fi
+
+								echo -e " ◆ $(echo '"'$arg'"' | tr a-z A-Z): starting installation script" &&
+
+								if grep -q "/usr/local/lib" ./$arg; then
+									echo -e '\n ⚠️ This script installs a system library in /usr/local/lib, cancel it if:\n'
+									echo ' - it is already installed in the system;'
+									echo -e ' - its already present in your repositories (so install it from there).\n'
+									read -p " Do you wish to continue (Y,n)?" yn
+									case "$yn" in
+									'n'|'N')	echo -e "\n INSTALLATION ABORTED!"; break;;
+									'y'|'Y'|*)	;;
+									esac	
+								fi
+
+								if grep -q -- "--debug" $AMPATH/.cache/install-args; then
+									$SUDOCOMMAND ./$arg
+								else
+									$SUDOCOMMAND ./$arg 2>&1 | grep -v ": "
+								fi
+
+								echo -ne " Configuring $(echo '"'$arg'"' | tr a-z A-Z)...\r" && echo -ne "                                                                          \r" &&
+								$SUDOCOMMAND chown -R $currentuser $APPSPATH/$(cd $APPSPATH && ls -td * | head -1) 2> /dev/null
+								if test -f $APPSPATH/$(cd $APPSPATH && ls -td * | head -1)/AM-updater; then
+									mkdir $APPSPATH/$(cd $APPSPATH && ls -td * | head -1)/.am-installer 2> /dev/null &&
+									wget -q $AMREPO/programs/$arch/$arg -O $APPSPATH/$(cd $APPSPATH && ls -td * | head -1)/.am-installer/$arg
+								fi &&
+								if test -d $APPSPATH/$(cd $APPSPATH && ls -td * | head -1)/icons; then
+									find $APPSPATH/$(cd $APPSPATH && ls -td * | head -1)/icons/* -xtype l -delete 2> /dev/null
+									if [ -z "$(ls -A $APPSPATH/$(cd $APPSPATH && ls -td * | head -1)/icons)" ]; then
+										wget -q https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/main/icons/$arg.png -O $APPSPATH/$(cd $APPSPATH && ls -td * | head -1)/icons/$arg
+									fi 
+								fi &&
+								if [ $AMCLI == appman ] 2>/dev/null; then
+									sed -i "s#Icon=/opt#Icon=$(xdg-user-dir USER)/$APPSDIR#g" ~/.local/share/applications/AM*.desktop 2> /dev/null
+									sed -i "s#Exec=$arg#Exec=$(xdg-user-dir USER)/.local/bin/$arg#g" ~/.local/share/applications/AM*.desktop 2> /dev/null
+									sed -i 's#Exec=$APP#Exec='$(xdg-user-dir USER)'/.local/bin/$APP#g' ~/.local/share/applications/AM*.desktop 2> /dev/null
+									sed -i "s#Exec=/usr/bin/#Exec=$(xdg-user-dir USER)/.local/bin/#g" ~/.local/share/applications/AM*.desktop 2> /dev/null
+									sed -i "s#Exec=/opt/#Exec=$(xdg-user-dir USER)/$APPSDIR/#g" ~/.local/share/applications/AM*.desktop 2> /dev/null
+								fi
+
+								echo -ne " $(echo '"'$arg'"' | tr a-z A-Z) INSTALLED ($(du -sm $APPSPATH/$(cd $APPSPATH && ls -td * | head -1) | awk '{print $1}' ) MB OF DISK SPACE)\n"
+								$SUDOCOMMAND rm $AMPATH/.cache/$arg
+								unset $LATESTDIR
+								LATESTDIR=$(cd $APPSPATH && ls -td * | head -1)
+
+								if test -f $APPSPATH/$LATESTDIR/remove; then
+									if test -d $APPSPATH/$LATESTDIR/tmp; then
+										echo -e " 💀 ERROR DURING INSTALLATION, REMOVED $(echo '"'$arg'"' | tr a-z A-Z)!"
+										$AMCLIPATH -R $LATESTDIR 1> /dev/null
+									else
+										echo " ◆ $LATESTDIR" >> $AMPATH/.cache/installed &&
+										chown -R $currentuser $AMPATH/.cache/about 2> /dev/null
+									fi
+								else
+									echo " INSTALLATION ABORTED!"
+								fi
+								break
+							done
+						esac
+					}
+
+					if test -f $APPSPATH/$arg/remove; then
+						echo " ◆ $(echo '"'$arg'"' | tr a-z A-Z): app already installed previously! Try removing it."
+					else
+						if test -f $arg 2> /dev/null; then
+							path2arg=$(echo "$arg")
+							arg=$(echo "$path2arg" | sed 's:.*/::')
+							cd $AMPATH/.cache; mkdir -p tmp; cd tmp; cp $path2arg ./$arg; cd ..; mv ./tmp/$arg ./$arg; rmdir ./tmp
+							_install_arg
+						elif curl --output /dev/null --silent --head --fail $AMREPO/programs/$arch/$arg  1>/dev/null; then
+							cd $AMPATH/.cache; mkdir -p tmp; cd tmp; wget -q $AMREPO/programs/$arch/$arg; cd ..; mv ./tmp/$arg ./$arg; rmdir ./tmp
+							_install_arg
+						elif curl --output /dev/null --silent --head --fail $AMREPO/libraries/any/$arg  1>/dev/null; then
+							cd $AMPATH/.cache; mkdir -p tmp; cd tmp; wget -q $AMREPO/libraries/any/$arg; cd ..; mv ./tmp/$arg ./$arg; rmdir ./tmp
+							_install_arg
+						else
+							echo ' 💀 ERROR: "'$arg'" does NOT exist in the database, see "'$AMCLI' -l"'
+						fi
+					fi
+					echo " ____________________________________________________________________________"
+				esac
+			}
+
+			if [ $arg == STOP ]; then
+				if test -f $AMPATH/.cache/installed; then
+					echo " ############################################################################"
+					echo -e "\n                  END OF ALL INSTALLATION PROCESSES\n"
+					echo -e "             The following new programs have been installed:\n"
+					grep -w -v "◆ am" 0<$AMPATH/.cache/installed
+					echo -e "\n ############################################################################"
+					exit
+				else
+					exit
+				fi
+			else
+				_install
+			fi
+		done
+	done
+done
+
+shift

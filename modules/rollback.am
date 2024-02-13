@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+
+case $2 in
+'') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
+esac
+
+while [ -n "$1" ]; do
+		if test -f $APPSPATH/$2/AM-updater; then
+			if grep -q ".zsync" $APPSPATH/$2/AM-updater; then
+				echo " AppImage packages updatable with zsync have not previous versions."; exit
+			elif test -f $APPSPATH/$2/updater; then
+				echo ' When an executable called "updater" is available, the app is only updateable.'; exit
+			else
+				if grep -q "api.github.com" $APPSPATH/$2/AM-updater; then
+					rm -f "$AMPATH/.cache/rollback-args";
+					extension=$(cat $APPSPATH/$2/version | tr '.' '\n' | tail -1)
+					REPO=$(grep -i "REPO=" $APPSPATH/$2/AM-updater | grep -o -P '(?<=").*(?=")')
+					printf "%s\n" "$(wget -q $HeaderAuthWithGITPAT https://api.github.com/repos/$REPO/releases?per_page=100 -O - \
+						| grep browser_download_url | cut -d '"' -f 4)" | tr ' ' '\n' | grep -i "$extension$" >> "$AMPATH/.cache/rollback-args"
+					if ! grep -q "[0-9]" $AMPATH/.cache/rollback-args; then
+						echo " ERROR: No valid links found, sorry!"
+						exit
+					else
+						echo "-----------------------------------------------------------------------"
+						echo "You have chosen to roll back $2."
+						echo "Rollback will be done from https://github.com/$REPO"
+						echo "-----------------------------------------------------------------------"
+						printf "Select a URL from this menu (read carefully) or press CTRL+C to abort:\n-----------------------------------------------------------------------\n"; sleep 1;
+						select d in $(cat "$AMPATH/.cache/rollback-args"); do test -n "$d" && break; echo ">>> Invalid Selection"; done
+						cp $APPSPATH/$2/AM-updater $APPSPATH/$2/AM-rollback
+						sed -i 's/version0/#version0/g' $APPSPATH/$2/AM-rollback
+						sed -i '/show-progress/c\wget -q --show-progress '$d'' $APPSPATH/$2/AM-rollback
+						$APPSPATH/$2/AM-rollback
+						rm -f $APPSPATH/$2/AM-rollback
+						rm -f $APPSPATH/$2/version
+						echo $d >> $APPSPATH/$2/version
+						echo -e "\nROLLBACK SUCCESSFUL!"
+						exit
+					fi
+				elif test -f $APPSPATH/$2/$2-rollback; then
+					cd $APPSPATH/$2
+					./$2-rollback
+					exit
+				else
+					echo " The option '$1' only works for https://github.com"; exit
+				fi
+			fi
+		else
+			echo ' No AM-updater available for '$2', cannot detect any URL!'; exit
+		fi
+done
+
+	shift
