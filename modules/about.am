@@ -57,50 +57,25 @@ function download_lib() {
     printf "%s\n" "-----------------------------------------------------------------------"
 }
 
-				case "$arg" in
-				*) 
-					rm -rf "$AMPATH/.cache/about"
-					mkdir -p "$AMPATH/.cache/about"
-					cd "$AMPATH/.cache/about" && wget -q "$markdown" &&
-					sed -i '1,${ /^\s*#/ d; /^\s*!/ d; /\[Applications]/d; /\ --- /d; }' "$arg.md"
-					printf "%s\n" " PACKAGE: $(echo $arg | tr a-z A-Z)"
-						if test -f "$APPSPATH/$arg/remove"; then
-						printf "%s\n" " STATUS: INSTALLED, ABOUT $(du -sm $APPSPATH/$arg | cut -f1) MB OF DISK SPACE IN USE"
-					else 
-						printf "%s\n" " STATUS: NOT INSTALLED"
-					fi
-					cat ./$arg.md && printf "%s\n" "-----------------------------------------------------------------------"
-					;;
-				esac
-			elif cat "$AMPATH/libs-list" | grep "◆ $arg : " 1> /dev/null; then
-				printf "%s\n" " PACKAGE: $(echo $arg | tr a-z A-Z)"
-				if test -f "$APPSPATH/$arg/remove"; then 
-					LIBNAME=$(cat $APPSPATH/$arg/remove | tr ' ' '\n' | grep "usr/local/lib" | head -1)
-					SIZE=$(du -sm $LIBNAME | cut -f1 | sort -rm | head -1)
-					if [ "$SIZE" == 0 ]; then
-						printf "%s\n" " STATUS: INSTALLED, LESS THAN 1 MB OF DISK SPACE IN USE"
-					else
-						printf "%s\n" " STATUS: INSTALLED, ABOUT $(du -sm $LIBNAME | cut -f1 | sort -rm | head -1) MB OF DISK SPACE IN USE"
-					fi
-				else 
-					printf "%s\n" " STATUS: NOT INSTALLED"
-				fi
-				echo ""
-				cat "$AMPATH/libs-list" | grep "◆ $arg : " | sed 's#.*:##' | sed 's/(/\n (/g'
-				echo "" && echo " SITE/SOURCES:" && echo "" &&
-				echo " $(wget -q $AMREPO/libraries/any/$arg -O - | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | head -1)"
-				echo ""
-				printf "%s\n" "-----------------------------------------------------------------------"
-			else
-				printf "%s\n" " \"$arg\" is not a valid argument" | tr 'a-z' 'A-Z'
-			fi
-		}
-		if [ "$arg" == "STOP" ]; then
-			exit 1
-		else
-			_about
-		fi
-	done
+# Check for arguments
+case $2 in
+'') usage;;
+esac
+
+# Main logic
+if [ ! -f "$AMPATH/libs-list" ]; then
+    wget -q $AMREPO/libraries/libs-list -P $AMPATH
+fi
+
+# Skip the first argument which is not part of ARGS
+for arg in "${@:2}"; do
+    if curl -o /dev/null -sIf "https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/main/apps/${arg}.md" 1>/dev/null; then
+        download_markdown "$arg"
+    elif grep -q "◆ $arg : " "$AMPATH/libs-list"; then
+        download_lib "$arg"
+    else
+        printf "%s\n" " \"$arg\" is not a valid argument" | tr 'a-z' 'A-Z'
+    fi
 done
 
 shift
