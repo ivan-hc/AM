@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+
+case $2 in
+'') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
+esac
+
+while [ -n "$1" ]; do
+	rm -f $AMPATH/.cache/home-args
+	echo $@ | tr ' ' '\n' >> $AMPATH/.cache/home-args && echo STOP >> $AMPATH/.cache/home-args
+	ARGS=$(tail -n +2 $AMPATH/.cache/home-args)
+	for arg in $ARGS; do
+
+		function _home(){
+			cd $APPSPATH
+			if ! test -d ./$arg; then
+				echo ' ERROR: "'$arg'" is not installed'
+			else
+				case $arg in
+				*)
+					if [ -z $(strings -d "./$arg/$arg" 2>/dev/null | grep -F 'appimage-help                 Print this help') ] 2>/dev/null; then
+						echo ' ERROR: "'$arg'" is NOT an AppImage'
+					else
+						cd ./$arg
+						mkdir -p ./$arg.home
+						echo ' Setting $HOME to '$APPSPATH'/'$arg'/'$arg'.home for this AppImage'
+					fi
+				esac
+			fi
+		}
+
+		if [ $arg == STOP ]; then
+			exit
+		else
+			_home
+		fi
+	done
+done

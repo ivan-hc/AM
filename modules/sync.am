@@ -1,0 +1,102 @@
+#!/usr/bin/env bash
+
+function _completion_lists(){
+	# Remove existing lists and download new ones
+	rm -Rf $AMPATH/{$arch-apps,list,libs-list} &&
+	wget -q $AMREPO/programs/$arch-apps -P $AMPATH &&
+	wget -q $AMREPO/libraries/libs-list -P $AMPATH
+	
+	# Extract and append program and library names to the list
+	for file in $arch-apps libs-list; do
+		awk -v FS="(◆ | : )" '{print $2}' <$AMPATH/$file >> $AMPATH/list
+	done
+	
+	# Append options to the list
+	cat $AMPATH/options >> $AMPATH/list
+}
+
+echo "-----------------------------------------------------------------------------"
+echo -e " Checking for changes of the installation scripts in the online database..."
+rm -R -f $AMPATH/.cache/sync-args && echo "" >> $AMPATH/.cache/sync-args
+cd $APPSPATH && find -name 'AM-updater' -printf "%h\n" 2>/dev/null | sort -u | cut -c 3- > $AMPATH/.cache/sync-args
+ARGS=$(cat $AMPATH/.cache/sync-args)
+
+for arg in $ARGS; do
+
+	function _sync_installation_scripts(){
+		mkdir -p $APPSPATH/$arg/.am-installer
+		if test -f $APPSPATH/$arg/.am-installer/$arg; then
+			CURRENT=$(cat $APPSPATH/$arg/.am-installer/$arg)
+			SOURCE=$(wget -q $AMREPO/programs/$arch/$arg -O -)
+			if [ "$CURRENT" == "$SOURCE" ]; then
+				echo -ne "\r" 2> /dev/null
+			else
+				echo -e " ◆ Changed https://github.com/ivan-hc/AM/blob/main/programs/$arch/$arg"
+			fi
+		else
+			echo -e " ◆ No installation script for $arg, downloading one..."
+			mkdir -p $APPSPATH/$arg/.am-installer
+			wget -q $AMREPO/programs/$arch/$arg -O $APPSPATH/$arg/.am-installer/$arg
+		fi
+	}
+
+	_sync_installation_scripts
+
+done
+
+echo "-----------------------------------------------------------------------------"
+echo -e " Check for updates in modules..."
+function _sync_modules(){
+	MODULES=$(wget -q https://api.github.com/repos/ivan-hc/AM/contents/modules -O - | grep download_url | cut -d '"' -f 4)
+	for v in $MODULES; do
+		cd $AMPATH/modules
+		MODULENAME=$(echo "$v" | sed 's:.*/::')
+		if ! test -f ./$MODULENAME; then
+			echo " ◆ Downloading $MODULENAME (not previously installed)..."
+			wget -q "$v"
+		fi
+		CURRENT=$(cat ./$MODULENAME)
+		SOURCE=$(wget -q "$v" -O -)
+		if [ "$CURRENT" == "$SOURCE" ]; then
+			echo -ne "\r" 2> /dev/null
+		else
+			echo " ◆ Updating $MODULENAME..."
+			mkdir tmp
+			cd tmp
+			wget -q "$v"
+			cd ..
+			mv tmp/*.am ./
+			chmod a+x ./*.am
+			rmdir tmp
+		fi
+	done
+}
+
+_sync_modules
+
+function _sync_amcli(){
+	echo "-----------------------------------------------------------------------------"
+  	_completion_lists
+	CURRENT_AM_VERSION=$($AMCLIPATH -v)
+	echo -ne '\n ◆ SYNCHRONIZING "'$(echo $AMCLI | tr a-z A-Z)'" VERSION '$CURRENT_AM_VERSION'...\r'; sleep 1
+  	rm -R -f $AMPATH/.cache/* 1>/dev/null; cd $AMPATH/.cache
+  	if [ $AMCLI == am ] 2>/dev/null; then
+  		wget -q $AMREPO/APP-MANAGER && chmod a+x ./APP-MANAGER
+  		cd ..
+  		mv $AMPATH/.cache/APP-MANAGER $AMPATH; chmod 777 $AMPATH
+  	else
+  		wget -q $AMREPO/APP-MANAGER -O appman && chmod a+x ./$AMCLI
+  		cd ..
+  		mv $AMPATH/.cache/$AMCLI $AMCLIPATH
+  	fi
+  	if [ ! $CURRENT_AM_VERSION == $($AMCLIPATH -v) ] ; then
+ 		echo -ne ' A new release of "'$(echo $AMCLI | tr a-z A-Z)'" is available, please wait...\r'
+ 		echo -e ' ◆ "'$(echo $AMCLI | tr a-z A-Z)'" IS NOW UPDATED TO THE BRAND NEW '$($AMCLIPATH -v)' VERSION!           \n\n  Replacement of version '$CURRENT_AM_VERSION' currently in use, COMPLETED!'
+ 		echo -e "\n See https://github.com/ivan-hc/AM/commits/main\n"
+ 	else
+ 		echo -e ' ◆ "'$(echo $AMCLI | tr a-z A-Z)'" IS ALREADY UPDATED, CURRENT VERSION '$CURRENT_AM_VERSION''
+ 		echo -e "\n See https://github.com/ivan-hc/AM/commits/main\n"
+ 	fi
+}
+
+_sync_amcli

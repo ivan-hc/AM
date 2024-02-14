@@ -16,8 +16,8 @@ chmod a+x /opt/$APP/remove
 mkdir tmp
 cd ./tmp
 
-version=$(echo $(wget -q https://aur.archlinux.org/packages/lunar-client -O - | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep -i ".appimage" | grep -w -v arm64 | grep -w -v armv7l | grep -w -v ".asc" | grep -w -v ".zsync" | grep -w -v "archlinux.org" | head -1))
-wget $version
+version=$(wget -q https://repology.org/project/$APP/versions -O - | grep -i "AUR" | head -4 | grep -o -P '(?<=">).*(?=</a)' | sed 's/^.*>//' | tail -1)
+wget https://launcherupdates.lunarclientcdn.com/Lunar%20Client-$version.AppImage
 echo "$version" >> /opt/$APP/version
 cd ..
 mv ./tmp/* ./$APP
@@ -32,14 +32,14 @@ cat >> /opt/$APP/AM-updater << 'EOF'
 #!/usr/bin/env bash
 APP=lunar-client
 version0=$(cat /opt/$APP/version)
-version=$(echo $(wget -q https://aur.archlinux.org/packages/lunar-client -O - | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep -i ".appimage" | grep -w -v arm64 | grep -w -v armv7l | grep -w -v ".asc" | grep -w -v ".zsync" | grep -w -v "archlinux.org" | head -1))
+version=$(wget -q https://repology.org/project/$APP/versions -O - | grep -i "AUR" | head -4 | grep -o -P '(?<=">).*(?=</a)' | sed 's/^.*>//' | tail -1)
 if [ $version = $version0 ]; then
   echo "Update not needed!"
 else
   notify-send "A new version of $APP is available, please wait"
   mkdir /opt/$APP/tmp
   cd /opt/$APP/tmp
-  wget $version
+  wget https://launcherupdates.lunarclientcdn.com/Lunar%20Client-$version.AppImage
   cd ..
   rm ./version
   echo $version >> ./version
@@ -57,24 +57,24 @@ cd /opt/$APP
 ./$APP --appimage-extract *.desktop 1>/dev/null
 ./$APP --appimage-extract share/applications/*.desktop 1>/dev/null
 ./$APP --appimage-extract usr/share/applications/*.desktop 1>/dev/null
-mv squashfs-root/*.desktop ./$APP.desktop
-mv squashfs-root/share/applications/*.desktop ./$APP.desktop
-mv squashfs-root/usr/share/applications/*.desktop ./$APP.desktop
+mv squashfs-root/*.desktop ./$APP.desktop 2> /dev/null
+mv squashfs-root/share/applications/*.desktop ./$APP.desktop 2> /dev/null
+mv squashfs-root/usr/share/applications/*.desktop ./$APP.desktop 2> /dev/null
 if [ ! -e ./$APP.desktop ]; then 
 	rm ./$APP.desktop; ./$APP --appimage-extract usr/share/applications/*$app*.desktop 
-	mv squashfs-root/usr/share/applications/*.desktop ./$APP.desktop
+	mv squashfs-root/usr/share/applications/*.desktop ./$APP.desktop 2> /dev/null
 fi
 if [ ! -e ./$APP.desktop ]; then 
 	rm ./$APP.desktop; ./$APP --appimage-extract share/applications/*$app*.desktop 1>/dev/null
-	mv squashfs-root/share/applications/*.desktop ./$APP.desktop
+	mv squashfs-root/share/applications/*.desktop ./$APP.desktop 2> /dev/null
 fi
 CHANGEEXEC=$(cat ./$APP.desktop | grep Exec= | tr ' ' '\n' | tr '=' '\n' | tr '/' '\n' | grep $app | head -1)
-sed -i "s#$CHANGEEXEC#$APP#g" ./$APP.desktop
-sed -i "s#AppRun#$APP#g" ./$APP.desktop
-sed -i "s#Exec=/bin/#Exec=#g" ./$APP.desktop
-sed -i "s#Exec=/usr/bin/#Exec=#g" ./$APP.desktop
+sed -i "s#$CHANGEEXEC#$APP#g" ./$APP.desktop 2> /dev/null
+sed -i "s#AppRun#$APP#g" ./$APP.desktop 2> /dev/null
+sed -i "s#Exec=/bin/#Exec=#g" ./$APP.desktop 2> /dev/null
+sed -i "s#Exec=/usr/bin/#Exec=#g" ./$APP.desktop 2> /dev/null
 CHANGEICON=$(cat ./$APP.desktop | grep Icon= | head -1)
-sed -i "s#$CHANGEICON#Icon=/opt/$APP/icons/$APP#g" ./$APP.desktop
+sed -i "s#$CHANGEICON#Icon=/opt/$APP/icons/$APP#g" ./$APP.desktop 2> /dev/null
 
 mkdir icons
 mv $(./$APP --appimage-extract *.png) ./icons/$APP 2>/dev/null
@@ -103,7 +103,7 @@ mv ./squashfs-root/usr/share/icons/hicolor/512x512/apps/*$app* ./icons/$APP 2>/d
 mv ./squashfs-root/usr/share/icons/hicolor/scalable/apps/*$app* ./icons/$APP 2>/dev/null
 
 rm -R -f /opt/$APP/squashfs-root
-mv ./$APP.desktop /usr/share/applications/AM-$APP.desktop
+mv ./$APP.desktop /usr/share/applications/AM-$APP.desktop 2> /dev/null
 
 # CHANGE THE PERMISSIONS
 currentuser=$(who | awk '{print $1}')

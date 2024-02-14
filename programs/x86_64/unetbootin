@@ -1,0 +1,81 @@
+#!/bin/sh
+
+APP=unetbootin
+REPO="unetbootin/unetbootin"
+
+# CREATE THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP
+
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+
+# DOWNLOAD THE ARCHIVE
+mkdir tmp
+cd ./tmp
+
+version=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep -w -v i386 | grep -w -v i686 | grep -w -v aarch64 | grep -w -v arm64 | grep -w -v armv7l | grep browser_download_url | grep -i "linux64" | cut -d '"' -f 4 | head -1)
+wget $version
+echo "$version" >> /opt/$APP/version
+cd ..
+mv ./tmp/*.bin ./$APP
+chmod a+x ./$APP
+rm -R -f ./tmp
+
+# LINK
+ln -s /opt/$APP/$APP /usr/local/bin/$APP
+
+# SCRIPT TO UPDATE THE PROGRAM
+cat >> /opt/$APP/AM-updater << 'EOF'
+#!/usr/bin/env bash
+APP=unetbootin
+REPO="unetbootin/unetbootin"
+version0=$(cat /opt/$APP/version)
+version=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep -w -v i386 | grep -w -v i686 | grep -w -v aarch64 | grep -w -v arm64 | grep -w -v armv7l | grep browser_download_url | grep -i "linux64" | cut -d '"' -f 4 | head -1)
+if [ $version = $version0 ]; then
+  echo "Update not needed!"
+else
+  notify-send "A new version of $APP is available, please wait"
+  mkdir /opt/$APP/tmp
+  cd /opt/$APP/tmp
+  wget $version
+  cd ..
+  mv ./tmp/*.bin ./$APP
+  chmod a+x ./$APP
+  rm ./version
+  echo $version >> ./version
+  rm -R -f ./tmp ./*~
+  notify-send "$APP is updated!"
+fi
+EOF
+chmod a+x /opt/$APP/AM-updater
+
+# LAUNCHER
+echo "[Desktop Entry]
+Version=1.0
+Name=UNetbootin
+Comment=Tool for creating Live USB drives
+Comment[ru]=Инструмент для создания устройств Live USB
+Categories=Application;System;
+Exec=$APP
+Terminal=false
+Type=Application
+Name[en_US]=UNetbootin
+GenericName[en_US]=UNetbootin
+Comment[en_US]=Tool for creating Live USB drives
+Icon=/opt/$APP/icons/$APP" >> /usr/share/applications/AM-$APP.desktop
+
+# ICON
+mkdir /opt/$APP/icons
+wget -q https://raw.githubusercontent.com/unetbootin/unetbootin/master/src/unetbootin/unetbootin_128.png -O /opt/$APP/icons/$APP
+
+# CHANGE THE PERMISSIONS
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/$APP
+
+# MESSAGE
+echo "
+ $APP is provided by https://github.com/$(echo $REPO | sed 's:/[^/]*$::')
+"

@@ -1,0 +1,66 @@
+#!/bin/sh
+
+APP=wine-staging-ge-proton
+REPO=mmtrt/WINE_AppImage
+
+# CREATE THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP
+
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+
+# DOWNLOAD THE APPIMAGE
+mkdir tmp
+cd ./tmp
+
+version=$(curl -s https://api.github.com/repos/$REPO/releases | grep browser_download_url | grep staging_ | grep proton | cut -d '"' -f 4 | head -1)
+wget $version
+echo "appimage" >> /opt/$APP/version
+cd ..
+mv ./tmp/*mage ./$APP
+chmod a+x /opt/$APP/$APP
+
+cd ./tmp
+wget https://github.com/AppImage/AppImageUpdate/releases/download/continuous/appimageupdatetool-x86_64.AppImage
+cd ..
+mv ./tmp/appimageupdatetool-x86_64.AppImage ./updater
+chmod a+x ./updater
+
+rmdir ./tmp
+
+# LINK
+ln -s /opt/$APP/$APP /usr/local/bin/$APP
+
+# SCRIPT TO UPDATE THE PROGRAM
+
+echo '#!/bin/sh' >> /opt/$APP/AM-updater
+echo "APP=$APP" >> /opt/$APP/AM-updater
+echo 'cd /opt/$APP
+./updater -O ./$APP
+chmod a+x /opt/$APP/$APP
+rm -R -f /opt/$APP/*zs-old && rm -R -f /opt/$APP/*.part' >> /opt/$APP/AM-updater
+chmod a+x /opt/$APP/AM-updater
+
+ln -s /usr/local/bin/$APP /opt/$APP/wine
+
+# CHANGE THE PERMISSIONS
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/$APP
+
+# MESSAGE
+
+echo "
+                                WINE
+ 
+    Compatibility layer to run MS Windows apps and games on GNU/Linux.
+
+       This version is for both x86 and x64 MS Windows programs.
+ 
+                   SITE: https://www.winehq.org
+ 
+           SOURCE: https://github.com/mmtrt/WINE_AppImage
+
+ "

@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+
+while [ -n "$1" ]; do
+	case $2 in
+	'') 
+		echo "-----------------------------------------------------------------------------"
+		echo -e ' "'$(echo $AMCLI | tr a-z A-Z)'" CAN MANAGE UPDATES FOR THE FOLLOWING PROGRAMS:\n'
+		cd $APPSPATH && find -name 'AM-updater' -printf " %h\n" 2>/dev/null | sort -u | xargs -n 1 basename 2>/dev/null | sed 's/^/ ◆ /'
+		echo -e '\n All programs with fixed versions or self-updatable are excluded'; sleep 0.1
+		echo "-----------------------------------------------------------------------------"
+		echo -e " >> START OF ALL PROCESSES <<\n-----------------------------------------------------------------------------"
+
+		for f in $APPSPATH/*/; do 
+			cd $f 2>/dev/null && 
+			if test -f ./AM-updater; then
+				start=$(date +%s); $(sh -x ./AM-updater > /dev/null 2>&1) | echo -ne ' Updating "'$(printf '%s\n' "${PWD##*/}")'"...\r'; end=$(date +%s)
+				echo -e " ◆ $(echo $(printf '%s\n' "${PWD##*/}") | tr a-z A-Z) is updated, $(($end-$start)) seconds elapsed!"
+			else
+				echo ""  > /dev/null 2>&1
+			fi
+		done
+
+		rm -R -f $AMPATH/.cache/* $APPSPATH/*/tmp; echo "-----------------------------------------------------------------------------"
+		$AMCLIPATH -s 
+		echo -e "-----------------------------------------------------------------------------\n >> END OF ALL PROCESSES << \n-----------------------------------------------------------------------------\n"; sleep 0.2
+		echo -e ' ALL THE PROGRAMS MANAGED BY "'$(echo $AMCLI | tr a-z A-Z)'" ARE UPDATED! \n\n-----------------------------------------------------------------------------'
+		exit;;
+	*) 
+		if test -f $APPSPATH/$2/AM-updater; then
+			start=$(date +%s); $APPSPATH/$2/AM-updater > /dev/null 2>&1 | echo -ne " UPDATING $(echo $2 | tr a-z A-Z)\r"; end=$(date +%s)
+			echo -e " ◆ $(echo $2 | tr a-z A-Z) is updated, $(($end-$start)) seconds elapsed!" && break
+		else
+			echo ' "'$(echo $AMCLI | tr a-z A-Z)'" CANNOT MANAGE UPDATES FOR "'$(echo $2 | tr a-z A-Z)'"'
+			UPDATERS=$(cd $APPSPATH/$2 2>/dev/null && find . -name "*update*" -print 2>/dev/null)
+
+			if [ -n "$UPDATERS" ]; then
+				echo ' This program probably includes its own update system!'
+			fi
+
+			exit
+		fi
+	esac
+done
+
+shift
