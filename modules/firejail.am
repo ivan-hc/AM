@@ -12,93 +12,88 @@ esac
 
 while [ -n "$1" ]; do
 
-		if ! test -f $APPSPATH/$2/remove; then
-			echo " '$2' is not a valid argument or is not installed."; exit
-		fi
+	if ! test -f $APPSPATH/$2/remove; then
+		echo " '$2' is not a valid argument or is not installed."; exit
+	fi
 
-		if [ -z $(strings -d $APPSPATH/$2/"$2" 2>/dev/null | grep -F 'appimage-help                 Print this help') ]; then
-	    		echo ' ERROR: "'$2'" is NOT an AppImage'; exit
-	    	fi
+	if [ -z $(strings -d $APPSPATH/$2/"$2" 2>/dev/null | grep -F 'appimage-help                 Print this help') ]; then
+    		echo ' ERROR: "'$2'" is NOT an AppImage'; exit
+    	fi
 
-		echo -e '---------------------------------------------------------------------\nYOU ARE USING FIREJAIL VIA "'$(echo $AMCLI | tr a-z A-Z)'".\n---------------------------------------------------------------------'
+	echo -e '---------------------------------------------------------------------\nYOU ARE USING FIREJAIL VIA "'$(echo $AMCLI | tr a-z A-Z)'".\n---------------------------------------------------------------------'
 
-		if ! test -f $APPSPATH/$2/firejail.profile; then
-				cp /etc/firejail/default.profile $APPSPATH/$2/firejail.profile
-				echo -e "◆ Created $APPSPATH/$2/firejail.profile, do what you will with it! \n---------------------------------------------------------------------"
-		fi
+	if ! test -f $APPSPATH/$2/firejail.profile; then
+		cp /etc/firejail/default.profile $APPSPATH/$2/firejail.profile
+		echo -e "◆ Created $APPSPATH/$2/firejail.profile, do what you will with it! \n---------------------------------------------------------------------"
+	fi
 
+	DESKTOPFILEANDPATH=$(cat $APPSPATH/$2/remove | tr " " "\n" | grep "/share/applications" | head -1)
+	LAUNCHERPATH=$(echo $DESKTOPFILEANDPATH | sed 's:/[^/]*$::')
 
-		DESKTOPFILEANDPATH=$(cat $APPSPATH/$2/remove | tr " " "\n" | grep "/share/applications" | head -1)
-		LAUNCHERPATH=$(echo $DESKTOPFILEANDPATH | sed 's:/[^/]*$::')
+	if ! test -f $APPSPATH/$2/firejail.profile; then
+		cp /etc/firejail/default.profile $APPSPATH/$2/firejail.profile
+		echo -e "◆ Created $APPSPATH/$2/firejail.profile\n---------------------------------------------------------------------"
+	else
+		echo -e "◆ Found $APPSPATH/$2/firejail.profile\n---------------------------------------------------------------------"
+	fi
 
-		if ! test -f $APPSPATH/$2/firejail.profile; then
-			cp /etc/firejail/default.profile $APPSPATH/$2/firejail.profile
-			echo -e "◆ Created $APPSPATH/$2/firejail.profile\n---------------------------------------------------------------------"
+	echo -e "\n Choose to run once using Firejail (options 1 & 2) or make the"
+	echo " changes permanent by editing the available .desktop files, if"
+	echo -e " available (options 3 & 4).\n\n"
+	echo " NOTE, once that the .desktop files are patched, they will be"
+	echo " saved in ~/.local/share/applications, which means that if you"
+	echo " use AppMan, the originals will be overwritten."
+	echo -e ' Supported text editors (option 5) are "vim" and "nano".\n'
+	echo "1) Sandbox once using Firejail's defaults"
+	echo "2) Sandbox once using the custom profile"
+	echo "3) Patch the .desktop file using Firejail's defaults"
+	echo "4) Patch the .desktop file using the custom profile"
+	echo "5) Edit the custom $APPSPATH/$2/firejail.profile file\n"
+	read -p 'CHOOSE BETWEEN 1, 2, 3, 4 AND 5, OR LEAVE BLANK TO EXIT: ' response
+
+	case $response in
+
+	1)	echo -e "\n############################### START FIREJAIL ###############################\n"
+		firejail --appimage $APPSPATH/$2/$2
+		echo -e "\n############################### STOP FIREJAIL ###############################\n"
+		;;
+
+	2)	echo -e "\n############################### START FIREJAIL ###############################\n"
+		firejail --appimage --profile=$APPSPATH/$2/firejail.profile $APPSPATH/$2/$2
+		echo -e "\n############################### STOP FIREJAIL ###############################\n"
+		;;
+
+	3)	mkdir -p ~/.local/share/applications; mkdir -p .am-patchinglauncher
+		cp $DESKTOPFILEANDPATH ./.am-patchinglauncher/
+		for f in ./.am-patchinglauncher/*; do
+			EXEC=$(grep -e '^Exec=.*' $f | head -n 1 | cut -d "=" -f 2- | sed -e 's|%.||g')
+			sed -i "s#Exec=$CHANGEEXEC#Exec=firejail --appimage $APPSPATH/$2/$EXEC#g" ./$f
+		done
+		mv ./.am-patchinglauncher/* ~/.local/share/applications/ 2> /dev/null;	rmdir .am-patchinglauncher
+		break
+		;;
+
+	4)	mkdir -p ~/.local/share/applications; mkdir -p .am-patchinglauncher
+		cp $DESKTOPFILEANDPATH ./.am-patchinglauncher/
+		for f in ./.am-patchinglauncher/*; do
+			EXEC=$(grep -e '^Exec=.*' $f | head -n 1 | cut -d "=" -f 2- | sed -e 's|%.||g')
+			sed -i "s#Exec=$CHANGEEXEC#Exec=firejail --appimage --profile=$APPSPATH/$2/firejail.profile $APPSPATH/$2/$EXEC#g" ./$f
+		done
+		mv ./.am-patchinglauncher/* ~/.local/share/applications/ 2> /dev/null;	rmdir .am-patchinglauncher
+		break
+		;;
+
+	5)	if command -v vim 1>/dev/null; then
+			vim $APPSPATH/$2/firejail.profile
 		else
-			echo -e "◆ Found $APPSPATH/$2/firejail.profile\n---------------------------------------------------------------------"
+			nano $APPSPATH/$2/firejail.profile
 		fi
+		;;
 
-		echo -e "\n Choose to run once using Firejail (options 1 & 2) or make the"
-		echo " changes permanent by editing the available .desktop files, if"
-		echo -e " available (options 3 & 4).\n\n"
-		echo " NOTE, once that the .desktop files are patched, they will be"
-		echo " saved in ~/.local/share/applications, which means that if you"
-		echo " use AppMan, the originals will be overwritten."
-		echo -e ' Supported text editors (option 5) are "vim" and "nano".\n'
-		echo "1) Sandbox once using Firejail's defaults"
-		echo "2) Sandbox once using the custom profile"
-		echo "3) Patch the .desktop file using Firejail's defaults"
-		echo "4) Patch the .desktop file using the custom profile"
-		echo "5) Edit the custom $APPSPATH/$2/firejail.profile file\n"
-		read -p 'CHOOSE BETWEEN 1, 2, 3, 4 AND 5, OR LEAVE BLANK TO EXIT: ' response
+	*)	exit
+		;;
+	esac
 
-		case $response in
-
-		1)	echo -e "\n############################### START FIREJAIL ###############################\n"
-			firejail --appimage $APPSPATH/$2/$2
-			echo -e "\n############################### STOP FIREJAIL ###############################\n"
-			;;
-
-		2)	echo -e "\n############################### START FIREJAIL ###############################\n"
-			firejail --appimage --profile=$APPSPATH/$2/firejail.profile $APPSPATH/$2/$2
-			echo -e "\n############################### STOP FIREJAIL ###############################\n"
-			;;
-
-		3)	mkdir -p ~/.local/share/applications; mkdir -p .am-patchinglauncher
-			cp $DESKTOPFILEANDPATH ./.am-patchinglauncher/
-			for f in ./.am-patchinglauncher/*; do
-				for var in $f; do
-					EXEC=$(grep -e '^Exec=.*' $f | head -n 1 | cut -d "=" -f 2- | sed -e 's|%.||g')
-					sed -i "s#Exec=$CHANGEEXEC#Exec=firejail --appimage $APPSPATH/$2/$EXEC#g" ./$f
-				done
-			done
-			mv ./.am-patchinglauncher/* ~/.local/share/applications/ 2> /dev/null;	rmdir .am-patchinglauncher
-			break
-			;;
-
-		4)	mkdir -p ~/.local/share/applications; mkdir -p .am-patchinglauncher
-			cp $DESKTOPFILEANDPATH ./.am-patchinglauncher/
-			for f in ./.am-patchinglauncher/*; do
-				for var in $f; do
-					EXEC=$(grep -e '^Exec=.*' $f | head -n 1 | cut -d "=" -f 2- | sed -e 's|%.||g')
-					sed -i "s#Exec=$CHANGEEXEC#Exec=firejail --appimage --profile=$APPSPATH/$2/firejail.profile $APPSPATH/$2/$EXEC#g" ./$f
-				done
-			done
-			mv ./.am-patchinglauncher/* ~/.local/share/applications/ 2> /dev/null;	rmdir .am-patchinglauncher
-			break
-			;;
-
-		5)	if command -v vim 1>/dev/null; then
-				vim $APPSPATH/$2/firejail.profile
-			else
-				nano $APPSPATH/$2/firejail.profile
-			fi
-			;;
-
-		*)	exit
-			;;
-		esac
-
-	done
+done
 
 shift
