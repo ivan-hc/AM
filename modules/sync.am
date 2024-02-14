@@ -49,21 +49,33 @@ for arg in $ARGS; do
 	done
 done
 
+echo "-----------------------------------------------------------------------------"
+echo -e " Check for updates in modules..."
 function _sync_modules(){
 	MODULES=$(wget -q https://api.github.com/repos/ivan-hc/AM/contents/modules -O - | grep download_url | cut -d '"' -f 4)
 	for module in $MODULES; do
 		for v in $module; do
 			cd $AMPATH/modules
-			mkdir tmp
-			cd tmp
-			wget -q "$v"
-			cd ..
-			mv tmp/*.am ./
-			chmod a+x ./*.am
-			rmdir tmp
+			MODULENAME=$(echo "$v" | sed 's:.*/::')
+			CURRENT=$(cat ./$MODULENAME)
+			SOURCE=$(wget -q "$v" -O -)
+			if [ "$CURRENT" == "$SOURCE" ]; then
+				echo -ne "\r" 2> /dev/null
+			else
+				echo -e "\n ◆ Updating $MODULENAME..."
+				mkdir tmp
+				cd tmp
+				wget -q "$v"
+				cd ..
+				mv tmp/*.am ./
+				chmod a+x ./*.am
+				rmdir tmp
+			fi
 		done
 	done
 }
+
+_sync_modules
 
 function _sync_amcli(){
 	echo "-----------------------------------------------------------------------------"
@@ -82,7 +94,6 @@ function _sync_amcli(){
   	fi
   	if [ ! $CURRENT_AM_VERSION == $($AMCLIPATH -v) ] ; then
  		echo -ne ' A new release of "'$(echo $AMCLI | tr a-z A-Z)'" is available, please wait...\r'
- 		_sync_modules
  		echo -e ' ◆ "'$(echo $AMCLI | tr a-z A-Z)'" IS NOW UPDATED TO THE BRAND NEW '$($AMCLIPATH -v)' VERSION!           \n\n  Replacement of version '$CURRENT_AM_VERSION' currently in use, COMPLETED!'
  		echo -e "\n See https://github.com/ivan-hc/AM/commits/main\n"
  	else
