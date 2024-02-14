@@ -25,22 +25,19 @@ for arg in $ARGS; do
 	for var in $arg; do
 
 		function _sync_installation_scripts(){
-			if test -d $APPSPATH/$arg/.am-installer; then
-				INSTALLER=$(ls -A1 $APPSPATH/$arg/.am-installer)
-				CURRENT=$(cat $APPSPATH/$arg/.am-installer/$INSTALLER)
-				rm -R -f $AMPATH/.cache/$arg
-				wget -q $AMREPO/programs/$arch/$INSTALLER -O $AMPATH/.cache/$INSTALLER
-				SOURCE=$(cat $AMPATH/.cache/$INSTALLER)
+			mkdir -p $APPSPATH/$arg/.am-installer
+			if test -f $APPSPATH/$arg/.am-installer/$arg; then
+				CURRENT=$(cat $APPSPATH/$arg/.am-installer/$arg)
+				SOURCE=$(wget -q $AMREPO/main/programs/$arch/$arg -O -)
 				if [ "$CURRENT" == "$SOURCE" ]; then
 					echo -ne "\r" 2> /dev/null
 				else
-					echo -e "\n ◆ $INSTALLER : The installer has changed, consider reinstalling! \n See https://github.com/ivan-hc/AM/blob/main/programs/$arch/$INSTALLER"
+					echo -e " ◆ Changed https://github.com/ivan-hc/AM/blob/main/programs/$arch/$arg"
 				fi
-				rm -R -f $AMPATH/.cache/$INSTALLER
 			else
-				echo -e "\n ◆ No installation script for $arg...\n downloading one to $APPSPATH/$arg/.am-installer for this entry"
+				echo -e " ◆ No installation script for $arg, downloading one..."
 				mkdir -p $APPSPATH/$arg/.am-installer
-				wget -q $AMREPO/programs/$arch/$arg -O /$APPSPATH/$arg/.am-installer/$arg
+				wget -q $AMREPO/programs/$arch/$arg -O $APPSPATH/$arg/.am-installer/$arg
 			fi
 		}
 
@@ -57,12 +54,16 @@ function _sync_modules(){
 		for v in $module; do
 			cd $AMPATH/modules
 			MODULENAME=$(echo "$v" | sed 's:.*/::')
+			if ! test -f ./$MODULENAME; then
+				echo " ◆ Downloading $MODULENAME (not previously installed)..."
+				wget -q "$v"
+			fi
 			CURRENT=$(cat ./$MODULENAME)
 			SOURCE=$(wget -q "$v" -O -)
 			if [ "$CURRENT" == "$SOURCE" ]; then
 				echo -ne "\r" 2> /dev/null
 			else
-				echo -e "\n ◆ Updating $MODULENAME..."
+				echo " ◆ Updating $MODULENAME..."
 				mkdir tmp
 				cd tmp
 				wget -q "$v"
