@@ -1,65 +1,79 @@
 #!/usr/bin/env bash
+set -e
 
+# Define functions
+function usage() {
+    echo " USAGE: $AMCLI $1 [ARGUMENT]";
+}
+
+function download_markdown() {
+    local markdown_url="https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/main/apps/${1}.md"
+    local cache_dir="$AMPATH/.cache/about"
+    local app_status=" STATUS: NOT INSTALLED"
+    local package_name=${1^^}
+
+    if curl -o /dev/null -sIf "$markdown_url"; then 
+        mkdir -p "$cache_dir" && wget -q "$markdown_url" -P "$cache_dir"
+        sed -i '1,${ /^\s*#/ d; /^\s*!/ d; /\[Applications]/d; /\ --- /d; }' "$cache_dir/$1.md"
+        
+        printf " PACKAGE: %s\n" "$package_name"
+        
+        if [ -f "$APPSPATH/$1/remove" ]; then
+            local disk_usage=$(du -sm "$APPSPATH/$1" | cut -f1)
+            app_status=" STATUS: INSTALLED, ABOUT $disk_usage MB OF DISK SPACE IN USE"
+        fi
+        
+        printf "%s\n" "$app_status"
+        cat "$cache_dir/$1.md" && printf "%s\n" "-----------------------------------------------------------------------"
+    else
+        printf " \"%s\" IS NOT A VALID ARGUMENT\n" "$package_name"
+    fi
+}
+
+function download_lib() {
+    local lib_name_upper=${1^^}
+    printf "%s\n" " LIBRARY: $lib_name_upper"
+    
+    if [[ -f "$APPSPATH/$1/remove" ]]; then 
+        local lib_path=$(grep "usr/local/lib" "$APPSPATH/$1/remove" | head -1)
+        local disk_usage=$(du -sm "$lib_path" | cut -f1)
+        
+        if [[ "$disk_usage" -eq 0 ]]; then
+            printf "%s\n" " STATUS: INSTALLED, LESS THAN 1 MB OF DISK SPACE IN USE"
+        else
+            printf "%s\n" " STATUS: INSTALLED, ABOUT $disk_usage MB OF DISK SPACE IN USE"
+        fi
+    else 
+        printf "%s\n" " STATUS: NOT INSTALLED"
+    fi
+    
+    echo ""
+    grep "◆ $1 : " "$AMPATH/libs-list" | sed 's#.*:##' | sed 's/(/\n (/g'
+    echo "" && echo " SITE/SOURCES:" && echo ""
+    
+    local site_source=$(wget -qO- "$AMREPO/libraries/any/$1" | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | head -1)
+    echo " $site_source"
+    echo ""
+    printf "%s\n" "-----------------------------------------------------------------------"
+}
+
+# Check for arguments
 case $2 in
-'') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
+'') usage;;
 esac
 
-while [ -n "$1" ]; do
-	rm -f "$AMPATH/.cache/about-args";
-	printf "%s\n" "$@" | tr ' ' '\n' >> "$AMPATH/.cache/about-args" && printf "STOP\n" >> "$AMPATH/.cache/about-args";
-	ARGS="$(tail -n +2 $AMPATH/.cache/about-args)"
+# Main logic
+if [ ! -f "$AMPATH/libs-list" ]; then
+    wget -q $AMREPO/libraries/libs-list -P $AMPATH
+fi
 
-	for arg in $ARGS; do
-
-		function _about(){
-			markdown="https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/main/apps/$arg.md"
-			if curl -o /dev/null -sIf "$markdown" 1>/dev/null; then 
-				printf "%s\n" "-----------------------------------------------------------------------"
-
-				case "$arg" in
-				*) 
-					rm -rf "$AMPATH/.cache/about"
-					mkdir -p "$AMPATH/.cache/about"
-					cd "$AMPATH/.cache/about" && wget -q "$markdown" &&
-					sed -i '1,${ /^\s*#/ d; /^\s*!/ d; /\[Applications]/d; /\ --- /d; }' "$arg.md"
-					printf "%s\n" " PACKAGE: $(echo $arg | tr a-z A-Z)"
-						if test -f "$APPSPATH/$arg/remove"; then
-						printf "%s\n" " STATUS: INSTALLED, ABOUT $(du -sm $APPSPATH/$arg | cut -f1) MB OF DISK SPACE IN USE"
-					else 
-						printf "%s\n" " STATUS: NOT INSTALLED"
-					fi
-					cat ./$arg.md && printf "%s\n" "-----------------------------------------------------------------------"
-					;;
-				esac
-			elif cat "$AMPATH/libs-list" | grep "◆ $arg : " 1> /dev/null; then
-				printf "%s\n" " PACKAGE: $(echo $arg | tr a-z A-Z)"
-				if test -f "$APPSPATH/$arg/remove"; then 
-					LIBNAME=$(cat $APPSPATH/$arg/remove | tr ' ' '\n' | grep "usr/local/lib" | head -1)
-					SIZE=$(du -sm $LIBNAME | cut -f1 | sort -rm | head -1)
-					if [ "$SIZE" == 0 ]; then
-						printf "%s\n" " STATUS: INSTALLED, LESS THAN 1 MB OF DISK SPACE IN USE"
-					else
-						printf "%s\n" " STATUS: INSTALLED, ABOUT $(du -sm $LIBNAME | cut -f1 | sort -rm | head -1) MB OF DISK SPACE IN USE"
-					fi
-				else 
-					printf "%s\n" " STATUS: NOT INSTALLED"
-				fi
-				echo ""
-				cat "$AMPATH/libs-list" | grep "◆ $arg : " | sed 's#.*:##' | sed 's/(/\n (/g'
-				echo "" && echo " SITE/SOURCES:" && echo "" &&
-				echo " $(wget -q $AMREPO/libraries/any/$arg -O - | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | head -1)"
-				echo ""
-				printf "%s\n" "-----------------------------------------------------------------------"
-			else
-				printf "%s\n" " \"$arg\" is not a valid argument" | tr 'a-z' 'A-Z'
-			fi
-		}
-		if [ "$arg" == "STOP" ]; then
-			exit 1
-		else
-			_about
-		fi
-	done
+# Skip the first argument which is not part of ARGS
+for arg in "${@:2}"; do
+    if curl -o /dev/null -sIf "https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/main/apps/${arg}.md" 1>/dev/null; then
+        download_markdown "$arg"
+    elif grep -q "◆ $arg : " "$AMPATH/libs-list"; then
+        download_lib "$arg"
+    else
+        printf "%s\n" " \"$arg\" is not a valid argument" | tr 'a-z' 'A-Z'
+    fi
 done
-
-shift
