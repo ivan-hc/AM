@@ -1,0 +1,73 @@
+#!/bin/sh
+
+APP=jgrasp
+SITE="https://www.jgrasp.org/"
+
+# CREATE THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP
+
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+
+# DOWNLOAD THE ARCHIVE
+mkdir tmp
+cd ./tmp
+
+version=$(echo "https://www.jgrasp.org/dl4g/jgrasp/jgrasp_bdl$(wget -q https://www.jgrasp.org/ -O - | grep "release" | head -1 | tr ' ' '\n' | grep [0-9] | head -1 | tr -d '.').zip")
+wget $version
+echo "$version" >> /opt/$APP/version
+unzip ./*.zip
+cd ..
+mv ./tmp/*/* ./
+rm -R -f ./tmp
+
+# LINK
+ln -s /opt/$APP/bin/$APP /usr/local/bin/$APP
+
+# SCRIPT TO UPDATE THE PROGRAM
+cat >> /opt/$APP/AM-updater << 'EOF'
+#!/usr/bin/env bash
+APP=jgrasp
+version0=$(cat /opt/$APP/version)
+version=$(echo "https://www.jgrasp.org/dl4g/jgrasp/jgrasp_bdl$(wget -q https://www.jgrasp.org/ -O - | grep "release" | head -1 | tr ' ' '\n' | grep [0-9] | head -1 | tr -d '.').zip")
+if [ $version = $version0 ]; then
+  echo "Update not needed!"
+else
+  notify-send "A new version of $APP is available, please wait"
+  mkdir /opt/$APP/tmp
+  cd /opt/$APP/tmp
+  wget $version
+  unzip ./*.zip
+  cd ..
+  mv --backup=t ./tmp/*/* ./
+  rm ./version
+  echo $version >> ./version
+  rm -R -f ./tmp ./*~
+  notify-send "$APP is updated!"
+fi
+EOF
+chmod a+x /opt/$APP/AM-updater
+
+# LAUNCHER
+echo "[Desktop Entry]
+Encoding=UTF-8
+Version=1.0
+Name=jGRASP
+GenericName=IDE
+Exec=$APP
+Terminal=false
+Icon=/opt/$APP/data/gric48.png
+Type=Application\nCategories=Application;Development;IDE;
+Comment[en_US]=jGRASP IDE" >> /usr/share/applications/AM-$APP.desktop
+
+# CHANGE THE PERMISSIONS
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/$APP
+
+# MESSAGE
+echo "
+ $APP is provided by $SITE
+"
