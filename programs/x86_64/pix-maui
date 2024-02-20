@@ -1,0 +1,105 @@
+#!/bin/sh
+
+
+APP=pix-maui
+
+# CREATE THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP
+
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+
+# DOWNLOAD THE APPIMAGE
+mkdir tmp
+cd ./tmp
+
+mauitool=$(echo $APP | sed 's/-maui//g')
+rel=$(wget -q https://download.kde.org/stable/maui/$mauitool -O - | grep -Po '(?<=href=")[^"]*' | grep -v http | grep -o [0-9].[0-9].[0-9] | uniq | sort -nr | head -1)
+package=$(wget -q https://download.kde.org/stable/maui/$mauitool/$rel -O - | grep -Po '(?<=href=")[^"]*' | grep -i amd64 | grep -i appimage | tail -1)
+version="https://download.kde.org/stable/maui/$mauitool/$rel/$package"
+wget $version
+echo $version >> /opt/$APP/version
+
+cd ..
+mv ./tmp/*mage ./$APP
+chmod a+x /opt/$APP/$APP
+rmdir ./tmp
+
+# LINK
+ln -s /opt/$APP/$APP /usr/local/bin/$APP
+
+# SCRIPT TO UPDATE THE PROGRAM
+cat >> /opt/$APP/AM-updater << 'EOF'
+#!/bin/sh
+APP=maui
+version0=$(cat /opt/$APP/version)
+mauitool=$(echo $APP | sed 's/-maui//g')
+rel=$(wget -q https://download.kde.org/stable/maui/$mauitool -O - | grep -Po '(?<=href=")[^"]*' | grep -v http | grep -o [0-9].[0-9].[0-9] | uniq | sort -nr | head -1)
+package=$(wget -q https://download.kde.org/stable/maui/$mauitool/$rel -O - | grep -Po '(?<=href=")[^"]*' | grep -i amd64 | grep -i appimage | tail -1)
+version="https://download.kde.org/stable/maui/$mauitool/$rel/$package"
+if [ $version0 = $version ]; then
+  echo "Update not needed, exit!"
+else
+  notify-send "A new version of $APP is available, please wait"
+  mkdir /opt/$APP/tmp
+  cd /opt/$APP/tmp
+  version=$(wget -q https://kdenlive.org/en/download/ -O - | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep AppImage)
+  wget $version
+  cd ..
+  if test -f ./tmp/*mage; then rm ./version
+  fi
+  echo $version >> ./version
+  mv --backup=t ./tmp/*mage ./$APP
+  chmod a+x /opt/$APP/$APP
+  rm -R -f ./tmp ./*~
+  notify-send "$APP is updated!"
+fi
+EOF
+sed -i 's/APP=maui/APP='$APP'/g' /opt/$APP/AM-updater
+chmod a+x /opt/$APP/AM-updater
+
+# LAUNCHER & ICON
+app=$(echo $APP | cut -c -3)
+cd /opt/$APP
+./$APP --appimage-extract *.desktop 1>/dev/null
+./$APP --appimage-extract share/applications/*.desktop 1>/dev/null
+./$APP --appimage-extract usr/share/applications/*.desktop 1>/dev/null
+mv squashfs-root/*.desktop ./$APP.desktop 2>/dev/null
+mv squashfs-root/share/applications/*.desktop ./$APP.desktop 2>/dev/null
+mv squashfs-root/usr/share/applications/*.desktop ./$APP.desktop 2>/dev/null
+if [ ! -e ./$APP.desktop ]; then 
+	rm ./$APP.desktop; ./$APP --appimage-extract usr/share/applications/*$APP*.desktop 
+	mv squashfs-root/usr/share/applications/*.desktop ./$APP.desktop 2>/dev/null
+fi
+if [ ! -e ./$APP.desktop ]; then 
+	rm ./$APP.desktop; ./$APP --appimage-extract share/applications/*$APP*.desktop 
+	mv squashfs-root/share/applications/*.desktop ./$APP.desktop 2>/dev/null
+fi
+CHANGEEXEC=$(cat ./$APP.desktop | grep Exec= | tr ' ' '\n' | tr '=' '\n' | tr '/' '\n' | grep $app | head -1)
+sed -i "s#$CHANGEEXEC#$APP#g" ./$APP.desktop
+sed -i "s#AppRun#$APP#g" ./$APP.desktop
+sed -i "s#Exec=/bin/#Exec=#g" ./$APP.desktop
+sed -i "s#Exec=/usr/bin/#Exec=#g" ./$APP.desktop
+CHANGEICON=$(cat ./$APP.desktop | grep Icon= | grep $APP | head -1)
+sed -i "s#$CHANGEICON#Icon=/opt/$APP/icons/$APP#g" ./$APP.desktop
+
+mkdir icons
+mv $(./$APP --appimage-extract *.png) ./icons/$APP 2>/dev/null
+mv $(./$APP --appimage-extract *.svg) ./icons/$APP 2>/dev/null
+./$APP --appimage-extract usr/share/icons/hicolor/256x256/apps/*.png
+mv ./squashfs-root/usr/share/icons/hicolor/256x256/apps/*.png ./icons/$APP 2>/dev/null
+
+rm -R -f /opt/$APP/squashfs-root
+mv ./$APP.desktop /usr/share/applications/AM-$APP.desktop
+
+# CHANGE THE PERMISSIONS
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/$APP
+
+# MESSAGE
+echo "
+	Maui Apps are provided by https://mauikit.org	
+"
