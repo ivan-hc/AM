@@ -32,6 +32,7 @@ while [ -n "$1" ]; do
 	echo "$@" | tr ' ' '\n' >> $AMPATH/.cache/install-args 
 	echo STOP >> $AMPATH/.cache/install-args
 	ARGS=$(tail -n +2 $AMPATH/.cache/install-args)
+	METAPACKAGES="kdegames kdeutils libreoffice nodejs platform-tools"
 
 	for arg in $ARGS; do
 
@@ -44,12 +45,12 @@ while [ -n "$1" ]; do
 				function _install_arg(){
 					chmod a+x ./$arg
 
-					for metapackage in kdegames kdeutils libreoffice nodejs platform-tools; do
+					for metapackage in $(echo "$METAPACKAGES"); do
 						if grep -q "$metapackage" ./$arg 2> /dev/null; then
 							if test -d $APPSPATH/$metapackage/tmp; then
 								$SUDOCOMMAND $APPSPATH/$metapackage/remove 2> /dev/null
 							elif test -d $APPSPATH/$metapackage; then
-								echo ' ◆ '$(echo '"'$arg'"' | tr a-z A-Z)' IS A METAPACKAGE FOR "'$(echo '"'$metapackage'"' | tr a-z A-Z)'" (INSTALLED)'; return 0
+								echo ' ◆ '$(echo '"'$arg'"' | tr a-z A-Z)' IS PART OF "'$(echo "$metapackage" | tr a-z A-Z)'", ALREADY INSTALLED'; return 0
 							fi
 						fi
 					done
@@ -160,7 +161,17 @@ while [ -n "$1" ]; do
 						sed -i "s#Exec=/opt/#Exec=$(xdg-user-dir USER)/$APPSDIR/#g" ~/.local/share/applications/AM*.desktop 2> /dev/null
 					fi
 
-					echo -ne " $(echo '"'$arg'"' | tr a-z A-Z) INSTALLED ($(du -sm $APPSPATH/$(cd $APPSPATH && ls -td * | head -1) | awk '{print $1}' ) MB OF DISK SPACE)\n"
+					for metapackage in $(echo "$METAPACKAGES"); do
+						if grep -q "$metapackage" ./$arg 2> /dev/null; then
+							metascript=$(cd $APPSPATH && ls -td * | head -1)
+						fi
+					done
+					if [ -n "$metascript" ]; then
+						echo -ne " $(echo '"'$metascript'"' | tr a-z A-Z) INSTALLED ($(du -sm $APPSPATH/$(cd $APPSPATH && ls -td * | head -1) | awk '{print $1}' ) MB OF DISK SPACE)\n"
+						unset metascript
+					else
+						echo -ne " $(echo '"'$arg'"' | tr a-z A-Z) INSTALLED ($(du -sm $APPSPATH/$(cd $APPSPATH && ls -td * | head -1) | awk '{print $1}' ) MB OF DISK SPACE)\n"
+					fi
 					$SUDOCOMMAND rm $AMPATH/.cache/$arg
 					unset $LATESTDIR
 					LATESTDIR=$(cd $APPSPATH && ls -td * | head -1)
