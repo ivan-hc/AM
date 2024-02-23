@@ -30,9 +30,8 @@ while [ -n "$1" ]; do
 					'
 					echo '  0) APPIMAGE, FROM ANY WEBSITE (BETTER IF FROM GITHUB.COM)'
 					echo "  1) APPIMAGE, BUILD YOUR OWN WITH PKG2APPIMAGE"
-					echo "  2) ANY ARCHIVE FROM GITHUB.COM (ALWAYS UPDATABLE)"
-					echo "  3) ANY PROGRAM FROM ANY WEBSITE (FOR ADVANCED USERS)"
-					echo '  4) WEBAPP BASED ON A FIREFOX PROFILE (REQUIRES "FIREFOX" IN $PATH)"'
+					echo "  2) ANY ARCHIVE FROM ANY WEBSITE"
+					echo '  3) WEBAPP BASED ON A FIREFOX PROFILE (REQUIRES "FIREFOX" IN $PATH)"'
 					echo " "
 					read -r -p " WHAT KIND OF PROGRAM DO YOU WANT TO WRITE A SCRIPT FOR? : " response
 
@@ -44,7 +43,7 @@ while [ -n "$1" ]; do
 						wget -c -q $AMREPO/templates/AM-SAMPLE-AppImage -O ./am-scripts/$arch/$arg &&
 						sed -i s/SAMPLE/$arg/g ./am-scripts/$arch/$arg &&
 						echo "-----------------------------------------------------------------------"
-						# ADD THE NAME OF THE GITHUB REPOSITORY
+						# ADD THE NAME OF THE SOURCE
 						read -r -ep " ◆ ADD THE URL OF THE SITE (BETTER IF IT COME FROM GITHUB), FOR EXAMPLE: $(echo -e '\n\n - if from github.com, use "https://github.com/USER/PROJECT"\n\n - if from other sources, use "https://www.SITENAME.com" or something\n\n URL: ')" RESPONSE
 
 						case "$RESPONSE" in
@@ -215,174 +214,150 @@ while [ -n "$1" ]; do
 						# END OF THIS FUNCTION
 						echo -e "\n All files are saved in $(xdg-user-dir DESKTOP)/am-scripts\n";;
 
-					2) # DOWNLOAD ANY ARCHIVE FROM GITHUB
+					2) # DOWNLOAD ANY ARCHIVE
 
 						# DOWNLOAD THE TEMPLATE AND CONVERT THE ARGUMENT INTO A COMMAND
-    						wget -c -q $AMREPO/templates/AM-SAMPLE-GitHub-generic -O ./am-scripts/$arch/$arg &&
+    						wget -c -q $AMREPO/templates/AM-SAMPLE-Archive -O ./am-scripts/$arch/$arg &&
     						sed -i s/SAMPLE/$arg/g ./am-scripts/$arch/$arg &&
 						echo "-----------------------------------------------------------------------"
-						# ADD THE NAME OF THE GITHUB REPOSITORY, ALSO ADD SOME BASIC INFO IF AVAILABLE
-						read -r -ep " ◆ ADD THE NAME OF THE REPOSITORY (EXAMPLE 'NAME/REPOSITORY') $(echo -e '\n https://github.com/')" GITHUBREPO
-
-						case "$GITHUBREPO" in
-						*) 
-							sed -i s#REPLACETHIS#$GITHUBREPO#g ./am-scripts/$arch/$arg
-							# GET THE DESCRIPTION OF THIS REPOSITORY TO ADD IN ALL CREATED FILES
-							COMMENT=$(curl $HeaderAuthWithGITPAT https://api.github.com/repos/$GITHUBREPO 2>/dev/null | grep description | sed 's/"description": "//' | sed 's/",//' | cut -c 3-)
-							# CREATE A WEBPAGE FOR https://portable-linux-apps.github.io CONTAINING ALL THE INFO ABOUT THIS APP
-							echo "# $(echo $arg | tr a-z A-Z)" >> ./am-scripts/portable-linux-apps.github.io/apps/$arg.md
-							echo -e "\n $COMMENT\n\n SITE: https://github.com/$GITHUBREPO\n\n | [Applications](https://portable-linux-apps.github.io/apps.html) | [Home](https://portable-linux-apps.github.io)\n | --- | --- |" >> ./am-scripts/portable-linux-apps.github.io/apps/$arg.md && 
-							# CREATE A NEW LINE FOR THE APPLICATION'S LIST
-							echo "◆ $arg : $COMMENT" >> ./am-scripts/list
-						esac
-
-						# ADD AN EXTENSION OR AN UNIQUE PART OF THE NAME OF THE ARCHIVE
-						read -r -ep " ◆ ADD THE EXTENSION OR AN UNIQUE PART OF THE ARCHIVE'S NAME $(echo -e '\n EXAMPLE, "amd64.zip" OR "x64.tar" ): ')" EXTENSION
-
-						case "$EXTENSION" in
-						*) 
-							sed -i s#FILENAMEEXTENSION#$EXTENSION#g ./am-scripts/$arch/$arg
-						esac
-
-						# CHECK THE DOWNLOAD LINK, THE ONE THAT POINTS TO THE LATEST RELEASE, NOTE THAT IT MAY BE A DEVELOPMENT VERSION, ADD "/latest" AFTER "/releases" TO POINT TO THE LAST STABLE VERSION
-						read -p ' Do you wish to check the link to the latest version (Y,n)?' yn
-
-						case $yn in
-						'N'|'n');;
-						'Y'|'y'|*) 
-							echo ""; wget -q $HeaderAuthWithGITPAT https://api.github.com/repos/$GITHUBREPO/releases -O - | grep -w -v i386 | grep -w -v i686 | grep -w -v aarch64 | grep -w -v arm64 | grep -w -v armv7l | grep browser_download_url | grep -i "$EXTENSION" | cut -d '"' -f 4 | head -1
-							echo -e "\n The URL above is an example of what both\n the install and update scripts will point to.\n";;
-						esac
-
-						read -p ' If correct, press "ENTER", otherwise press "N": ' yn
-
-						case $yn in
-						'N'|'n') 
-							read -p ' Press 1 to add something or 2 to remove something: ' response
-							case "$response" in
-							1) 
-								read -r -ep ' URL must contain ("x64", "x86_64"... or leave blank): ' response
-
-								case "$response" in
-								'') ;;
-								*) 
-									sed -i 's#browser_download_url#browser_download_url | grep -i '$response' #g' ./am-scripts/$arch/$arg
-									read -p ' Do you wish to check the link for the last time (Y,n)?' yn
-
-									case $yn in
-									'N'|'n') ;;
-									'Y'|'y'|*) 
-								echo ""; wget -q $HeaderAuthWithGITPAT https://api.github.com/repos/$GITHUBREPO/releases -O - | grep -w -v i386 | grep -w -v i686 | grep -w -v aarch64 | grep -w -v arm64 | grep -w -v armv7l \
-									| grep browser_download_url | grep -i "$response" | grep -i $EXTENSION | cut -d '"' -f 4 | head -1
-								echo -e "\n The URL above is an example of what both\n the install and update scripts will point to.\n";;
-									esac;;
-								esac;;
-							2) 
-								read -r -ep ' URL must NOT contain ("txt", "ARM"... or leave blank): ' response
-
-								case "$response" in
-								'') ;;
-								*) 
-									sed -i 's#browser_download_url#browser_download_url | grep -w -v '$response' #g' ./am-scripts/$arch/$arg
-									read -p ' Do you wish to check the link for the last time (Y,n)?' yn
-
-									case $yn in
-									'N'|'n') ;;
-									'Y'|'y'|*) 
-								echo ""; wget -q $HeaderAuthWithGITPAT https://api.github.com/repos/$GITHUBREPO/releases -O - | grep -w -v i386 | grep -w -v i686 | grep -w -v aarch64 | grep -w -v arm64 | grep -w -v armv7l \
-									| grep browser_download_url | grep -w -v "$response" | grep -i $EXTENSION | cut -d '"' -f 4 | head -1
-								echo -e "\n The URL above is an example of what both\n the install and update scripts will point to.\n";;
-									esac;;
-								esac;;
-							esac;;
-						'Y'|'y'|*) ;;
-						esac
-
-						echo "-----------------------------------------------------------------------"
-						# IF YOU CAN, USE A ONE-LINE COMMAND TO EXTRACT THE ARCHIVE, CREATE ICONS AN MORE
-    						echo -e "\n NOW, SUPPOSE YOU DOWNLOADED THE ARCHIVE TO './tmp', THEN RUN \n THE COMMAND 'cd ..'. WE WILL STILL NEED TO:\n\n  - extract the archive;\n  - transfer content into the directory we are in;\n  - include an icon and .desktop file in the same place (if needed).\n\n"
-    						echo -e " WHAT ARE THE COMMANDS TO RUN BEFORE './tmp' IS REMOVED?\n" 
-    						read -r -ep " IF YOU CAN, RESUME EVERYTHING IN ONE LINE COMMAND $(echo -e '\n :') " response
-
-						case $response in
-						*) 
-							mv ./am-scripts/$arch/$arg ./am-scripts/$arch/$arg.old
-							sed -n '1,22p' ./am-scripts/$arch/$arg.old >> ./am-scripts/$arch/$arg
-							echo "$response" >> ./am-scripts/$arch/$arg
-							sed -n '24,43p' ./am-scripts/$arch/$arg.old >> ./am-scripts/$arch/$arg
-							echo "  $response" >> ./am-scripts/$arch/$arg
-							sed -n '45,80p' ./am-scripts/$arch/$arg.old >> ./am-scripts/$arch/$arg
-							rm -f ./am-scripts/$arch/$arg.old;;
-						esac
-
-						echo "-----------------------------------------------------------------------"
-						# END OF THIS FUNCTION
-						echo -e "\n All files are saved in $(xdg-user-dir DESKTOP)/am-scripts\n";;
-
-					3) # DOWNLOAD ANY ARCHIVE FROM ANY WEBSITE
-
-						# DOWNLOAD THE TEMPLATE AND CONVERT THE ARGUMENT INTO A COMMAND, ALSO ADD SOME BASIC INFO IF AVAILABLE
-						wget -c -q $AMREPO/templates/AM-SAMPLE-Anywhere-generic -O ./am-scripts/$arch/$arg &&
-						sed -i s/SAMPLE/$arg/g ./am-scripts/$arch/$arg &&
-						echo "-----------------------------------------------------------------------"
-						# ADD THE URL TO THE MAIN PAGE OF THE WEBSITE
-						read -r -ep " ◆ ADD THE URL TO THE MAIN PAGE OF THE WEBSITE $(echo -e '\n : ')" RESPONSE
+						# ADD THE NAME OF THE SOURCE
+						read -r -ep " ◆ ADD THE URL OF THE SITE (BETTER IF IT COME FROM GITHUB), FOR EXAMPLE: $(echo -e '\n\n - if from github.com, use "https://github.com/USER/PROJECT"\n\n - if from other sources, use "https://www.SITENAME.com" or something\n\n URL: ')" RESPONSE
 
 						case "$RESPONSE" in
 						*) 
-							sed -i s#REPLACETHIS#$RESPONSE#g ./am-scripts/$arch/$arg
+							if $(echo "$RESPONSE" | grep -q "https://github.com"); then
+								RESPONSE=$(echo "$RESPONSE" | cut -c 20-)
+								sed -i s#REPLACETHIS#$RESPONSE#g ./am-scripts/$arch/$arg
+								# GET THE DESCRIPTION OF THIS REPOSITORY TO ADD IN ALL CREATED FILES
+								COMMENT=$(curl $HeaderAuthWithGITPAT https://api.github.com/repos/$RESPONSE 2>/dev/null | grep description | sed 's/"description": "//' | sed 's/",//' | cut -c 3-)
+								# CREATE A WEBPAGE FOR https://portable-linux-apps.github.io CONTAINING ALL THE INFO ABOUT THIS APP
+								echo "# $(echo $arg | tr a-z A-Z)" >> ./am-scripts/portable-linux-apps.github.io/apps/$arg.md
+								echo -e "\n $COMMENT\n\n SITE: https://github.com/$RESPONSE\n\n | [Applications](https://portable-linux-apps.github.io/apps.html) | [Home](https://portable-linux-apps.github.io)\n | --- | --- |" >> ./am-scripts/portable-linux-apps.github.io/apps/$arg.md &&
+								# CREATE A NEW LINE FOR THE APPLICATION'S LIST
+								echo "◆ $arg : $COMMENT" >> ./am-scripts/list
+								echo "-----------------------------------------------------------------------"
+								# CHECK THE DOWNLOAD LINK, THE ONE THAT POINTS TO THE LATEST RELEASE, NOTE THAT IT MAY BE A DEVELOPMENT VERSION, ADD "/latest" AFTER "/releases" TO POINT TO THE LAST STABLE VERSION
+								q="'"
+								FUNCTION='wget -q https://api.github.com/repos/'$RESPONSE'/releases -O - | grep browser_download_url | cut -d '$q'"'$q' -f 4 | head -1'
+								sed -i "s#THISISTHEURL#$FUNCTION#g" ./am-scripts/$arch/$arg
+
+								read -p ' Do you wish to check the link to the available items (Y,n)?' yn
+
+								case $yn in
+								'N'|'n') ;;
+								'Y'|'y'|*) 
+									echo ""; wget -q $HeaderAuthWithGITPAT https://api.github.com/repos/$RESPONSE/releases -O - | grep browser_download_url | cut -d '"' -f 4
+									echo -e "\n The URLs above are an example of what both\n the install and update scripts will point to.\n";;
+								esac
+
+								read -p ' Press 1 to add a keyword or 2 to remove a keyword (in the name): ' response
+
+								case "$response" in
+								1) 
+									read -r -ep ' URL must contain ("x64", "x86_64"... or leave blank): ' response
+
+									case "$response" in
+									'') ;;
+									*) 
+										sed -i 's#browser_download_url#browser_download_url | grep -i '$response' #g' ./am-scripts/$arch/$arg
+										read -p ' Do you wish to check the link for the last time (Y,n)?' yn
+
+										case $yn in
+										'N'|'n') ;;
+										'Y'|'y'|*) 
+											echo ""; wget -q $HeaderAuthWithGITPAT https://api.github.com/repos/$RESPONSE/releases -O - | grep browser_download_url | grep -i "$response" | cut -d '"' -f 4 | head -1
+											echo -e "\n The URL above is an example of what both\n the install and update scripts will point to.\n";;
+										esac;;
+									esac;;
+								2) 
+									read -r -ep ' URL must NOT contain ("txt", "ARM"... or leave blank): ' response
+
+									case "$response" in
+									'') ;;
+									*) 
+										sed -i 's#browser_download_url#browser_download_url | grep -w -v '$response' #g' ./am-scripts/$arch/$arg
+										read -p ' Do you wish to check the link for the last time (Y,n)?' yn
+
+										case $yn in
+										'N'|'n') ;;
+										'Y'|'y'|*) 
+											echo ""; wget -q $HeaderAuthWithGITPAT https://api.github.com/repos/$RESPONSE/releases -O - | grep browser_download_url | grep -w -v "$response" | cut -d '"' -f 4 | head -1
+											echo -e "\n The URL above is an example of what both\n the install and update scripts will point to.\n";;
+										esac;;
+									esac;;
+								esac
+							else
+								sed -i s#REPLACETHIS#$RESPONSE#g ./am-scripts/$arch/$arg
+								# ADD A DESCRIPTION FOR THIS APPLICATION
+								read -r -ep " ◆ ADD A BRIEF DESCRIPTION FOR THIS APPLICATION $(echo -e '\n : ')" COMMENT
+
+								case "$COMMENT" in
+								*) 
+									# CREATE A WEBPAGE FOR https://portable-linux-apps.github.io CONTAINING ALL THE INFO ABOUT THIS APP
+									echo "# $(echo $arg | tr a-z A-Z)" >> ./am-scripts/portable-linux-apps.github.io/apps/$arg.md
+									echo -e "\n $COMMENT\n\n SITE: $RESPONSE\n\n | [Applications](https://portable-linux-apps.github.io/apps.html) | [Home](https://portable-linux-apps.github.io)\n | --- | --- |" >> ./am-scripts/portable-linux-apps.github.io/apps/$arg.md &&
+									# CREATE A NEW LINE FOR THE APPLICATION'S LIST
+									echo "◆ $arg : $COMMENT" >> ./am-scripts/list;;
+								esac
+
+								echo "-----------------------------------------------------------------------"
+								# IF YOU CAN, USE A ONE-LINE COMMAND TO DOWNLOAD THE ARCHIVE
+    								read -r -ep " USE A ONE-LINE SHELL COMMAND TO CHECK ONLY THE URL TO THE ARCHIVE $(echo -e '\n\n if the URL is fixed, simply add the "echo" command at the beginning\n\n :') " DOWNLOADURL
+
+								case "$DOWNLOADURL" in
+								*) 
+									mv ./am-scripts/$arch/$arg ./am-scripts/$arch/$arg.old
+									sed -n '1,18p' ./am-scripts/$arch/$arg.old >> ./am-scripts/$arch/$arg
+									echo 'version=$('$DOWNLOADURL')' >> ./am-scripts/$arch/$arg
+									sed -n '20,34p' ./am-scripts/$arch/$arg.old >> ./am-scripts/$arch/$arg
+									echo 'version=$('$DOWNLOADURL')' >> ./am-scripts/$arch/$arg
+									sed -n '36,64p' ./am-scripts/$arch/$arg.old >> ./am-scripts/$arch/$arg
+									rm -f ./am-scripts/$arch/$arg.old;;
+								esac
+								
+							fi
 						esac
 
 						echo "-----------------------------------------------------------------------"
-						# ADD A DESCRIPTION FOR THIS APPLICATION
-						read -r -ep " ◆ ADD A BRIEF DESCRIPTION FOR THIS APPLICATION $(echo -e '\n : ')" COMMENT
-
-						case "$COMMENT" in
-						*) 
-							# CREATE A WEBPAGE FOR https://portable-linux-apps.github.io CONTAINING ALL THE INFO ABOUT THIS APP
-							echo "# $(echo $arg | tr a-z A-Z)" >> ./am-scripts/portable-linux-apps.github.io/apps/$arg.md
-							echo -e "\n $COMMENT\n\n SITE: $RESPONSE\n\n | [Applications](https://portable-linux-apps.github.io/apps.html) | [Home](https://portable-linux-apps.github.io)\n | --- | --- |" >> ./am-scripts/portable-linux-apps.github.io/apps/$arg.md &&
-							# CREATE A NEW LINE FOR THE APPLICATION'S LIST
-							echo "◆ $arg : $COMMENT" >> ./am-scripts/list
-						esac
-
-						echo "-----------------------------------------------------------------------"
-						# IF YOU CAN, USE A ONE-LINE COMMAND TO CHECK THE DOWNLOAD LINK TO THE LAST RELEASE OR FROM THE DOWNLOAD PAGE OF THE WEBSITE
-    						read -r -ep " USE A ONE-LINE COMMAND ONLY TO SHOW THE DOWNLOAD URL, NOTHING MORE. $(echo -e '\n THE DEFAULT PROGRAM ASSIGNED TO DOWNLOAD THIS LINK WILL BE "WGET"\n USE YOUR BEST SKILLS TO GET THE URL OF THE LATEST VERSION AVAILABLE\n :') " DOWNLOADURL
-
-						case "$DOWNLOADURL" in
-						*) 
-							mv ./am-scripts/$arch/$arg ./am-scripts/$arch/$arg.old
-							sed -n '1,18p' ./am-scripts/$arch/$arg.old >> ./am-scripts/$arch/$arg
-							echo 'version=$('$DOWNLOADURL')' >> ./am-scripts/$arch/$arg
-							sed -n '20,33p' ./am-scripts/$arch/$arg.old >> ./am-scripts/$arch/$arg
-							echo 'version=$('$DOWNLOADURL')' >> ./am-scripts/$arch/$arg
-							sed -n '35,80p' ./am-scripts/$arch/$arg.old >> ./am-scripts/$arch/$arg
-							rm -f ./am-scripts/$arch/$arg.old;;
-						esac 	 
-
-						echo "-----------------------------------------------------------------------"
-						# IF YOU CAN, USE A ONE-LINE COMMAND TO EXTRACT THE ARCHIVE, CREATE ICONS AN MORE
-    						echo -e "\n NOW, SUPPOSE YOU DOWNLOADED THE ARCHIVE TO './tmp', THEN RUN \n THE COMMAND 'cd ..'. WE WILL STILL NEED TO:\n\n  - extract the archive;\n  - transfer content into the directory we are in;\n  - include an icon and .desktop file in the same place (if needed).\n\n"
-    						echo -e " WHAT ARE THE COMMANDS TO RUN BEFORE './tmp' IS REMOVED?\n" 
+						# EXTRACT THE ARCHIVE
+    						echo -e " YOU ARE IN ./tmp, WRITE THE COMMAND TO EXTRACT THE ARCHIVE, THEN REMOVE IT" 
     						read -r -ep " IF YOU CAN, RESUME EVERYTHING IN ONE LINE COMMAND $(echo -e '\n :') " response
 
 						case $response in
 						*) 
 							mv ./am-scripts/$arch/$arg ./am-scripts/$arch/$arg.old
-							sed -n '1,22p' ./am-scripts/$arch/$arg.old >> ./am-scripts/$arch/$arg
+							sed -n '1,21p' ./am-scripts/$arch/$arg.old >> ./am-scripts/$arch/$arg
 							echo "$response" >> ./am-scripts/$arch/$arg
-							sed -n '24,42p' ./am-scripts/$arch/$arg.old >> ./am-scripts/$arch/$arg
+							sed -n '23,42p' ./am-scripts/$arch/$arg.old >> ./am-scripts/$arch/$arg
 							echo "  $response" >> ./am-scripts/$arch/$arg
-							sed -n '44,80p' ./am-scripts/$arch/$arg.old >> ./am-scripts/$arch/$arg
+							sed -n '44,64p' ./am-scripts/$arch/$arg.old >> ./am-scripts/$arch/$arg
 							rm -f ./am-scripts/$arch/$arg.old;;
 						esac
 
 						echo "-----------------------------------------------------------------------"
+						# MOVE THE CONTENT OF ./tmp
+    						echo -e " NOW YOU ARE OUT OF ./tmp, WRITE THE COMMAND TO MOVE THE FILES HERE" 
+    						read -r -ep " THE COMMAND 'mv --backup=t' IS RECOMMENDED $(echo -e '\n :') " response
+
+						case $response in
+						*) 
+							mv ./am-scripts/$arch/$arg ./am-scripts/$arch/$arg.old
+							sed -n '1,23p' ./am-scripts/$arch/$arg.old >> ./am-scripts/$arch/$arg
+							echo "$response" >> ./am-scripts/$arch/$arg
+							sed -n '25,44p' ./am-scripts/$arch/$arg.old >> ./am-scripts/$arch/$arg
+							echo "  $response" >> ./am-scripts/$arch/$arg
+							sed -n '46,64p' ./am-scripts/$arch/$arg.old >> ./am-scripts/$arch/$arg
+							rm -f ./am-scripts/$arch/$arg.old;;
+						esac
+
+						echo "-----------------------------------------------------------------------"
+						# GO TO THE SCRIPT
+						echo " NOW GO TO THE SCRIPT AND ADD MANUALLY LAUNCHER AND ICON"
+						echo "-----------------------------------------------------------------------"
 						# END OF THIS FUNCTION
 						echo -e "\n All files are saved in $(xdg-user-dir DESKTOP)/am-scripts\n";;
 
-					4) # CREATE A CUSTOM FIREFOX PROFILE ("firefox" MUST BE IN "$PATH" TO MADE IT WORK)
+					3) # CREATE A CUSTOM FIREFOX PROFILE ("firefox" MUST BE IN "$PATH" TO MADE IT WORK)
 						
 						# DOWNLOAD THE TEMPLATE AND CONVERT THE ARGUMENT INTO A COMMAND
     						wget -c -q $AMREPO/templates/AM-SAMPLE-Firefox-webapp -O ./am-scripts/$arch/ffwa-$arg &&
