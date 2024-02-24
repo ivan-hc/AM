@@ -1,7 +1,7 @@
 #!/bin/sh
 
-APP=SAMPLE
-SITE="REPLACETHIS"
+APP=warp-terminal
+SITE="https://www.warp.dev"
 
 # CREATE THE FOLDER
 mkdir /opt/$APP
@@ -16,16 +16,13 @@ chmod a+x /opt/$APP/remove
 mkdir tmp
 cd ./tmp
 
-version=$(FUNCTION)
-wget $version
-wget $version.zsync 2> /dev/null
+version=$(wget -q https://repology.org/project/warp-terminal/versions -O - | grep "newest version" | head -1 | grep -o -P '(?<=">).*(?=</a)' | sed 's/^.*>//')
+wget 'https://app.warp.dev/download?package=appimage' -O $APP.AppImage
 echo "$version" >> /opt/$APP/version
-
 cd ..
-
-mv ./tmp/*mage ./$APP; mv ./tmp/*.zsync ./$APP.zsync 2> /dev/null
+mv ./tmp/*mage ./$APP
 chmod a+x /opt/$APP/$APP
-rm -R -f ./tmp
+rmdir ./tmp
 
 # LINK
 ln -s /opt/$APP/$APP /usr/local/bin/$APP
@@ -33,41 +30,26 @@ ln -s /opt/$APP/$APP /usr/local/bin/$APP
 # SCRIPT TO UPDATE THE PROGRAM
 cat >> /opt/$APP/AM-updater << 'EOF'
 #!/usr/bin/env bash
-APP=SAMPLE
-SITE="REPLACETHIS"
+APP=warp-terminal
 version0=$(cat /opt/$APP/version)
-version=$(FUNCTION)
-if test -f /opt/$APP/*.zsync; then
-	mkdir tmp
-	cd ./tmp
-	wget $version.zsync 2> /dev/null
-	cd ..
-	mv ./tmp/*.zsync ./$APP.zsync
-	rm -R -f ./tmp
-	zsync /opt/$APP/$APP.zsync
-	rm -R -f /opt/$APP/*zs-old /opt/$APP/*.part
-	chmod a+x /opt/$APP/$APP
+version=$(wget -q https://repology.org/project/warp-terminal/versions -O - | grep "newest version" | head -1 | grep -o -P '(?<=">).*(?=</a)' | sed 's/^.*>//')
+if [ $version = $version0 ]; then
+  echo "Update not needed!"
 else
-	if [ $version = $version0 ]; then
-		echo "Update not needed!"
-	else
-		notify-send "A new version of $APP is available, please wait"
-		mkdir /opt/$APP/tmp
-		cd /opt/$APP/tmp
-		wget $version
-		if ls . | grep mage; then
-			
-			cd ..
-			
-	  		if test -f ./tmp/*mage; then rm ./version
-	  		fi
-	  		echo $version >> ./version
-	  		mv --backup=t ./tmp/* ./$APP
-	  		chmod a+x /opt/$APP/$APP
-	  		rm -R -f ./tmp ./*~
-		fi
-		notify-send "$APP is updated!"
-	fi
+  notify-send "A new version of $APP is available, please wait"
+  mkdir /opt/$APP/tmp
+  cd /opt/$APP/tmp
+  wget 'https://app.warp.dev/download?package=appimage' -O $APP.AppImage
+  if ls . | grep mage; then
+	cd ..
+  	if test -f ./tmp/*mage; then rm ./version
+  	fi
+  	echo $version >> ./version
+  	mv --backup=t ./tmp/*mage ./$APP
+  	chmod a+x /opt/$APP/$APP
+  	rm -R -f ./tmp ./*~
+  fi
+  notify-send "$APP is updated!"
 fi
 EOF
 chmod a+x /opt/$APP/AM-updater
@@ -129,3 +111,8 @@ mv ./$APP.desktop /usr/share/applications/AM-$APP.desktop
 # CHANGE THE PERMISSIONS
 currentuser=$(who | awk '{print $1}')
 chown -R $currentuser /opt/$APP
+
+# MESSAGE
+echo "
+ $APP is provided by $SITE . script Author https://github.com/nazdridoy
+"
