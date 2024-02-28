@@ -820,11 +820,11 @@ Accept the integration request, the launcher will be saved in the walc.home dire
 This is a choice I made as many developers have abandoned support for AppImage or GNU/Linux in general. My aim here is to introduce you to other developers' applications, then it's up to you to contact them, support them, help improve the software through forks and pull requests, opening issues and encouraging developers to keep the software in the format you prefer.
 
 In case you are sure that the upstream developer will maintain the package for each stable release, you can fix this in several ways:
-#### Method 1: Direct installation by combining `-d` and `test` options 
+#### Method 1: Direct installation by combining `-d` and `-i` options 
 ```
 am -d $PROGRAM
 sed -i 's#releases -O -#releases/latest -O -#g' $(xdg-user-dir DESKTOP)/$PROGRAM
-am test $(xdg-user-dir DESKTOP)/$PROGRAM
+am -i $(xdg-user-dir DESKTOP)/$PROGRAM
 ```
 #### Method 2: "Downgrade" the installed app to "latest"
 Use the option `--force-latest` to patch the AM-updater and perform the "update"/"downgrade":
@@ -847,13 +847,6 @@ am -u $PROGRAM
 The reasons may be two:
 - the referring link may have been changed, try the `--rollback` option;
 - the reference site has changed, report any changes at https://github.com/ivan-hc/AM/issues
-### Stop AppImage prompt to create its own launcher, desktop integration and doubled launchers
-Some developers insist on creating Appimages that create their own launcher on first launch (like WALC and OpenShot). If the official solution proposed [here](https://discourse.appimage.org/t/stop-appimage-from-asking-to-integrate/488) doesn't work, create a .home directory with the `-H` option, launch the app and accept the request. For example (with "AM"):
-```
-am -H walc
-walc
-```
-Accept the integration request, the launcher will be saved in the walc.home directory located next to the AppImage file.
 
 </details>
 
