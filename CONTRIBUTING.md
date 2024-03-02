@@ -1,6 +1,8 @@
 # Contributing to "AM"
 First off, thanks for taking the time to contribute!
 
+-----------------------------------------------
+
 ## Found a Problem?
 Before reporting a problem, be it a bug, design or others, we assume you have made sure that:
 1. [the README.md](https://github.com/ivan-hc/AM/blob/main/README.md) does not cover your problem
@@ -8,6 +10,8 @@ Before reporting a problem, be it a bug, design or others, we assume you have ma
 3. the problem is not related to the installed apps but to the [installation scripts](https://github.com/ivan-hc/AM/tree/main/programs)
 
 If all apply, then please consider opening a [new issue](https://github.com/ivan-hc/AM/issues).
+
+-----------------------------------------------
 
 ## Want to Submit Code?
 You can submit code by:
@@ -22,8 +26,12 @@ appman newrepo https://raw.githubusercontent.com/$USER/AM/dev
 5. apply your changes on your fork and test them on both "AM" and AppMan until you're sure that they work without any problem
 6. submit a [pull request](https://github.com/ivan-hc/AM/pulls) to the "dev" branch, at https://github.com/ivan-hc/AM/tree/dev
 
+-----------------------------------------------
+
 ## Want to help in some way?
 Share the link to this repository on YouTube, Twitter, Reddit, Facebook or any other platform useful for making our work known.
+
+-----------------------------------------------
 
 ## Want to submit a new app?
 ### Guide for skilled people
@@ -51,9 +59,9 @@ This is important to launch the script that will update the count of the apps an
 ### Guide for beginners
 Submit your request at https://github.com/ivan-hc/AM/issues/116 , we'll provide as soon as possible
 
-### Credits
-- [@nazdridoy](https://github.com/nazdridoy)
-- [@zen0bit](https://github.com/zen0bit)
+-----------------------------------------------
 
-### Owner
-- [@ivan-hc](https://github.com/ivan-hc)
+### Credits
+- This document was written by [@ivan-hc](https://github.com/ivan-hc) (owner)
+- The creation of this document is a suggestion from [@nazdridoy](https://github.com/nazdridoy)
+- Also thanks to [@zen0bit](https://github.com/zen0bit) for supporting
