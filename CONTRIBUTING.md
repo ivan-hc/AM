@@ -43,7 +43,7 @@ If you are sure you can create an installation script yourself:
 1. see "Want to Submit Code?", above
 2. use the option `-t` to create a new script, everything will be created into a directory "am-scripts", on your desktop, containing
   - the installation script under am-scripts/$arch (where "$arch is the name of your architecture, for example x86_64)
-  - a file named am-scripts/list containing the line to add in the list of applications (must be reduced to max 80 characters in total)
+  - a file named am-scripts/list containing the line to add in the list of applications (must be reduced to **max 80 characters in total**)
   - a Markdown file .md with the name of your app, under am-scripts/portable-linux-apps.github.io
 3. install the script in "AM" and AppMan to test if it works for both
 ```
