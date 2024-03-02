@@ -34,6 +34,10 @@ Share the link to this repository on YouTube, Twitter, Reddit, Facebook or any o
 -----------------------------------------------
 
 ## Want to submit a new app?
+
+- [Guide for skilled people](#guide-for-skilled-people)
+- [Guide for beginners](#guide-for-beginners)
+
 ### Guide for skilled people
 If you are sure you can create an installation script yourself:
 1. see "Want to Submit Code?", above
@@ -55,6 +59,7 @@ appman -i $HOME/Desktop/am-scripts/$arch/your-app
   - first pull request at https://github.com/ivan-hc/AM (the app must be on the database first)
   - second pull request at https://github.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io (the app from the database now can be in the catalogue)
 This is important to launch the script that will update the count of the apps and their list also on the catalogue.
+
 
 ### Guide for beginners
 Submit your request at https://github.com/ivan-hc/AM/issues/116 , we'll provide as soon as possible
