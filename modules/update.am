@@ -1,23 +1,28 @@
 #!/usr/bin/env bash
 
-for f in "$APPSPATH"/*/; do 
-	if test -f "$AMPATH"/ghapikey.txt; then
-		ghapikey=$(cat "$AMPATH"/ghapikey.txt)
-		cd "$f" 2>/dev/null && 
-		if test -f ./AM-updater; then
-			if grep -q " https://api.github.com" ./AM-updater; then
-				if ! grep -q "github_pat_" ./AM-updater; then
-					sed -i "s# https://api.github.com#$HeaderAuthWithGITPAT https://api.github.com#g" ./AM-updater
-				else
-					apikey=$(cat ./AM-updater | tr ' ' '\n' | grep "github_pat_" | tr '"' ' ')
-					if [ "$apikey" != "$ghapikey" ]; then
-						sed -i "s#$apikey#$ghapikey#g" ./AM-updater
-					fi
-				fi
-			fi
-		fi
-	fi
-done
+# Function to update GitHub API key in AM-updater files
+update_github_api() {
+    local ghapikey_file="$AMPATH/ghapikey.txt"
+    if [[ -f "$ghapikey_file" ]]; then
+        ghapikey=$(<"$ghapikey_file")
+        local updater_files=("$APPSPATH"/*/AM-updater) # Assuming AM-updater is one level deeper
+        for f in "${updater_files[@]}"; do
+            if [[ -f "$f" ]] && grep -q "https://api.github.com" "$f"; then
+                # Check if the file already contains a valid API key
+                if ! grep -qE "(gh[ps]_[a-zA-Z0-9]{36}|github_pat_[a-zA-Z0-9]{22}_[a-zA-Z0-9]{59})" "$f"; then
+                    # Insert HeaderAuthWithGITPAT before the GitHub API URL
+                    sed -i "s#https://api.github.com#$HeaderAuthWithGITPAT https://api.github.com#g" "$f"
+                else
+                    # Replace existing API key with the one from ghapikey.txt
+                    sed -i "s#\(gh[ps]_[a-zA-Z0-9]\{36\}\|github_pat_[a-zA-Z0-9]\{22\}_[a-zA-Z0-9]\{59\}\)#$ghapikey#g" "$f"
+                fi
+            fi
+        done
+    fi
+}
+
+# Call update_github_api function 
+update_github_api
 
 while [ -n "$1" ]; do
 	case $2 in
