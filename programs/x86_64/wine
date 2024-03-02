@@ -49,6 +49,30 @@ rm -R -f /opt/$APP/*zs-old && rm -R -f /opt/$APP/*.part
 EOF
 chmod a+x /opt/$APP/AM-updater
 
+# ROLLBACK SCRIPT
+cat >> /opt/$APP/$APP-rollback << 'EOF'
+#!/usr/bin/env bash
+
+APP=wine
+REPO="mmtrt/WINE_AppImage"
+printf "%s\n" "$(wget -q https://api.github.com/repos/$REPO/releases -O - \
+	| grep browser_download_url | cut -d '"' -f 4)" | tr ' ' '\n' | grep -i appimage | grep -v zsync >> "./rollback-args" &&
+echo -e "-----------------------------------------------------------------------\nYou have chosen to roll back $APP.\nRollback will be done from https://github.com/$REPO\n-----------------------------------------------------------------------"
+printf "Select a URL from this menu (read carefully) or press CTRL+C to abort:\n-----------------------------------------------------------------------\n"; sleep 1;
+select version in $(cat "./rollback-args"); do test -n "$version" && break; echo ">>> Invalid Selection"; done
+cd /opt/$APP
+mkdir tmp
+cd tmp
+wget $version
+cd ..
+mv ./tmp/*mage ./$APP
+chmod a+x /opt/$APP/$APP
+rm -f ./rollback-args
+echo -e "\nROLLBACK SUCCESSFUL!"
+exit
+EOF
+chmod a+x /opt/$APP/$APP-rollback
+
 # CHANGE THE PERMISSIONS
 currentuser=$(who | awk '{print $1}')
 chown -R $currentuser /opt/$APP
