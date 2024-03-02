@@ -7,7 +7,7 @@ Before reporting a problem, be it a bug, design or others, we assume you have ma
 2. the problem has not been reported in the [issue tracker](https://github.com/ivan-hc/AM/issues)
 3. the problem is not related to the installed apps but to the [installation scripts](https://github.com/ivan-hc/AM/tree/main/programs)
 
-If all apply, then please consider opening a [new issue](https://github.com/bottlesdevs/Bottles/issues/new/choose).
+If all apply, then please consider opening a [new issue](https://github.com/ivan-hc/AM/issues).
 
 ## Want to Submit Code?
 You can submit code by:
