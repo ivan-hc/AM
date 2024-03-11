@@ -140,7 +140,7 @@ while [ -n "$1" ]; do
 					if grep -q -- "--debug" $AMPATH/.cache/install-args; then
 						$SUDOCOMMAND ./$arg
 					else
-						$SUDOCOMMAND ./$arg 2>&1 | grep -v ": "
+						$SUDOCOMMAND ./$arg 2>&1 | grep -v ": \|wget --help"
 					fi
 
 					echo -ne " Configuring $(echo '"'$arg'"' | tr a-z A-Z)...\r" && echo -ne "                                                                          \r" &&
@@ -163,18 +163,6 @@ while [ -n "$1" ]; do
 						sed -i "s#Exec=/opt/#Exec=$(xdg-user-dir USER)/$APPSDIR/#g" ~/.local/share/applications/AM*.desktop 2> /dev/null
 					fi
 
-					for metapackage in $(echo "$METAPACKAGES"); do
-						if grep -q "$metapackage" ./$arg 2> /dev/null; then
-							metascript=$(cd $APPSPATH && ls -td * | head -1)
-						fi
-					done
-					if [ -n "$metascript" ]; then
-						echo -ne " $(echo '"'$metascript'"' | tr a-z A-Z) INSTALLED ($(du -sm $APPSPATH/$(cd $APPSPATH && ls -td * | head -1) | awk '{print $1}' ) MB OF DISK SPACE)\n"
-						unset metascript
-					else
-						echo -ne " $(echo '"'$arg'"' | tr a-z A-Z) INSTALLED ($(du -sm $APPSPATH/$(cd $APPSPATH && ls -td * | head -1) | awk '{print $1}' ) MB OF DISK SPACE)\n"
-					fi
-					$SUDOCOMMAND rm $AMPATH/.cache/$arg
 					unset $LATESTDIR
 					LATESTDIR=$(cd $APPSPATH && ls -td * | head -1)
 
@@ -188,6 +176,18 @@ while [ -n "$1" ]; do
 						else
 							echo " ◆ $LATESTDIR" >> $AMPATH/.cache/installed &&
 							chown -R $currentuser $AMPATH/.cache/about 2> /dev/null
+							for metapackage in $(echo "$METAPACKAGES"); do
+								if grep -q "$metapackage" ./$arg 2> /dev/null; then
+									metascript=$(cd $APPSPATH && ls -td * | head -1)
+								fi
+							done
+							if [ -n "$metascript" ]; then
+								echo -ne " $(echo '"'$metascript'"' | tr a-z A-Z) INSTALLED ($(du -sm $APPSPATH/$(cd $APPSPATH && ls -td * | head -1) | awk '{print $1}' ) MB OF DISK SPACE)\n"
+								unset metascript
+							else
+								echo -ne " $(echo '"'$arg'"' | tr a-z A-Z) INSTALLED ($(du -sm $APPSPATH/$(cd $APPSPATH && ls -td * | head -1) | awk '{print $1}' ) MB OF DISK SPACE)\n"
+							fi
+							$SUDOCOMMAND rm $AMPATH/.cache/$arg
 						fi
 					else
 						echo " INSTALLATION ABORTED!"
