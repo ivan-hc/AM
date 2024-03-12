@@ -11,32 +11,63 @@ echo '#!/bin/sh' >> /opt/$APP/remove
 echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
 chmod a+x /opt/$APP/remove
 
-# DOWNLOAD THE APPIMAGE
+# DOWNLOAD THE ARCHIVE
 mkdir tmp
 cd ./tmp
 
-echo "https://client.f-list.net/fchat.AppImage"
+version=$(echo "https://client.f-list.net/fchat.AppImage")
+wget $version
+wget $version.zsync 2> /dev/null
+echo "$version" >> /opt/$APP/version
 
 cd ..
 mv ./tmp/*mage ./$APP
+mv ./tmp/*.zsync ./$APP.zsync 2> /dev/null
 chmod a+x /opt/$APP/$APP
-
-cd ./tmp
-wget https://github.com/AppImage/AppImageUpdate/releases/download/continuous/appimageupdatetool-x86_64.AppImage 2> /dev/null
-cd ..
-mv ./tmp/appimageupdatetool-x86_64.AppImage ./updater 2> /dev/null
-chmod a+x ./updater
+rm -R -f ./tmp
 
 # LINK
 ln -s /opt/$APP/$APP /usr/local/bin/$APP
 
-# SCRIPT TO UPDATE
-echo '#!/bin/sh
-APP='$APP'
-cd /opt/$APP
-./updater -O ./$APP
-chmod a+x /opt/$APP/$APP
-rm -R -f /opt/$APP/*zs-old && rm -R -f /opt/$APP/*.part' >> /opt/$APP/AM-updater
+# SCRIPT TO UPDATE THE PROGRAM
+cat >> /opt/$APP/AM-updater << 'EOF'
+#!/usr/bin/env bash
+APP=fchat-appimage
+version0=$(cat /opt/$APP/version)
+version=$(echo "https://client.f-list.net/fchat.AppImage")
+if test -f /opt/$APP/*.zsync; then
+	mkdir tmp
+	cd ./tmp
+	wget $version.zsync 2> /dev/null
+	cd ..
+	mv ./tmp/*.zsync ./$APP.zsync
+	rm -R -f ./tmp
+	zsync /opt/$APP/$APP.zsync
+	rm -R -f /opt/$APP/*zs-old /opt/$APP/*.part
+	chmod a+x /opt/$APP/$APP
+else
+	if [ $version = $version0 ]; then
+		echo "Update not needed!"
+	else
+		notify-send "A new version of $APP is available, please wait"
+		mkdir /opt/$APP/tmp
+		cd /opt/$APP/tmp
+		wget $version
+		if ls . | grep mage; then
+			
+			cd ..
+			
+	  		if test -f ./tmp/*mage; then rm ./version
+	  		fi
+	  		echo $version >> ./version
+	  		mv --backup=t ./tmp/* ./$APP
+	  		chmod a+x /opt/$APP/$APP
+	  		rm -R -f ./tmp ./*~
+		fi
+		notify-send "$APP is updated!"
+	fi
+fi
+EOF
 chmod a+x /opt/$APP/AM-updater
 
 # LAUNCHER & ICON
@@ -96,10 +127,3 @@ mv ./$APP.desktop /usr/share/applications/AM-$APP.desktop
 # CHANGE THE PERMISSIONS
 currentuser=$(who | awk '{print $1}')
 chown -R $currentuser /opt/$APP
-
-# MESSAGE
-echo "
-
-	$APP is provided by https://wiki.f-list.net
-
-"
