@@ -1,7 +1,6 @@
 #!/bin/sh
 
 APP=doublecmd-gtk
-URL=https://rsync.opensuse.org/repositories/home:/Alexx2000/AppImage/doublecmd-gtk-latest-x86_64.AppImage
 
 # CREATE THE FOLDER
 mkdir /opt/$APP
@@ -12,33 +11,63 @@ echo '#!/bin/sh' >> /opt/$APP/remove
 echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
 chmod a+x /opt/$APP/remove
 
-# DOWNLOAD THE APPIMAGE
-mkdir tmp;
-cd ./tmp;
-wget $URL;
-wget $URL.zsync 2> /dev/null
+# DOWNLOAD THE ARCHIVE
+mkdir tmp
+cd ./tmp
+
+version=$(echo "https://rsync.opensuse.org/repositories/home:/Alexx2000/AppImage/doublecmd-gtk-latest-x86_64.AppImage")
+wget $version
+wget $version.zsync 2> /dev/null
+echo "$version" >> /opt/$APP/version
+
 cd ..
 mv ./tmp/*mage ./$APP
+mv ./tmp/*.zsync ./$APP.zsync 2> /dev/null
 chmod a+x /opt/$APP/$APP
-mv ./tmp/*mage.zsync ./$APP.zsync 2> /dev/null
-echo "appimage" >> /opt/$APP/version
-rmdir ./tmp
+rm -R -f ./tmp
 
 # LINK
 ln -s /opt/$APP/$APP /usr/local/bin/$APP
 
 # SCRIPT TO UPDATE THE PROGRAM
-echo '#!/bin/sh' >> /opt/$APP/AM-updater
-echo "cd /opt/$APP
-mkdir tmp
-cd ./tmp
-wget $URL.zsync 2> /dev/null
-cd ..
-mv ./tmp/*mage.zsync ./$APP.zsync 2> /dev/null
-rmdir ./tmp
-zsync /opt/$APP/$APP.zsync
-rm -R -f /opt/$APP/*zs-old /opt/$APP/*.part
-chmod a+x /opt/$APP/$APP" >> /opt/$APP/AM-updater
+cat >> /opt/$APP/AM-updater << 'EOF'
+#!/usr/bin/env bash
+APP=doublecmd-gtk
+version0=$(cat /opt/$APP/version)
+version=$(echo "https://rsync.opensuse.org/repositories/home:/Alexx2000/AppImage/doublecmd-gtk-latest-x86_64.AppImage")
+if test -f /opt/$APP/*.zsync; then
+	mkdir tmp
+	cd ./tmp
+	wget $version.zsync 2> /dev/null
+	cd ..
+	mv ./tmp/*.zsync ./$APP.zsync
+	rm -R -f ./tmp
+	zsync /opt/$APP/$APP.zsync
+	rm -R -f /opt/$APP/*zs-old /opt/$APP/*.part
+	chmod a+x /opt/$APP/$APP
+else
+	if [ $version = $version0 ]; then
+		echo "Update not needed!"
+	else
+		notify-send "A new version of $APP is available, please wait"
+		mkdir /opt/$APP/tmp
+		cd /opt/$APP/tmp
+		wget $version
+		if ls . | grep mage; then
+			
+			cd ..
+			
+	  		if test -f ./tmp/*mage; then rm ./version
+	  		fi
+	  		echo $version >> ./version
+	  		mv --backup=t ./tmp/* ./$APP
+	  		chmod a+x /opt/$APP/$APP
+	  		rm -R -f ./tmp ./*~
+		fi
+		notify-send "$APP is updated!"
+	fi
+fi
+EOF
 chmod a+x /opt/$APP/AM-updater
 
 # LAUNCHER & ICON
@@ -47,24 +76,24 @@ cd /opt/$APP
 ./$APP --appimage-extract *.desktop 1>/dev/null
 ./$APP --appimage-extract share/applications/*.desktop 1>/dev/null
 ./$APP --appimage-extract usr/share/applications/*.desktop 1>/dev/null
-mv squashfs-root/*.desktop ./$APP.desktop 2> /dev/null
-mv squashfs-root/share/applications/*.desktop ./$APP.desktop 2> /dev/null
-mv squashfs-root/usr/share/applications/*.desktop ./$APP.desktop 2> /dev/null
+mv squashfs-root/*.desktop ./$APP.desktop
+mv squashfs-root/share/applications/*.desktop ./$APP.desktop
+mv squashfs-root/usr/share/applications/*.desktop ./$APP.desktop
 if [ ! -e ./$APP.desktop ]; then 
 	rm ./$APP.desktop; ./$APP --appimage-extract usr/share/applications/*$app*.desktop 
-	mv squashfs-root/usr/share/applications/*.desktop ./$APP.desktop 2> /dev/null
+	mv squashfs-root/usr/share/applications/*.desktop ./$APP.desktop
 fi
 if [ ! -e ./$APP.desktop ]; then 
 	rm ./$APP.desktop; ./$APP --appimage-extract share/applications/*$app*.desktop 1>/dev/null
-	mv squashfs-root/share/applications/*.desktop ./$APP.desktop 2> /dev/null
+	mv squashfs-root/share/applications/*.desktop ./$APP.desktop
 fi
 CHANGEEXEC=$(cat ./$APP.desktop | grep Exec= | tr ' ' '\n' | tr '=' '\n' | tr '/' '\n' | grep $app | head -1)
-sed -i "s#$CHANGEEXEC#$APP#g" ./$APP.desktop 2> /dev/null
-sed -i "s#AppRun#$APP#g" ./$APP.desktop 2> /dev/null
-sed -i "s#Exec=/bin/#Exec=#g" ./$APP.desktop 2> /dev/null
-sed -i "s#Exec=/usr/bin/#Exec=#g" ./$APP.desktop 2> /dev/null
+sed -i "s#$CHANGEEXEC#$APP#g" ./$APP.desktop
+sed -i "s#AppRun#$APP#g" ./$APP.desktop
+sed -i "s#Exec=/bin/#Exec=#g" ./$APP.desktop
+sed -i "s#Exec=/usr/bin/#Exec=#g" ./$APP.desktop
 CHANGEICON=$(cat ./$APP.desktop | grep Icon= | head -1)
-sed -i "s#$CHANGEICON#Icon=/opt/$APP/icons/$APP#g" ./$APP.desktop 2> /dev/null
+sed -i "s#$CHANGEICON#Icon=/opt/$APP/icons/$APP#g" ./$APP.desktop
 
 mkdir icons
 mv $(./$APP --appimage-extract *.png) ./icons/$APP 2>/dev/null
@@ -93,15 +122,8 @@ mv ./squashfs-root/usr/share/icons/hicolor/512x512/apps/*$app* ./icons/$APP 2>/d
 mv ./squashfs-root/usr/share/icons/hicolor/scalable/apps/*$app* ./icons/$APP 2>/dev/null
 
 rm -R -f /opt/$APP/squashfs-root
-mv ./$APP.desktop /usr/share/applications/AM-$APP.desktop 2> /dev/null
+mv ./$APP.desktop /usr/share/applications/AM-$APP.desktop
 
 # CHANGE THE PERMISSIONS
 currentuser=$(who | awk '{print $1}')
 chown -R $currentuser /opt/$APP
-
-# MESSAGE
-echo "
-
- Double Commander is provided by https://doublecmd.sourceforge.io
-	
-"

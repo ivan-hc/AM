@@ -1,7 +1,7 @@
 #!/bin/sh
 
 APP=freecad
-URL=$(wget -q https://api.github.com/repos/FreeCAD/FreeCAD-Bundle/releases -O - | grep x86_64 | grep browser_download_url | grep -i appimage | cut -d '"' -f 4 | head -1)
+SITE="FreeCAD/FreeCAD-Bundle"
 
 # CREATE THE FOLDER
 mkdir /opt/$APP
@@ -12,18 +12,19 @@ echo '#!/bin/sh' >> /opt/$APP/remove
 echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
 chmod a+x /opt/$APP/remove
 
-# DOWNLOAD THE APPIMAGE
+# DOWNLOAD THE ARCHIVE
 mkdir tmp
-wget $URL -O $APP
 cd ./tmp
-wget $URL.asc 2> /dev/null
-wget $URL.zsync 2> /dev/null
-wget $URL.zsync.asc 2> /dev/null
+
+version=$(wget -q https://api.github.com/repos/FreeCAD/FreeCAD-Bundle/releases -O - | grep browser_download_url | grep -i x86_64  | grep -i appimage | cut -d '"' -f 4 | head -1)
+wget $version
+wget $version.zsync 2> /dev/null
+echo "$version" >> /opt/$APP/version
+
 cd ..
+mv ./tmp/*mage ./$APP
+mv ./tmp/*.zsync ./$APP.zsync 2> /dev/null
 chmod a+x /opt/$APP/$APP
-mv ./tmp/*mage.zsync ./$APP.zsync 2> /dev/null
-#mv ./tmp/*mage.asc ./$APP.asc 2> /dev/null
-#mv ./tmp/*zsync.asc ./$APP.zsync.asc 2> /dev/null
 rm -R -f ./tmp
 
 # LINK
@@ -31,24 +32,43 @@ ln -s /opt/$APP/$APP /usr/local/bin/$APP
 
 # SCRIPT TO UPDATE THE PROGRAM
 cat >> /opt/$APP/AM-updater << 'EOF'
-#!/bin/sh
+#!/usr/bin/env bash
 APP=freecad
-URL="DIRECTURL2THEAPPIMAGE"
-URL=$(wget -q https://api.github.com/repos/FreeCAD/FreeCAD-Bundle/releases -O - | grep x86_64 | grep browser_download_url | grep -i appimage | cut -d '"' -f 4 | head -1)
-cd /opt/$APP
-mkdir tmp
-cd ./tmp
-wget $URL.asc 2> /dev/null
-wget $URL.zsync 2> /dev/null
-wget $URL.zsync.asc 2> /dev/null
-cd ..
-mv ./tmp/*mage.zsync ./$APP.zsync
-#mv ./tmp/*mage.asc ./$APP.asc
-#mv ./tmp/*zsync.asc ./$APP.zsync.asc
-rm -R -f ./tmp
-zsync /opt/$APP/$APP.zsync
-rm -R -f /opt/$APP/*zs-old /opt/$APP/*.part
-chmod a+x /opt/$APP/$APP
+SITE="FreeCAD/FreeCAD-Bundle"
+version0=$(cat /opt/$APP/version)
+version=$(wget -q https://api.github.com/repos/FreeCAD/FreeCAD-Bundle/releases -O - | grep browser_download_url | grep -i x86_64  | grep -i appimage | cut -d '"' -f 4 | head -1)
+if test -f /opt/$APP/*.zsync; then
+	mkdir tmp
+	cd ./tmp
+	wget $version.zsync 2> /dev/null
+	cd ..
+	mv ./tmp/*.zsync ./$APP.zsync
+	rm -R -f ./tmp
+	zsync /opt/$APP/$APP.zsync
+	rm -R -f /opt/$APP/*zs-old /opt/$APP/*.part
+	chmod a+x /opt/$APP/$APP
+else
+	if [ $version = $version0 ]; then
+		echo "Update not needed!"
+	else
+		notify-send "A new version of $APP is available, please wait"
+		mkdir /opt/$APP/tmp
+		cd /opt/$APP/tmp
+		wget $version
+		if ls . | grep mage; then
+			
+			cd ..
+			
+	  		if test -f ./tmp/*mage; then rm ./version
+	  		fi
+	  		echo $version >> ./version
+	  		mv --backup=t ./tmp/* ./$APP
+	  		chmod a+x /opt/$APP/$APP
+	  		rm -R -f ./tmp ./*~
+		fi
+		notify-send "$APP is updated!"
+	fi
+fi
 EOF
 chmod a+x /opt/$APP/AM-updater
 
@@ -71,7 +91,6 @@ if [ ! -e ./$APP.desktop ]; then
 fi
 CHANGEEXEC=$(cat ./$APP.desktop | grep Exec= | tr ' ' '\n' | tr '=' '\n' | tr '/' '\n' | grep $app | head -1)
 sed -i "s#$CHANGEEXEC#$APP#g" ./$APP.desktop
-sed -i "s#Exec=FreeCAD#Exec=$APP#g" ./$APP.desktop
 sed -i "s#AppRun#$APP#g" ./$APP.desktop
 sed -i "s#Exec=/bin/#Exec=#g" ./$APP.desktop
 sed -i "s#Exec=/usr/bin/#Exec=#g" ./$APP.desktop
@@ -110,10 +129,3 @@ mv ./$APP.desktop /usr/share/applications/AM-$APP.desktop
 # CHANGE THE PERMISSIONS
 currentuser=$(who | awk '{print $1}')
 chown -R $currentuser /opt/$APP
-
-# MESSAGE
-echo "
-
-	$APP is provided by https://freecad.org
-	
-"
