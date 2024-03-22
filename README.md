@@ -694,7 +694,7 @@ This only works with the apps hosted on Github.
 <details>
   <summary></summary>
 
-Since version 6.1 it is possible to convert old Type2 AppImages (dependent on `libfuse`) to Type3 AppImages not the `nolibfuse` option.
+Since version 6.1 it is possible to convert old Type2 AppImages (dependent on `libfuse2`) to Type3 using the option `nolibfuse`.
 ```
 am nolibfuse ${PROGRAM}
 ```
