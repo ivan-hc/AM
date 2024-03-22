@@ -62,7 +62,7 @@ This is important to launch the script that will update the count of the apps an
 
 
 ### Guide for beginners
-Submit your request at https://github.com/ivan-hc/AM/issues/116 , we'll provide as soon as possible
+Submit your request at https://github.com/ivan-hc/AM/issues , we'll provide as soon as possible
 
 -----------------------------------------------
 
