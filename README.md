@@ -570,6 +570,15 @@ to have a list of the installed programs use the option `-f` or `files` (syntax 
  DESCRIPTION:   Set the variable "$AMREPO" to a new custom repository. Use "off" to restore the default one or overwrite it with a new one.
  __________________________________________________________________________
  
+ `nolibfuse`
+ 
+ SYNOPSIS:
+ 
+ `nolibfuse {PROGRAM}`
+ 
+ DESCRIPTION:   Convert an installed Type2 AppImage to a Type3 AppImage. Type3 AppImages does not require libfuse2 installed. Only AppImages updatable with "zsync" can be updated keeping this format. Others will be replaced with the one provided from the upstream.
+ __________________________________________________________________________
+ 
  `unlock`
  
  SYNOPSIS:
@@ -782,6 +791,10 @@ or
 appman -i libfuse2
 ```
 NOTE, in AppMan you still need to use your password (`sudo`) to install the library at system level, in /usr/local/lib
+
+Alternatively you can use the "`nolibfuse`" option to "try" to convert old Type2 AppImages to Type3, so as not to depend on `libfuse2`. In most cases it works, but sometimes it can give errors, depending on how the package was manufactured.
+
+However, I suggest contacting the upstream developers to convince them to upgrade their packages to Type3.
 
 </details>
 
