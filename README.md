@@ -700,10 +700,10 @@ am nolibfuse ${PROGRAM}
 ```
 First the selected program type is checked, if it is a Type2 AppImage, it will be extracted and repackaged using the new version of `appimagetool` from https://github.com/probonopd/go-appimage :
 - If the installed AppImage can be updated via `zsync`, the update will take place while maintaining the status of Type3 AppImage;
-- On the contrary, if the update occurs through "comparison" of versions, the converted AppImage will be replaced by the upstream version, which could still be Type2. I suggest anyone to contact the developers to update the packaging method of their AppImage.
+- On the contrary, if the update occurs through "comparison" of versions, the converted AppImage will be replaced by the upstream version, which could still be Type2. But from version 6.1.1 the command is added within the application's AM-updater script, so as to automatically start the conversion at each update (prolonging the update time, depending on the size of the AppImage). **I suggest anyone to contact the developers to update the packaging method of their AppImage!**
 
 NOTE, the conversion is not always successful, a lot depends on how the program is packaged. The conversion occurs in two steps:
-- if in the first case it succeeds without problems, the package will be repackaged as it was, but of Type 3;
+- if in the first case it succeeds without problems, the package will be repackaged as it was, but of Type 3 (and the AM-updater script will be patched);
 - if the script encounters problems (due to Appstream validation), it will attempt to delete the contents of the /usr/share/metainfo directory inside the AppImage, as a workaround (which will probably make updates via `zsync` unusable);
 - if this step does not succeed either, the process will end with an error and the AppImage will remain Type2.
 
