@@ -1,7 +1,7 @@
 #!/bin/sh
 
 APP=firefox-appimage
-REPO="srevinsaju/Firefox-Appimage"
+SITE="srevinsaju/Firefox-Appimage"
 
 # CREATE THE FOLDER
 mkdir /opt/$APP
@@ -16,26 +16,60 @@ chmod a+x /opt/$APP/remove
 mkdir tmp
 cd ./tmp
 
-version=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep -w -v beta | grep -w -v devedition | grep -w -v esr | grep -w -v nightly | grep browser_download_url | grep -i appimage | cut -d '"' -f 4 | head -1)
+version=$(wget -q https://api.github.com/repos/srevinsaju/Firefox-Appimage/releases -O - | grep browser_download_url | grep -w -v beta | grep -w -v devedition | grep -w -v esr | grep -w -v nightly  | grep -i appimage | cut -d '"' -f 4 | head -1)
 wget $version
+wget $version.zsync 2> /dev/null
+echo "$version" >> /opt/$APP/version
+
 cd ..
 mv ./tmp/*mage ./$APP
+mv ./tmp/*.zsync ./$APP.zsync 2> /dev/null
 chmod a+x /opt/$APP/$APP
-echo "appimage" >> /opt/$APP/version
-rmdir ./tmp
-wget https://github.com/AppImage/AppImageUpdate/releases/download/continuous/appimageupdatetool-x86_64.AppImage -O updater
-chmod a+x ./updater
+rm -R -f ./tmp
 
 # LINK
 ln -s /opt/$APP/$APP /usr/local/bin/$APP
 
-# SCRIPT TO UPDATE
-echo '#!/bin/sh
-APP='$APP'
-cd /opt/$APP
-./updater -O ./$APP
-chmod a+x /opt/$APP/$APP
-rm -R -f /opt/$APP/*zs-old && rm -R -f /opt/$APP/*.part' >> /opt/$APP/AM-updater
+# SCRIPT TO UPDATE THE PROGRAM
+cat >> /opt/$APP/AM-updater << 'EOF'
+#!/usr/bin/env bash
+APP=firefox-appimage
+SITE="srevinsaju/Firefox-Appimage"
+version0=$(cat /opt/$APP/version)
+version=$(wget -q https://api.github.com/repos/srevinsaju/Firefox-Appimage/releases -O - | grep browser_download_url | grep -w -v beta | grep -w -v devedition | grep -w -v esr | grep -w -v nightly  | grep -i appimage | cut -d '"' -f 4 | head -1)
+if test -f /opt/$APP/*.zsync; then
+	mkdir /opt/$APP/tmp
+	cd /opt/$APP/tmp
+	wget $version.zsync 2> /dev/null
+	cd ..
+	mv ./tmp/*.zsync ./$APP.zsync
+	rm -R -f ./tmp
+	zsync /opt/$APP/$APP.zsync
+	rm -R -f /opt/$APP/*zs-old /opt/$APP/*.part
+	chmod a+x /opt/$APP/$APP
+else
+	if [ $version = $version0 ]; then
+		echo "Update not needed!"
+	else
+		notify-send "A new version of $APP is available, please wait"
+		mkdir /opt/$APP/tmp
+		cd /opt/$APP/tmp
+		wget $version
+		if ls . | grep mage; then
+			
+			cd ..
+			
+	  		if test -f ./tmp/*mage; then rm ./version
+	  		fi
+	  		echo $version >> ./version
+	  		mv --backup=t ./tmp/* ./$APP
+	  		chmod a+x /opt/$APP/$APP
+	  		rm -R -f ./tmp ./*~
+		fi
+		notify-send "$APP is updated!"
+	fi
+fi
+EOF
 chmod a+x /opt/$APP/AM-updater
 
 # LAUNCHER & ICON
@@ -64,8 +98,30 @@ CHANGEICON=$(cat ./$APP.desktop | grep Icon= | head -1)
 sed -i "s#$CHANGEICON#Icon=/opt/$APP/icons/$APP#g" ./$APP.desktop
 
 mkdir icons
-./$APP --appimage-extract browser/chrome/icons/default/default128.png 1>/dev/null
-mv ./squashfs-root/browser/chrome/icons/default/default128.png ./icons/$APP 2>/dev/null
+mv $(./$APP --appimage-extract *.png) ./icons/$APP 2>/dev/null
+mv $(./$APP --appimage-extract *.svg) ./icons/$APP 2>/dev/null
+./$APP --appimage-extract share/icons/*/*/* 1>/dev/null
+./$APP --appimage-extract usr/share/icons/*/*/* 1>/dev/null
+./$APP --appimage-extract share/icons/*/*/*/* 1>/dev/null
+./$APP --appimage-extract usr/share/icons/*/*/*/* 1>/dev/null
+mv ./squashfs-root/share/icons/hicolor/22x22/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/24x24/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/32x32/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/48x48/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/64x64/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/128x128/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/256x256/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/512x512/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/share/icons/hicolor/scalable/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/22x22/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/24x24/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/32x32/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/48x48/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/64x64/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/128x128/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/256x256/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/512x512/apps/*$app* ./icons/$APP 2>/dev/null
+mv ./squashfs-root/usr/share/icons/hicolor/scalable/apps/*$app* ./icons/$APP 2>/dev/null
 
 rm -R -f /opt/$APP/squashfs-root
 mv ./$APP.desktop /usr/share/applications/AM-$APP.desktop
@@ -73,8 +129,3 @@ mv ./$APP.desktop /usr/share/applications/AM-$APP.desktop
 # CHANGE THE PERMISSIONS
 currentuser=$(who | awk '{print $1}')
 chown -R $currentuser /opt/$APP
-
-# MESSAGE
-echo "
- $APP is provided by https://github.com/$(echo $REPO | sed 's:/[^/]*$::')
-"
