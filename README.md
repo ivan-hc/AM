@@ -179,7 +179,7 @@ To update all the programs and "AM" itself, just run the command (without `sudo`
     
 To update only the programs:
 
-    am -u --all
+    am -u --apps
 
 To update just one program:
 
