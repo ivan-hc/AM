@@ -173,10 +173,14 @@ The full list is [here](https://github.com/ivan-hc/AM/blob/main/libraries/libs-l
 <details>
   <summary></summary>
 
-To update all the programs, just run the command (without `sudo`):
+To update all the programs and "AM" itself, just run the command (without `sudo`):
 
     am -u
     
+To update only the programs:
+
+    am -u --all
+
 To update just one program:
 
     am -u $PROGRAM
@@ -447,10 +451,12 @@ to have a list of the installed programs use the option `-f` or `files` (syntax 
  SYNOPSIS:
 
  `-u`
+
+ `-u apps`
  
  `-u {PROGRAM}`
  		
- DESCRIPTION: Update all the apps or just one.
+ DESCRIPTION: Update all the apps (and "am" itself) or just one. If you add the "`--apps`" suboption you only update apps.
  ___________________________________________________________________________
  
  `-v`, `version`
