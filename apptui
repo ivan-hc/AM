@@ -1,0 +1,800 @@
+#!/usr/bin/env bash
+
+clear
+# 1 Define variables
+progname=${progname:="${0##*/}"}
+version=0.02
+configdir=$HOME/.config/$progname
+config=$configdir/config
+# shellcheck source=/dev/null
+source "$config" >/dev/null 2>&1
+# Turn on traces, useful while debugging but commented out by default
+# set -o xtrace
+
+# get color
+get_color() {
+	# shellcheck disable=SC2084
+	$(( RANDOM % 255 + 1 ))
+}
+
+# Install gum
+#install_gum() {
+  #nix-env -iA nixpkgs.gum || nix run "github:charmbracelet/gum" -- --help
+  #sudo mkdir -p /etc/apt/keyrings
+	#curl -fsSL https://repo.charm.sh/apt/gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/charm.gpg
+	#echo "deb [signed-by=/etc/apt/keyrings/charm.gpg] https://repo.charm.sh/apt/ * *" | sudo tee /etc/apt/sources.list.d/charm.list
+	#sudo apt update && sudo apt install gum
+  #echo '[charm]
+#name=Charm
+#baseurl=https://repo.charm.sh/yum/
+#enabled=1
+#! command -v gum >/dev/null 2>&1gpgcheck=1
+#gpgkey=https://repo.charm.sh/yum/gpg.key' | sudo tee /etc/yum.repos.d/charm.repo
+	#sudo yum install gum
+#}
+#gum_install () {
+	#if ! command -v gum >/dev/null 2>&1; then
+		#local distro;local cmd;local usesudo
+		#declare -A pkgmgr
+		#pkgmgr=( \
+#[arch]="pacman -S" \
+#[alpine]="apk add" \
+#[debian]="sudo mkdir -p /etc/apt/keyrings && curl -fsSL https://repo.charm.sh/apt/gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/charm.gpg && echo \"deb [signed-by=/etc/apt/keyrings/charm.gpg] https://repo.charm.sh/apt/ * *\" | sudo tee /etc/apt/sources.list.d/charm.list && sudo apt update && sudo apt install gum" \
+#[ubuntu]="sudo mkdir -p /etc/apt/keyrings && curl -fsSL https://repo.charm.sh/apt/gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/charm.gpg && echo \"deb [signed-by=/etc/apt/keyrings/charm.gpg] https://repo.charm.sh/apt/ * *\" | sudo tee /etc/apt/sources.list.d/charm.list && sudo apt update && sudo apt install gum" \
+#[voidlinux]="xbps-install" \
+#[go]="go install" \
+#)
+		#distro=$(cat /etc/os-release | tr [:upper:] [:lower:] | grep -Poi '(debian|ubuntu|red hat|centos|arch|alpine|voidlinux)' | uniq)
+		#cmd="${pkgmgr[$distro]}"
+		#if [[ $1 ]]; then
+			#[[ ! $EUID -eq 0 ]] && usesudo=sudo
+			#printf '\nInstalling gum using command: %s %s %s\n' "$usesudo" "$cmd" "$@"
+			#$usesudo $cmd $@
+		#else
+			#echo $cmd
+		#fi
+	#fi
+	#if ! command -v gum >/dev/null 2>&1; then
+		#echo "Can't chew it without gum! Exiting!"
+		#exit 1
+	#fi
+#}
+gum_install() {
+	if ! command -v gum >/dev/null 2>&1; then
+		if [ -f /etc/os-release ]; then
+			if [ -f /usr/bin/pacman ]; then
+				install_gum_pacman
+			elif [ -f /usr/bin/apt ]; then
+				install_gum_apt
+			elif [ -f /usr/bin/apk ]; then
+				install_gum_apk
+			elif [ -f /usr/bin/xbps-install ]; then
+				install_gum_xbps
+			elif [ -f /usr/bin/yum ]; then
+				install_gum_yum
+			elif [ -f /usr/bin/nix ]; then
+				install_gum_nix
+			elif [ -f /usr/bin/go ]; then
+				install_gum_go
+			else
+				echo "Don't know how to install gum here!" && exit 1
+			fi
+		fi
+	fi
+}
+install_gum_pacman() {
+	sudo pacman -S gum
+}
+install_gum_apt() {
+	sudo mkdir -p /etc/apt/keyrings
+	curl -fsSL https://repo.charm.sh/apt/gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/charm.gpg
+	echo "deb [signed-by=/etc/apt/keyrings/charm.gpg] https://repo.charm.sh/apt/ * *" \
+| sudo tee /etc/apt/sources.list.d/charm.list
+	sudo apt update
+	sudo apt install gum
+}
+install_gum_apk() {
+	sudo apk add gum
+}
+install_gum_xbps() {
+	sudo xbps-install gum
+}
+install_gum_yum() {
+	echo '[charm]
+name=Charm
+baseurl=https://repo.charm.sh/yum/
+enabled=1
+gpgcheck=1
+gpgkey=https://repo.charm.sh/yum/gpg.key' | sudo tee /etc/yum.repos.d/charm.repo
+	sudo yum install gum
+}
+install_gum_nix() {
+	nix-env -iA nixpkgs.gum || nix run "github:charmbracelet/gum" -- --help
+}
+install_gum_go() {
+	go install github.com/charmbracelet/gum@latest
+}
+
+# 2 Install gum if needed
+gum_install
+
+# config
+create_config() {
+	if [ ! -f "$config" ]; then
+		echo "Creating default config"
+		mkdir -p "$configdir"
+		# shellcheck disable=SC2016
+		echo 'color=$(( RANDOM % 255 + 1 ))
+border=double
+AMCLI=./appman' > "$config"
+	fi
+}
+change_config_item() {
+	if [ -f "$config" ]; then
+		sed -i "s|^$item_name=.*$|$item_name=\"$new_value\"|" "$config"
+	else
+		 echo "$item_name=$new_value" > "$config"
+	fi
+}
+
+if command -v ./appman >/dev/null 2>&1; then
+	appman_version=$(./appman version) && appman_local=1 && chmod +x appman
+fi
+if command -v appman >/dev/null 2>&1; then
+	appman_version=$(appman version) && appman_installed=1
+fi
+if command -v am >/dev/null 2>&1; then
+	am_version=$(am version) && am_installed=1
+fi
+
+# AppMan or AM?
+what_to_use() {
+	while true
+	do
+		item_name="AMCLI"
+		header="Choose what to use.."
+		if [ "$appman_local" == 1 ] && [ "$appman_installed" == 1 ] && [ "$am_installed" == 1 ]; then
+			choice=$(gum filter --header="$header" --header.border-foreground "$color" --header.border "$border" --no-fuzzy "AppMan (current dir)" "AppMan (as user)" "AM (as root)")
+		elif [ "$appman_local" == 1 ] && [ "$am_installed" == 1 ]; then
+			choice=$(gum filter --header="$header" --header.border-foreground "$color" --header.border "$border" --no-fuzzy "AppMan (current dir)" "AM (as root)")
+		elif [ "$appman_local" == 1 ] && [ "$appman_installed" == 1 ]; then
+			choice=$(gum filter --header="$header" --header.border-foreground "$color" --header.border "$border" --no-fuzzy "AppMan (current dir)" "AppMan (as user)")
+		elif [ "$appman_installed" == 1 ] && [ "$am_installed" == 1 ]; then
+			choice=$(gum filter --header="$header" --header.border-foreground "$color" --header.border "$border" --no-fuzzy "AppMan (as user)" "AM (as root)")
+		elif [ "$appman_local" == 1 ]; then
+			choice=$(echo "AppMan (current dir)")
+		elif [ "$appman_installed" == 1 ]; then
+			choice=$(echo "AppMan (as user)")
+		elif [ "$am_installed" == 1 ]; then
+			choice=$(echo "AM (as root)")
+		fi
+		case $choice in
+			'AppMan (current dir)' ) new_value='./appman' && workdir=$(pwd);;
+			'AppMan (as user)' ) new_value="appman";; # && workdir="$HOME/$APPSDIR/$AMCLI";;
+			'AM (as root)' ) new_value="am";; # && workdir="$HOME/$APPSDIR/$AMCLI";;
+		esac
+		if command -v "$new_value" >/dev/null 2>&1; then
+			change_config && break
+		else
+			echo "Wrong choice!" && break
+		fi
+	done
+}
+
+# 3 Create config if needed
+if [ ! -f "$config" ]; then
+	create_config
+	what_to_use
+fi
+# shellcheck source=/dev/null
+change_config() {
+	old_value=$(grep '=' < "$config" | grep "$item_name" | cut -d'=' -f2)
+	gum confirm "Change $item_name from $old_value to $new_value?" && change_config_item; source "$config"
+}
+
+
+# shellcheck source=/dev/null
+source "$config"
+
+# gum settings
+# shellcheck disable=SC2154
+export BORDERS_FOREGROUND=$color
+export GUM_FILTER_INDICATOR_FOREGROUND=$color
+export GUM_SPIN_SPINNER_FOREGROUND=$color
+export GUM_CONFIRM_PROMPT_FOREGROUND=$color
+export GUM_CONFIRM_SELECTED_FOREGROUND=$color
+
+# 7 Install AppMan/AM
+install_am() {
+	wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/INSTALL \
+&& chmod a+x ./INSTALL && sudo ./INSTALL
+}
+
+install_appman() {
+	wget https://raw.githubusercontent.com/ivan-hc/AppMan/main/appman \
+ && chmod a+x appman \
+ && gum confirm "Create ~/.local/bin and move Appman There?" && mkdir -p ~/.local/bin \
+ && echo 'export PATH=$PATH:$(xdg-user-dir USER)/.local/bin' >> ~/.bashrc \
+ && mv appman ~/.local/bin/appman
+}
+
+# 4 Choose Installed and new programs
+gum_filter_installed() {
+	header=""
+	programs=$(run_files | grep 'MiB' | cut -d' ' -f3 | gum filter --header="$header" \
+--header.border-foreground "$color" --header.border "$border" --no-limit --no-fuzzy | cut -d' ' -f1)
+	echo "$programs"
+}
+gum_filter_installed_one() {
+	header=""
+	program=$(run_files | grep 'MiB' | cut -d' ' -f3 | gum filter --header="$header" \
+--header.border-foreground "$color" --header.border "$border" --no-fuzzy | cut -d' ' -f1)
+	echo "$program"
+}
+gum_filter_new_programs() {
+	header=""
+	new_programs=$($AMCLI -l | grep -v "^\$" | sed 1,2d | sed '$ d' | cut -d' ' -f2-23 \
+| gum filter --header="$header" --header.border-foreground "$color" \
+--header.border "$border" --no-limit --no-fuzzy | cut -d' ' -f1)
+	echo "$new_programs"
+}
+
+
+# template for functions
+template() {
+	# working with new programs
+	header=""
+	gum_filter_new_programs
+	$AMCLI  "$new_programs"
+	# working with already installed programs
+	header=""
+	gum_filter_installed
+	$AMCLI  "$programs"
+}
+# 5 AppMan/AM options
+
+# TODO Not done yet!
+# shellcheck disable=SC2035,SC2154
+appimage_extract() {
+	"$arg" --appimage-extract share/icons/*/*/* 1>/dev/null
+	"$arg" --appimage-extract usr/share/icons/*/*/* 1>/dev/null
+	"$arg" --appimage-extract share/icons/*/*/*/* 1>/dev/null
+	"$arg" --appimage-extract usr/share/icons/*/*/*/* 1>/dev/null
+	"$arg" --appimage-extract *.svg 1>/dev/null
+	"$arg" --appimage-extract *.png 1>/dev/null
+	"$arg" --appimage-extract *.desktop 1>/dev/null
+	"$arg" --appimage-extract share/applications/*.desktop 1>/dev/null
+	"$arg" --appimage-extract usr/share/applications/*.desktop 1>/dev/null
+}
+run_launcher() {
+	header="Embed one or more local AppImages in the applications menu.
+ I suggest dragging the files into the terminal to get the desired effect.
+ Launchers are located in ~/.local/share/applications/AppImages by default."
+	echo "#TODO"
+	# shellcheck disable=SC2154
+	$AMCLI --launcher "${path_to_appimage}"
+}
+run_template() {
+	header='This option allows you to generate a custom script from a list of
+ different templates that may be vary according to the kind of app you
+ want to upload to the "AM" repo, and the source where it is available.'
+	echo "#TODO"
+	$AMCLI template "$program"
+}
+run_update() {
+	header="Update all the apps or just one."
+	$AMCLI -u
+}
+# Hopefully Done
+run_about() {
+	header="Shows more info about one or more apps, all the pages are
+ downloaded from https://portable-linux-apps.github.io"
+	gum_filter_new_programs
+	$AMCLI about "$new_programs"
+}
+run_backup() {
+	# shellcheck disable=SC2016
+	header='Save the current version of one or more apps, each snapshot is
+ stored into a dedicated directory, under $HOME/.am-snapshots/$PROGRAM
+ To restore the snapshots use overwrite option.'
+	gum_filter_installed
+	$AMCLI backup "$programs"
+}
+run_rollback() {
+	header="Download an older or specific version of the software you
+ are interested in (only works with Github)."
+	gum_filter_installed
+	$AMCLI --rollback "$programs"
+}
+run_clean() {
+	header="Removes all the unnecessary files and folders."
+	$AMCLI clean
+}
+run_convert() {
+	header='Download the installation scripts for "AM" and converts them
+ to rootless installation scripts that can be installed locally.'
+	gum_filter_installed_one
+	$AMCLI convert "$program"
+}
+run_download() {
+	header="Download one or more installation scripts to your desktop."
+	gum_filter_new_programs
+	$AMCLI download "$new_programs"
+}
+run_files() {
+	$AMCLI files
+}
+run_home() {
+	header="Set a dedicated $HOME directory for one or more AppImages."
+	gum_filter_installed
+	$AMCLI --home "$programs"
+}
+run_install() {
+	header="Install one or more programs."
+	gum_filter_new_programs
+	$AMCLI install "$new_programs"
+}
+run_list() {
+	header="Shows the list of all the apps available in the repository."
+	$AMCLI list | cut -d' ' -f2-99 | gum pager
+}
+run_overwrite() {
+	header="Overwrite the existing version of the app with a snapshot saved previously."
+	gum_filter_installed
+	$AMCLI overwrite "$programs"
+}
+run_query() {
+	header="Can be used to search for keywords and terms in the list of
+ available applications packages to display matches. This can be useful
+ if you are looking for applications having a specific feature."
+	gum_filter_new_programs
+	$AMCLI query "$new_programs"
+}
+run_remove() {
+	header="Removes one or more apps, requires confirmation."
+	gum_filter_installed
+	$AMCLI remove "$programs"
+}
+run_remove_no_asking() {
+	header="Removes one or more apps without asking."
+	gum_filter_installed
+	$AMCLI -R "$programs"
+}
+run_sync() {
+	header="Updates AppMan/AM to the latest version hosted."
+	$AMCLI sync
+}
+run_web() {
+	header="Shows the URLs of the sites/sources of then app."
+	gum_filter_new_programs
+	$AMCLI web "$new_programs"
+}
+run_enable_completion() {
+	header='Enable bash-completion to complete a keyword with the "TAB"
+ key, using the names of all installable applications available.'
+	$AMCLI --enable-completion
+}
+run_disable_completion() {
+	header="Disable bash-completion."
+	$AMCLI --disable-completion
+}
+run_lock() {
+	header='Lock the selected app to the current version installed, this
+ only works if exists a dedicated "AM-updater" installed with the app.'
+	gum_filter_installed
+	$AMCLI lock "$programs"
+}
+run_unlock() {
+	header="Unlock updates for the selected program. This option nulls
+ the option lock."
+	gum_filter_installed
+	$AMCLI unlock "$programs"
+}
+run_help() {
+	header="Prints appman help message."
+	$AMCLI help | gum pager
+}
+help_appman() {
+	printf '
+
+  ▄▀█ █▀█ █▀█ █░░ █ █▀▀ ▄▀█ ▀█▀ █ █▀█ █▄░█   █▀▄▀█ ▄▀█ █▄░█ ▄▀█ █▀▀ █▀▀ █▀█
+  █▀█ █▀▀ █▀▀ █▄▄ █ █▄▄ █▀█ ░█░ █ █▄█ █░▀█   █░▀░█ █▀█ █░▀█ █▀█ █▄█ ██▄ █▀▄
+                             by Ivan Alex HC
+
+   >> A portable CLI to install/update/manage apps an AppImages locally <<
+
+            {OPTION} or {OPTION} {PROGRAM}
+
+-a, about {PROGRAM}         Shows more info about apps, all the pages are
+                            downloaded from
+                            https://portable-linux-apps.github.io
+
+-b, backup {PROGRAM}        Save the current version of apps, each snapshot
+                            is stored into a dedicated directory, under
+                            $HOME/.am-snapshots/$PROGRAM
+                            To restore the snapshots see the "-o" option.
+
+-c, clean                   Removes all the unnecessary files and folders.
+
+-d, download {PROGRAM}      Download installation scripts to your desktop.
+
+-f, files                   Shows the installed programs, with sizes.
+
+-h, help                    Prints this message.
+
+-H, --home {PROGRAM}        Set a dedicated $HOME directory for AppImages.
+
+-i, install {PROGRAM}       Install programs.
+
+-l, list                    Shows list apps available in the repository.
+
+-o, overwrite {PROGRAM}     Overwrite the existing version of the app with
+                            snapshot saved previously (see the option "-b").
+
+-q, query {KEYWORD}         Can be used to search for keywords and terms in
+                            the list of available applications packages to
+                            display matches. This can be useful if you are
+                            looking for applications having specific feature.
+
+-r, remove {PROGRAM}        Removes apps, requires confirmation.
+
+-R {PROGRAM}                Removes apps without asking.
+
+-s, sync                    Updates this script to the latest version hosted.
+
+-t, template {PROGRAM}      Generate a custom script from a list of different
+                            templates that may be vary according to the kind
+                            of app you want to upload to the "AM" repo,
+                            and the source where it is available.
+
+-u, -U, update ({PROGRAM})  Update all the apps or just one.
+
+-v, version                 Shows the version.
+
+-w, web                     Shows the URLs of the sites/sources of then app.
+
+--disable-completion        Disable bash-completion.
+
+--enable-completion         Enable bash-completion to complete a keyword with
+                            the "TAB" key, using the names of all installable
+                             applications available.
+
+--launcher                  Embed one or more AppImages in the applications
+ /path/to/${APPIMAGE}       menu. I suggest dragging the files into the
+                            terminal to get the desired effect. Launchers are
+                            located in ~/.local/share/applications/AppImages
+
+--rollback {PROGRAM}        Download an older or specific version of the
+                            software (only works with Github).
+
+lock {PROGRAM}              Lock the selected app to the current version,
+                            this only works if exists a dedicated "AM-updater"
+                             installed with the app.
+
+unlock{PROGRAM}             Unlock updates for the selected program. This
+                            option nulls the option "lock" (see above).
+
+                    EXTRA OPTIONS
+                (only available for "APPMAN")
+ conv, convert {PROGRAM}    Download the installation scripts for "AM" and converts them
+ to rootless installation scripts that can be installed locally.
+
+ ###########################################################################
+              ABOUT "AM" APPLICATION MANAGER
+ "AM" is a software manager that deals with the management of all portable
+ apps and AppImages out there. It is distributed in two versions:
+
+ ◆ "AM", the main version that integrates applications at the system level,
+ installing them in /opt, for all the users;
+ ◆ "AppMan", the portable and "rootless" version that installs all the apps
+ in the $HOME directory, integrating additional options to convert all the
+ installation scripts from "AM".
+
+                   SITES
+ HTTPS://PORTABLE-LINUX-APPS.GITHUB.IO     (main website)
+ HTTPS://GITHUB.COM/IVAN-HC/APPMAN
+ HTTPS://GITHUB.COM/IVAN-HC/AM-APPLICATION-MANAGER
+ ' | gum pager
+ }
+
+# 6 AppTui
+show_help() {
+	gum style --border "$border" --border-foreground "$color" \
+'                  ▄▀█ █▀█ █▀█ ▀█▀ █ █ █
+                  █▀█ █▀▀ █▀▀  █  █▄█ █
+                                by zenobit'
+	# shellcheck disable=SC2016
+	printf '
+   >> A portable CLI to install/update/manage apps an AppImages locally <<
+
+ Run appman/AM with TUI mode. (Using gum)
+
+ You can do:
+
+ Shows more info about one or more apps, all the pages are downloaded from
+ https://portable-linux-apps.github.io
+
+ Save the current version of one or more apps, each snapshot is stored into
+ a dedicated directory, under $HOME/.am-snapshots/$PROGRAM To restore the
+ snapshots see the "-o" option.
+
+ Removes all the unnecessary files and folders.
+
+ Download one or more installation scripts to your desktop.
+
+ Shows the list of all installed programs, with sizes.
+
+ Prints this message.
+
+ Set a dedicated $HOME directory for one or more AppImages.
+
+ Install one or more programs.
+
+ Shows the list of all the apps available in the repository.
+
+ Overwrite the existing version of the app with a snapshot
+ saved previously (see the option "-b", above).
+
+ Can be used to search for keywords and terms in the list of available
+ applications packages to display matches. This can be useful if you are
+ looking for applications having a specific feature.
+
+ Removes one or more apps, requires confirmation.
+
+ Removes one or more apps without asking.
+
+ Updates this script to the latest version hosted.
+
+ This option allows you to generate a custom script from a list of different
+ templates that may be vary according to the kind of app you want to upload
+ to the "AM" repo, and the source where it is available.
+
+ Update all the apps or just one.
+
+ Shows the URLs of the sites/sources of then app.
+
+ Disable bash-completion.
+
+ Enable bash-completion to complete a keyword with the "TAB" key, using the
+ names of all installable applications available.
+
+ Embed one or more local AppImages in the applications menu. I suggest
+ dragging the files into the terminal to get the desired effect. Launchers
+ are located in ~/.local/share/applications/AppImages by default.
+
+ Download an older or specific version of the software you are interested in
+ (only works with Github).
+
+ Lock the selected app to the current version installed, this only works if
+ exists a dedicated "AM-updater" installed with the app.
+
+ Unlock updates for the selected program. This option nulls the option
+ "lock" (see above).
+
+ Download the installation scripts for "AM" and converts them to rootless
+ installation scripts that can be installed locally.
+ ___________________________________________________________________________
+ 		     ABOUT "AM" APPLICATION MANAGER
+ ___________________________________________________________________________
+ "AM" is a software manager that deals with the management of all portable
+ apps and AppImages out there. It is distributed in two versions:
+ ◆ "AM", the main version that integrates applications at the system level,
+ installing them in /opt, for all the users;
+
+ ◆ "AppMan", the portable and "rootless" version that installs all the apps
+ in the $HOME directory, integrating additional options to convert all the
+ installation scripts from "AM".
+ ___________________________________________________________________________
+ 				  SITES
+ ___________________________________________________________________________
+ HTTPS://PORTABLE-LINUX-APPS.GITHUB.IO 	(main website)
+ HTTPS://GITHUB.COM/IVAN-HC/APPMAN
+ HTTPS://GITHUB.COM/IVAN-HC/AM-APPLICATION-MANAGER
+'
+}
+
+show_header() {
+	gum style --padding "0 1"  --border="$border" --border-foreground="$color" "$header"
+}
+
+change_color() {
+	if command -v yad >/dev/null 2>&1; then
+		header="Define color, use color picker or choose random"
+		show_header
+		height=4
+		item_name=color
+		start=$(echo "random
+color picker
+custom
+EXIT $progname" | gum filter --height $height)
+		# shellcheck disable=SC2016
+		case $start in
+			'random' ) new_value='$(( RANDOM % 255 + 1 ))';;
+			'color picker' ) new_value="$(xcolor)" || new_value="$(yad --color)";;
+			'custom' ) new_value=$(gum input  --header="Enter color value");;
+			'show help' ) help_main; show_help;;
+			"EXIT $progname" ) exit 0;;
+		esac
+	else
+		header="Define color number or choose random"
+		show_header
+		new_value=$(echo 'random' | gum filter --no-strict GUM_FILTER_PLACEHOLDER="custom" --height 1)
+	fi
+	change_config
+}
+
+change_borders() {
+	header="Changing borders style"
+	show_header
+	height=6
+	item_name=border
+	new_value=$(echo "none
+hidden
+normal
+rounded
+thick
+double" | gum filter --height $height)
+	change_config
+}
+
+is_completion_enabled() {
+	if [ "$(grep -o "appman" < ~/.bash_completion | head -1)" == "appman" ]; then
+		echo "AppMan"
+	fi
+	if test -f /etc/bash_completion.d/am-completion.sh; then
+		echo "AM"
+	fi
+}
+
+show_headers() {
+	# shellcheck disable=SC2034
+	style="gum style --padding 0 1 --border $border --border-foreground '$(( RANDOM % 255 + 1 ))'"
+	header_logo=$(gum style --padding "0 1" --border "$border" \
+--border-foreground $(( RANDOM % 255 + 1 )) --align right \
+"▄▀█ █▀█ █▀█ ▀█▀ █ █ █
+█▀█ █▀▀ █▀▀  █  █▄█ █
+$version    by zenobit ")
+
+	header_using=$(gum style --padding "0 1" --border "$border" \
+--border-foreground $(( RANDOM % 255 + 1 )) --align center \
+"Using: $AMCLI
+completion:
+$(is_completion_enabled)")
+
+	header_versions=$(gum style --padding "0 1" --border "$border" \
+--border-foreground $(( RANDOM % 255 + 1 )) --align center \
+"Simple appman/AM TUI using gum
+AppMan $appman_version   AM $am_version")
+
+	header_workdir=$(gum style --padding "0 1" --border "$border" \
+--border-foreground $(( RANDOM % 255 + 1 )) --align center \
+"workdir:
+$(pwd)")
+
+	header_installed=$(gum style --padding "0 1" --border "$border" \
+--border-foreground $(( RANDOM % 255 + 1 )) --align right \
+"installed AppImages: $(run_files | grep 'MANAGED BY' | cut -d' ' -f4)
+$(run_files | grep 'MiB' | cut -d' ' -f3)")
+
+	header_first=$(gum join  --align bottom "$header_logo" "$header_using")
+	header_second=$(gum join --align center --vertical "$header_first" "$header_versions")
+	header_third=$(gum join --align top "$header_workdir" "$header_installed")
+	gum join --align center --vertical "$header_second" "$header_third"
+}
+# MENU
+menu_main() {
+	start=$(echo "1 available programs
+2 info about program(s)
+3 home program(s)
+4 Install program(s)
+5 update program(s)
+6 remove program(s)
+remove program(s) no ask
+MENU Avanced
+apptui Help
+appman/AM Help
+help
+use AppMan or AM?
+q EXIT $progname" | gum filter --height 13)
+	case $start in
+#		'' ) run_;;
+		'2 info about program(s)' ) run_about;;
+		'4 Install program(s)' ) run_install;;
+		'6 remove program(s)' ) run_remove;;
+		'remove program(s) no ask' ) run_remove_no_asking;;
+		'1 available programs' ) run_list;;
+		'5 update program(s)' ) run_update;;
+		'backup program(s)' ) run_backup;;
+		'download program(s)' ) run_download;;
+		'lock program(s)' ) run_lock;;
+		'unlock program(s)' ) run_unlock;;
+		'overwrite program' ) run_overwrite;;
+		'query keyword' ) run_query;;
+		'update appman' ) run_sync;;
+		'template' ) run_template;;
+		'program(s) web' ) run_web;;
+		'disable completion' ) run_disable_completion;;
+		'enable completion' ) run_enable_completion;;
+		'3 home program(s)' ) run_home;;
+		'launcher' ) run_launcher;;
+		'rollback' ) run_rollback;;
+		'--user' ) run_;;
+		'clean' ) run_clean;;
+		'convert script(s) to appman' ) run_convert;;
+		'use AppMan or AM?' ) what_to_use;;
+		'appman/AM Help' ) run_help;;
+		'help' ) help_appman;;
+		'MENU Avanced' ) menu_advanced;;
+		'apptui help' ) show_help;;
+		"q EXIT $progname" ) exit 0;;
+	esac
+}
+menu_advanced() {
+	while true
+	do
+		start=$(echo "1 backup program(s)
+2 restore backed program
+3 download program(s)
+4 lock program(s)
+5 unlock program(s)
+6 query keyword
+7 template
+8 launcher
+9 rollback
+clean
+Install AppMan
+Install AM
+update appman/AM
+enable completion
+disable completion
+--user
+convert script(s) to appman
+change color
+change borders
+Help
+back to MAIN MENU
+q EXIT $progname" | gum filter --height 22)
+		case $start in
+#			'' ) run_;;
+			'Install AppMan' ) install_appman; break;;
+			'Install AM' ) install_am; break;;
+			'info about program(s)' ) run_about;;
+			'Install program(s)' ) run_install;;
+			'remove program(s)' ) run_remove;;
+			'remove program(s) without ask' ) run_remove_no_asking;;
+			'available programs' ) run_list;;
+			'update program(s)' ) run_update;;
+			'1 backup program(s)' ) run_backup;;
+			'3 download program(s)' ) run_download;;
+			'4 lock program(s)' ) run_lock;;
+			'5 unlock program(s)' ) run_unlock;;
+			'2 restore backed program' ) run_overwrite;;
+			'6 query keyword' ) run_query;;
+			'update appman/AM' ) run_sync;;
+			'7 template' ) run_template;;
+			'program(s) web' ) run_web;;
+			'disable completion' ) run_disable_completion; break;;
+			'enable completion' ) run_enable_completion; break;;
+			'home program(s)' ) run_home;;
+			'8 launcher' ) run_launcher;;
+			'9 rollback' ) run_rollback;;
+			'--user' ) run_;;
+			'clean' ) run_clean;;
+			'convert script(s) to appman' ) run_convert;;
+			'change color' ) change_color; break;;
+			'change borders' ) change_borders; break;;
+			'a appman/AM help' ) run_help;;
+			'm Avanced menu' ) menu_advanced;;
+			'Help' ) show_help;;
+			'back to MAIN MENU') break;;
+			"q EXIT $progname" ) exit 0;;
+		esac
+	done
+}
+# Run loop
+while true
+do
+	#clear
+	show_headers
+	menu_main
+done
