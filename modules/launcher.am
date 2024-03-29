@@ -76,8 +76,38 @@ while [ -n "$1" ]; do
 					rm -R -f ./squashfs-root
 				}
 
+				function _launcher_appimage_bin(){
+					mkdir -p "$HOME"/.local/bin
+					function _patch_bashrc_and_profile(){
+						# Check if the custom PATH is not already in .bashrc, then append it (fix - exclamation mark negates the entire command substitution)
+						if ! grep -q 'export PATH=$PATH:$(xdg-user-dir USER)/.local/bin' "$HOME/.bashrc"; then
+							echo 'export PATH=$(echo $PATH | tr ":" "\n" | grep -v "/.local/bin" | tr "\n" ":" | sed ''s/.$//'')' >> "$HOME/.bashrc"
+							echo -e 'export PATH=$PATH:$(xdg-user-dir USER)/.local/bin\n' >> "$HOME/.bashrc"
+						fi
+						# Correct the order of .local/bin in .profile if necessary
+						if test -f "$HOME/.profile"; then
+							if grep -q 'PATH="$HOME/.local/bin:$PATH"' "$HOME/.profile"; then
+								sed -i 's#PATH="$HOME/.local/bin:$PATH"#PATH="$PATH:$HOME/.local/bin"#g' "$HOME/.profile"
+							fi
+						elif test -f "$HOME/.bash_profile"; then
+							if grep -q 'PATH="$HOME/.local/bin:$PATH"' "$HOME/.bash_profile"; then
+								sed -i 's#PATH="$HOME/.local/bin:$PATH"#PATH="$PATH:$HOME/.local/bin"#g' "$HOME/.bash_profile"
+							fi
+						fi
+					}
+					_patch_bashrc_and_profile
+					if ! echo "$appimage" | grep -q -i "appimage"; then
+						echo -e '#!/bin/sh\n'$arg'' >> "$HOME"/.local/bin/"$appimage".appimage
+						chmod a+x "$HOME"/.local/bin/"$appimage".appimage
+					else
+						echo -e '#!/bin/sh\n'$arg'' >> "$HOME"/.local/bin/"$appimage"
+						chmod a+x "$HOME"/.local/bin/"$appimage"
+					fi
+				}
+
 				_launcher_appimage_extract 2>/dev/null
 				_launcher_appimage_integration 2>/dev/null
+				_launcher_appimage_bin 2>/dev/null
 			fi
 		}
 
