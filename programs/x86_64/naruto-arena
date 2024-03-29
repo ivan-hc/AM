@@ -1,0 +1,70 @@
+#!/bin/sh
+
+APP=naruto-arena
+SITE="https://naruto-arena.app/"
+
+# CREATE THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP
+
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+
+# DOWNLOAD THE ARCHIVE
+mkdir tmp
+cd ./tmp
+
+version=$(echo https://get.arena-game.app/lin64_na)
+wget $version
+echo "$version" >> /opt/$APP/version
+chmod a+x ./*
+cd ..
+mv --backup=t ./tmp/lin64_na ./naruto-arena
+rm -R -f ./tmp
+
+# LINK
+ln -s /opt/$APP/$APP /usr/local/bin/$APP
+
+# SCRIPT TO UPDATE THE PROGRAM
+cat >> /opt/$APP/AM-updater << 'EOF'
+#!/usr/bin/env bash
+APP=naruto-arena
+version0=$(cat /opt/$APP/version)
+version=$(echo https://get.arena-game.app/lin64_na)
+if [ $version = $version0 ]; then
+	echo "Update not needed!"
+else
+	notify-send "A new version of $APP is available, please wait"
+	mkdir /opt/$APP/tmp
+	cd /opt/$APP/tmp
+	wget $version
+	chmod a+x ./*
+	cd ..
+	mv --backup=t ./tmp/lin64_na ./naruto-arena
+	rm ./version
+	echo $version >> ./version
+	rm -R -f ./tmp ./*~
+	notify-send "$APP is updated!"
+fi
+EOF
+chmod a+x /opt/$APP/AM-updater
+
+# ICON
+mkdir icons
+wget https://naruto-arena.app/assets/logo.png -O ./icons/$APP 2> /dev/null
+
+# LAUNCHER
+rm -f /usr/share/applications/AM-$APP.desktop
+echo "[Desktop Entry]
+Name=Naruto-Arena Next Generations
+Exec=$APP
+Icon=/opt/$APP/icons/$APP
+Type=Application
+Terminal=false
+Categories=Game;" >> /usr/share/applications/AM-$APP.desktop
+
+# CHANGE THE PERMISSIONS
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/$APP
