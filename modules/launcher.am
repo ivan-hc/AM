@@ -103,18 +103,34 @@ while [ -n "$1" ]; do
 						fi
 					}
 					_patch_bashrc_and_profile
-					if ! echo "$appimage" | grep -q -i ".appimage"; then
-						echo -e '#!/bin/sh\n'$arg'' >> "$HOME"/.local/bin/"$appimage".appimage
-						chmod a+x "$HOME"/.local/bin/"$appimage".appimage
-					else
-						echo -e '#!/bin/sh\n'$arg'' >> "$HOME"/.local/bin/"$appimage"
-						chmod a+x "$HOME"/.local/bin/"$appimage"
-					fi
+					read -p "Do you want to customize the name of a symbolic link (Y) or let me choose (n)?" yn
+					case "$yn" in
+					'N'|'n')
+						if ! echo "$appimage" | grep -q -i ".appimage"; then
+							echo -e '#!/bin/sh\n'$arg'' >> "$HOME"/.local/bin/"$(echo "$appimage" | tr A-Z a-z)".appimage
+							chmod a+x "$HOME"/.local/bin/"$(echo "$appimage" | tr A-Z a-z)".appimage
+							echo 'New command: "'"$(echo "$appimage" | tr A-Z a-z)"'.appimage" in ~/.local/bin'
+						else
+							echo -e '#!/bin/sh\n'$arg'' >> "$HOME"/.local/bin/"$(echo "$appimage" | tr A-Z a-z)"
+							chmod a+x "$HOME"/.local/bin/"$(echo "$appimage" | tr A-Z a-z)"
+							echo 'New command: "'"$(echo "$appimage" | tr A-Z a-z)"'" in ~/.local/bin'
+						fi;;
+					'Y'|'y'|*)
+						read -p "Add a name (or leave blank to skip): " response
+						case "$response" in
+						'')	return;;
+						*)	if command -v "$response" 1>/dev/null; then
+								echo 'ERROR: the '"$response"' command alredy exists, retry!'
+							else
+								ln -s "$arg" "$HOME"/.local/bin/"$response"
+							fi;;
+						esac
+					esac
 				}
 
 				_launcher_appimage_extract 2>/dev/null
 				_launcher_appimage_integration 2>/dev/null
-				_launcher_appimage_bin 2>/dev/null
+				_launcher_appimage_bin
 			fi
 		}
 
