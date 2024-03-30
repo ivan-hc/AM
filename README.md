@@ -469,15 +469,6 @@ to have a list of the installed programs use the option `-f` or `files` (syntax 
  DESCRIPTION:	Shows the version.
  ___________________________________________________________________________
  
- `-w`, `web`
- 
- SYNOPSIS:
-
- `-w`
- 
- DESCRIPTION:	Shows the URLs of the sites/sources of then app.
- ___________________________________________________________________________
- 
  `--disable-completion`
  
  SYNOPSIS:
