@@ -368,14 +368,35 @@ case "$1" in
 	source $AMPATH/modules/update.am "$@"
 	;;
 
-  '--disable-completion'|'--enable-completion')
+  '--disable-completion')
 
-	if ! test -f $AMPATH/modules/completion.am; then
-		wget -q $AMREPO/modules/completion.am -O $AMPATH/modules/completion.am
-		chmod a+x $AMPATH/modules/completion.am
+  	if [ $(grep -o $AMCLI 0<$COMPLETIONPATH/$COMPLETIONFILE | head -1) == $AMCLI 2>/dev/null ]; then
+  		grep -v 'complete -W "$(cat '$AMPATH'/list 2>/dev/null)" '$AMCLI'' $COMPLETIONPATH/$COMPLETIONFILE > $AMPATH/$COMPLETIONFILE.backup &&
+		$SUDOCOMMAND mv $AMPATH/$COMPLETIONFILE.backup $COMPLETIONPATH/$COMPLETIONFILE
+		echo " Completion disabled! "
+	else
+		echo " Completion script is NOT enabled! "
 	fi
+	;;
 
-	source $AMPATH/modules/completion.am "$@"
+  '--enable-completion')
+
+	if [ $(grep -o $AMCLI 0<$COMPLETIONPATH/$COMPLETIONFILE | head -1) == $AMCLI 2>/dev/null ]; then
+		echo " Completion script is already enabled!"
+	else
+		$SUDOCOMMAND mkdir -p $COMPLETIONPATH
+		if [ $AMCLI == appman ]; then
+			if ! test -f $COMPLETIONPATH/$COMPLETIONFILE; then
+				echo '#!/usr/bin/env bash' >> $COMPLETIONFILE
+			fi
+		else
+			echo '#!/usr/bin/env bash' >> $COMPLETIONFILE
+		fi
+		echo 'complete -W "$(cat '$AMPATH'/list 2>/dev/null)" '$AMCLI'' >> $COMPLETIONFILE
+		chmod a+x $COMPLETIONFILE
+		$SUDOCOMMAND mv $COMPLETIONFILE $COMPLETIONPATH/ 2> /dev/null
+		echo " Completion has been enabled!"
+	fi
 	;;
 
   '--firejail'|'--sandbox')
