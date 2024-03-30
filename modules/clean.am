@@ -20,6 +20,15 @@ function _clean_launchers(){
 	done
 }
 
+function _clean_old_modules(){
+	MODULES=$(cat "$AMCLIPATH" | grep -Eo '\S*.am\S*' | grep 'modules' | sed 's@.*/@@' | grep -v ";" | grep ".am" | uniq | sort)
+	for m in "$APPSPATH"/"$AMCLI"/modules/*; do
+		if [[ "${MODULES}" != *"$(basename -- "$m")"* ]];then
+			rm -f "$m"
+		fi
+	done
+}
+
 function _clean_all(){
 	echo -e "\n Cleaning of temporary files and folders in progress...\n" && sleep 0.1 &&
 	for i in {1000..0000}; do 
@@ -27,9 +36,10 @@ function _clean_all(){
 	done
 	rm -R -f "$AMPATH"/.cache/* && echo " ◆ Cleaning up the content of $AMPATH/.cache"
 	rm -R -f "$APPSPATH"/*/tmp && echo ' ◆ Removed all '"$APPSPATH"'/*/tmp directories'
-	if ls -R "$HOME"/.local/share/applications/AppImages/*.desktop > /dev/null; then
+	if test -f "$HOME"/.local/share/applications/AppImages/*.desktop 2> /dev/null; then
 		_clean_launchers && echo ' ◆ Removed orphaned launchers produced with the "--launcher" option'
 	fi
+	_clean_old_modules && echo ' ◆ Removed obsolete modules'
 	echo -e "\n DONE!\n"
 }
 
