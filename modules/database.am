@@ -62,13 +62,18 @@ function _completion_lists(){
 	# Remove existing lists and download new ones
 	rm -Rf $AMPATH/{$arch-apps,list,libs-list} &&
 	wget -q $AMREPO/programs/$arch-apps -P $AMPATH &&
-	wget -q $AMREPO/programs/libs-list -P $AMPATH
-	
+	if [ -f "$AMPATH/neodb" ]; then
+		rm -f "$AMPATH/libs-list"
+		touch "$AMPATH/libs-list"
+	else
+		wget -q $AMREPO/programs/libs-list -P $AMPATH
+	fi
+
 	# Extract and append program and library names to the list
 	for file in $arch-apps libs-list; do
 		awk -v FS="(◆ | : )" '{print $2}' <$AMPATH/$file >> $AMPATH/list
 	done
-	
+
 	# Append options to the list
 	cat $AMPATH/options >> $AMPATH/list
 }
@@ -103,6 +108,10 @@ case "$1" in
 	# Main logic
 	if [ ! -f "$AMPATH/libs-list" ]; then
 		wget -q $AMREPO/programs/libs-list -P $AMPATH
+	fi
+	if [ -f "$AMPATH/neodb" ]; then
+		rm -f "$AMPATH/libs-list"
+		touch "$AMPATH/libs-list"
 	fi
 
 	# Skip the first argument which is not part of ARGS
