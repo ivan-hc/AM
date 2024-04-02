@@ -3,12 +3,14 @@
 function _completion_lists(){
 	# Remove existing lists and download new ones
 	rm -Rf $AMPATH/{$arch-apps,list,libs-list} &&
-	wget -q $AMREPO/programs/$arch-apps -P $AMPATH &&
-	wget -q $AMREPO/programs/libs-list -P $AMPATH
+	wget -q $APPSLISTDB -P $AMPATH &&
+	wget -q $LIBSLISTDB -P $AMPATH
 	
 	# Extract and append program and library names to the list
 	for file in $arch-apps libs-list; do
-		awk -v FS="(◆ | : )" '{print $2}' <$AMPATH/$file >> $AMPATH/list
+		if test -f "$AMPATH/$file"; then
+			awk -v FS="(◆ | : )" '{print $2}' <$AMPATH/$file >> $AMPATH/list
+		fi
 	done
 	
 	# Append options to the list
@@ -27,7 +29,7 @@ for arg in $ARGS; do
 		mkdir -p $APPSPATH/$arg/.am-installer
 		if test -f $APPSPATH/$arg/.am-installer/$arg; then
 			CURRENT=$(cat $APPSPATH/$arg/.am-installer/$arg)
-			SOURCE=$(wget -q $AMREPO/programs/$arch/$arg -O -)
+			SOURCE=$(wget -q $APPSDB/$arg -O -)
 			if [ "$CURRENT" == "$SOURCE" ]; then
 				echo -ne "\r" 2> /dev/null
 			else
@@ -36,7 +38,7 @@ for arg in $ARGS; do
 		else
 			echo -e " ◆ No installation script for $arg, downloading one..."
 			mkdir -p $APPSPATH/$arg/.am-installer
-			wget -q $AMREPO/programs/$arch/$arg -O $APPSPATH/$arg/.am-installer/$arg
+			wget -q $APPSDB/$arg -O $APPSPATH/$arg/.am-installer/$arg
 		fi
 	}
 
