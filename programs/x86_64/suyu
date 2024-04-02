@@ -1,7 +1,7 @@
 #!/bin/sh
 
-APP=yuzu
-REPO="yuzu-emu/yuzu-mainline"
+APP=suyu
+SITE="https://git.suyu.dev/suyu/suyu"
 
 # CREATE THE FOLDER
 mkdir /opt/$APP
@@ -16,13 +16,16 @@ chmod a+x /opt/$APP/remove
 mkdir tmp
 cd ./tmp
 
-version=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep -i appimage | grep -w -v zsync | head -1)
+version=$(wget -q https://git.suyu.dev/suyu/suyu/releases -O - | grep -i appimage | grep -Po '(?<=href=")[^"]*' | head -1)
 wget $version
+wget $version.zsync 2> /dev/null
 echo "$version" >> /opt/$APP/version
+
 cd ..
 mv ./tmp/*mage ./$APP
+mv ./tmp/*.zsync ./$APP.zsync 2> /dev/null
 chmod a+x /opt/$APP/$APP
-rmdir ./tmp
+rm -R -f ./tmp
 
 # LINK
 ln -s /opt/$APP/$APP /usr/local/bin/$APP
@@ -30,27 +33,41 @@ ln -s /opt/$APP/$APP /usr/local/bin/$APP
 # SCRIPT TO UPDATE THE PROGRAM
 cat >> /opt/$APP/AM-updater << 'EOF'
 #!/usr/bin/env bash
-APP=yuzu
-REPO="yuzu-emu/yuzu-mainline"
+APP=suyu
+SITE="https://git.suyu.dev/suyu/suyu"
 version0=$(cat /opt/$APP/version)
-version=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep -i appimage | grep -w -v zsync | head -1)
-if [ $version = $version0 ]; then
-  echo "Update not needed!"
-else
-  notify-send "A new version of $APP is available, please wait"
-  mkdir /opt/$APP/tmp
-  cd /opt/$APP/tmp
-  wget $version
-  if ls . | grep mage; then
+version=$(wget -q https://git.suyu.dev/suyu/suyu/releases -O - | grep -i appimage | grep -Po '(?<=href=")[^"]*' | head -1)
+if test -f /opt/$APP/*.zsync; then
+	mkdir /opt/$APP/tmp
+	cd /opt/$APP/tmp
+	wget $version.zsync 2> /dev/null
 	cd ..
-  	if test -f ./tmp/*mage; then rm ./version
-  	fi
-  	echo $version >> ./version
-  	mv --backup=t ./tmp/*mage ./$APP
-  	chmod a+x /opt/$APP/$APP
-  	rm -R -f ./tmp ./*~
-  fi
-  notify-send "$APP is updated!"
+	mv ./tmp/*.zsync ./$APP.zsync
+	rm -R -f ./tmp
+	zsync /opt/$APP/$APP.zsync
+	rm -R -f /opt/$APP/*zs-old /opt/$APP/*.part
+	chmod a+x /opt/$APP/$APP
+else
+	if [ $version = $version0 ]; then
+		echo "Update not needed!"
+	else
+		notify-send "A new version of $APP is available, please wait"
+		mkdir /opt/$APP/tmp
+		cd /opt/$APP/tmp
+		wget $version
+		if ls . | grep mage; then
+			
+			cd ..
+			
+	  		if test -f ./tmp/*mage; then rm ./version
+	  		fi
+	  		echo $version >> ./version
+	  		mv --backup=t ./tmp/* ./$APP
+	  		chmod a+x /opt/$APP/$APP
+	  		rm -R -f ./tmp ./*~
+		fi
+		notify-send "$APP is updated!"
+	fi
 fi
 EOF
 chmod a+x /opt/$APP/AM-updater
@@ -112,8 +129,3 @@ mv ./$APP.desktop /usr/share/applications/AM-$APP.desktop
 # CHANGE THE PERMISSIONS
 currentuser=$(who | awk '{print $1}')
 chown -R $currentuser /opt/$APP
-
-# MESSAGE
-echo "
- $APP is provided by https://github.com/$(echo $REPO | sed 's:/[^/]*$::')
-"
