@@ -27,7 +27,7 @@
 - [Manage local AppImages](#manage-local-appimages)
 - [Sandbox using Firejail](#sandbox-using-firejail)
 - [Create and test your own installation script](#create-and-test-your-own-installation-script)
-- [Third party databases](#third-party-databases)
+- [Third-party databases for applications (NeoDB)](#third-party-databases-for-applications-neodb)
 
 [Troubleshooting](#troubleshooting)
 - [An application does not work, is old and unsupported](#an-application-does-not-work-is-old-and-unsupported)
@@ -775,19 +775,17 @@ To install and test your own script, use the command `am -i /path/to/your-script
 </details>
 
 ------------------------------------------------------------------------
-# Third party databases
+# Third-party databases for applications (NeoDB)
 <details>
   <summary></summary>
 
 From version 6.3 you can decide to use your personal online database or a third-party one by adding a script called "neodb" in the installation folder of your CLI.
 
-### Sample
 A template is available at https://github.com/ivan-hc/AM/blob/main/templates/neodb
 
 This script is an example of how you can use third-party databases instead of the default one used in AM/AppMan (without having to change the CLI repository with the `newrepo` option).
 
-### How it works
-It should be placed in $AMPATH (for "AM" it is always /opt/am, for it is the "appman" folder located in the path chosen to install the applications).
+It should be placed in $AMPATH (for "AM" it is always /opt/am, while for "AppMan" is the "appman" folder located in the path chosen to install the applications).
 The purpose of each assigned value is explained on each of the five (5) variables available.
 
 ### Content
