@@ -851,6 +851,8 @@ I could disappear at any moment, and I don't want this database to end up in the
 
 I wanted to build something long-lasting, and the application database must be too, and if managing it is a person who can suddenly disappear, then this project will be another of the many lost forever.
 
+# See the full guide at https://github.com/ivan-hc/neodb
+
 </details>
 
 ------------------------------------------------------------------------
