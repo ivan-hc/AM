@@ -1,98 +1,87 @@
 #!/usr/bin/env bash
 
-function _files_simple(){
-	echo ""
-	echo $(echo "YOU HAVE INSTALLED "
-	cd "$APPSPATH" &&
-	find . -type f -name 'remove' 2>/dev/null | sed -r 's|/[^/]+$||' | sort | uniq | wc -l
-	if grep -q 'usr/local/lib' $APPSPATH/*/remove 2> /dev/null; then
-		echo " STANDALONE PROGRAMS AND LIBRARIES MANAGED BY '$(echo $AMCLI | tr a-z A-Z)':"
-	else
-		echo " STANDALONE PROGRAMS MANAGED BY '$(echo $AMCLI | tr a-z A-Z)':"
-	fi)
+if [ "$2" = "--less" ]; then
+    cd "$APPSPATH" &&
+    find . -type f -name 'remove' 2>/dev/null | sed -r 's|/[^/]+$||' | sort | uniq | wc -l
+    exit 0
+fi
+
+echo ""
+echo $(echo "YOU HAVE INSTALLED "
+cd "$APPSPATH" &&
+find . -type f -name 'remove' 2>/dev/null | sed -r 's|/[^/]+$||' | sort | uniq | wc -l
+if grep -q 'usr/local/lib' $APPSPATH/*/remove 2> /dev/null; then
+	echo " STANDALONE PROGRAMS AND LIBRARIES MANAGED BY '$(echo $AMCLI | tr a-z A-Z)':"
+else
+	echo " STANDALONE PROGRAMS MANAGED BY '$(echo $AMCLI | tr a-z A-Z)':"
+fi)
+echo ""
+
+function _files(){
+	rm -f $AMPATH/.cache/files-args
+	cd $APPSPATH &&
+	INSTALLED_APPS=$(find -name 'remove' -printf "%h\n" 2>/dev/null | du -sh -- * 2> /dev/null | sort -rh | sed 's@.*	@@')
+	echo "- APPNAME | TYPE | SIZE " >> $AMPATH/.cache/files-args
+	echo "- ------- | ---- | ----" >> $AMPATH/.cache/files-args
+	for arg in $INSTALLED_APPS; do
+		 if test -f ./$arg/remove 2>/dev/null; then
+	 		if grep -q "usr/local/lib" ./$arg/remove; then
+	 			LIBNAME=$(cat $APPSPATH/$arg/remove | tr ' ' '\n' | grep "usr/local/lib" | head -1)
+				SIZE=$(du -sh $LIBNAME | cut -f1 | sort -rh | head -1)
+	 		else
+	 			SIZE=$(du -sh -- $arg | cut -f1 -d"	")
+	 		fi
+	 		if [ -z "$(strings -d "./$arg/$arg" 2>/dev/null | grep -F 'if you run it with the --appimage-extract option')" ] 2>/dev/null; then
+				string=$(strings -d "./$arg/$arg" 2>/dev/null | head -1 )
+				if grep -q "usr/local/lib" ./$arg/remove; then
+					echo " ◆ $arg	|	library	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
+				elif echo "$string" | grep -q "ld-linux"; then
+					echo " ◆ $arg	|	binary/executable	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
+				elif echo "$string" | grep -q "#!"; then
+					echo " ◆ $arg	|	script	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
+				elif ! test -f  "./$arg/$arg"; then
+					link_in_path=$(cat "./$arg/remove" | tr " " "\n" | grep 'local/bin' | tail -1)
+					realpath=$(realpath "$link_in_path")
+					realstring=$(strings -d "$realpath" 2>/dev/null | head -1 )
+					if [[ -L "$link_in_path" ]]; then
+						if echo "$realstring" | grep -q "ld-linux"; then
+							echo " ◆ $arg	|	binary/executable	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
+						elif echo "$realstring" | grep -q "#!"; then
+							echo " ◆ $arg	|	script	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
+						else
+							echo " ◆ $arg	|	unknown	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
+						fi
+					elif cat "./$arg/remove" | tail -1 | grep -q 'xtype l -exec rm'; then
+						echo " ◆ $arg	|	set/tools	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
+					elif echo "$realstring" | grep -q "#!"; then
+						script2path=$(cat "$link_in_path" | tail -1 | sed 's#$APP#'$arg'#g' | sed 's#exec ##g')
+						realrealstring=$(strings -d "$script2path" 2>/dev/null | head -1 )
+						if echo "$realrealstring" | grep -q "ld-linux"; then
+							echo " ◆ $arg	|	binary/executable	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
+						elif echo "$realrealstring" | grep -q "#!"; then
+							echo " ◆ $arg	|	script	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
+						elif [[ $(test -f "$link_in_path") != 0 ]]; then
+							echo " ◆ $arg	|	launcher	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
+						else
+							echo " ◆ $arg	|	unknown	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
+						fi
+					else
+						echo " ◆ $arg	|	other	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
+					fi
+				else
+					echo " ◆ $arg	|	other	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
+				fi
+			else
+				if [ -z "$(strings -d "./$arg/$arg" 2>/dev/null | grep -F 'AppImages require FUSE to run')" ] 2>/dev/null; then
+					echo " ◆ $arg	|	appimage-type3	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
+				else
+					echo " ◆ $arg	|	appimage-type2	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
+				fi
+			fi
+		fi
+	done
+	cat $AMPATH/.cache/files-args | column -t
 	echo ""
 }
 
-while [ -n "$1" ]; do
-
-	case $2 in
-	'--less')
-		_files_simple | grep 'PROGRAMS MANAGED BY' | cut -d' ' -f4
-		exit
-		;;
-	'')
-		_files_simple
-
-		function _files(){
-			rm -f $AMPATH/.cache/files-args
-			cd $APPSPATH &&
-			INSTALLED_APPS=$(find -name 'remove' -printf "%h\n" 2>/dev/null | du -sh -- * 2> /dev/null | sort -rh | sed 's@.*	@@')
-			echo "- APPNAME | TYPE | SIZE " >> $AMPATH/.cache/files-args
-			echo "- ------- | ---- | ----" >> $AMPATH/.cache/files-args
-			for arg in $INSTALLED_APPS; do
-				 if test -f ./$arg/remove 2>/dev/null; then
-			 		if grep -q "usr/local/lib" ./$arg/remove; then
-			 			LIBNAME=$(cat $APPSPATH/$arg/remove | tr ' ' '\n' | grep "usr/local/lib" | head -1)
-						SIZE=$(du -sh $LIBNAME | cut -f1 | sort -rh | head -1)
-			 		else
-			 			SIZE=$(du -sh -- $arg | cut -f1 -d"	")
-			 		fi
-			 		if [ -z "$(strings -d "./$arg/$arg" 2>/dev/null | grep -F 'if you run it with the --appimage-extract option')" ] 2>/dev/null; then
-						string=$(strings -d "./$arg/$arg" 2>/dev/null | head -1 )
-						if grep -q "usr/local/lib" ./$arg/remove; then
-							echo " ◆ $arg	|	library	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
-						elif echo "$string" | grep -q "ld-linux"; then
-							echo " ◆ $arg	|	binary/executable	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
-						elif echo "$string" | grep -q "#!"; then
-							echo " ◆ $arg	|	script	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
-						elif ! test -f  "./$arg/$arg"; then
-							link_in_path=$(cat "./$arg/remove" | tr " " "\n" | grep 'local/bin' | tail -1)
-							realpath=$(realpath "$link_in_path")
-							realstring=$(strings -d "$realpath" 2>/dev/null | head -1 )
-							if [[ -L "$link_in_path" ]]; then
-								if echo "$realstring" | grep -q "ld-linux"; then
-									echo " ◆ $arg	|	binary/executable	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
-								elif echo "$realstring" | grep -q "#!"; then
-									echo " ◆ $arg	|	script	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
-								else
-									echo " ◆ $arg	|	unknown	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
-								fi
-							elif cat "./$arg/remove" | tail -1 | grep -q 'xtype l -exec rm'; then
-								echo " ◆ $arg	|	set/tools	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
-							elif echo "$realstring" | grep -q "#!"; then
-								script2path=$(cat "$link_in_path" | tail -1 | sed 's#$APP#'$arg'#g' | sed 's#exec ##g')
-								realrealstring=$(strings -d "$script2path" 2>/dev/null | head -1 )
-								if echo "$realrealstring" | grep -q "ld-linux"; then
-									echo " ◆ $arg	|	binary/executable	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
-								elif echo "$realrealstring" | grep -q "#!"; then
-									echo " ◆ $arg	|	script	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
-								elif [[ $(test -f "$link_in_path") != 0 ]]; then
-									echo " ◆ $arg	|	launcher	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
-								else
-									echo " ◆ $arg	|	unknown	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
-								fi
-							else
-								echo " ◆ $arg	|	other	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
-							fi
-						else
-							echo " ◆ $arg	|	other	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
-						fi
-					else
-						if [ -z "$(strings -d "./$arg/$arg" 2>/dev/null | grep -F 'AppImages require FUSE to run')" ] 2>/dev/null; then
-							echo " ◆ $arg	|	appimage-type3	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
-						else
-							echo " ◆ $arg	|	appimage-type2	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
-						fi
-					fi
-				fi
-			done
-			cat $AMPATH/.cache/files-args | column -t
-			echo ""
-		}
-
-		_files
-		exit
-		;;
-	esac
-done
-shift
+_files
