@@ -833,7 +833,7 @@ SYNTAX: https://yoursite.org/path/to/markdown/files/#
 
 EXAMPLE: AMCATALOGUEMARKDOWNS="https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/main/apps"
 ```
-each file managed in the module is called "$arg"
+each file managed in the [database.am](https://github.com/ivan-hc/AM/blob/main/modules/database.am) module is called $arg.md
 
 5. "$NEODBFLAG" is of no use, if not to silence the "Source: ..." message about using a third-party repository, just uncomment it to disable the messages
 ```
