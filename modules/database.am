@@ -11,6 +11,20 @@ function _completion_lists(){
 		wget -q $LIBSLISTDB -P $AMPATH
 	fi
 
+	# THIRD PARTY APPS
+	if test -f "$AMPATH/multisources.list"; then
+		rm -R -f "$AMPATH/.cache/multirepo-args"
+		MULTIREPO=$(cat "$AMPATH/multisources.list" | grep "List=" | grep -E "$arch-apps" | cut -c 6-)
+		for anyrepo in $MULTIREPO; do
+			if curl --output /dev/null --silent --head --fail $anyrepo 1>/dev/null; then
+				wget -q "$anyrepo" -O - | grep "◆" >> $AMPATH/$arch-apps
+			fi
+		done
+		cat $AMPATH/$arch-apps | sort | uniq > $AMPATH/$arch-apps-backup
+		rm -R -f $AMPATH/$arch-apps
+		mv $AMPATH/$arch-apps-backup $AMPATH/$arch-apps
+	fi
+
 	# Extract and append program and library names to the list
 	for file in $arch-apps libs-list; do
 		awk -v FS="(◆ | : )" '{print $2}' <$AMPATH/$file >> $AMPATH/list
