@@ -779,79 +779,9 @@ To install and test your own script, use the command `am -i /path/to/your-script
 <details>
   <summary></summary>
 
-From version 6.3 you can decide to use your personal online database or a third-party one by adding a script called "neodb" in the installation folder of your CLI.
+From version 6.4, "AM"/"AppMan" can be extended by adding new application databases using a configuration file named "neodb".
 
-A template is available at https://github.com/ivan-hc/AM/blob/main/templates/neodb
-
-This script is an example of how you can use third-party databases instead of the default one used in AM/AppMan (without having to change the CLI repository with the `newrepo` option).
-
-It should be placed in $AMPATH (for "AM" it is always /opt/am, while for "AppMan" is the "appman" folder located in the path chosen to install the applications).
-The purpose of each assigned value is explained on each of the five (5) variables available.
-
-### Content
-In brief, the a "neodb" BASH script must contain as follows:
-```
-#!/usr/bin/env bash
-
-APPSDB="https://raw.githubusercontent.com/IVAN-HC/AM/main/programs/$arch"
-APPSLISTDB="https://raw.githubusercontent.com/IVAN-HC/AM/main/programs/$arch-apps"
-AMCATALOGUE="https://PORTABLE-LINUX-APPS.GITHUB.IO"
-AMCATALOGUEMARKDOWNS="https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/main/apps"
-#NEODBFLAG=nowarn
-```
-In the example, I used the default values used by "AM"/"AppMan".
-
-Below is the meaning of each of the 5 variables listed.
-
-### Variables
-1. "$APPSDB" is a url that must point to an online directory containing the installation scripts (for the -i and -d options)
-```
-SYNTAX: https://yoursite.org/path/to/directory
-
-EXAMPLE: APPSDB="https://yoursite.org/path/to/directory"
-```
-each file managed in the modules is called "$arg"
-
-2. "$APPSLISTDB" is the url that must point to an online $arch-apps file (for example "x86_64-apps", "$arch" is the architecture name).
-This file is the list of all available programs (for the -l, -q and -s options)
-```
-SYNTAX: https://yoursite.org/path/to/file/named/x86_64-apps
-
-EXAMPLE: APPSLISTDB="https://yoursite.org/path/to/file/named/x86_64-apps"
-```
-
-3. "$AMCATALOGUE" is the url of the main page of the catalog you want to use
-```
-SYNTAX: https://yoursite.org
-
-EXAMPLE: AMCATALOGUE="https://PORTABLE-LINUX-APPS.GITHUB.IO"
-```
-
-4. "$AMCATALOGUEMARKDOWNS" is a url that points to an online directory containing .md (Markdown) files containing the application description (for the -a option)
-```
-SYNTAX: https://yoursite.org/path/to/markdown/files/#
-
-EXAMPLE: AMCATALOGUEMARKDOWNS="https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/main/apps"
-```
-each file managed in the [database.am](https://github.com/ivan-hc/AM/blob/main/modules/database.am) module is called $arg.md
-
-5. "$NEODBFLAG" is of no use, if not to silence the "Source: ..." message about using a third-party repository, just uncomment it to disable the messages
-```
-#NEODBFLAG=nowarn
-```
-
-## Motivation
-Having reached version 6.3, I still don't know where the project will go and how far I can continue to support it. I opened too many projects at once, to the point of monopolizing the use of this CLI, and that wasn't what I wanted.
-
-Everyone should be free to add as many applications as they want and maintain their own app database.
-
-I hope that this version can help build a much more modern community database managed by many more people, to bring AppImages and portable apps in general to grow and compete with Flatpak and Snap.
-
-I could disappear at any moment, and I don't want this database to end up in the cemetery of forgotten projects on github.
-
-I wanted to build something long-lasting, and the application database must be too, and if managing it is a person who can suddenly disappear, then this project will be another of the many lost forever.
-
-# See the full guide at https://github.com/ivan-hc/neodb
+### For more details, see the full guide at https://github.com/ivan-hc/neodb
 
 </details>
 

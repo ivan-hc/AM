@@ -1,72 +1,23 @@
 #!/usr/bin/env bash
 
-# Define functions
-function usage() {
-	echo " USAGE: $AMCLI $1 [ARGUMENT]";
-}
-
-function download_markdown() {
-	local markdown_url="$AMCATALOGUEMARKDOWNS/${1}.md"
-	local cache_dir="$AMPATH/.cache/about"
-	local app_status=" STATUS: NOT INSTALLED"
-	local package_name=${1^^}
-
-	if curl -o /dev/null -sIf "$markdown_url"; then 
-		mkdir -p "$cache_dir" && wget -q "$markdown_url" -P "$cache_dir"
-		sed -i '1,${ /^\s*#/ d; /^\s*!/ d; /\[Applications]/d; /\ --- /d; }' "$cache_dir/$1.md"
-		sed -i '$!N;s/^\s*\n\s*$//;P;D' "$cache_dir/$1.md"
-
-		printf " PACKAGE: %s\n" "$package_name"
-
-		if [ -f "$APPSPATH/$1/remove" ]; then
-			local disk_usage=$(du -sm "$APPSPATH/$1" | cut -f1)
-			app_status=" STATUS: INSTALLED, ABOUT $disk_usage MB OF DISK SPACE IN USE"
-		fi
-
-		printf "%s\n" "$app_status"
-		cat -s "$cache_dir/$1.md" && printf "%s\n" "-----------------------------------------------------------------------"
-		rm -R -f "$cache_dir"
-	else
-		printf " \"%s\" IS NOT A VALID ARGUMENT\n" "$package_name"
-	fi
-}
-
-function download_lib() {
-	local lib_name_upper=${1^^}
-	printf "%s\n" " LIBRARY: $lib_name_upper"
-
-	if [[ -f "$APPSPATH/$1/remove" ]]; then 
-		local lib_path=$(grep "usr/local/lib" "$APPSPATH/$1/remove" | head -1)
-		local disk_usage=$(du -sm "$lib_path" | cut -f1)
-
-		if [[ "$disk_usage" -eq 0 ]]; then
-			printf "%s\n" " STATUS: INSTALLED, LESS THAN 1 MB OF DISK SPACE IN USE"
-		else
-			printf "%s\n" " STATUS: INSTALLED, ABOUT $disk_usage MB OF DISK SPACE IN USE"
-		fi
-	else 
-		printf "%s\n" " STATUS: NOT INSTALLED"
-	fi
-
-	echo ""
-	grep "◆ $1 : " "$AMPATH/libs-list" | sed 's#.*:##' | sed 's/(/\n (/g'
-	echo "" && echo " SITE/SOURCES:" && echo ""
-
-	local site_source=$(wget -qO- "$APPSDB/$1" | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | head -1)
-	echo " $site_source"
-	echo ""
-	printf "%s\n" "-----------------------------------------------------------------------"
-}
-
 function _completion_lists(){
 	# Remove existing lists and download new ones
 	rm -Rf $AMPATH/{$arch-apps,list,libs-list} &&
 	wget -q $APPSLISTDB -P $AMPATH &&
-	if [ -f "$AMPATH/neodb" ]; then
-		rm -f "$AMPATH/libs-list"
-		touch "$AMPATH/libs-list"
-	else
-		wget -q $LIBSLISTDB -P $AMPATH
+	wget -q $LIBSLISTDB -P $AMPATH
+
+	# THIRD PARTY APPS
+	if test -f "$AMPATH/neodb"; then
+		rm -R -f "$AMPATH/.cache/multirepo-args"
+		MULTIREPO=$(cat "$AMPATH/neodb" | grep "List=" | grep -E "$arch-apps" | cut -c 6-)
+		for anyrepo in $MULTIREPO; do
+			if curl --output /dev/null --silent --head --fail $anyrepo 1>/dev/null; then
+				wget -q "$anyrepo" -O - | grep "◆" >> $AMPATH/$arch-apps
+			fi
+		done
+		cat $AMPATH/$arch-apps | sort | uniq > $AMPATH/$arch-apps-backup
+		rm -R -f $AMPATH/$arch-apps
+		mv $AMPATH/$arch-apps-backup $AMPATH/$arch-apps
 	fi
 
 	# Extract and append program and library names to the list
@@ -78,40 +29,74 @@ function _completion_lists(){
 	cat $AMPATH/options >> $AMPATH/list
 }
 
-function _list_apps(){
-	wget -q --tries=10 --timeout=20 --spider https://github.com
-	if [[ $? -eq 0 ]]; then
-		_completion_lists
-	fi
-	LIBNUMBER=$(cat $APPSPATH/*/remove 2> /dev/null | grep "usr/local/lib" | wc -l)
-	ITEMSNUMBER=$(cd $APPSPATH && find -name 'remove' -printf "%h\n" 2>/dev/null | sort -u | wc -l)
-	APPSNUMBER=$(echo "$(($ITEMSNUMBER - $LIBNUMBER))")
-	MESSAGE=$(echo " YOU HAVE INSTALLED $APPSNUMBER APPLICATIONS OUT OF $(grep -e "$" -c $AMPATH/$arch-apps) AVAILABLE")
-	echo -e "\n$MESSAGE\n\n LIST OF THE $(grep -e "$" -c $AMPATH/$arch-apps) APPLICATIONS AVAILABLE IN THE 'AM' REPOSITORY:\n\n$(cat $AMPATH/$arch-apps)\n" | less -I
-	echo -e "\n $MESSAGE\n"
-}
-
-function _list_libs(){
-	wget -q --tries=10 --timeout=20 --spider https://github.com
-	if [[ $? -eq 0 ]]; then
-		_completion_lists
-	fi
-	LIBNUMBER=$(cat $APPSPATH/*/remove 2> /dev/null | grep "usr/local/lib" | wc -l)
-	MESSAGE=$(echo " YOU HAVE INSTALLED $LIBNUMBER LIBRARIES OUT OF $(grep -e "$" -c $AMPATH/libs-list) AVAILABLE")
-	echo -e "\n$MESSAGE\n\n LIST OF THE $(grep -e "$" -c $AMPATH/libs-list) LIBRARIES AVAILABLE IN THE 'AM' REPOSITORY:\n\n$(cat $AMPATH/libs-list)\n" | less -I
-	echo -e "\n $MESSAGE\n"
-}
-
 case "$1" in
 
   '-a'|'about')
+	case $2 in
+	'') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
+	esac
+
+	# Define functions
+	function usage() {
+		echo " USAGE: $AMCLI $1 [ARGUMENT]";
+	}
+
+	function download_markdown() {
+		local markdown_url="$AMCATALOGUEMARKDOWNS/${1}.md"
+		local cache_dir="$AMPATH/.cache/about"
+		local app_status=" STATUS: NOT INSTALLED"
+		local package_name=${1^^}
+
+		if curl -o /dev/null -sIf "$markdown_url"; then 
+			mkdir -p "$cache_dir" && wget -q "$markdown_url" -P "$cache_dir"
+			sed -i '1,${ /^\s*#/ d; /^\s*!/ d; /\[Applications]/d; /\ --- /d; }' "$cache_dir/$1.md"
+			sed -i '$!N;s/^\s*\n\s*$//;P;D' "$cache_dir/$1.md"
+
+			printf " PACKAGE: %s\n" "$package_name"
+
+			if [ -f "$APPSPATH/$1/remove" ]; then
+				local disk_usage=$(du -sm "$APPSPATH/$1" | cut -f1)
+				app_status=" STATUS: INSTALLED, ABOUT $disk_usage MB OF DISK SPACE IN USE"
+			fi
+
+			printf "%s\n" "$app_status"
+			cat -s "$cache_dir/$1.md" && printf "%s\n" "-----------------------------------------------------------------------"
+			rm -R -f "$cache_dir"
+		else
+			printf " \"%s\" IS NOT A VALID ARGUMENT\n" "$package_name"
+		fi
+	}
+
+	function download_lib() {
+		local lib_name_upper=${1^^}
+		printf "%s\n" " LIBRARY: $lib_name_upper"
+
+		if [[ -f "$APPSPATH/$1/remove" ]]; then 
+			local lib_path=$(grep "usr/local/lib" "$APPSPATH/$1/remove" | head -1)
+			local disk_usage=$(du -sm "$lib_path" | cut -f1)
+
+			if [[ "$disk_usage" -eq 0 ]]; then
+				printf "%s\n" " STATUS: INSTALLED, LESS THAN 1 MB OF DISK SPACE IN USE"
+			else
+				printf "%s\n" " STATUS: INSTALLED, ABOUT $disk_usage MB OF DISK SPACE IN USE"
+			fi
+		else 
+			printf "%s\n" " STATUS: NOT INSTALLED"
+		fi
+
+		echo ""
+		grep "◆ $1 : " "$AMPATH/libs-list" | sed 's#.*:##' | sed 's/(/\n (/g'
+		echo "" && echo " SITE/SOURCES:" && echo ""
+
+		local site_source=$(wget -qO- "$APPSDB/$1" | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | head -1)
+		echo " $site_source"
+		echo ""
+		printf "%s\n" "-----------------------------------------------------------------------"
+	}
+
 	# Main logic
 	if [ ! -f "$AMPATH/libs-list" ]; then
 		wget -q $LIBSLISTDB -P $AMPATH
-	fi
-	if [ -f "$AMPATH/neodb" ]; then
-		rm -f "$AMPATH/libs-list"
-		touch "$AMPATH/libs-list"
 	fi
 
 	# Skip the first argument which is not part of ARGS
@@ -127,10 +112,37 @@ case "$1" in
 	;;
 
   '-l'|'list')
-	case $2 in
-	'--libs')	_list_libs;;
-	''|*)		_list_apps;;
-	esac
+	function _list(){
+		LIBNUMBER=$(cat $APPSPATH/*/remove 2> /dev/null | grep "usr/local/lib" | wc -l)
+		ITEMSNUMBER=$(cd $APPSPATH && find -name 'remove' -printf "%h\n" 2>/dev/null | sort -u | wc -l)
+		APPSNUMBER=$(echo "$(($ITEMSNUMBER - $LIBNUMBER))")
+
+		function _list_apps(){
+			wget -q --tries=10 --timeout=20 --spider https://github.com
+			if [[ $? -eq 0 ]]; then
+				_completion_lists
+			fi
+			MESSAGE=$(echo " YOU HAVE INSTALLED $APPSNUMBER APPLICATIONS OUT OF $(grep -e "$" -c $AMPATH/$arch-apps) AVAILABLE")
+			echo -e "\n$MESSAGE\n\n LIST OF THE $(grep -e "$" -c $AMPATH/$arch-apps) APPLICATIONS AVAILABLE IN THE 'AM' REPOSITORY:\n\n$(cat $AMPATH/$arch-apps)\n" | less -I
+			echo -e "\n $MESSAGE\n"
+		}
+
+		function _list_libs(){
+			wget -q --tries=10 --timeout=20 --spider https://github.com
+			if [[ $? -eq 0 ]]; then
+				_completion_lists
+			fi
+			MESSAGE=$(echo " YOU HAVE INSTALLED $LIBNUMBER LIBRARIES OUT OF $(grep -e "$" -c $AMPATH/libs-list) AVAILABLE")
+			echo -e "\n$MESSAGE\n\n LIST OF THE $(grep -e "$" -c $AMPATH/libs-list) LIBRARIES AVAILABLE IN THE 'AM' REPOSITORY:\n\n$(cat $AMPATH/libs-list)\n" | less -I
+			echo -e "\n $MESSAGE\n"
+		}
+
+		case $2 in
+		'--libs')	_list_libs;;
+		''|*)		_list_apps;;
+		esac
+	}
+	_list
 	;;
 
   '-q'|'query')
