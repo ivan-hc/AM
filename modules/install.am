@@ -209,18 +209,47 @@ while [ -n "$1" ]; do
 				echo " ◆ $(echo '"'$arg'"' | tr a-z A-Z): app already installed previously! Try removing it."
 			else
 				if test -f ./$arg 2> /dev/null; then
-					mkdir -p $AMPATH/.cache/tmp; cp ./$arg $AMPATH/.cache/tmp/$arg; cd $AMPATH/.cache; mv ./tmp/$arg ./$arg; rmdir ./tmp
+					mkdir -p $AMPATH/.cache/tmp; cp ./$arg $AMPATH/.cache/tmp/$arg; cd $AMPATH/.cache || return; mv ./tmp/$arg ./$arg; rmdir ./tmp
 					_install_arg
 				elif test -f $arg 2> /dev/null; then
 					path2arg=$(echo "$arg")
 					arg=$(echo "$path2arg" | sed 's:.*/::')
-					cd $AMPATH/.cache; mkdir -p tmp; cd tmp; cp $path2arg ./$arg; cd ..; mv ./tmp/$arg ./$arg; rmdir ./tmp
+					cd $AMPATH/.cache || return; mkdir -p tmp; cd tmp || return; cp $path2arg ./$arg; cd ..; mv ./tmp/$arg ./$arg; rmdir ./tmp
 					_install_arg
-				elif curl --output /dev/null --silent --head --fail $APPSDB/$arg  1>/dev/null; then
-					cd $AMPATH/.cache; mkdir -p tmp; cd tmp; wget -q $APPSDB/$arg; cd ..; mv ./tmp/$arg ./$arg; rmdir ./tmp
-					_install_arg
-				else
-					echo ' 💀 ERROR: "'$arg'" does NOT exist in the database, see "'$AMCLI' -l"'
+				elif test -f "$AMPATH/multisources.list"; then
+					MULTIREPO=$(cat "$AMPATH/multisources.list")
+					for anyrepo in $MULTIREPO; do
+						if curl --output /dev/null --silent --head --fail $anyrepo/$arg  1>/dev/null; then
+							echo "$anyrepo" >> "$AMPATH/.cache/multirepo-args"
+						fi
+					done
+					if test -f "$AMPATH/.cache/multirepo-args"; then
+						anyrepoargs=$(cat "$AMPATH/.cache/multirepo-args" 2>/dev/null | wc -l)
+						if [ $anyrepoargs -gt 0 ]; then
+							if curl --output /dev/null --silent --head --fail $APPSDB/$arg  1>/dev/null; then
+								echo "$APPSDB" >> "$AMPATH/.cache/multirepo-args"
+							fi
+							echo -e "\n ◆ FOUND $(echo '"'$arg'"' | tr a-z A-Z) FROM MULTIPLE SOURCES:\n" &&
+							printf "Select a URL from this menu (read carefully) or press CTRL+C to abort:\n-----------------------------------------------------------------------\n"; sleep 1;
+							select d in $(cat "$AMPATH/.cache/multirepo-args"); do test -n "$d" && break; echo ">>> Invalid Selection"; done
+							cd $AMPATH/.cache || return; mkdir -p tmp; cd tmp || return; wget -q "$d/$arg"; cd ..; mv ./tmp/$arg ./$arg; rmdir ./tmp
+							rm -R -f "$AMPATH/.cache/multirepo-args"
+							_install_arg
+						elif
+							curl --output /dev/null --silent --head --fail $APPSDB/$arg  1>/dev/null; then
+							cd $AMPATH/.cache || return; mkdir -p tmp; cd tmp || return; wget -q $APPSDB/$arg; cd ..; mv ./tmp/$arg ./$arg; rmdir ./tmp
+							rm -R -f "$AMPATH/.cache/multirepo-args"
+							_install_arg
+						else
+							echo ' 💀 ERROR: "'$arg'" does NOT exist in the database, see "'$AMCLI' -l"'
+						fi
+					elif
+						curl --output /dev/null --silent --head --fail $APPSDB/$arg  1>/dev/null; then
+						cd $AMPATH/.cache || return; mkdir -p tmp; cd tmp || return; wget -q $APPSDB/$arg; cd ..; mv ./tmp/$arg ./$arg; rmdir ./tmp
+						_install_arg
+					else
+						echo ' 💀 ERROR: "'$arg'" does NOT exist in the database, see "'$AMCLI' -l"'
+					fi
 				fi
 			fi
 			echo " ____________________________________________________________________________"
