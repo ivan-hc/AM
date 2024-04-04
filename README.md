@@ -779,7 +779,7 @@ To install and test your own script, use the command `am -i /path/to/your-script
 <details>
   <summary></summary>
 
-From version 6.3, "AM"/"AppMan" can be extended by adding new application databases.
+From version 6.4, "AM"/"AppMan" can be extended by adding new application databases using a configuration file named "neodb".
 
 ### For more details, see the full guide at https://github.com/ivan-hc/neodb
 
