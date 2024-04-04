@@ -1,5 +1,25 @@
 #!/usr/bin/env bash
 
+function _completion_lists(){
+	# Remove existing lists and download new ones
+	rm -Rf $AMPATH/{$arch-apps,list,libs-list} &&
+	wget -q $APPSLISTDB -P $AMPATH &&
+	if [ -f "$AMPATH/neodb" ]; then
+		rm -f "$AMPATH/libs-list"
+		touch "$AMPATH/libs-list"
+	else
+		wget -q $LIBSLISTDB -P $AMPATH
+	fi
+
+	# Extract and append program and library names to the list
+	for file in $arch-apps libs-list; do
+		awk -v FS="(◆ | : )" '{print $2}' <$AMPATH/$file >> $AMPATH/list
+	done
+
+	# Append options to the list
+	cat $AMPATH/options >> $AMPATH/list
+}
+
 case "$1" in
 
   '-a'|'about')
@@ -124,26 +144,6 @@ case "$1" in
 	case $2 in
 	'') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
 	esac
-
-	function _completion_lists(){
-		# Remove existing lists and download new ones
-		rm -Rf $AMPATH/{$arch-apps,list,libs-list} &&
-		wget -q $APPSLISTDB -P $AMPATH &&
-		if [ -f "$AMPATH/neodb" ]; then
-			rm -f "$AMPATH/libs-list"
-			touch "$AMPATH/libs-list"
-		else
-			wget -q $LIBSLISTDB -P $AMPATH
-		fi
-
-		# Extract and append program and library names to the list
-		for file in $arch-apps libs-list; do
-			awk -v FS="(◆ | : )" '{print $2}' <$AMPATH/$file >> $AMPATH/list
-		done
-
-		# Append options to the list
-		cat $AMPATH/options >> $AMPATH/list
-	}
 
 	wget -q --tries=10 --timeout=20 --spider https://github.com
 	if [[ $? -eq 0 ]]; then
