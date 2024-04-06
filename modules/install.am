@@ -230,12 +230,19 @@ while [ -n "$1" ]; do
 							if curl --output /dev/null --silent --head --fail $APPSDB/$arg  1>/dev/null; then
 								echo "$APPSDB" >> "$AMPATH/.cache/multirepo-args"
 							fi
-							echo -e "\n ◆ FOUND $(echo '"'$arg'"' | tr a-z A-Z) FROM MULTIPLE SOURCES:\n" &&
-							printf " Select a URL from this menu (read carefully) or press CTRL+C to abort:\n\n"; sleep 1;
-							select d in $(cat "$AMPATH/.cache/multirepo-args"); do test -n "$d" && break; echo ">>> Invalid Selection"; done
-							cd $AMPATH/.cache || return; mkdir -p tmp; cd tmp || return; wget -q "$d/$arg"; cd ..; mv ./tmp/$arg ./$arg; rmdir ./tmp
-							rm -R -f "$AMPATH/.cache/multirepo-args"
-							_install_arg
+							anyrepoargall=$(cat "$AMPATH/.cache/multirepo-args" 2>/dev/null | wc -l)
+							if [ $anyrepoargall == 1 ]; then
+								cd $AMPATH/.cache || return; mkdir -p tmp; cd tmp || return; wget -q "$(cat "$AMPATH/.cache/multirepo-args" | head -1)/$arg"; cd ..; mv ./tmp/$arg ./$arg; rmdir ./tmp
+								rm -R -f "$AMPATH/.cache/multirepo-args"
+								_install_arg
+							else
+								echo -e "\n ◆ FOUND $(echo '"'$arg'"' | tr a-z A-Z) FROM MULTIPLE SOURCES:\n" &&
+								printf " Select a URL from this menu (read carefully) or press CTRL+C to abort:\n\n"; sleep 1;
+								select d in $(cat "$AMPATH/.cache/multirepo-args"); do test -n "$d" && break; echo ">>> Invalid Selection"; done
+								cd $AMPATH/.cache || return; mkdir -p tmp; cd tmp || return; wget -q "$d/$arg"; cd ..; mv ./tmp/$arg ./$arg; rmdir ./tmp
+								rm -R -f "$AMPATH/.cache/multirepo-args"
+								_install_arg
+							fi
 						elif curl --output /dev/null --silent --head --fail $APPSDB/$arg  1>/dev/null; then
 							cd $AMPATH/.cache || return; mkdir -p tmp; cd tmp || return; wget -q $APPSDB/$arg; cd ..; mv ./tmp/$arg ./$arg; rmdir ./tmp
 							rm -R -f "$AMPATH/.cache/multirepo-args"
