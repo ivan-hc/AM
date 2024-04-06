@@ -56,13 +56,21 @@ while [ -n "$1" ]; do
 							if curl --output /dev/null --silent --head --fail $APPSDB/$arg  1>/dev/null; then
 								echo "$APPSDB" >> "$AMPATH/.cache/multirepo-args"
 							fi
-							echo -e " ◆ FOUND $(echo '"'$arg'"' | tr a-z A-Z) FROM MULTIPLE SOURCES:\n" &&
-							printf " Select a URL from this menu (read carefully) or press CTRL+C to abort:\n\n"; sleep 1;
-							select d in $(cat "$AMPATH/.cache/multirepo-args"); do test -n "$d" && break; echo ">>> Invalid Selection"; done
-							rm -R -f "$AMPATH/.cache/multirepo-args"
-							cd "$SCRIPTDIR" || return; wget -q $d/$arg;  _convert_to_appman_compatible_script
-							echo ' ◆ "'$arg'" installation script downloaded! ' | tr a-z A-Z
-							echo " --------------------------------------------------"
+							anyrepoargall=$(cat "$AMPATH/.cache/multirepo-args" 2>/dev/null | wc -l)
+							if [ $anyrepoargall == 1 ]; then
+								cd "$SCRIPTDIR" || return; wget -q "$(cat "$AMPATH/.cache/multirepo-args" | head -1)/$arg";  _convert_to_appman_compatible_script
+								rm -R -f "$AMPATH/.cache/multirepo-args"
+								echo ' ◆ "'$arg'" third-party installation script downloaded! ' | tr a-z A-Z
+								echo " --------------------------------------------------"
+							else
+								echo -e " ◆ FOUND $(echo '"'$arg'"' | tr a-z A-Z) FROM MULTIPLE SOURCES:\n" &&
+								printf " Select a URL from this menu (read carefully) or press CTRL+C to abort:\n\n"; sleep 1;
+								select d in $(cat "$AMPATH/.cache/multirepo-args"); do test -n "$d" && break; echo ">>> Invalid Selection"; done
+								rm -R -f "$AMPATH/.cache/multirepo-args"
+								cd "$SCRIPTDIR" || return; wget -q $d/$arg;  _convert_to_appman_compatible_script
+								echo ' ◆ "'$arg'" installation script downloaded! ' | tr a-z A-Z
+								echo " --------------------------------------------------"
+							fi
 						elif curl --output /dev/null --silent --head --fail $APPSDB/$arg  1>/dev/null; then
 							rm -R -f "$AMPATH/.cache/multirepo-args"
 							cd "$SCRIPTDIR" || return; wget -q $APPSDB/$arg;  _convert_to_appman_compatible_script
