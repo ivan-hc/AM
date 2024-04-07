@@ -1,0 +1,119 @@
+#!/bin/sh
+
+APP=deadbeef-devel
+SITE="https://deadbeef.sourceforge.io"
+
+# CREATE THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP
+
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+
+# DOWNLOAD THE ARCHIVE
+mkdir tmp
+cd ./tmp
+
+version=$(wget -q https://sourceforge.net/projects/deadbeef/files/travis/linux/master/ -O - | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | sort -u | grep "x86_64.tar.bz2")
+wget $version -O download.tar.bz2
+echo "$version" >> /opt/$APP/version
+tar fx ./*tar*
+cd ..
+mv --backup=t ./tmp/*/* ./
+rm -R -f ./tmp
+
+# LINK
+ln -s /opt/$APP/deadbeef /usr/local/bin/deadbeef; ln -s /opt/$APP/deadbeef /usr/local/bin/$APP
+chmod a+x /usr/local/bin/$APP
+
+# SCRIPT TO UPDATE THE PROGRAM
+cat >> /opt/$APP/AM-updater << 'EOF'
+#!/bin/sh
+APP=deadbeef-devel
+version0=$(cat /opt/$APP/version)
+version=$(wget -q https://sourceforge.net/projects/deadbeef/files/travis/linux/master/ -O - | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | sort -u | grep "x86_64.tar.bz2")
+if [ $version = $version0 ]; then
+	echo "deadbeef-devel is up to date!"
+else
+	notify-send "A new version of $APP is available, please wait"
+	mkdir /opt/$APP/tmp
+	cd /opt/$APP/tmp
+	wget $version -O download.tar.bz2
+  tar fx ./*tar*; rm -f -R ./*tar*
+	cd ..
+  mv --backup=t ./tmp/*/* ./
+	rm ./version
+	echo $version >> ./version
+	rm -R -f ./tmp ./*~
+	notify-send "$APP is updated!"
+fi
+EOF
+chmod a+x /opt/$APP/AM-updater
+
+# ICON
+mkdir icons
+ln -s /opt/$APP/deadbeef.png ./icons/$APP
+
+# LAUNCHER
+rm -f /usr/share/applications/AM-$APP.desktop
+echo "[Desktop Entry]
+Type=Application
+Name=DeaDBeeF
+Comment=devel build
+Exec=/opt/$APP/deadbeef %F
+Icon=/opt/$APP/icons/$APP
+GenericName[pt_BR]=Reprodutor de áudio
+GenericName[ru]=Аудио плеер
+GenericName[zh_CN]=音频播放器
+GenericName[zh_TW]=音樂播放器
+Comment=Listen to music
+Comment[pt_BR]=Escute músicas
+Comment[ru]=Слушай музыку
+Comment[zh_CN]=倾听音乐
+Comment[zh_TW]=聆聽音樂
+MimeType=application/ogg;audio/x-vorbis+ogg;application/x-ogg;audio/mp3;audio/prs.sid;audio/x-flac;audio/mpeg;audio/x-mpeg;audio/x-mod;audio/x-it;audio/x-s3m;audio/x-xm;audio/x-mpegurl;audio/x-scpls;application/x-cue;
+Categories=Audio;AudioVideo;Player;GTK;
+Keywords=Sound;Music;Audio;Player;Musicplayer;MP3;
+Terminal=false
+Categories=Audio;AudioVideo;Player;GTK;
+X-Ayatana-Desktop-Shortcuts=Play;Pause;Stop;Next;Prev;
+X-PulseAudio-Properties=media.role=music
+
+[Desktop Action Play]
+Name=Play
+Name[zh_CN]=播放
+Name[zh_TW]=播放
+Exec=deadbeef --play
+
+[Desktop Action Pause]
+Name=Pause
+Name[zh_CN]=暂停
+Name[zh_TW]=暫停
+Exec=deadbeef --pause
+
+[Desktop Action Toggle-Pause]
+Name=Toggle Pause
+Name[zh_CN]=播放/暂停
+Name[zh_TW]=播放/暫停
+Exec=deadbeef --toggle-pause
+
+[Desktop Action Stop]
+Name=Stop
+Name[zh_TW]=停止
+Exec=deadbeef --stop
+
+[Desktop Action Next]
+Name=Next
+Name[zh_TW]=下一首
+Exec=deadbeef --next
+
+[Desktop Action Prev]
+Name=Prev
+Name[zh_TW]=上一首
+Exec=deadbeef --prev" >> /usr/share/applications/AM-$APP.desktop
+
+# CHANGE THE PERMISSIONS
+currentuser=$(who | awk '{print $1}')
+chown -R $currentuser /opt/$APP
