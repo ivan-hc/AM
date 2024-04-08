@@ -559,6 +559,17 @@ to have a list of the installed programs use the option `-f` or `files` (syntax 
  DESCRIPTION:	Lock the selected app to the current version installed, this only works if exists a dedicated "AM-updater" installed with the app.
  __________________________________________________________________________
  
+ `neodb`
+ 
+ SYNOPSIS:
+ 
+ `neodb`
+
+ `neodb --silent`
+ 
+ DESCRIPTION:   Add third-party repos to extend the existing database. Use "--silent" to hide messages about third-party repos in use.
+ __________________________________________________________________________
+ 
  `newrepo`
  
  SYNOPSIS:
