@@ -16,13 +16,16 @@ chmod a+x /opt/$APP/remove
 mkdir tmp
 cd ./tmp
 
-version=$(wget -q https://es-de.org/ -O - | grep -i appimage | head -1 | tr ' ' '\n' | sed '/AppImage/,$d' | grep "/download" | tail -1 | cut -d '"' -f2)
-wget $version -O $APP.AppImage
+version=$(wget -q https://gitlab.com/api/v4/projects/18817634/releases/ -O - | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep releases | awk -F / '{print $NF}' | grep v | head -1)
+wget "$(wget -q https://es-de.org/ -O - | grep -Eo 'https?://[^[:space:]]+' | grep x64.AppImage | sed 's/"//g')"
+wget $version.zsync 2> /dev/null
 echo "$version" >> /opt/$APP/version
+
 cd ..
 mv ./tmp/*mage ./$APP
+mv ./tmp/*.zsync ./$APP.zsync 2> /dev/null
 chmod a+x /opt/$APP/$APP
-rmdir ./tmp
+rm -R -f ./tmp
 
 # LINK
 ln -s /opt/$APP/$APP /usr/local/bin/$APP
@@ -31,25 +34,40 @@ ln -s /opt/$APP/$APP /usr/local/bin/$APP
 cat >> /opt/$APP/AM-updater << 'EOF'
 #!/usr/bin/env bash
 APP=es-de
+SITE="https://es-de.org"
 version0=$(cat /opt/$APP/version)
-version=$(wget -q https://es-de.org/ -O - | grep -i appimage | head -1 | tr ' ' '\n' | sed '/AppImage/,$d' | grep "/download" | tail -1 | cut -d '"' -f2)
-if [ $version = $version0 ]; then
-  echo "Update not needed!"
-else
-  notify-send "A new version of $APP is available, please wait"
-  mkdir /opt/$APP/tmp
-  cd /opt/$APP/tmp
-  wget $version -O $APP.AppImage
-  if ls . | grep mage; then
+version=$(wget -q https://gitlab.com/api/v4/projects/18817634/releases/ -O - | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep releases | awk -F / '{print $NF}' | grep v | head -1)
+if test -f /opt/$APP/*.zsync; then
+	mkdir /opt/$APP/tmp
+	cd /opt/$APP/tmp
+	wget $version.zsync 2> /dev/null
 	cd ..
-  	if test -f ./tmp/*mage; then rm ./version
-  	fi
-  	echo $version >> ./version
-  	mv --backup=t ./tmp/*mage ./$APP
-  	chmod a+x /opt/$APP/$APP
-  	rm -R -f ./tmp ./*~
-  fi
-  notify-send "$APP is updated!"
+	mv ./tmp/*.zsync ./$APP.zsync
+	rm -R -f ./tmp
+	zsync /opt/$APP/$APP.zsync
+	rm -R -f /opt/$APP/*zs-old /opt/$APP/*.part
+	chmod a+x /opt/$APP/$APP
+else
+	if [ $version = $version0 ]; then
+		echo "Update not needed!"
+	else
+		notify-send "A new version of $APP is available, please wait"
+		mkdir /opt/$APP/tmp
+		cd /opt/$APP/tmp
+		wget "$(wget -q https://es-de.org/ -O - | grep -Eo 'https?://[^[:space:]]+' | grep x64.AppImage | sed 's/"//g')"
+		if ls . | grep mage; then
+			
+			cd ..
+			
+	  		if test -f ./tmp/*mage; then rm ./version
+	  		fi
+	  		echo $version >> ./version
+	  		mv --backup=t ./tmp/* ./$APP
+	  		chmod a+x /opt/$APP/$APP
+	  		rm -R -f ./tmp ./*~
+		fi
+		notify-send "$APP is updated!"
+	fi
 fi
 EOF
 chmod a+x /opt/$APP/AM-updater
@@ -57,8 +75,20 @@ chmod a+x /opt/$APP/AM-updater
 # LAUNCHER & ICON
 app=$(echo $APP | cut -c -3)
 cd /opt/$APP
+./$APP --appimage-extract *.desktop 1>/dev/null
+./$APP --appimage-extract share/applications/*.desktop 1>/dev/null
 ./$APP --appimage-extract usr/share/applications/*.desktop 1>/dev/null
+mv squashfs-root/*.desktop ./$APP.desktop
+mv squashfs-root/share/applications/*.desktop ./$APP.desktop
 mv squashfs-root/usr/share/applications/*.desktop ./$APP.desktop
+if [ ! -e ./$APP.desktop ]; then 
+	rm ./$APP.desktop; ./$APP --appimage-extract usr/share/applications/*$app*.desktop 
+	mv squashfs-root/usr/share/applications/*.desktop ./$APP.desktop
+fi
+if [ ! -e ./$APP.desktop ]; then 
+	rm ./$APP.desktop; ./$APP --appimage-extract share/applications/*$app*.desktop 1>/dev/null
+	mv squashfs-root/share/applications/*.desktop ./$APP.desktop
+fi
 CHANGEEXEC=$(cat ./$APP.desktop | grep Exec= | tr ' ' '\n' | tr '=' '\n' | tr '/' '\n' | grep $app | head -1)
 sed -i "s#$CHANGEEXEC#$APP#g" ./$APP.desktop
 sed -i "s#AppRun#$APP#g" ./$APP.desktop
@@ -99,8 +129,3 @@ mv ./$APP.desktop /usr/share/applications/AM-$APP.desktop
 # CHANGE THE PERMISSIONS
 currentuser=$(who | awk '{print $1}')
 chown -R $currentuser /opt/$APP
-
-# MESSAGE
-echo "
- $APP is provided by $SITE
-"
