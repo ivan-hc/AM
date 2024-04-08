@@ -564,8 +564,10 @@ to have a list of the installed programs use the option `-f` or `files` (syntax 
  SYNOPSIS:
  
  `neodb`
+
+ `neodb --silent`
  
- DESCRIPTION:   Add third-party repos to extend the existing database.
+ DESCRIPTION:   Add third-party repos to extend the existing database. Use "--silent" to hide messages about third-party repos in use.
  __________________________________________________________________________
  
  `newrepo`
