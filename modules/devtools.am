@@ -23,7 +23,11 @@ case "$1" in
 	'')	exit
 		;;
 	*)	if curl --output /dev/null --silent --head --fail "$appsurl"  1>/dev/null; then
-			appsurl=$(echo "$appsurl" | sed 's![^*/]*$!!' | sed 's:/*$::')
+			if ! wget -q "$appsurl" -O - | grep -q "#!"; then
+				echo -e " 💀 ERROR, the file is not a script, exiting."; echo -e " Invalid URL, retry! \n Visit https://github.com/ivan-hc/neodb for more information"; exit
+			else
+				appsurl=$(echo "$appsurl" | sed 's![^*/]*$!!' | sed 's:/*$::')
+			fi
 		else
 			echo -e " Invalid URL, retry! \n Visit https://github.com/ivan-hc/neodb for more information"; exit
 		fi
@@ -35,17 +39,27 @@ case "$1" in
 	'')	exit
 		;;
 	*)	if curl --output /dev/null --silent --head --fail "$appslisturl"  1>/dev/null; then
-			appslisturl=$(echo "$appslisturl")
-			if ! test -f "$AMPATH/neodb"; then
-				echo -e "#STATUS=quiet\n" >> "$AMPATH/neodb"
-			fi
-			if [ -z "$reponame" ]; then
-				echo "[ Unknown repo ]" >> "$AMPATH/neodb"
+			if ! echo "$appslisturl" | grep -q "$arch-apps"; then
+				echo -e ' 💀 ERROR, not a valid name for this list, exiting.'; echo -e " Invalid URL, retry! \n Visit https://github.com/ivan-hc/neodb for more information"; exit
+			elif ! wget -q "$appslisturl" -O - | grep -q "◆ "; then
+				echo -e ' 💀 ERROR, the file is not correct, missing "◆ " for options "-l"/"-q", exiting.'; echo -e " Invalid URL, retry! \n Visit https://github.com/ivan-hc/neodb for more information"; exit
+			elif ! wget -q "$appslisturl" -O - | grep -q " : "; then
+				echo -e ' 💀 ERROR, the file is not correct, missing " : " for options "-l"/"-q", exiting.'; echo -e " Invalid URL, retry! \n Visit https://github.com/ivan-hc/neodb for more information"; exit
+			elif ! wget -q "$appslisturl" -O - | grep -q "SOURCE:"; then
+				echo -e ' 💀 ERROR, the file is not correct, missing "SOURCE:" for option "-a", exiting.'; echo -e " Invalid URL, retry! \n Visit https://github.com/ivan-hc/neodb for more information"; exit
 			else
-				echo "$reponame" >> "$AMPATH/neodb"
+				appslisturl=$(echo "$appslisturl")
+				if ! test -f "$AMPATH/neodb"; then
+					echo -e "#STATUS=quiet\n" >> "$AMPATH/neodb"
+				fi
+				if [ -z "$reponame" ]; then
+					echo "[ Unknown repo ]" >> "$AMPATH/neodb"
+				else
+					echo "$reponame" >> "$AMPATH/neodb"
+				fi
+				echo "Source=$appsurl" >> "$AMPATH/neodb"
+				echo -e "List=$appslisturl\n" >> "$AMPATH/neodb"
 			fi
-			echo "Source=$appsurl" >> "$AMPATH/neodb"
-			echo -e "List=$appslisturl\n" >> "$AMPATH/neodb"
 		else
 				echo -e " Invalid URL, retry! \n Visit https://github.com/ivan-hc/neodb for more information"; exit
 			fi
