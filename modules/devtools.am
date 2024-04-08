@@ -1,6 +1,58 @@
 #!/usr/bin/env bash
 
 case "$1" in
+  'neodb')
+  	echo " This option allows you to add new repositories to the existing database"
+  	echo ' this your setup will be saved in the configuration file called "neodb"'
+  	if ! test -f "$AMPATH/neodb"; then
+	  	echo " that will be created in $AMPATH"
+  	else
+  		echo " placed in $AMPATH"
+  	fi
+  	echo -e "\n Complete the next three prompts or leave the last two blank to exit."
+  	echo '--------------------------------------------------------------------------'
+  	read -r -ep " Name the new repository (optional): " reponame
+	case "$reponame" in
+	'')	;;
+	*)	reponame=$(echo "[ $reponame ]")
+		;;
+	esac
+	echo '--------------------------------------------------------------------------'
+	read -r -ep " Copy/paste the URL of one of the installation scripts of the new repository $(echo -e '\n: ')" appsurl
+	case "$appsurl" in
+	'')	exit
+		;;
+	*)	if curl --output /dev/null --silent --head --fail "$appsurl"  1>/dev/null; then
+			appsurl=$(echo "$appsurl" | sed 's![^*/]*$!!' | sed 's:/*$::')
+		else
+			echo " Invalid URL, retry!"; exit
+		fi
+		;;
+	esac
+	echo '--------------------------------------------------------------------------'
+	read -r -ep ' Now copy/paste the URL to the "'"$arch"'-apps" file, the applications list '"$(echo -e '\n: ')"'' appslisturl
+	case "$appslisturl" in
+	'')	exit
+		;;
+	*)	if curl --output /dev/null --silent --head --fail "$appslisturl"  1>/dev/null; then
+			appslisturl=$(echo "$appslisturl")
+			if ! test -f "$AMPATH/neodb"; then
+				echo -e "#STATUS=quiet\n" >> "$AMPATH/neodb"
+			fi
+			if [ -z "$reponame" ]; then
+				echo "[ Unknown repo ]" >> "$AMPATH/neodb"
+			else
+				echo "$reponame" >> "$AMPATH/neodb"
+			fi
+			echo "Source=$appsurl" >> "$AMPATH/neodb"
+			echo -e "List=$appslisturl\n" >> "$AMPATH/neodb"
+		else
+				echo " Invalid URL, retry!"; exit
+			fi
+		;;
+	esac
+	;;
+
   'apikey')
   	while [ -n "$1" ]; do
 		case $2 in
