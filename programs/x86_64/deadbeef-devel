@@ -1,11 +1,11 @@
 #!/bin/sh
 
-APP=deadbeef-devel-appimage
-REPO="Samueru-sama/DeaDBeef-AppImage"
+APP=deadbeef-devel
+SITE="https://deadbeef.sourceforge.io"
 
-# CREATE DIRECTORIES
-if [ -z "$APP" ]; then exit 1; fi
-mkdir /opt/$APP && cd /opt/$APP
+# CREATE THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP
 
 # ADD THE REMOVER
 echo '#!/bin/sh' >> /opt/$APP/remove
@@ -13,110 +13,106 @@ echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/
 chmod a+x /opt/$APP/remove
 
 # DOWNLOAD THE ARCHIVE
-mkdir ./tmp && cd ./tmp
+mkdir tmp
+cd ./tmp
 
-version=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep browser_download_url | grep -i appimage | cut -d '"' -f 4 | head -1)
-wget $version
+version=$(wget -q https://sourceforge.net/projects/deadbeef/files/travis/linux/master/ -O - | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | sort -u | grep "x86_64.tar.bz2")
+wget $version -O download.tar.bz2
 echo "$version" >> /opt/$APP/version
+tar fx ./*tar*
 cd ..
-mv ./tmp/*mage ./$APP
-mv ./tmp/*.zsync ./$APP.zsync 2> /dev/null
-chmod a+x /opt/$APP/$APP
+mv --backup=t ./tmp/*/* ./
 rm -R -f ./tmp
 
 # LINK
-ln -s /opt/$APP/$APP /usr/local/bin/$APP
+ln -s /opt/$APP/deadbeef /usr/local/bin/$APP
+chmod a+x /opt/$APP/deadbeef
 
 # SCRIPT TO UPDATE THE PROGRAM
 cat >> /opt/$APP/AM-updater << 'EOF'
 #!/bin/sh
-APP=deadbeef-devel-appimage
-REPO="Samueru-sama/DeaDBeef-AppImage"
+APP=deadbeef-devel
 version0=$(cat /opt/$APP/version)
-version=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep browser_download_url | grep -i appimage | cut -d '"' -f 4 | head -1)
+version=$(wget -q https://sourceforge.net/projects/deadbeef/files/travis/linux/master/ -O - | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | sort -u | grep "x86_64.tar.bz2")
 if [ $version = $version0 ]; then
-	echo "Update not needed!"
+	echo "deadbeef-devel is up to date!"
 else
 	notify-send "A new version of $APP is available, please wait"
 	mkdir /opt/$APP/tmp
-	cd /opt/$APP/tmp || return
-	wget $version
-	if ls . | grep mage; then
-		
-		cd ..
-		
-	  	if test -f ./tmp/*mage; then rm ./version
-	  	fi
-	  	echo $version >> ./version
-	  	mv --backup=t ./tmp/* ./$APP
-	  	chmod a+x /opt/$APP/$APP
-	  	rm -R -f ./tmp ./*~
-		fi
+	cd /opt/$APP/tmp
+	wget $version -O download.tar.bz2
+  tar fx ./*tar*; rm -f -R ./*tar*
+	cd ..
+  mv --backup=t ./tmp/*/* ./
+	rm ./version
+	echo $version >> ./version
+	rm -R -f ./tmp ./*~
 	notify-send "$APP is updated!"
 fi
-
 EOF
 chmod a+x /opt/$APP/AM-updater
 
-# LAUNCHER & ICON
-app=$(echo $APP | cut -c -3)
-cd /opt/$APP
-./$APP --appimage-extract *.desktop 1>/dev/null
-./$APP --appimage-extract share/applications/*.desktop 1>/dev/null
-./$APP --appimage-extract usr/share/applications/*.desktop 1>/dev/null
-mv squashfs-root/*.desktop ./$APP.desktop
-mv squashfs-root/share/applications/*.desktop ./$APP.desktop
-mv squashfs-root/usr/share/applications/*.desktop ./$APP.desktop
-if [ ! -e ./$APP.desktop ]; then 
-	rm ./$APP.desktop; ./$APP --appimage-extract usr/share/applications/*$app*.desktop 
-	mv squashfs-root/usr/share/applications/*.desktop ./$APP.desktop
-fi
-if [ ! -e ./$APP.desktop ]; then 
-	rm ./$APP.desktop; ./$APP --appimage-extract share/applications/*$app*.desktop 1>/dev/null
-	mv squashfs-root/share/applications/*.desktop ./$APP.desktop
-fi
-CHANGEEXEC=$(cat ./$APP.desktop | grep Exec= | tr ' ' '\n' | tr '=' '\n' | tr '/' '\n' | grep $app | head -1)
-sed -i "s#$CHANGEEXEC#$APP#g" ./$APP.desktop
-sed -i "s#AppRun#$APP#g" ./$APP.desktop
-sed -i "s#Exec=/bin/#Exec=#g" ./$APP.desktop
-sed -i "s#Exec=/usr/bin/#Exec=#g" ./$APP.desktop
-CHANGEICON=$(cat ./$APP.desktop | grep Icon= | head -1)
-sed -i "s#$CHANGEICON#Icon=/opt/$APP/icons/$APP#g" ./$APP.desktop
-
+# ICON (HIGHER QUALITY ICON)
 mkdir icons
-mv $(./$APP --appimage-extract *.png) ./icons/$APP 2>/dev/null
-mv $(./$APP --appimage-extract *.svg) ./icons/$APP 2>/dev/null
-./$APP --appimage-extract share/icons/*/*/* 1>/dev/null
-./$APP --appimage-extract usr/share/icons/*/*/* 1>/dev/null
-./$APP --appimage-extract share/icons/*/*/*/* 1>/dev/null
-./$APP --appimage-extract usr/share/icons/*/*/*/* 1>/dev/null
-mv ./squashfs-root/share/icons/hicolor/22x22/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/share/icons/hicolor/24x24/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/share/icons/hicolor/32x32/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/share/icons/hicolor/48x48/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/share/icons/hicolor/64x64/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/share/icons/hicolor/128x128/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/share/icons/hicolor/256x256/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/share/icons/hicolor/512x512/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/share/icons/hicolor/scalable/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/usr/share/icons/hicolor/22x22/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/usr/share/icons/hicolor/24x24/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/usr/share/icons/hicolor/32x32/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/usr/share/icons/hicolor/48x48/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/usr/share/icons/hicolor/64x64/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/usr/share/icons/hicolor/128x128/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/usr/share/icons/hicolor/256x256/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/usr/share/icons/hicolor/512x512/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/usr/share/icons/hicolor/scalable/apps/*$app* ./icons/$APP 2>/dev/null
+wget https://raw.githubusercontent.com/DeaDBeeF-Player/deadbeef/master/icons/scalable/deadbeef.svg -O ./icons/$APP 2> /dev/null
 
-rm -R -f /opt/$APP/squashfs-root
-mv ./$APP.desktop /usr/share/applications/AM-$APP.desktop
+# LAUNCHER
+rm -f /usr/share/applications/AM-$APP.desktop
+echo "[Desktop Entry]
+Type=Application
+Name=DeaDBeeF Nightly
+Exec=/opt/$APP/$APP %F
+Icon=/opt/$APP/icons/$APP
+GenericName=Audio Player
+GenericName[pt_BR]=Reprodutor de áudio
+GenericName[ru]=Аудио плеер
+GenericName[zh_CN]=音频播放器
+GenericName[zh_TW]=音樂播放器
+Comment=Listen to music
+Comment[pt_BR]=Escute músicas
+Comment[ru]=Слушай музыку
+Comment[zh_CN]=倾听音乐
+Comment[zh_TW]=聆聽音樂
+MimeType=application/ogg;audio/x-vorbis+ogg;application/x-ogg;audio/mp3;audio/prs.sid;audio/x-flac;audio/mpeg;audio/x-mpeg;audio/x-mod;audio/x-it;audio/x-s3m;audio/x-xm;audio/x-mpegurl;audio/x-scpls;application/x-cue;
+Categories=Audio;AudioVideo;Player;GTK;
+Keywords=Sound;Music;Audio;Player;Musicplayer;MP3;
+Terminal=false
+X-Ayatana-Desktop-Shortcuts=Play;Pause;Stop;Next;Prev;
+X-PulseAudio-Properties=media.role=music
+
+[Desktop Action Play]
+Name=Play
+Name[zh_CN]=播放
+Name[zh_TW]=播放
+Exec=$APP --play
+
+[Desktop Action Pause]
+Name=Pause
+Name[zh_CN]=暂停
+Name[zh_TW]=暫停
+Exec=$APP --pause
+
+[Desktop Action Toggle-Pause]
+Name=Toggle Pause
+Name[zh_CN]=播放/暂停
+Name[zh_TW]=播放/暫停
+Exec=$APP --toggle-pause
+
+[Desktop Action Stop]
+Name=Stop
+Name[zh_TW]=停止
+Exec=$APP --stop
+
+[Desktop Action Next]
+Name=Next
+Name[zh_TW]=下一首
+Exec=$APP --next
+
+[Desktop Action Prev]
+Name=Prev
+Name[zh_TW]=上一首
+Exec=$APP --prev" >> /usr/share/applications/AM-$APP.desktop
 
 # CHANGE THE PERMISSIONS
 currentuser=$(who | awk '{print $1}')
 chown -R $currentuser /opt/$APP
-
-# MESSAGE
-echo "
- $APP is provided by https://github.com/$(echo $REPO | sed 's:/[^/]*$::')
-"
