@@ -1,11 +1,11 @@
 #!/bin/sh
 
-APP=amdgpu_top
-SITE="Umio-Yasuno/amdgpu_top"
+APP=android-tools
+REPO="Samueru-sama/android-tools-AppImage"
 
-# CREATE THE FOLDER
-mkdir /opt/$APP
-cd /opt/$APP
+# CREATE DIRECTORIES
+if [ -z "$APP" ]; then exit 1; fi
+mkdir /opt/$APP && cd /opt/$APP || exit 1
 
 # ADD THE REMOVER
 echo '#!/bin/sh' >> /opt/$APP/remove
@@ -13,14 +13,11 @@ echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/
 chmod a+x /opt/$APP/remove
 
 # DOWNLOAD THE ARCHIVE
-mkdir tmp
-cd ./tmp
+mkdir ./tmp && cd ./tmp
 
-version=$(wget -q https://api.github.com/repos/Umio-Yasuno/amdgpu_top/releases -O - | grep browser_download_url | grep -i appimage | cut -d '"' -f 4 | head -1)
+version=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep browser_download_url | grep -i appimage | cut -d '"' -f 4 | head -1)
 wget $version
-wget $version.zsync 2> /dev/null
 echo "$version" >> /opt/$APP/version
-
 cd ..
 mv ./tmp/*mage ./$APP
 mv ./tmp/*.zsync ./$APP.zsync 2> /dev/null
@@ -32,52 +29,57 @@ ln -s /opt/$APP/$APP /usr/local/bin/$APP
 
 # SCRIPT TO UPDATE THE PROGRAM
 cat >> /opt/$APP/AM-updater << 'EOF'
-#!/usr/bin/env bash
-APP=amdgpu_top
-SITE="Umio-Yasuno/amdgpu_top"
+#!/bin/sh
+APP=android-tools
+REPO="Samueru-sama/android-tools-AppImage"
 version0=$(cat /opt/$APP/version)
-version=$(wget -q https://api.github.com/repos/Umio-Yasuno/amdgpu_top/releases -O - | grep browser_download_url | grep -i appimage | cut -d '"' -f 4 | head -1)
-if test -f /opt/$APP/*.zsync; then
-	mkdir /opt/$APP/tmp
-	cd /opt/$APP/tmp
-	wget $version.zsync 2> /dev/null
-	cd ..
-	mv ./tmp/*.zsync ./$APP.zsync
-	rm -R -f ./tmp
-	zsync /opt/$APP/$APP.zsync
-	rm -R -f /opt/$APP/*zs-old /opt/$APP/*.part
-	chmod a+x /opt/$APP/$APP
+version=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep browser_download_url | grep -i appimage | cut -d '"' -f 4 | head -1)
+if [ $version = $version0 ]; then
+	echo "Update not needed!"
 else
-	if [ $version = $version0 ]; then
-		echo "Update not needed!"
-	else
-		notify-send "A new version of $APP is available, please wait"
-		mkdir /opt/$APP/tmp
-		cd /opt/$APP/tmp
-		wget $version
-		if ls . | grep mage; then
-			
-			cd ..
-			
-	  		if test -f ./tmp/*mage; then rm ./version
-	  		fi
-	  		echo $version >> ./version
-	  		mv --backup=t ./tmp/* ./$APP
-	  		chmod a+x /opt/$APP/$APP
-	  		rm -R -f ./tmp ./*~
+	notify-send "A new version of $APP is available, please wait"
+	mkdir /opt/$APP/tmp
+	cd /opt/$APP/tmp || return
+	wget $version
+	if ls . | grep mage; then
+		
+		cd ..
+		
+	  	if test -f ./tmp/*mage; then rm ./version
+	  	fi
+	  	echo $version >> ./version
+	  	mv --backup=t ./tmp/* ./$APP
+	  	chmod a+x /opt/$APP/$APP
+	  	rm -R -f ./tmp ./*~
 		fi
-		notify-send "$APP is updated!"
-	fi
+	notify-send "$APP is updated!"
 fi
+
 EOF
 chmod a+x /opt/$APP/AM-updater
 
 # LAUNCHER & ICON
 app=$(echo $APP | cut -c -3)
 cd /opt/$APP
-./$APP --appimage-extract assets/$APP.desktop 1>/dev/null
-mv squashfs-root/assets/$APP.desktop ./$APP.desktop
-sed -i "s#Exec=$APP --gui#Exec=/opt/$APP/$APP --gui#g" ./$APP.desktop
+./$APP --appimage-extract *.desktop 1>/dev/null
+./$APP --appimage-extract share/applications/*.desktop 1>/dev/null
+./$APP --appimage-extract usr/share/applications/*.desktop 1>/dev/null
+mv squashfs-root/*.desktop ./$APP.desktop
+mv squashfs-root/share/applications/*.desktop ./$APP.desktop
+mv squashfs-root/usr/share/applications/*.desktop ./$APP.desktop
+if [ ! -e ./$APP.desktop ]; then 
+	rm ./$APP.desktop; ./$APP --appimage-extract usr/share/applications/*$app*.desktop 
+	mv squashfs-root/usr/share/applications/*.desktop ./$APP.desktop
+fi
+if [ ! -e ./$APP.desktop ]; then 
+	rm ./$APP.desktop; ./$APP --appimage-extract share/applications/*$app*.desktop 1>/dev/null
+	mv squashfs-root/share/applications/*.desktop ./$APP.desktop
+fi
+CHANGEEXEC=$(cat ./$APP.desktop | grep Exec= | tr ' ' '\n' | tr '=' '\n' | tr '/' '\n' | grep $app | head -1)
+sed -i "s#$CHANGEEXEC#$APP#g" ./$APP.desktop
+sed -i "s#AppRun#$APP#g" ./$APP.desktop
+sed -i "s#Exec=/bin/#Exec=#g" ./$APP.desktop
+sed -i "s#Exec=/usr/bin/#Exec=#g" ./$APP.desktop
 CHANGEICON=$(cat ./$APP.desktop | grep Icon= | head -1)
 sed -i "s#$CHANGEICON#Icon=/opt/$APP/icons/$APP#g" ./$APP.desktop
 
@@ -113,3 +115,8 @@ mv ./$APP.desktop /usr/share/applications/AM-$APP.desktop
 # CHANGE THE PERMISSIONS
 currentuser=$(who | awk '{print $1}')
 chown -R $currentuser /opt/$APP
+
+# MESSAGE
+echo "
+ $APP is provided by https://github.com/$(echo $REPO | sed 's:/[^/]*$::')
+"
