@@ -8,6 +8,7 @@ Before reporting a problem, be it a bug, design or others, we assume you have ma
 1. [the README.md](https://github.com/ivan-hc/AM/blob/main/README.md) does not cover your problem
 2. the problem has not been reported in the [issue tracker](https://github.com/ivan-hc/AM/issues)
 3. the problem is not related to the installed apps but to the [installation scripts](https://github.com/ivan-hc/AM/tree/main/programs)
+4. the "AM"/"AppMan" command line interface [is updated to the latest version](https://github.com/ivan-hc/AM/releases/latest)
 
 If all apply, then please consider opening a [new issue](https://github.com/ivan-hc/AM/issues).
 
