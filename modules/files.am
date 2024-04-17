@@ -17,8 +17,8 @@ function _files(){
 	rm -f $AMPATH/.cache/files-args
 	cd $APPSPATH &&
 	INSTALLED_APPS=$(find -name 'remove' -printf "%h\n" 2>/dev/null | du -sh -- * 2> /dev/null | sort -rh | sed 's@.*	@@')
-	echo "- APPNAME | TYPE | SIZE " >> $AMPATH/.cache/files-args
-	echo "- ------- | ---- | ----" >> $AMPATH/.cache/files-args
+	echo "- APPNAME | VERSION | TYPE | SIZE " >> $AMPATH/.cache/files-args
+	echo "- ------- | ------- | ---- | ----" >> $AMPATH/.cache/files-args
 	for arg in $INSTALLED_APPS; do
 		 if test -f ./$arg/remove 2>/dev/null; then
 	 		if grep -q "usr/local/lib" ./$arg/remove; then
@@ -27,25 +27,51 @@ function _files(){
 	 		else
 	 			SIZE=$(du -sh -- $arg | cut -f1 -d"	")
 	 		fi
+	 		if test -f ./$arg/version 2>/dev/null; then
+				VERSION=$(cat $APPSPATH/$arg/version | head -1 | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
+				if [ -z "$VERSION" ]; then
+					if test -f ./$arg/*.zsync 2>/dev/null; then
+						VERSION=$(strings -d ./$arg/*.zsync | grep -i $arg | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
+					else
+						VERSION=$(cat $APPSPATH/$arg/version | sed 's:.*/::' | tr '-' '\n' | grep -vi "appimage\|$arg\|$arch" | grep "[0-9]" | head -1)
+					fi
+				fi
+			elif test -f ./$arg/updater 2>/dev/null; then
+				VERSION=$($APPSPATH/$arg/updater -d $APPSPATH/$arg/$arg 2>/dev/null | grep -i $arg | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
+				if [ -z "$VERSION" ]; then
+					VERSION=$(grep -i "version=" $APPSPATH/$arg/* 2>/dev/null | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
+				fi
+			elif [ "$arg" == "$AMCLI" ]; then
+				VERSION=$($AMCLIPATH -v)
+			elif grep -qi "version=" ./$arg/* 2>/dev/null; then
+				VERSION=$(grep -i "version=" $APPSPATH/$arg/* 2>/dev/null | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
+			elif echo "$arg" | grep -q "ffwa-"; then
+				VERSION="WebApp"
+			else
+				VERSION="unknown"
+			fi
+			if [ -z "$VERSION" ]; then
+				VERSION="unknown"
+			fi
 	 		if [ -z "$(strings -d "./$arg/$arg" 2>/dev/null | grep -F 'if you run it with the --appimage-extract option')" ] 2>/dev/null; then
 				string=$(strings -d "./$arg/$arg" 2>/dev/null | head -1 )
 				if grep -q "usr/local/lib" ./$arg/remove; then
-					echo " ◆ $arg	|	library	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
+					echo " ◆ $arg	|	$VERSION	|	library	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
 				elif echo "$string" | grep -q "ld-linux"; then
-					echo " ◆ $arg	|	binary/executable	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
+					echo " ◆ $arg	|	$VERSION	|	binary/executable	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
 				elif echo "$string" | grep -q "#!"; then
-					echo " ◆ $arg	|	script	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
+					echo " ◆ $arg	|	$VERSION	|	script	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
 				elif ! test -f  "./$arg/$arg"; then
 					link_in_path=$(cat "./$arg/remove" | tr " " "\n" | grep 'local/bin' | tail -1)
 					realpath=$(realpath "$link_in_path")
 					realstring=$(strings -d "$realpath" 2>/dev/null | head -1 )
 					if [[ -L "$link_in_path" ]]; then
 						if echo "$realstring" | grep -q "ld-linux"; then
-							echo " ◆ $arg	|	binary/executable	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
+							echo " ◆ $arg	|	$VERSION	|	binary/executable	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
 						elif echo "$realstring" | grep -q "#!"; then
-							echo " ◆ $arg	|	script	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
+							echo " ◆ $arg	|	$VERSION	|	script	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
 						else
-							echo " ◆ $arg	|	unknown	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
+							echo " ◆ $arg	|	$VERSION	|	unknown	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
 						fi
 					elif cat "./$arg/remove" | tail -1 | grep -q 'xtype l -exec rm'; then
 						echo " ◆ $arg	|	set/tools	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
@@ -53,61 +79,27 @@ function _files(){
 						script2path=$(cat "$link_in_path" | tail -1 | sed 's#$APP#'$arg'#g' | sed 's#exec ##g')
 						realrealstring=$(strings -d "$script2path" 2>/dev/null | head -1 )
 						if echo "$realrealstring" | grep -q "ld-linux"; then
-							echo " ◆ $arg	|	binary/executable	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
+							echo " ◆ $arg	|	$VERSION	|	binary/executable	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
 						elif echo "$realrealstring" | grep -q "#!"; then
-							echo " ◆ $arg	|	script	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
+							echo " ◆ $arg	|	$VERSION	|	script	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
 						elif [[ $(test -f "$link_in_path") != 0 ]]; then
-							echo " ◆ $arg	|	launcher	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
+							echo " ◆ $arg	|	$VERSION	|	launcher	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
 						else
-							echo " ◆ $arg	|	unknown	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
+							echo " ◆ $arg	|	$VERSION	|	unknown	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
 						fi
 					else
-						echo " ◆ $arg	|	other	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
+						echo " ◆ $arg	|	$VERSION	|	other	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
 					fi
 				else
-					echo " ◆ $arg	|	other	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
+					echo " ◆ $arg	|	$VERSION	|	other	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
 				fi
 			else
 				if [ -z "$(strings -d "./$arg/$arg" 2>/dev/null | grep -F 'AppImages require FUSE to run')" ] 2>/dev/null; then
-					echo " ◆ $arg	|	appimage-type3	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
+					echo " ◆ $arg	|	$VERSION	|	appimage-type3	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
 				else
-					echo " ◆ $arg	|	appimage-type2	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
+					echo " ◆ $arg	|	$VERSION	|	appimage-type2	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
 				fi
 			fi
-		fi
-	done
-	cat $AMPATH/.cache/files-args | column -t
-	echo ""
-}
-
-function _files_version(){
-	rm -f $AMPATH/.cache/files-args
-	cd $APPSPATH &&
-	INSTALLED_APPS=$(find -name 'remove' -printf "%h\n" 2>/dev/null | du -sh -- * 2> /dev/null | sort -rh | sed 's@.*	@@')
-	echo "- APPNAME | VERSION " >> $AMPATH/.cache/files-args
-	echo "- ------- | -------" >> $AMPATH/.cache/files-args
-	for arg in $INSTALLED_APPS; do
-		if test -f ./$arg/remove 2>/dev/null; then
-			if test -f ./$arg/version 2>/dev/null; then
-				VERSION=$(cat $APPSPATH/$arg/version | head -1 | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
-				if [ -z "$VERSION" ]; then
-					if test -f ./$arg/*.zsync 2>/dev/null; then
-						VERSION=$(strings -d ./$arg/*.zsync | grep -i $arg | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
-						if [ -z "$VERSION" ]; then
-							VERSION="continuous"
-						fi
-					else
-						VERSION=$(cat $APPSPATH/$arg/version | sed 's:.*/::' | tr '-' '\n' | grep -vi "appimage\|$arg\|$arch" | grep "[0-9]" | head -1)
-					fi
-				fi
-			elif test -f ./$arg/pkgversion; then
-				VERSION=$(cat $APPSPATH/$arg/pkgversion | head -1)
-			elif [ "$arg" == "$AMCLI" ]; then
-				VERSION=$($AMCLIPATH -v)
-			else
-				VERSION="unknown"
-			fi
-			echo " ◆ $arg	|	$VERSION" >> $AMPATH/.cache/files-args
 		fi
 	done
 	cat $AMPATH/.cache/files-args | column -t
@@ -118,9 +110,6 @@ if [ "$2" = "--less" ]; then
 	cd "$APPSPATH" &&
 	find . -type f -name 'remove' 2>/dev/null | sed -r 's|/[^/]+$||' | sort | uniq | wc -l
 	exit 0
-elif [ "$2" = "--version" ]; then
-	_files_header
-	_files_version
 else
 	_files_header
 	_files
