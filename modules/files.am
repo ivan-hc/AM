@@ -80,10 +80,40 @@ function _files(){
 	echo ""
 }
 
+function _files_version(){
+	rm -f $AMPATH/.cache/files-args
+	cd $APPSPATH &&
+	INSTALLED_APPS=$(find -name 'remove' -printf "%h\n" 2>/dev/null | du -sh -- * 2> /dev/null | sort -rh | sed 's@.*	@@')
+	echo "- APPNAME | VERSION " >> $AMPATH/.cache/files-args
+	echo "- ------- | -------" >> $AMPATH/.cache/files-args
+	for arg in $INSTALLED_APPS; do
+		if test -f ./$arg/remove 2>/dev/null; then
+			if test -f ./$arg/version 2>/dev/null; then
+				VERSION=$(cat $APPSPATH/$arg/version | head -1 | sed 's:.*/::' | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}")
+				if [ -z "$VERSION" ]; then
+					VERSION="unknown"
+				fi
+			elif test -f ./$arg/pkgversion; then
+				VERSION=$(cat $APPSPATH/$arg/pkgversion | head -1)
+			elif [ "$arg" == "$AMCLI" ]; then
+				VERSION=$($AMCLIPATH -v)
+			else
+				VERSION="unknown"
+			fi
+			echo " ◆ $arg	|	$VERSION" >> $AMPATH/.cache/files-args
+		fi
+	done
+	cat $AMPATH/.cache/files-args | column -t
+	echo ""
+}
+
 if [ "$2" = "--less" ]; then
 	cd "$APPSPATH" &&
 	find . -type f -name 'remove' 2>/dev/null | sed -r 's|/[^/]+$||' | sort | uniq | wc -l
 	exit 0
+elif [ "$2" = "--version" ]; then
+	_files_header
+	_files_version
 else
 	_files_header
 	_files
