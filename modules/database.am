@@ -34,6 +34,43 @@ function _clean_lists_and_queries(){
 	cut -c -81 | sed 's#http://[^ ]*##g' | sed 's#https://[^ ]*##g' | sed 's#ftp://[^ ]*##g' | sed 's/SITE://g' | sed 's/SOURCE://g'
 }
 
+function _check_version(){
+	rm -f $AMPATH/.cache/files-args*
+	cd $APPSPATH &&
+	INSTALLED_APPS=$(find -name 'remove' -printf "%h\n" 2>/dev/null | du -sh -- * 2> /dev/null | sort -rh | sed 's@.*	@@')
+	for arg in $INSTALLED_APPS; do
+		 if test -f ./$arg/remove 2>/dev/null; then
+	 		if test -f ./$arg/version 2>/dev/null; then
+				VERSION=$(cat $APPSPATH/$arg/version | head -1 | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
+				if [ -z "$VERSION" ]; then
+					if test -f ./$arg/*.zsync 2>/dev/null; then
+						VERSION=$(strings -d ./$arg/*.zsync | grep -i $arg | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
+					else
+						VERSION=$(cat $APPSPATH/$arg/version | sed 's:.*/::' | tr '-' '\n' | grep -vi "appimage\|$arg\|$arch" | grep "[0-9]" | head -1)
+					fi
+				fi
+			elif test -f ./$arg/updater 2>/dev/null; then
+				VERSION=$($APPSPATH/$arg/updater -d $APPSPATH/$arg/$arg 2>/dev/null | grep -i $arg | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
+				if [ -z "$VERSION" ]; then
+					VERSION=$(grep -i "version=" $APPSPATH/$arg/* 2>/dev/null | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
+				fi
+			elif [ "$arg" == "$AMCLI" ]; then
+				VERSION=$($AMCLIPATH -v)
+			elif grep -qi "version=" ./$arg/* 2>/dev/null; then
+				VERSION=$(grep -i "version=" $APPSPATH/$arg/* 2>/dev/null | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
+			elif echo "$arg" | grep -q "ffwa-"; then
+				VERSION="WebApp"
+			else
+				VERSION="unknown"
+			fi
+			if [ -z "$VERSION" ]; then
+				VERSION="unknown"
+			fi
+			echo " ◆ $arg	|	$VERSION" >> $AMPATH/.cache/files-args
+		fi
+	done
+}
+
 case "$1" in
 
   '-a'|'about')
@@ -45,6 +82,8 @@ case "$1" in
 	function usage() {
 		echo " USAGE: $AMCLI $1 [ARGUMENT]";
 	}
+
+	_check_version
 
 	function download_markdown() {
 		local markdown_url="$AMCATALOGUEMARKDOWNS/${1}.md"
@@ -58,7 +97,8 @@ case "$1" in
 			printf " PACKAGE: %s\n" "$package_name"
 			if [ -f "$APPSPATH/$1/remove" ]; then
 				local disk_usage=$(du -sm "$APPSPATH/$1" | cut -f1)
-				app_status=" STATUS: INSTALLED, ABOUT $disk_usage MB OF DISK SPACE IN USE"
+				local app_version=$(cat $AMPATH/.cache/files-args | grep -w " ◆ $1	|" | sed 's:.*|	::')
+				app_status=$(echo -e " STATUS: INSTALLED, ABOUT $disk_usage MB OF DISK SPACE IN USE\n VERSION: $app_version")
 			fi
 			printf "%s\n" "$app_status"
 			cat -s "$cache_dir/$1.md" && printf "%s\n" "-----------------------------------------------------------------------"
@@ -75,7 +115,8 @@ case "$1" in
 			printf " PACKAGE: %s\n" "$arg" | tr a-z A-Z
 			if [ -f "$APPSPATH/$1/remove" ]; then
 				local disk_usage=$(du -sm "$APPSPATH/$1" | cut -f1)
-				app_status=" STATUS: INSTALLED, ABOUT $disk_usage MB OF DISK SPACE IN USE"
+				local app_version=$(cat $AMPATH/.cache/files-args | grep -w " ◆ $1	|" | sed 's:.*|	::')
+				app_status=$(echo -e " STATUS: INSTALLED, ABOUT $disk_usage MB OF DISK SPACE IN USE\n VERSION: $app_version")
 			fi
 			printf "%s\n" "$app_status"
 			cat "$AMPATH/$arch-apps" | grep "◆ $arg : "  | cut -d':' -f2- | sed 's/^./\n /' | sed 's# SOURCE:#\n\n SOURCE:#g'
