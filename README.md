@@ -349,9 +349,11 @@ to have a list of the installed programs use the option `-f` or `files` (syntax 
 
  `-f`
 
+ `-f --byname`
+
  `-f --less`
  
- DESCRIPTION:	Shows the list of all installed programs, with sizes. With the option "--less" it shows only the number of installed apps.
+ DESCRIPTION:	Shows the list of all installed programs, with sizes. By default apps are sorted by size, use "--byname" to sort by name. With the option "--less" it shows only the number of installed apps.
  ___________________________________________________________________________
  
  `-h`, `help`
