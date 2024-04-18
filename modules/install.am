@@ -1,42 +1,5 @@
 #!/usr/bin/env bash
 
-function _check_version(){
-	rm -f $AMPATH/.cache/files-args*
-	cd $APPSPATH &&
-	INSTALLED_APPS=$(find -name 'remove' -printf "%h\n" 2>/dev/null | du -sh -- * 2> /dev/null | sort -rh | sed 's@.*	@@')
-	for arg in $INSTALLED_APPS; do
-		 if test -f ./$arg/remove 2>/dev/null; then
-	 		if test -f ./$arg/version 2>/dev/null; then
-				VERSION=$(cat $APPSPATH/$arg/version | head -1 | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
-				if [ -z "$VERSION" ]; then
-					if test -f ./$arg/*.zsync 2>/dev/null; then
-						VERSION=$(strings -d ./$arg/*.zsync | grep -i $arg | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
-					else
-						VERSION=$(cat $APPSPATH/$arg/version | sed 's:.*/::' | tr '-' '\n' | grep -vi "appimage\|$arg\|$arch" | grep "[0-9]" | head -1)
-					fi
-				fi
-			elif test -f ./$arg/updater 2>/dev/null; then
-				VERSION=$($APPSPATH/$arg/updater -d $APPSPATH/$arg/$arg 2>/dev/null | grep -i $arg | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
-				if [ -z "$VERSION" ]; then
-					VERSION=$(grep -i "version=" $APPSPATH/$arg/* 2>/dev/null | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
-				fi
-			elif [ "$arg" == "$AMCLI" ]; then
-				VERSION=$($AMCLIPATH -v)
-			elif grep -qi "version=" ./$arg/* 2>/dev/null; then
-				VERSION=$(grep -i "version=" $APPSPATH/$arg/* 2>/dev/null | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
-			elif echo "$arg" | grep -q "ffwa-"; then
-				VERSION="WebApp"
-			else
-				VERSION="unknown"
-			fi
-			if [ -z "$VERSION" ]; then
-				VERSION="unknown"
-			fi
-			echo " ◆ $arg	|	$VERSION" >> $AMPATH/.cache/files-args
-		fi
-	done
-}
-
 while [ -n "$1" ]; do
 
 	case $2 in
