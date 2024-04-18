@@ -30,50 +30,48 @@ function _am(){
 	mkdir -p "$AMPATH"/modules
 }
 
+# Helper functions don't need to be defined inside the parent function
+function prompt_for_directory() {
+	local location
+	read -r -ep "Please, write the name or the path of your custom application's folder: $(echo -e '\n\n '$HOME'/')" location
+	echo "$location"
+}
+
+function validate_directory() {
+	local location=$1
+	if [[ "$location" == "" ]]; then
+		echo -e "--------------------------------------------------------------------------"
+		echo "OPERATION ABORTED!"
+		exit  1
+	elif [[ "$location" == ".local/bin" ]]; then
+		echo -e "--------------------------------------------------------------------------\n"
+		echo -e " 💀 ERROR, you can't install applications into a '$PATH'\n\n The directory ~/.local/bin and 'bin' folders are used for executables.\n\n Please, choose a different path and retry! \n"
+		echo -e "--------------------------------------------------------------------------\n"
+		exit  1
+		else
+		local location_appman="${location/#$HOME}"
+		location_appman="${location_appman// /-}"
+		location_appman="${location_appman#/}"
+		location_appman="${location_appman%/}"
+		echo "$location_appman"
+	fi
+}
+
+function initialize_appman() {
+	APPSDIR=$1
+	mkdir -p ~/"$APPSDIR"/appman/.cache
+	mkdir -p ~/"$APPSDIR"/appman/modules
+	mkdir -p ~/.local/bin "$DATADIR"/applications "$DATADIR"/icons
+	AMCLI="appman"
+	AMCLIPATH="$DIR/$AMCLI"
+	SUDOCOMMAND=""
+	COMPLETIONPATH="$HOME"
+	COMPLETIONFILE=".bash_completion"
+	APPSPATH="$HOME/$APPSDIR"
+	AMPATH="$HOME/$APPSDIR/$AMCLI"
+}
+
 function _appman() {
-
-	# Helper functions defined inside the parent function
-	function prompt_for_directory() {
-		local location
-		read -r -ep "Please, write the name or the path of your custom application's folder: $(echo -e '\n\n '$HOME'/')" location
-		echo "$location"
-	}
-
-	function validate_directory() {
-		local location=$1
-		if [[ "$location" == "" ]]; then
-			echo -e "--------------------------------------------------------------------------"
-			echo "OPERATION ABORTED!"
-			exit  1
-		elif [[ "$location" == ".local/bin" ]]; then
-			echo -e "--------------------------------------------------------------------------\n"
-			echo -e " 💀 ERROR, you can't install applications into a '$PATH'\n\n The directory ~/.local/bin and 'bin' folders are used for executables.\n\n Please, choose a different path and retry! \n"
-			echo -e "--------------------------------------------------------------------------\n"
-			exit  1
-			else
-			local location_appman="${location/#$HOME}"
-			location_appman="${location_appman// /-}"
-			location_appman="${location_appman#/}"
-			location_appman="${location_appman%/}"
-			echo "$location_appman"
-		fi
-	}
-
-	function initialize_appman() {
-		APPSDIR=$1
-		mkdir -p ~/"$APPSDIR"/appman/.cache
-		mkdir -p ~/"$APPSDIR"/appman/modules
-		mkdir -p ~/.local/bin "$DATADIR"/applications "$DATADIR"/icons
-		AMCLI="appman"
-		AMCLIPATH="$DIR/$AMCLI"
-		SUDOCOMMAND=""
-		COMPLETIONPATH="$HOME"
-		COMPLETIONFILE=".bash_completion"
-		APPSPATH="$HOME/$APPSDIR"
-		AMPATH="$HOME/$APPSDIR/$AMCLI"
-	}
-
-	# Main execution
 	if [[ ! -f "$APPMANCONFIG"/appman-config ]]; then
 		echo "--------------------------------------------------------------------------"
 		echo " >>> Thank you for choosing AppMan!"
@@ -87,7 +85,6 @@ function _appman() {
 		echo 'decide to change your choice in the future, first remove all the programs'
 		echo 'and then edit the ~/.config/appman/appman-config text file.'
 		echo -e "--------------------------------------------------------------------------\n"
-
 		local location=$(prompt_for_directory)
 		local validated_location=$(validate_directory "$location")
 		mkdir -p "$APPMANCONFIG"
