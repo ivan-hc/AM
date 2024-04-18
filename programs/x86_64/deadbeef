@@ -3,115 +3,60 @@
 APP=deadbeef
 SITE="https://deadbeef.sourceforge.io"
 
-# CREATE THE FOLDER
-mkdir /opt/$APP
-cd /opt/$APP
+# CREATE DIRECTORIES
+if [ -z "$APP" ]; then exit 1; fi
+mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
 
 # ADD THE REMOVER
-echo '#!/bin/sh' >> /opt/$APP/remove
-echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
-chmod a+x /opt/$APP/remove
+echo "#!/bin/sh
+rm -f /usr/share/applications/AM-$APP.desktop /usr/local/bin/$APP
+rm -R -f /opt/$APP" >> "/opt/$APP/remove"
+chmod a+x "/opt/$APP/remove"
 
-# DOWNLOAD THE ARCHIVE
-mkdir tmp
-cd ./tmp
+# DOWNLOAD AND PREPARE THE APP
+# $version is also used for updates
 
 version=$(wget -q https://deadbeef.sourceforge.io/download.html -O - | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | sort -u | grep "tar.bz" | grep static)
-wget $version -O download.tar.bz2
-echo "$version" >> /opt/$APP/version
+wget "$version" -O download.tar.bz2
+echo "$version" >> "/opt/$APP/version"
 tar fx ./*tar*; rm -f -R ./*tar*
 cd ..
 mv --backup=t ./tmp/*/* ./
 rm -R -f ./tmp
 
 # LINK
-ln -s /opt/$APP/deadbeef /usr/local/bin/$APP
-chmod a+x /opt/$APP/deadbeef
+ln -s "/opt/$APP/$APP" "/usr/local/bin/$APP"
+chmod a+x "/opt/$APP/$APP"
 
 # SCRIPT TO UPDATE THE PROGRAM
 cat >> /opt/$APP/AM-updater << 'EOF'
-#!/usr/bin/env bash
+#!/bin/sh
 APP=deadbeef
 version0=$(cat /opt/$APP/version)
 version=$(wget -q https://deadbeef.sourceforge.io/download.html -O - | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | sort -u | grep "tar.bz" | grep static)
-if [ $version = $version0 ]; then
+if [ "$version" = "$version0" ]; then
 	echo "Update not needed!"
 else
 	notify-send "A new version of $APP is available, please wait"
-	mkdir /opt/$APP/tmp
-	cd /opt/$APP/tmp
+	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
 	wget $version -O download.tar.bz2
   tar fx ./*tar*; rm -f -R ./*tar*
 	cd ..
   mv --backup=t ./tmp/*/* ./
 	rm ./version
-	echo $version >> ./version
+	echo "$version" >> ./version
 	rm -R -f ./tmp ./*~
 	notify-send "$APP is updated!"
 fi
 EOF
-chmod a+x /opt/$APP/AM-updater
+chmod a+x "/opt/$APP/AM-updater"
 
-# ICON (HIGHER QUALITY ICON)
-mkdir icons
-wget https://raw.githubusercontent.com/DeaDBeeF-Player/deadbeef/master/icons/scalable/deadbeef.svg -O ./icons/$APP 2> /dev/null
-
-# LAUNCHER
-rm -f /usr/share/applications/AM-$APP.desktop
-echo "[Desktop Entry]
-Type=Application
-Name=DeaDBeeF
-Exec=/opt/$APP/$APP %F
-Icon=/opt/$APP/icons/$APP
-GenericName=Audio Player
-GenericName[pt_BR]=Reprodutor de áudio
-GenericName[ru]=Аудио плеер
-GenericName[zh_CN]=音频播放器
-GenericName[zh_TW]=音樂播放器
-Comment=Listen to music
-Comment[pt_BR]=Escute músicas
-Comment[ru]=Слушай музыку
-Comment[zh_CN]=倾听音乐
-Comment[zh_TW]=聆聽音樂
-MimeType=application/ogg;audio/x-vorbis+ogg;application/x-ogg;audio/mp3;audio/prs.sid;audio/x-flac;audio/mpeg;audio/x-mpeg;audio/x-mod;audio/x-it;audio/x-s3m;audio/x-xm;audio/x-mpegurl;audio/x-scpls;application/x-cue;
-Categories=Audio;AudioVideo;Player;GTK;
-Keywords=Sound;Music;Audio;Player;Musicplayer;MP3;
-Terminal=false
-X-Ayatana-Desktop-Shortcuts=Play;Pause;Stop;Next;Prev;
-X-PulseAudio-Properties=media.role=music
-
-[Desktop Action Play]
-Name=Play
-Name[zh_CN]=播放
-Name[zh_TW]=播放
-Exec=$APP --play
-
-[Desktop Action Pause]
-Name=Pause
-Name[zh_CN]=暂停
-Name[zh_TW]=暫停
-Exec=$APP --pause
-
-[Desktop Action Toggle-Pause]
-Name=Toggle Pause
-Name[zh_CN]=播放/暂停
-Name[zh_TW]=播放/暫停
-Exec=$APP --toggle-pause
-
-[Desktop Action Stop]
-Name=Stop
-Name[zh_TW]=停止
-Exec=$APP --stop
-
-[Desktop Action Next]
-Name=Next
-Name[zh_TW]=下一首
-Exec=$APP --next
-
-[Desktop Action Prev]
-Name=Prev
-Name[zh_TW]=上一首
-Exec=$APP --prev" >> /usr/share/applications/AM-$APP.desktop
+# DESKTOP & ICON
+DESKTOP="https://raw.githubusercontent.com/DeaDBeeF-Player/deadbeef/master/deadbeef.desktop.in"
+ICON="https://raw.githubusercontent.com/DeaDBeeF-Player/deadbeef/master/icons/scalable/deadbeef.svg"
+wget "$DESKTOP" -O ./"$APP".desktop && wget "$ICON" -O ./deadbeef.svg
+sed -i "s#Exec=[^ ]*#Exec=$APP#g; s#Icon=.*#Icon=/opt/$APP/icons/$APP#g" ./"$APP".desktop
+mv ./"$APP".desktop /usr/share/applications/AM-"$APP".desktop && mv ./deadbeef.svg ./icons/"$APP" 2>/dev/null
 
 # CHANGE THE PERMISSIONS
 currentuser=$(who | awk '{print $1}')
