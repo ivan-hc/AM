@@ -13,9 +13,9 @@ else
 fi
 
 if [ -n "$XDG_DATA_HOME" ]; then
-        DATADIR="$XDG_DATA_HOME"
+	DATADIR="$XDG_DATA_HOME"
 else
-        DATADIR="$HOME/.local/share"
+	DATADIR="$HOME/.local/share"
 fi
 
 function _am(){
@@ -30,49 +30,48 @@ function _am(){
 	mkdir -p "$AMPATH"/modules
 }
 
+# Helper functions don't need to be defined inside the parent function
+function prompt_for_directory() {
+	local location
+	read -r -ep "Please, write the name or the path of your custom application's folder: $(echo -e '\n\n '$HOME'/')" location
+	echo "$location"
+}
+
+function validate_directory() {
+	local location=$1
+	if [[ "$location" == "" ]]; then
+		echo -e "--------------------------------------------------------------------------"
+		echo "OPERATION ABORTED!"
+		exit  1
+	elif [[ "$location" == ".local/bin" ]]; then
+		echo -e "--------------------------------------------------------------------------\n"
+		echo -e " 💀 ERROR, you can't install applications into a '$PATH'\n\n The directory ~/.local/bin and 'bin' folders are used for executables.\n\n Please, choose a different path and retry! \n"
+		echo -e "--------------------------------------------------------------------------\n"
+		exit  1
+		else
+		local location_appman="${location/#$HOME}"
+		location_appman="${location_appman// /-}"
+		location_appman="${location_appman#/}"
+		location_appman="${location_appman%/}"
+		echo "$location_appman"
+	fi
+}
+
+function initialize_appman() {
+	APPSDIR=$1
+	mkdir -p ~/"$APPSDIR"/appman/.cache
+	mkdir -p ~/"$APPSDIR"/appman/modules
+	mkdir -p ~/.local/bin "$DATADIR"/applications "$DATADIR"/icons
+	AMCLI="appman"
+	AMCLIPATH="$DIR/$AMCLI"
+	SUDOCOMMAND=""
+	COMPLETIONPATH="$HOME"
+	COMPLETIONFILE=".bash_completion"
+	APPSPATH="$HOME/$APPSDIR"
+	AMPATH="$HOME/$APPSDIR/$AMCLI"
+}
+
 function _appman() {
-	# Helper functions defined inside the parent function
-	function prompt_for_directory() {
-		local location
-		read -r -ep "Please, write the name or the path of your custom application's folder: $(echo -e '\n\n '$HOME'/')" location
-		echo "$location"
-	}
-
-	function validate_directory() {
-		local location=$1
-		if [[ "$location" == "" ]]; then
-			echo -e "--------------------------------------------------------------------------"
-			echo "OPERATION ABORTED!"
-			exit  1
-		elif [[ "$location" == ".local/bin" ]]; then
-			echo -e "--------------------------------------------------------------------------\n"
-			echo -e " 💀 ERROR, you can't install applications into a '$PATH'\n\n The directory ~/.local/bin and 'bin' folders are used for executables.\n\n Please, choose a different path and retry! \n"
-			echo -e "--------------------------------------------------------------------------\n"
-			exit  1
-			else
-			local location_appman="${location/#$HOME}"
-			location_appman="${location_appman// /-}"
-			location_appman="${location_appman#/}"
-			location_appman="${location_appman%/}"
-			echo "$location_appman"
-		fi
-	}
-
-	function initialize_appman() {
-		APPSDIR=$1
-		mkdir -p ~/"$APPSDIR"/appman/.cache
-		mkdir -p ~/"$APPSDIR"/appman/modules
-		mkdir -p ~/.local/bin "$DATADIR"/applications "$DATADIR"/icons
-		AMCLI="appman"
-		AMCLIPATH="$DIR/$AMCLI"
-		SUDOCOMMAND=""
-		COMPLETIONPATH="$HOME"
-		COMPLETIONFILE=".bash_completion"
-		APPSPATH="$HOME/$APPSDIR"
-		AMPATH="$HOME/$APPSDIR/$AMCLI"
-	}
-
-	# Main execution
 	if [[ ! -f "$APPMANCONFIG"/appman-config ]]; then
 		echo "--------------------------------------------------------------------------"
 		echo " >>> Thank you for choosing AppMan!"
@@ -86,7 +85,6 @@ function _appman() {
 		echo 'decide to change your choice in the future, first remove all the programs'
 		echo 'and then edit the ~/.config/appman/appman-config text file.'
 		echo -e "--------------------------------------------------------------------------\n"
-
 		local location=$(prompt_for_directory)
 		local validated_location=$(validate_directory "$location")
 		mkdir -p "$APPMANCONFIG"
@@ -164,8 +162,8 @@ done
 
 # Exit if any essential command is missing
 if [ -n "$missing_deps" ]; then
-  printf "\nMissing essential commands: %s\nInstall the above and try again\n\n" "${missing_deps[*]}"
-  exit 1
+	printf "\nMissing essential commands: %s\nInstall the above and try again\n\n" "${missing_deps[*]}"
+	exit 1
 fi
 
 rm -rf "$AMPATH/options"
@@ -210,9 +208,9 @@ cat <<-HEREDOC >> "$AMPATH/options"
 HEREDOC
 
 function _no_sudo(){
-	if [ -n "$SUDO_COMMAND" ]; then 
-		printf "\n WARNING: You don't need to use SUDO for this.\n\n"; 
-		exit 1; 
+	if [ -n "$SUDO_COMMAND" ]; then
+		printf "\n WARNING: You don't need to use SUDO for this.\n\n";
+		exit 1;
 	fi
 }
 
@@ -283,168 +281,128 @@ function _check_version(){
 	done
 }
 
-case "$1" in
-
-  '')	echo -e "\n USAGE: '$AMCLI [option]'\n        '$AMCLI [option] [argument]'\n\n Run the '$AMCLI -h' command to find out more\n";;
-
-  '-h'|'help')
-
+# All the options
+function use_help() {
 	if ! test -f "$AMPATH"/modules/help.am; then
 		wget -q "$AMREPO"/modules/help.am -O "$AMPATH"/modules/help.am
 		chmod a+x "$AMPATH"/modules/help.am
 	fi
-
 	source "$AMPATH"/modules/help.am
-  	;;
+}
 
-  '-a'|'about'|'-l'|'list'|'-q'|'query')
-
+function use_query_database () {
 	_no_sudo
-
 	[[ -f "$AMPATH"/modules/database.am ]] || {
 		wget -q "$AMREPO"/modules/database.am -O "$AMPATH"/modules/database.am
 		chmod a+x "$AMPATH"/modules/database.am
 	}
-
 	source "$AMPATH"/modules/database.am "$@"
-	;;
+}
 
-  '-b'|'backup'|'-o'|'overvrite'|'lock'|'unlock')
-
+function use_no_updates () {
 	_no_sudo
-
 	if ! test -f "$AMPATH"/modules/no-updates.am; then
 		wget -q "$AMREPO"/modules/no-updates.am -O "$AMPATH"/modules/no-updates.am
 		chmod a+x "$AMPATH"/modules/no-updates.am
 	fi
-
 	source "$AMPATH"/modules/no-updates.am "$@"
-	;;
+}
 
-  '-c'|'clean')
-
-  	_no_sudo
-
+function use_clean () {
+	_no_sudo
 	if ! test -f "$AMPATH"/modules/clean.am; then
 		wget -q "$AMREPO"/modules/clean.am -O "$AMPATH"/modules/clean.am
 		chmod a+x "$AMPATH"/modules/clean.am
 	fi
-
 	source "$AMPATH"/modules/clean.am
-	;;
+}
 
-  '-d'|'download')
-
+function use_download () {
 	_no_sudo
 	_online_check
-
 	if ! test -f "$AMPATH"/modules/download.am; then
 		wget -q "$AMREPO"/modules/download.am -O "$AMPATH"/modules/download.am
 		chmod a+x "$AMPATH"/modules/download.am
 	fi
-
 	source "$AMPATH"/modules/download.am "$@"
-	;;
+}
 
-  '-f'|'files')
-
-  	_no_sudo
-
+function use_files () {
+	_no_sudo
 	if ! test -f "$AMPATH"/modules/files.am; then
 		wget -q "$AMREPO"/modules/files.am -O "$AMPATH"/modules/files.am
 		chmod a+x "$AMPATH"/modules/files.am
 	fi
-
 	source "$AMPATH"/modules/files.am
-	;;
+}
 
-  '-H'|'--home'|'--firejail'|'--sandbox')
-
+function use_sandboxes () {
 	_no_sudo
-
 	if ! test -f "$AMPATH"/modules/sandboxes.am; then
 		wget -q "$AMREPO"/modules/sandboxes.am -O "$AMPATH"/modules/sandboxes.am
 		chmod a+x "$AMPATH"/modules/sandboxes.am
 	fi
-
 	source "$AMPATH"/modules/sandboxes.am "$@"
-	;;
+}
 
-  '-i'|'install')
-
+function use_install () {
 	_online_check
-
 	if ! test -f "$AMPATH"/modules/install.am; then
 		wget -q "$AMREPO"/modules/install.am -O "$AMPATH"/modules/install.am
 		chmod a+x "$AMPATH"/modules/install.am
 	fi
-
 	source "$AMPATH"/modules/install.am "$@"
-	;;
+}
 
-  '-R'|'-r'|'remove')
-
+function use_remove() {
 	if ! test -f "$AMPATH"/modules/remove.am; then
 		wget -q "$AMREPO"/modules/remove.am -O "$AMPATH"/modules/remove.am
 		chmod a+x "$AMPATH"/modules/remove.am
 	fi
-
 	source "$AMPATH"/modules/remove.am "$@"
-	;;
+}
 
-  '-s'|'sync')
-
+function use_sync() {
 	_no_sudo
 	_online_check
-
 	if ! test -f "$AMPATH"/modules/sync.am; then
 		wget -q "$AMREPO"/modules/sync.am -O "$AMPATH"/modules/sync.am
 		chmod a+x "$AMPATH"/modules/sync.am
 	fi
-
 	source "$AMPATH"/modules/sync.am "$@"
-	;;
+}
 
-  '-t'|'template')
-
+function use_template() {
 	_no_sudo
 	_online_check
-
 	if ! test -f "$AMPATH"/modules/template.am; then
 		wget -q "$AMREPO"/modules/template.am -O "$AMPATH"/modules/template.am
 		chmod a+x "$AMPATH"/modules/template.am
 	fi
-
 	source "$AMPATH"/modules/template.am "$@"
-	;;
+}
 
-  '-u'|'-U'|'update'|'--force-latest') 
-
+function use_update() {
 	_no_sudo
 	_online_check
-
 	if ! test -f "$AMPATH"/modules/update.am; then
 		wget -q "$AMREPO"/modules/update.am -O "$AMPATH"/modules/update.am
 		chmod a+x "$AMPATH"/modules/update.am
 	fi
-
 	source "$AMPATH"/modules/update.am "$@"
-	;;
+}
 
-  '--disable-completion')
-
-  	
-  	if [ "$(grep -o "$AMCLI" 0<"$COMPLETIONPATH/$COMPLETIONFILE" | head -1)" == "$AMCLI" ]; then
-  		grep -v 'complete -W "$(cat '"$AMPATH"'/list 2>/dev/null)" '"$AMCLI"'' "$COMPLETIONPATH/$COMPLETIONFILE" > "$AMPATH"/$COMPLETIONFILE.backup &&
+function use_disable-completion() {
+	if [ "$(grep -o "$AMCLI" 0<"$COMPLETIONPATH/$COMPLETIONFILE" | head -1)" == "$AMCLI" ]; then
+		grep -v 'complete -W "$(cat '"$AMPATH"'/list 2>/dev/null)" '"$AMCLI"'' "$COMPLETIONPATH/$COMPLETIONFILE" > "$AMPATH"/$COMPLETIONFILE.backup &&
 		$SUDOCOMMAND mv "$AMPATH"/$COMPLETIONFILE.backup "$COMPLETIONPATH/$COMPLETIONFILE"
 		echo " Completion disabled! "
 	else
 		echo " Completion script is NOT enabled! "
 	fi
-	;;
+}
 
-  '--enable-completion')
-
+function use_enable_completion() {
 	if [ "$(grep -o "$AMCLI" 0<"$COMPLETIONPATH/$COMPLETIONFILE" | head -1)" == "$AMCLI" ]; then
 		echo " Completion script is already enabled!"
 	else
@@ -463,9 +421,9 @@ case "$1" in
 	fi
 	if [ -f "$HOME/.zshrc" ] || [ -f "$ZDOTDIR/.zshrc" ]; then
 		if [ -n "$ZDOTDIR" ]; then
-    		ZSHDIR="$ZDOTDIR"
+			ZSHDIR="$ZDOTDIR"
 		else
-   	    	ZSHDIR="$HOME"
+			ZSHDIR="$HOME"
 		fi
 		if grep -q "source $ZSHDIR/$COMPLETIONFILE" "$ZSHDIR/.zshrc"; then
 			echo "Zsh completion already enabled!"
@@ -476,43 +434,34 @@ case "$1" in
 			echo -e "autoload bashcompinit\nbashcompinit\nsource $ZSHDIR/$COMPLETIONFILE" >> "$ZSHDIR/.zshrc"
 		fi
 	fi
-	;;
+}
 
-  '--launcher')
-
+function use_launcher() {
 	_no_sudo
-
 	if ! test -f "$AMPATH"/modules/launcher.am; then
 		wget -q "$AMREPO"/modules/launcher.am -O "$AMPATH"/modules/launcher.am
 		chmod a+x "$AMPATH"/modules/launcher.am
 	fi
-
 	source "$AMPATH"/modules/launcher.am "$@"
-	;;
+}
 
-  '--rollback')
-
+function use_rollback() {
 	_no_sudo
 	_online_check
-
 	if ! test -f "$AMPATH"/modules/rollback.am; then
 		wget -q "$AMREPO"/modules/rollback.am -O "$AMPATH"/modules/rollback.am
 		chmod a+x "$AMPATH"/modules/rollback.am
 	fi
-
 	source "$AMPATH"/modules/rollback.am "$@"
-	;;
+}
 
-  '--user'|'appman')
-
-  	_no_sudo
-  	_online_check
-
+function use_appman() {
+	_no_sudo
+	_online_check
 	if [ "$AMCLI" == appman ] 2>/dev/null; then
 		echo " This function only works for AM"
 		exit
 	fi
-
 	RED='\033[0;31m'; LightBlue='\033[1;34m'
 	if test -f /opt/am/appman; then
 		_appman
@@ -521,39 +470,52 @@ case "$1" in
 		_appman
 		wget -q "$AMREPO"/APP-MANAGER -O /opt/am/appman && chmod a+x /opt/am/appman
 		echo -e "Please run '${RED}alias am=/opt/am/appman\033[0m' to made 'AM' act exactly like 'AppMan' for\nthe current session or save this command to your '"'~/.bashrc'"' file to make the\nchanges permanent."
-  	fi
-  	;;
+	fi
+}
 
-  'neodb'|'apikey'|'newrepo')
-
+function use_dev_tools() {
 	_no_sudo
 	_online_check
-
 	if ! test -f "$AMPATH"/modules/devtools.am; then
 		wget -q "$AMREPO"/modules/devtools.am -O "$AMPATH"/modules/devtools.am
 		chmod a+x "$AMPATH"/modules/devtools.am
 	fi
-
 	source "$AMPATH"/modules/devtools.am "$@"
-	;;
+}
 
-  'nolibfuse')
-
+function use_nolibfuse() {
 	_no_sudo
 	_online_check
-
 	if ! test -f "$AMPATH"/modules/nolibfuse.am; then
 		wget -q "$AMREPO"/modules/nolibfuse.am -O "$AMPATH"/modules/nolibfuse.am
 		chmod a+x "$AMPATH"/modules/nolibfuse.am
 	fi
-
 	source "$AMPATH"/modules/nolibfuse.am "$@"
-	;;
+}
 
-  'version'|'-v'|'--version')
-
-  	echo "6.6";;
-
-  *) exec "$AMCLIPATH" ;;
-
+case "$1" in
+	'') echo -e "\n USAGE: '$AMCLI [option]'\n        '$AMCLI [option] [argument]'\n\n Run the '$AMCLI -h' command to find out more\n";;
+	'-h'|'help')                                     use_help;;
+	'-a'|'about'|'-l'|'list'|'-q'|'query')           use_query_database "$@";;
+	'-b'|'backup'|'-o'|'overvrite'|'lock'|'unlock')  use_no_updates "$@";;
+	'-c'|'clean')                                    use_clean;;
+	'-d'|'download')                                 use_download "$@";;
+	'-f'|'files')                                    use_files "$@";;
+	'-H'|'--home'|'--firejail'|'--sandbox')          use_sandboxes "$@";;
+	'-i'|'install')                                  use_install "$@";;
+	'-R'|'-r'|'remove')                              use_remove "$@";;
+	'-s'|'sync')                                     use_sync "$@";;
+	'-t'|'template')                                 use_template "$@";;
+	'-u'|'-U'|'update'|'--force-latest')             use_update "$@";;
+	'--disable-completion')                          use_disable-completion;;
+	'--enable-completion')                           use_enable_completion;;
+	'--launcher')                                    use_launcher "$@";;
+	'--rollback')                                    use_rollback "$@";;
+	'--user'|'appman')                               use_appman;;
+	'neodb'|'apikey'|'newrepo')                      use_dev_tools "$@";;
+	'nolibfuse')                                     use_nolibfuse "$@";;
+	'version'|'-v'|'--version')                      echo "6.6-1";;
+	*)                                               exec "$AMCLIPATH" ;;
 esac
+
+# vim:tabstop=4:shiftwidth=4:expandtab
