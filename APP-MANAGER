@@ -245,6 +245,44 @@ function _patch_bashrc_and_profile(){
 # Set header authorization if GitHub API key file exists
 [ -f "$AMPATH/ghapikey.txt" ] && HeaderAuthWithGITPAT=" --header \"Authorization: token $(<"$AMPATH/ghapikey.txt")\" "
 
+# Check version of the installed apps
+function _check_version(){
+	rm -f $AMPATH/.cache/files-args*
+	cd $APPSPATH &&
+	INSTALLED_APPS=$(find -name 'remove' -printf "%h\n" 2>/dev/null | du -sh -- * 2> /dev/null | sort -rh | sed 's@.*	@@')
+	for arg in $INSTALLED_APPS; do
+		 if test -f ./$arg/remove 2>/dev/null; then
+	 		if test -f ./$arg/version 2>/dev/null; then
+				APPVERSION=$(cat $APPSPATH/$arg/version | head -1 | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
+				if [ -z "$APPVERSION" ]; then
+					if test -f ./$arg/*.zsync 2>/dev/null; then
+						APPVERSION=$(strings -d ./$arg/*.zsync | grep -i $arg | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
+					else
+						APPVERSION=$(cat $APPSPATH/$arg/version | sed 's:.*/::' | tr '-' '\n' | grep -vi "appimage\|$arg\|$arch" | grep "[0-9]" | head -1)
+					fi
+				fi
+			elif test -f ./$arg/updater 2>/dev/null; then
+				APPVERSION=$($APPSPATH/$arg/updater -d $APPSPATH/$arg/$arg 2>/dev/null | grep -i $arg | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
+				if [ -z "$APPVERSION" ]; then
+					APPVERSION=$(grep -i "version=" $APPSPATH/$arg/* 2>/dev/null | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
+				fi
+			elif [ "$arg" == "$AMCLI" ]; then
+				APPVERSION=$($AMCLIPATH -v)
+			elif grep -qi "version=" ./$arg/* 2>/dev/null; then
+				APPVERSION=$(grep -i "version=" $APPSPATH/$arg/* 2>/dev/null | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
+			elif echo "$arg" | grep -q "ffwa-"; then
+				APPVERSION="WebApp"
+			else
+				APPVERSION="unknown"
+			fi
+			if [ -z "$APPVERSION" ]; then
+				APPVERSION="unknown"
+			fi
+			echo " ◆ $arg	|	$APPVERSION" >> $AMPATH/.cache/files-args
+		fi
+	done
+}
+
 case "$1" in
 
   '')	echo -e "\n USAGE: '$AMCLI [option]'\n        '$AMCLI [option] [argument]'\n\n Run the '$AMCLI -h' command to find out more\n";;
