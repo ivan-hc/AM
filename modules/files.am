@@ -14,11 +14,9 @@ function _files_header(){
 }
 
 function _files(){
-	rm -f $AMPATH/.cache/files-args
+	rm -f $AMPATH/.cache/files-args*
 	cd $APPSPATH &&
 	INSTALLED_APPS=$(find -name 'remove' -printf "%h\n" 2>/dev/null | du -sh -- * 2> /dev/null | sort -rh | sed 's@.*	@@')
-	echo "- APPNAME | VERSION | TYPE | SIZE " >> $AMPATH/.cache/files-args
-	echo "- ------- | ------- | ---- | ----" >> $AMPATH/.cache/files-args
 	for arg in $INSTALLED_APPS; do
 		 if test -f ./$arg/remove 2>/dev/null; then
 	 		if grep -q "usr/local/lib" ./$arg/remove; then
@@ -102,15 +100,26 @@ function _files(){
 			fi
 		fi
 	done
-	cat $AMPATH/.cache/files-args | column -t
-	echo ""
 }
 
 if [ "$2" = "--less" ]; then
 	cd "$APPSPATH" &&
 	find . -type f -name 'remove' 2>/dev/null | sed -r 's|/[^/]+$||' | sort | uniq | wc -l
 	exit 0
+elif [ "$2" = "--byname" ]; then
+	_files_header
+	_files
+	echo "- APPNAME | VERSION | TYPE | SIZE " >> $AMPATH/.cache/files-args-byname
+	echo "- ------- | ------- | ---- | ----" >> $AMPATH/.cache/files-args-byname
+	cat $AMPATH/.cache/files-args | sort >> $AMPATH/.cache/files-args-byname
+	cat $AMPATH/.cache/files-args-byname | column -t
+	echo ""
 else
 	_files_header
 	_files
+	echo "- APPNAME | VERSION | TYPE | SIZE " >> $AMPATH/.cache/files-args-bysize
+	echo "- ------- | ------- | ---- | ----" >> $AMPATH/.cache/files-args-bysize
+	cat $AMPATH/.cache/files-args >> $AMPATH/.cache/files-args-bysize
+	cat $AMPATH/.cache/files-args-bysize | column -t
+	echo ""
 fi
