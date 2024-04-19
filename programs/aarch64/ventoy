@@ -1,6 +1,7 @@
 #!/bin/sh
 
 APP=ventoy
+SITE="ventoy/Ventoy"
 
 # CREATE THE FOLDER
 mkdir /opt/$APP
@@ -11,15 +12,16 @@ echo '#!/bin/sh' >> /opt/$APP/remove
 echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
 chmod a+x /opt/$APP/remove
 
-# DOWNLOAD VENTOY
+# DOWNLOAD THE ARCHIVE
 mkdir tmp
 cd ./tmp
 
-download=$(wget -q https://api.github.com/repos/ventoy/Ventoy/releases/latest -O - | grep -E browser_download_url | awk -F '[""]' '{print $4}' | grep -E '/.*/.*/.*linux.tar.gz' | head -1)
-wget $download
-tar xf ./*.tar.gz
+version=$(wget -q https://api.github.com/repos/ventoy/Ventoy/releases -O - | grep browser_download_url | grep -i linux.tar.gz  | cut -d '"' -f 4 | head -1)
+wget $version
+echo "$version" >> /opt/$APP/version
+tar fx ./*; rm -R -f ./*tar*
 cd ..
-mv ./tmp/ventoy-*/* ./
+mv --backup=t ./tmp/ventoy-*/* ./
 rm -R -f ./tmp
 
 # SCRIPT TO LAUNCH THE PROGRAM
@@ -27,8 +29,36 @@ echo '#!/bin/sh
 exec /opt/'$APP'/VentoyGUI.aarch64' >> /usr/local/bin/$APP
 chmod a+x /usr/local/bin/$APP
 
+# SCRIPT TO UPDATE THE PROGRAM
+cat >> /opt/$APP/AM-updater << 'EOF'
+#!/usr/bin/env bash
+APP=ventoy
+version0=$(cat /opt/$APP/version)
+version=$(wget -q https://api.github.com/repos/ventoy/Ventoy/releases -O - | grep browser_download_url | grep -i linux.tar.gz  | cut -d '"' -f 4 | head -1)
+if [ $version = $version0 ]; then
+	echo "Update not needed!"
+else
+	notify-send "A new version of $APP is available, please wait"
+	mkdir /opt/$APP/tmp
+	cd /opt/$APP/tmp
+	wget $version
+	tar fx ./*; rm -R -f ./*tar*
+	cd ..
+	mv --backup=t ./tmp/ventoy-*/* ./
+	rm ./version
+	echo $version >> ./version
+	rm -R -f ./tmp ./*~
+	notify-send "$APP is updated!"
+fi
+EOF
+chmod a+x /opt/$APP/AM-updater
+
+# ICON
+mkdir icons
+wget https://www.ventoy.net/static/img/ventoy.png -O ./icons/$APP 2> /dev/null
+
 # LAUNCHER
-rm /usr/share/applications/AM-$APP.desktop
+rm -f /usr/share/applications/AM-$APP.desktop
 echo "[Desktop Entry]
 Name=Ventoy
 Comment=Open source tool to create bootable USB drive for ISO/WIM/IMG/VHD(x)/EFI files. 
@@ -37,17 +67,6 @@ Icon=/opt/$APP/icons/$APP
 Type=Application
 Categories=System;" >> /usr/share/applications/AM-$APP.desktop
 
-# ICON
-mkdir icons
-wget https://www.ventoy.net/static/img/ventoy.png -O ./icons/$APP
-
 # CHANGE THE PERMISSIONS
 currentuser=$(who | awk '{print $1}')
 chown -R $currentuser /opt/$APP
-
-# MESSAGE
-echo "
-
-	Ventoy is provided by https://www.ventoy.net
-	
-"
