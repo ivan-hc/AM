@@ -1,118 +1,67 @@
 #!/bin/sh
 
 APP=btop
+REPO="aristocratos/btop"
 
-# CREATING THE FOLDER
-mkdir /opt/$APP
-cd /opt/$APP;
+# CREATE DIRECTORIES
+if [ -z "$APP" ]; then exit 1; fi
+mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
 
 # ADD THE REMOVER
-echo '#!/bin/sh' >> /opt/$APP/remove
-echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
-chmod a+x /opt/$APP/remove
+echo "#!/bin/sh
+rm -f /usr/share/applications/AM-$APP.desktop /usr/local/bin/$APP
+rm -R -f /opt/$APP" >> "/opt/$APP/remove"
+chmod a+x "/opt/$APP/remove"
 
-mkdir tmp;
-cd tmp;
+# DOWNLOAD AND PREPARE THE APP
+# $version is also used for updates
 
-# DOWNLOADING THE DEPENDENCIES
-wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-aarch64.AppImage -O appimagetool
-chmod a+x ./appimagetool
-
-# CREATING THE APPIMAGE
-mkdir $APP.AppDir
-cd ./$APP.AppDir
-
-v=$(wget -q https://api.github.com/repos/aristocratos/btop/releases/latest -O - | grep -E tag_name | awk -F '[""]' '{print $4}')
-wget https://github.com/aristocratos/btop/releases/download/$v/btop-aarch64-linux-musl.tbz
-tar xf ./*.tbz;
-rm ./*.tbz;
-cd ..;
-touch ./$APP.AppDir/$APP.png;
-echo "[Desktop Entry]
-Name=btop
-Exec=btop
-Icon=btop
-Type=Application
-Categories=Utility;" >> ./$APP.AppDir/$APP.desktop;
-
-echo '#!/bin/sh
-SELF=$(readlink -f "$0")
-HERE=${SELF%/*}
-export PATH="${HERE}/bin/:${HERE}/themes/${PATH:+:$PATH}"
-EXEC="${HERE}/bin/btop"
-EXEC=$(grep -e '^Exec=.*' "${HERE}"/*.desktop | head -n 1 | cut -d "=" -f 2 | cut -d " " -f 1)
-exec "${EXEC}" "$@"' >> ./$APP.AppDir/AppRun;
-chmod a+x ./$APP.AppDir/AppRun;
-cp ./$APP.AppDir/AppRun /opt/$APP/AppRun
-
-ARCH=aarch64 ./appimagetool -n ./$APP.AppDir;
-
-echo "$v" >> /opt/$APP/version
-
-cd ..;
-mv ./tmp/*.AppImage ./$APP;
-chmod a+x ./$APP
-
+version=$(wget -q https://api.github.com/repos/"$REPO"/releases/latest -O - | grep browser_download_url | grep aarch64 | cut -d '"' -f 4 | head -1)
+wget "$version"
+tar xf ./*.tbz
+cd ..
+echo "$version" >> ./version
+mv ./tmp/*/* ./
+ln -s ./bin/btop ./"$APP"
+chmod a+x ./bin/btop
 rm -R -f ./tmp
 
 # LINK
-ln -s /opt/$APP/$APP /usr/local/bin/$APP
+ln -s "/opt/$APP/$APP" "/usr/local/bin/$APP"
 
 # SCRIPT TO UPDATE THE PROGRAM
-echo '#!/bin/sh
-APP='$APP'
+cat >> /opt/$APP/AM-updater << 'EOF'
+#!/bin/sh
+APP=btop
+REPO="aristocratos/btop"
 version0=$(cat /opt/$APP/version)
-url=https://api.github.com/repos/aristocratos/btop/releases/latest
-if curl -L -s $url | grep -ioF "$version0"; then
-  echo "Update not needed!".
+version=$(wget -q https://api.github.com/repos/"$REPO"/releases/latest -O - | grep browser_download_url | grep aarch64 | cut -d '"' -f 4 | head -1)
+if [ "$version" = "$version0" ]; then
+	echo "Update not needed!" || exit 0
 else
-  notify-send "A new version of $APP is available, please wait"
-  mkdir /opt/$APP/tmp
-  cd /opt/$APP/tmp
-  wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-aarch64.AppImage -O appimagetool
-chmod a+x ./appimagetool
-mkdir $APP.AppDir
-cd ./$APP.AppDir' >> /opt/$APP/AM-updater
-########################################################################################
+	notify-send "A new version of $APP is available, please wait"
+	mkdir /opt/$APP/tmp && cd /opt/$APP/tmp || exit 1
+	wget "$version"
+	tar xf ./*.tbz
+	cd ..
+	rm ./version
+  	echo "$version" >> ./version
+  	mv --backup=t ./tmp/*/* ./
+	chmod a+x ./bin/btop
+  	rm -R -f ./tmp ./*~
+	notify-send "$APP is updated!"
+fi
+EOF
+chmod a+x "/opt/$APP/AM-updater"
 
-function1='$(wget -q https://api.github.com/repos/aristocratos/btop/releases/latest -O -'
-part0='{print $4}'
-part1='[""]'
-function2="grep -E tag_name | awk -F '$part1' '$part0')"
-function3='$(ls /opt/$APP/tmp)'
-function4='wget https://github.com/aristocratos/btop/releases/download/$v/btop-aarch64-linux-musl.tbz'
+# LAUNCHER & ICON
+mv ./*.desktop /usr/share/applications/AM-"$APP".desktop && mv ./*mg/*.svg ./icons/btop 2>/dev/null #btop already ships the files
 
-echo "  v=$function1 | $function2
-  $function4" >> /opt/$APP/AM-updater
-
-########################################################################################
-echo 'tar xf ./*.tbz;
-rm ./*.tbz;
-cd ..;
-touch ./$APP.AppDir/$APP.png;
-echo "[Desktop Entry]
-Name=btop
-Exec=btop
-Icon=btop
-Type=Application
-Categories=Utility;" >> ./$APP.AppDir/$APP.desktop;
-cp /opt/$APP/AppRun ./$APP.AppDir/AppRun
-ARCH=aarch64 ./appimagetool -n ./$APP.AppDir;
-if test -f ./*mage; then rm -R -f /opt/$APP/version
-  fi
-echo "$v" >> /opt/$APP/version
-cd ..;
-mv ./tmp/*.AppImage ./$APP;
-chmod a+x ./$APP
-rm -R -f ./tmp
-fi' >> /opt/$APP/AM-updater
-chmod a+x /opt/$APP/AM-updater
-
+# CHANGE THE PERMISSIONS
 currentuser=$(who | awk '{print $1}')
-chown -R $currentuser /opt/$APP
+chown -R "$currentuser" "/opt/$APP"
 
+# MESSAGE
 echo "
-
- Btop is provided by https://github.com/aristocratos/btop
-  
-";
+ $APP is provided by https://github.com/$(echo $REPO | sed 's:/[^/]*$::')
+"
