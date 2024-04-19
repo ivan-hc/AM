@@ -29,8 +29,8 @@ case "$1" in
 	while [ -n "$1" ]; do
 		case $2 in
 		''|'--apps') 
+			rm -R -f $AMPATH/.cache/*
 			function _list_updatable_apps() {
-				rm -R -f $AMPATH/.cache/*
 				_check_version
 				cd $APPSPATH && find -name 'AM-updater' -printf " %h\n" 2>/dev/null | sort -u | xargs -n 1 basename 2>/dev/null > $AMPATH/.cache/updatable-args
 				ARGS=$(cat $AMPATH/.cache/updatable-args)
@@ -63,15 +63,24 @@ case "$1" in
 
 			echo "-----------------------------------------------------------------------------"
 
+			mv $AMPATH/.cache/updatable-args-list $AMPATH/.cache/updatable-args-list-old
 			_list_updatable_apps
+			OLDVER="$AMPATH/.cache/updatable-args-list-old"
+			NEWVER="$AMPATH/.cache/updatable-args-list"
+			if cmp --silent -- "$NEWVER" "$OLDVER"; then
+				echo ' Nothing to do here!'
+			else
+				echo -e " The following apps have been updated:\n"
+				diff --new-line-format="" --unchanged-line-format="" "$NEWVER" "$OLDVER"
+				echo ""
+			fi
 
-			rm -R -f $AMPATH/.cache/* $APPSPATH/*/tmp
+			rm -R -f $APPSPATH/*/tmp
 			if [ -z "$2" ]; then
 				echo "-----------------------------------------------------------------------------"
 				$AMCLIPATH -s
 			fi
-			echo -e "-----------------------------------------------------------------------------\n >> END OF ALL PROCESSES << \n-----------------------------------------------------------------------------\n"; sleep 0.2
-			echo -e ' ALL THE PROGRAMS MANAGED BY "'"$(echo $AMCLI | tr a-z A-Z)"'" ARE UPDATED! \n\n-----------------------------------------------------------------------------'
+			echo -e "-----------------------------------------------------------------------------\n >> END OF ALL PROCESSES << \n-----------------------------------------------------------------------------"; sleep 0.2
 			exit;;
 		*) 
 			if test -f $APPSPATH/$2/AM-updater; then
