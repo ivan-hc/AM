@@ -29,18 +29,32 @@ case "$1" in
 	while [ -n "$1" ]; do
 		case $2 in
 		''|'--apps') 
+			function _list_updatable_apps() {
+				rm -R -f $AMPATH/.cache/*
+				_check_version
+				cd $APPSPATH && find -name 'AM-updater' -printf " %h\n" 2>/dev/null | sort -u | xargs -n 1 basename 2>/dev/null > $AMPATH/.cache/updatable-args
+				ARGS=$(cat $AMPATH/.cache/updatable-args)
+				for arg in $ARGS; do
+					app_version=$(cat "$AMPATH/.cache/version-args" | grep -w " ◆ $arg	|" | sed 's:.*|	::')
+					echo " ◆ $arg $app_version" >> $AMPATH/.cache/updatable-args-list
+				done
+			}
+
+			_list_updatable_apps
+
 			echo "-----------------------------------------------------------------------------"
 			echo -e ' "'"$(echo $AMCLI | tr a-z A-Z)"'" CAN MANAGE UPDATES FOR THE FOLLOWING PROGRAMS:\n'
-			cd $APPSPATH && find -name 'AM-updater' -printf " %h\n" 2>/dev/null | sort -u | xargs -n 1 basename 2>/dev/null | sed 's/^/ ◆ /'
-			echo -e '\n All programs with fixed versions or self-updatable are excluded'; sleep 0.1
+			cat "$AMPATH/.cache/updatable-args-list"
+			echo -e '\n All self-updatable programs are excluded'; sleep 0.1
 			echo "-----------------------------------------------------------------------------"
 			echo -e " >> START OF ALL PROCESSES <<\n-----------------------------------------------------------------------------"
 
 			for f in $APPSPATH/*/; do 
 				cd $f 2>/dev/null && 
 				if test -f ./AM-updater; then
-					start=$(date +%s) && sh -x ./AM-updater > /dev/null 2>&1 | echo -ne ' Updating "'"$(printf '%s\n' "${PWD##*/}")"'"...\r' && end=$(date +%s) &&
-					echo -e " ◆ $(echo "$(printf '%s\n' "${PWD##*/}")" | tr a-z A-Z) is updated, $(($end-$start)) seconds elapsed!" &
+					APPNAME=$(echo "$(printf '%s\n' "${PWD##*/}")")
+					start=$(date +%s) && sh -x ./AM-updater > /dev/null 2>&1 | echo -ne ' Updating "'"$APPNAME"'"...\r' && end=$(date +%s) &&
+					echo -e " ◆ $(echo "$APPNAME" | tr a-z A-Z) is updated, $(($end-$start)) seconds elapsed!" &
 				else
 					echo ""  > /dev/null 2>&1
 				fi
