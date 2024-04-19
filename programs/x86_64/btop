@@ -1,32 +1,33 @@
 #!/bin/sh
 
 APP=btop
+REPO="aristocratos/btop"
 
-# CREATING THE FOLDER
-mkdir /opt/$APP
-cd /opt/$APP;
+# CREATE DIRECTORIES
+if [ -z "$APP" ]; then exit 1; fi
+mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
 
 # ADD THE REMOVER
-echo '#!/bin/sh' >> /opt/$APP/remove
-echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
-chmod a+x /opt/$APP/remove
+echo "#!/bin/sh
+rm -f /usr/share/applications/AM-$APP.desktop /usr/local/bin/$APP
+rm -R -f /opt/$APP" >> "/opt/$APP/remove"
+chmod a+x "/opt/$APP/remove"
 
-mkdir tmp;
-cd tmp;
+# DOWNLOAD AND PREPARE THE APP
+# $version is also used for updates
 
-v=$(wget -q https://api.github.com/repos/aristocratos/btop/releases/latest -O - | grep -E tag_name | awk -F '[""]' '{print $4}')
-wget https://github.com/aristocratos/btop/releases/download/$v/btop-x86_64-linux-musl.tbz
-tar xf ./*.tbz;
-rm ./*.tbz;
-cd ..;
-echo "$v" >> ./version
-mv ./tmp/* ./;
-ln -s ./bin/btop ./btop
+version=$(wget -q https://api.github.com/repos/"$REPO"/releases/latest -O - | grep browser_download_url | grep x86_64 | cut -d '"' -f 4 | head -1)
+wget "$version"
+tar xf ./*.tbz
+cd ..
+echo "$version" >> ./version
+mv ./tmp/*/* ./
+ln -s ./bin/btop ./"$APP"
 
 rm -R -f ./tmp
 
 # LINK
-ln -s /opt/$APP/$APP /usr/local/bin/$APP
+ln -s "/opt/$APP/$APP" "/usr/local/bin/$APP"
 
 # SCRIPT TO UPDATE THE PROGRAM
 cat >> /opt/$APP/AM-updater << 'EOF'
@@ -53,13 +54,16 @@ else
   notify-send "$APP is updated!"
 fi
 EOF
-chmod a+x /opt/$APP/AM-updater
+chmod a+x "/opt/$APP/AM-updater"
 
+# LAUNCHER & ICON
+mv ./*.desktop /usr/share/applications/AM-"$APP".desktop && mv ./*mg/*.svg ./icons/btop 2>/dev/null #btop already ships the files
+
+# CHANGE THE PERMISSIONS
 currentuser=$(who | awk '{print $1}')
-chown -R $currentuser /opt/$APP
+chown -R "$currentuser" "/opt/$APP"
+
 # MESSAGE
 echo "
-
- Btop is provided by https://github.com/aristocratos/btop
-  
-";
+ $APP is provided by https://github.com/$(echo $REPO | sed 's:/[^/]*$::')
+"
