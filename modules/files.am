@@ -17,6 +17,7 @@ function _files(){
 	rm -f $AMPATH/.cache/files-args*
 	cd $APPSPATH &&
 	INSTALLED_APPS=$(find -name 'remove' -printf "%h\n" 2>/dev/null | du -sh -- * 2> /dev/null | sort -rh | sed 's@.*	@@')
+	_check_version
 	for arg in $INSTALLED_APPS; do
 		 if test -f ./$arg/remove 2>/dev/null; then
 	 		if grep -q "usr/local/lib" ./$arg/remove; then
@@ -25,33 +26,8 @@ function _files(){
 	 		else
 	 			SIZE=$(du -sh -- $arg | cut -f1 -d"	")
 	 		fi
-	 		if test -f ./$arg/version 2>/dev/null; then
-				APPVERSION=$(cat $APPSPATH/$arg/version | head -1 | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
-				if [ -z "$APPVERSION" ]; then
-					if test -f ./$arg/*.zsync 2>/dev/null; then
-						APPVERSION=$(strings -d ./$arg/*.zsync | grep -i $arg | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
-					else
-						APPVERSION=$(cat $APPSPATH/$arg/version | sed 's:.*/::' | tr '-' '\n' | grep -vi "appimage\|$arg\|$arch" | grep "[0-9]" | head -1)
-					fi
-				fi
-			elif test -f ./$arg/updater 2>/dev/null; then
-				APPVERSION=$($APPSPATH/$arg/updater -d $APPSPATH/$arg/$arg 2>/dev/null | grep -i $arg | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
-				if [ -z "$APPVERSION" ]; then
-					APPVERSION=$(grep -i "version=" $APPSPATH/$arg/* 2>/dev/null | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
-				fi
-			elif [ "$arg" == "$AMCLI" ]; then
-				APPVERSION=$($AMCLIPATH -v)
-			elif grep -qi "version=" ./$arg/* 2>/dev/null; then
-				APPVERSION=$(grep -i "version=" $APPSPATH/$arg/* 2>/dev/null | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
-			elif echo "$arg" | grep -q "ffwa-"; then
-				APPVERSION="WebApp"
-			else
-				APPVERSION="unknown"
-			fi
-			if [ -z "$APPVERSION" ]; then
-				APPVERSION="unknown"
-			fi
-	 		if [ -z "$(strings -d "./$arg/$arg" 2>/dev/null | grep -F 'if you run it with the --appimage-extract option')" ] 2>/dev/null; then
+	 		APPVERSION=$(cat $AMPATH/.cache/version-args | grep -w " ◆ $arg	|" | sed 's:.*|	::')
+			if [ -z "$(strings -d "./$arg/$arg" 2>/dev/null | grep -F 'if you run it with the --appimage-extract option')" ] 2>/dev/null; then
 				string=$(strings -d "./$arg/$arg" 2>/dev/null | head -1 )
 				if grep -q "usr/local/lib" ./$arg/remove; then
 					echo " ◆ $arg	|	$APPVERSION	|	library	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
