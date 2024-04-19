@@ -44,7 +44,11 @@ case "$1" in
 
 			echo "-----------------------------------------------------------------------------"
 			echo -e ' "'"$(echo $AMCLI | tr a-z A-Z)"'" CAN MANAGE UPDATES FOR THE FOLLOWING PROGRAMS:\n'
-			cat "$AMPATH/.cache/updatable-args-list"
+			if test -f "$AMPATH/.cache/updatable-args-list"; then
+				cat "$AMPATH/.cache/updatable-args-list"
+			else
+				echo " None"
+			fi
 			echo -e '\n All self-updatable programs are excluded'; sleep 0.1
 			echo "-----------------------------------------------------------------------------"
 			echo -e " >> START OF ALL PROCESSES <<\n-----------------------------------------------------------------------------"
@@ -63,16 +67,20 @@ case "$1" in
 
 			echo "-----------------------------------------------------------------------------"
 
-			mv $AMPATH/.cache/updatable-args-list $AMPATH/.cache/updatable-args-list-old
-			_list_updatable_apps
-			OLDVER="$AMPATH/.cache/updatable-args-list-old"
-			NEWVER="$AMPATH/.cache/updatable-args-list"
-			if cmp --silent -- "$NEWVER" "$OLDVER"; then
-				echo ' Nothing to do here!'
+			if test -f $AMPATH/.cache/updatable-args-list; then
+				mv $AMPATH/.cache/updatable-args-list $AMPATH/.cache/updatable-args-list-old
+				_list_updatable_apps
+				OLDVER="$AMPATH/.cache/updatable-args-list-old"
+				NEWVER="$AMPATH/.cache/updatable-args-list"
+				if cmp --silent -- "$NEWVER" "$OLDVER"; then
+					echo ' Nothing to do here!'
+				else
+					echo -e " The following apps have been updated:\n"
+					diff --new-line-format="" --unchanged-line-format="" "$NEWVER" "$OLDVER"
+					echo ""
+				fi
 			else
-				echo -e " The following apps have been updated:\n"
-				diff --new-line-format="" --unchanged-line-format="" "$NEWVER" "$OLDVER"
-				echo ""
+				echo ' No apps to update here!'
 			fi
 
 			rm -R -f $APPSPATH/*/tmp
