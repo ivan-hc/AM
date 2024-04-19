@@ -1,32 +1,59 @@
 #!/bin/sh
 
 APP=platform-tools
+SITE="https://developer.android.com"
 
+# CREATE THE FOLDER
 mkdir /opt/$APP
 cd /opt/$APP
 
+# ADD THE REMOVER
 echo '#!/bin/sh
 rm -R -f /opt/platform-tools
-cd /usr/local/bin && find . -xtype l -exec rm {} \;' >> /opt/$APP/remove;
-chmod a+x /opt/$APP/remove;
+cd /usr/local/bin && find . -xtype l -exec rm {} \;' >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
 
+# DOWNLOAD THE ARCHIVE
 mkdir tmp
-cd tmp
+cd ./tmp
+
+version=$(wget -q https://developer.android.com/tools/releases/platform-tools -O - | grep -Po '(?<=data-text=")[^"]*' | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
 wget https://dl.google.com/android/repository/$APP-latest-linux.zip
-unzip -qq ./platform-tools-latest-linux.zip
+echo "$version" >> /opt/$APP/version
+unzip -qq ./*; rm -R -f ./*.zip
 cd ..
-mv ./tmp/$APP/* ./
+mv --backup=t ./tmp/$APP/* ./
 rm -R -f ./tmp
 
+# LINK
 for f in /opt/$APP/*; do
 	ln -s "$f" /usr/local/bin/"$(basename -- "$f")"
 done
 
+# SCRIPT TO UPDATE THE PROGRAM
+cat >> /opt/$APP/AM-updater << 'EOF'
+#!/usr/bin/env bash
+APP=platform-tools
+version0=$(cat /opt/$APP/version)
+version=$(wget -q https://developer.android.com/tools/releases/platform-tools -O - | grep -Po '(?<=data-text=")[^"]*' | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
+if [ $version = $version0 ]; then
+	echo "Update not needed!"
+else
+	notify-send "A new version of $APP is available, please wait"
+	mkdir /opt/$APP/tmp
+	cd /opt/$APP/tmp
+	wget https://dl.google.com/android/repository/$APP-latest-linux.zip
+	unzip -qq ./*; rm -R -f ./*.zip
+	cd ..
+	mv --backup=t ./tmp/$APP/* ./
+	rm ./version
+	echo $version >> ./version
+	rm -R -f ./tmp ./*~
+	notify-send "$APP is updated!"
+fi
+EOF
+chmod a+x /opt/$APP/AM-updater
+
+# CHANGE THE PERMISSIONS
 currentuser=$(who | awk '{print $1}')
 chown -R $currentuser /opt/$APP
-# MESSAGE
-echo "
-
-  The full Android-SDK Platform Tools suite has been installed!
-  
-";
