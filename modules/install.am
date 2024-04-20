@@ -98,26 +98,7 @@ while [ -n "$1" ]; do
 
 					function _install_common_patch(){
 						if ! grep -q -- "--debug" $AMPATH/.cache/install-args; then
-							# Patch "wget" to have a progress bar and fix errors when applying patches
-							sed -i "s#wget #wget -q --no-verbose --show-progress --progress=dot -e dotbytes=1M #g" ./$arg
-							sed -i 's#$(wget -q --no-verbose --show-progress --progress=dot -e dotbytes=1M #$(wget -q #g' ./$arg
-							sed -i "s# -q -q # -q #g" ./$arg
-							# Silence "mv" errors on .desktop files
-							sed -i 's#desktop ./$APP.desktop#desktop ./$APP.desktop 2>/dev/null#g' ./$arg
-							sed -i 's#desktop ./"$APP".desktop#desktop ./"$APP".desktop 2>/dev/null#g' ./$arg
-							sed -i 's#applications/AM-$APP.desktop#applications/AM-$APP.desktop 2>/dev/null#g' ./$arg
-							sed -i 's#applications/AM-"$APP".desktop#applications/AM-"$APP".desktop 2>/dev/null#g' ./$arg
-							# Silence "rm" errors by adding "-f"
-							sed -i 's#^rm /#rm -f /#g' ./$arg; sed -i 's#^rm ./#rm -f ./#g' ./$arg
-							# Silence "mv" errors on .zsync files
-							sed -i 's#*zsync ./$APP.zsync#*zsync ./$APP.zsync 2>/dev/null#g' ./$arg
-							# Trying to silence the damn "--appimage-extract" outputs
-							if grep -q "squashfs-root" ./$arg; then
-								sed -i 's#1>/dev/null \&&#1>/dev/null;#g' ./$arg
-								sed -i 's#1>/dev/null#1>/dev/null 2>/dev/null | grep -v "squashfs-root"#g' ./$arg
-								sed -i 's#mv $(./$APP --appimage-extract \*.png) #./$APP --appimage-extract \*.png 2>\&1 | grep -v "squashfs-root"; mv ./squashfs-root/*$app* #g' ./$arg
-								sed -i 's#mv $(./$APP --appimage-extract \*.svg) #./$APP --appimage-extract \*.svg 2>\&1 | grep -v "squashfs-root"; mv ./squashfs-root/*$app* #g' ./$arg
-							fi
+							sed -i "s#wget #wget -q --no-verbose --show-progress --progress=dot:mega #g" ./$arg; sed -i 's#$(wget -q --no-verbose --show-progress --progress=dot:mega #$(wget -q #g' ./$arg; sed -i "s# -q -q # -q #g" ./$arg
 						fi
 						sed -i 's/currentuser=/#currentuser=/g' ./$arg
 						sed -i 's/chown -R $currentuser/#chown -R $currentuser/g' ./$arg
@@ -163,7 +144,11 @@ while [ -n "$1" ]; do
 						esac	
 					fi
 
-					$SUDOCOMMAND ./$arg
+					if grep -q -- "--debug" $AMPATH/.cache/install-args; then
+						$SUDOCOMMAND ./$arg
+					else
+						$SUDOCOMMAND ./$arg 2>&1 | grep -v ": \|wget --help\|squashfs-root"
+					fi
 
 					echo -ne " Configuring $(echo '"'$arg'"' | tr a-z A-Z)...\r" && echo -ne "                                                                          \r" &&
 					$SUDOCOMMAND chown -R $currentuser $APPSPATH/$(cd $APPSPATH && ls -td * | head -1) 2> /dev/null
