@@ -105,14 +105,21 @@ while [ -n "$1" ]; do
 							# Silence "mv" errors on .desktop files
 							sed -i 's#desktop ./$APP.desktop#desktop ./$APP.desktop 2>/dev/null#g' ./$arg
 							sed -i 's#desktop ./"$APP".desktop#desktop ./"$APP".desktop 2>/dev/null#g' ./$arg
-							# Silence "mv" errors on .zsync files
-							sed -i 's#*zsync ./$APP.zsync#*zsync ./$APP.zsync 2>/dev/null#g' ./$arg
-							# Trying to silence the damn "--appimage-extract" outputs
-							sed -i 's#1>/dev/null#1>/dev/null 2>/dev/null#g' ./$arg
-							sed -i 's#mv $(./$APP --appimage-extract \*.png) #./$APP --appimage-extract \*.png 2>&1; mv ./squashfs-root/*$app* #g' ./$arg
-							sed -i 's#mv $(./$APP --appimage-extract \*.svg) #./$APP --appimage-extract \*.svg 2>&1; mv ./squashfs-root/*$app* #g' ./$arg
+							sed -i 's#applications/AM-$APP.desktop#applications/AM-$APP.desktop 2>/dev/null#g' ./$arg
+							sed -i 's#applications/AM-"$APP".desktop#applications/AM-"$APP".desktop 2>/dev/null#g' ./$arg
 							# Silence "rm" errors by adding "-f"
 							sed -i 's#^rm /#rm -f /#g' ./$arg; sed -i 's#^rm ./#rm -f ./#g' ./$arg
+							# Silence "mv" errors on .zsync files
+							sed -i 's#*zsync ./$APP.zsync#*zsync ./$APP.zsync 2>/dev/null#g' ./$arg
+							# Silence "sed" errors on .desktop files
+							sed -i 's#g" ./"$APP".desktop#*g" ./"$APP".desktop 2>/dev/null#g' ./$arg
+							sed -i 's#g" ./$APP.desktop#*g" ./$APP.desktop 2>/dev/null#g' ./$arg
+							# Trying to silence the damn "--appimage-extract" outputs
+							if grep -q "squashfs-root" ./$arg; then
+								sed -i 's#1>/dev/null#1>/dev/null 2>/dev/null | grep -v "squashfs-root"#g' ./$arg
+								sed -i 's#mv $(./$APP --appimage-extract \*.png) #./$APP --appimage-extract \*.png 2>\&1 | grep -v "squashfs-root"; mv ./squashfs-root/*$app* #g' ./$arg
+								sed -i 's#mv $(./$APP --appimage-extract \*.svg) #./$APP --appimage-extract \*.svg 2>&1 | grep -v "squashfs-root"; mv ./squashfs-root/*$app* #g' ./$arg
+							fi
 						fi
 						sed -i 's/currentuser=/#currentuser=/g' ./$arg
 						sed -i 's/chown -R $currentuser/#chown -R $currentuser/g' ./$arg
