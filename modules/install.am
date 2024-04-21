@@ -99,27 +99,19 @@ while [ -n "$1" ]; do
 					function _install_common_patch(){
 						if ! grep -q -- "--debug" $AMPATH/.cache/install-args; then
 							# Patch "wget" to have a progress bar and fix errors when applying patches
-							sed -i "s#wget #wget -q --no-verbose --show-progress --progress=dot -e dotbytes=1M #g" ./$arg
-							sed -i 's#$(wget -q --no-verbose --show-progress --progress=dot -e dotbytes=1M #$(wget -q #g' ./$arg
+							sed -i "s#wget #wget -q --no-verbose --show-progress --progress=dot -e dotbytes=500K #g" ./$arg
+							sed -i 's#$(wget -q --no-verbose --show-progress --progress=dot -e dotbytes=500K #$(wget -q #g' ./$arg
 							sed -i "s# -q -q # -q #g" ./$arg
-							# Silence "mv" errors on .desktop files
-							sed -i 's#desktop ./$APP.desktop#desktop ./$APP.desktop 2>/dev/null#g' ./$arg
-							sed -i 's#desktop ./"$APP".desktop#desktop ./"$APP".desktop 2>/dev/null#g' ./$arg
-							sed -i 's#applications/AM-$APP.desktop#applications/AM-$APP.desktop 2>/dev/null#g' ./$arg
-							sed -i 's#applications/AM-"$APP".desktop#applications/AM-"$APP".desktop 2>/dev/null#g' ./$arg
 							# Silence "rm" errors by adding "-f"
 							sed -i 's#^rm /#rm -f /#g' ./$arg; sed -i 's#^rm ./#rm -f ./#g' ./$arg
-							# Silence "mv" errors on .zsync files
-							sed -i 's#*zsync ./$APP.zsync#*zsync ./$APP.zsync 2>/dev/null#g' ./$arg
-							# Silence "sed" errors
-							sed -i '#^sed#s#$# grep -v "sed:"#' ./$arg
-							# Trying to silence the damn "--appimage-extract" outputs
-							if grep -q "squashfs-root" ./$arg; then
-								sed -i 's#1>/dev/null \&&#1>/dev/null;#g' ./$arg
-								sed -i 's#1>/dev/null#1>/dev/null 2>/dev/null | grep -v "squashfs-root"#g' ./$arg
-								sed -i 's#mv $(./$APP --appimage-extract \*.png) #./$APP --appimage-extract \*.png 2>\&1 | grep -v "squashfs-root"; mv ./squashfs-root/*$app* #g' ./$arg
-								sed -i 's#mv $(./$APP --appimage-extract \*.svg) #./$APP --appimage-extract \*.svg 2>\&1 | grep -v "squashfs-root"; mv ./squashfs-root/*$app* #g' ./$arg
-							fi
+							# Silence "mv", "sed" errors and "squashfs-root" messages
+							sed -i 's/ \&& mv/ | grep -v "squashfs-root" | grep -v ":" | grep -v "help"; mv/g' ./$arg
+							sed -i '/appimage-extract/ s/$/ 2>\&1 | grep -v "squashfs-root" | grep -v ":" | grep -v "help"/' ./$arg
+							sed -i '/^mv / s/$/ 2>\/dev\/null | grep -v "squashfs-root" | grep -v ":" | grep -v "help"/' ./$arg
+							sed -i 's#mv $(./$APP --appimage-extract \*.png) #./$APP --appimage-extract \*.png 2>\&1 | grep -v "squashfs-root"; mv ./squashfs-root/*$app* #g' ./$arg
+							sed -i 's#mv $(./$APP --appimage-extract \*.svg) #./$APP --appimage-extract \*.svg 2>\&1 | grep -v "squashfs-root"; mv ./squashfs-root/*$app* #g' ./$arg
+							sed -i '/^sed / s/$/ 2>\/dev\/null | grep -v "squashfs-root" | grep -v ":" | grep -v "help"/' ./$arg
+							sed -i '/squashfs-root/ s/$/ 2>\/dev\/null | grep -v "squashfs-root" | grep -v ":" | grep -v "help"/' ./$arg
 						fi
 						sed -i 's/currentuser=/#currentuser=/g' ./$arg
 						sed -i 's/chown -R $currentuser/#chown -R $currentuser/g' ./$arg
@@ -165,7 +157,7 @@ while [ -n "$1" ]; do
 						esac	
 					fi
 
-					$SUDOCOMMAND ./$arg 2>&1 | grep -v ": \|wget --help\|squashfs-root"
+					$SUDOCOMMAND ./$arg
 
 					echo -ne " Configuring $(echo '"'$arg'"' | tr a-z A-Z)...\r" && echo -ne "                                                                          \r" &&
 					$SUDOCOMMAND chown -R $currentuser $APPSPATH/$(cd $APPSPATH && ls -td * | head -1) 2> /dev/null
