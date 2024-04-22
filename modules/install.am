@@ -98,7 +98,20 @@ while [ -n "$1" ]; do
 
 					function _install_common_patch(){
 						if ! grep -q -- "--debug" $AMPATH/.cache/install-args; then
-							sed -i "s#wget #wget -q --no-verbose --show-progress --progress=dot:mega #g" ./$arg; sed -i 's#$(wget -q --no-verbose --show-progress --progress=dot:mega #$(wget -q #g' ./$arg; sed -i "s# -q -q # -q #g" ./$arg
+							# Patch "wget" to have a progress bar and fix errors when applying patches
+							sed -i "s#wget #wget -q --no-verbose --show-progress --progress=dot -e dotbytes=500K #g" ./$arg
+							sed -i 's#$(wget -q --no-verbose --show-progress --progress=dot -e dotbytes=500K #$(wget -q #g' ./$arg
+							sed -i "s# -q -q # -q #g" ./$arg
+							# Silence "rm" errors by adding "-f"
+							sed -i 's#^rm /#rm -f /#g' ./$arg; sed -i 's#^rm ./#rm -f ./#g' ./$arg
+							# Silence "mv", "sed" errors and "squashfs-root" messages
+							sed -i 's/ \&& mv/ | grep -v "squashfs-root" | grep -v ":" | grep -v "help"; mv/g' ./$arg
+							sed -i '/appimage-extract/ s/$/ 2>\&1 | grep -v "squashfs-root" | grep -v ":" | grep -v "help"/' ./$arg
+							sed -i '/^mv / s/$/ 2>\/dev\/null | grep -v "squashfs-root" | grep -v ":" | grep -v "help"/' ./$arg
+							sed -i 's#mv $(./$APP --appimage-extract \*.png) #./$APP --appimage-extract \*.png 2>\&1 | grep -v "squashfs-root"; mv ./squashfs-root/*$app* #g' ./$arg
+							sed -i 's#mv $(./$APP --appimage-extract \*.svg) #./$APP --appimage-extract \*.svg 2>\&1 | grep -v "squashfs-root"; mv ./squashfs-root/*$app* #g' ./$arg
+							sed -i '/^sed / s/$/ 2>\/dev\/null | grep -v "squashfs-root" | grep -v ":" | grep -v "help"/' ./$arg
+							sed -i '/squashfs-root/ s/$/ 2>\/dev\/null | grep -v "squashfs-root" | grep -v ":" | grep -v "help"/' ./$arg
 						fi
 						sed -i 's/currentuser=/#currentuser=/g' ./$arg
 						sed -i 's/chown -R $currentuser/#chown -R $currentuser/g' ./$arg
@@ -144,11 +157,7 @@ while [ -n "$1" ]; do
 						esac	
 					fi
 
-					if grep -q -- "--debug" $AMPATH/.cache/install-args; then
-						$SUDOCOMMAND ./$arg
-					else
-						$SUDOCOMMAND ./$arg 2>&1 | grep -v ": \|wget --help\|squashfs-root"
-					fi
+					$SUDOCOMMAND ./$arg
 
 					echo -ne " Configuring $(echo '"'$arg'"' | tr a-z A-Z)...\r" && echo -ne "                                                                          \r" &&
 					$SUDOCOMMAND chown -R $currentuser $APPSPATH/$(cd $APPSPATH && ls -td * | head -1) 2> /dev/null
