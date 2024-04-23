@@ -160,18 +160,24 @@ while [ -n "$1" ]; do
 					$SUDOCOMMAND ./$arg
 
 					echo -ne " Configuring $(echo '"'$arg'"' | tr a-z A-Z)...\r" && echo -ne "                                                                          \r" &&
-					$SUDOCOMMAND chown -R "$USER" $APPSPATH/$(cd $APPSPATH && ls -td * | head -1) 2> /dev/null
-					$SUDOCOMMAND find $APPSPATH/$(cd $APPSPATH && ls -td * | head -1) -exec chmod 777 {} \; 2> /dev/null
+
 					if test -f $APPSPATH/$(cd $APPSPATH && ls -td * | head -1)/AM-updater; then
-						mkdir $APPSPATH/$(cd $APPSPATH && ls -td * | head -1)/.am-installer 2> /dev/null &&
-						wget -q $APPSDB/$arg -O $APPSPATH/$(cd $APPSPATH && ls -td * | head -1)/.am-installer/$arg
-					fi &&
+						$SUDOCOMMAND mkdir $APPSPATH/$(cd $APPSPATH && ls -td * | head -1)/.am-installer 2> /dev/null &&
+						$SUDOCOMMAND wget -q $APPSDB/$arg -O $APPSPATH/$(cd $APPSPATH && ls -td * | head -1)/.am-installer/$arg
+					fi
+
 					if test -d $APPSPATH/$(cd $APPSPATH && ls -td * | head -1)/icons; then
 						find $APPSPATH/$(cd $APPSPATH && ls -td * | head -1)/icons/* -xtype l -delete 2> /dev/null
 						if [ -z "$(ls -A $APPSPATH/$(cd $APPSPATH && ls -td * | head -1)/icons)" ]; then
-							wget -q "$AMCATALOGUEICONS"/$arg.png -O $APPSPATH/$(cd $APPSPATH && ls -td * | head -1)/icons/$arg
+							$SUDOCOMMAND wget -q "$AMCATALOGUEICONS"/$arg.png -O $APPSPATH/$(cd $APPSPATH && ls -td * | head -1)/icons/$arg
 						fi 
-					fi &&
+					fi
+
+					if [ "$AMCLI" == am ]; then
+						$SUDOCOMMAND chown -R :sudo $APPSPATH/$(cd $APPSPATH && ls -td * | head -1) 2> /dev/null
+						$SUDOCOMMAND find $APPSPATH/$(cd $APPSPATH && ls -td * | head -1) -exec chmod 775 {} \; 2> /dev/null
+					fi
+
 					if [ $AMCLI == appman ] 2>/dev/null; then
 						sed -i "s#Icon=/opt#Icon=$HOME/$APPSDIR#g" "$DATADIR"/applications/AM*.desktop 2> /dev/null
 						sed -i "s#Exec=$arg#Exec=$HOME/.local/bin/$arg#g" "$DATADIR"/applications/AM*.desktop 2> /dev/null
