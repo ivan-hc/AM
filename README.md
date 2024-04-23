@@ -87,7 +87,7 @@ Initially the two projects traveled in parallel to each other, until version 5, 
 #### To be more detailed, here is an overview of how apps are installed by "AM" and "AppMan"
 
 Where `$PROGRAM` is the application we're going to install:
-- "AM" (ie the `am` command) installs programs and works at system level (i.e. for all the users). "AM" requires the `sudo` privileges but only to install and remove the app, all the other commands can be executed as a normal user. This allows multiple users of the same system to be able to use the same installed applications. This is what an installation script installs with "AM":
+- "AM" (ie the `am` command) installs programs system-wide. "AM" requires the `sudo` privileges but only to install and remove the app, all the other commands can be executed as a normal user. This allows multiple users of the same system to be able to use the same installed applications, **while the general use of "AM" (installing, updating, consulting lists...) will only be permitted to the system administrator/owner of the /opt/am directory and all the directories managed by "AM", and to the user "root"**. This is what an installation script installs with "AM":
 
       /opt/$PROGRAM/
       /opt/$PROGRAM/$PROGRAM
@@ -100,6 +100,8 @@ If the distro is immutable instead, the path of the launcher (the last line abov
 
       /usr/local/share/applications/AM-$PROGRAM.desktop
 Since version 5.1 the installation process have introduced a check to find read-only filesystems (`grep "[[:space:]]ro[[:space:],]" /proc/mounts`), if there are mountpoints like this, your distro may be an immutable one, so an `/usr/local/share/applications` directory will be created and the installation script will be patched to redirect the installation of launchers in that path to solve the issue.
+
+**NOTE: Non-privileged users who wish to use "AM" on multi-account systems will be advised to contact the administrator to change ownership of /opt/am or to consider using "AppMan".**
 
 - "AppMan" (ie the `appman` command) instead does not need root privileges to work, it allows you to choose where to install your applications into your `$HOME` directory. AppMan is also usable as a portable app (i.e. you can download and place it wherever you want) and it is able to update itself, anywhere! At first start it will ask you where to install the apps and it will create the directory for you (the configuration file is in `~/.config/appman`). For example, suppose you want install everything in "Applicazioni" (the italian of "applications"), this is the structure of what an installation scripts installs with "AppMan" instead:
 
