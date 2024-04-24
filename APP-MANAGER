@@ -306,7 +306,70 @@ function _check_version(){
 	done
 }
 
-# All the options
+# Inbuilt options of this CLI
+function _use_disable-completion() {
+	if [ "$(grep -o "$AMCLI" 0<"$COMPLETIONPATH/$COMPLETIONFILE" | head -1)" == "$AMCLI" ]; then
+		grep -v 'complete -W "$(cat '"$AMPATH"'/list 2>/dev/null)" '"$AMCLI"'' "$COMPLETIONPATH/$COMPLETIONFILE" > "$AMPATH"/$COMPLETIONFILE.backup &&
+		$SUDOCOMMAND mv "$AMPATH"/$COMPLETIONFILE.backup "$COMPLETIONPATH/$COMPLETIONFILE"
+		echo " Completion disabled! "
+	else
+		echo " Completion script is NOT enabled! "
+	fi
+}
+
+function _use_enable_completion() {
+	if [ "$(grep -o "$AMCLI" 0<"$COMPLETIONPATH/$COMPLETIONFILE" | head -1)" == "$AMCLI" ]; then
+		echo " Completion script is already enabled!"
+	else
+		$SUDOCOMMAND mkdir -p "$COMPLETIONPATH"
+		if [ "$AMCLI" == appman ]; then
+			if ! test -f "$COMPLETIONPATH/$COMPLETIONFILE"; then
+				echo '#!/usr/bin/env bash' >> "$COMPLETIONFILE"
+			fi
+		else
+			echo '#!/usr/bin/env bash' >> "$COMPLETIONFILE"
+		fi
+		echo 'complete -W "$(cat '"$AMPATH"'/list 2>/dev/null)" '"$AMCLI"'' >> "$COMPLETIONFILE"
+		chmod a+x "$COMPLETIONFILE"
+		$SUDOCOMMAND mv "$COMPLETIONFILE" "$COMPLETIONPATH/" 2> /dev/null
+		echo " Completion has been enabled!"
+	fi
+	if [ -f "$HOME/.zshrc" ] || [ -f "$ZDOTDIR/.zshrc" ]; then
+		if [ -n "$ZDOTDIR" ]; then
+			ZSHDIR="$ZDOTDIR"
+		else
+			ZSHDIR="$HOME"
+		fi
+		if grep -q "source $ZSHDIR/$COMPLETIONFILE" "$ZSHDIR/.zshrc"; then
+			echo "Zsh completion already enabled!"
+		else
+			echo '#!/usr/bin/env bash' >> "$ZSHDIR/$COMPLETIONFILE"
+			echo 'complete -W "$(cat '"$AMPATH"'/list 2>/dev/null)" '"$AMCLI"'' >> "$ZSHDIR/$COMPLETIONFILE"
+			chmod a+x "$ZSHDIR/$COMPLETIONFILE"
+			echo -e "\nautoload bashcompinit\nbashcompinit\nsource $ZSHDIR/$COMPLETIONFILE" >> "$ZSHDIR/.zshrc"
+		fi
+	fi
+}
+
+function _use_appman() {
+	_no_sudo
+	_online_check
+	if [ "$AMCLI" == appman ] 2>/dev/null; then
+		echo " This function only works for AM"
+		exit
+	fi
+	RED='\033[0;31m'; LightBlue='\033[1;34m'
+	if test -f /opt/am/appman; then
+		_appman
+		echo -e "Please run '${RED}alias am=/opt/am/appman\033[0m' to made 'AM' act exactly like 'AppMan' for\nthe current session or save this command to your '"'~/.bashrc'"' file to make the\nchanges permanent. Visit ${LightBlue}https://github.com/ivan-hc/appman\033[0m for more!"
+	else
+		_appman
+		wget -q "$AMREPO"/APP-MANAGER -O /opt/am/appman && chmod a+x /opt/am/appman
+		echo -e "Please run '${RED}alias am=/opt/am/appman\033[0m' to made 'AM' act exactly like 'AppMan' for\nthe current session or save this command to your '"'~/.bashrc'"' file to make the\nchanges permanent."
+	fi
+}
+
+# Handle external modules
 function source_module() {
 	source "$AMPATH/modules/$MODULE" "$@"
 }
@@ -342,68 +405,7 @@ function use_module_online () {
 	use_module_online_sudo "$@"
 }
 
-function use_disable-completion() {
-	if [ "$(grep -o "$AMCLI" 0<"$COMPLETIONPATH/$COMPLETIONFILE" | head -1)" == "$AMCLI" ]; then
-		grep -v 'complete -W "$(cat '"$AMPATH"'/list 2>/dev/null)" '"$AMCLI"'' "$COMPLETIONPATH/$COMPLETIONFILE" > "$AMPATH"/$COMPLETIONFILE.backup &&
-		$SUDOCOMMAND mv "$AMPATH"/$COMPLETIONFILE.backup "$COMPLETIONPATH/$COMPLETIONFILE"
-		echo " Completion disabled! "
-	else
-		echo " Completion script is NOT enabled! "
-	fi
-}
-
-function use_enable_completion() {
-	if [ "$(grep -o "$AMCLI" 0<"$COMPLETIONPATH/$COMPLETIONFILE" | head -1)" == "$AMCLI" ]; then
-		echo " Completion script is already enabled!"
-	else
-		$SUDOCOMMAND mkdir -p "$COMPLETIONPATH"
-		if [ "$AMCLI" == appman ]; then
-			if ! test -f "$COMPLETIONPATH/$COMPLETIONFILE"; then
-				echo '#!/usr/bin/env bash' >> "$COMPLETIONFILE"
-			fi
-		else
-			echo '#!/usr/bin/env bash' >> "$COMPLETIONFILE"
-		fi
-		echo 'complete -W "$(cat '"$AMPATH"'/list 2>/dev/null)" '"$AMCLI"'' >> "$COMPLETIONFILE"
-		chmod a+x "$COMPLETIONFILE"
-		$SUDOCOMMAND mv "$COMPLETIONFILE" "$COMPLETIONPATH/" 2> /dev/null
-		echo " Completion has been enabled!"
-	fi
-	if [ -f "$HOME/.zshrc" ] || [ -f "$ZDOTDIR/.zshrc" ]; then
-		if [ -n "$ZDOTDIR" ]; then
-			ZSHDIR="$ZDOTDIR"
-		else
-			ZSHDIR="$HOME"
-		fi
-		if grep -q "source $ZSHDIR/$COMPLETIONFILE" "$ZSHDIR/.zshrc"; then
-			echo "Zsh completion already enabled!"
-		else
-			echo '#!/usr/bin/env bash' >> "$ZSHDIR/$COMPLETIONFILE"
-			echo 'complete -W "$(cat '"$AMPATH"'/list 2>/dev/null)" '"$AMCLI"'' >> "$ZSHDIR/$COMPLETIONFILE"
-			chmod a+x "$ZSHDIR/$COMPLETIONFILE"
-			echo -e "\nautoload bashcompinit\nbashcompinit\nsource $ZSHDIR/$COMPLETIONFILE" >> "$ZSHDIR/.zshrc"
-		fi
-	fi
-}
-
-function use_appman() {
-	_no_sudo
-	_online_check
-	if [ "$AMCLI" == appman ] 2>/dev/null; then
-		echo " This function only works for AM"
-		exit
-	fi
-	RED='\033[0;31m'; LightBlue='\033[1;34m'
-	if test -f /opt/am/appman; then
-		_appman
-		echo -e "Please run '${RED}alias am=/opt/am/appman\033[0m' to made 'AM' act exactly like 'AppMan' for\nthe current session or save this command to your '"'~/.bashrc'"' file to make the\nchanges permanent. Visit ${LightBlue}https://github.com/ivan-hc/appman\033[0m for more!"
-	else
-		_appman
-		wget -q "$AMREPO"/APP-MANAGER -O /opt/am/appman && chmod a+x /opt/am/appman
-		echo -e "Please run '${RED}alias am=/opt/am/appman\033[0m' to made 'AM' act exactly like 'AppMan' for\nthe current session or save this command to your '"'~/.bashrc'"' file to make the\nchanges permanent."
-	fi
-}
-
+# All the options
 case "$1" in
 	'')
 		echo -e "\n USAGE: '$AMCLI [option]'\n        '$AMCLI [option] [argument]'\n\n Run the '$AMCLI -h' command to find out more\n"
@@ -457,10 +459,10 @@ case "$1" in
 		use_module_online "$@"
 		;;
 	'--disable-completion')
-		use_disable-completion
+		_use_disable-completion
 		;;
 	'--enable-completion')
-		use_enable_completion
+		_use_enable_completion
 		;;
 	'--launcher')
 		MODULE="launcher.am"
@@ -471,7 +473,7 @@ case "$1" in
 		use_module_online "$@"
 		;;
 	'--user'|'appman')
-		use_appman
+		_use_appman
 		;;
 	'neodb'|'apikey'|'newrepo')
 		MODULE="devtools.am"
