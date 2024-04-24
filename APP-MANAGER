@@ -1,12 +1,24 @@
 #!/usr/bin/env bash
 
+AMVERSION="6.6.2-2"
+
+#Determine the name of this script and its working directory
 DIR="$( cd "$( dirname "$0" )" && pwd )"
 CLI=$(basename "$0")
-AMVERSION="6.6.2-1"
 
-SCRIPTDIR="$(if command -v xdg-user-dir &>/dev/null; then xdg-user-dir DESKTOP; else echo $HOME; fi)"
+# Prevent the use of "sudo"
+function _no_sudo() {
+	if [ -n "$SUDO_COMMAND" ]; then
+		printf '\n Please do not use "sudo" to execute "'"$CLI"'", try again.\n\n';
+		exit 1;
+	fi
+}
+
+_no_sudo
 
 # Check XDG variables
+SCRIPTDIR="$(if command -v xdg-user-dir &>/dev/null; then xdg-user-dir DESKTOP; else echo $HOME; fi)"
+
 if [ -n "$XDG_CONFIG_HOME" ]; then
 	APPMANCONFIG="$XDG_CONFIG_HOME/appman"
 else
@@ -19,7 +31,7 @@ else
 	DATADIR="$HOME/.local/share"
 fi
 
-function _am(){
+function _am() {
 	AMCLI="am"
 	AMCLIPATH="$AMCLI"
 	SUDOCOMMAND="sudo"
@@ -105,7 +117,13 @@ else
 	_appman
 fi
 
-function _online_check(){
+# Check and create the $AMPATH directory if it does not exist
+if [ ! -d "$AMPATH" ]; then
+	$SUDOCOMMAND mkdir -p "$AMPATH"
+fi
+
+# Function to check online connections (uses github.com by default, as the database and CLI itself are stored/hosted there)
+function _online_check() {
 	if ! wget -q --tries=10 --timeout=20 --spider https://github.com; then
 		echo -e "\n $AMCLI is offline, please check your internet connection and try again\n"
 		exit
@@ -134,6 +152,7 @@ if [ "$AMCLI" == am ]; then
 	fi
 fi
 
+# Determine if the CLI uses the "main" branch of https://github.com/ivan-hc/AM or an alternative one
 if [[ -f "$AMPATH"/new-repo.txt ]]; then
 	AMREPO=$(<"$AMPATH/new-repo.txt") # Utilizing command substitution with < for more efficient file reading
 	APPSDB="$AMREPO/programs/$arch"
@@ -181,6 +200,7 @@ if [ -n "$missing_deps" ]; then
 	exit 1
 fi
 
+# Generate a list of words to use in bash completion
 rm -rf "$AMPATH/options"
 cat <<-HEREDOC >> "$AMPATH/options"
 	about
@@ -221,14 +241,8 @@ cat <<-HEREDOC >> "$AMPATH/options"
 	--user
 HEREDOC
 
-function _no_sudo(){
-	if [ -n "$SUDO_COMMAND" ]; then
-		printf "\n WARNING: You don't need to use SUDO for this.\n\n";
-		exit 1;
-	fi
-}
-
-function _patch_bashrc_and_profile(){
+# Fix order in "echo $PATH" in case "$HOME/.local/bin" is placed at the beginning instead of the end
+function _patch_bashrc_and_profile() {
 	# Check if the custom PATH is not already in .bashrc, then append it (fix - exclamation mark negates the entire command substitution)
 	if test -f "$HOME/.bashrc"; then
 		if ! grep -q 'export PATH=$PATH:$HOME/.local/bin' "$HOME/.bashrc"; then
@@ -250,7 +264,6 @@ function _patch_bashrc_and_profile(){
 
 # Check if the script is called with 'appman' and if so, perform initial setup
 [ "$AMCLI" = "appman" ] && {
-	_no_sudo
 	_patch_bashrc_and_profile
 }
 
@@ -258,7 +271,7 @@ function _patch_bashrc_and_profile(){
 [ -f "$AMPATH/ghapikey.txt" ] && HeaderAuthWithGITPAT=" --header \"Authorization: token $(<"$AMPATH/ghapikey.txt")\" "
 
 # Check version of the installed apps
-function _check_version(){
+function _check_version() {
 	rm -f $AMPATH/.cache/version-args
 	cd $APPSPATH &&
 	INSTALLED_APPS=$(find -name 'remove' -printf "%h\n" 2>/dev/null | du -sh -- * 2> /dev/null | sort -rh | sed 's@.*	@@')
@@ -306,43 +319,8 @@ function _check_version(){
 	done
 }
 
-# All the options
-function source_module() {
-	source "$AMPATH/modules/$MODULE" "$@"
-}
-
-function get_module() {
-	wget -q "$AMREPO/modules/$MODULE" -O "$AMPATH/modules/$MODULE"
-	chmod a+x "$AMPATH/modules/$MODULE"
-}
-
-function test_module() {
-	if ! test -f "$AMPATH/modules/$MODULE"; then
-		get_module
-	fi
-}
-
-function use_module_sudo() {
-	test_module
-	source_module "$@"
-}
-
-function use_module() {
-	_no_sudo
-	use_module_sudo "$@"
-}
-
-function use_module_online_sudo () {
-	_online_check
-	use_module "$@"
-}
-
-function use_module_online () {
-	_no_sudo
-	use_module_online_sudo "$@"
-}
-
-function use_disable-completion() {
+# Functions related to internal options to enable/disable bash (and zsh) completion.
+function _use_disable-completion() {
 	if [ "$(grep -o "$AMCLI" 0<"$COMPLETIONPATH/$COMPLETIONFILE" | head -1)" == "$AMCLI" ]; then
 		grep -v 'complete -W "$(cat '"$AMPATH"'/list 2>/dev/null)" '"$AMCLI"'' "$COMPLETIONPATH/$COMPLETIONFILE" > "$AMPATH"/$COMPLETIONFILE.backup &&
 		$SUDOCOMMAND mv "$AMPATH"/$COMPLETIONFILE.backup "$COMPLETIONPATH/$COMPLETIONFILE"
@@ -352,7 +330,7 @@ function use_disable-completion() {
 	fi
 }
 
-function use_enable_completion() {
+function _use_enable_completion() {
 	if [ "$(grep -o "$AMCLI" 0<"$COMPLETIONPATH/$COMPLETIONFILE" | head -1)" == "$AMCLI" ]; then
 		echo " Completion script is already enabled!"
 	else
@@ -386,8 +364,8 @@ function use_enable_completion() {
 	fi
 }
 
-function use_appman() {
-	_no_sudo
+# Function for the option that helps "AM" function like "AppMan", via alias
+function _use_appman() {
 	_online_check
 	if [ "$AMCLI" == appman ] 2>/dev/null; then
 		echo " This function only works for AM"
@@ -404,82 +382,104 @@ function use_appman() {
 	fi
 }
 
+# Handle external modules
+function _use_module() {
+	# Test if module exists
+	if ! test -f "$AMPATH/modules/$MODULE"; then
+		wget -q "$AMREPO/modules/$MODULE" -O "$AMPATH/modules/$MODULE"
+		chmod a+x "$AMPATH/modules/$MODULE"
+	fi
+	# Source module
+	source "$AMPATH/modules/$MODULE" "$@"
+}
+
+# ALL THE OPTIONS
 case "$1" in
 	'')
 		echo -e "\n USAGE: '$AMCLI [option]'\n        '$AMCLI [option] [argument]'\n\n Run the '$AMCLI -h' command to find out more\n"
 		;;
+	# OPTIONS BASED ON EXTERNAL MODULES
 	'-a'|'about'|'-l'|'list'|'-q'|'query')
 		MODULE="database.am"
-		use_module "$@"
+		_use_module "$@"
 		;;
 	'-b'|'backup'|'-o'|'overwrite'|'lock'|'unlock')
 		MODULE="no-updates.am"
-		use_module "$@"
+		_use_module "$@"
 		;;
 	'-c'|'clean')
 		MODULE="clean.am"
-		use_module
+		_use_module
 		;;
 	'-d'|'download')
 		MODULE="download.am"
-		use_module_online "$@"
+		_online_check
+		_use_module "$@"
 		;;
 	'-f'|'files')
 		MODULE="files.am"
-		use_module "$@"
+		_use_module "$@"
 		;;
 	'-h'|'help')
 		MODULE="help.am"
-		use_module "$@"
+		_use_module "$@"
 		;;
 	'-H'|'--home'|'--firejail'|'--sandbox')
 		MODULE="sandboxes.am"
-		use_module "$@"
+		_use_module "$@"
 		;;
 	'-i'|'install')
 		MODULE="install.am"
-		use_module_online_sudo "$@"
+		_online_check
+		_use_module "$@"
 		;;
 	'-R'|'-r'|'remove')
 		MODULE="remove.am"
-		use_module_sudo "$@"
+		_use_module "$@"
 		;;
 	'-s'|'sync')
 		MODULE="sync.am"
-		use_module_online "$@"
+		_online_check
+		_use_module "$@"
 		;;
 	'-t'|'template')
 		MODULE="template.am"
-		use_module_online "$@"
+		_online_check
+		_use_module "$@"
 		;;
 	'-u'|'-U'|'update'|'--force-latest')
 		MODULE="update.am"
-		use_module_online "$@"
-		;;
-	'--disable-completion')
-		use_disable-completion
-		;;
-	'--enable-completion')
-		use_enable_completion
+		_online_check
+		_use_module "$@"
 		;;
 	'--launcher')
 		MODULE="launcher.am"
-		use_module "$@"
+		_use_module "$@"
 		;;
 	'--rollback')
 		MODULE="rollback.am"
-		use_module_online "$@"
-		;;
-	'--user'|'appman')
-		use_appman
+		_online_check
+		_use_module "$@"
 		;;
 	'neodb'|'apikey'|'newrepo')
 		MODULE="devtools.am"
-		use_module_online "$@"
+		_online_check
+		_use_module "$@"
 		;;
 	'nolibfuse')
 		MODULE="nolibfuse.am"
-		use_module_online "$@"
+		_online_check
+		_use_module "$@"
+		;;
+	# INBUILT OPTIONS
+	'--disable-completion')
+		_use_disable-completion
+		;;
+	'--enable-completion')
+		_use_enable_completion
+		;;
+	'--user'|'appman')
+		_use_appman
 		;;
 	'version'|'-v'|'--version')
 		echo "$AMVERSION"
