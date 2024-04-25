@@ -115,9 +115,6 @@ while [ -n "$1" ]; do
 							sed -i '/^sed / s/$/ 2>\/dev\/null | grep -v "squashfs-root" | grep -v ":" | grep -v "help"/' ./$arg
 							sed -i '/squashfs-root/ s/$/ 2>\/dev\/null | grep -v "squashfs-root" | grep -v ":" | grep -v "help"/' ./$arg
 						fi
-						sed -i 's/currentuser=/#currentuser=/g' ./$arg
-						sed -i 's/chown -R $currentuser/#chown -R $currentuser/g' ./$arg
-						sed -i '/# MESSAGE/,$d' ./$arg
 						sed -i "s# https://api.github.com#$HeaderAuthWithGITPAT https://api.github.com#g" ./$arg
 					}
 
@@ -162,7 +159,10 @@ while [ -n "$1" ]; do
 					$SUDOCOMMAND ./$arg
 
 					echo -ne " Configuring $(echo '"'$arg'"' | tr a-z A-Z)...\r" && echo -ne "                                                                          \r" &&
-					$SUDOCOMMAND chown -R $currentuser $APPSPATH/$(cd $APPSPATH && ls -td * | head -1) 2> /dev/null
+					if [ $AMCLI == am ] 2>/dev/null; then
+						find $APPSPATH/$(cd $APPSPATH && ls -td * | head -1) -exec $SUDOCOMMAND chmod 775 {} \; 2> /dev/null
+						find $APPSPATH/$(cd $APPSPATH && ls -td * | head -1) -exec $SUDOCOMMAND chown -R :sudo {} \; 2> /dev/null
+					fi
 					if test -f $APPSPATH/$(cd $APPSPATH && ls -td * | head -1)/AM-updater; then
 						mkdir $APPSPATH/$(cd $APPSPATH && ls -td * | head -1)/.am-installer 2> /dev/null &&
 						wget -q $APPSDB/$arg -O $APPSPATH/$(cd $APPSPATH && ls -td * | head -1)/.am-installer/$arg
