@@ -6,9 +6,10 @@ AMVERSION="6.6.2-2"
 DIR="$( cd "$( dirname "$0" )" && pwd )"
 CLI=$(basename "$0")
 
-# Determine system architecture and current user
+# Determine system architecture, current user and if xdg-user-dirs is available. 
 arch="$HOSTTYPE"
 currentuser="$USER"
+export SCRIPTDIR="$(if command -v xdg-user-dir &>/dev/null; then xdg-user-dir DESKTOP; else echo $HOME; fi)"
 
 # Prevent the use of "sudo" ("AM")
 function _no_sudo() {
@@ -19,9 +20,6 @@ function _no_sudo() {
 }
 
 _no_sudo
-
-# Common variables to handle user's XDG directories
-export SCRIPTDIR="$(if command -v xdg-user-dir &>/dev/null; then xdg-user-dir DESKTOP; else echo $HOME; fi)"
 
 # Check XDG variables ("APPMAN")
 if [ -n "$XDG_CONFIG_HOME" ]; then
@@ -36,6 +34,12 @@ else
 	DATADIR="$HOME/.local/share"
 fi
 
+if [ -n "$XDG_CACHE_HOME" ]; then
+	CACHEDIR="$XDG_CACHE_HOME"
+else
+	CACHEDIR="$HOME/.cache"
+fi
+
 # "AM" CORE VARIABLES
 function _am() {
 	AMCLI="am"
@@ -45,8 +49,7 @@ function _am() {
 	COMPLETIONFILE="am-completion.sh"
 	APPSPATH="/opt"
 	AMPATH="$APPSPATH/$AMCLI"
-	mkdir -p "$AMPATH"/.cache
-	mkdir -p "$AMPATH"/modules
+	mkdir -p "$AMPATH"/modules "$CACHEDIR"/am
 }
 
 # "APPMAN" CORE VARIABLES AND FUNCTIONS
@@ -252,7 +255,7 @@ _am_databases_check
 
 # Check version of the installed apps
 function _check_version() {
-	rm -f $AMPATH/.cache/version-args
+	rm -f "$CACHEDIR"/am/version-args
 	cd $APPSPATH &&
 	INSTALLED_APPS=$(find -name 'remove' -printf "%h\n" 2>/dev/null | du -sh -- * 2> /dev/null | sort -rh | sed 's@.*	@@')
 	for arg in $INSTALLED_APPS; do
@@ -294,14 +297,14 @@ function _check_version() {
 			if [ -z "$APPVERSION" ]; then
 				APPVERSION="unknown"
 			fi
-			echo " ◆ $arg	|	$APPVERSION" >> $AMPATH/.cache/version-args
+			echo " ◆ $arg	|	$APPVERSION" >> "$CACHEDIR"/am/version-args
 		fi
 	done
 }
 
 # Generate a list of words to use in bash completion
-rm -rf "$AMPATH/options"
-cat <<-HEREDOC >> "$AMPATH/options"
+rm -f "$CACHEDIR/am/options"
+cat <<-HEREDOC >> "$CACHEDIR/am/options"
 	about
 	apikey
 	backup
