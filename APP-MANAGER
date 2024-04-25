@@ -6,14 +6,22 @@ AMVERSION="6.6.2-2"
 DIR="$( cd "$( dirname "$0" )" && pwd )"
 CLI=$(basename "$0")
 
-# Determine system architecture and current user
+# Determine system architecture, current user and if xdg-user-dirs is available. 
 arch="$HOSTTYPE"
 currentuser="$USER"
-
-# Common variables to handle user's XDG directories. AI much?
 export SCRIPTDIR="$(if command -v xdg-user-dir &>/dev/null; then xdg-user-dir DESKTOP; else echo $HOME; fi)"
 
-# Check XDG variables
+# Prevent the use of "sudo" ("AM")
+function _no_sudo() {
+	if [ -n "$SUDO_COMMAND" ]; then
+		printf '\n Please do not use "sudo" to execute "'"$CLI"'", try again.\n\n';
+		exit 1;
+	fi
+}
+
+_no_sudo
+
+# Check XDG variables ("APPMAN")
 if [ -n "$XDG_CONFIG_HOME" ]; then
 	APPMANCONFIG="$XDG_CONFIG_HOME/appman"
 else
@@ -27,9 +35,9 @@ else
 fi
 
 if [ -n "$XDG_CACHE_HOME" ]; then
-	CACHEDIR="$XDG_CACHE_HOME/am"
+	CACHEDIR="$XDG_CACHE_HOME"
 else
-	CACHEDIR="$HOME/.cache/am"
+	CACHEDIR="$HOME/.cache"
 fi
 
 # "AM" CORE VARIABLES
@@ -41,8 +49,7 @@ function _am() {
 	COMPLETIONFILE="am-completion.sh"
 	APPSPATH="/opt"
 	AMPATH="$APPSPATH/$AMCLI"
-	mkdir -p "$CACHEDIR"
-	mkdir -p "$AMPATH"/modules
+	mkdir -p "$AMPATH"/modules "$CACHEDIR"/am
 }
 
 # "APPMAN" CORE VARIABLES AND FUNCTIONS
@@ -191,6 +198,7 @@ function _am_databases_check() {
 		# Determine if the CLI uses the "main" branch of https://github.com/ivan-hc/AM or an alternative one
 		if [[ -f "$AMPATH"/new-repo.txt ]]; then
 			AMREPO=$(<"$AMPATH/new-repo.txt") # Utilizing command substitution with < for more efficient file reading
+			AMBRANCH=$(basename "$AMREPO")
 			APPSDB="$AMREPO/programs/$arch"
 			APPSLISTDB="$AMREPO/programs/$arch-apps"
 			LIBSLISTDB="$AMREPO/programs/libs-list"
@@ -201,6 +209,7 @@ function _am_databases_check() {
 			fi
 		else
 			AMREPO="https://raw.githubusercontent.com/IVAN-HC/AM/main" # Consolidating variable assignments for clarity and brevity
+			AMBRANCH=$(basename "$AMREPO")
 			APPSDB="$AMREPO/programs/$arch"
 			APPSLISTDB="$AMREPO/programs/$arch-apps"
 			LIBSLISTDB="$AMREPO/programs/libs-list"
@@ -232,7 +241,7 @@ _am_databases_check
 
 # Check version of the installed apps
 function _check_version() {
-	rm -f "$CACHEDIR"/version-args
+	rm -f "$CACHEDIR"/am/version-args
 	cd $APPSPATH &&
 	INSTALLED_APPS=$(find -name 'remove' -printf "%h\n" 2>/dev/null | du -sh -- * 2> /dev/null | sort -rh | sed 's@.*	@@')
 	for arg in $INSTALLED_APPS; do
@@ -274,14 +283,14 @@ function _check_version() {
 			if [ -z "$APPVERSION" ]; then
 				APPVERSION="unknown"
 			fi
-			echo " ◆ $arg	|	$APPVERSION" >> "$CACHEDIR"/version-args
+			echo " ◆ $arg	|	$APPVERSION" >> "$CACHEDIR"/am/version-args
 		fi
 	done
 }
 
 # Generate a list of words to use in bash completion
-rm -rf "$CACHEDIR/options"
-cat <<-HEREDOC >> "$CACHEDIR/options"
+rm -f "$CACHEDIR/am/options"
+cat <<-HEREDOC >> "$CACHEDIR/am/options"
 	about
 	apikey
 	backup
