@@ -23,11 +23,11 @@ update_github_api() {
 
 function _list_updatable_apps() {
 	_check_version
-	cd $APPSPATH && find -name 'AM-updater' -printf " %h\n" 2>/dev/null | sort -u | xargs -n 1 basename 2>/dev/null > "$CACHEDIR"/updatable-args
-	ARGS=$(cat "$CACHEDIR"/updatable-args)
+	cd $APPSPATH && find -name 'AM-updater' -printf " %h\n" 2>/dev/null | sort -u | xargs -n 1 basename 2>/dev/null > "$CACHEDIR"/am/updatable-args
+	ARGS=$(cat "$CACHEDIR"/am/updatable-args)
 	for arg in $ARGS; do
-		app_version=$(cat "$CACHEDIR/version-args" | grep -w " ◆ $arg	|" | sed 's:.*|	::')
-		echo " ◆ $arg $app_version" >> "$CACHEDIR"/updatable-args-list
+		app_version=$(cat "$CACHEDIR/am/version-args" | grep -w " ◆ $arg	|" | sed 's:.*|	::')
+		echo " ◆ $arg $app_version" >> "$CACHEDIR"/am/updatable-args-list
 	done
 }
 
@@ -39,13 +39,13 @@ case "$1" in
 			case $2 in
 				''|'--apps')
 					if [ -z "$CACHEDIR" ]; then exit 1; fi
-					rm -R -f "$CACHEDIR"/* # Scary!
+					rm -R -f "$CACHEDIR"/am/* # Scary!
 					_list_updatable_apps
 
 					echo "-----------------------------------------------------------------------------"
 					echo -e ' "'"$(echo $AMCLI | tr a-z A-Z)"'" CAN MANAGE UPDATES FOR THE FOLLOWING PROGRAMS:\n'
-					if test -f "$CACHEDIR/updatable-args-list"; then
-						cat "$CACHEDIR/updatable-args-list"
+					if test -f "$CACHEDIR/am/updatable-args-list"; then
+						cat "$CACHEDIR/am/updatable-args-list"
 					else
 						echo " None"
 					fi
@@ -58,7 +58,7 @@ case "$1" in
 						if test -f ./AM-updater; then
 							APPNAME=$(echo "$(printf '%s\n' "${PWD##*/}")")
 							start=$(date +%s) &&
-							$SUDOCOMMAND ./AM-updater > /dev/null 2>&1 &&
+							sh -x ./AM-updater > /dev/null 2>&1 &&
 							printf " Updating '%s'...\r" "$APPNAME" &&
 							end=$(date +%s) &&
 							echo -e " ◆ $(echo "$APPNAME" | tr a-z A-Z) is updated, $(($end-$start)) seconds elapsed!" &
@@ -70,11 +70,11 @@ case "$1" in
 
 					echo "-----------------------------------------------------------------------------"
 
-					if test -f $CACHEDIR/updatable-args-list; then
-						mv $CACHEDIR/updatable-args-list $CACHEDIR/updatable-args-list-old
+					if test -f "$CACHEDIR"/am/updatable-args-list; then
+						mv "$CACHEDIR"/am/updatable-args-list "$CACHEDIR"/am/updatable-args-list-old
 						_list_updatable_apps
-						OLDVER="$CACHEDIR/updatable-args-list-old"
-						NEWVER="$CACHEDIR/updatable-args-list"
+						OLDVER="$CACHEDIR/am/updatable-args-list-old"
+						NEWVER="$CACHEDIR/am/updatable-args-list"
 						if cmp --silent -- "$NEWVER" "$OLDVER"; then
 							echo ' Nothing to do here!'
 						else
@@ -85,8 +85,8 @@ case "$1" in
 					else
 						echo ' No apps to update here!'
 					fi
-					if [ -z "$APPSPATH" ]; then exit 1; fi
-					rm -R -f "$APPSPATH"/*/tmp
+
+					rm -R -f $APPSPATH/*/tmp
 					if [ -z "$2" ]; then
 						echo "-----------------------------------------------------------------------------"
 						$AMCLIPATH -s
@@ -97,7 +97,7 @@ case "$1" in
 
 				*)
 					if test -f $APPSPATH/$2/AM-updater; then
-						start=$(date +%s); $SUDOCOMMAND $APPSPATH/$2/AM-updater > /dev/null 2>&1 | echo -ne " UPDATING $(echo $2 | tr a-z A-Z)\r"; end=$(date +%s)
+						start=$(date +%s); $APPSPATH/$2/AM-updater > /dev/null 2>&1 | echo -ne " UPDATING $(echo $2 | tr a-z A-Z)\r"; end=$(date +%s)
 						echo -e " ◆ $(echo $2 | tr a-z A-Z) is updated, $(($end-$start)) seconds elapsed!" && break
 					else
 						echo ' "'"$(echo $AMCLI | tr a-z A-Z)"'" CANNOT MANAGE UPDATES FOR "'"$(echo $2 | tr a-z A-Z)"'"'
@@ -110,6 +110,7 @@ case "$1" in
 					fi
 			esac
 		done
+
 		shift
 		;;
 

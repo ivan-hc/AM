@@ -8,9 +8,9 @@ case $2 in
 esac
 
 while [ -n "$1" ]; do
-	rm -f "$CACHEDIR"/download-args
-	echo "$@" | tr ' ' '\n' >> "$CACHEDIR"/download-args && echo STOP >> "$CACHEDIR"/download-args
-	ARGS=$(tail -n +2 $CACHEDIR/download-args)
+	rm -f "$CACHEDIR"/am/download-args
+	echo "$@" | tr ' ' '\n' >> "$CACHEDIR"/am/download-args && echo STOP >> "$CACHEDIR"/am/download-args
+	ARGS=$(tail -n +2 "$CACHEDIR"/am/download-args)
 
 	for arg in $ARGS; do
 
@@ -19,7 +19,7 @@ while [ -n "$1" ]; do
 			'--convert')	;;
 			*) 
 				function _convert_to_appman_compatible_script(){
-					if grep -q -- "--convert" "$CACHEDIR"/download-args; then
+					if grep -q -- "--convert" "$CACHEDIR"/am/download-args; then
 						if test -f "$APPMANCONFIG"/appman-config; then
 							APPSPATH=$(cat "$APPMANCONFIG"/appman-config)
 							sed -i "s# /usr/local/bin# $HOME/.local/bin#g" ./$arg
@@ -45,34 +45,34 @@ while [ -n "$1" ]; do
 				}
 
 				if test -f "$AMPATH/neodb"; then
-					rm -R -f "$CACHEDIR/multirepo-args"
+					rm -R -f "$CACHEDIR/am/multirepo-args"
 					MULTIREPO=$(cat "$AMPATH/neodb" | grep "Source=" | sed 's/Source=//g')
 					for anyrepo in $MULTIREPO; do
 						if curl --output /dev/null --silent --head --fail $anyrepo/$arg  1>/dev/null; then
-							echo "$anyrepo" >> "$CACHEDIR/multirepo-args"
+							echo "$anyrepo" >> "$CACHEDIR/am/multirepo-args"
 						fi
 					done
-					if test -f "$CACHEDIR/multirepo-args"; then
-						anyrepoargs=$(cat "$CACHEDIR/multirepo-args" 2>/dev/null | wc -l)
+					if test -f "$CACHEDIR/am/multirepo-args"; then
+						anyrepoargs=$(cat "$CACHEDIR/am/multirepo-args" 2>/dev/null | wc -l)
 						if [ $anyrepoargs -gt 0 ]; then
 							if curl --output /dev/null --silent --head --fail $APPSDB/$arg  1>/dev/null; then
-								echo "$APPSDB" >> "$CACHEDIR/multirepo-args"
+								echo "$APPSDB" >> "$CACHEDIR/am/multirepo-args"
 							fi
-							anyrepoargall=$(cat "$CACHEDIR/multirepo-args" 2>/dev/null | wc -l)
+							anyrepoargall=$(cat "$CACHEDIR/am/multirepo-args" 2>/dev/null | wc -l)
 							if [ $anyrepoargall == 1 ]; then
-								cd "$SCRIPTDIR" || return; wget -q "$(cat "$CACHEDIR/multirepo-args" | head -1)/$arg";  _convert_to_appman_compatible_script
-								rm -R -f "$CACHEDIR/multirepo-args"
+								cd "$SCRIPTDIR" || return; wget -q "$(cat "$CACHEDIR/am/multirepo-args" | head -1)/$arg";  _convert_to_appman_compatible_script
+								rm -R -f "$CACHEDIR/am/multirepo-args"
 								echo ' ◆ "'$arg'" third-party installation script downloaded! ' | tr a-z A-Z
 							else
 								echo -e " ◆ FOUND $(echo '"'$arg'"' | tr a-z A-Z) FROM MULTIPLE SOURCES:\n" &&
 								printf " Select a URL from this menu (read carefully) or press CTRL+C to abort:\n\n"; sleep 1;
-								select d in $(cat "$CACHEDIR/multirepo-args"); do test -n "$d" && break; echo ">>> Invalid Selection"; done
-								rm -R -f "$CACHEDIR/multirepo-args"
+								select d in $(cat "$CACHEDIR/am/multirepo-args"); do test -n "$d" && break; echo ">>> Invalid Selection"; done
+								rm -R -f "$CACHEDIR/am/multirepo-args"
 								cd "$SCRIPTDIR" || return; wget -q $d/$arg;  _convert_to_appman_compatible_script
 								echo ' ◆ "'$arg'" installation script downloaded! ' | tr a-z A-Z
 							fi
 						elif curl --output /dev/null --silent --head --fail $APPSDB/$arg  1>/dev/null; then
-							rm -R -f "$CACHEDIR/multirepo-args"
+							rm -R -f "$CACHEDIR/am/multirepo-args"
 							cd "$SCRIPTDIR" || return; wget -q $APPSDB/$arg;  _convert_to_appman_compatible_script
 							echo ' ◆ "'$arg'" installation script downloaded! ' | tr a-z A-Z
 						else

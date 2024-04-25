@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 
-
 function _completion_lists(){
 	# Remove existing lists and download new ones
 	rm -Rf $AMPATH/{$arch-apps,list,libs-list} &&
@@ -20,10 +19,9 @@ function _completion_lists(){
 
 echo "-----------------------------------------------------------------------------"
 echo -e " Checking for changes of the installation scripts in the online database..."
-if [ -z "$CACHEDIR" ]; then exit 1; fi
-rm -R -f "$CACHEDIR"/sync-args && echo "" >> "$CACHEDIR"/sync-args
-cd $APPSPATH && find -name 'AM-updater' -printf "%h\n" 2>/dev/null | sort -u | cut -c 3- > "$CACHEDIR"/sync-args
-ARGS=$(cat "$CACHEDIR"/sync-args)
+rm -R -f "$CACHEDIR"/am/sync-args && echo "" >> "$CACHEDIR"/am/sync-args
+cd $APPSPATH && find -name 'AM-updater' -printf "%h\n" 2>/dev/null | sort -u | cut -c 3- > "$CACHEDIR"/am/sync-args
+ARGS=$(cat "$CACHEDIR"/am/sync-args)
 
 for arg in $ARGS; do
 
@@ -53,7 +51,7 @@ done
 echo "-----------------------------------------------------------------------------"
 echo -e " Check for updates in modules..."
 function _sync_modules(){
-	MODULES=$(wget -q $HeaderAuthWithGITPAT https://api.github.com/repos/ivan-hc/AM/contents/modules -O - | grep download_url | cut -d '"' -f 4)
+	MODULES=$(wget -q $HeaderAuthWithGITPAT https://api.github.com/repos/ivan-hc/AM/contents/modules?ref="$AMBRANCH" -O - | grep download_url | cut -d '"' -f 4)
 	for v in $MODULES; do
 		cd $AMPATH/modules || return
 		MODULENAME=$(echo "$v" | sed 's:.*/::')
@@ -88,16 +86,15 @@ function _sync_amcli(){
   	_completion_lists
 	CURRENT_AM_VERSION=$($AMCLIPATH -v)
 	echo -ne '\n ◆ SYNCHRONIZING "'"$(echo $AMCLI | tr a-z A-Z)"'" VERSION '"$CURRENT_AM_VERSION"'...\r'; sleep 1
-	if [ -z "$CACHEDIR" ]; then exit 1; fi
-  	rm -R -f "$CACHEDIR"/* 1>/dev/null; cd "$CACHEDIR" || return
+  	rm -R -f "$CACHEDIR"/am/* 1>/dev/null; cd "$CACHEDIR"/am || return
   	if [ $AMCLI == am ] 2>/dev/null; then
   		wget -q $AMREPO/APP-MANAGER && chmod a+x ./APP-MANAGER
   		cd ..
-  		mv "$CACHEDIR"/APP-MANAGER "$AMPATH"; chmod 777 "$AMPATH"
+  		mv "$CACHEDIR"/am/APP-MANAGER $AMPATH; chmod 777 $AMPATH # chmod wont be needed in the future
   	else
-  		wget -q "$AMREPO"/APP-MANAGER -O appman && chmod a+x ./"$AMCLI"
+  		wget -q $AMREPO/APP-MANAGER -O appman && chmod a+x ./$AMCLI
   		cd ..
-  		mv "$CACHEDIR/$AMCLI" "$AMCLIPATH"
+  		mv "$CACHEDIR"/am/$AMCLI $AMCLIPATH
   	fi
   	if [ ! "$CURRENT_AM_VERSION" == "$($AMCLIPATH -v)" ] ; then
  		echo -ne ' A new release of "'"$(echo $AMCLI | tr a-z A-Z)"'" is available, please wait...\r'
