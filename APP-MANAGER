@@ -18,8 +18,6 @@ function _no_sudo() {
 	fi
 }
 
-# If we are creating and moving functions we need to places where it belong (after _no_sudo before _am)
-
 # Check XDG variables ("APPMAN")
 function _xdg_check_variable() {
 	if [ -n "$XDG_CONFIG_HOME" ]; then
@@ -35,8 +33,6 @@ function _xdg_check_variable() {
 	fi
 }
 
-# If function doesn't need anything defined in different function, we can put it enawhere
-# Lets put it here
 function _generate_a_list_of_words_to_use_in_bash_completion
 	rm -rf "$AMPATH/options"
 	cat <<-HEREDOC >> "$AMPATH/options"
@@ -79,13 +75,8 @@ function _generate_a_list_of_words_to_use_in_bash_completion
 HEREDOC
 }
 
-# Now move also _appman function we must put it here right after _xdg_check_variable
-# It really doesn't matter if we put _appman before or after _am function
-# since will be runned only one of them (they don't depend on each other)
-
 # "APPMAN" CORE VARIABLES AND FUNCTIONS
 function _appman() {
-# we added run script for new function here. we function to be runned here
 	_appman_message_before_installation
 	_appman_initialize "$(<"$APPMANCONFIG"/appman-config)"
 	_patch_bashrc_and_profile
@@ -104,7 +95,6 @@ function _am() {
 	mkdir -p "$AMPATH"/modules
 }
 
-# Function taken from inside of _appman function (can be defined anywhere, before needs to be runned)
 function _appman_initialize() {
 	APPSDIR=$1
 	mkdir -p ~/"$APPSDIR"/appman/.cache
@@ -119,16 +109,11 @@ function _appman_initialize() {
 	AMPATH="$HOME/$APPSDIR/$AMCLI"
 }
 
-# Function doesn't run where is written, but where is called!
-
-# Helper functions don't need to be defined inside the parent function
 function _appman_prompt_for_directory() {
 	local location
 	read -r -ep "Please, write the name or the path of your custom application's folder: $(echo -e '\n\n '$HOME'/')" location
 	echo "$location"
 }
-
-# we are doing this because script will be more readable. We separate "working" part of script, from script logic itself
 
 function _appman_validate_directory() {
 	local location=$1
@@ -149,8 +134,6 @@ function _appman_validate_directory() {
 		echo "$location_appman"
 	fi
 }
-
-# You can test this PR in after any change and will work still the same. nothing has really changed except script internall visuall look
 
 # Fix order in "echo $PATH" in case "$HOME/.local/bin" is placed at the beginning instead of the end
 function _patch_bashrc_and_profile() {
@@ -173,7 +156,6 @@ function _patch_bashrc_and_profile() {
 	fi
 }
 
-# New function taken from _appman rename it like you want (tried to guess best name), but you already know best name for this function...
 function _appman_message_before_installation() {
 	if [[ ! -f "$APPMANCONFIG"/appman-config ]]; then
 		echo "--------------------------------------------------------------------------"
@@ -200,7 +182,6 @@ function _appman_message_before_installation() {
 	fi
 }
 
-# Dependencies checks should be here, right after everything in _am and _appman functions is done
 function _am_dependences_check() {
 	# Check for essential commands required by the application
 	missing_deps=()
@@ -218,9 +199,6 @@ function _am_dependences_check() {
 	fi
 }
 
-# You see? we dont even need comments now we use function names instead of omment
-# If you have autocompletion in editor writing longest names will be easy. you will everything write just once
-# If you want write it later autocomplete will suggest you even longest names
 function _check_and_create_AMPATH_directory_if_doesnt_exist() {
 	if [ ! -d "$AMPATH" ]; then
 		$SUDOCOMMAND mkdir -p "$AMPATH"
@@ -252,8 +230,6 @@ function _am_security_check() {
 	_prevent_other_users_from_using_am
 }
 
-# First we move whats is need for main function to work
-
 function _am_newrepo_check() {
 	# Determine if the CLI uses the "main" branch of https://github.com/ivan-hc/AM or an alternative one
 	if [[ -f "$AMPATH"/new-repo.txt ]]; then
@@ -274,8 +250,6 @@ function _am_newrepo_check() {
 	fi
 }
 
-# I just change white spaces in your comment to function name
-# so now it's selfexplanatory function
 function _to_implement_future_application_database_changes() {
 	if [ -f "$AMPATH/neodb" ]; then
 		if grep -q "://" "$AMPATH/neodb"; then
@@ -292,18 +266,13 @@ function _to_implement_future_application_database_changes() {
 	fi
 }
 
-# Remmembered? Right after everything whats need is done...
-# FUNCTIONS RELATED TO THE DATABASE OF APPS
 function _am_databases_check() {
 	# Determine catalogue in use
 	export AMCATALOGUEMARKDOWNS="https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/main/apps"
 	export AMCATALOGUEICONS="https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/main/icons"
 	_am_newrepo_check
-	# we call it where it was
 	_to_implement_future_application_database_changes
 }
-
-# Move function bit higher to not clutter run script itself
 
 # Check version of the installed apps
 function _check_version() {
@@ -399,10 +368,6 @@ function _use_enable_completion() {
 	fi
 }
 
-# We go to start of script i find first mention of _online_check
-# It was in _appman function so we put thi check right before _appman function
-# And changed comment to name
-# We have to rename all mentions of _online_check to new name of function
 # uses github.com by default, as the database and CLI itself are stored/hosted there
 function _to_check_online_connections() {
 	if ! wget -q --tries=10 --timeout=20 --spider https://github.com; then
@@ -445,7 +410,6 @@ _no_sudo
 # Common variables to handle user's XDG directories
 export SCRIPTDIR="$(if command -v xdg-user-dir &>/dev/null; then xdg-user-dir DESKTOP; else echo $HOME; fi)"
 
-# Call new xdg_check_variable function
 _xdg_check_variable
 
 # DETERMINE WHEN TO USE "AM" OR "APPMAN"
@@ -461,7 +425,6 @@ _am_databases_check
 # Set header authorization if GitHub API key file exists
 [ -f "$AMPATH/ghapikey.txt" ] && HeaderAuthWithGITPAT=" --header \"Authorization: token $(<"$AMPATH/ghapikey.txt")\" "
 
-# I hope you have that autocompletion you don't want to write that...
 _generate_a_list_of_words_to_use_in_bash_completion
 
 # ALL THE OPTIONS
