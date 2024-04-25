@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+
 function _completion_lists(){
 	# Remove existing lists and download new ones
 	rm -Rf $AMPATH/{$arch-apps,list,libs-list} &&
@@ -19,9 +20,10 @@ function _completion_lists(){
 
 echo "-----------------------------------------------------------------------------"
 echo -e " Checking for changes of the installation scripts in the online database..."
-rm -R -f $CACHEDIR/sync-args && echo "" >> $CACHEDIR/sync-args
-cd $APPSPATH && find -name 'AM-updater' -printf "%h\n" 2>/dev/null | sort -u | cut -c 3- > $CACHEDIR/sync-args
-ARGS=$(cat $CACHEDIR/sync-args)
+if [ -z "$CACHEDIR" ]; then exit 1; fi
+rm -R -f "$CACHEDIR"/sync-args && echo "" >> "$CACHEDIR"/sync-args
+cd $APPSPATH && find -name 'AM-updater' -printf "%h\n" 2>/dev/null | sort -u | cut -c 3- > "$CACHEDIR"/sync-args
+ARGS=$(cat "$CACHEDIR"/sync-args)
 
 for arg in $ARGS; do
 
@@ -86,15 +88,16 @@ function _sync_amcli(){
   	_completion_lists
 	CURRENT_AM_VERSION=$($AMCLIPATH -v)
 	echo -ne '\n ◆ SYNCHRONIZING "'"$(echo $AMCLI | tr a-z A-Z)"'" VERSION '"$CURRENT_AM_VERSION"'...\r'; sleep 1
-  	rm -R -f $CACHEDIR/* 1>/dev/null; cd $CACHEDIR || return
+	if [ -z "$CACHEDIR" ]; then exit 1; fi
+  	rm -R -f "$CACHEDIR"/* 1>/dev/null; cd "$CACHEDIR" || return
   	if [ $AMCLI == am ] 2>/dev/null; then
   		wget -q $AMREPO/APP-MANAGER && chmod a+x ./APP-MANAGER
   		cd ..
-  		mv $CACHEDIR/APP-MANAGER $AMPATH; chmod 777 $AMPATH
+  		mv "$CACHEDIR"/APP-MANAGER "$AMPATH"; chmod 777 "$AMPATH"
   	else
-  		wget -q $AMREPO/APP-MANAGER -O appman && chmod a+x ./$AMCLI
+  		wget -q "$AMREPO"/APP-MANAGER -O appman && chmod a+x ./"$AMCLI"
   		cd ..
-  		mv $CACHEDIR/$AMCLI $AMCLIPATH
+  		mv "$CACHEDIR/$AMCLI" "$AMCLIPATH"
   	fi
   	if [ ! "$CURRENT_AM_VERSION" == "$($AMCLIPATH -v)" ] ; then
  		echo -ne ' A new release of "'"$(echo $AMCLI | tr a-z A-Z)"'" is available, please wait...\r'
