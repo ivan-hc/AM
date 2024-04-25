@@ -23,11 +23,11 @@ update_github_api() {
 
 function _list_updatable_apps() {
 	_check_version
-	cd $APPSPATH && find -name 'AM-updater' -printf " %h\n" 2>/dev/null | sort -u | xargs -n 1 basename 2>/dev/null > $AMPATH/.cache/updatable-args
-	ARGS=$(cat $AMPATH/.cache/updatable-args)
+	cd $APPSPATH && find -name 'AM-updater' -printf " %h\n" 2>/dev/null | sort -u | xargs -n 1 basename 2>/dev/null > "$CACHEDIR"/am/updatable-args
+	ARGS=$(cat "$CACHEDIR"/am/updatable-args)
 	for arg in $ARGS; do
-		app_version=$(cat "$AMPATH/.cache/version-args" | grep -w " ◆ $arg	|" | sed 's:.*|	::')
-		echo " ◆ $arg $app_version" >> $AMPATH/.cache/updatable-args-list
+		app_version=$(cat "$CACHEDIR/am/version-args" | grep -w " ◆ $arg	|" | sed 's:.*|	::')
+		echo " ◆ $arg $app_version" >> "$CACHEDIR"/am/updatable-args-list
 	done
 }
 
@@ -38,13 +38,14 @@ case "$1" in
 		while [ -n "$1" ]; do
 			case $2 in
 				''|'--apps')
-					rm -R -f $AMPATH/.cache/*
+					if [ -z "$CACHEDIR" ]; then exit 1; fi
+					rm -R -f "$CACHEDIR"/am/* # Scary!
 					_list_updatable_apps
 
 					echo "-----------------------------------------------------------------------------"
 					echo -e ' "'"$(echo $AMCLI | tr a-z A-Z)"'" CAN MANAGE UPDATES FOR THE FOLLOWING PROGRAMS:\n'
-					if test -f "$AMPATH/.cache/updatable-args-list"; then
-						cat "$AMPATH/.cache/updatable-args-list"
+					if test -f "$CACHEDIR/am/updatable-args-list"; then
+						cat "$CACHEDIR/am/updatable-args-list"
 					else
 						echo " None"
 					fi
@@ -69,11 +70,11 @@ case "$1" in
 
 					echo "-----------------------------------------------------------------------------"
 
-					if test -f $AMPATH/.cache/updatable-args-list; then
-						mv $AMPATH/.cache/updatable-args-list $AMPATH/.cache/updatable-args-list-old
+					if test -f "$CACHEDIR"/am/updatable-args-list; then
+						mv "$CACHEDIR"/am/updatable-args-list "$CACHEDIR"/am/updatable-args-list-old
 						_list_updatable_apps
-						OLDVER="$AMPATH/.cache/updatable-args-list-old"
-						NEWVER="$AMPATH/.cache/updatable-args-list"
+						OLDVER="$CACHEDIR/am/updatable-args-list-old"
+						NEWVER="$CACHEDIR/am/updatable-args-list"
 						if cmp --silent -- "$NEWVER" "$OLDVER"; then
 							echo ' Nothing to do here!'
 						else

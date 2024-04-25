@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+if [ -z "$CACHEDIR" ] || [ -z "$APPSPATH" ]; then exit 1; fi
+
 while [ -n "$1" ]; do
 
 	case $2 in
@@ -27,10 +29,10 @@ while [ -n "$1" ]; do
 	echo " ##                  START OF ALL INSTALLATION PROCESSES                   ##"
 	echo " ##                                                                        ##"
 	echo " ############################################################################"
-	rm -R -f $AMPATH/.cache/*
-	echo "$@" | tr ' ' '\n' >> $AMPATH/.cache/install-args 
-	echo STOP >> $AMPATH/.cache/install-args
-	ARGS=$(tail -n +2 $AMPATH/.cache/install-args)
+	rm -R -f "$CACHEDIR"/am/*
+	echo "$@" | tr ' ' '\n' >> "$CACHEDIR"/am/install-args 
+	echo STOP >> "$CACHEDIR"/am/install-args
+	ARGS=$(tail -n +2 "$CACHEDIR"/am/install-args)
 	METAPACKAGES="kdegames kdeutils libreoffice nodejs platform-tools"
 
 	for arg in $ARGS; do
@@ -92,12 +94,12 @@ while [ -n "$1" ]; do
 							fi
 						fi
 					fi
-					if grep -q 'force-latest' $AMPATH/.cache/install-args; then
+					if grep -q 'force-latest' "$CACHEDIR"/am/install-args; then
 						sed -i 's#releases -O -#releases/latest -O -#g' ./$arg
 					fi
 
 					function _install_common_patch(){
-						if ! grep -q -- "--debug" $AMPATH/.cache/install-args; then
+						if ! grep -q -- "--debug" "$CACHEDIR"/am/install-args; then
 							# Patch "wget" to have a progress bar and fix errors when applying patches
 							sed -i "s#wget #wget -q --no-verbose --show-progress --progress=dot -e dotbytes=500K #g" ./$arg
 							sed -i 's#$(wget -q --no-verbose --show-progress --progress=dot -e dotbytes=500K #$(wget -q #g' ./$arg
@@ -201,10 +203,10 @@ while [ -n "$1" ]; do
 							else
 								echo -ne " $(echo '"'$arg'"' | tr a-z A-Z) INSTALLED ($(du -sm $APPSPATH/$(cd $APPSPATH && ls -td * | head -1) | awk '{print $1}' ) MB OF DISK SPACE)\n"
 							fi
-							$SUDOCOMMAND rm $AMPATH/.cache/$arg
+							$SUDOCOMMAND rm "$CACHEDIR"/am/$arg
 							_check_version
-							app_version=$(cat $AMPATH/.cache/version-args | grep -w " ◆ $LATESTDIR	|" | sed 's:.*|	::')
-							echo " ◆ $LATESTDIR $app_version" >> $AMPATH/.cache/installed
+							app_version=$(cat "$CACHEDIR"/am/version-args | grep -w " ◆ $LATESTDIR	|" | sed 's:.*|	::')
+							echo " ◆ $LATESTDIR $app_version" >> "$CACHEDIR"/am/installed
 						fi
 					else
 						echo " INSTALLATION ABORTED!"
@@ -221,55 +223,55 @@ while [ -n "$1" ]; do
 				echo " ◆ $(echo '"'$arg'"' | tr a-z A-Z): app already installed previously! Try removing it."
 			else
 				if test -f ./$arg 2> /dev/null; then
-					mkdir -p $AMPATH/.cache/tmp; cp ./$arg $AMPATH/.cache/tmp/$arg; cd $AMPATH/.cache || return; mv ./tmp/$arg ./$arg; rmdir ./tmp
+					mkdir -p "$CACHEDIR"/am/tmp; cp ./$arg "$CACHEDIR"/am/tmp/$arg; cd "$CACHEDIR"/am || return; mv ./tmp/$arg ./$arg; rmdir ./tmp
 					_install_arg
 				elif test -f $arg 2> /dev/null; then
 					path2arg=$(echo "$arg")
 					arg=$(echo "$path2arg" | sed 's:.*/::')
-					cd $AMPATH/.cache || return; mkdir -p tmp; cd tmp || return; cp $path2arg ./$arg; cd ..; mv ./tmp/$arg ./$arg; rmdir ./tmp
+					cd "$CACHEDIR"/am || return; mkdir -p tmp; cd tmp || return; cp $path2arg ./$arg; cd ..; mv ./tmp/$arg ./$arg; rmdir ./tmp
 					_install_arg
 				elif test -f "$AMPATH/neodb"; then
-					rm -R -f "$AMPATH/.cache/multirepo-args"
+					rm -R -f "$CACHEDIR/am/multirepo-args"
 					MULTIREPO=$(cat "$AMPATH/neodb" | grep "Source=" | sed 's/Source=//g')
 					for anyrepo in $MULTIREPO; do
 						if curl --output /dev/null --silent --head --fail $anyrepo/$arg  1>/dev/null; then
-							echo "$anyrepo" >> "$AMPATH/.cache/multirepo-args"
+							echo "$anyrepo" >> "$CACHEDIR/am/multirepo-args"
 						fi
 					done
-					if test -f "$AMPATH/.cache/multirepo-args"; then
-						anyrepoargs=$(cat "$AMPATH/.cache/multirepo-args" 2>/dev/null | wc -l)
+					if test -f "$CACHEDIR/am/multirepo-args"; then
+						anyrepoargs=$(cat "$CACHEDIR/am/multirepo-args" 2>/dev/null | wc -l)
 						if [ $anyrepoargs -gt 0 ]; then
 							if curl --output /dev/null --silent --head --fail $APPSDB/$arg  1>/dev/null; then
-								echo "$APPSDB" >> "$AMPATH/.cache/multirepo-args"
+								echo "$APPSDB" >> "$CACHEDIR/am/multirepo-args"
 							fi
-							anyrepoargall=$(cat "$AMPATH/.cache/multirepo-args" 2>/dev/null | wc -l)
+							anyrepoargall=$(cat "$CACHEDIR/am/multirepo-args" 2>/dev/null | wc -l)
 							if [ $anyrepoargall == 1 ]; then
-								cd $AMPATH/.cache || return; mkdir -p tmp; cd tmp || return; wget -q "$(cat "$AMPATH/.cache/multirepo-args" | head -1)/$arg"; cd ..; mv ./tmp/$arg ./$arg; rmdir ./tmp
-								rm -R -f "$AMPATH/.cache/multirepo-args"
+								cd $CACHEDIR/am || return; mkdir -p tmp; cd tmp || return; wget -q "$(cat "$CACHEDIR/am/multirepo-args" | head -1)/$arg"; cd ..; mv ./tmp/$arg ./$arg; rmdir ./tmp
+								rm -R -f "$CACHEDIR/am/multirepo-args"
 								_install_arg
 							else
 								echo -e "\n ◆ FOUND $(echo '"'$arg'"' | tr a-z A-Z) FROM MULTIPLE SOURCES:\n" &&
 								printf " Select a URL from this menu (read carefully) or press CTRL+C to abort:\n\n"; sleep 1;
-								select d in $(cat "$AMPATH/.cache/multirepo-args"); do test -n "$d" && break; echo ">>> Invalid Selection"; done
-								cd $AMPATH/.cache || return; mkdir -p tmp; cd tmp || return; wget -q "$d/$arg"; cd ..; mv ./tmp/$arg ./$arg; rmdir ./tmp
-								rm -R -f "$AMPATH/.cache/multirepo-args"
+								select d in $(cat "$CACHEDIR/am/multirepo-args"); do test -n "$d" && break; echo ">>> Invalid Selection"; done
+								cd "$CACHEDIR"/am || return; mkdir -p tmp; cd tmp || return; wget -q "$d/$arg"; cd ..; mv ./tmp/$arg ./$arg; rmdir ./tmp
+								rm -R -f "$CACHEDIR/am/multirepo-args"
 								_install_arg
 							fi
 						elif curl --output /dev/null --silent --head --fail $APPSDB/$arg  1>/dev/null; then
-							cd $AMPATH/.cache || return; mkdir -p tmp; cd tmp || return; wget -q $APPSDB/$arg; cd ..; mv ./tmp/$arg ./$arg; rmdir ./tmp
-							rm -R -f "$AMPATH/.cache/multirepo-args"
+							cd "$CACHEDIR"/am || return; mkdir -p tmp; cd tmp || return; wget -q $APPSDB/$arg; cd ..; mv ./tmp/$arg ./$arg; rmdir ./tmp
+							rm -R -f "$CACHEDIR/am/multirepo-args"
 							_install_arg
 						else
 							echo ' 💀 ERROR: "'$arg'" does NOT exist in the database, see "'$AMCLI' -l"'
 						fi
 					elif curl --output /dev/null --silent --head --fail $APPSDB/$arg  1>/dev/null; then
-						cd $AMPATH/.cache || return; mkdir -p tmp; cd tmp || return; wget -q $APPSDB/$arg; cd ..; mv ./tmp/$arg ./$arg; rmdir ./tmp
+						cd $CACHEDIR/am || return; mkdir -p tmp; cd tmp || return; wget -q $APPSDB/$arg; cd ..; mv ./tmp/$arg ./$arg; rmdir ./tmp
 						_install_arg
 					else
 						echo ' 💀 ERROR: "'$arg'" does NOT exist in the database, see "'$AMCLI' -l"'
 					fi
 				elif curl --output /dev/null --silent --head --fail $APPSDB/$arg  1>/dev/null; then
-					cd $AMPATH/.cache || return; mkdir -p tmp; cd tmp || return; wget -q $APPSDB/$arg; cd ..; mv ./tmp/$arg ./$arg; rmdir ./tmp
+					cd $CACHEDIR/am || return; mkdir -p tmp; cd tmp || return; wget -q $APPSDB/$arg; cd ..; mv ./tmp/$arg ./$arg; rmdir ./tmp
 					_install_arg
 				else
 					echo ' 💀 ERROR: "'$arg'" does NOT exist in the database, see "'$AMCLI' -l"'
@@ -279,11 +281,11 @@ while [ -n "$1" ]; do
 		}
 
 		if [ $arg == STOP ]; then
-			if test -f $AMPATH/.cache/installed; then
+			if test -f "$CACHEDIR"/am/installed; then
 				echo " ############################################################################"
 				echo -e "\n                  END OF ALL INSTALLATION PROCESSES\n"
 				echo -e "             The following new programs have been installed:\n"
-				grep -w -v "◆ am" 0<$AMPATH/.cache/installed
+				grep -w -v "◆ am" 0<"$CACHEDIR"/am/installed
 				echo -e "\n ############################################################################"
 				exit
 			else
