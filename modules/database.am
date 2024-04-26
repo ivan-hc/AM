@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-if [ -z "$CACHEDIR" ] || [ -z "$APPSPATH" ]; then exit 1; fi
-
 function _completion_lists(){
 	# Remove existing lists and download new ones
 	rm -Rf $AMPATH/{$arch-apps,list,libs-list} &&
@@ -10,7 +8,7 @@ function _completion_lists(){
 
 	# THIRD PARTY APPS
 	if test -f "$AMPATH/neodb"; then
-		rm -R -f "$CACHEDIR/am/multirepo-args"
+		rm -R -f "$AMPATH/.cache/multirepo-args"
 		MULTIREPO=$(cat "$AMPATH/neodb" | grep "List=" | grep -E "$arch-apps" | sed 's/List=//g')
 		for anyrepo in $MULTIREPO; do
 			if curl --output /dev/null --silent --head --fail $anyrepo 1>/dev/null; then
@@ -28,7 +26,7 @@ function _completion_lists(){
 	done
 
 	# Append options to the list
-	cat "$CACHEDIR"/am/options >> $AMPATH/list
+	cat $AMPATH/options >> $AMPATH/list
 }
 
 function _clean_lists_and_queries(){
@@ -39,9 +37,6 @@ function _clean_lists_and_queries(){
 case "$1" in
 
   '-a'|'about')
-
-	_online_check
-
 	case $2 in
 	'') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
 	esac
@@ -55,7 +50,7 @@ case "$1" in
 
 	function download_markdown() {
 		local markdown_url="$AMCATALOGUEMARKDOWNS/${1}.md"
-		local cache_dir="$CACHEDIR/am/about"
+		local cache_dir="$AMPATH/.cache/about"
 		local app_status=" STATUS: NOT INSTALLED"
 		local package_name=${1^^}
 		if curl -o /dev/null -sIf "$markdown_url"; then 
@@ -65,7 +60,7 @@ case "$1" in
 			printf " PACKAGE: %s\n" "$package_name"
 			if [ -f "$APPSPATH/$1/remove" ]; then
 				local disk_usage=$(du -sm "$APPSPATH/$1" | cut -f1)
-				local app_version=$(cat "$CACHEDIR"/am/version-args | grep -w " ◆ $1	|" | sed 's:.*|	::')
+				local app_version=$(cat $AMPATH/.cache/version-args | grep -w " ◆ $1	|" | sed 's:.*|	::')
 				app_status=$(echo -e " STATUS: INSTALLED, ABOUT $disk_usage MB OF DISK SPACE IN USE\n VERSION: $app_version")
 			fi
 			printf "%s\n" "$app_status"
@@ -83,7 +78,7 @@ case "$1" in
 			printf " PACKAGE: %s\n" "$arg" | tr a-z A-Z
 			if [ -f "$APPSPATH/$1/remove" ]; then
 				local disk_usage=$(du -sm "$APPSPATH/$1" | cut -f1)
-				local app_version=$(cat $CACHEDIR/am/version-args | grep -w " ◆ $1	|" | sed 's:.*|	::')
+				local app_version=$(cat $AMPATH/.cache/version-args | grep -w " ◆ $1	|" | sed 's:.*|	::')
 				app_status=$(echo -e " STATUS: INSTALLED, ABOUT $disk_usage MB OF DISK SPACE IN USE\n VERSION: $app_version")
 			fi
 			printf "%s\n" "$app_status"
@@ -147,8 +142,8 @@ case "$1" in
 		fi
 		APPSNUMBER=$(echo "$(("$ITEMSNUMBER" - "$LIBNUMBER"))")
 		_check_version
-		if test -f "$CACHEDIR"/am/version-args; then
-			INSTALLED=$(cat "$CACHEDIR"/am/version-args | sort | sed 's/	|	/ /g' | grep -v "◆ am ")
+		if test -f $AMPATH/.cache/version-args; then
+			INSTALLED=$(cat $AMPATH/.cache/version-args | sort | sed 's/	|	/ /g' | grep -v "◆ am ")
 			MESSAGE2="\n$INSTALLED\n"
 		fi
 
@@ -168,7 +163,7 @@ case "$1" in
 		echo -e "\n$MESSAGE\n$MESSAGE2\n LIST OF THE $(grep -e "$" -c $AMPATH/$arch-apps) APPLICATIONS AVAILABLE IN THE 'AM' REPOSITORY:\n\n$(cat $AMPATH/$arch-apps | _clean_lists_and_queries)\n" | less -I
 		echo -e "\n$MESSAGE\n$MESSAGE2"
 	}
-	_list 2>/dev/null
+	_list
 	;;
 
   '-q'|'query')
@@ -178,7 +173,7 @@ case "$1" in
 
 	wget -q --tries=10 --timeout=20 --spider https://github.com
 	if [[ $? -eq 0 ]]; then
-		_completion_lists 2>/dev/null
+		_completion_lists
 	fi
 	ARGS=$(echo "$@" | sed 's/-q //')
 	echo ""
