@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="6.6.3"
+AMVERSION="6.6.3-1"
 
 # Determine the name of this script and its working directory
 DIR="$( cd "$( dirname "$0" )" && pwd )"
@@ -9,6 +9,9 @@ CLI=$(basename "$0")
 # Determine system architecture and if xdg-user-dirs is available. 
 arch="$HOSTTYPE"
 export SCRIPTDIR="$(if command -v xdg-user-dir &>/dev/null; then xdg-user-dir DESKTOP; else echo $HOME; fi)"
+
+# Colors
+RED='\033[0;31m'; LightBlue='\033[1;34m'; Green='\033[0;32m'
 
 # Prevent the use of "sudo" ("AM")
 function _no_sudo() {
@@ -181,8 +184,15 @@ function _am_security_check() {
 	# Prevent non-privileged users from using certain options
 	function _user_not_in_sudoers() {
 		if [ "$AMCLI" == am ]; then
-			if ! groups "$USER" | grep -qw root; then
-				echo "$USER is not in the sudoers file. You can't use this feature."
+			if ! groups "$USER" | grep -qw sudo; then
+				echo -e "\n 💀 ERROR: $USER is not in the sudoers file. Permission denied."
+				echo -e "\n If this is an error, perform the following steps:"
+				echo -e "\n - uninstall \"AM\" using ${RED}sudo /opt/am/remove\033[0m"
+				echo -e "\n - reinstall following the official guide, at ${LightBlue}https://github.com/ivan-hc/AM\033[0m"
+				echo -e "\n Since v6.6.3, \"AM\" uses more restrictive policies for non-privileged users"
+				echo -e " and it was a choice to ensure greater security on multi-account Linux setups.\n"
+				echo -e " If you don't have the necessary privileges, contact your administrator"
+				echo -e " or consider using AppMan instead, at ${Green}https://github.com/ivan-hc/AppMan\033[0m\n"
 				exit
 			fi
 		fi
@@ -392,7 +402,6 @@ function _use_appman() {
 		echo " This function only works for AM"
 		exit
 	fi
-	RED='\033[0;31m'; LightBlue='\033[1;34m'
 	if test -f /opt/am/appman; then
 		_appman
 		echo -e "Please run '${RED}alias am=/opt/am/appman\033[0m' to made 'AM' act exactly like 'AppMan' for\nthe current session or save this command to your '"'~/.bashrc'"' file to make the\nchanges permanent. Visit ${LightBlue}https://github.com/ivan-hc/appman\033[0m for more!"
