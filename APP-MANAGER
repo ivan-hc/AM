@@ -179,6 +179,16 @@ function _am_security_check() {
 		$SUDOCOMMAND mkdir -p "$AMPATH"
 	fi
 
+	# Prevent non-privileged users from using certain options
+	function _user_not_in_sudoers() {
+		if [ "$AMCLI" == am ]; then
+			if ! groups "$USER" | grep -qw sudo; then
+				echo "$USER is not in the sudoers file. You can't use this feature."
+				exit
+			fi
+		fi
+	}
+
 	# Function to check online connections (uses github.com by default, as the database and CLI itself are stored/hosted there)
 	function _online_check() {
 		if ! wget -q --tries=10 --timeout=20 --spider https://github.com; then
@@ -417,6 +427,7 @@ case "$1" in
 		;;
 	'-b'|'backup'|'-o'|'overwrite'|'lock'|'unlock')
 		MODULE="no-updates.am"
+		_user_not_in_sudoers
 		_use_module "$@"
 		;;
 	'-c'|'clean')
@@ -438,19 +449,23 @@ case "$1" in
 		;;
 	'-H'|'--home'|'--firejail'|'--sandbox')
 		MODULE="sandboxes.am"
+		_user_not_in_sudoers
 		_use_module "$@"
 		;;
 	'-i'|'install')
 		MODULE="install.am"
+		_user_not_in_sudoers
 		_online_check
 		_use_module "$@"
 		;;
 	'-R'|'-r'|'remove')
 		MODULE="remove.am"
+		_user_not_in_sudoers
 		_use_module "$@"
 		;;
 	'-s'|'sync')
 		MODULE="sync.am"
+		_user_not_in_sudoers
 		_online_check
 		_use_module "$@"
 		;;
@@ -461,6 +476,7 @@ case "$1" in
 		;;
 	'-u'|'-U'|'update'|'--force-latest')
 		MODULE="update.am"
+		_user_not_in_sudoers
 		_online_check
 		_use_module "$@"
 		;;
@@ -470,27 +486,33 @@ case "$1" in
 		;;
 	'--rollback')
 		MODULE="rollback.am"
+		_user_not_in_sudoers
 		_online_check
 		_use_module "$@"
 		;;
 	'neodb'|'apikey'|'newrepo')
 		MODULE="devtools.am"
+		_user_not_in_sudoers
 		_online_check
 		_use_module "$@"
 		;;
 	'nolibfuse')
 		MODULE="nolibfuse.am"
+		_user_not_in_sudoers
 		_online_check
 		_use_module "$@"
 		;;
 	# INBUILT OPTIONS
 	'--disable-completion')
+		_user_not_in_sudoers
 		_use_disable-completion
 		;;
 	'--enable-completion')
+		_user_not_in_sudoers
 		_use_enable_completion
 		;;
 	'--user'|'appman')
+		_user_not_in_sudoers
 		_use_appman
 		;;
 	'version'|'-v'|'--version')
