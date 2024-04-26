@@ -14,14 +14,14 @@ function _completion_lists(){
 	done
 	
 	# Append options to the list
-	cat $AMPATH/options >> $AMPATH/list
+	cat "$CACHEDIR"/am/options >> $AMPATH/list
 }
 
 echo "-----------------------------------------------------------------------------"
 echo -e " Checking for changes of the installation scripts in the online database..."
-rm -R -f $AMPATH/.cache/sync-args && echo "" >> $AMPATH/.cache/sync-args
-cd $APPSPATH && find -name 'AM-updater' -printf "%h\n" 2>/dev/null | sort -u | cut -c 3- > $AMPATH/.cache/sync-args
-ARGS=$(cat $AMPATH/.cache/sync-args)
+rm -R -f "$CACHEDIR"/am/sync-args && echo "" >> "$CACHEDIR"/am/sync-args
+cd $APPSPATH && find -name 'AM-updater' -printf "%h\n" 2>/dev/null | sort -u | cut -c 3- > "$CACHEDIR"/am/sync-args
+ARGS=$(cat "$CACHEDIR"/am/sync-args)
 
 for arg in $ARGS; do
 
@@ -51,14 +51,17 @@ done
 echo "-----------------------------------------------------------------------------"
 echo -e " Check for updates in modules..."
 function _sync_modules(){
-	MODULES=$(wget -q $HeaderAuthWithGITPAT https://api.github.com/repos/ivan-hc/AM/contents/modules -O - | grep download_url | cut -d '"' -f 4)
+	MODULES=$(wget -q $HeaderAuthWithGITPAT https://api.github.com/repos/ivan-hc/AM/contents/modules?ref="$AMBRANCH" -O - | grep download_url | cut -d '"' -f 4)
 	for v in $MODULES; do
 		cd $AMPATH/modules || return
 		MODULENAME=$(echo "$v" | sed 's:.*/::')
 		if ! test -f ./$MODULENAME; then
 			echo " ◆ Downloading $MODULENAME (not previously installed)..."
-			wget -q "$v"
-			chmod a+x ./$MODULENAME
+			wget -q "$v" -O "$CACHEDIR"/am/"$MODULENAME"
+			chmod a+x "$CACHEDIR"/am/"$MODULENAME"
+			chmod 775 "$CACHEDIR"/am/"$MODULENAME"
+			chown -R :sudo "$CACHEDIR"/am/"$MODULENAME"
+			mv "$CACHEDIR"/am/"$MODULENAME" "$AMPATH"/modules/"$MODULENAME" 2>/dev/null
 		fi
 		CURRENT=$(cat ./$MODULENAME)
 		SOURCE=$(wget -q "$v" -O -)
@@ -66,13 +69,11 @@ function _sync_modules(){
 			echo -ne "\r" 2> /dev/null
 		else
 			echo " ◆ Updating $MODULENAME..."
-			mkdir tmp
-			cd tmp || return
-			wget -q "$v"
-			cd ..
-			mv tmp/*.am ./
-			chmod a+x ./*.am
-			rmdir tmp
+			wget -q "$v" -O "$CACHEDIR"/am/"$MODULENAME"
+			chmod a+x "$CACHEDIR"/am/"$MODULENAME"
+			chmod 775 "$CACHEDIR"/am/"$MODULENAME"
+			chown -R :sudo "$CACHEDIR"/am/"$MODULENAME"
+			mv "$CACHEDIR"/am/"$MODULENAME" "$AMPATH"/modules/"$MODULENAME" 2>/dev/null
 		fi
 	done
 }
@@ -86,15 +87,17 @@ function _sync_amcli(){
   	_completion_lists
 	CURRENT_AM_VERSION=$($AMCLIPATH -v)
 	echo -ne '\n ◆ SYNCHRONIZING "'"$(echo $AMCLI | tr a-z A-Z)"'" VERSION '"$CURRENT_AM_VERSION"'...\r'; sleep 1
-  	rm -R -f $AMPATH/.cache/* 1>/dev/null; cd $AMPATH/.cache || return
+  	rm -R -f "$CACHEDIR"/am/* 1>/dev/null; cd "$CACHEDIR"/am || return
   	if [ $AMCLI == am ] 2>/dev/null; then
-  		wget -q $AMREPO/APP-MANAGER && chmod a+x ./APP-MANAGER
-  		cd ..
-  		mv $AMPATH/.cache/APP-MANAGER $AMPATH; chmod 777 $AMPATH
+  		wget -q $AMREPO/APP-MANAGER -O "$CACHEDIR"/am/APP-MANAGER
+  		chmod a+x "$CACHEDIR"/am/APP-MANAGER
+		chmod 775 "$CACHEDIR"/am/APP-MANAGER
+		chown -R :sudo "$CACHEDIR"/am/APP-MANAGER
+		mv "$CACHEDIR"/am/APP-MANAGER /opt/am/APP-MANAGER 2>/dev/null
   	else
   		wget -q $AMREPO/APP-MANAGER -O appman && chmod a+x ./$AMCLI
   		cd ..
-  		mv $AMPATH/.cache/$AMCLI $AMCLIPATH
+  		mv "$CACHEDIR"/am/$AMCLI $AMCLIPATH
   	fi
   	if [ ! "$CURRENT_AM_VERSION" == "$($AMCLIPATH -v)" ] ; then
  		echo -ne ' A new release of "'"$(echo $AMCLI | tr a-z A-Z)"'" is available, please wait...\r'

@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 
-AMVERSION="6.6.2-2"
+AMVERSION="6.6.3"
 
 # Determine the name of this script and its working directory
 DIR="$( cd "$( dirname "$0" )" && pwd )"
 CLI=$(basename "$0")
 
-# Determine system architecture and current user
+# Determine system architecture, current user and if xdg-user-dirs is available. 
 arch="$HOSTTYPE"
 currentuser="$USER"
+export SCRIPTDIR="$(if command -v xdg-user-dir &>/dev/null; then xdg-user-dir DESKTOP; else echo $HOME; fi)"
 
 # Prevent the use of "sudo" ("AM")
 function _no_sudo() {
@@ -19,9 +20,6 @@ function _no_sudo() {
 }
 
 _no_sudo
-
-# Common variables to handle user's XDG directories
-export SCRIPTDIR="$(if command -v xdg-user-dir &>/dev/null; then xdg-user-dir DESKTOP; else echo $HOME; fi)"
 
 # Check XDG variables ("APPMAN")
 if [ -n "$XDG_CONFIG_HOME" ]; then
@@ -36,6 +34,14 @@ else
 	DATADIR="$HOME/.local/share"
 fi
 
+if [ -n "$XDG_CACHE_HOME" ]; then
+	CACHEDIR="$XDG_CACHE_HOME"
+else
+	CACHEDIR="$HOME/.cache"
+fi
+
+mkdir -p "$CACHEDIR"/am
+
 # "AM" CORE VARIABLES
 function _am() {
 	AMCLI="am"
@@ -45,8 +51,7 @@ function _am() {
 	COMPLETIONFILE="am-completion.sh"
 	APPSPATH="/opt"
 	AMPATH="$APPSPATH/$AMCLI"
-	mkdir -p "$AMPATH"/.cache
-	mkdir -p "$AMPATH"/modules
+	mkdir -p "$AMPATH"/modules "$CACHEDIR"/am
 }
 
 # "APPMAN" CORE VARIABLES AND FUNCTIONS
@@ -174,21 +179,15 @@ function _am_security_check() {
 		$SUDOCOMMAND mkdir -p "$AMPATH"
 	fi
 
-	# Prevent other system users from using "AM"
-	if [ "$AMCLI" == am ]; then
-		ampathowner=$(ls -ld /opt/am | awk 'NR==1 {print $3}')
-		if [ "$ampathowner" != "$currentuser" ]; then
-			echo ' 💀 ERROR: you are not the owner of /opt/am, so you cannot use "AM"'
-			echo '--------------------------------------------------------------------------'
-			echo ' The user that have installed "AM" on this system is "'"$ampathowner"'"'
-			echo ' you are only allowed to use the installed apps, not to manage them.'
-			echo '--------------------------------------------------------------------------'
-			echo ' Please, contact "'"$ampathowner"'" to change the ownership of /opt/am or'
-			echo ' consider using "AppMan" instead, see https://github.com/ivan-hc/AppMan'
-			echo '--------------------------------------------------------------------------'
-			exit
+	# Prevent non-privileged users from using certain options
+	function _user_not_in_sudoers() {
+		if [ "$AMCLI" == am ]; then
+			if ! groups "$USER" | grep -qw sudo; then
+				echo "$USER is not in the sudoers file. You can't use this feature."
+				exit
+			fi
 		fi
-	fi
+	}
 
 	# Function to check online connections (uses github.com by default, as the database and CLI itself are stored/hosted there)
 	function _online_check() {
@@ -211,6 +210,7 @@ function _am_databases_check() {
 		# Determine if the CLI uses the "main" branch of https://github.com/ivan-hc/AM or an alternative one
 		if [[ -f "$AMPATH"/new-repo.txt ]]; then
 			AMREPO=$(<"$AMPATH/new-repo.txt") # Utilizing command substitution with < for more efficient file reading
+			AMBRANCH=$(basename "$AMREPO")
 			APPSDB="$AMREPO/programs/$arch"
 			APPSLISTDB="$AMREPO/programs/$arch-apps"
 			LIBSLISTDB="$AMREPO/programs/libs-list"
@@ -221,6 +221,7 @@ function _am_databases_check() {
 			fi
 		else
 			AMREPO="https://raw.githubusercontent.com/IVAN-HC/AM/main" # Consolidating variable assignments for clarity and brevity
+			AMBRANCH=$(basename "$AMREPO")
 			APPSDB="$AMREPO/programs/$arch"
 			APPSLISTDB="$AMREPO/programs/$arch-apps"
 			LIBSLISTDB="$AMREPO/programs/libs-list"
@@ -252,7 +253,7 @@ _am_databases_check
 
 # Check version of the installed apps
 function _check_version() {
-	rm -f $AMPATH/.cache/version-args
+	rm -f "$CACHEDIR"/am/version-args
 	cd $APPSPATH &&
 	INSTALLED_APPS=$(find -name 'remove' -printf "%h\n" 2>/dev/null | du -sh -- * 2> /dev/null | sort -rh | sed 's@.*	@@')
 	for arg in $INSTALLED_APPS; do
@@ -294,14 +295,14 @@ function _check_version() {
 			if [ -z "$APPVERSION" ]; then
 				APPVERSION="unknown"
 			fi
-			echo " ◆ $arg	|	$APPVERSION" >> $AMPATH/.cache/version-args
+			echo " ◆ $arg	|	$APPVERSION" >> "$CACHEDIR"/am/version-args
 		fi
 	done
 }
 
 # Generate a list of words to use in bash completion
-rm -rf "$AMPATH/options"
-cat <<-HEREDOC >> "$AMPATH/options"
+rm -f "$CACHEDIR/am/options"
+cat <<-HEREDOC >> "$CACHEDIR/am/options"
 	about
 	apikey
 	backup
@@ -426,6 +427,7 @@ case "$1" in
 		;;
 	'-b'|'backup'|'-o'|'overwrite'|'lock'|'unlock')
 		MODULE="no-updates.am"
+		_user_not_in_sudoers
 		_use_module "$@"
 		;;
 	'-c'|'clean')
@@ -447,19 +449,23 @@ case "$1" in
 		;;
 	'-H'|'--home'|'--firejail'|'--sandbox')
 		MODULE="sandboxes.am"
+		_user_not_in_sudoers
 		_use_module "$@"
 		;;
 	'-i'|'install')
 		MODULE="install.am"
+		_user_not_in_sudoers
 		_online_check
 		_use_module "$@"
 		;;
 	'-R'|'-r'|'remove')
 		MODULE="remove.am"
+		_user_not_in_sudoers
 		_use_module "$@"
 		;;
 	'-s'|'sync')
 		MODULE="sync.am"
+		_user_not_in_sudoers
 		_online_check
 		_use_module "$@"
 		;;
@@ -470,6 +476,7 @@ case "$1" in
 		;;
 	'-u'|'-U'|'update'|'--force-latest')
 		MODULE="update.am"
+		_user_not_in_sudoers
 		_online_check
 		_use_module "$@"
 		;;
@@ -479,27 +486,33 @@ case "$1" in
 		;;
 	'--rollback')
 		MODULE="rollback.am"
+		_user_not_in_sudoers
 		_online_check
 		_use_module "$@"
 		;;
 	'neodb'|'apikey'|'newrepo')
 		MODULE="devtools.am"
+		_user_not_in_sudoers
 		_online_check
 		_use_module "$@"
 		;;
 	'nolibfuse')
 		MODULE="nolibfuse.am"
+		_user_not_in_sudoers
 		_online_check
 		_use_module "$@"
 		;;
 	# INBUILT OPTIONS
 	'--disable-completion')
+		_user_not_in_sudoers
 		_use_disable-completion
 		;;
 	'--enable-completion')
+		_user_not_in_sudoers
 		_use_enable_completion
 		;;
 	'--user'|'appman')
+		_user_not_in_sudoers
 		_use_appman
 		;;
 	'version'|'-v'|'--version')
