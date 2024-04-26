@@ -1,11 +1,32 @@
 #!/usr/bin/env bash
 
+AMVERSION="6.6.2-1"
+
+# Determine the name of this script and its working directory
 DIR="$( cd "$( dirname "$0" )" && pwd )"
 CLI=$(basename "$0")
 
-SCRIPTDIR="$(if command -v xdg-user-dir &>/dev/null; then xdg-user-dir DESKTOP; else echo $HOME; fi)"
+# Determine system architecture and current user
+arch="$HOSTTYPE"
+currentuser="$USER"
 
-# Check XDG variables
+# Colors
+RED='\033[0;31m'; LightBlue='\033[1;34m'; Green='\033[0;32m'
+
+# Prevent the use of "sudo" ("AM")
+function _no_sudo() {
+	if [ -n "$SUDO_COMMAND" ]; then
+		printf '\n Please do not use "sudo" to execute "'"$CLI"'", try again.\n\n';
+		exit 1;
+	fi
+}
+
+_no_sudo
+
+# Common variables to handle user's XDG directories
+export SCRIPTDIR="$(if command -v xdg-user-dir &>/dev/null; then xdg-user-dir DESKTOP; else echo $HOME; fi)"
+
+# Check XDG variables ("APPMAN")
 if [ -n "$XDG_CONFIG_HOME" ]; then
 	APPMANCONFIG="$XDG_CONFIG_HOME/appman"
 else
@@ -18,7 +39,8 @@ else
 	DATADIR="$HOME/.local/share"
 fi
 
-function _am(){
+# "AM" CORE VARIABLES
+function _am() {
 	AMCLI="am"
 	AMCLIPATH="$AMCLI"
 	SUDOCOMMAND="sudo"
@@ -30,48 +52,50 @@ function _am(){
 	mkdir -p "$AMPATH"/modules
 }
 
-# Helper functions don't need to be defined inside the parent function
-function prompt_for_directory() {
-	local location
-	read -r -ep "Please, write the name or the path of your custom application's folder: $(echo -e '\n\n '$HOME'/')" location
-	echo "$location"
-}
-
-function validate_directory() {
-	local location=$1
-	if [[ "$location" == "" ]]; then
-		echo -e "--------------------------------------------------------------------------"
-		echo "OPERATION ABORTED!"
-		exit  1
-	elif [[ "$location" == ".local/bin" ]]; then
-		echo -e "--------------------------------------------------------------------------\n"
-		echo -e " 💀 ERROR, you can't install applications into a '$PATH'\n\n The directory ~/.local/bin and 'bin' folders are used for executables.\n\n Please, choose a different path and retry! \n"
-		echo -e "--------------------------------------------------------------------------\n"
-		exit  1
-		else
-		local location_appman="${location/#$HOME}"
-		location_appman="${location_appman// /-}"
-		location_appman="${location_appman#/}"
-		location_appman="${location_appman%/}"
-		echo "$location_appman"
-	fi
-}
-
-function initialize_appman() {
-	APPSDIR=$1
-	mkdir -p ~/"$APPSDIR"/appman/.cache
-	mkdir -p ~/"$APPSDIR"/appman/modules
-	mkdir -p ~/.local/bin "$DATADIR"/applications "$DATADIR"/icons
-	AMCLI="appman"
-	AMCLIPATH="$DIR/$AMCLI"
-	SUDOCOMMAND=""
-	COMPLETIONPATH="$HOME"
-	COMPLETIONFILE=".bash_completion"
-	APPSPATH="$HOME/$APPSDIR"
-	AMPATH="$HOME/$APPSDIR/$AMCLI"
-}
-
+# "APPMAN" CORE VARIABLES AND FUNCTIONS
 function _appman() {
+
+	function _appman_initialize() {
+		APPSDIR=$1
+		mkdir -p ~/"$APPSDIR"/appman/.cache
+		mkdir -p ~/"$APPSDIR"/appman/modules
+		mkdir -p ~/.local/bin "$DATADIR"/applications "$DATADIR"/icons
+		AMCLI="appman"
+		AMCLIPATH="$DIR/$AMCLI"
+		SUDOCOMMAND=""
+		COMPLETIONPATH="$HOME"
+		COMPLETIONFILE=".bash_completion"
+		APPSPATH="$HOME/$APPSDIR"
+		AMPATH="$HOME/$APPSDIR/$AMCLI"
+	}
+
+	# Helper functions don't need to be defined inside the parent function
+	function _appman_prompt_for_directory() {
+		local location
+		read -r -ep "Please, write the name or the path of your custom application's folder: $(echo -e '\n\n '$HOME'/')" location
+		echo "$location"
+	}
+
+	function _appman_validate_directory() {
+		local location=$1
+		if [[ "$location" == "" ]]; then
+			echo -e "--------------------------------------------------------------------------"
+			echo "OPERATION ABORTED!"
+			exit  1
+		elif [[ "$location" == ".local/bin" ]]; then
+			echo -e "--------------------------------------------------------------------------\n"
+			echo -e " 💀 ERROR, you can't install applications into a '$PATH'\n\n The directory ~/.local/bin and 'bin' folders are used for executables.\n\n Please, choose a different path and retry! \n"
+			echo -e "--------------------------------------------------------------------------\n"
+			exit  1
+		else
+			local location_appman="${location/#$HOME}"
+			location_appman="${location_appman// /-}"
+			location_appman="${location_appman#/}"
+			location_appman="${location_appman%/}"
+			echo "$location_appman"
+		fi
+	}
+
 	if [[ ! -f "$APPMANCONFIG"/appman-config ]]; then
 		echo "--------------------------------------------------------------------------"
 		echo " >>> Thank you for choosing AppMan!"
@@ -85,8 +109,8 @@ function _appman() {
 		echo 'decide to change your choice in the future, first remove all the programs'
 		echo 'and then edit the ~/.config/appman/appman-config text file.'
 		echo -e "--------------------------------------------------------------------------\n"
-		local location=$(prompt_for_directory)
-		local validated_location=$(validate_directory "$location")
+		local location=$(_appman_prompt_for_directory)
+		local validated_location=$(_appman_validate_directory "$location")
 		mkdir -p "$APPMANCONFIG"
 		echo "$validated_location" >> "$APPMANCONFIG"/appman-config
 		echo '--------------------------------------------------------------------------'
@@ -95,155 +119,126 @@ function _appman() {
 		echo -e '\nIn case of problems, use the option "-h".'
 		echo '--------------------------------------------------------------------------'
 	fi
-	initialize_appman "$(<"$APPMANCONFIG"/appman-config)"
+	_appman_initialize "$(<"$APPMANCONFIG"/appman-config)"
+
+	# Fix order in "echo $PATH" in case "$HOME/.local/bin" is placed at the beginning instead of the end
+	function _patch_bashrc_and_profile() {
+		# Check if the custom PATH is not already in .bashrc, then append it (fix - exclamation mark negates the entire command substitution)
+		if test -f "$HOME/.bashrc"; then
+			if ! grep -q 'export PATH=$PATH:$HOME/.local/bin' "$HOME/.bashrc"; then
+				echo 'export PATH=$(echo $PATH | tr ":" "\n" | grep -v "/.local/bin" | tr "\n" ":" | sed ''s/.$//'')' >> "$HOME/.bashrc"
+				echo -e 'export PATH=$PATH:$HOME/.local/bin\n' >> "$HOME/.bashrc"
+			fi
+		fi
+		# Correct the order of .local/bin in .profile if necessary
+		if test -f "$HOME/.profile"; then
+			if grep -q 'PATH="$HOME/.local/bin:$PATH"' "$HOME/.profile"; then
+				sed -i 's#PATH="$HOME/.local/bin:$PATH"#PATH="$PATH:$HOME/.local/bin"#g' "$HOME/.profile"
+			fi
+		elif test -f "$HOME/.bash_profile"; then
+			if grep -q 'PATH="$HOME/.local/bin:$PATH"' "$HOME/.bash_profile"; then
+				sed -i 's#PATH="$HOME/.local/bin:$PATH"#PATH="$PATH:$HOME/.local/bin"#g' "$HOME/.bash_profile"
+			fi
+		fi
+	}
+	_patch_bashrc_and_profile
 }
 
+# DETERMINE WHEN TO USE "AM" OR "APPMAN"
 if [[ "$DIR/$CLI" == "/usr/local/bin/am" ]] 2>/dev/null; then
 	_am
 else
 	_appman
 fi
 
-function _online_check(){
-	if ! wget -q --tries=10 --timeout=20 --spider https://github.com; then
-		echo -e "\n $AMCLI is offline, please check your internet connection and try again\n"
-		exit
+# FUNCTIONS RELATED TO THE SAFE USE OF "AM"
+function _am_security_check() {
+	function _am_dependences_check() {
+		# Check for essential commands required by the application
+		missing_deps=()
+		for name in cat chmod chown curl grep sed wget; do
+			if ! command -v "$name" &>/dev/null; then
+				printf "\nERROR: command \"%s\" not found, strongly needed by \"%s\"!\n" "$name" "$AMCLI"
+			missing_deps+=("$name")
+			fi
+		done
+
+		# Exit if any essential command is missing
+		if [ -n "$missing_deps" ]; then
+			printf "\nMissing essential commands: %s\nInstall the above and try again\n\n" "${missing_deps[*]}"
+			exit 1
+		fi
+	}
+
+	_am_dependences_check
+
+	# Check and create the $AMPATH directory if it does not exist
+	if [ ! -d "$AMPATH" ]; then
+		$SUDOCOMMAND mkdir -p "$AMPATH"
 	fi
+
+	# Function to check online connections (uses github.com by default, as the database and CLI itself are stored/hosted there)
+	function _online_check() {
+		if ! wget -q --tries=10 --timeout=20 --spider https://github.com; then
+			echo -e "\n $AMCLI is offline, please check your internet connection and try again\n"
+			exit
+		fi
+	}
 }
 
-# Determine catalogue in use
-export AMCATALOGUEMARKDOWNS="https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/main/apps"
-export AMCATALOGUEICONS="https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/main/icons"
+_am_security_check
 
-# Determine system architecture and current user
-export arch="$HOSTTYPE"
-export currentuser="$USER"
+# FUNCTIONS RELATED TO THE DATABASE OF APPS
+function _am_databases_check() {
+	# Determine catalogue in use
+	export AMCATALOGUEMARKDOWNS="https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/main/apps"
+	export AMCATALOGUEICONS="https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/main/icons"
 
-if [[ -f "$AMPATH"/new-repo.txt ]]; then
-	AMREPO=$(<"$AMPATH/new-repo.txt") # Utilizing command substitution with < for more efficient file reading
-	APPSDB="$AMREPO/programs/$arch"
-	APPSLISTDB="$AMREPO/programs/$arch-apps"
-	LIBSLISTDB="$AMREPO/programs/libs-list"
-	if [[ "$@" != "newrepo off" ]]; then
-		echo '--------------------------------------------------------------------------'
-		echo " Source: $AMREPO"
-		echo '--------------------------------------------------------------------------'
-	fi
-else
-	AMREPO="https://raw.githubusercontent.com/IVAN-HC/AM/main" # Consolidating variable assignments for clarity and brevity
-	APPSDB="$AMREPO/programs/$arch"
-	APPSLISTDB="$AMREPO/programs/$arch-apps"
-	LIBSLISTDB="$AMREPO/programs/libs-list"
-fi
-
-# To implement future application database changes
-if [ -f "$AMPATH/neodb" ]; then
-	if grep -q "://" "$AMPATH/neodb"; then
-		if grep -q "#STATUS=quiet" "$AMPATH/neodb"; then
-			case "$1" in
-			'-a'|'about'|'-d'|'download'|'-i'|'install'|'-l'|'list'|'-q'|'query')
+	function _am_newrepo_check() {
+		# Determine if the CLI uses the "main" branch of https://github.com/ivan-hc/AM or an alternative one
+		if [[ -f "$AMPATH"/new-repo.txt ]]; then
+			AMREPO=$(<"$AMPATH/new-repo.txt") # Utilizing command substitution with < for more efficient file reading
+			APPSDB="$AMREPO/programs/$arch"
+			APPSLISTDB="$AMREPO/programs/$arch-apps"
+			LIBSLISTDB="$AMREPO/programs/libs-list"
+			if [[ "$@" != "newrepo off" ]]; then
 				echo '--------------------------------------------------------------------------'
-				echo " Source: Third party repositories are enabled"
+				echo " Source: $AMREPO"
 				echo '--------------------------------------------------------------------------'
-				;;
-			esac
+			fi
+		else
+			AMREPO="https://raw.githubusercontent.com/IVAN-HC/AM/main" # Consolidating variable assignments for clarity and brevity
+			APPSDB="$AMREPO/programs/$arch"
+			APPSLISTDB="$AMREPO/programs/$arch-apps"
+			LIBSLISTDB="$AMREPO/programs/libs-list"
 		fi
-	fi
-fi
+	}
 
-# Check for essential commands required by the application
-missing_deps=()
-for name in cat chmod chown curl grep sed wget; do
-	if ! command -v "$name" &>/dev/null; then
-		printf "\nERROR: command \"%s\" not found, strongly needed by \"%s\"!\n" "$name" "$AMCLI"
-	missing_deps+=("$name")
-	fi
-done
+	_am_newrepo_check
 
-# Exit if any essential command is missing
-if [ -n "$missing_deps" ]; then
-	printf "\nMissing essential commands: %s\nInstall the above and try again\n\n" "${missing_deps[*]}"
-	exit 1
-fi
-
-rm -rf "$AMPATH/options"
-cat <<-HEREDOC >> "$AMPATH/options"
-	about
-	apikey
-	backup
-	clean
-	download
-	files
-	install
-	list
-	lock
-	neodb
-	newrepo
-	nolibfuse
-	overwrite
-	query
-	remove
-	sync
-	template
-	test
-	unlock
-	update
-	web
-	--apps
-	--byname
-	--convert
-	--debug
-	--disable-completion
-	--enable-completion
-	--firejail
-	--force-latest
-	--home
-	--launcher
-	--less
-	--rollback
-	--sandbox
-	--silent
-	--user
-HEREDOC
-
-function _no_sudo(){
-	if [ -n "$SUDO_COMMAND" ]; then
-		printf "\n WARNING: You don't need to use SUDO for this.\n\n";
-		exit 1;
-	fi
-}
-
-function _patch_bashrc_and_profile(){
-	# Check if the custom PATH is not already in .bashrc, then append it (fix - exclamation mark negates the entire command substitution)
-	if test -f "$HOME/.bashrc"; then
-		if ! grep -q 'export PATH=$PATH:$HOME/.local/bin' "$HOME/.bashrc"; then
-			echo 'export PATH=$(echo $PATH | tr ":" "\n" | grep -v "/.local/bin" | tr "\n" ":" | sed ''s/.$//'')' >> "$HOME/.bashrc"
-			echo -e 'export PATH=$PATH:$HOME/.local/bin\n' >> "$HOME/.bashrc"
-		fi
-	fi
-	# Correct the order of .local/bin in .profile if necessary
-	if test -f "$HOME/.profile"; then
-		if grep -q 'PATH="$HOME/.local/bin:$PATH"' "$HOME/.profile"; then
-			sed -i 's#PATH="$HOME/.local/bin:$PATH"#PATH="$PATH:$HOME/.local/bin"#g' "$HOME/.profile"
-		fi
-	elif test -f "$HOME/.bash_profile"; then
-		if grep -q 'PATH="$HOME/.local/bin:$PATH"' "$HOME/.bash_profile"; then
-			sed -i 's#PATH="$HOME/.local/bin:$PATH"#PATH="$PATH:$HOME/.local/bin"#g' "$HOME/.bash_profile"
+	# To implement future application database changes
+	if [ -f "$AMPATH/neodb" ]; then
+		if grep -q "://" "$AMPATH/neodb"; then
+			if grep -q "#STATUS=quiet" "$AMPATH/neodb"; then
+				case "$1" in
+				'-a'|'about'|'-d'|'download'|'-i'|'install'|'-l'|'list'|'-q'|'query')
+					echo '--------------------------------------------------------------------------'
+					echo " Source: Third party repositories are enabled"
+					echo '--------------------------------------------------------------------------'
+					;;
+				esac
+			fi
 		fi
 	fi
 }
 
-# Check if the script is called with 'appman' and if so, perform initial setup
-[ "$AMCLI" = "appman" ] && {
-	_no_sudo
-	_patch_bashrc_and_profile
-}
+_am_databases_check
 
 # Set header authorization if GitHub API key file exists
 [ -f "$AMPATH/ghapikey.txt" ] && HeaderAuthWithGITPAT=" --header \"Authorization: token $(<"$AMPATH/ghapikey.txt")\" "
 
 # Check version of the installed apps
-function _check_version(){
+function _check_version() {
 	rm -f $AMPATH/.cache/version-args
 	cd $APPSPATH &&
 	INSTALLED_APPS=$(find -name 'remove' -printf "%h\n" 2>/dev/null | du -sh -- * 2> /dev/null | sort -rh | sed 's@.*	@@')
@@ -291,43 +286,49 @@ function _check_version(){
 	done
 }
 
-# All the options
-function source_module() {
-	source "$AMPATH/modules/$MODULE" "$@"
-}
+# Generate a list of words to use in bash completion
+rm -rf "$AMPATH/options"
+cat <<-HEREDOC >> "$AMPATH/options"
+	about
+	apikey
+	backup
+	clean
+	download
+	files
+	install
+	list
+	lock
+	neodb
+	newrepo
+	nolibfuse
+	overwrite
+	query
+	remove
+	sync
+	template
+	test
+	unlock
+	update
+	web
+	--apps
+	--byname
+	--convert
+	--debug
+	--disable-completion
+	--enable-completion
+	--firejail
+	--force-latest
+	--home
+	--launcher
+	--less
+	--rollback
+	--sandbox
+	--silent
+	--user
+HEREDOC
 
-function get_module() {
-	wget -q "$AMREPO/modules/$MODULE" -O "$AMPATH/modules/$MODULE"
-	chmod a+x "$AMPATH/modules/$MODULE"
-}
-
-function test_module() {
-	if ! test -f "$AMPATH/modules/$MODULE"; then
-		get_module
-	fi
-}
-
-function use_module_sudo() {
-	test_module
-	source_module "$@"
-}
-
-function use_module() {
-	_no_sudo
-	use_module_sudo "$@"
-}
-
-function use_module_online_sudo () {
-	_online_check
-	use_module "$@"
-}
-
-function use_module_online () {
-	_no_sudo
-	use_module_online_sudo "$@"
-}
-
-function use_disable-completion() {
+# Functions related to internal options to enable/disable bash (and zsh) completion.
+function _use_disable-completion() {
 	if [ "$(grep -o "$AMCLI" 0<"$COMPLETIONPATH/$COMPLETIONFILE" | head -1)" == "$AMCLI" ]; then
 		grep -v 'complete -W "$(cat '"$AMPATH"'/list 2>/dev/null)" '"$AMCLI"'' "$COMPLETIONPATH/$COMPLETIONFILE" > "$AMPATH"/$COMPLETIONFILE.backup &&
 		$SUDOCOMMAND mv "$AMPATH"/$COMPLETIONFILE.backup "$COMPLETIONPATH/$COMPLETIONFILE"
@@ -337,7 +338,7 @@ function use_disable-completion() {
 	fi
 }
 
-function use_enable_completion() {
+function _use_enable_completion() {
 	if [ "$(grep -o "$AMCLI" 0<"$COMPLETIONPATH/$COMPLETIONFILE" | head -1)" == "$AMCLI" ]; then
 		echo " Completion script is already enabled!"
 	else
@@ -371,14 +372,13 @@ function use_enable_completion() {
 	fi
 }
 
-function use_appman() {
-	_no_sudo
+# Function for the option that helps "AM" function like "AppMan", via alias
+function _use_appman() {
 	_online_check
 	if [ "$AMCLI" == appman ] 2>/dev/null; then
 		echo " This function only works for AM"
 		exit
 	fi
-	RED='\033[0;31m'; LightBlue='\033[1;34m'
 	if test -f /opt/am/appman; then
 		_appman
 		echo -e "Please run '${RED}alias am=/opt/am/appman\033[0m' to made 'AM' act exactly like 'AppMan' for\nthe current session or save this command to your '"'~/.bashrc'"' file to make the\nchanges permanent. Visit ${LightBlue}https://github.com/ivan-hc/appman\033[0m for more!"
@@ -389,85 +389,107 @@ function use_appman() {
 	fi
 }
 
+# Handle external modules
+function _use_module() {
+	# Test if module exists
+	if ! test -f "$AMPATH/modules/$MODULE"; then
+		wget -q "$AMREPO/modules/$MODULE" -O "$AMPATH/modules/$MODULE"
+		chmod a+x "$AMPATH/modules/$MODULE"
+	fi
+	# Source module
+	source "$AMPATH/modules/$MODULE" "$@"
+}
+
+# ALL THE OPTIONS
 case "$1" in
 	'')
 		echo -e "\n USAGE: '$AMCLI [option]'\n        '$AMCLI [option] [argument]'\n\n Run the '$AMCLI -h' command to find out more\n"
 		;;
+	# OPTIONS BASED ON EXTERNAL MODULES
 	'-a'|'about'|'-l'|'list'|'-q'|'query')
 		MODULE="database.am"
-		use_module "$@"
+		_use_module "$@"
 		;;
 	'-b'|'backup'|'-o'|'overwrite'|'lock'|'unlock')
 		MODULE="no-updates.am"
-		use_module "$@"
+		_use_module "$@"
 		;;
 	'-c'|'clean')
 		MODULE="clean.am"
-		use_module
+		_use_module
 		;;
 	'-d'|'download')
 		MODULE="download.am"
-		use_module_online "$@"
+		_online_check
+		_use_module "$@"
 		;;
 	'-f'|'files')
 		MODULE="files.am"
-		use_module "$@"
+		_use_module "$@"
 		;;
 	'-h'|'help')
 		MODULE="help.am"
-		use_module
+		_use_module "$@"
 		;;
 	'-H'|'--home'|'--firejail'|'--sandbox')
 		MODULE="sandboxes.am"
-		use_module "$@"
+		_use_module "$@"
 		;;
 	'-i'|'install')
 		MODULE="install.am"
-		use_module_online_sudo "$@"
+		_online_check
+		_use_module "$@"
 		;;
 	'-R'|'-r'|'remove')
 		MODULE="remove.am"
-		use_module_sudo "$@"
+		_use_module "$@"
 		;;
 	'-s'|'sync')
 		MODULE="sync.am"
-		use_module_online "$@"
+		_online_check
+		_use_module "$@"
 		;;
 	'-t'|'template')
 		MODULE="template.am"
-		use_module_online "$@"
+		_online_check
+		_use_module "$@"
 		;;
 	'-u'|'-U'|'update'|'--force-latest')
 		MODULE="update.am"
-		use_module_online "$@"
-		;;
-	'--disable-completion')
-		use_disable-completion
-		;;
-	'--enable-completion')
-		use_enable_completion
+		_online_check
+		_use_module "$@"
 		;;
 	'--launcher')
 		MODULE="launcher.am"
-		use_module "$@"
+		_use_module "$@"
 		;;
 	'--rollback')
 		MODULE="rollback.am"
-		use_module_online "$@"
-		;;
-	'--user'|'appman')
-		use_appman
+		_online_check
+		_use_module "$@"
 		;;
 	'neodb'|'apikey'|'newrepo')
 		MODULE="devtools.am"
-		use_module_online "$@"
+		_online_check
+		_use_module "$@"
 		;;
 	'nolibfuse')
 		MODULE="nolibfuse.am"
-		use_module_online "$@"
+		_online_check
+		_use_module "$@"
+		;;
+	# INBUILT OPTIONS
+	'--disable-completion')
+		_use_disable-completion
+		;;
+	'--enable-completion')
+		_use_enable_completion
+		;;
+	'--user'|'appman')
+		_use_appman
 		;;
 	'version'|'-v'|'--version')
-		echo "6.6.2"
+		echo "$AMVERSION"
 		;;
 	*)
 		exec "$AMCLIPATH"
