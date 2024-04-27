@@ -188,6 +188,22 @@ function _am_security_check() {
 
 _am_security_check
 
+# SECURE INSTALLED APPS
+function _prevent_apps_from_being_removed_by_third_parties() {
+	# Add a security layer to scripts named "remove" of installed apps to prevent file removal by non-privileged users
+	if [ $AMCLI == am ] 2>/dev/null; then
+		if ! grep -q '"$SUDO_COMMAND"' /opt/*/remove 2> /dev/null; then
+			for r in /opt/*/; do
+				if test -f $r/remove; then
+					sed -i '1 a if [ -z "$SUDO_COMMAND" ]; then echo "Permission denied"; exit 1; fi' $r/remove 2> /dev/null
+				fi
+			done
+		fi
+	fi
+}
+
+_prevent_apps_from_being_removed_by_third_parties 2> /dev/null
+
 # FUNCTIONS RELATED TO THE DATABASE OF APPS
 function _am_databases_check() {
 	# Determine catalogue in use
