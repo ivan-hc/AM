@@ -44,6 +44,7 @@ while [ -n "$1" ]; do
 				function _install_arg(){
 					chmod a+x ./$arg
 
+					# Check if the installation script is a metapackage (example one of the 40+ kdegames scripts)
 					for metapackage in $(echo "$METAPACKAGES"); do
 						if grep -q "$metapackage" ./$arg 2> /dev/null; then
 							if test -d $APPSPATH/$metapackage/tmp; then
@@ -54,11 +55,14 @@ while [ -n "$1" ]; do
 						fi
 					done
 
+					# Prevent "appman" installing itself
 					if [ $arg == appman ]; then
 						if [ $AMCLI == appman ] 2>/dev/null; then
 							echo ' 💀 ERROR: YOU CANNOT INSTALL APPMAN USING APPMAN'; return 0
 						fi
 					fi
+
+					# Check if the installation script contain a keyword related to a missing dependence
 					if grep -q '.deb' ./$arg; then
 						if ! command -v ar 1>/dev/null; then
 							echo ' 💀 ERROR: YOU CANNOT INSTALL '$(echo '"'$arg'"' | tr a-z A-Z)' WITHOUT INSTALLING "BINUTILS"!'; return 0
@@ -92,10 +96,13 @@ while [ -n "$1" ]; do
 							fi
 						fi
 					fi
+
+					# If you use the --latest option, add the "latest" flag to scripts that point to a very common "release"
 					if grep -q 'force-latest' $AMPATH/.cache/install-args; then
 						sed -i 's#releases -O -#releases/latest -O -#g' ./$arg
 					fi
 
+					# Patch to apply to installation scripts
 					function _install_common_patch(){
 						if ! grep -q -- "--debug" $AMPATH/.cache/install-args; then
 							# Patch "wget" to have a progress bar and fix errors when applying patches
@@ -142,6 +149,7 @@ while [ -n "$1" ]; do
 						_install_common_patch
 					fi
 
+					# Installation
 					echo -e " ◆ $(echo '"'$arg'"' | tr a-z A-Z): starting installation script" &&
 					if grep -q "/usr/local/lib" ./$arg; then
 						echo -e '\n ⚠️ This script installs a system library in /usr/local/lib, cancel it if:\n'
@@ -157,20 +165,30 @@ while [ -n "$1" ]; do
 					$SUDOCOMMAND ./$arg
 
 					echo -ne " Configuring $(echo '"'$arg'"' | tr a-z A-Z)...\r" && echo -ne "                                                                          \r" &&
+
+					# Add a command to line 2 of the "remove" script to prevent use without root privileges
+					# and take control of the directory to be able to manage and update the app without root privileges
 					if [ $AMCLI == am ] 2>/dev/null; then
 						$SUDOCOMMAND sed -i '1 a if [ -z "$SUDO_COMMAND" ]; then echo "Permission denied"; exit 1; fi' $APPSPATH/$(cd $APPSPATH && ls -td * | head -1)/remove 2> /dev/null
 						$SUDOCOMMAND chown -R $currentuser $APPSPATH/$(cd $APPSPATH && ls -td * | head -1) 2> /dev/null
 					fi
+
+					# Check if an AM-updater script exists, so the CLI can manage updates for the installed app
+					# by comparing the hosted script with a downloaded one
 					if test -f $APPSPATH/$(cd $APPSPATH && ls -td * | head -1)/AM-updater; then
 						mkdir $APPSPATH/$(cd $APPSPATH && ls -td * | head -1)/.am-installer 2> /dev/null &&
 						wget -q $APPSDB/$arg -O $APPSPATH/$(cd $APPSPATH && ls -td * | head -1)/.am-installer/$arg
 					fi &&
+
+					# If you have a broken or missing icon in your "icons" directory, download one from the catalog
 					if test -d $APPSPATH/$(cd $APPSPATH && ls -td * | head -1)/icons; then
 						find $APPSPATH/$(cd $APPSPATH && ls -td * | head -1)/icons/* -xtype l -delete 2> /dev/null
 						if [ -z "$(ls -A $APPSPATH/$(cd $APPSPATH && ls -td * | head -1)/icons)" ]; then
 							wget -q "$AMCATALOGUEICONS"/$arg.png -O $APPSPATH/$(cd $APPSPATH && ls -td * | head -1)/icons/$arg
 						fi 
 					fi &&
+
+					# Patch .desktop to change paths if the app is installed locally
 					if [ $AMCLI == appman ] 2>/dev/null; then
 						sed -i "s#Icon=/opt#Icon=$HOME/$APPSDIR#g" "$DATADIR"/applications/AM*.desktop 2> /dev/null
 						sed -i "s#Exec=$arg#Exec=$HOME/.local/bin/$arg#g" "$DATADIR"/applications/AM*.desktop 2> /dev/null
@@ -179,6 +197,7 @@ while [ -n "$1" ]; do
 						sed -i "s#Exec=/opt/#Exec=$HOME/$APPSDIR/#g" "$DATADIR"/applications/AM*.desktop 2> /dev/null
 					fi
 
+					# End of the installation process
 					unset $LATESTDIR
 					LATESTDIR=$(cd $APPSPATH && ls -td * | head -1)
 
@@ -214,10 +233,12 @@ while [ -n "$1" ]; do
 
 			esac
 
+			# If the "tmp" directory is not removed, the installation failed, so remove the app
 			if test -d $APPSPATH/$arg/tmp; then
 				$SUDOCOMMAND $APPSPATH/$arg/remove 2> /dev/null
 			fi
 
+			# Various cases that may occur during installation (for example if you use a third-party repository)
 			if test -f $APPSPATH/$arg/remove; then
 				echo " ◆ $(echo '"'$arg'"' | tr a-z A-Z): app already installed previously! Try removing it."
 			else
