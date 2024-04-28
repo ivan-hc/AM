@@ -36,6 +36,7 @@
 - [Spyware, malware and dangerous software](#spyware-malware-and-dangerous-software)
 - [Stop AppImage prompt to create its own launcher, desktop integration and doubled launchers](#stop-appimage-prompt-to-create-its-own-launcher-desktop-integration-and-doubled-launchers)
 - [The script points to "releases" instead of downloading the latest stable](#the-script-points-to-releases-instead-of-downloading-the-latest-stable)
+- [Wget2 prevents me from downloading apps and modules](#wget2-prevents-me-from-downloading-apps-and-modules)
 - [Wrong download link](#wrong-download-link)
 
 [Related projects](#related-projects)
@@ -897,6 +898,25 @@ or do it manually:
 sed -i 's#releases -O -#releases/latest -O -#g' /opt/$PROGRAM/AM-updater
 am -u $PROGRAM
 ```
+
+</details>
+
+------------------------------------------------------------------------
+### Wget2 prevents me from downloading apps and modules
+<details>
+  <summary></summary>
+
+With the arrival of Fedora 40 in April 2024, many users began to complain about the inability to download any application from github and the inability to update modules (see here). This is because "wget" is no longer actively developed, and its successor "wget2" was not yet ready to take its place immediately. Yet the Fedora team decided to replace it anyway, causing quite a few problems for this project and many others that use api.github.com to function.
+
+Attempts to add patches to avoid having dependencies like `jq` added and to rewrite all the scripts to promptly adapt them to more versatile solutions were in vain.
+
+So I decided to host on this repository the "wget" binaries directly from Debian 12 (see [here](https://github.com/ivan-hc/AM/tree/main/tools/x86_64) and [here](https://github.com/ivan-hc/AM/tree/main/tools/aarch64)), and the installation scripts dedicated to them, for the [x86_64](https://github.com/ivan-hc/AM/blob/main/programs/x86_64/wget) and [aarch64](https://github.com/ivan-hc/AM/blob/main/programs/x86_64/wget) architectures and which use "wget2" to download the executable.
+
+Run the command
+```
+am -i wget
+```
+NOTE, the binary is called from a script in /usr/local/bin that runs "wget" with the "--no-check-certificate" option. It's not the best of solutions, but it's enough to suppress this shortcoming while the compatibility issue between wget and wget2 will not be completely resolved.
 
 </details>
 
