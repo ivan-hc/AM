@@ -906,7 +906,7 @@ am -u $PROGRAM
 <details>
   <summary></summary>
 
-With the arrival of Fedora 40 in April 2024, many users began to complain about the inability to download any application from github and the inability to update modules (see here). This is because "wget" is no longer actively developed, and its successor "wget2" was not yet ready to take its place immediately. Yet the Fedora team decided to replace it anyway, causing quite a few problems for this project and many others that use api.github.com to function.
+With the arrival of Fedora 40 in April 2024, many users began to complain about the inability to download any application from github and the inability to update modules (see https://github.com/ivan-hc/AM/issues/496). This is because "wget" is no longer actively developed, and its successor "wget2" was not yet ready to take its place immediately. Yet the Fedora team decided to replace it anyway, causing quite a few problems for this project and many others that use api.github.com to function.
 
 Attempts to add patches to avoid having dependencies like `jq` added and to rewrite all the scripts to promptly adapt them to more versatile solutions were in vain.
 
