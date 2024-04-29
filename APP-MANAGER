@@ -151,12 +151,43 @@ else
 	_appman
 fi
 
+# DOWNLOAD PORTABLE DEPENDENCES
+function _portable_dependences_setup() {
+	mkdir -p "$AMPATH"/bin
+
+	function _jq_installer() {
+		if command -v jq 1>/dev/null; then
+			amjq="jq"
+		else
+			amjq="$AMPATH/bin/jq"
+			jqversion=$(curl -Ls https://api.github.com/repos/jqlang/jq/releases | sed 's/[()",{}]/ /g; s/ /\n/g' | grep -o "https.*linux.*$jqarch" | head -1)
+			if ! test -f "$AMPATH"/bin/jq; then
+				if [ "$arch" == x86_64 ]; then
+					jqarch="amd64"
+				else
+					jqarch="$arch"
+				fi
+				echo -ne "Downloading jq to $AMPATH/bin...\r"
+				wget -q "$jqversion" -O "$AMPATH"/bin/jq && echo "$jqversion" >> "$AMPATH"/bin/jq-version && chmod a+x "$AMPATH"/bin/jq
+			else
+				jqversion0=$(cat "$AMPATH/bin/jq-version")
+				if [ "$jqversion" != "$jqversion0" ]; then
+					rm -f "$AMPATH"/bin/jq "$AMPATH/bin/jq-version"
+					echo -ne "Updating $AMPATH/bin/jq...\r"
+					wget -q "$jqversion" -O "$AMPATH"/bin/jq && echo "$jqversion" >> "$AMPATH"/bin/jq-version && chmod a+x "$AMPATH"/bin/jq
+				fi
+			fi
+		fi
+	}
+	_jq_installer
+}
+
 # FUNCTIONS RELATED TO THE SAFE USE OF "AM"
 function _am_security_check() {
 	function _am_dependences_check() {
 		# Check for essential commands required by the application
 		missing_deps=()
-		AMDEPENDENCES="cat chmod chown curl grep jq sed wget"
+		AMDEPENDENCES="cat chmod chown curl grep sed wget"
 		for name in $AMDEPENDENCES; do
 			if ! command -v "$name" &>/dev/null; then
 				missing_deps+=("$name")
@@ -463,6 +494,7 @@ case "$1" in
 	'-i'|'install')
 		MODULE="install.am"
 		_online_check
+		_portable_dependences_setup
 		_use_module "$@"
 		;;
 	'-R'|'-r'|'remove')
@@ -482,6 +514,7 @@ case "$1" in
 	'-u'|'-U'|'update'|'--force-latest')
 		MODULE="update.am"
 		_online_check
+		_portable_dependences_setup
 		_use_module "$@"
 		;;
 	'--launcher')
