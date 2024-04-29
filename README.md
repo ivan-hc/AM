@@ -21,7 +21,7 @@
 [Features](#features)
 - [How to enable bash completion](#how-to-enable-bash-completion)
 - [Snapshots: backup your app and restore to a previous version](#snapshots-backup-your-app-and-restore-to-a-previous-version)
-- [Install/update/remove programs without "AM"](#installupdateremove-programs-without-am)
+- [Update/remove programs without "AM"](#updateremove-programs-without-am)
 - [Rollback](#rollback)
 - [Convert old Type2 AppImages to Type3](#convert-old-type2-appimages-to-type3)
 - [Manage local AppImages](#manage-local-appimages)
@@ -662,20 +662,11 @@ All the snapshots are stored into an hidden `/home/$USER/.am-snapshots` folder c
 </details>
 
 ------------------------------------------------------------------------
-### Install/update/remove programs without "AM"
+### Update/remove programs without "AM"
 <details>
   <summary></summary>
 
-"AM" focuses a lot on the autonomy of its programs, so much that you can install, update and remove them without necessarily having "AM" installed on your system.
-- To install a program without "am", replace "SAMPLE" at the line 2 with the name of the program you want to install:
-```
-ARCH=$(uname -m)
-PROGRAM=SAMPLE
-wget https://raw.githubusercontent.com/ivan-hc/AM/main/programs/$ARCH/$PROGRAM
-chmod a+x ./$PROGRAM
- sudo ./$PROGRAM
-```
-- To update a program without "am" instead, just run:
+- To update a program without "am":
 ```
 /opt/$PROGRAM/AM-updater
 ```
@@ -685,8 +676,6 @@ Note that this works only if the program has a /opt/$PROGRAM/AM-updater script, 
 ```
 sudo /opt/$PROGRAM/remove
 ```
-
-***NOTE, to do the same thing but locally, without `sudo`, you must necessarily use "AppMan". Installation scripts are written for system-wide installation only. To convert them to AppMan style installation scripts use the `appman convert {PROGRAM}` command to download and patch them.***
 
 </details>
 
