@@ -16,21 +16,22 @@ currentuser="$USER"
 
 # Determine sytem package manager
 function _system_package_manager_check() {
-	declare -A osInfo;
-	osInfo[/etc/redhat-release]=dnf
-	osInfo[/etc/arch-release]=pacman
-	osInfo[/etc/gentoo-release]=emerge
-	osInfo[/etc/SuSE-release]=zypper
-	osInfo[/etc/debian_version]=apt
-	osInfo[/etc/alpine-release]=apk
-
-	for f in ${!osInfo[@]}; do
-		if [[ -f $f ]];then
-			SysPKGMan="${osInfo[$f]}"
-		fi
-	done
+	if command -v dnf &> /dev/null; then
+		osPKGman="dnf"
+	elif command -v pacman &> /dev/null; then
+		osPKGman="pacman"
+	elif command -v emerge &> /dev/null; then
+		osPKGman="emerge"
+	elif command -v zypper &> /dev/null; then
+		osPKGman="zypper"
+	elif command -v apt-get &> /dev/null; then
+		osPKGman="apt-get"
+	elif command -v apk &> /dev/null; then
+		osPKGman="apk"
+	else
+		osPKGman=""
+	fi
 }
-
 # Colors
 RED='\033[0;31m'; LightBlue='\033[1;34m'; Green='\033[0;32m'
 
@@ -226,7 +227,7 @@ function _portable_dependences_setup() {
 
 			_system_package_manager_check
 
-			if [[ ! -z "$SysPKGMan" ]];then
+			if [[ -z "$osPKGman" ]];then
 				echo -e " ${RED}💀 ERROR!\033[0m Missing essential command ${Green}jq\033[0m"
 				read -p " Do you wish to install it using $AMCLI (Y,n)? "
 				case $yn in
@@ -236,7 +237,7 @@ function _portable_dependences_setup() {
 				esac
 			else
 				echo -e " ${RED}💀 ERROR!\033[0m Missing essential command ${Green}jq\033[0m"
-				echo " Install it from your package manager \"$SysPKGMan\" and retry"; exit
+				echo " Install it from your package manager \"$osPKGman\" and retry"; exit
 			fi
 		fi
 	}
