@@ -16,17 +16,17 @@ currentuser="$USER"
 
 # Determine sytem package manager
 function _system_package_manager_check() {
-	if command -v dnf &> /dev/null; then
+	if test -f /etc/redhat-release &> /dev/null; then
 		osPKGman="dnf"
-	elif command -v pacman &> /dev/null; then
+	elif test -f /etc/arch-release &> /dev/null; then
 		osPKGman="pacman"
-	elif command -v emerge &> /dev/null; then
+	elif test -f /etc/gentoo-release &> /dev/null; then
 		osPKGman="emerge"
-	elif command -v zypper &> /dev/null; then
+	elif test -f /etc/SuSE-release &> /dev/null; then
 		osPKGman="zypper"
-	elif command -v apt-get &> /dev/null; then
-		osPKGman="apt-get"
-	elif command -v apk &> /dev/null; then
+	elif test -f /etc/debian_version &> /dev/null; then
+		osPKGman="apt"
+	elif test -f /etc/alpine-release &> /dev/null; then
 		osPKGman="apk"
 	else
 		osPKGman=""
@@ -207,19 +207,24 @@ function _portable_dependences_setup() {
 			_system_package_manager_check
 
 			if [[ -z "$osPKGman" ]];then
-				echo -e " ${RED}💀 ERROR!\033[0m Missing essential command ${Green}jq\033[0m"
+				echo -e " ${RED}💀 ERROR!\033[0m Missing essential command ${Green}jq\033[0m\n"
 				read -p " Do you wish to install it using $AMCLI (Y,n)? " yn
 				case $yn in
-				'N'|'n')	echo -e "Missing essential command ${RED}jq\033[0m, aborted!"; exit;;
-				'Y'|'y'|*)	rm -f "$AMPATH"/.cache/*
-						echo ""
-						source "$AMPATH"/modules/install.am -i jq 2>&1 | grep "INSTALLED"
-						echo ""
+				'N'|'n')
+					echo -e "\n The \"jq\" command is essential for parsing JSON files on sites"
+					echo " for example api.github.com, to list the URLs of apps to download."
+					echo -e " You need to install it at least via your package manager to use \"$AMCLI\".\n\n Missing essential command ${RED}jq\033[0m, aborted!"; exit
+					;;
+				'Y'|'y'|*)
+					rm -f "$AMPATH"/.cache/*
+					echo ""
+					source "$AMPATH"/modules/install.am -i jq 2>&1 | grep "INSTALLED"
+					echo ""
 					;;
 				esac
 			else
-				echo -e " ${RED}💀 ERROR!\033[0m Missing essential command ${Green}jq\033[0m"
-				echo " Install it from your package manager \"$osPKGman\" and retry"; exit
+				echo -e " ${RED}💀 ERROR!\033[0m Missing essential command ${Green}jq\033[0m\n"
+				echo " Install it from your system package manager \"$osPKGman\" and retry!"; exit
 			fi
 		fi
 	}
