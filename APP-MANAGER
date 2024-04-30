@@ -158,6 +158,20 @@ fi
 # Set header authorization if GitHub API key file exists
 [ -f "$AMPATH/ghapikey.txt" ] && HeaderAuthWithGITPAT=" --header \"Authorization: token $(<"$AMPATH/ghapikey.txt")\" "
 
+# DEVELOPER MODE
+if test -f "$AMPATH"/betatester; then
+	AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/dev"
+	AMBRANCH=$(basename "$AMREPO")
+fi
+
+function _use_betatester_on() {
+	touch "$AMPATH"/betatester
+}
+
+function _use_betatester_off() {
+	rm -f "$AMPATH"/betatester
+}
+
 # DOWNLOAD PORTABLE DEPENDENCES
 function _portable_dependences_setup() {
 	mkdir -p "$AMPATH"/bin
@@ -328,7 +342,7 @@ function _check_version() {
 					APPVERSION=$(grep -i "version=" $APPSPATH/$arg/* 2>/dev/null | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
 				fi
 			elif [ "$arg" == "$AMCLI" ]; then
-				APPVERSION=$($AMCLIPATH -v)
+				APPVERSION="$AMVERSION"
 			elif grep -qi "version=" ./$arg/* 2>/dev/null; then
 				APPVERSION=$(grep -i "version=" $APPSPATH/$arg/* 2>/dev/null | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
 			elif echo "$arg" | grep -q "ffwa-"; then
@@ -374,6 +388,8 @@ cat <<-HEREDOC >> "$AMPATH/options"
 	--byname
 	--convert
 	--debug
+	--devmode-disable
+	--devmode-enable
 	--disable-completion
 	--enable-completion
 	--firejail
@@ -541,6 +557,12 @@ case "$1" in
 		_use_module "$@"
 		;;
 	# INBUILT OPTIONS
+	'--devmode-disable')
+		_use_betatester_off
+		;;
+	'--devmode-enable')
+		_use_betatester_on
+		;;
 	'--disable-completion')
 		_use_disable-completion
 		;;
@@ -557,5 +579,11 @@ case "$1" in
 		exec "$AMCLIPATH"
 		;;
 esac
+
+if test -f "$AMPATH"/betatester; then
+	echo '--------------------------------------------------------------------------'
+	echo "\"$AMCLI\" $AMVERSION: developer mode" | tr a-z A-Z
+	echo '--------------------------------------------------------------------------'
+fi
 
 # vim:tabstop=4:shiftwidth=4:expandtab
