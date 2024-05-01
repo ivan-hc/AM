@@ -76,6 +76,28 @@ function _am() {
 }
 
 # "APPMAN" CORE VARIABLES AND FUNCTIONS
+
+function _patch_bashrc_and_profile() {
+	# Fix order in "echo $PATH" in case "$HOME/.local/bin" is placed at the beginning instead of the end
+	# Check if the custom PATH is not already in .bashrc, then append it (fix - exclamation mark negates the entire command substitution)
+	if test -f "$HOME/.bashrc"; then
+		if ! grep -q 'export PATH=$PATH:$HOME/.local/bin' "$HOME/.bashrc"; then
+			echo 'export PATH=$(echo $PATH | tr ":" "\n" | grep -v "/.local/bin" | tr "\n" ":" | sed ''s/.$//'')' >> "$HOME/.bashrc"
+			echo -e 'export PATH=$PATH:$HOME/.local/bin\n' >> "$HOME/.bashrc"
+		fi
+	fi
+	# Correct the order of .local/bin in .profile if necessary
+	if test -f "$HOME/.profile"; then
+		if grep -q 'PATH="$HOME/.local/bin:$PATH"' "$HOME/.profile"; then
+			sed -i 's#PATH="$HOME/.local/bin:$PATH"#PATH="$PATH:$HOME/.local/bin"#g' "$HOME/.profile"
+		fi
+	elif test -f "$HOME/.bash_profile"; then
+		if grep -q 'PATH="$HOME/.local/bin:$PATH"' "$HOME/.bash_profile"; then
+			sed -i 's#PATH="$HOME/.local/bin:$PATH"#PATH="$PATH:$HOME/.local/bin"#g' "$HOME/.bash_profile"
+		fi
+	fi
+}
+
 function _appman() {
 
 	function _appman_initialize() {
@@ -144,26 +166,6 @@ function _appman() {
 	fi
 	_appman_initialize "$(<"$APPMANCONFIG"/appman-config)"
 
-	# Fix order in "echo $PATH" in case "$HOME/.local/bin" is placed at the beginning instead of the end
-	function _patch_bashrc_and_profile() {
-		# Check if the custom PATH is not already in .bashrc, then append it (fix - exclamation mark negates the entire command substitution)
-		if test -f "$HOME/.bashrc"; then
-			if ! grep -q 'export PATH=$PATH:$HOME/.local/bin' "$HOME/.bashrc"; then
-				echo 'export PATH=$(echo $PATH | tr ":" "\n" | grep -v "/.local/bin" | tr "\n" ":" | sed ''s/.$//'')' >> "$HOME/.bashrc"
-				echo -e 'export PATH=$PATH:$HOME/.local/bin\n' >> "$HOME/.bashrc"
-			fi
-		fi
-		# Correct the order of .local/bin in .profile if necessary
-		if test -f "$HOME/.profile"; then
-			if grep -q 'PATH="$HOME/.local/bin:$PATH"' "$HOME/.profile"; then
-				sed -i 's#PATH="$HOME/.local/bin:$PATH"#PATH="$PATH:$HOME/.local/bin"#g' "$HOME/.profile"
-			fi
-		elif test -f "$HOME/.bash_profile"; then
-			if grep -q 'PATH="$HOME/.local/bin:$PATH"' "$HOME/.bash_profile"; then
-				sed -i 's#PATH="$HOME/.local/bin:$PATH"#PATH="$PATH:$HOME/.local/bin"#g' "$HOME/.bash_profile"
-			fi
-		fi
-	}
 	_patch_bashrc_and_profile
 }
 
