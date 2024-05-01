@@ -83,6 +83,22 @@ function _launcher_appimage_bin(){
 	esac
 }
 
+function _launcher(){
+	if ! strings -d "$arg" 2>/dev/null | grep -F -q 'if you run it with the --appimage-extract option'; then
+		printf ' ERROR: %s is NOT an AppImage' "$arg"
+	else
+		appimage=$(basename -- "$arg")
+		mkdir -p "$DATADIR"/applications/AppImages
+		mkdir -p "$DATADIR"/icons
+		chmod a+x "$arg"
+		cd "$(dirname "$arg")" || return
+
+		_launcher_appimage_extract 2>/dev/null
+		_launcher_appimage_integration 2>/dev/null
+		_launcher_appimage_bin
+	fi
+}
+
 case $2 in
 '') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
 esac
@@ -91,25 +107,7 @@ while [ -n "$1" ]; do
 	rm -f $AMPATH/.cache/tolaunch-args;
 	echo "$@" | tr ' ' '\n' >> $AMPATH/.cache/tolaunch-args && echo STOP >> $AMPATH/.cache/tolaunch-args;
 	ARGS=$(tail -n +2 $AMPATH/.cache/tolaunch-args)
-
 	for arg in $ARGS; do
-
-		function _launcher(){
-			if ! strings -d "$arg" 2>/dev/null | grep -F -q 'if you run it with the --appimage-extract option'; then
-				printf ' ERROR: %s is NOT an AppImage' "$arg"
-			else
-				appimage=$(basename -- "$arg")
-				mkdir -p "$DATADIR"/applications/AppImages
-				mkdir -p "$DATADIR"/icons
-				chmod a+x "$arg"
-				cd "$(dirname "$arg")" || return
-
-				_launcher_appimage_extract 2>/dev/null
-				_launcher_appimage_integration 2>/dev/null
-				_launcher_appimage_bin
-			fi
-		}
-
 		if [ "$arg" == STOP ]; then
 			exit
 		else
