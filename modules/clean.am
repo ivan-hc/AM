@@ -7,9 +7,9 @@ function _clean_launchers() {
 		if ! test -f "$APPIMAGENAME" 2> /dev/null; then
 			if ! test -d "$(echo "$MOUNTPOINTS")" 2> /dev/null; then
 				if echo "$MOUNTPOINTS" | grep -q "/media/"; then
-					echo -e "\n 💀ERROR: cannot remove $(basename "$var")\n   related AppImage is located in an unmounted path of /media\n"
+					printf '\n 💀ERROR: cannot remove %s\n   related AppImage is located in an unmounted path of /media\n' "$(basename "$var")"
 				elif echo "$MOUNTPOINTS" | grep -q "/mnt/"; then
-					echo -e "\n 💀ERROR: cannot remove $(basename "$var")\n   related AppImage is located in an unmounted path of /mnt\n"
+					printf '\n 💀ERROR: cannot remove %s\n   related AppImage is located in an unmounted path of /mnt\n' "$(basename "$var")"
 				fi
 			else
 				rm -f "$var"
@@ -21,12 +21,12 @@ function _clean_launchers() {
 }
 
 function _clean_old_modules() {
-	if [ $AMCLI == am ] 2>/dev/null; then
+	if [ "$AMCLI" == am ] 2>/dev/null; then
 		MODULES=$(cat /opt/am/APP-MANAGER | grep -Eo '\S*.am\S*' | sed 's@.*/@@' | grep -v ";" | grep ".am" | uniq | sort)
 	else
 		MODULES=$(cat "$AMCLIPATH" | grep -Eo '\S*.am\S*' | sed 's@.*/@@' | grep -v ";" | grep ".am" | uniq | sort)
 	fi
-	for m in "$APPSPATH"/"$AMCLI"/modules/*; do
+	for m in "$APPSPATH/$AMCLI"/modules/*; do
 		if [[ "${MODULES}" != *"$(basename -- "$m")"* ]];then
 			rm -f "$m"
 		fi
@@ -34,17 +34,17 @@ function _clean_old_modules() {
 }
 
 function _clean_all() {
-	echo -e "\n Cleaning of temporary files and folders in progress...\n" && sleep 0.1 &&
-	for i in {1000..0000}; do 
+	printf '\n Cleaning of temporary files and folders in progress...\n' && sleep 0.1 &&
+	for i in {1000..0000}; do
 		echo -ne " $i\r" && sleep 0.0001
 	done
-	rm -R -f "$AMPATH"/.cache/* && echo " ◆ Cleaning up the content of $AMPATH/.cache"
-	rm -R -f "$APPSPATH"/*/tmp && echo ' ◆ Removed all '"$APPSPATH"'/*/tmp directories'
+	rm -R -f "$AMPATH"/.cache/* && printf ' ◆ Cleaning up the content of %s/.cache' "$AMPATH"
+	rm -R -f "$APPSPATH"/*/tmp && printf ' ◆ Removed all %s/*/tmp directories' "$APPSPATH"
 	if test -f "$DATADIR"/applications/AppImages/*.desktop 2> /dev/null; then
 		_clean_launchers && echo ' ◆ Removed orphaned launchers produced with the "--launcher" option'
 	fi
 	_clean_old_modules && echo ' ◆ Removed obsolete modules'
-	echo -e "\n DONE!\n"
+	printf '\n DONE!\n'
 }
 
 _clean_all
