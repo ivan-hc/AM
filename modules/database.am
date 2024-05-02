@@ -2,31 +2,31 @@
 
 function _completion_lists(){
 	# Remove existing lists and download new ones
-	rm -Rf $AMPATH/{$arch-apps,list,libs-list} &&
-	wget -q $APPSLISTDB -P $AMPATH &&
-	wget -q $LIBSLISTDB -P $AMPATH
+	rm -Rf "$AMPATH"/{"$arch"-apps,list,libs-list} &&
+	wget -q "$APPSLISTDB" -P "$AMPATH" &&
+	wget -q "$LIBSLISTDB" -P "$AMPATH"
 
 	# THIRD PARTY APPS
 	if test -f "$AMPATH/neodb"; then
 		rm -R -f "$AMPATH/.cache/multirepo-args"
-		MULTIREPO=$(cat "$AMPATH/neodb" | grep "List=" | grep -E "$arch-apps" | sed 's/List=//g')
+		MULTIREPO=$(grep "List=" < "$AMPATH/neodb" | grep -E "$arch-apps" | sed 's/List=//g')
 		for anyrepo in $MULTIREPO; do
-			if curl --output /dev/null --silent --head --fail $anyrepo 1>/dev/null; then
-				wget -q "$anyrepo" -O - | grep "◆" >> $AMPATH/$arch-apps
+			if curl --output /dev/null --silent --head --fail "$anyrepo" 1>/dev/null; then
+				wget -q "$anyrepo" -O - | grep "◆" >> "$AMPATH"/"$arch"-apps
 			fi
 		done
-		cat $AMPATH/$arch-apps | sort | uniq > $AMPATH/$arch-apps-backup
-		rm -R -f $AMPATH/$arch-apps
-		mv $AMPATH/$arch-apps-backup $AMPATH/$arch-apps
+		sort < "$AMPATH"/"$arch"-apps | uniq > "$AMPATH"/"$arch"-apps-backup
+		rm -R -f "$AMPATH"/"$arch"-apps
+		mv "$AMPATH"/"$arch"-apps-backup "$AMPATH"/"$arch"-apps
 	fi
 
 	# Extract and append program and library names to the list
 	for file in $arch-apps libs-list; do
-		awk -v FS="(◆ | : )" '{print $2}' <$AMPATH/$file >> $AMPATH/list
+		awk -v FS="(◆ | : )" '{print $2}' < "$AMPATH/$file" >> "$AMPATH"/list
 	done
 
 	# Append options to the list
-	cat $AMPATH/options >> $AMPATH/list
+	cat "$AMPATH"/options >> "$AMPATH"/list
 }
 
 function _clean_lists_and_queries(){
@@ -48,17 +48,17 @@ function download_markdown() {
 		mkdir -p "$cache_dir" && wget -q "$markdown_url" -P "$cache_dir"
 		sed -i '1,${ /^\s*#/ d; /^\s*!/ d; /\[Applications]/d; /\ --- /d; }' "$cache_dir/$1.md"
 		sed -i '$!N;s/^\s*\n\s*$//;P;D' "$cache_dir/$1.md"
-		printf " PACKAGE: %s\n" "$package_name"
+		printf ' PACKAGE: %s\n' "$package_name"
 		if [ -f "$APPSPATH/$1/remove" ]; then
 			local disk_usage=$(du -sm "$APPSPATH/$1" | cut -f1)
-			local app_version=$(cat $AMPATH/.cache/version-args | grep -w " ◆ $1	|" | sed 's:.*|	::')
+			local app_version=$(grep -w ' ◆ $1	|' < "$AMPATH"/.cache/version-args | sed 's:.*|	::')
 			app_status=$(echo -e " STATUS: INSTALLED, ABOUT $disk_usage MB OF DISK SPACE IN USE\n VERSION: $app_version")
 		fi
-		printf "%s\n" "$app_status"
+		printf '%s\n' "$app_status"
 		cat -s "$cache_dir/$1.md" && printf '%-55s\n'
 		rm -R -f "$cache_dir"
 	else
-		printf " \"%s\" IS NOT A VALID ARGUMENT\n" "$package_name"
+		printf ' "%s" IS NOT A VALID ARGUMENT\n' "$package_name"
 	fi
 }
 
@@ -66,39 +66,39 @@ function generate_3rd_party() {
 	local app_status=" STATUS: NOT INSTALLED"
 	local package_name=${1^^}
 	if grep -q "◆ $arg : " "$AMPATH/$arch-apps"; then
-		printf " PACKAGE: %s\n" "$arg" | tr a-z A-Z
+		printf ' PACKAGE: %s\n' "$arg" | tr a-z A-Z
 		if [ -f "$APPSPATH/$1/remove" ]; then
 			local disk_usage=$(du -sm "$APPSPATH/$1" | cut -f1)
-			local app_version=$(cat $AMPATH/.cache/version-args | grep -w " ◆ $1	|" | sed 's:.*|	::')
+			local app_version=$(grep -w ' ◆ $1	|' < "$AMPATH"/.cache/version-args | sed 's:.*|	::')
 			app_status=$(echo -e " STATUS: INSTALLED, ABOUT $disk_usage MB OF DISK SPACE IN USE\n VERSION: $app_version")
 		fi
-		printf "%s\n" "$app_status"
+		printf '%s\n' "$app_status"
 		cat "$AMPATH/$arch-apps" | grep "◆ $arg : "  | cut -d':' -f2- | sed 's/^./\n /' | sed 's# SOURCE:#\n\n SOURCE:#g'
 		echo ""
 		printf '%-55s\n'
 	else
-		printf " \"%s\" IS NOT A VALID ARGUMENT\n" "$package_name"
+		printf ' "%s" IS NOT A VALID ARGUMENT\n' "$package_name"
 	fi
 }
 
 function download_lib() {
 	local lib_name_upper=${1^^}
-	printf "%s\n" " LIBRARY: $lib_name_upper"
+	printf '%s LIBRARY:\n' "$lib_name_upper"
 	if [[ -f "$APPSPATH/$1/remove" ]]; then
 		local lib_path=$(grep "usr/local/lib" "$APPSPATH/$1/remove" | head -1)
 		local disk_usage=$(du -sm "$lib_path" | cut -f1)
 
 		if [[ "$disk_usage" -eq 0 ]]; then
-			printf "%s\n" " STATUS: INSTALLED, LESS THAN 1 MB OF DISK SPACE IN USE"
+			printf ' STATUS: INSTALLED, LESS THAN 1 MB OF DISK SPACE IN USE\n'
 		else
-			printf "%s\n" " STATUS: INSTALLED, ABOUT $disk_usage MB OF DISK SPACE IN USE"
+			printf ' STATUS: INSTALLED, ABOUT $disk_usage MB OF DISK SPACE IN USE\n'
 		fi
 	else
-		printf "%s\n" " STATUS: NOT INSTALLED"
+		printf ' STATUS: NOT INSTALLED\n'
 	fi
 	echo ""
 	grep "◆ $1 : " "$AMPATH/libs-list" | sed 's#.*:##' | sed 's/(/\n (/g'
-	echo "" && echo " SITE/SOURCES:" && echo ""
+	printf '\n SITE/SOURCES:\n'
 	local site_source=$(wget -qO- "$APPSDB/$1" | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | head -1)
 	echo " $site_source"
 	echo ""
@@ -106,15 +106,15 @@ function download_lib() {
 }
 
 function _list(){
-	LIBNUMBER=$(cat $APPSPATH/*/remove 2> /dev/null | grep "usr/local/lib" | wc -l)
-	ITEMSNUMBER=$(cd $APPSPATH && find -name 'remove' -printf "%h\n" 2>/dev/null | sort -u | wc -l)
+	LIBNUMBER=$(grep "usr/local/lib" < "$APPSPATH"/*/remove 2> /dev/null | wc -l)
+	ITEMSNUMBER=$(cd "$APPSPATH" && find -name 'remove' -printf "%h\n" 2>/dev/null | sort -u | wc -l)
 	if [ "$AMCLI" == am ]; then
 		ITEMSNUMBER=$(("$ITEMSNUMBER"-1))
 	fi
 	APPSNUMBER=$(echo "$(("$ITEMSNUMBER" - "$LIBNUMBER"))")
 	_check_version
-	if test -f $AMPATH/.cache/version-args; then
-		INSTALLED=$(cat $AMPATH/.cache/version-args | sort | sed 's/	|	/ /g' | grep -v "◆ am ")
+	if test -f "$AMPATH"/.cache/version-args; then
+		INSTALLED=$(sort < "$AMPATH"/.cache/version-args | sed 's/	|	/ /g' | grep -v "◆ am ")
 		MESSAGE2="\n$INSTALLED\n"
 	fi
 
@@ -122,17 +122,17 @@ function _list(){
 	if [[ $? -eq 0 ]]; then
 		_completion_lists
 	fi
-	if cat $APPSPATH/*/remove 2> /dev/null | grep -q "usr/local/lib"; then
+	if cat "$APPSPATH"/*/remove 2> /dev/null | grep -q 'usr/local/lib'; then
 		if [ "$LIBNUMBER" == 1 ]; then
-			MESSAGE=$(echo " YOU HAVE INSTALLED $APPSNUMBER APPLICATIONS OUT OF $(grep -e "$" -c $AMPATH/$arch-apps) AVAILABLE, AND $LIBNUMBER LIBRARY")
+			MESSAGE=$(echo " YOU HAVE INSTALLED $APPSNUMBER APPLICATIONS OUT OF $(grep -e "$" -c "$AMPATH"/"$arch"-apps) AVAILABLE, AND $LIBNUMBER LIBRARY")
 		else
-			MESSAGE=$(echo " YOU HAVE INSTALLED $APPSNUMBER APPLICATIONS OUT OF $(grep -e "$" -c $AMPATH/$arch-apps) AVAILABLE, AND $LIBNUMBER LIBRARIES")
+			MESSAGE=$(echo " YOU HAVE INSTALLED $APPSNUMBER APPLICATIONS OUT OF $(grep -e "$" -c "$AMPATH"/"$arch"-apps) AVAILABLE, AND $LIBNUMBER LIBRARIES")
 		fi
 	else
-		MESSAGE=$(echo " YOU HAVE INSTALLED $APPSNUMBER APPLICATIONS OUT OF $(grep -e "$" -c $AMPATH/$arch-apps) AVAILABLE")
+		MESSAGE=$(echo " YOU HAVE INSTALLED $APPSNUMBER APPLICATIONS OUT OF $(grep -e "$" -c "$AMPATH"/"$arch"-apps) AVAILABLE")
 	fi
-	echo -e "\n$MESSAGE\n$MESSAGE2\n LIST OF THE $(grep -e "$" -c $AMPATH/$arch-apps) APPLICATIONS AVAILABLE IN THE 'AM' REPOSITORY:\n\n$(cat $AMPATH/$arch-apps | _clean_lists_and_queries)\n" | less -I
-	echo -e "\n$MESSAGE\n$MESSAGE2"
+	printf "\n%s\n%s\n LIST OF THE %s APPLICATIONS AVAILABLE IN THE 'AM' REPOSITORY:\n\n%s\n" "$MESSAGE" "$MESSAGE2" "$(grep -e "$" -c "$AMPATH"/"$arch"-apps)" "$(cat "$AMPATH"/"$arch"-apps | _clean_lists_and_queries)" | less -I
+	printf '\n%s\n%s' "$MESSAGE" "$MESSAGE2"
 }
 
 case "$1" in
@@ -148,7 +148,7 @@ case "$1" in
 
 		# Main logic
 		if [ ! -f "$AMPATH/libs-list" ]; then
-			wget -q $LIBSLISTDB -P $AMPATH
+			wget -q "$LIBSLISTDB" -P "$AMPATH"
 		fi
 
 		# Skip the first argument which is not part of ARGS
@@ -160,7 +160,7 @@ case "$1" in
 			elif grep -q "◆ $arg : " "$AMPATH/libs-list"; then
 				download_lib "$arg"
 			else
-				printf "%s\n" " \"$arg\" is not a valid argument" | tr 'a-z' 'A-Z'
+				printf '%s is not a valid argument\n' "$arg" | tr 'a-z' 'A-Z'
 			fi
 		done
 		;;
@@ -182,7 +182,7 @@ case "$1" in
 		fi
 		ARGS=$(echo "$@" | sed 's/-q //')
 		echo ""
-		echo ' Search results for "'$ARGS'":' | tr a-z A-Z
+		printf ' Search results for %s:' "$ARGS" | tr a-z A-Z
 		echo ""
 		grep -i -E "$2" "$AMPATH/$arch-apps" | grep -i -E "$3" | grep -i -E "$4" | grep -i -E "$5" | grep -i -E "$6" | grep -i -E "$7" | grep -i -E "$8" | grep -i -E "$9" | _clean_lists_and_queries
 		grep -i -E "$2" "$AMPATH/libs-list" | grep -i -E "$3" | grep -i -E "$4" | grep -i -E "$5" | grep -i -E "$6" | grep -i -E "$7" | grep -i -E "$8" | grep -i -E "$9" | _clean_lists_and_queries
