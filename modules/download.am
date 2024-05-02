@@ -1,106 +1,139 @@
 #!/usr/bin/env bash
 
+# SHELLCHECK WARRNING!
+# Line 21 HeaderAuthWithGITPAT = not assigned
+# Line 97 arch = not assigned
+
+function _convert_to_appman_compatible_script(){
+	if grep -q -- "--convert" "$AMPATH"/.cache/download-args; then
+		if test -f "$APPMANCONFIG"/appman-config; then
+			APPSPATH=$(cat "$APPMANCONFIG"/appman-config)
+			sed -i "s# /usr/local/bin# $HOME/.local/bin#g" ./"$arg"
+			sed -i "s# /usr/bin# $HOME/.local/bin#g" ./"$arg"
+			sed -i "s# /usr/games# $HOME/.local/bin#g" ./"$arg"
+			sed -i "s# /usr/local/games# $HOME/.local/bin#g" ./"$arg"
+			sed -i "s# /usr/share/applications# $DATADIR/applications#g" ./"$arg"
+			sed -i "s# /usr/local/share/applications# $DATADIR/applications#g" ./"$arg"
+			sed -i "s# /usr/share/pixmaps# $DATADIR/icons#g" ./"$arg"
+			sed -i "s# /usr/local/share/pixmaps# $DATADIR/icons#g" ./"$arg"
+			sed -i "s# /opt# $HOME/$APPSPATH#g" ./"$arg"
+			sed -i "s#/opt/#$HOME/$APPSPATH/#g" ./"$arg"
+			sed -i "s# https://api.github.com#$HeaderAuthWithGITPAT https://api.github.com#g" ./"$arg"
+			echo 'sed -i "s#Icon=/opt#Icon=$HOME/$APPSDIR#g" $DATADIR/applications/AM*.desktop' >> ./"$arg"
+			echo 'sed -i "s#Exec=$APP#Exec=$HOME/.local/bin/$APP#g" $DATADIR/applications/AM*.desktop' >> ./"$arg"
+			echo 'sed -i "s#Exec=/usr/bin/#Exec=$HOME/.local/bin/#g" $DATADIR/applications/AM*.desktop' >> ./"$arg"
+			echo 'sed -i "s#Exec=/opt/#Exec=$HOME/$APPSDIR/#g" $DATADIR/applications/AM*.desktop' >> ./"$arg"
+			printf ' Converting %s to an AppMan-compatible script.\r' "$arg" && sleep 1 &&
+			printf '%-55s\r'
+		else
+			echo ' 💀 ERROR: "--convert" requires a configuration file in ~/.config/appman'
+		fi
+	fi
+}
+
+function _installation_script_downloaded() {
+	printf ' ◆ %s installation script downloaded! ' "$arg"
+}
+
+function _not_exist_in_database() {
+	printf ' 💀 ERROR: %s does NOT exist in the database, see "%s -l"\n' "$arg" "$AMCLI"
+}
+
+function _download(){
+	case $arg in
+		'--convert') ;;
+		*)
+			if test -f "$AMPATH/neodb"; then
+				rm -R -f "$AMPATH/.cache/multirepo-args"
+				MULTIREPO=$(grep 'Source=' < "$AMPATH/neodb" | sed 's/Source=//g')
+
+				for anyrepo in $MULTIREPO; do
+					if curl --output /dev/null --silent --head --fail "$anyrepo/$arg"  1>/dev/null; then
+						echo "$anyrepo" >> "$AMPATH/.cache/multirepo-args"
+					fi
+				done
+
+				if test -f "$AMPATH/.cache/multirepo-args"; then
+					anyrepoargs=$(wc -l < "$AMPATH/.cache/multirepo-args" 2>/dev/null)
+					if [ "$anyrepoargs" -gt 0 ]; then
+						if curl --output /dev/null --silent --head --fail "$APPSDB/$arg"  1>/dev/null; then
+							echo "$APPSDB" >> "$AMPATH/.cache/multirepo-args"
+						fi
+						anyrepoargall=$(wc -l < "$AMPATH/.cache/multirepo-args" 2>/dev/null)
+
+						if [ "$anyrepoargall" == 1 ]; then
+							cd "$SCRIPTDIR" || return; wget -q "$(head -1 < "$AMPATH/.cache/multirepo-args")/$arg";  _convert_to_appman_compatible_script
+							rm -R -f "$AMPATH/.cache/multirepo-args"
+							printf ' ◆ %s third-party installation script downloaded!' "$arg"
+						else
+							printf ' ◆ FOUND %s FROM MULTIPLE SOURCES:\n' "$(echo "$arg" | tr a-z A-Z)" &&
+							printf ' Select a URL from this menu (read carefully) or press CTRL+C to abort:\n\n'
+							sleep 1
+							select d in $(cat "$AMPATH/.cache/multirepo-args"); do
+								test -n "$d" && break
+								echo ">>> Invalid Selection"
+							done
+							rm -R -f "$AMPATH/.cache/multirepo-args"
+							cd "$SCRIPTDIR" || return
+							wget -q "$d/$arg"
+							_convert_to_appman_compatible_script
+							_installation_script_downloaded
+						fi
+
+					elif curl --output /dev/null --silent --head --fail "$APPSDB/$arg"  1>/dev/null; then
+						rm -R -f "$AMPATH/.cache/multirepo-args"
+						cd "$SCRIPTDIR" || return
+						wget -q "$APPSDB/$arg"
+						_convert_to_appman_compatible_script
+						_installation_script_downloaded
+					else
+						_not_exist_in_database
+					fi
+
+				elif curl --output /dev/null --silent --head --fail "$APPSDB/$arg"  1>/dev/null; then
+					cd "$SCRIPTDIR" || return
+					wget -q "$APPSDB/$arg"
+					_convert_to_appman_compatible_script
+					_installation_script_downloaded
+				else
+					_not_exist_in_database
+				fi
+
+			elif curl --output /dev/null --silent --head --fail "$APPSDB/$arg"  1>/dev/null; then
+				cd "$SCRIPTDIR" || return
+				wget -q "$APPSDB/$arg"
+				_convert_to_appman_compatible_script
+				_installation_script_downloaded
+			elif curl --output /dev/null --silent --head --fail "$AMREPO/testing/$arch/$arg"  1>/dev/null; then
+				printf ' ⚠️ %s downloaded from "testing", the unstable branch\n' "$arg"
+				echo ' WARNING! PROGRAMS COMING FROM "TESTING" ARE BROKEN, USE AT YOUR OWN RISK!'
+				cd "$SCRIPTDIR" || return
+				wget -q "$AMREPO/testing/$arch/$arg"
+				_convert_to_appman_compatible_script
+			else
+				printf ' 💀 ERROR: %s is NOT a valid argument\n' "$arg"
+			fi
+	esac
+}
+
 case $2 in
-'')	echo " USAGE: $AMCLI $1 [ARGUMENT]"
-	echo "        $AMCLI $1 --convert [ARGUMENT]"; exit;;
+	'')
+		echo " USAGE: $AMCLI $1 [ARGUMENT]"
+		echo "        $AMCLI $1 --convert [ARGUMENT]"
+		exit
+		;;
 esac
 
 while [ -n "$1" ]; do
-	rm -f $AMPATH/.cache/download-args
-	echo "$@" | tr ' ' '\n' >> $AMPATH/.cache/download-args && echo STOP >> $AMPATH/.cache/download-args
-	ARGS=$(tail -n +2 $AMPATH/.cache/download-args)
-
+	rm -f "$AMPATH"/.cache/download-args
+	echo "$@" | tr ' ' '\n' >> "$AMPATH"/.cache/download-args && echo STOP >> "$AMPATH"/.cache/download-args
+	ARGS=$(tail -n +2 "$AMPATH"/.cache/download-args)
 	for arg in $ARGS; do
-
-		function _download(){
-			case $arg in
-			'--convert')	;;
-			*) 
-				function _convert_to_appman_compatible_script(){
-					if grep -q -- "--convert" "$AMPATH"/.cache/download-args; then
-						if test -f "$APPMANCONFIG"/appman-config; then
-							APPSPATH=$(cat "$APPMANCONFIG"/appman-config)
-							sed -i "s# /usr/local/bin# $HOME/.local/bin#g" ./$arg
-							sed -i "s# /usr/bin# $HOME/.local/bin#g" ./$arg
-							sed -i "s# /usr/games# $HOME/.local/bin#g" ./$arg
-							sed -i "s# /usr/local/games# $HOME/.local/bin#g" ./$arg
-							sed -i "s# /usr/share/applications# $DATADIR/applications#g" ./$arg
-							sed -i "s# /usr/local/share/applications# $DATADIR/applications#g" ./$arg
-							sed -i "s# /usr/share/pixmaps# $DATADIR/icons#g" ./$arg
-							sed -i "s# /usr/local/share/pixmaps# $DATADIR/icons#g" ./$arg
-							sed -i "s# /opt# $HOME/$APPSPATH#g" ./$arg
-							sed -i "s#/opt/#$HOME/$APPSPATH/#g" ./$arg
-							sed -i "s# https://api.github.com#$HeaderAuthWithGITPAT https://api.github.com#g" ./$arg
-							echo 'sed -i "s#Icon=/opt#Icon=$HOME/$APPSDIR#g" $DATADIR/applications/AM*.desktop' >> ./$arg
-							echo 'sed -i "s#Exec=$APP#Exec=$HOME/.local/bin/$APP#g" $DATADIR/applications/AM*.desktop' >> ./$arg
-							echo 'sed -i "s#Exec=/usr/bin/#Exec=$HOME/.local/bin/#g" $DATADIR/applications/AM*.desktop' >> ./$arg
-							echo 'sed -i "s#Exec=/opt/#Exec=$HOME/$APPSDIR/#g" $DATADIR/applications/AM*.desktop' >> ./$arg
-							echo -ne " Converting $arg to an AppMan-compatible script.\r" && sleep 1 &&
-							echo -ne "                                                       \r"
-						else
-							echo ' 💀 ERROR: "--convert" requires a configuration file in ~/.config/appman'
-						fi
-					fi
-				}
-
-				if test -f "$AMPATH/neodb"; then
-					rm -R -f "$AMPATH/.cache/multirepo-args"
-					MULTIREPO=$(cat "$AMPATH/neodb" | grep "Source=" | sed 's/Source=//g')
-					for anyrepo in $MULTIREPO; do
-						if curl --output /dev/null --silent --head --fail $anyrepo/$arg  1>/dev/null; then
-							echo "$anyrepo" >> "$AMPATH/.cache/multirepo-args"
-						fi
-					done
-					if test -f "$AMPATH/.cache/multirepo-args"; then
-						anyrepoargs=$(cat "$AMPATH/.cache/multirepo-args" 2>/dev/null | wc -l)
-						if [ $anyrepoargs -gt 0 ]; then
-							if curl --output /dev/null --silent --head --fail $APPSDB/$arg  1>/dev/null; then
-								echo "$APPSDB" >> "$AMPATH/.cache/multirepo-args"
-							fi
-							anyrepoargall=$(cat "$AMPATH/.cache/multirepo-args" 2>/dev/null | wc -l)
-							if [ $anyrepoargall == 1 ]; then
-								cd "$SCRIPTDIR" || return; wget -q "$(cat "$AMPATH/.cache/multirepo-args" | head -1)/$arg";  _convert_to_appman_compatible_script
-								rm -R -f "$AMPATH/.cache/multirepo-args"
-								echo ' ◆ "'$arg'" third-party installation script downloaded! '
-							else
-								echo -e " ◆ FOUND $(echo '"'$arg'"' | tr a-z A-Z) FROM MULTIPLE SOURCES:\n" &&
-								printf " Select a URL from this menu (read carefully) or press CTRL+C to abort:\n\n"; sleep 1;
-								select d in $(cat "$AMPATH/.cache/multirepo-args"); do test -n "$d" && break; echo ">>> Invalid Selection"; done
-								rm -R -f "$AMPATH/.cache/multirepo-args"
-								cd "$SCRIPTDIR" || return; wget -q $d/$arg;  _convert_to_appman_compatible_script
-								echo ' ◆ "'$arg'" installation script downloaded! '
-							fi
-						elif curl --output /dev/null --silent --head --fail $APPSDB/$arg  1>/dev/null; then
-							rm -R -f "$AMPATH/.cache/multirepo-args"
-							cd "$SCRIPTDIR" || return; wget -q $APPSDB/$arg;  _convert_to_appman_compatible_script
-							echo ' ◆ "'$arg'" installation script downloaded! '
-						else
-							echo ' 💀 ERROR: "'$arg'" does NOT exist in the database, see "'$AMCLI' -l"'
-						fi
-					elif curl --output /dev/null --silent --head --fail $APPSDB/$arg  1>/dev/null; then
-						cd "$SCRIPTDIR" || return; wget -q $APPSDB/$arg;  _convert_to_appman_compatible_script
-						echo ' ◆ "'$arg'" installation script downloaded! '
-					else
-						echo ' 💀 ERROR: "'$arg'" does NOT exist in the database, see "'$AMCLI' -l"'
-					fi
-				elif curl --output /dev/null --silent --head --fail $APPSDB/$arg  1>/dev/null; then
-					cd "$SCRIPTDIR" || return; wget -q $APPSDB/$arg;  _convert_to_appman_compatible_script
-					echo ' ◆ "'$arg'" installation script downloaded! '
-				elif curl --output /dev/null --silent --head --fail $AMREPO/testing/$arch/$arg  1>/dev/null; then
-					echo ' ⚠️ "'$arg'" downloaded from "testing", the unstable branch '; echo ""; echo ' WARNING! PROGRAMS COMING FROM "TESTING" ARE BROKEN, USE AT YOUR OWN RISK!'
-					cd "$SCRIPTDIR" || return; wget -q $AMREPO/testing/$arch/$arg; _convert_to_appman_compatible_script
-				else
-					echo ' 💀 ERROR: "'$arg'" is NOT a valid argument'; echo ""
-				fi
-			esac
-		}
-
-		if [ $arg == STOP ]; then
+		if [ "$arg" == STOP ]; then
 			exit
 		else
 			_download
 		fi
-
 	done
 done
 
