@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 
-AMVERSION="6.6.4"
+AMVERSION="6.7"
+
+# Determine main repository and branch
+AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
+AMBRANCH=$(basename "$AMREPO")
 
 # Determine the name of this script and its working directory
 DIR="$( cd "$( dirname "$0" )" && pwd )"
@@ -9,6 +13,25 @@ CLI=$(basename "$0")
 # Determine system architecture and current user
 arch="$HOSTTYPE"
 currentuser="$USER"
+
+# Determine sytem package manager
+function _system_package_manager_check() {
+	if command -v dnf &> /dev/null; then
+		osPKGman="dnf"
+	elif command -v pacman &> /dev/null; then
+		osPKGman="pacman"
+	elif command -v emerge &> /dev/null; then
+		osPKGman="emerge"
+	elif command -v zypper &> /dev/null; then
+		osPKGman="zypper"
+	elif command -v apt-get &> /dev/null; then
+		osPKGman="apt-get"
+	elif command -v apk &> /dev/null; then
+		osPKGman="apk"
+	else
+		osPKGman=""
+	fi
+}
 
 # Colors
 RED='\033[0;31m'; LightBlue='\033[1;34m'; Green='\033[0;32m'
@@ -53,6 +76,28 @@ function _am() {
 }
 
 # "APPMAN" CORE VARIABLES AND FUNCTIONS
+
+function _patch_bashrc_and_profile() {
+	# Fix order in "echo $PATH" in case "$HOME/.local/bin" is placed at the beginning instead of the end
+	# Check if the custom PATH is not already in .bashrc, then append it (fix - exclamation mark negates the entire command substitution)
+	if test -f "$HOME/.bashrc"; then
+		if ! grep -q 'export PATH=$PATH:$HOME/.local/bin' "$HOME/.bashrc"; then
+			echo 'export PATH=$(echo $PATH | tr ":" "\n" | grep -v "/.local/bin" | tr "\n" ":" | sed ''s/.$//'')' >> "$HOME/.bashrc"
+			echo -e 'export PATH=$PATH:$HOME/.local/bin\n' >> "$HOME/.bashrc"
+		fi
+	fi
+	# Correct the order of .local/bin in .profile if necessary
+	if test -f "$HOME/.profile"; then
+		if grep -q 'PATH="$HOME/.local/bin:$PATH"' "$HOME/.profile"; then
+			sed -i 's#PATH="$HOME/.local/bin:$PATH"#PATH="$PATH:$HOME/.local/bin"#g' "$HOME/.profile"
+		fi
+	elif test -f "$HOME/.bash_profile"; then
+		if grep -q 'PATH="$HOME/.local/bin:$PATH"' "$HOME/.bash_profile"; then
+			sed -i 's#PATH="$HOME/.local/bin:$PATH"#PATH="$PATH:$HOME/.local/bin"#g' "$HOME/.bash_profile"
+		fi
+	fi
+}
+
 function _appman() {
 
 	function _appman_initialize() {
@@ -121,26 +166,6 @@ function _appman() {
 	fi
 	_appman_initialize "$(<"$APPMANCONFIG"/appman-config)"
 
-	# Fix order in "echo $PATH" in case "$HOME/.local/bin" is placed at the beginning instead of the end
-	function _patch_bashrc_and_profile() {
-		# Check if the custom PATH is not already in .bashrc, then append it (fix - exclamation mark negates the entire command substitution)
-		if test -f "$HOME/.bashrc"; then
-			if ! grep -q 'export PATH=$PATH:$HOME/.local/bin' "$HOME/.bashrc"; then
-				echo 'export PATH=$(echo $PATH | tr ":" "\n" | grep -v "/.local/bin" | tr "\n" ":" | sed ''s/.$//'')' >> "$HOME/.bashrc"
-				echo -e 'export PATH=$PATH:$HOME/.local/bin\n' >> "$HOME/.bashrc"
-			fi
-		fi
-		# Correct the order of .local/bin in .profile if necessary
-		if test -f "$HOME/.profile"; then
-			if grep -q 'PATH="$HOME/.local/bin:$PATH"' "$HOME/.profile"; then
-				sed -i 's#PATH="$HOME/.local/bin:$PATH"#PATH="$PATH:$HOME/.local/bin"#g' "$HOME/.profile"
-			fi
-		elif test -f "$HOME/.bash_profile"; then
-			if grep -q 'PATH="$HOME/.local/bin:$PATH"' "$HOME/.bash_profile"; then
-				sed -i 's#PATH="$HOME/.local/bin:$PATH"#PATH="$PATH:$HOME/.local/bin"#g' "$HOME/.bash_profile"
-			fi
-		fi
-	}
 	_patch_bashrc_and_profile
 }
 
@@ -151,12 +176,69 @@ else
 	_appman
 fi
 
+# Set header authorization if GitHub API key file exists
+[ -f "$AMPATH/ghapikey.txt" ] && HeaderAuthWithGITPAT=" --header \"Authorization: token $(<"$AMPATH/ghapikey.txt")\" "
+
+# DEVELOPER MODE
+if test -f "$AMPATH"/betatester; then
+	AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/dev"
+	AMBRANCH=$(basename "$AMREPO")
+fi
+function _betatester_message_on() {
+	if test -f "$AMPATH"/betatester; then
+		echo '--------------------------------------------------------------------------'
+		echo "\"$AMCLI\" $AMVERSION: developer mode" | tr a-z A-Z
+		echo '--------------------------------------------------------------------------'
+	fi
+}
+
+function _use_betatester_on() {
+	touch "$AMPATH"/betatester
+}
+
+function _use_betatester_off() {
+	rm -f "$AMPATH"/betatester
+}
+
+# DOWNLOAD PORTABLE DEPENDENCES
+function _portable_dependences_setup() {
+
+	function _jq_installer() {
+		if ! command -v jq 1>/dev/null; then
+
+			_system_package_manager_check
+
+			if [[ -z "$osPKGman" ]];then
+				echo -e " ${RED}💀 ERROR!\033[0m Missing essential command ${Green}jq\033[0m\n"
+				read -p " Do you wish to install it using $AMCLI (Y,n)? " yn
+				case $yn in
+				'N'|'n')
+					echo -e "\n The \"jq\" command is essential for parsing JSON files on sites"
+					echo " for example api.github.com, to list the URLs of apps to download."
+					echo -e " You need to install it at least via your package manager to use \"$AMCLI\".\n\n Missing essential command ${RED}jq\033[0m, aborted!"; exit
+					;;
+				'Y'|'y'|*)
+					rm -f "$AMPATH"/.cache/*
+					echo ""
+					source "$AMPATH"/modules/install.am -i jq 2>&1 | grep "INSTALLED"
+					echo ""
+					;;
+				esac
+			else
+				echo -e " ${RED}💀 ERROR!\033[0m Missing essential command ${Green}jq\033[0m\n"
+				echo " Install it from your system package manager and retry!"; exit
+			fi
+		fi
+	}
+	_jq_installer
+}
+
 # FUNCTIONS RELATED TO THE SAFE USE OF "AM"
 function _am_security_check() {
 	function _am_dependences_check() {
 		# Check for essential commands required by the application
 		missing_deps=()
-		AMDEPENDENCES="cat chmod chown curl grep jq sed wget"
+		AMDEPENDENCES="cat chmod chown curl grep sed wget"
 		for name in $AMDEPENDENCES; do
 			if ! command -v "$name" &>/dev/null; then
 				missing_deps+=("$name")
@@ -223,6 +305,7 @@ function _am_databases_check() {
 		# Determine if the CLI uses the "main" branch of https://github.com/ivan-hc/AM or an alternative one
 		if [[ -f "$AMPATH"/new-repo.txt ]]; then
 			AMREPO=$(<"$AMPATH/new-repo.txt") # Utilizing command substitution with < for more efficient file reading
+			AMBRANCH=$(basename "$AMREPO")
 			APPSDB="$AMREPO/programs/$arch"
 			APPSLISTDB="$AMREPO/programs/$arch-apps"
 			LIBSLISTDB="$AMREPO/programs/libs-list"
@@ -232,7 +315,6 @@ function _am_databases_check() {
 				echo '--------------------------------------------------------------------------'
 			fi
 		else
-			AMREPO="https://raw.githubusercontent.com/IVAN-HC/AM/main" # Consolidating variable assignments for clarity and brevity
 			APPSDB="$AMREPO/programs/$arch"
 			APPSLISTDB="$AMREPO/programs/$arch-apps"
 			LIBSLISTDB="$AMREPO/programs/libs-list"
@@ -259,9 +341,6 @@ function _am_databases_check() {
 
 _am_databases_check
 
-# Set header authorization if GitHub API key file exists
-[ -f "$AMPATH/ghapikey.txt" ] && HeaderAuthWithGITPAT=" --header \"Authorization: token $(<"$AMPATH/ghapikey.txt")\" "
-
 # Check version of the installed apps
 function _check_version() {
 	rm -f $AMPATH/.cache/version-args
@@ -284,7 +363,7 @@ function _check_version() {
 							APPVERSION="continuous"
 						fi
 					else
-						APPVERSION=$(cat $APPSPATH/$arg/version | sed 's:.*/::' | tr '-' '\n' | grep -vi "appimage\|$arg\|$arch" | grep "[0-9]" | head -1)
+						APPVERSION=$(cat $APPSPATH/$arg/version | sed 's:.*/::' | tr '-' '\n' | tr '_' '\n' | grep -vi "appimage\|$arg\|$arch\|amd64" | grep "[0-9]" | head -1)
 					fi
 				fi
 			elif test -f ./$arg/updater 2>/dev/null; then
@@ -293,7 +372,7 @@ function _check_version() {
 					APPVERSION=$(grep -i "version=" $APPSPATH/$arg/* 2>/dev/null | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
 				fi
 			elif [ "$arg" == "$AMCLI" ]; then
-				APPVERSION=$($AMCLIPATH -v)
+				APPVERSION="$AMVERSION"
 			elif grep -qi "version=" ./$arg/* 2>/dev/null; then
 				APPVERSION=$(grep -i "version=" $APPSPATH/$arg/* 2>/dev/null | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
 			elif echo "$arg" | grep -q "ffwa-"; then
@@ -339,6 +418,8 @@ cat <<-HEREDOC >> "$AMPATH/options"
 	--byname
 	--convert
 	--debug
+	--devmode-disable
+	--devmode-enable
 	--disable-completion
 	--enable-completion
 	--firejail
@@ -451,6 +532,7 @@ case "$1" in
 	'-f'|'files')
 		MODULE="files.am"
 		_use_module "$@"
+		_betatester_message_on
 		;;
 	'-h'|'help')
 		MODULE="help.am"
@@ -463,6 +545,8 @@ case "$1" in
 	'-i'|'install')
 		MODULE="install.am"
 		_online_check
+		_betatester_message_on
+		_portable_dependences_setup
 		_use_module "$@"
 		;;
 	'-R'|'-r'|'remove')
@@ -472,6 +556,7 @@ case "$1" in
 	'-s'|'sync')
 		MODULE="sync.am"
 		_online_check
+		_betatester_message_on
 		_use_module "$@"
 		;;
 	'-t'|'template')
@@ -482,6 +567,7 @@ case "$1" in
 	'-u'|'-U'|'update'|'--force-latest')
 		MODULE="update.am"
 		_online_check
+		_portable_dependences_setup
 		_use_module "$@"
 		;;
 	'--launcher')
@@ -504,6 +590,13 @@ case "$1" in
 		_use_module "$@"
 		;;
 	# INBUILT OPTIONS
+	'--devmode-disable')
+		_use_betatester_off
+		;;
+	'--devmode-enable')
+		_use_betatester_on
+		_betatester_message_on
+		;;
 	'--disable-completion')
 		_use_disable-completion
 		;;

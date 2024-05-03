@@ -29,6 +29,19 @@ appman newrepo https://raw.githubusercontent.com/$USER/AM/dev
 
 -----------------------------------------------
 
+## Want to contribute to the Development Branch and test newer features?
+Enter the developer mode using the command
+```
+am --devmode-enable
+```
+to go back to the main stable branch instead
+```
+am --devmode-disable
+```
+***NOTE, using the "dev" branch can cause serious risks to system stability. Use at your own risk.***
+
+-----------------------------------------------
+
 ## Want to help in some way?
 Share the link to this repository on YouTube, Twitter, Reddit, Facebook or any other platform useful for making our work known.
 
