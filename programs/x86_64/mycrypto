@@ -16,7 +16,7 @@ chmod a+x /opt/$APP/remove
 mkdir tmp
 cd ./tmp
 
-version=$(v=$(wget -q https://api.github.com/repos/MyCryptoHQ/MyCrypto/releases/latest -O - | grep tag_name | cut -d '"' -f 4) && APPNAME="_MyCrypto" && echo "https://github.com/MyCryptoHQ/MyCrypto/releases/download/$v/linux-x86-64_$v$APPNAME.AppImage")
+version=$(v=$(curl -Ls https://api.github.com/repos/MyCryptoHQ/MyCrypto/releases/latest | jq '.' | grep tag_name | cut -d '"' -f 4) && APPNAME="_MyCrypto" && echo "https://github.com/MyCryptoHQ/MyCrypto/releases/download/$v/linux-x86-64_$v$APPNAME.AppImage")
 wget $version
 echo "$version" >> /opt/$APP/version
 cd ..
@@ -32,7 +32,7 @@ cat >> /opt/$APP/AM-updater << 'EOF'
 #!/usr/bin/env bash
 APP=mycrypto
 version0=$(cat /opt/$APP/version)
-version=$(v=$(wget -q https://api.github.com/repos/MyCryptoHQ/MyCrypto/releases/latest -O - | grep tag_name | cut -d '"' -f 4) && APPNAME="_MyCrypto" && echo "https://github.com/MyCryptoHQ/MyCrypto/releases/download/$v/linux-x86-64_$v$APPNAME.AppImage")
+version=$(v=$(curl -Ls https://api.github.com/repos/MyCryptoHQ/MyCrypto/releases/latest | jq '.' | grep tag_name | cut -d '"' -f 4) && APPNAME="_MyCrypto" && echo "https://github.com/MyCryptoHQ/MyCrypto/releases/download/$v/linux-x86-64_$v$APPNAME.AppImage")
 if [ $version = $version0 ]; then
   echo "Update not needed!"
 else
@@ -80,8 +80,8 @@ CHANGEICON=$(cat ./$APP.desktop | grep Icon= | head -1)
 sed -i "s#$CHANGEICON#Icon=/opt/$APP/icons/$APP#g" ./$APP.desktop
 
 mkdir icons
-mv $(./$APP --appimage-extract *.png) ./icons/$APP 2>/dev/null
-mv $(./$APP --appimage-extract *.svg) ./icons/$APP 2>/dev/null
+./$APP --appimage-extract *.png 2>&1 | grep -v "squashfs-root"; mv ./squashfs-root/*$app* ./icons/$APP 2>/dev/null
+./$APP --appimage-extract *.svg 2>&1 | grep -v "squashfs-root"; mv ./squashfs-root/*$app* ./icons/$APP 2>/dev/null
 ./$APP --appimage-extract share/icons/*/*/* 1>/dev/null
 ./$APP --appimage-extract usr/share/icons/*/*/* 1>/dev/null
 ./$APP --appimage-extract share/icons/*/*/*/* 1>/dev/null

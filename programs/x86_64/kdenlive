@@ -15,7 +15,7 @@ chmod a+x /opt/$APP/remove
 mkdir tmp
 cd ./tmp
 
-version=$(wget -q https://kdenlive.org/en/download/ -O - | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep AppImage | head -1)
+version=$(curl -Ls https://kdenlive.org/en/download/ | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep AppImage | head -1)
 wget $version
 echo $version >> /opt/$APP/version
 
@@ -39,14 +39,14 @@ cat >> /opt/$APP/AM-updater << 'EOF'
 #!/bin/sh
 APP=kdenlive
 version0=$(cat /opt/$APP/version)
-version=$(wget -q https://kdenlive.org/en/download/ -O - | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep AppImage | head -1)
+version=$(curl -Ls https://kdenlive.org/en/download/ | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep AppImage | head -1)
 if [ $version0 = $version ]; then
   echo "Update not needed, exit!"
 else
   notify-send "A new version of $APP is available, please wait"
   mkdir /opt/$APP/tmp
   cd /opt/$APP/tmp
-  version=$(wget -q https://kdenlive.org/en/download/ -O - | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep AppImage | head -1)
+  version=$(curl -Ls https://kdenlive.org/en/download/ | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep AppImage | head -1)
   wget $version
   cd ..
   if test -f ./tmp/*mage; then rm ./version
@@ -86,8 +86,8 @@ CHANGEICON=$(cat ./$APP.desktop | grep Icon= | grep $APP | head -1)
 sed -i "s#$CHANGEICON#Icon=/opt/$APP/icons/$APP#g" ./$APP.desktop
 
 mkdir icons
-mv $(./$APP --appimage-extract *.png) ./icons/$APP 2>/dev/null
-mv $(./$APP --appimage-extract *.svg) ./icons/$APP 2>/dev/null
+./$APP --appimage-extract *.png 2>&1 | grep -v "squashfs-root"; mv ./squashfs-root/*$app* ./icons/$APP 2>/dev/null
+./$APP --appimage-extract *.svg 2>&1 | grep -v "squashfs-root"; mv ./squashfs-root/*$app* ./icons/$APP 2>/dev/null
 ./$APP --appimage-extract usr/share/icons/hicolor/256x256/apps/*.png
 mv ./squashfs-root/usr/share/icons/hicolor/256x256/apps/*.png ./icons/$APP 2>/dev/null
 
@@ -102,18 +102,18 @@ APP=kdenlive
 rm -f ./rollback-args* ./AM-rollback
 
 # STABLE AND MORE RECENT VERSIONS
-STABLE=$(wget -q https://download.kde.org/stable/kdenlive/ -O - | grep -Eo "[0-9.?]*" | grep -i ".12\|.08\|.04" | uniq | sort -nr)
+STABLE=$(curl -Ls https://download.kde.org/stable/kdenlive/ | grep -Eo "[0-9.?]*" | grep -i ".12\|.08\|.04" | uniq | sort -nr)
 for arg in $STABLE; do
 	for var in $arg; do
-		printf "%s\n" $(wget -q https://download.kde.org/stable/kdenlive/$var/linux/ -O - | grep -Eo "[a-zA-Z0-9./?=_%:-]*" | grep -i kdenlive | uniq | sort -nr | grep -v '/' | grep -i appimage) >> "./rollback-args-1"
+		printf "%s\n" $(curl -Ls https://download.kde.org/stable/kdenlive/$var/linux/ | grep -Eo "[a-zA-Z0-9./?=_%:-]*" | grep -i kdenlive | uniq | sort -nr | grep -v '/' | grep -i appimage) >> "./rollback-args-1"
 	done
 done
 
 # ARCHIVED OLD RELEASES (THAT MAY NOT WORK)
-ARCHIVED=$(wget -q https://download.kde.org/Attic/kdenlive/ -O - | grep -Eo "[0-9.?]*" | grep -i ".12\|.08\|.04" | uniq | sort -nr)
+ARCHIVED=$(curl -Ls https://download.kde.org/Attic/kdenlive/ | grep -Eo "[0-9.?]*" | grep -i ".12\|.08\|.04" | uniq | sort -nr)
 for arg in $ARCHIVED; do
 	for var in $arg; do
-		printf "%s\n" $(wget -q https://download.kde.org/Attic/kdenlive/$var/linux/ -O - | grep -Eo "[a-zA-Z0-9./?=_%:-]*" | grep -i kdenlive | uniq | sort -nr | grep -v '/' | grep -i appimage) >> "./rollback-args-2"
+		printf "%s\n" $(curl -Ls https://download.kde.org/Attic/kdenlive/$var/linux/ | grep -Eo "[a-zA-Z0-9./?=_%:-]*" | grep -i kdenlive | uniq | sort -nr | grep -v '/' | grep -i appimage) >> "./rollback-args-2"
 	done
 done
 
