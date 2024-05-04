@@ -16,7 +16,7 @@ chmod a+x /opt/$APP/remove
 mkdir tmp
 cd ./tmp
 
-version=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep -w -v i386 | grep -w -v i686 | grep -w -v aarch64 | grep -w -v arm64 | grep -w -v armv7l | grep browser_download_url | grep -i appimage | cut -d '"' -f 4 | head -1)
+version=$(curl -Ls https://api.github.com/repos/$REPO/releases | jq '.' | grep -w -v i386 | grep -w -v i686 | grep -w -v aarch64 | grep -w -v arm64 | grep -w -v armv7l | grep browser_download_url | grep -i appimage | cut -d '"' -f 4 | head -1)
 wget $version
 echo "$version" >> /opt/$APP/version
 cd ..
@@ -33,7 +33,7 @@ cat >> /opt/$APP/AM-updater << 'EOF'
 APP=qtox
 REPO="qTox/qTox-nightly-releases"
 version0=$(cat /opt/$APP/version)
-version=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep -w -v i386 | grep -w -v i686 | grep -w -v aarch64 | grep -w -v arm64 | grep -w -v armv7l | grep browser_download_url | grep -i appimage | cut -d '"' -f 4 | head -1)
+version=$(curl -Ls https://api.github.com/repos/$REPO/releases | jq '.' | grep -w -v i386 | grep -w -v i686 | grep -w -v aarch64 | grep -w -v arm64 | grep -w -v armv7l | grep browser_download_url | grep -i appimage | cut -d '"' -f 4 | head -1)
 if [ $version = $version0 ]; then
   echo "Update not needed!"
 else
@@ -81,8 +81,8 @@ CHANGEICON=$(cat ./$APP.desktop | grep Icon= | head -1)
 sed -i "s#$CHANGEICON#Icon=/opt/$APP/icons/$APP#g" ./$APP.desktop
 
 mkdir icons
-mv $(./$APP --appimage-extract *.png) ./icons/$APP 2>/dev/null
-mv $(./$APP --appimage-extract *.svg) ./icons/$APP 2>/dev/null
+./$APP --appimage-extract *.png 2>&1 | grep -v "squashfs-root"; mv ./squashfs-root/*$app* ./icons/$APP 2>/dev/null
+./$APP --appimage-extract *.svg 2>&1 | grep -v "squashfs-root"; mv ./squashfs-root/*$app* ./icons/$APP 2>/dev/null
 ./$APP --appimage-extract share/icons/*/*/* 1>/dev/null
 ./$APP --appimage-extract usr/share/icons/*/*/* 1>/dev/null
 ./$APP --appimage-extract share/icons/*/*/*/* 1>/dev/null
