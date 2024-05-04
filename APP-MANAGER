@@ -42,6 +42,15 @@ function web_get() {
 	wget -q
 }
 
+function _make_upper() {
+	tr '[:lower:]' '[:upper:]'
+}
+
+function _make_lower() {
+	tr '[:upper:]' '[:lower:]'
+}
+#
+
 # Determine sytem package manager
 function _system_package_manager_check() {
 	if command -v dnf &> /dev/null; then
@@ -259,6 +268,39 @@ function _portable_dependences_setup() {
 		fi
 	}
 	_jq_installer
+}
+
+function _am_dependences_check() {
+	# Check for essential commands required by the application
+	missing_deps=()
+	AMDEPENDENCES="cat chmod chown curl grep sed wget"
+	for name in $AMDEPENDENCES; do
+		if ! command -v "$name" &>/dev/null; then
+			missing_deps+=("$name")
+		fi
+	done
+	# Exit if any essential command is missing
+	if [ -n "$missing_deps" ]; then
+		echo '--------------------------------------------------------------------------'
+		printf ' ${RED}💀 ERROR! MISSING ESSENTIAL COMMANDS\033[0m: %s\n\n Install the above and try again! \n' "${missing_deps[*]}"
+		echo '--------------------------------------------------------------------------'
+		echo -e "\n ${Green}List of the $(echo "$AMCLI" | _make_upper) $AMVERSION core dependences\033[0m:\n"
+		echo $AMDEPENDENCES | tr ' ' ',' | sed 's/,/, /g' | sed 's/^/ /g'
+		echo -e '\n--------------------------------------------------------------------------'
+		echo ' If this message appears it is because you are missing some dependency'
+		echo ' and if its the first time its because something new has been introduced.'
+		echo -e "\n See ${LightBlue}https://github.com/ivan-hc/AM#dependences\033[0m for more information"
+		echo '--------------------------------------------------------------------------'
+		exit 1
+	fi
+}
+
+# Function to check online connections (uses github.com by default, as the database and CLI itself are stored/hosted there)
+function _online_check() {
+	if ! web_get --tries=10 --timeout=20 --spider https://github.com; then
+		echo -e "\n $AMCLI is offline, please check your internet connection and try again\n"
+		exit
+	fi
 }
 
 # FUNCTIONS RELATED TO THE SAFE USE OF "AM"
