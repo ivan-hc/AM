@@ -24,7 +24,7 @@ function _echo_app() {
 }
 
 function _remove_if_local_lib() {
-	LIBNAME=$(cat "$APPSPATH"/"$arg"/remove | tr ' ' '\n' | grep "usr/local/lib" | head -1)
+	LIBNAME=$(tr ' ' '\n' < "$APPSPATH"/"$arg"/remove | grep "usr/local/lib" | head -1)
 	SIZE=$(du -sh "$LIBNAME" | cut -f1 | sort -rh | head -1)
 }
 
@@ -33,13 +33,13 @@ function _remove_else_local_lib() {
 }
 
 function _test_f() {
-	link_in_path=$(cat "./$arg/remove" | tr " " "\n" | grep 'local/bin' | tail -1)
+	link_in_path=$(tr " " "\n" < "./$arg/remove" | grep 'local/bin' | tail -1)
 	realpath=$(realpath "$link_in_path")
 	realstring=$(strings -d "$realpath" 2>/dev/null | head -1 )
 }
 
 function _some_real_string() {
-	script2path=$(cat "$link_in_path" | tail -1 | sed 's#$APP#'"$arg"'#g' | sed 's#exec ##g')
+	script2path=$(tail -1 < "$link_in_path" | sed 's#$APP#'"$arg"'#g' | sed 's#exec ##g')
 	realrealstring=$(strings -d "$script2path" 2>/dev/null | head -1 )
 }
 
@@ -58,7 +58,7 @@ function _files(){
 				_remove_else_local_lib
 			fi
 
-			APPVERSION=$(cat "$AMPATH"/.cache/version-args | grep -w " ◆ $arg	|" | sed 's:.*|	::')
+			APPVERSION=$(grep -w " ◆ $arg	|" < "$AMPATH"/.cache/version-args | sed 's:.*|	::')
 
 			if [ -z "$(strings -d "./$arg/$arg" 2>/dev/null | grep -F 'if you run it with the --appimage-extract option')" ] 2>/dev/null; then
 				string=$(strings -d "./$arg/$arg" 2>/dev/null | head -1 )
@@ -79,7 +79,7 @@ function _files(){
 							_echo_app 'unknown'
 						fi
 
-					elif cat "./$arg/remove" | tail -1 | grep -q 'xtype l -exec rm'; then
+					elif tail -1 < "./$arg/remove" | grep -q 'xtype l -exec rm'; then
 						_echo_app 'set/tools'
 					elif echo "$realstring" | grep -q "#!"; then
 						_some_real_string
@@ -122,9 +122,9 @@ elif [ "$2" = "--byname" ]; then
 	echo "- APPNAME | VERSION | TYPE | SIZE " >> "${toFilesArgs}"-byname
 	echo "- ------- | ------- | ---- | ----" >> "${toFilesArgs}"-byname
 	if test -f "${toFilesArgs}"; then
-		cat "${toFilesArgs}" | sort >> "${toFilesArgs}"-byname
+		sort < "${toFilesArgs}" >> "${toFilesArgs}"-byname
 	fi
-	cat "${toFilesArgs}"-byname | column -t
+	column -t < "${toFilesArgs}"-byname
 	echo ""
 else
 	_files_header
@@ -134,6 +134,6 @@ else
 	if test -f "${toFilesArgs}"; then
 		cat "${toFilesArgs}" >> "${toFilesArgs}"-bysize
 	fi
-	cat "${toFilesArgs}"-bysize | column -t
+	column -t < "${toFilesArgs}"-bysize
 	echo ""
 fi
