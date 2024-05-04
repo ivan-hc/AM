@@ -81,6 +81,21 @@ function _update_apps() {
 	sleep 0.2
 	exit
 }
+
+function _update_all() {
+	if test -f "$APPSPATH/$2"/AM-updater; then
+		start=$(date +%s); "$APPSPATH/$2"/AM-updater > /dev/null 2>&1 | echo -ne " UPDATING $(echo "$2" | tr a-z A-Z)\r"
+		end=$(date +%s)
+		echo -e " ◆ $(echo "$2" | tr a-z A-Z) is updated, $(($end-$start)) seconds elapsed!" && return
+	else
+		printf ' %s CANNOT MANAGE UPDATES FOR %s' "$(echo "$AMCLI" | tr a-z A-Z)" "$(echo "$2" | tr a-z A-Z)"
+		UPDATERS=$(cd "$APPSPATH/$2" 2>/dev/null && find . -name "*update*" -print 2>/dev/null)
+		if [ -n "$UPDATERS" ]; then
+			echo ' This program probably includes its own update system!'
+		fi
+		exit
+	fi
+}
 case "$1" in
 	'-U'|'-u'|'update')	
 		# Call update_github_api function 
@@ -92,18 +107,8 @@ case "$1" in
 					;;
 
 				*)
-					if test -f "$APPSPATH/$2"/AM-updater; then
-						start=$(date +%s); "$APPSPATH/$2"/AM-updater > /dev/null 2>&1 | echo -ne " UPDATING $(echo "$2" | tr a-z A-Z)\r"
-						end=$(date +%s)
-						echo -e " ◆ $(echo "$2" | tr a-z A-Z) is updated, $(($end-$start)) seconds elapsed!" && break
-					else
-						printf ' %s CANNOT MANAGE UPDATES FOR %s' "$(echo "$AMCLI" | tr a-z A-Z)" "$(echo "$2" | tr a-z A-Z)"
-						UPDATERS=$(cd "$APPSPATH/$2" 2>/dev/null && find . -name "*update*" -print 2>/dev/null)
-						if [ -n "$UPDATERS" ]; then
-							echo ' This program probably includes its own update system!'
-						fi
-						exit
-					fi
+					_update_all "${@}}"
+					;;
 			esac
 		done
 		shift
