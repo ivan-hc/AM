@@ -245,13 +245,18 @@ function _install_arg(){
 	_end_of_the_installation_process
 }
 
+# Enter cache dir
+function _enter_cache_dir() {
+	cd "$AMPATH"/.cache || return
+}
+
 function _if_anyrepoargs() {
 	if curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg" 1>/dev/null; then
 		echo "$APPSDB" >> "$AMPATH/.cache/multirepo-args"
 	fi
 	anyrepoargall=$(wc -l < "$AMPATH/.cache/multirepo-args" 2>/dev/null)
 	if [ "$anyrepoargall" == 1 ]; then
-		cd "$AMPATH"/.cache || return
+		_enter_cache_dir
 		mkdir -p tmp
 		cd tmp || return
 		web_get "$(head -1 < "$AMPATH/.cache/multirepo-args")/$arg"
@@ -268,7 +273,7 @@ function _if_anyrepoargs() {
 		do test -n "$d" && break
 			echo ">>> Invalid Selection"
 		done
-		cd "$AMPATH"/.cache || return
+		_enter_cache_dir
 		mkdir -p tmp
 		cd tmp || return
 		web_get "$d/$arg"
@@ -287,7 +292,7 @@ function _for_any_repo(){
 }
 
 function _elif_multirepo() {
-	cd "$AMPATH"/.cache || return
+	_enter_cache_dir
 	mkdir -p tmp
 	cd tmp || return
 	web_get "$APPSDB"/"$arg"
@@ -299,7 +304,7 @@ function _elif_multirepo() {
 }
 
 function _elif_args() {
-	cd "$AMPATH"/.cache || return
+	_enter_cache_dir
 	mkdir -p tmp
 	cd tmp || return
 	web_get "$APPSDB/$arg"
@@ -331,14 +336,14 @@ function _install(){
 		if test -f ./"$arg" 2> /dev/null; then
 			mkdir -p "$AMPATH"/.cache/tmp
 			cp ./"$arg" "$AMPATH"/.cache/tmp/"$arg"
-			cd "$AMPATH"/.cache || return
+			_enter_cache_dir
 			mv ./tmp/"$arg" ./"$arg"
 			rmdir ./tmp
 			_install_arg
 		elif test -f "$arg" 2> /dev/null; then
 			path2arg="$arg"
 			arg=$(echo "$path2arg" | sed 's:.*/::')
-			cd "$AMPATH"/.cache || return
+			_enter_cache_dir
 			mkdir -p tmp
 			cd tmp || return
 			cp "$path2arg" ./"$arg"
@@ -367,7 +372,7 @@ function _install(){
 				printf ' 💀 ERROR: %s does NOT exist in the database, see "%s -l"' "$arg" "$AMCLI"
 			fi
 		elif curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg"  1>/dev/null; then
-			cd "$AMPATH"/.cache || return
+			_enter_cache_dir
 			mkdir -p tmp
 			cd tmp || return
 			web_get "$APPSDB/$arg"
