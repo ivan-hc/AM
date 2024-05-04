@@ -31,6 +31,56 @@ function _list_updatable_apps() {
 	done
 }
 
+function _update_apps() {
+	rm -R -f "$AMPATH"/.cache/*
+	_list_updatable_apps
+	echo '-----------------------------------------------------------------------------'
+	printf ' %s CAN MANAGE UPDATES FOR THE FOLLOWING PROGRAMS:\n' "$(echo "$AMCLI" | tr a-z A-Z)"
+	if test -f "$AMPATH/.cache/updatable-args-list"; then
+		cat "$AMPATH/.cache/updatable-args-list"
+	else
+		echo " None"
+	fi
+	echo -e '\n All self-updatable programs are excluded'
+	sleep 0.1
+	echo '-----------------------------------------------------------------------------'
+	echo -e " >> START OF ALL PROCESSES <<\n-----------------------------------------------------------------------------"
+	for f in $APPSPATH/*/; do 
+		cd "$f" 2>/dev/null && 
+		if test -f ./AM-updater; then
+			APPNAME=$(echo "$(printf '%s\n' "${PWD##*/}")")
+			start=$(date +%s) && sh -x ./AM-updater > /dev/null 2>&1 | echo -ne ' Updating "'"$APPNAME"'"...\r' && end=$(date +%s) &&
+			echo -e " ◆ $(echo "$APPNAME" | tr a-z A-Z) is updated, $(($end-$start)) seconds elapsed!" &
+		else
+			echo ""  > /dev/null 2>&1
+		fi
+	done
+	wait
+	echo '-----------------------------------------------------------------------------'
+	if test -f "$AMPATH"/.cache/updatable-args-list; then
+		mv "$AMPATH"/.cache/updatable-args-list "$AMPATH"/.cache/updatable-args-list-old
+		_list_updatable_apps
+		OLDVER="$AMPATH/.cache/updatable-args-list-old"
+		NEWVER="$AMPATH/.cache/updatable-args-list"
+		if cmp --silent -- "$NEWVER" "$OLDVER"; then
+			echo ' Nothing to do here!'
+		else
+			echo -e " The following apps have been updated:\n"
+			diff --new-line-format="" --unchanged-line-format="" "$NEWVER" "$OLDVER"
+			echo ""
+		fi
+	else
+		echo ' No apps to update here!'
+	fi
+	rm -R -f "$APPSPATH"/*/tmp
+	if [ -z "$2" ]; then
+		echo '-----------------------------------------------------------------------------'
+		$AMCLIPATH -s
+	fi
+	printf '-----------------------------------------------------------------------------\n >> END OF ALL PROCESSES << \n-----------------------------------------------------------------------------'
+	sleep 0.2
+	exit
+}
 case "$1" in
 	'-U'|'-u'|'update')	
 		# Call update_github_api function 
@@ -38,54 +88,7 @@ case "$1" in
 		while [ -n "$1" ]; do
 			case $2 in
 				''|'--apps') 
-					rm -R -f "$AMPATH"/.cache/*
-					_list_updatable_apps
-					echo '-----------------------------------------------------------------------------'
-					printf ' %s CAN MANAGE UPDATES FOR THE FOLLOWING PROGRAMS:\n' "$(echo "$AMCLI" | tr a-z A-Z)"
-					if test -f "$AMPATH/.cache/updatable-args-list"; then
-						cat "$AMPATH/.cache/updatable-args-list"
-					else
-						echo " None"
-					fi
-					echo -e '\n All self-updatable programs are excluded'
-					sleep 0.1
-					echo '-----------------------------------------------------------------------------'
-					echo -e " >> START OF ALL PROCESSES <<\n-----------------------------------------------------------------------------"
-					for f in $APPSPATH/*/; do 
-						cd "$f" 2>/dev/null && 
-						if test -f ./AM-updater; then
-							APPNAME=$(echo "$(printf '%s\n' "${PWD##*/}")")
-							start=$(date +%s) && sh -x ./AM-updater > /dev/null 2>&1 | echo -ne ' Updating "'"$APPNAME"'"...\r' && end=$(date +%s) &&
-							echo -e " ◆ $(echo "$APPNAME" | tr a-z A-Z) is updated, $(($end-$start)) seconds elapsed!" &
-						else
-							echo ""  > /dev/null 2>&1
-						fi
-					done
-					wait
-					echo '-----------------------------------------------------------------------------'
-					if test -f "$AMPATH"/.cache/updatable-args-list; then
-						mv "$AMPATH"/.cache/updatable-args-list "$AMPATH"/.cache/updatable-args-list-old
-						_list_updatable_apps
-						OLDVER="$AMPATH/.cache/updatable-args-list-old"
-						NEWVER="$AMPATH/.cache/updatable-args-list"
-						if cmp --silent -- "$NEWVER" "$OLDVER"; then
-							echo ' Nothing to do here!'
-						else
-							echo -e " The following apps have been updated:\n"
-							diff --new-line-format="" --unchanged-line-format="" "$NEWVER" "$OLDVER"
-							echo ""
-						fi
-					else
-						echo ' No apps to update here!'
-					fi
-					rm -R -f "$APPSPATH"/*/tmp
-					if [ -z "$2" ]; then
-						echo '-----------------------------------------------------------------------------'
-						$AMCLIPATH -s
-					fi
-					printf '-----------------------------------------------------------------------------\n >> END OF ALL PROCESSES << \n-----------------------------------------------------------------------------'
-					sleep 0.2
-					exit
+					_update_apps "${@}}"
 					;;
 
 				*)
