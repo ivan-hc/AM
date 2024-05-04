@@ -14,6 +14,34 @@ CLI=$(basename "$0")
 arch="$HOSTTYPE"
 currentuser="$USER"
 
+# Colors
+RED='\033[0;31m'; LightBlue='\033[1;34m'; Green='\033[0;32m'
+
+# XDG Variables
+DATADIR="${XDG_DATA_HOME:-$HOME/.local/share}"
+CONFIGDIR="${XDG_CONFIG_HOME:-$HOME/.config}"
+CACHEDIR="${XDG_CACHE_HOME:-$HOME/.cache}"
+
+APPMANCONFIG="$CONFIGDIR/appman"
+
+# Prevent the use of "sudo" ("AM")
+function _no_sudo() {
+	if [ -n "$SUDO_COMMAND" ]; then
+		printf '\n Please do not use "sudo" to execute "'"$CLI"'", try again.\n\n'
+		exit 1
+	fi
+}
+
+_no_sudo
+
+
+# Export functions to use them also in modules
+export -f web_get _make_upper _make_lower
+
+function web_get() {
+	wget -q
+}
+
 # Determine sytem package manager
 function _system_package_manager_check() {
 	if command -v dnf &> /dev/null; then
@@ -389,6 +417,102 @@ function _check_version() {
 		fi
 	done
 }
+
+# Functions related to internal options to enable/disable bash (and zsh) completion.
+function _use_disable-completion() {
+	if [ "$(grep -o "$AMCLI" 0<"$COMPLETIONPATH/$COMPLETIONFILE" | head -1)" == "$AMCLI" ]; then
+		grep -v 'complete -W "$(cat '"$AMPATH"'/list 2>/dev/null)" '"$AMCLI"'' "$COMPLETIONPATH/$COMPLETIONFILE" > "$AMPATH"/$COMPLETIONFILE.backup &&
+		$SUDOCOMMAND mv "$AMPATH"/$COMPLETIONFILE.backup "$COMPLETIONPATH/$COMPLETIONFILE"
+		echo ' Completion disabled! '
+	else
+		echo ' Completion script is NOT enabled! '
+	fi
+}
+
+function _use_enable_completion() {
+	if [ "$(grep -o "$AMCLI" 0<"$COMPLETIONPATH/$COMPLETIONFILE" | head -1)" == "$AMCLI" ]; then
+		echo ' Completion script is already enabled!'
+	else
+		$SUDOCOMMAND mkdir -p "$COMPLETIONPATH"
+		if [ "$AMCLI" == appman ]; then
+			if ! test -f "$COMPLETIONPATH/$COMPLETIONFILE"; then
+				echo '#!/usr/bin/env bash' >> "$COMPLETIONFILE"
+			fi
+		else
+			echo '#!/usr/bin/env bash' >> "$COMPLETIONFILE"
+		fi
+		printf 'complete -W %s %s' "$(cat '"$AMPATH"'/list 2>/dev/null)" "$AMCLI" >> "$COMPLETIONFILE"
+		chmod a+x "$COMPLETIONFILE"
+		$SUDOCOMMAND mv "$COMPLETIONFILE" "$COMPLETIONPATH/" 2> /dev/null
+		echo ' Completion has been enabled!'
+	fi
+	if [ -f "$HOME/.zshrc" ] || [ -f "$ZDOTDIR/.zshrc" ]; then
+		if [ -n "$ZDOTDIR" ]; then
+			ZSHDIR="$ZDOTDIR"
+		else
+			ZSHDIR="$HOME"
+		fi
+		if grep -q "source $ZSHDIR/$COMPLETIONFILE" "$ZSHDIR/.zshrc"; then
+			echo 'Zsh completion already enabled!'
+		else
+			echo '#!/usr/bin/env bash' >> "$ZSHDIR/$COMPLETIONFILE"
+			pritf 'complete -W %s %s' "$(cat '"$AMPATH"'/list 2>/dev/null)" "$AMCLI" >> "$ZSHDIR/$COMPLETIONFILE"
+			chmod a+x "$ZSHDIR/$COMPLETIONFILE"
+			echo -e "\nautoload bashcompinit\nbashcompinit\nsource $ZSHDIR/$COMPLETIONFILE" >> "$ZSHDIR/.zshrc"
+		fi
+	fi
+}
+
+# Function for the option that helps "AM" function like "AppMan", via alias
+function _use_appman() {
+	_online_check
+	if [ "$AMCLI" == appman ] 2>/dev/null; then
+		echo ' This function only works for AM'
+		exit
+	fi
+	if test -f /opt/am/appman; then
+		_appman
+		echo -e "Please run '${RED}alias am=/opt/am/appman\033[0m' to made 'AM' act exactly like 'AppMan' for\nthe current session or save this command to your \"~/.bashrc\" file to make the\nchanges permanent. Visit ${LightBlue}https://github.com/ivan-hc/appman\033[0m for more!"
+	else
+		_appman
+		web_get "$AMREPO"/APP-MANAGER -O /opt/am/appman && chmod a+x /opt/am/appman
+		echo -e "Please run '${RED}alias am=/opt/am/appman\033[0m' to made 'AM' act exactly like 'AppMan' for\nthe current session or save this command to your \"~/.bashrc\" file to make the\nchanges permanent."
+	fi
+}
+
+# Handle external modules
+function _use_module() {
+	# Test if module exists
+	if ! test -f "$AMPATH/modules/$MODULE"; then
+		web_get "$AMREPO/modules/$MODULE" -O "$AMPATH/modules/$MODULE"
+		chmod a+x "$AMPATH/modules/$MODULE"
+	fi
+	# Source module
+	source "$AMPATH/modules/$MODULE" "$@"
+}
+
+# Common variables to handle user's XDG directories
+export SCRIPTDIR="$(if command -v xdg-user-dir &>/dev/null; then xdg-user-dir DESKTOP; else echo $HOME; fi)"
+
+# DETERMINE WHEN TO USE "AM" OR "APPMAN"
+if [[ "$DIR/$CLI" == "/usr/local/bin/am" ]] 2>/dev/null; then
+	_am
+else
+	_appman
+fi
+
+# Set header authorization if GitHub API key file exists
+[ -f "$AMPATH/ghapikey.txt" ] && HeaderAuthWithGITPAT=" --header \"Authorization: token $(<"$AMPATH/ghapikey.txt")\" "
+
+# DEVELOPER MODE
+if test -f "$AMPATH"/betatester; then
+	AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/dev"
+	AMBRANCH=$(basename "$AMREPO")
+fi
+
+_am_security_check
+_prevent_apps_from_being_removed_by_third_parties 2> /dev/null
+_am_databases_check
 
 # Generate a list of words to use in bash completion
 rm -rf "$AMPATH/options"
