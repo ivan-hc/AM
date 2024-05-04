@@ -286,6 +286,18 @@ function _for_any_repo(){
 	fi
 }
 
+function _elif_multirepo() {
+	cd "$AMPATH"/.cache || return
+	mkdir -p tmp
+	cd tmp || return
+	web_get "$APPSDB"/"$arg"
+	cd ..
+	mv ./tmp/"$arg" ./"$arg"
+	rmdir ./tmp
+	rm -R -f "$AMPATH/.cache/multirepo-args"
+	_install_arg
+}
+
 function _install(){
 	echo ""
 	case $arg in
@@ -334,15 +346,7 @@ function _install(){
 				if [ "$anyrepoargs" -gt 0 ]; then
 					_if_anyrepoargs
 				elif curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg" 1>/dev/null; then
-					cd "$AMPATH"/.cache || return
-					mkdir -p tmp
-					cd tmp || return
-					web_get "$APPSDB"/"$arg"
-					cd ..
-					mv ./tmp/"$arg" ./"$arg"
-					rmdir ./tmp
-					rm -R -f "$AMPATH/.cache/multirepo-args"
-					_install_arg
+					_elif_multirepo
 				else
 					printf ' 💀 ERROR: %s does NOT exist in the database, see "%s -l"' "$arg" "$AMCLI"
 				fi
