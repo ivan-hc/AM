@@ -17,6 +17,10 @@ function _echo_size() {
 	echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/'
 }
 
+function _echo_app() {
+	echo " ◆ $arg	|	$APPVERSION	|	${1}	|	$(_echo_size)" >> "$AMPATH"/.cache/files-args
+}
+
 function _files(){
 	rm -f "$AMPATH"/.cache/files-args*
 	cd "$APPSPATH" &&
@@ -34,48 +38,48 @@ function _files(){
 			if [ -z "$(strings -d "./$arg/$arg" 2>/dev/null | grep -F 'if you run it with the --appimage-extract option')" ] 2>/dev/null; then
 				string=$(strings -d "./$arg/$arg" 2>/dev/null | head -1 )
 				if grep -q "usr/local/lib" ./"$arg"/remove; then
-					echo " ◆ $arg	|	$APPVERSION	|	library	|	$(_echo_size)" >> "$AMPATH"/.cache/files-args
+					_echo_app 'library'
 				elif echo "$string" | grep -q "ld-linux"; then
-					echo " ◆ $arg	|	$APPVERSION	|	binary/executable	|	$(_echo_size)" >> "$AMPATH"/.cache/files-args
+					_echo_app 'binary/executable'
 				elif echo "$string" | grep -q "#!"; then
-					echo " ◆ $arg	|	$APPVERSION	|	script	|	$(_echo_size)" >> "$AMPATH"/.cache/files-args
+					_echo_app 'script'
 				elif ! test -f  "./$arg/$arg"; then
 					link_in_path=$(cat "./$arg/remove" | tr " " "\n" | grep 'local/bin' | tail -1)
 					realpath=$(realpath "$link_in_path")
 					realstring=$(strings -d "$realpath" 2>/dev/null | head -1 )
 					if [[ -L "$link_in_path" ]]; then
 						if echo "$realstring" | grep -q "ld-linux"; then
-							echo " ◆ $arg	|	$APPVERSION	|	binary/executable	|	$(_echo_size)" >> "$AMPATH"/.cache/files-args
+							_echo_app binary/executable
 						elif echo "$realstring" | grep -q "#!"; then
-							echo " ◆ $arg	|	$APPVERSION	|	script	|	$(_echo_size)" >> "$AMPATH"/.cache/files-args
+							_echo_app 'script'
 						else
-							echo " ◆ $arg	|	$APPVERSION	|	unknown	|	$(_echo_size)" >> "$AMPATH"/.cache/files-args
+							_echo_app 'unknown'
 						fi
 					elif cat "./$arg/remove" | tail -1 | grep -q 'xtype l -exec rm'; then
-						echo " ◆ $arg	|	$APPVERSION	|	set/tools	|	$(_echo_size)" >> "$AMPATH"/.cache/files-args
+						_echo_app 'set/tools'
 					elif echo "$realstring" | grep -q "#!"; then
 						script2path=$(cat "$link_in_path" | tail -1 | sed 's#$APP#'"$arg"'#g' | sed 's#exec ##g')
 						realrealstring=$(strings -d "$script2path" 2>/dev/null | head -1 )
 						if echo "$realrealstring" | grep -q "ld-linux"; then
-							echo " ◆ $arg	|	$APPVERSION	|	binary/executable	|	$(_echo_size)" >> "$AMPATH"/.cache/files-args
+							_echo_app 'binary/executable'
 						elif echo "$realrealstring" | grep -q "#!"; then
-							echo " ◆ $arg	|	$APPVERSION	|	script	|	$(_echo_size)" >> "$AMPATH"/.cache/files-args
+							_echo_app 'script'
 						elif [[ $(test -f "$link_in_path") != 0 ]]; then
-							echo " ◆ $arg	|	$APPVERSION	|	launcher	|	$(_echo_size)" >> "$AMPATH"/.cache/files-args
+							_echo_app 'launcher'
 						else
-							echo " ◆ $arg	|	$APPVERSION	|	unknown	|	$(_echo_size)" >> "$AMPATH"/.cache/files-args
+							_echo_app 'unknown'
 						fi
 					else
-						echo " ◆ $arg	|	$APPVERSION	|	other	|	$(_echo_size)" >> "$AMPATH"/.cache/files-args
+						_echo_app 'other'
 					fi
 				else
-					echo " ◆ $arg	|	$APPVERSION	|	other	|	$(_echo_size)" >> "$AMPATH"/.cache/files-args
+					_echo_app 'other'
 				fi
 			else
 				if [ -z "$(strings -d "./$arg/$arg" 2>/dev/null | grep -F 'AppImages require FUSE to run')" ] 2>/dev/null; then
-					echo " ◆ $arg	|	$APPVERSION	|	appimage-type3	|	$(_echo_size)" >> "$AMPATH"/.cache/files-args
+					_echo_app appimage-type3
 				else
-					echo " ◆ $arg	|	$APPVERSION	|	appimage-type2	|	$(_echo_size)" >> "$AMPATH"/.cache/files-args
+					_echo_app 'appimage-type2'
 				fi
 			fi
 		fi
