@@ -60,26 +60,33 @@ function _launcher_appimage_bin(){
 	_patch_bashrc_and_profile
 	read -p "Do you want to customize the name of a symbolic link (Y) or let me choose (n)?" yn
 	case "$yn" in
-	'N'|'n')
-		if ! echo "$appimage" | grep -q -i ".appimage"; then
-			printf '#!/bin/sh\n%s' "$arg" >> "$HOME"/.local/bin/"$(echo "$appimage" | tr A-Z a-z)".appimage
-			chmod a+x "$HOME"/.local/bin/"$(echo "$appimage" | tr A-Z a-z)".appimage
-			printf 'New command: "%s.appimage" in ~/.local/bin\n' "$(echo "$appimage" | tr A-Z a-z)"
-		else
-			printf '#!/bin/sh\n%s' "$arg" >> "$HOME"/.local/bin/"$(echo "$appimage" | tr A-Z a-z)"
-			chmod a+x "$HOME"/.local/bin/"$(echo "$appimage" | tr A-Z a-z)"
-			printf 'New command: "%s" in ~/.local/bin\n' "$(echo "$appimage" | tr A-Z a-z)"
-		fi;;
-	'Y'|'y'|*)
-		read -p "Add a name (or leave blank to skip): " response
-		case "$response" in
-		'')	return;;
-		*)	if command -v "$response" 1>/dev/null; then
-				echo 'ERROR: the '"$response"' command alredy exists, retry!'
+		'N'|'n')
+			if ! echo "$appimage" | grep -q -i ".appimage"; then
+				printf '#!/bin/sh\n%s' "$arg" >> "$HOME"/.local/bin/"$(echo "$appimage" | tr A-Z a-z)".appimage
+				chmod a+x "$HOME"/.local/bin/"$(echo "$appimage" | tr A-Z a-z)".appimage
+				printf 'New command: "%s.appimage" in ~/.local/bin\n' "$(echo "$appimage" | tr A-Z a-z)"
 			else
-				ln -s "$arg" "$HOME"/.local/bin/"$response"
-			fi;;
-		esac
+				printf '#!/bin/sh\n%s' "$arg" >> "$HOME"/.local/bin/"$(echo "$appimage" | tr A-Z a-z)"
+				chmod a+x "$HOME"/.local/bin/"$(echo "$appimage" | tr A-Z a-z)"
+				printf 'New command: "%s" in ~/.local/bin\n' "$(echo "$appimage" | tr A-Z a-z)"
+			fi
+			;;
+
+		'Y'|'y'|*)
+			read -p "Add a name (or leave blank to skip): " response
+			case "$response" in
+				'')
+					return
+					;;
+				*)
+					if command -v "$response" 1>/dev/null; then
+						echo 'ERROR: the '"$response"' command alredy exists, retry!'
+					else
+						ln -s "$arg" "$HOME"/.local/bin/"$response"
+					fi
+					;;
+			esac
+			;;
 	esac
 }
 
@@ -92,7 +99,6 @@ function _launcher(){
 		mkdir -p "$DATADIR"/icons
 		chmod a+x "$arg"
 		cd "$(dirname "$arg")" || return
-
 		_launcher_appimage_extract 2>/dev/null
 		_launcher_appimage_integration 2>/dev/null
 		_launcher_appimage_bin
@@ -100,7 +106,10 @@ function _launcher(){
 }
 
 case $2 in
-'') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
+	'')
+		echo " USAGE: $AMCLI $1 [ARGUMENT]"
+		exit
+		;;
 esac
 
 while [ -n "$1" ]; do
@@ -111,10 +120,10 @@ while [ -n "$1" ]; do
 		if [ "$arg" == STOP ]; then
 			exit
 		else
-			echo "---------------------------------------------------------------------"
+			printf '%-55s\n'
 			printf '◆ File: %s\n' "$arg"
 			_launcher
-			echo "---------------------------------------------------------------------"
+			printf '%-55s\n'
 		fi
 	done
 done
