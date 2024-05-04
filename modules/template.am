@@ -12,6 +12,38 @@ case $2 in
 		;;
 esac
 
+function _any_argument_used() {
+	cd "$SCRIPTDIR" || return
+	printf '##############################################################\n\n Create templates for %s' "$arg" | tr a-z A-Z
+	printf '--------------------------------------------------------------\n\n EACH MODEL IS BASED ON A DIFFERENT METHOD OF BUILDING/UPDATING THE PROGRAM.'
+	printf ' PLEASE, SELECT A TEMPLATE FOR %s:' "$(echo "$arg" | tr a-z A-Z)"
+	echo '  0) APPIMAGE, FROM ANY WEBSITE (BETTER IF FROM GITHUB.COM)'
+	echo '  1) APPIMAGE, BUILD YOUR OWN WITH PKG2APPIMAGE'
+	echo '  2) ANY ARCHIVE/BINARY/SCRIPT FROM ANY WEBSITE'
+	printf '  3) WEBAPP BASED ON A FIREFOX PROFILE (REQUIRES "FIREFOX" IN $PATH)\n'
+	read -r -p " WHAT KIND OF PROGRAM DO YOU WANT TO WRITE A SCRIPT FOR? : " response
+}
+
+function _appimage_any() {
+	mkdir -p ./am-scripts ./am-scripts/"$arch" ./am-scripts/portable-linux-apps.github.io/apps ./am-scripts/portable-linux-apps.github.io/icons
+	# DOWNLOAD THE TEMPLATE AND CONVERT THE ARGUMENT INTO A COMMAND, ALSO ADD SOME BASIC INFO IF AVAILABLE
+	wget -c -q "$AMREPO"/templates/AM-SAMPLE-AppImage -O ./am-scripts/"$arch/$arg" &&
+	sed -i s/SAMPLE/"$arg"/g ./am-scripts/"$arch/$arg" &&
+	echo '-----------------------------------------------------------------------------'
+	# ADD THE NAME OF THE SOURCE
+	read -r -ep " ◆ ADD THE URL OF THE SITE (BETTER IF IT COME FROM GITHUB), FOR EXAMPLE: $(printf '\n\n - if from github.com, use "https://github.com/USER/PROJECT"\n\n - if from other sources, use "https://www.SITENAME.com" or something\n\n URL: ')" RESPONSE
+}
+
+function _do_you_wish_to_check_the_link_to_the_latest_version_yes() {
+	echo
+	web_get "$HeaderAuthWithGITPAT" https://api.github.com/repos/"$RESPONSE"/releases -O - | grep browser_download_url | grep -i appimage | cut -d '"' -f 4 | head -1
+	echo -e "\n The URL above is an example of what both\n the install and update scripts will point to.\n"
+}
+
+function () {
+
+}
+
 while [ -n "$1" ]; do
 	rm -f "$AMPATH"/.cache/template-args
 	echo "$@" | tr ' ' '\n' >> "$AMPATH"/.cache/template-args && echo STOP >> "$AMPATH"/.cache/template-args
@@ -23,24 +55,10 @@ while [ -n "$1" ]; do
 			arg=$(echo "$arg" | tr A-Z a-z)
 			case $arg in
 				*)
-					cd "$SCRIPTDIR" || return
-					printf '##############################################################\n\n Create templates for %s' "$arg" | tr a-z A-Z
-					printf '--------------------------------------------------------------\n\n EACH MODEL IS BASED ON A DIFFERENT METHOD OF BUILDING/UPDATING THE PROGRAM.'
-					printf ' PLEASE, SELECT A TEMPLATE FOR %s:' "$(echo "$arg" | tr a-z A-Z)"
-					echo '  0) APPIMAGE, FROM ANY WEBSITE (BETTER IF FROM GITHUB.COM)'
-					echo '  1) APPIMAGE, BUILD YOUR OWN WITH PKG2APPIMAGE'
-					echo '  2) ANY ARCHIVE/BINARY/SCRIPT FROM ANY WEBSITE'
-					printf '  3) WEBAPP BASED ON A FIREFOX PROFILE (REQUIRES "FIREFOX" IN $PATH)\n'
-					read -r -p " WHAT KIND OF PROGRAM DO YOU WANT TO WRITE A SCRIPT FOR? : " response
+					_any_argument_used
 					case "$response" in
 						0) # APPIMAGE (ANY)
-							mkdir -p ./am-scripts ./am-scripts/"$arch" ./am-scripts/portable-linux-apps.github.io/apps ./am-scripts/portable-linux-apps.github.io/icons
-							# DOWNLOAD THE TEMPLATE AND CONVERT THE ARGUMENT INTO A COMMAND, ALSO ADD SOME BASIC INFO IF AVAILABLE
-							wget -c -q "$AMREPO"/templates/AM-SAMPLE-AppImage -O ./am-scripts/"$arch/$arg" &&
-							sed -i s/SAMPLE/"$arg"/g ./am-scripts/"$arch/$arg" &&
-							echo '-----------------------------------------------------------------------------'
-							# ADD THE NAME OF THE SOURCE
-							read -r -ep " ◆ ADD THE URL OF THE SITE (BETTER IF IT COME FROM GITHUB), FOR EXAMPLE: $(printf '\n\n - if from github.com, use "https://github.com/USER/PROJECT"\n\n - if from other sources, use "https://www.SITENAME.com" or something\n\n URL: ')" RESPONSE
+							_appimage_any
 							case "$RESPONSE" in
 								*)
 									if echo "$RESPONSE" | grep -q "https://github.com"; then
