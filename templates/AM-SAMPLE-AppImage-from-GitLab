@@ -16,7 +16,7 @@ chmod a+x /opt/$APP/remove
 mkdir tmp
 cd ./tmp
 
-version=$(wget -q https://gitlab.com/api/v4/projects/$REPOID/releases/ -O - | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep -i .appimage | head -1 | sed 's#/file/#/raw/#')
+version=$(curl -Ls https://gitlab.com/api/v4/projects/$REPOID/releases/ | jq '.' | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep -i .appimage | head -1 | sed 's#/file/#/raw/#')
 wget $version
 echo "$version" >> /opt/$APP/version
 cd ..
@@ -33,7 +33,7 @@ cat >> /opt/$APP/AM-updater << 'EOF'
 APP=SAMPLE
 REPOID="REPLACETHIS"
 version0=$(cat /opt/$APP/version)
-version=$(wget -q https://gitlab.com/api/v4/projects/$REPOID/releases/ -O - | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep -i .appimage | head -1 | sed 's#/file/#/raw/#')
+version=$(curl -Ls https://gitlab.com/api/v4/projects/$REPOID/releases/ | jq '.' | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep -i .appimage | head -1 | sed 's#/file/#/raw/#')
 if [ $version = $version0 ]; then
   echo "Update not needed!"
 else
@@ -108,12 +108,3 @@ mv ./squashfs-root/usr/share/icons/hicolor/scalable/apps/*$app* ./icons/$APP 2>/
 
 rm -R -f /opt/$APP/squashfs-root
 mv ./$APP.desktop /usr/share/applications/AM-$APP.desktop
-
-# CHANGE THE PERMISSIONS
-currentuser=$(who | awk '{print $1}')
-chown -R $currentuser /opt/$APP
-
-# MESSAGE
-echo "
- $APP is provided by https://github.com/$(echo $REPO | sed 's:/[^/]*$::')
-"

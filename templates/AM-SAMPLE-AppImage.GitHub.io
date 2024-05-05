@@ -25,10 +25,10 @@ chmod a+x /opt/$APP/remove
 mkdir tmp
 cd ./tmp
 
-download=$(wget -q https://api.github.com/repos/$REPO/releases/latest -O - | grep -E browser_download_url | awk -F '[""]' '{print $4}' | grep -w -v i386 | grep -w -v i686 | grep -w -v arm64 | grep -w -v armv7l | egrep ''$FILENAMEEXTENTION'' -o | head -1);
+download=$(curl -Ls https://api.github.com/repos/$REPO/releases/latest | jq '.' | grep -E browser_download_url | awk -F '[""]' '{print $4}' | grep -w -v i386 | grep -w -v i686 | grep -w -v arm64 | grep -w -v armv7l | egrep ''$FILENAMEEXTENTION'' -o | head -1);
 wget https:$download
 
-version=$(wget -q https://api.github.com/repos/$REPO/releases/latest -O - | grep -E tag_name | awk -F '[""]' '{print $4}')
+version=$(curl -Ls https://api.github.com/repos/$REPO/releases/latest | jq '.' | grep -E tag_name | awk -F '[""]' '{print $4}')
 echo "$version" >> /opt/$APP/version
 
 cd ..
@@ -56,7 +56,7 @@ else
   URL=https://github.com/FUNCTION2/FUNCTION3/releases/latest
   wget https://github.com/$(wget https://github.com/FUNCTION2/FUNCTION3/releases/latest -O - | grep -w -v i386 | grep -w -v i686 | grep -w -v arm64 | grep -w -v armv7l | egrep ''FUNCTION4'' -o | head -1);
   wget https:$download
-  version=$(wget -q https://api.github.com/repos/FUNCTION2/FUNCTION3/releases/latest -O - | grep -E tag_name | awk -F '[""]' '{print $4}')
+  version=$(curl -Ls https://api.github.com/repos/FUNCTION2/FUNCTION3/releases/latest | jq '.' | grep -E tag_name | awk -F '[""]' '{print $4}')
   cd ..
   if test -f ./tmp/*mage; then rm ./version
   fi
@@ -74,7 +74,7 @@ chmod a+x /opt/$APP/AM-updater
 
 # LAUNCHER
 rm /usr/share/applications/AM-$APP.desktop
-wget $(wget -q https://api.github.com/repos/AppImage/appimage.github.io/contents/database/$APPNAME/ -O - | grep download_url | head -1 | cut -c 22- | rev | cut -c 3- | rev) -O $APP.desktopapp=$(echo $APP | cut -c -3)
+wget $(curl -Ls https://api.github.com/repos/AppImage/appimage.github.io/contents/database/$APPNAME/ | jq '.' | grep download_url | head -1 | cut -c 22- | rev | cut -c 3- | rev) -O $APP.desktopapp=$(echo $APP | cut -c -3)
 CHANGEEXEC=$(cat ./$APP.desktop | grep Exec= | tr ' ' '\n' | tr '=' '\n' | tr '/' '\n' | grep $app | head -1)
 sed -i "s#$CHANGEEXEC#$APP#g" ./$APP.desktop
 sed -i "s#AppRun#$APP#g" ./$APP.desktop
@@ -87,14 +87,3 @@ mv ./$APP.desktop /usr/share/applications/AM-$APP.desktop
 # ICON
 mkdir ./icons
 wget $ICONURL -O /opt/$APP/icons/$APP
-
-# CHANGE THE PERMISSIONS
-currentuser=$(who | awk '{print $1}')
-chown -R $currentuser /opt/$APP
-
-# MESSAGE
-echo '
-
- '$APPNAME' is provided by https://github.com/'$REPO'
-
-'
