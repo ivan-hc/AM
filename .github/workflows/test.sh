@@ -20,7 +20,7 @@ function _pick_app() {
 # Use '' or "" for arguments with more words!
 #_check <Name of test> <command> [Short info]
 
-clear
+_pick_app
 printf '\n-----------------------------------------------------------------------------\n\n\t\tAM testing started\n\n-----------------------------------------------------------------------------\n\n'
 _check am am 'no argument'
 
