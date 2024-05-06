@@ -36,18 +36,76 @@ function _clean_lists_and_queries(){
 
 case "$1" in
 
-  '-a'|'about')
+function download_markdown() {
+	local disk_usage=""
+	local app_version=""
+	local markdown_url="$AMCATALOGUEMARKDOWNS/${1}.md"
+	local cache_dir="$AMPATH/.cache/about"
+	local app_status=" STATUS: NOT INSTALLED"
+	local package_name=${1^^}
+	if curl -o /dev/null -sIf "$markdown_url"; then
+		mkdir -p "$cache_dir" && wget -q "$markdown_url" -P "$cache_dir"
+		sed -i '1,${ /^\s*#/ d; /^\s*!/ d; /\[Applications]/d; /\ --- /d; }' "$cache_dir/$1.md"
+		sed -i '$!N;s/^\s*\n\s*$//;P;D' "$cache_dir/$1.md"
+		printf ' PACKAGE: %s\n' "$package_name"
+		if [ -f "$APPSPATH/$1/remove" ]; then
+			disk_usage=$(du -sm "$APPSPATH/$1" | cut -f1)
+			app_version=$(grep -w ' ◆ $1	|' < "$AMPATH"/.cache/version-args | sed 's:.*|	::')
+			app_status=$(echo -e " STATUS: INSTALLED, ABOUT $disk_usage MB OF DISK SPACE IN USE\n VERSION: $app_version")
+		fi
+		printf '%s\n' "$app_status"
+		cat -s "$cache_dir/$1.md" && printf '%-55s\n'
+		rm -R -f "$cache_dir"
+	else
+		printf ' "%s" IS NOT A VALID ARGUMENT\n' "$package_name"
+	fi
+}
 
-	_online_check
+function generate_3rd_party() {
+	local disk_usage=""
+	local app_version=""
+	local app_status=" STATUS: NOT INSTALLED"
+	local package_name=${1^^}
+	if grep -q "◆ $arg : " "$AMPATH/$arch-apps"; then
+		printf ' PACKAGE: %s\n' "$arg" | _make_upper
+		if [ -f "$APPSPATH/$1/remove" ]; then
+			disk_usage=$(du -sm "$APPSPATH/$1" | cut -f1)
+			app_version=$(grep -w ' ◆ $1	|' < "$AMPATH"/.cache/version-args | sed 's:.*|	::')
+			app_status=$(echo -e " STATUS: INSTALLED, ABOUT $disk_usage MB OF DISK SPACE IN USE\n VERSION: $app_version")
+		fi
+		printf '%s\n' "$app_status"
+		cat "$AMPATH/$arch-apps" | grep "◆ $arg : "  | cut -d':' -f2- | sed 's/^./\n /' | sed 's# SOURCE:#\n\n SOURCE:#g'
+		echo ""
+		printf '%-55s\n'
+	else
+		printf ' "%s" IS NOT A VALID ARGUMENT\n' "$package_name"
+	fi
+}
 
-	case $2 in
-	'') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
-	esac
-
-	# Define functions
-	function usage() {
-		echo " USAGE: $AMCLI $1 [ARGUMENT]";
-	}
+function download_lib() {
+	local lib_path=""
+	local disk_usage=""
+	local lib_name_upper=${1^^}
+	printf '%s LIBRARY:\n' "$lib_name_upper"
+	if [[ -f "$APPSPATH/$1/remove" ]]; then
+		lib_path=$(grep "usr/local/lib" "$APPSPATH/$1/remove" | head -1)
+		disk_usage=$(du -sm "$lib_path" | cut -f1)
+		if [[ "$disk_usage" -eq 0 ]]; then
+			printf ' STATUS: INSTALLED, LESS THAN 1 MB OF DISK SPACE IN USE\n'
+		else
+			printf ' STATUS: INSTALLED, ABOUT $disk_usage MB OF DISK SPACE IN USE\n'
+		fi
+	else
+		printf ' STATUS: NOT INSTALLED\n'
+	fi
+	echo ""
+	grep "◆ $1 : " "$AMPATH/libs-list" | sed 's#.*:##' | sed 's/(/\n (/g'
+	printf '\n SITE/SOURCES:\n'
+	local site_source=$(wget -qO- "$APPSDB/$1" | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | head -1)
+	echo " $site_source"
+	echo ""
+	printf '%-55s\n'
+}
 
 function _list(){
 	LIBNUMBER=$(cat "$APPSPATH"/*/remove 2> /dev/null | grep -c "usr/local/lib")
