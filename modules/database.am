@@ -243,13 +243,71 @@ function _list(){
 	if [[ $? -eq 0 ]]; then
 		_completion_lists
 	fi
-	ARGS=$(echo "$@" | sed 's/-q //')
-	echo ""
-	echo ' Search results for "'$ARGS'":' | tr a-z A-Z
-	echo ""
-	grep -i -E "$2" "$AMPATH/$arch-apps" | grep -i -E "$3" | grep -i -E "$4" | grep -i -E "$5" | grep -i -E "$6" | grep -i -E "$7" | grep -i -E "$8" | grep -i -E "$9" | _clean_lists_and_queries
-	grep -i -E "$2" "$AMPATH/libs-list" | grep -i -E "$3" | grep -i -E "$4" | grep -i -E "$5" | grep -i -E "$6" | grep -i -E "$7" | grep -i -E "$8" | grep -i -E "$9" | _clean_lists_and_queries
-	echo ""
-	exit
-	;;
+	if cat "$APPSPATH"/*/remove 2> /dev/null | grep -q 'usr/local/lib'; then
+		if [ "$LIBNUMBER" == 1 ]; then
+			MESSAGE=$(echo " YOU HAVE INSTALLED $APPSNUMBER APPLICATIONS OUT OF $(grep -e "$" -c "$AMPATH"/"$arch"-apps) AVAILABLE, AND $LIBNUMBER LIBRARY")
+		else
+			MESSAGE=$(echo " YOU HAVE INSTALLED $APPSNUMBER APPLICATIONS OUT OF $(grep -e "$" -c "$AMPATH"/"$arch"-apps) AVAILABLE, AND $LIBNUMBER LIBRARIES")
+		fi
+	else
+		MESSAGE=$(echo " YOU HAVE INSTALLED $APPSNUMBER APPLICATIONS OUT OF $(grep -e "$" -c "$AMPATH"/"$arch"-apps) AVAILABLE")
+	fi
+	printf "\n%s\n%s\n LIST OF THE %s APPLICATIONS AVAILABLE IN THE 'AM' REPOSITORY:\n\n%s\n" "$MESSAGE" "$MESSAGE2" "$(grep -e "$" -c "$AMPATH"/"$arch"-apps)" "$(cat "$AMPATH"/"$arch"-apps | _clean_lists_and_queries)" | less -I
+	printf '\n%s\n%s' "$MESSAGE" "$MESSAGE2"
+}
+
+case "$1" in
+	'-a'|'about')
+		_online_check
+		case $2 in
+			'')
+				echo " USAGE: $AMCLI $1 [ARGUMENT]"
+				exit
+				;;
+		esac
+		_check_version
+
+		# Main logic
+		if [ ! -f "$AMPATH/libs-list" ]; then
+			wget -q "$LIBSLISTDB" -P "$AMPATH"
+		fi
+
+		# Skip the first argument which is not part of ARGS
+		for arg in "${@:2}"; do
+			if curl -o /dev/null -sIf "$AMCATALOGUEMARKDOWNS/${arg}.md" 1>/dev/null; then
+				download_markdown "$arg"
+			elif grep -q "◆ $arg : " "$AMPATH/$arch-apps"; then
+				generate_3rd_party
+			elif grep -q "◆ $arg : " "$AMPATH/libs-list"; then
+				download_lib "$arg"
+			else
+				printf '%s is not a valid argument\n' "$arg" | _make_upper
+			fi
+		done
+		;;
+
+	'-l'|'list')
+		_list
+		;;
+
+	'-q'|'query')
+		case $2 in
+			'')
+				echo " USAGE: $AMCLI $1 [ARGUMENT]"
+				exit
+				;;
+		esac
+		wget -q --tries=10 --timeout=20 --spider https://github.com
+		if [[ $? -eq 0 ]]; then
+			_completion_lists
+		fi
+		ARGS=$(echo "$@" | sed 's/-q //')
+		echo ""
+		printf ' Search results for %s:' "$ARGS" | _make_upper
+		echo ""
+		grep -i -E "$2" "$AMPATH/$arch-apps" | grep -i -E "$3" | grep -i -E "$4" | grep -i -E "$5" | grep -i -E "$6" | grep -i -E "$7" | grep -i -E "$8" | grep -i -E "$9" | _clean_lists_and_queries
+		grep -i -E "$2" "$AMPATH/libs-list" | grep -i -E "$3" | grep -i -E "$4" | grep -i -E "$5" | grep -i -E "$6" | grep -i -E "$7" | grep -i -E "$8" | grep -i -E "$9" | _clean_lists_and_queries
+		echo ""
+		exit
+		;;
 esac
