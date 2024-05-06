@@ -4,7 +4,8 @@ clear
 # 1 Define variables
 progname=${progname:="${0##*/}"}
 version=0.02
-configdir=$HOME/.config/$progname
+# Check XDG variable
+configdir="${XDG_CONFIG_HOME:-$HOME/.config}/appman/$progname"
 config=$configdir/config
 # shellcheck source=/dev/null
 source "$config" >/dev/null 2>&1
@@ -17,102 +18,10 @@ get_color() {
 	$(( RANDOM % 255 + 1 ))
 }
 
-# Install gum
-#install_gum() {
-  #nix-env -iA nixpkgs.gum || nix run "github:charmbracelet/gum" -- --help
-  #sudo mkdir -p /etc/apt/keyrings
-	#curl -fsSL https://repo.charm.sh/apt/gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/charm.gpg
-	#echo "deb [signed-by=/etc/apt/keyrings/charm.gpg] https://repo.charm.sh/apt/ * *" | sudo tee /etc/apt/sources.list.d/charm.list
-	#sudo apt update && sudo apt install gum
-  #echo '[charm]
-#name=Charm
-#baseurl=https://repo.charm.sh/yum/
-#enabled=1
-#! command -v gum >/dev/null 2>&1gpgcheck=1
-#gpgkey=https://repo.charm.sh/yum/gpg.key' | sudo tee /etc/yum.repos.d/charm.repo
-	#sudo yum install gum
-#}
-#gum_install () {
-	#if ! command -v gum >/dev/null 2>&1; then
-		#local distro;local cmd;local usesudo
-		#declare -A pkgmgr
-		#pkgmgr=( \
-#[arch]="pacman -S" \
-#[alpine]="apk add" \
-#[debian]="sudo mkdir -p /etc/apt/keyrings && curl -fsSL https://repo.charm.sh/apt/gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/charm.gpg && echo \"deb [signed-by=/etc/apt/keyrings/charm.gpg] https://repo.charm.sh/apt/ * *\" | sudo tee /etc/apt/sources.list.d/charm.list && sudo apt update && sudo apt install gum" \
-#[ubuntu]="sudo mkdir -p /etc/apt/keyrings && curl -fsSL https://repo.charm.sh/apt/gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/charm.gpg && echo \"deb [signed-by=/etc/apt/keyrings/charm.gpg] https://repo.charm.sh/apt/ * *\" | sudo tee /etc/apt/sources.list.d/charm.list && sudo apt update && sudo apt install gum" \
-#[voidlinux]="xbps-install" \
-#[go]="go install" \
-#)
-		#distro=$(cat /etc/os-release | tr [:upper:] [:lower:] | grep -Poi '(debian|ubuntu|red hat|centos|arch|alpine|voidlinux)' | uniq)
-		#cmd="${pkgmgr[$distro]}"
-		#if [[ $1 ]]; then
-			#[[ ! $EUID -eq 0 ]] && usesudo=sudo
-			#printf '\nInstalling gum using command: %s %s %s\n' "$usesudo" "$cmd" "$@"
-			#$usesudo $cmd $@
-		#else
-			#echo $cmd
-		#fi
-	#fi
-	#if ! command -v gum >/dev/null 2>&1; then
-		#echo "Can't chew it without gum! Exiting!"
-		#exit 1
-	#fi
-#}
 gum_install() {
 	if ! command -v gum >/dev/null 2>&1; then
-		if [ -f /etc/os-release ]; then
-			if [ -f /usr/bin/pacman ]; then
-				install_gum_pacman
-			elif [ -f /usr/bin/apt ]; then
-				install_gum_apt
-			elif [ -f /usr/bin/apk ]; then
-				install_gum_apk
-			elif [ -f /usr/bin/xbps-install ]; then
-				install_gum_xbps
-			elif [ -f /usr/bin/yum ]; then
-				install_gum_yum
-			elif [ -f /usr/bin/nix ]; then
-				install_gum_nix
-			elif [ -f /usr/bin/go ]; then
-				install_gum_go
-			else
-				echo "Don't know how to install gum here!" && exit 1
-			fi
-		fi
+		am -i gum >/dev/null 2>&1 || appman -i gum >/dev/null 2>&1
 	fi
-}
-install_gum_pacman() {
-	sudo pacman -S gum
-}
-install_gum_apt() {
-	sudo mkdir -p /etc/apt/keyrings
-	curl -fsSL https://repo.charm.sh/apt/gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/charm.gpg
-	echo "deb [signed-by=/etc/apt/keyrings/charm.gpg] https://repo.charm.sh/apt/ * *" \
-| sudo tee /etc/apt/sources.list.d/charm.list
-	sudo apt update
-	sudo apt install gum
-}
-install_gum_apk() {
-	sudo apk add gum
-}
-install_gum_xbps() {
-	sudo xbps-install gum
-}
-install_gum_yum() {
-	echo '[charm]
-name=Charm
-baseurl=https://repo.charm.sh/yum/
-enabled=1
-gpgcheck=1
-gpgkey=https://repo.charm.sh/yum/gpg.key' | sudo tee /etc/yum.repos.d/charm.repo
-	sudo yum install gum
-}
-install_gum_nix() {
-	nix-env -iA nixpkgs.gum || nix run "github:charmbracelet/gum" -- --help
-}
-install_gum_go() {
-	go install github.com/charmbracelet/gum@latest
 }
 
 # 2 Install gum if needed
@@ -214,7 +123,7 @@ install_appman() {
 	wget https://raw.githubusercontent.com/ivan-hc/AppMan/main/appman \
  && chmod a+x appman \
  && gum confirm "Create ~/.local/bin and move Appman There?" && mkdir -p ~/.local/bin \
- && echo 'export PATH=$PATH:$(xdg-user-dir USER)/.local/bin' >> ~/.bashrc \
+ && echo $PATH | grep -q /.local/bin && echo 'export PATH=$PATH:$HOME/.local/bin' >> ~/.bashrc \
  && mv appman ~/.local/bin/appman
 }
 
@@ -639,6 +548,9 @@ double" | gum filter --height $height)
 
 is_completion_enabled() {
 	if [ "$(grep -o "appman" ~/.bash_completion 2>/dev/null | head -1)" == "appman" ]; then
+		echo "AppMan"
+	fi
+	if [ "$(grep -o "appman" "$ZDOTDIR"/.bash_completion 2>/dev/null | head -1)" == "appman" ]; then
 		echo "AppMan"
 	fi
 	if test -f /etc/bash_completion.d/am-completion.sh; then
