@@ -10,10 +10,12 @@ while [ -n "$1" ]; do
 		if test -f ./$2/$2 2>/dev/null; then
 			cd ./$2 || return
 			if [ -z "$(strings -d "./$2" 2>/dev/null | grep -F 'if you run it with the --appimage-extract option')" ] 2>/dev/null; then
-				echo " ⚠️ Error: $(echo $2 | tr a-z A-Z) is NOT an AppImage."; exit
+				echo " ⚠️ Error: $(_echo_lower) is NOT an AppImage."
+				exit
 			else
 				if [ -z "$(strings -d "./$2" 2>/dev/null | grep -F 'AppImages require FUSE to run')" ] 2>/dev/null; then
-					echo " ◆ $(echo $2 | tr a-z A-Z) is already a Type3 AppImage."; exit
+					echo " ◆ $(_echo_lower) is already a Type3 AppImage."
+					exit
 				else
 					wget -q "$(curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/probonopd/go-appimage/releases | grep -v zsync | grep -i continuous | grep -i appimagetool | grep -i "$(uname -m)" | grep browser_download_url | cut -d '"' -f 4 | head -1)" -O appimagetool
 					chmod a+x ./appimagetool
@@ -21,7 +23,9 @@ while [ -n "$1" ]; do
 					./$2 --appimage-extract 2> /dev/null | grep -v "squashfs-root"
 					echo -ne " ...trying to convert in Type3 AppImage\r"
 					chmod 0755 ./squashfs-root
-					ARCH="$(uname -m)" VERSION=$(./appimagetool -v | grep -o '[[:digit:]]*') ./appimagetool -s ./squashfs-root > /dev/null 2> /dev/null
+					ARCH="$(uname -m)"
+					VERSION=$(./appimagetool -v | grep -o '[[:digit:]]*')
+					./appimagetool -s ./squashfs-root > /dev/null 2> /dev/null
 					if test -f ./*.AppImage; then
 						mv ./"$2" ./"$2".old
 						mv ./*.AppImage ./"$2"
@@ -31,31 +35,38 @@ while [ -n "$1" ]; do
 							echo " Note, your installed Appimage have not a .zsync file."
 							if test -f ./AM-updater; then
 								if ! grep -q 'nolibfuse' ./AM-updater; then
-									echo -e '\necho y | '$AMCLIPATH' nolibfuse $APP' >> ./AM-updater
+									printf '\necho y | %s nolibfuse %s' "$AMCLIPATH" "$APP" >> ./AM-updater
 									echo " The next update may replace this AppImage with a Type2 one..."
 									echo ' ...so I added this command to the bottom of the "AM-updater" script!'
 								fi
 							fi
 						fi
-						echo " Contact the upstream developers to make them officially switch to Type3!"
-						echo ""
+						echo -e " Contact the upstream developers to make them officially switch to Type3!\n"
 						read -p " Do you wish to remove the old Type2 AppImage (Y,n)?" yn
 						case $yn in
-							[Nn]* )		exit;;
-							[Yy]*|* )	rm -R -f ./$2.old; exit;
+							[Nn]* )
+								exit
+								;;
+							[Yy]*|* )
+								rm -R -f ./$2.old
+								exit
+								;;
 						esac
 					else
 						metainfodir=$(find ./squashfs-root -type d -name metainfo | grep "share/metainfo" | head -1)
 						if [ -z "$metainfodir" ]; then
-							echo " 💀Errors while trying to export $(echo $2 | tr a-z A-Z) from Type2 AppImage. Aborted."
-							rm -R -f ./appimagetool ./squashfs-root; exit
+							echo " 💀Errors while trying to export $(_echo_lower) from Type2 AppImage. Aborted."
+							rm -R -f ./appimagetool ./squashfs-root
+							exit
 						else
 							cd "$metainfodir" || return
 							rm -R -f ./*.xml
 							cd - > /dev/null || return
 						fi
 						echo -ne " ...found Appstream errors, I'm trying to fix them...\r"
-						ARCH="$(uname -m)" VERSION=$(./appimagetool -v | grep -o '[[:digit:]]*') ./appimagetool -s ./squashfs-root > /dev/null 2> /dev/null
+						ARCH="$(uname -m)"
+						VERSION=$(./appimagetool -v | grep -o '[[:digit:]]*')
+						./appimagetool -s ./squashfs-root > /dev/null 2> /dev/null
 						if test -f ./*.AppImage; then
 							mv ./"$2" ./"$2".old
 							mv ./*.AppImage ./"$2"
@@ -63,13 +74,17 @@ while [ -n "$1" ]; do
 							if test -f ./*.zsync; then
 								echo 'However, when trying again I had to remove some files to update with "zsync".'
 							fi
-							echo " Contact the upstream developers to make them officially switch to Type3!"
-							echo ""
+							echo -e " Contact the upstream developers to make them officially switch to Type3!\n"
 							rm -R -f ./appimagetool ./squashfs-root
 							read -p " Do you wish to remove the old one (Y,n)?" yn
 							case $yn in
-								[Nn]* )		exit;;
-								[Yy]*|* )	rm -R -f ./$2.old; exit;
+								[Nn]* )
+									exit
+									;;
+								[Yy]*|* )
+									rm -R -f ./$2.old
+									exit
+									;;
 							esac
 						else
 							echo " 💀Errors while trying to export $(echo $2 | tr a-z A-Z) from Type2 AppImage. Aborted."
