@@ -1,0 +1,61 @@
+name: "Apps test 🧪"
+
+env:
+  TERM: xterm
+
+on:
+  workflow_dispatch:
+    branches: '**'
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+
+  am:
+    name: test all Apps 📝
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: test all Apps
+        run: |
+          printf '\tSetting up environment...\n'
+          printf '\n\tCreating directory structure...\n'
+          mkdir -p results
+          printf '\n\tMaking needed files executable...\n'
+          chmod +x ./INSTALL
+          printf '\n\tInstalling AM...\n'
+          sudo ./INSTALL
+          printf '\n'
+          echo -e "Installed version: $(am version)\n\n"
+          apps=$(cut -d' ' -f2 < /opt/am/x86_64-apps)
+          count=$(echo "${apps}" | wc -l)
+          echo "available apps: $count"
+          for app in ${apps}; do
+            echo '-------------------------------------------------------------'
+            am -f -less
+            echo '-------------------------------------------------------------'
+            am -i $app && echo "OK: $app" >> results/good || \
+            echo "FAIL! $app" >> results/bad
+            echo '-------------------------------------------------------------'
+            am -f --less
+            echo '-------------------------------------------------------------'
+            am -R $app && echo "OK: $app" >> results/removed || \
+            echo "REMOVE! $app" >> results/noremoved
+            echo '-------------------------------------------------------------'
+            am -f --less
+            echo '-------------------------------------------------------------'
+          done
+          good=$(cat results/good | wc -l)
+          bad=$(cat results/bad | wc -l)
+          removed=$(cat results/removed | wc -l)
+          noremoved=$(cat results/noremoved | wc -l)
+          echo -e "\n\n"
+          echo "all/runed/ok/failed/removed/not"
+          echo "$count/$n/$good/$bad/$removed/$noremoved"
+          echo -e "\n\n"
+          printf '\n\tTest finished\n'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: results
+          path: results
