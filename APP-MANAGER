@@ -14,9 +14,6 @@ CLI=$(basename "$0")
 arch="$HOSTTYPE"
 currentuser="$USER"
 
-# Colors
-RED='\033[0;31m'; LightBlue='\033[1;34m'; Green='\033[0;32m'
-
 # XDG Variables
 DATADIR="${XDG_DATA_HOME:-$HOME/.local/share}"
 CONFIGDIR="${XDG_CONFIG_HOME:-$HOME/.config}"
@@ -27,6 +24,7 @@ APPMANCONFIG="$CONFIGDIR/appman"
 # Prevent the use of "sudo" ("AM")
 function _no_sudo() {
 	if [ -n "$SUDO_COMMAND" ]; then
+		printf '\n Please do not use "sudo" to execute "'"$CLI"'", try again.\n\n'
 		printf '\n Please do not use "sudo" to execute %s, try again.\n\n' "$CLI"
 		exit 1
 	fi
@@ -63,9 +61,18 @@ function _system_package_manager_check() {
 # Colors
 RED='\033[0;31m'; LightBlue='\033[1;34m'; Green='\033[0;32m'
 
+# Prevent the use of "sudo" ("AM")
+function _no_sudo() {
+	if [ -n "$SUDO_COMMAND" ]; then
+		printf '\n Please do not use "sudo" to execute "'"$CLI"'", try again.\n\n'
+		exit 1
+	fi
+}
+
+_no_sudo
+
 # Common variables to handle user's XDG directories
-SCRIPTDIR="$(if command -v xdg-user-dir &>/dev/null; then xdg-user-dir DESKTOP; else echo "$HOME"; fi)"
-export SCRIPTDIR
+SCRIPTDIR="$(if command -v xdg-user-dir &>/dev/null; then xdg-user-dir DESKTOP; else echo $HOME; fi)"
 
 # Check XDG variables ("APPMAN")
 if [ -n "$XDG_CONFIG_HOME" ]; then
@@ -199,27 +206,6 @@ fi
 # Set header authorization if GitHub API key file exists
 [ -f "$AMPATH/ghapikey.txt" ] && HeaderAuthWithGITPAT=" --header \"Authorization: token $(<"$AMPATH/ghapikey.txt")\" "
 
-# DEVELOPER MODE
-if test -f "$AMPATH"/betatester; then
-	AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/dev"
-	AMBRANCH=$(basename "$AMREPO")
-fi
-function _betatester_message_on() {
-	if test -f "$AMPATH"/betatester; then
-		echo '--------------------------------------------------------------------------'
-		echo "\"$AMCLI\" $AMVERSION: developer mode" | tr '[:lower:]' '[:upper:]'
-		echo '--------------------------------------------------------------------------'
-	fi
-}
-
-function _use_betatester_on() {
-	touch "$AMPATH"/betatester
-}
-
-function _use_betatester_off() {
-	rm -f "$AMPATH"/betatester
-}
-
 # DOWNLOAD PORTABLE DEPENDENCES
 function _jq_installer() {
 	if ! command -v jq 1>/dev/null; then
@@ -289,8 +275,6 @@ function _am_security_check() {
 	fi
 }
 
-_am_security_check
-
 # Function to check online connections (uses github.com by default, as the database and CLI itself are stored/hosted there)
 function _online_check() {
 	if ! web_get --tries=10 --timeout=20 --spider https://github.com; then
@@ -313,26 +297,6 @@ function _prevent_apps_from_being_removed_by_third_parties() {
 	fi
 }
 
-function _am_newrepo_check() {
-	# Determine if the CLI uses the "main" branch of https://github.com/ivan-hc/AM or an alternative one
-	if [[ -f "$AMPATH"/new-repo.txt ]]; then
-		AMREPO=$(<"$AMPATH/new-repo.txt") # Utilizing command substitution with < for more efficient file reading
-		AMBRANCH=$(basename "$AMREPO")
-		APPSDB="$AMREPO/programs/$arch"
-		APPSLISTDB="$AMREPO/programs/$arch-apps"
-		LIBSLISTDB="$AMREPO/programs/libs-list"
-		if [[ $* != "newrepo off" ]]; then
-			echo '--------------------------------------------------------------------------'
-			echo " Source: $AMREPO"
-			echo '--------------------------------------------------------------------------'
-		fi
-	else
-		APPSDB="$AMREPO/programs/$arch"
-		APPSLISTDB="$AMREPO/programs/$arch-apps"
-		LIBSLISTDB="$AMREPO/programs/libs-list"
-	fi
-}
-
 # FUNCTIONS RELATED TO THE DATABASE OF APPS
 function _am_databases_check() {
 	# Determine catalogue in use
@@ -347,7 +311,7 @@ function _am_databases_check() {
 			APPSDB="$AMREPO/programs/$arch"
 			APPSLISTDB="$AMREPO/programs/$arch-apps"
 			LIBSLISTDB="$AMREPO/programs/libs-list"
-			if [[ $* != "newrepo off" ]]; then
+			if [[ "$*" != "newrepo off" ]]; then
 				echo '--------------------------------------------------------------------------'
 				echo " Source: $AMREPO"
 				echo '--------------------------------------------------------------------------'
@@ -376,8 +340,6 @@ function _am_databases_check() {
 		fi
 	fi
 }
-
-_am_databases_check
 
 # Check version of the installed apps
 function _check_version() {
@@ -427,145 +389,6 @@ function _check_version() {
 		fi
 	done
 }
-
-# Functions related to internal options to enable/disable bash (and zsh) completion.
-function _use_disable-completion() {
-	if [ "$(grep -o "$AMCLI" 0<"$COMPLETIONPATH/$COMPLETIONFILE" | head -1)" == "$AMCLI" ]; then
-		grep -v 'complete -W "$(cat '"$AMPATH"'/list 2>/dev/null)" '"$AMCLI"'' "$COMPLETIONPATH/$COMPLETIONFILE" > "$AMPATH"/$COMPLETIONFILE.backup &&
-		$SUDOCOMMAND mv "$AMPATH"/$COMPLETIONFILE.backup "$COMPLETIONPATH/$COMPLETIONFILE"
-		echo ' Completion disabled! '
-	else
-		echo ' Completion script is NOT enabled! '
-	fi
-}
-
-function _use_enable_completion() {
-	if [ "$(grep -o "$AMCLI" 0<"$COMPLETIONPATH/$COMPLETIONFILE" | head -1)" == "$AMCLI" ]; then
-		echo ' Completion script is already enabled!'
-	else
-		$SUDOCOMMAND mkdir -p "$COMPLETIONPATH"
-		if [ "$AMCLI" == appman ]; then
-			if ! test -f "$COMPLETIONPATH/$COMPLETIONFILE"; then
-				echo '#!/usr/bin/env bash' >> "$COMPLETIONFILE"
-			fi
-		else
-			echo '#!/usr/bin/env bash' >> "$COMPLETIONFILE"
-		fi
-		printf 'complete -W %s %s' "$(cat '"$AMPATH"'/list 2>/dev/null)" "$AMCLI" >> "$COMPLETIONFILE"
-		chmod a+x "$COMPLETIONFILE"
-		$SUDOCOMMAND mv "$COMPLETIONFILE" "$COMPLETIONPATH/" 2> /dev/null
-		echo ' Completion has been enabled!'
-	fi
-	if [ -f "$HOME/.zshrc" ] || [ -f "$ZDOTDIR/.zshrc" ]; then
-		if [ -n "$ZDOTDIR" ]; then
-			ZSHDIR="$ZDOTDIR"
-		else
-			ZSHDIR="$HOME"
-		fi
-		if grep -q "source $ZSHDIR/$COMPLETIONFILE" "$ZSHDIR/.zshrc"; then
-			echo 'Zsh completion already enabled!'
-		else
-			echo '#!/usr/bin/env bash' >> "$ZSHDIR/$COMPLETIONFILE"
-			pritf 'complete -W %s %s' "$(cat '"$AMPATH"'/list 2>/dev/null)" "$AMCLI" >> "$ZSHDIR/$COMPLETIONFILE"
-			chmod a+x "$ZSHDIR/$COMPLETIONFILE"
-			echo -e "\nautoload bashcompinit\nbashcompinit\nsource $ZSHDIR/$COMPLETIONFILE" >> "$ZSHDIR/.zshrc"
-		fi
-	fi
-}
-
-# Function for the option that helps "AM" function like "AppMan", via alias
-function _use_appman() {
-	_online_check
-	if [ "$AMCLI" == appman ] 2>/dev/null; then
-		echo ' This function only works for AM'
-		exit
-	fi
-	if test -f /opt/am/appman; then
-		_appman
-		echo -e "Please run '${RED}alias am=/opt/am/appman\033[0m' to made 'AM' act exactly like 'AppMan' for\nthe current session or save this command to your \"~/.bashrc\" file to make the\nchanges permanent. Visit ${LightBlue}https://github.com/ivan-hc/appman\033[0m for more!"
-	else
-		_appman
-		web_get "$AMREPO"/APP-MANAGER -O /opt/am/appman && chmod a+x /opt/am/appman
-		echo -e "Please run '${RED}alias am=/opt/am/appman\033[0m' to made 'AM' act exactly like 'AppMan' for\nthe current session or save this command to your \"~/.bashrc\" file to make the\nchanges permanent."
-	fi
-}
-
-# Handle external modules
-function _use_module() {
-	# Test if module exists
-	if ! test -f "$AMPATH/modules/$MODULE"; then
-		web_get "$AMREPO/modules/$MODULE" -O "$AMPATH/modules/$MODULE"
-		chmod a+x "$AMPATH/modules/$MODULE"
-	fi
-	# shellcheck source=modules/*
-	source "$AMPATH/modules/$MODULE" "$@"
-}
-
-# Common variables to handle user's XDG directories
-SCRIPTDIR="$(if command -v xdg-user-dir &>/dev/null; then xdg-user-dir DESKTOP; else echo $HOME; fi)"
-export SCRIPTDIR
-# DETERMINE WHEN TO USE "AM" OR "APPMAN"
-if [[ "$DIR/$CLI" == "/usr/local/bin/am" ]] 2>/dev/null; then
-	_am
-else
-	_appman
-fi
-
-# Set header authorization if GitHub API key file exists
-[ -f "$AMPATH/ghapikey.txt" ] && HeaderAuthWithGITPAT=" --header \"Authorization: token $(<"$AMPATH/ghapikey.txt")\" "
-
-# DEVELOPER MODE
-if test -f "$AMPATH"/betatester; then
-	AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/dev"
-	AMBRANCH=$(basename "$AMREPO")
-fi
-
-_am_security_check
-_prevent_apps_from_being_removed_by_third_parties 2> /dev/null
-_am_databases_check
-
-# Generate a list of words to use in bash completion
-rm -rf "$AMPATH/options"
-cat <<-HEREDOC >> "$AMPATH/options"
-	about
-	apikey
-	backup
-	clean
-	download
-	files
-	install
-	list
-	lock
-	neodb
-	newrepo
-	nolibfuse
-	overwrite
-	query
-	remove
-	sync
-	template
-	test
-	unlock
-	update
-	web
-	--apps
-	--byname
-	--convert
-	--debug
-	--devmode-disable
-	--devmode-enable
-	--disable-completion
-	--enable-completion
-	--firejail
-	--force-latest
-	--home
-	--launcher
-	--less
-	--rollback
-	--sandbox
-	--silent
-	--user
-HEREDOC
 
 # Functions related to internal options to enable/disable bash (and zsh) completion.
 function _use_disable-completion() {
@@ -624,7 +447,7 @@ function _use_appman() {
 		echo -e "Please run '${RED}alias am=/opt/am/appman\033[0m' to made 'AM' act exactly like 'AppMan' for\nthe current session or save this command to your '"'~/.bashrc'"' file to make the\nchanges permanent. Visit ${LightBlue}https://github.com/ivan-hc/appman\033[0m for more!"
 	else
 		_appman
-		wget -q "$AMREPO"/APP-MANAGER -O /opt/am/appman && chmod a+x /opt/am/appman
+		web_get "$AMREPO"/APP-MANAGER -O /opt/am/appman && chmod a+x /opt/am/appman
 		echo -e "Please run '${RED}alias am=/opt/am/appman\033[0m' to made 'AM' act exactly like 'AppMan' for\nthe current session or save this command to your '"'~/.bashrc'"' file to make the\nchanges permanent."
 	fi
 }
@@ -639,6 +462,74 @@ function _use_module() {
 	# Source module
 	source "$AMPATH/modules/$MODULE" "$@"
 }
+
+# DEVELOPER MODE
+if test -f "$AMPATH"/betatester; then
+	AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/dev"
+	AMBRANCH=$(basename "$AMREPO")
+fi
+function _betatester_message_on() {
+	if test -f "$AMPATH"/betatester; then
+		echo '--------------------------------------------------------------------------'
+		echo "\"$AMCLI\" $AMVERSION: developer mode" | tr a-z A-Z
+		echo '--------------------------------------------------------------------------'
+	fi
+}
+
+function _use_betatester_on() {
+	touch "$AMPATH"/betatester
+}
+
+function _use_betatester_off() {
+	rm -f "$AMPATH"/betatester
+}
+
+_am_security_check
+_prevent_apps_from_being_removed_by_third_parties 2> /dev/null
+_am_databases_check
+
+# Generate a list of words to use in bash completion
+rm -rf "$AMPATH/options"
+cat <<-HEREDOC >> "$AMPATH/options"
+	about
+	apikey
+	backup
+	clean
+	download
+	files
+	install
+	list
+	lock
+	neodb
+	newrepo
+	nolibfuse
+	overwrite
+	query
+	remove
+	sync
+	template
+	test
+	unlock
+	update
+	web
+	--apps
+	--byname
+	--convert
+	--debug
+	--devmode-disable
+	--devmode-enable
+	--disable-completion
+	--enable-completion
+	--firejail
+	--force-latest
+	--home
+	--launcher
+	--less
+	--rollback
+	--sandbox
+	--silent
+	--user
+HEREDOC
 
 # ALL THE OPTIONS
 case "$1" in
