@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2086
 
 # Function to update GitHub API key in AM-updater files
 update_github_api() {
@@ -8,138 +7,127 @@ update_github_api() {
 		ghapikey=$(<"$ghapikey_file")
 		local updater_files=("$APPSPATH"/*/AM-updater) # Assuming AM-updater is one level deeper
 		for f in "${updater_files[@]}"; do
-			if [[ -f "$f" ]] && grep -q "https://api.github.com" "$f"; then
-				# Check if the file already contains a valid API key
-				if ! grep -qE "(gh[ps]_[a-zA-Z0-9]{36}|github_pat_[a-zA-Z0-9]{22}_[a-zA-Z0-9]{59})" "$f"; then
-					# Insert HeaderAuthWithGITPAT before the GitHub API URL
-					sed -i "s#https://api.github.com#$HeaderAuthWithGITPAT https://api.github.com#g" "$f"
-				else
-					# Replace existing API key with the one from ghapikey.txt
-					sed -i "s#\(gh[ps]_[a-zA-Z0-9]\{36\}\|github_pat_[a-zA-Z0-9]\{22\}_[a-zA-Z0-9]\{59\}\)#$ghapikey#g" "$f"
-				fi
+		if [[ -f "$f" ]] && grep -q "https://api.github.com" "$f"; then
+			# Check if the file already contains a valid API key
+			if ! grep -qE "(gh[ps]_[a-zA-Z0-9]{36}|github_pat_[a-zA-Z0-9]{22}_[a-zA-Z0-9]{59})" "$f"; then
+				# Insert HeaderAuthWithGITPAT before the GitHub API URL
+				sed -i "s#https://api.github.com#$HeaderAuthWithGITPAT https://api.github.com#g" "$f"
+			else
+				# Replace existing API key with the one from ghapikey.txt
+				sed -i "s#\(gh[ps]_[a-zA-Z0-9]\{36\}\|github_pat_[a-zA-Z0-9]\{22\}_[a-zA-Z0-9]\{59\}\)#$ghapikey#g" "$f"
 			fi
+		fi
 		done
-	fi
-}
-
-function _list_updatable_apps() {
-	_check_version
-	cd "$APPSPATH" && find -name 'AM-updater' -printf " %h\n" 2>/dev/null | sort -u | xargs -n 1 basename 2>/dev/null > "$AMPATH"/.cache/updatable-args
-	ARGS=$(cat "$AMPATH"/.cache/updatable-args)
-	for arg in $ARGS; do
-		app_version=$(grep -w " ◆ $arg	|" < "$AMPATH/.cache/version-args" | sed 's:.*|	::')
-		echo " ◆ $arg $app_version" >> "$AMPATH"/.cache/updatable-args-list
-	done
-}
-
-function _update_apps() {
-	rm -R -f "$AMPATH"/.cache/*
-	_list_updatable_apps
-	echo '-----------------------------------------------------------------------------'
-	echo -e ' "'"$(echo $AMCLI | tr a-z A-Z)"'" CAN MANAGE UPDATES FOR THE FOLLOWING PROGRAMS:\n'
-	if test -f "$AMPATH/.cache/updatable-args-list"; then
-		cat "$AMPATH/.cache/updatable-args-list"
-	else
-		echo " None"
-	fi
-	echo -e '\n All self-updatable programs are excluded'
-	sleep 0.1
-	echo -e '-----------------------------------------------------------------------------\n >> START OF ALL PROCESSES <<\n-----------------------------------------------------------------------------'
-
-	for f in "$APPSPATH"/*/; do
-		cd $f 2>/dev/null &&
-		if test -f ./AM-updater; then
-			APPNAME=$(echo "$(printf '%s\n' "${PWD##*/}")")
-			start=$(date +%s) && sh -x ./AM-updater > /dev/null 2>&1 | echo -ne ' Updating "'"$APPNAME"'"...\r' && end=$(date +%s) &&
-			echo -e " ◆ $(echo "$APPNAME" | tr a-z A-Z) is updated, $(($end-$start)) seconds elapsed!" &
-		else
-			echo "" > /dev/null 2>&1
-		fi
-	done
-	wait
-	echo '-----------------------------------------------------------------------------'
-	if test -f "$AMPATH"/.cache/updatable-args-list; then
-		mv "$AMPATH"/.cache/updatable-args-list "$AMPATH"/.cache/updatable-args-list-old
-		_list_updatable_apps
-		OLDVER="$AMPATH/.cache/updatable-args-list-old"
-		NEWVER="$AMPATH/.cache/updatable-args-list"
-		if cmp --silent -- "$NEWVER" "$OLDVER"; then
-			echo ' Nothing to do here!'
-		else
-			echo -e " The following apps have been updated:\n"
-			diff --new-line-format="" --unchanged-line-format="" "$NEWVER" "$OLDVER"
-			echo ""
-		fi
-	else
-		echo ' No apps to update here!'
-	fi
-	rm -R -f "$APPSPATH"/*/tmp
-	if [ -z "$2" ]; then
-		echo '-----------------------------------------------------------------------------'
-		"$AMCLIPATH" -s
-	fi
-	echo -e '-----------------------------------------------------------------------------\n >> END OF ALL PROCESSES << \n-----------------------------------------------------------------------------'
-	sleep 0.2
-	exit
-}
-
-function _update_all() {
-	if test -f "$APPSPATH/$2/AM-updater"; then
-		start=$(date +%s)
-		"$APPSPATH/$2/AM-updater" > /dev/null 2>&1
-		printf ' UPDATING %s\r' "$(echo $2 | tr a-z A-Z)"
-		end=$(date +%s)
-		echo -e " ◆ $(echo $2 | tr a-z A-Z) is updated, $((end-start)) seconds elapsed!" && return
-	else
-		echo ' %s CANNOT MANAGE UPDATES FOR %s' "$(echo $AMCLI | tr a-z A-Z)" "$(echo $2 | tr a-z A-Z)"
-		UPDATERS=$(cd $APPSPATH/$2 2>/dev/null && find . -name "*update*" -print 2>/dev/null)
-		if [ -n "$UPDATERS" ]; then
-			echo ' This program probably includes its own update system!'
-		fi
-		exit
-	fi
-}
-
-function _update_rest() {
-	if ! test -d "$APPSPATH/$2"; then
-		printf ' ERROR: %s is not installed, see "-f"' "$2"
-	elif ! test -f "$APPSPATH/$2/AM-updater"; then
-		printf ' ERROR: %s cannot manage updates for %s' "$AMCLI" "$2"
-	elif ! grep -q "api.github.com" "$APPSPATH/$2/AM-updater"; then
-		printf ' ERROR: %s source is not on Github' "$2"
-	elif ! grep -q "/releases | jq " "$APPSPATH/$2/AM-updater"; then
-		printf ' ERROR: %s does not redirect to a generic "releases"' "$2"
-	else
-		sed -i 's#/releases | jq #/releases/latest | jq #g' $APPSPATH/$2/AM-updater
-		"$AMCLIPATH" -u "$2"
-	fi
+    	fi
 }
 
 case "$1" in
-	'-U'|'-u'|'update')
-		# Call update_github_api function
-		update_github_api
-		while [ -n "$1" ]; do
-			case $2 in
-				''|'--apps')
-					_update_apps "${@}"
-					;;
-				*)
-					_update_all "${@}"
-					;;
-			esac
-		done
-		shift
-		;;
+  '-U'|'-u'|'update')	
+	# Call update_github_api function 
+	update_github_api
 
-	'--force-latest')
+	while [ -n "$1" ]; do
 		case $2 in
-			'')
-				echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit
-				;;
-			*)
-				_update_rest "${@}"
-				;;
+		''|'--apps') 
+			rm -R -f $AMPATH/.cache/*
+			function _list_updatable_apps() {
+				_check_version
+				cd $APPSPATH && find -name 'AM-updater' -printf " %h\n" 2>/dev/null | sort -u | xargs -n 1 basename 2>/dev/null > $AMPATH/.cache/updatable-args
+				ARGS=$(cat $AMPATH/.cache/updatable-args)
+				for arg in $ARGS; do
+					app_version=$(cat "$AMPATH/.cache/version-args" | grep -w " ◆ $arg	|" | sed 's:.*|	::')
+					echo " ◆ $arg $app_version" >> $AMPATH/.cache/updatable-args-list
+				done
+			}
+
+			_list_updatable_apps
+
+			echo "-----------------------------------------------------------------------------"
+			echo -e ' "'"$(echo $AMCLI | tr a-z A-Z)"'" CAN MANAGE UPDATES FOR THE FOLLOWING PROGRAMS:\n'
+			if test -f "$AMPATH/.cache/updatable-args-list"; then
+				cat "$AMPATH/.cache/updatable-args-list"
+			else
+				echo " None"
+			fi
+			echo -e '\n All self-updatable programs are excluded'; sleep 0.1
+			echo "-----------------------------------------------------------------------------"
+			echo -e " >> START OF ALL PROCESSES <<\n-----------------------------------------------------------------------------"
+
+			for f in $APPSPATH/*/; do 
+				cd $f 2>/dev/null && 
+				if test -f ./AM-updater; then
+					APPNAME=$(echo "$(printf '%s\n' "${PWD##*/}")")
+					start=$(date +%s) && sh -x ./AM-updater > /dev/null 2>&1 | echo -ne ' Updating "'"$APPNAME"'"...\r' && end=$(date +%s) &&
+					echo -e " ◆ $(echo "$APPNAME" | tr a-z A-Z) is updated, $(($end-$start)) seconds elapsed!" &
+				else
+					echo ""  > /dev/null 2>&1
+				fi
+			done
+			wait
+
+			echo "-----------------------------------------------------------------------------"
+
+			if test -f $AMPATH/.cache/updatable-args-list; then
+				mv $AMPATH/.cache/updatable-args-list $AMPATH/.cache/updatable-args-list-old
+				_list_updatable_apps
+				OLDVER="$AMPATH/.cache/updatable-args-list-old"
+				NEWVER="$AMPATH/.cache/updatable-args-list"
+				if cmp --silent -- "$NEWVER" "$OLDVER"; then
+					echo ' Nothing to do here!'
+				else
+					echo -e " The following apps have been updated:\n"
+					diff --new-line-format="" --unchanged-line-format="" "$NEWVER" "$OLDVER"
+					echo ""
+				fi
+			else
+				echo ' No apps to update here!'
+			fi
+
+			rm -R -f $APPSPATH/*/tmp
+			if [ -z "$2" ]; then
+				echo "-----------------------------------------------------------------------------"
+				$AMCLIPATH -s
+			fi
+			echo -e "-----------------------------------------------------------------------------\n >> END OF ALL PROCESSES << \n-----------------------------------------------------------------------------"; sleep 0.2
+			exit;;
+		*) 
+			if test -f $APPSPATH/$2/AM-updater; then
+				start=$(date +%s); $APPSPATH/$2/AM-updater > /dev/null 2>&1 | echo -ne " UPDATING $(echo $2 | tr a-z A-Z)\r"; end=$(date +%s)
+				echo -e " ◆ $(echo $2 | tr a-z A-Z) is updated, $(($end-$start)) seconds elapsed!" && break
+			else
+				echo ' "'"$(echo $AMCLI | tr a-z A-Z)"'" CANNOT MANAGE UPDATES FOR "'"$(echo $2 | tr a-z A-Z)"'"'
+				UPDATERS=$(cd $APPSPATH/$2 2>/dev/null && find . -name "*update*" -print 2>/dev/null)
+
+				if [ -n "$UPDATERS" ]; then
+					echo ' This program probably includes its own update system!'
+				fi
+
+				exit
+			fi
 		esac
+	done
+
+	shift
+	;;
+  '--force-latest')
+  	case $2 in
+	'') 
+		echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit
 		;;
+	*)
+		if ! test -d $APPSPATH/$2; then
+			echo ' ERROR: "'$2'" is not installed, see "-f"'
+		elif ! test -f $APPSPATH/$2/AM-updater; then
+			echo ' ERROR: "'$AMCLI'" cannot manage updates for "'$2'"'
+		elif ! grep -q "api.github.com" $APPSPATH/$2/AM-updater; then
+			echo ' ERROR: "'$2'" source is not on Github'
+		elif ! grep -q "/releases | jq " $APPSPATH/$2/AM-updater; then
+			echo ' ERROR: "'$2'" does not redirect to a generic "releases"'
+		else
+			sed -i 's#/releases | jq #/releases/latest | jq #g' $APPSPATH/$2/AM-updater
+			$AMCLIPATH -u $2
+		fi
+		;;
+	esac
+	;;
 esac
