@@ -1,5 +1,24 @@
 #!/usr/bin/env bash
 
+# Set a dedicated .home directory for a selected AppImage
+function _home() {
+	cd $APPSPATH || return
+	if ! test -d ./$arg; then
+		echo ' ERROR: "'$arg'" is not installed'
+	else
+		case $arg in
+		*)
+			if [ -z "$(strings -d "./$arg/$arg" 2>/dev/null | grep -F 'if you run it with the --appimage-extract option')" ] 2>/dev/null; then
+				echo ' ERROR: "'$arg'" is NOT an AppImage'
+			else
+				cd ./$arg || return
+				mkdir -p ./$arg.home
+				echo ' Setting $HOME to '$APPSPATH'/'$arg'/'$arg'.home for this AppImage'
+			fi
+		esac
+	fi
+}
+
 case "$1" in
   '--firejail'|'--sandbox')
 	if ! command -v firejail 1>/dev/null; then
@@ -110,25 +129,6 @@ case "$1" in
 		echo "$@" | tr ' ' '\n' >> $AMPATH/.cache/home-args && echo STOP >> $AMPATH/.cache/home-args
 		ARGS=$(tail -n +2 $AMPATH/.cache/home-args)
 		for arg in $ARGS; do
-
-			function _home(){
-				cd $APPSPATH || return
-				if ! test -d ./$arg; then
-					echo ' ERROR: "'$arg'" is not installed'
-				else
-					case $arg in
-					*)
-						if [ -z "$(strings -d "./$arg/$arg" 2>/dev/null | grep -F 'if you run it with the --appimage-extract option')" ] 2>/dev/null; then
-							echo ' ERROR: "'$arg'" is NOT an AppImage'
-						else
-							cd ./$arg || return
-							mkdir -p ./$arg.home
-							echo ' Setting $HOME to '$APPSPATH'/'$arg'/'$arg'.home for this AppImage'
-						fi
-					esac
-				fi
-			}
-
 			if [ $arg == STOP ]; then
 				exit
 			else
