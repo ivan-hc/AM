@@ -479,6 +479,35 @@ cat <<-HEREDOC >> "$AMPATH/options"
 	--user
 HEREDOC
 
+function _completion_lists() {
+	# Remove existing lists and download new ones
+	rm -Rf "$AMPATH"/{$arch-apps,list,libs-list} &&
+	wget -q "$APPSLISTDB" -P "$AMPATH" &&
+	wget -q "$LIBSLISTDB" -P "$AMPATH"
+
+	# THIRD PARTY APPS
+	if test -f "$AMPATH/neodb"; then
+		rm -R -f "$AMPATH/.cache/multirepo-args"
+		MULTIREPO=$(cat "$AMPATH/neodb" | grep "List=" | grep -E "$arch-apps" | sed 's/List=//g')
+		for anyrepo in $MULTIREPO; do
+			if curl --output /dev/null --silent --head --fail "$anyrepo" 1>/dev/null; then
+				wget -q "$anyrepo" -O - | grep "◆" >> "$AMPATH"/$arch-apps
+			fi
+		done
+		cat "$AMPATH"/$arch-apps | sort | uniq > "$AMPATH"/$arch-apps-backup
+		rm -R -f "$AMPATH"/$arch-apps
+		mv "$AMPATH"/$arch-apps-backup "$AMPATH"/$arch-apps
+	fi
+
+	# Extract and append program and library names to the list
+	for file in $arch-apps libs-list; do
+		awk -v FS="(◆ | : )" '{print $2}' <$AMPATH/$file >> $AMPATH/list
+	done
+
+	# Append options to the list
+	cat "$AMPATH"/options >> "$AMPATH"/list
+}
+
 #############################################
 # OTHER FUNCTIONS RELATED TO INTERNAL OPTIONS
 #############################################
