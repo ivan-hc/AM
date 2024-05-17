@@ -476,6 +476,7 @@ cat <<-HEREDOC >> "$AMPATH/options"
 	--rollback
 	--sandbox
 	--silent
+	--system
 	--user
 HEREDOC
 
@@ -512,21 +513,35 @@ function _completion_lists() {
 # OTHER FUNCTIONS RELATED TO INTERNAL OPTIONS
 #############################################
 
-# Function for the option "appman" or "--user" that helps "AM" function like "AppMan", via alias
+# Function for the option "appman" or "--user" that helps "AM" function like "AppMan"
 function _use_appman() {
 	_online_check
 	if [ "$AMCLI" == appman ] 2>/dev/null; then
 		echo " This function only works for AM"
 		exit
 	fi
-	if test -f /opt/am/appman; then
+	if test -f /opt/am/appman-mode; then
 		_appman
-		echo -e "Please run '${RED}alias am=/opt/am/appman\033[0m' to made 'AM' act exactly like 'AppMan' for\nthe current session or save this command to your '"'~/.bashrc'"' file to make the\nchanges permanent. Visit ${LightBlue}https://github.com/ivan-hc/appman\033[0m for more!"
+		echo -e "\n To switch back to \"AM\", run the following command: ${Green}am --system\033[0m\n"
 	else
 		_appman
-		wget -q "$AMREPO"/APP-MANAGER -O /opt/am/appman && chmod a+x /opt/am/appman
-		echo -e "Please run '${RED}alias am=/opt/am/appman\033[0m' to made 'AM' act exactly like 'AppMan' for\nthe current session or save this command to your '"'~/.bashrc'"' file to make the\nchanges permanent."
+		touch /opt/am/appman-mode
+		echo -e "\n To switch back to \"AM\", run the following command: ${Green}am --system\033[0m\n"
 	fi
+}
+
+if [ "$AMCLI" == am ] 2>/dev/null; then
+	if test -f /opt/am/appman-mode; then
+		_appman
+		AMPATH="/opt/am"
+		AMCLIPATH="/opt/am/APP-MANAGER"
+		COMPLETIONPATH="/etc/bash_completion.d"
+		COMPLETIONFILE="am-completion.sh"
+	fi
+fi
+
+function _back_to_am() {
+	rm -f /opt/am/appman-mode
 }
 
 #############################################
@@ -642,6 +657,9 @@ case "$1" in
 		;;
 	'--enable-completion')
 		_use_enable_completion
+		;;
+	'--system')
+		_back_to_am
 		;;
 	'--user'|'appman')
 		_use_appman
