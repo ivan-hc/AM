@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="6.7.1"
+AMVERSION="6.8"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -476,6 +476,7 @@ cat <<-HEREDOC >> "$AMPATH/options"
 	--rollback
 	--sandbox
 	--silent
+	--system
 	--user
 HEREDOC
 
@@ -512,20 +513,53 @@ function _completion_lists() {
 # OTHER FUNCTIONS RELATED TO INTERNAL OPTIONS
 #############################################
 
-# Function for the option "appman" or "--user" that helps "AM" function like "AppMan", via alias
+# Function for the option "appman" or "--user" that helps "AM" function like "AppMan"
+function _appman_mode_enabled_message() {
+	if [ "$CLI" == am ] 2>/dev/null; then
+		echo '--------------------------------------------------------------------------'
+		#echo " \"AppMan Mode\" enabled!" | tr a-z A-Z
+		echo -e " \"AM\" is running as \"AppMan\", use ${Green}am --system\033[0m to switch it back to \"AM\""
+		echo '--------------------------------------------------------------------------'
+	fi
+}
+
+function _if_appman_mode_enabled() {
+	if [ "$CLI" == am ]; then
+		if test -f "$APPMANCONFIG"/appman-mode; then
+			_appman_mode_enabled_message
+		fi
+	fi
+}
+
 function _use_appman() {
 	_online_check
-	if [ "$AMCLI" == appman ] 2>/dev/null; then
+	if [ "$CLI" == appman ] 2>/dev/null; then
 		echo " This function only works for AM"
 		exit
 	fi
-	if test -f /opt/am/appman; then
+	if test -f "$APPMANCONFIG"/appman-mode; then
 		_appman
-		echo -e "Please run '${RED}alias am=/opt/am/appman\033[0m' to made 'AM' act exactly like 'AppMan' for\nthe current session or save this command to your '"'~/.bashrc'"' file to make the\nchanges permanent. Visit ${LightBlue}https://github.com/ivan-hc/appman\033[0m for more!"
+		_appman_mode_enabled_message
 	else
+		touch "$APPMANCONFIG"/appman-mode
 		_appman
-		wget -q "$AMREPO"/APP-MANAGER -O /opt/am/appman && chmod a+x /opt/am/appman
-		echo -e "Please run '${RED}alias am=/opt/am/appman\033[0m' to made 'AM' act exactly like 'AppMan' for\nthe current session or save this command to your '"'~/.bashrc'"' file to make the\nchanges permanent."
+		_appman_mode_enabled_message
+	fi
+}
+
+if [ "$AMCLI" == am ] 2>/dev/null; then
+	if test -f "$APPMANCONFIG"/appman-mode; then
+		_appman
+		AMCLIPATH="/opt/am/APP-MANAGER"
+	fi
+fi
+
+function _back_to_am() {
+	if test -f "$APPMANCONFIG"/appman-mode; then
+		rm -f "$APPMANCONFIG"/appman-mode
+		echo '--------------------------------------------------------------------------'
+		echo " \"AppMan Mode\" disabled!" | tr a-z A-Z
+		echo '--------------------------------------------------------------------------'
 	fi
 }
 
@@ -554,6 +588,7 @@ case "$1" in
 	# OPTIONS BASED ON EXTERNAL MODULES
 	'-a'|'about'|'-l'|'list'|'-q'|'query')
 		MODULE="database.am"
+		_if_appman_mode_enabled
 		_use_module "$@"
 		;;
 	'-b'|'backup'|'-o'|'overwrite'|'lock'|'unlock')
@@ -571,11 +606,13 @@ case "$1" in
 		;;
 	'-f'|'files')
 		MODULE="files.am"
+		_if_appman_mode_enabled
 		_use_module "$@"
 		_betatester_message_on
 		;;
 	'-h'|'help')
 		MODULE="help.am"
+		_if_appman_mode_enabled
 		_use_module "$@"
 		;;
 	'-H'|'--home'|'--firejail'|'--sandbox')
@@ -585,6 +622,7 @@ case "$1" in
 	'-i'|'install')
 		MODULE="install.am"
 		_online_check
+		_if_appman_mode_enabled
 		_betatester_message_on
 		_portable_dependences_setup
 		_use_module "$@"
@@ -642,6 +680,9 @@ case "$1" in
 		;;
 	'--enable-completion')
 		_use_enable_completion
+		;;
+	'--system')
+		_back_to_am
 		;;
 	'--user'|'appman')
 		_use_appman

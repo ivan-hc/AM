@@ -121,13 +121,15 @@ For everything else, the controls and operation are always the same for both com
 <details>
   <summary></summary>
 
-If you usa "AM" and have the needing of installing apps at system level and locally, use the option `--user` that allows you to create an alias to install and manage apps in your $HOME folder. When executing the `am --user` command you will be suggested an alias to use temporarily or if you want you can add it in your ~/.bashrc to make it permanent. "AppMan" will be used while still using the usual `am` command.
-
-The `--user` option does not immediately enable "AppMan Mode", instead it will show you an alias to use temporarily in the current session or to add to your ~/.bashrc to make it permanent:
+If you use "AM" and have the needing of installing apps at system level and locally, use the option `--user` that allows to run "AM" in "AppMan Mode":
 ```
-alias am=/opt/am/appman
+am --user
 ```
-AppMan is downloaded to the AM's installation folder, but without affecting the existing installation.
+To switch "AM" back to "AM" from "AppMan Mode", use the option `--system`:
+```
+am --system
+```
+To perform a test and see if you are in "AppMan Mode" or not, run for example the command `am -f` to see the list of the installed apps.
 
 ***NOTE: using AM with the `--user` option enabled and the alias for AppMan, "sudo" allows normal use of AM, absence allows use of AppMan.***
 
@@ -605,7 +607,16 @@ to have a list of the installed programs use the option `-f` or `files` (syntax 
  ___________________________________________________________________________
 
 ## EXTRA OPTIONS
- ___________________________________________________________________________
+ __________________________________________________________________________
+
+ `--system`
+
+ SYNOPSIS:
+ 
+ `--system`
+
+ DESCRIPTION:	Switch "AM" back to "AM" from "AppMan Mode" (see --user).
+ __________________________________________________________________________
 
  `--user`, `appman`			(only available for "AM")
 
