@@ -514,19 +514,36 @@ function _completion_lists() {
 #############################################
 
 # Function for the option "appman" or "--user" that helps "AM" function like "AppMan"
+function _appman_mode_enabled_message() {
+	if [ "$CLI" == am ] 2>/dev/null; then
+		echo '--------------------------------------------------------------------------'
+		#echo " \"AppMan Mode\" enabled!" | tr a-z A-Z
+		echo -e " \"AM\" is running as \"AppMan\", use ${Green}am --system\033[0m to switch it back to \"AM\""
+		echo '--------------------------------------------------------------------------'
+	fi
+}
+
+function _if_appman_mode_enabled() {
+	if [ "$CLI" == am ]; then
+		if test -f "$APPMANCONFIG"/appman-mode; then
+			_appman_mode_enabled_message
+		fi
+	fi
+}
+
 function _use_appman() {
 	_online_check
 	if [ "$AMCLI" == appman ] 2>/dev/null; then
 		echo " This function only works for AM"
+		_if_appman_mode_enabled
 		exit
 	fi
 	if test -f "$APPMANCONFIG"/appman-mode; then
 		_appman
-		echo -e "\n To switch back to \"AM\", run the following command: ${Green}am --system\033[0m\n"
+		_appman_mode_enabled_message
 	else
 		_appman
-		touch "$APPMANCONFIG"/appman-mode
-		echo -e "\n To switch back to \"AM\", run the following command: ${Green}am --system\033[0m\n"
+		_appman_mode_enabled_message
 	fi
 }
 
@@ -538,7 +555,12 @@ if [ "$AMCLI" == am ] 2>/dev/null; then
 fi
 
 function _back_to_am() {
-	rm -f "$APPMANCONFIG"/appman-mode
+	if test -f "$APPMANCONFIG"/appman-mode; then
+		rm -f "$APPMANCONFIG"/appman-mode
+		echo '--------------------------------------------------------------------------'
+		echo " \"AppMan Mode\" disabled!" | tr a-z A-Z
+		echo '--------------------------------------------------------------------------'
+	fi
 }
 
 #############################################
@@ -566,6 +588,7 @@ case "$1" in
 	# OPTIONS BASED ON EXTERNAL MODULES
 	'-a'|'about'|'-l'|'list'|'-q'|'query')
 		MODULE="database.am"
+		_if_appman_mode_enabled
 		_use_module "$@"
 		;;
 	'-b'|'backup'|'-o'|'overwrite'|'lock'|'unlock')
@@ -583,11 +606,13 @@ case "$1" in
 		;;
 	'-f'|'files')
 		MODULE="files.am"
+		_if_appman_mode_enabled
 		_use_module "$@"
 		_betatester_message_on
 		;;
 	'-h'|'help')
 		MODULE="help.am"
+		_if_appman_mode_enabled
 		_use_module "$@"
 		;;
 	'-H'|'--home'|'--firejail'|'--sandbox')
@@ -597,6 +622,7 @@ case "$1" in
 	'-i'|'install')
 		MODULE="install.am"
 		_online_check
+		_if_appman_mode_enabled
 		_betatester_message_on
 		_portable_dependences_setup
 		_use_module "$@"
