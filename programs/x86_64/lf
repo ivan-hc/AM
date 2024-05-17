@@ -1,0 +1,53 @@
+#!/bin/sh
+
+APP=lf
+SITE="gokcehan/lf"
+
+# CREATE THE FOLDER
+mkdir /opt/$APP
+cd /opt/$APP
+
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/$APP/remove
+echo "rm -R -f /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
+chmod a+x /opt/$APP/remove
+
+# DOWNLOAD THE ARCHIVE
+mkdir tmp
+cd ./tmp
+
+version=$(curl -Ls https://api.github.com/repos/"$SITE"/releases | jq '.' | sed 's/[()",{}]/ /g; s/ /\n/g' | grep -o 'https.*lf-linux-amd64.*gz$' | head -1)
+wget $version
+echo "$version" >> /opt/$APP/version
+tar fx ./*tar*; rm -R -f ./*tar*
+cd ..
+mv --backup=t ./tmp/* ./$APP
+rm -R -f ./tmp
+
+# LINK
+ln -s /opt/$APP/$APP /usr/local/bin/$APP
+
+# SCRIPT TO UPDATE THE PROGRAM
+cat >> /opt/$APP/AM-updater << 'EOF'
+#!/bin/sh
+APP=lf
+SITE="gokcehan/lf"
+version0=$(cat /opt/$APP/version)
+version=$(curl -Ls https://api.github.com/repos/"$SITE"/releases | jq '.' | sed 's/[()",{}]/ /g; s/ /\n/g' | grep -o 'https.*lf-linux-amd64.*gz$' | head -1)
+if [ $version = $version0 ]; then
+	echo "Update not needed!"
+else
+	notify-send "A new version of $APP is available, please wait"
+	mkdir /opt/$APP/tmp
+	cd /opt/$APP/tmp
+	wget $version
+  tar fx ./*tar*; rm -R -f ./*tar*
+	cd ..
+  mv --backup=t ./tmp/* ./$APP
+	rm ./version
+	echo $version >> ./version
+	rm -R -f ./tmp ./*~
+	notify-send "$APP is updated!"
+fi
+EOF
+chmod a+x /opt/$APP/AM-updater
