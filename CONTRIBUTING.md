@@ -29,6 +29,21 @@ appman newrepo https://raw.githubusercontent.com/$USER/AM/dev
 
 -----------------------------------------------
 
+## Want to make code refactor?
+“AM” is provided as-is, and each line has been tested to work as it should, based on user feedback and needs, as well as the aesthetic and practical preferences of the developer who created it, who provided it to you, and who constantly maintains it to make it work at its best.
+
+Unfortunately, many contributors in the past, by relying exclusively on the logic of software such as "Shellcheck", without first verifying that the code worked, have caused more harm than good, both to the software and to its main developer, who ended up having to rewrite everything from scratch, losing time, mental health and trust towards their collaborators who had committed the mess.
+
+The priority of this project is only one: **"AM" must work and that's it!**
+
+Not out of malice, but if you got here and you like "AM" and how it works, you liked the work that the main developer did for you.
+
+If you intend to carry out a "sensible" refactoring that doesn't risk breaking everything as it has already happened, you are welcome. But at the slightest mistake, you will be rejected, no ifs or buts. You are warned. Further errors will no longer be tolerated in this project and will be seen as attempts at sabotage!
+
+If you believe that something needs improvement, let us know, but it is better for the refactoring to be carried out by someone who already knows the commands he wrote. It is certainly the best way to prevent everything from breaking and avoid irreversible damage.
+
+-----------------------------------------------
+
 ## Want to contribute to the Development Branch and test newer features?
 Enter the developer mode using the command
 ```
