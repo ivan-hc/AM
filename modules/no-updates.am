@@ -1,85 +1,87 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2086
 # THIS MODULE BRINGS WITH IT ALL THOSE OPTIONS THAT ALLOWS YOU TO LOCK/UNLOCK/BACKUP/RESTORE THE VERSION OF A PROGRAM
 
-case $2 in
-  '') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
-esac
-
-case "$1" in
-
-  'lock') # LOCK THE INSTALLED VERSION
+function _do_lock() {
 	while [ -n "$1" ]; do
 		if test -f $APPSPATH/$2/AM-updater; then
 			case $2 in
-			*) 
-				read -p " Do you wish to keep $2  at the current version (y,N)?" yn
-				case $yn in
-				[Yy]* ) 
-					mv $APPSPATH/$2/AM-updater $APPSPATH/$2/AM-LOCK 1>/dev/null &&
-					echo " $2 has been locked at current version!"; exit;;
-				[Nn]*|* ) 
-					echo " Operation aborted!"; exit;;
-				esac;;
+				*)
+					read -p " Do you wish to keep $2  at the current version (y,N)?" yn
+					case $yn in
+						[Yy]* )
+							mv $APPSPATH/$2/AM-updater $APPSPATH/$2/AM-LOCK 1>/dev/null &&
+							echo " $2 has been locked at current version!"
+							exit
+							;;
+						[Nn]*|* )
+							echo " Operation aborted!"
+							exit
+							;;
+					esac
+					;;
 			esac
 		else
-			echo ""; echo ' '"$(echo $AMCLI | tr a-z A-Z)"' cannot manage updates for '$2', "AM-updater" file not found!'; echo ""; exit;
+			echo -e '\n '"$(echo $AMCLI | tr a-z A-Z)"' cannot manage updates for '$2', "AM-updater" file not found!\n'; exit
+			exit
 		fi
 	done
+}
 
-	shift
-	;;
-
-  'unlock') # REVERT THE OPTION "lock" ABOVE 
+function _do_unlock() {
 	while [ -n "$1" ]; do
 		if test -f $APPSPATH/$2/AM-LOCK; then
 			case $2 in
-			*) 
-				read -p " Do you wish to unlock updates for $2 (Y,n)?" yn
-
-				case $yn in
-				[Nn]* ) 
-					echo " $2 is still locked at current version!"; exit;;
-				[Yy]*|* ) 
-					mv $APPSPATH/$2/AM-LOCK $APPSPATH/$2/AM-updater 1>/dev/null
-					echo ' '$2' can now receive updates!'; exit;;
-				esac;;
+				*)
+					read -p " Do you wish to unlock updates for $2 (Y,n)?" yn
+					case $yn in
+						[Nn]* )
+							echo " $2 is still locked at current version!"
+							exit
+							;;
+						[Yy]*|* )
+							mv $APPSPATH/$2/AM-LOCK $APPSPATH/$2/AM-updater 1>/dev/null
+							echo ' '$2' can now receive updates!'
+							exit
+							;;
+					esac
+					;;
 			esac
 		else
 			echo ' '$2' cannot be unlocked, "AM-LOCK" file not found!'; exit
 		fi
 	done
-	shift
-	;;
+}
 
-  '-b'|'backup') # DO A BACKUP OF AN INSTALLED APPLICATION
+
+
+function _backup() {
+	case $arg in
+	'')
+		echo " Specify the name of a program to back up"; echo ""; exit;;
+	*)
+		if test -f $APPSPATH/$arg/remove; then
+			echo ""; read -p " Do you wish to backup the current version of $arg (y,N)?" yn
+			case $yn in
+			[Yy]* )
+				mkdir -p "$HOME/.am-snapshots/$arg"
+				cp -r $APPSPATH/$arg "$HOME/.am-snapshots/$arg/$(date +%F-%X | sed 's/://g' | sed 's/-//g')"
+				echo -e "\n SAVED in $HOME/.am-snapshots/$arg\n";;
+			[Nn]*|* )
+				echo ""; echo " OPERATION ABORTED!"; echo "";;
+			esac
+		else
+			echo -e "\n '$arg' is not a valid argument or is not installed.\n"
+		fi
+	esac
+}
+
+function _do_backup() {
 	while [ -n "$1" ]; do
 		rm -f $AMPATH/.cache/backup-args;
 		echo "$@" | tr ' ' '\n' >> $AMPATH/.cache/backup-args && echo STOP >> $AMPATH/.cache/backup-args;
 		ARGS=$(tail -n +2 $AMPATH/.cache/backup-args)
-
 		for arg in $ARGS; do
-
-			function _backup(){
-				case $arg in
-				'') 
-					echo " Specify the name of a program to back up"; echo ""; exit;;
-				*) 
-					if test -f $APPSPATH/$arg/remove; then
-						echo ""; read -p " Do you wish to backup the current version of $arg (y,N)?" yn
-						case $yn in
-						[Yy]* ) 
-							mkdir -p "$HOME/.am-snapshots/$arg"
-							cp -r $APPSPATH/$arg "$HOME/.am-snapshots/$arg/$(date +%F-%X | sed 's/://g' | sed 's/-//g')"
-							echo -e "\n SAVED in $HOME/.am-snapshots/$arg\n";;
-						[Nn]*|* ) 
-							echo ""; echo " OPERATION ABORTED!"; echo "";;
-						esac
-					else
-						echo -e "\n '$arg' is not a valid argument or is not installed.\n"
-					fi
-				esac
-			}
-
 			if [ $arg == STOP ]; then
 				exit
 			else
@@ -87,41 +89,37 @@ case "$1" in
 			fi
 		done
 	done
+}
 
-	shift
-	;;
+function _overwrite() {
+	case $arg in
+	'')
+		echo " Specify the name of a program to overwrite"; echo "";;
+	*)
+		if test -f $APPSPATH/$arg/remove; then
+			echo ""; read -p " Do you wish to overwrite this version of $arg with an old one (y,N)?" yn
+			case $yn in
+			[Yy]* )
+				printf "\n Please, select a snapshot or press CTRL+C to abort:\n\n"; sleep 1;
+				select d in $HOME/.am-snapshots/$arg/*; do test -n "$d" && break; echo ">>> Invalid Selection"; done
+				cp -r --backup=t $d/* $APPSPATH/$arg/
+				rm -R -f ./tmp $APPSPATH/$arg/*~
+				echo -e "\n RESTORE COMPLETED SUCCESSFULLY!\n";;
+			[Nn]*|* )
+				echo ""; echo " OPERATION ABORTED!"; echo "";;
+			esac
+		else
+			echo ""; echo " '$arg' is not a valid argument or is not installed."; echo ""
+		fi
+	esac
+}
 
-  '-o'|'overwrite') # OVERWRITE A NEW VERSION WITH THE PREVIOUS ONE FROM A BACKUP DONE WITH THE PREVIOUS OPTION
+function _do_overwrite() {
 	while [ -n "$1" ]; do
 		rm -f $AMPATH/.cache/overwrite-args
 		echo "$@" | tr ' ' '\n' >> $AMPATH/.cache/overwrite-args && echo STOP >> $AMPATH/.cache/overwrite-args
 		ARGS=$(tail -n +2 $AMPATH/.cache/overwrite-args)
-
 		for arg in $ARGS; do
-		
-			function _overwrite(){
-				case $arg in
-				'') 
-					echo " Specify the name of a program to overwrite"; echo "";;
-				*) 
-					if test -f $APPSPATH/$arg/remove; then
-						echo ""; read -p " Do you wish to overwrite this version of $arg with an old one (y,N)?" yn
-						case $yn in
-						[Yy]* ) 
-							printf "\n Please, select a snapshot or press CTRL+C to abort:\n\n"; sleep 1;
-							select d in $HOME/.am-snapshots/$arg/*; do test -n "$d" && break; echo ">>> Invalid Selection"; done
-							cp -r --backup=t $d/* $APPSPATH/$arg/
-							rm -R -f ./tmp $APPSPATH/$arg/*~
-							echo -e "\n RESTORE COMPLETED SUCCESSFULLY!\n";;
-						[Nn]*|* ) 
-							echo ""; echo " OPERATION ABORTED!"; echo "";;
-						esac
-					else
-						echo ""; echo " '$arg' is not a valid argument or is not installed."; echo ""
-					fi
-				esac
-			}
-
 			if [ $arg == STOP ]; then
 				exit
 			else
@@ -129,7 +127,27 @@ case "$1" in
 			fi
 		done
 	done
+}
 
-	shift
-	;;
+case $2 in
+	'') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
+esac
+
+case "$1" in
+	'lock') # LOCK THE INSTALLED VERSION
+		_do_lock "${@}"
+		shift
+		;;
+	'unlock') # REVERT THE OPTION "lock" ABOVE
+		_do_unlock "${@}"
+		shift
+		;;
+	'-b'|'backup') # DO A BACKUP OF AN INSTALLED APPLICATION
+		_do_backup "${@}"
+		shift
+		;;
+	'-o'|'overwrite') # OVERWRITE A NEW VERSION WITH THE PREVIOUS ONE FROM A BACKUP DONE WITH THE PREVIOUS OPTION
+		_do_overwrite "${@}"
+		shift
+		;;
 esac

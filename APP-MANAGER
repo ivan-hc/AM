@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="6.7"
+AMVERSION="6.7.1"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -12,25 +12,26 @@ CLI=$(basename "$0")
 
 # Determine system architecture and current user
 arch="$HOSTTYPE"
-currentuser="$USER"
+export currentuser="$USER"
+
+# XDG Variables
+DATADIR="${XDG_DATA_HOME:-$HOME/.local/share}"
+CONFIGDIR="${XDG_CONFIG_HOME:-$HOME/.config}"
+CACHEDIR="${XDG_CACHE_HOME:-$HOME/.cache}"
+
+APPMANCONFIG="$CONFIGDIR/appman"
+
+export SCRIPTDIR="$(if command -v xdg-user-dir &>/dev/null; then xdg-user-dir DESKTOP; else echo $HOME; fi)"
 
 # Determine sytem package manager
 function _system_package_manager_check() {
-	if command -v dnf &> /dev/null; then
-		osPKGman="dnf"
-	elif command -v pacman &> /dev/null; then
-		osPKGman="pacman"
-	elif command -v emerge &> /dev/null; then
-		osPKGman="emerge"
-	elif command -v zypper &> /dev/null; then
-		osPKGman="zypper"
-	elif command -v apt-get &> /dev/null; then
-		osPKGman="apt-get"
-	elif command -v apk &> /dev/null; then
-		osPKGman="apk"
-	else
-		osPKGman=""
-	fi
+	for cmd in dnf pacman emerge zypper apt-get apk; do
+		if command -v $cmd &> /dev/null; then
+		osPKGman="$cmd"
+		return
+		fi
+	done
+	osPKGman=""
 }
 
 # Colors
@@ -46,23 +47,10 @@ function _no_sudo() {
 
 _no_sudo
 
-# Common variables to handle user's XDG directories
-export SCRIPTDIR="$(if command -v xdg-user-dir &>/dev/null; then xdg-user-dir DESKTOP; else echo $HOME; fi)"
-
-# Check XDG variables ("APPMAN")
-if [ -n "$XDG_CONFIG_HOME" ]; then
-	APPMANCONFIG="$XDG_CONFIG_HOME/appman"
-else
-	APPMANCONFIG="$HOME/.config/appman"
-fi
-
-if [ -n "$XDG_DATA_HOME" ]; then
-	DATADIR="$XDG_DATA_HOME"
-else
-	DATADIR="$HOME/.local/share"
-fi
-
+#####################
 # "AM" CORE VARIABLES
+#####################
+
 function _am() {
 	AMCLI="am"
 	AMCLIPATH="$AMCLI"
@@ -75,7 +63,9 @@ function _am() {
 	mkdir -p "$AMPATH"/modules
 }
 
+#######################################
 # "APPMAN" CORE VARIABLES AND FUNCTIONS
+#######################################
 
 function _patch_bashrc_and_profile() {
 	# Fix order in "echo $PATH" in case "$HOME/.local/bin" is placed at the beginning instead of the end
@@ -98,49 +88,47 @@ function _patch_bashrc_and_profile() {
 	fi
 }
 
+function _appman_initialize() {
+	APPSDIR=$1
+	mkdir -p ~/"$APPSDIR"/appman/.cache
+	mkdir -p ~/"$APPSDIR"/appman/modules
+	mkdir -p ~/.local/bin "$DATADIR"/applications "$DATADIR"/icons
+	AMCLI="appman"
+	AMCLIPATH="$DIR/$AMCLI"
+	SUDOCOMMAND=""
+	COMPLETIONPATH="$HOME"
+	COMPLETIONFILE=".bash_completion"
+	APPSPATH="$HOME/$APPSDIR"
+	AMPATH="$HOME/$APPSDIR/$AMCLI"
+}
+
+function _appman_prompt_for_directory() {
+	local location
+	read -r -ep "Please, write the name or the path of your custom application's folder: $(echo -e '\n\n '$HOME'/')" location
+	echo "$location"
+}
+
+function _appman_validate_directory() {
+	local location=$1
+	if [[ "$location" == "" ]]; then
+		echo -e "--------------------------------------------------------------------------"
+		echo "OPERATION ABORTED!"
+		exit  1
+	elif [[ "$location" == ".local/bin" ]]; then
+		echo -e "--------------------------------------------------------------------------\n"
+		echo -e " 💀 ERROR, you can't install applications into a '$PATH'\n\n The directory ~/.local/bin and 'bin' folders are used for executables.\n\n Please, choose a different path and retry! \n"
+		echo -e "--------------------------------------------------------------------------\n"
+		exit  1
+	else
+		local location_appman="${location/#$HOME}"
+		location_appman="${location_appman// /-}"
+		location_appman="${location_appman#/}"
+		location_appman="${location_appman%/}"
+		echo "$location_appman"
+	fi
+}
+
 function _appman() {
-
-	function _appman_initialize() {
-		APPSDIR=$1
-		mkdir -p ~/"$APPSDIR"/appman/.cache
-		mkdir -p ~/"$APPSDIR"/appman/modules
-		mkdir -p ~/.local/bin "$DATADIR"/applications "$DATADIR"/icons
-		AMCLI="appman"
-		AMCLIPATH="$DIR/$AMCLI"
-		SUDOCOMMAND=""
-		COMPLETIONPATH="$HOME"
-		COMPLETIONFILE=".bash_completion"
-		APPSPATH="$HOME/$APPSDIR"
-		AMPATH="$HOME/$APPSDIR/$AMCLI"
-	}
-
-	# Helper functions don't need to be defined inside the parent function
-	function _appman_prompt_for_directory() {
-		local location
-		read -r -ep "Please, write the name or the path of your custom application's folder: $(echo -e '\n\n '$HOME'/')" location
-		echo "$location"
-	}
-
-	function _appman_validate_directory() {
-		local location=$1
-		if [[ "$location" == "" ]]; then
-			echo -e "--------------------------------------------------------------------------"
-			echo "OPERATION ABORTED!"
-			exit  1
-		elif [[ "$location" == ".local/bin" ]]; then
-			echo -e "--------------------------------------------------------------------------\n"
-			echo -e " 💀 ERROR, you can't install applications into a '$PATH'\n\n The directory ~/.local/bin and 'bin' folders are used for executables.\n\n Please, choose a different path and retry! \n"
-			echo -e "--------------------------------------------------------------------------\n"
-			exit  1
-		else
-			local location_appman="${location/#$HOME}"
-			location_appman="${location_appman// /-}"
-			location_appman="${location_appman#/}"
-			location_appman="${location_appman%/}"
-			echo "$location_appman"
-		fi
-	}
-
 	if [[ ! -f "$APPMANCONFIG"/appman-config ]]; then
 		echo "--------------------------------------------------------------------------"
 		echo " >>> Thank you for choosing AppMan!"
@@ -169,7 +157,10 @@ function _appman() {
 	_patch_bashrc_and_profile
 }
 
+########################################
 # DETERMINE WHEN TO USE "AM" OR "APPMAN"
+########################################
+
 if [[ "$DIR/$CLI" == "/usr/local/bin/am" ]] 2>/dev/null; then
 	_am
 else
@@ -179,7 +170,10 @@ fi
 # Set header authorization if GitHub API key file exists
 [ -f "$AMPATH/ghapikey.txt" ] && HeaderAuthWithGITPAT=" --header \"Authorization: token $(<"$AMPATH/ghapikey.txt")\" "
 
+################
 # DEVELOPER MODE
+################
+
 if test -f "$AMPATH"/betatester; then
 	AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/dev"
 	AMBRANCH=$(basename "$AMREPO")
@@ -200,86 +194,90 @@ function _use_betatester_off() {
 	rm -f "$AMPATH"/betatester
 }
 
+###############################
 # DOWNLOAD PORTABLE DEPENDENCES
-function _portable_dependences_setup() {
+###############################
 
-	function _jq_installer() {
-		if ! command -v jq 1>/dev/null; then
-
-			_system_package_manager_check
-
-			if [[ -z "$osPKGman" ]];then
-				echo -e " ${RED}💀 ERROR!\033[0m Missing essential command ${Green}jq\033[0m\n"
-				read -p " Do you wish to install it using $AMCLI (Y,n)? " yn
-				case $yn in
-				'N'|'n')
-					echo -e "\n The \"jq\" command is essential for parsing JSON files on sites"
-					echo " for example api.github.com, to list the URLs of apps to download."
-					echo -e " You need to install it at least via your package manager to use \"$AMCLI\".\n\n Missing essential command ${RED}jq\033[0m, aborted!"; exit
-					;;
-				'Y'|'y'|*)
-					rm -f "$AMPATH"/.cache/*
-					echo ""
-					source "$AMPATH"/modules/install.am -i jq 2>&1 | grep "INSTALLED"
-					echo ""
-					;;
-				esac
-			else
-				echo -e " ${RED}💀 ERROR!\033[0m Missing essential command ${Green}jq\033[0m\n"
-				echo " Install it from your system package manager and retry!"; exit
-			fi
+function _jq_installer() {
+	if ! command -v jq 1>/dev/null; then
+		_system_package_manager_check
+		if [[ -z "$osPKGman" ]];then
+			echo -e " ${RED}💀 ERROR!\033[0m Missing essential command ${Green}jq\033[0m\n"
+			read -p " Do you wish to install it using $AMCLI (Y,n)? " yn
+			case $yn in
+			'N'|'n')
+				echo -e "\n The \"jq\" command is essential for parsing JSON files on sites"
+				echo " for example api.github.com, to list the URLs of apps to download."
+				echo -e " You need to install it at least via your package manager to use \"$AMCLI\".\n\n Missing essential command ${RED}jq\033[0m, aborted!"; exit
+				;;
+			'Y'|'y'|*)
+				rm -f "$AMPATH"/.cache/*
+				echo ""
+				source "$AMPATH"/modules/install.am -i jq 2>&1 | grep "INSTALLED"
+				echo ""
+				;;
+			esac
+		else
+			echo -e " ${RED}💀 ERROR!\033[0m Missing essential command ${Green}jq\033[0m\n"
+			echo " Install it from your system package manager and retry!"; exit
 		fi
-	}
+	fi
+}
+
+function _portable_dependences_setup() {
 	_jq_installer
 }
 
+###########################################
 # FUNCTIONS RELATED TO THE SAFE USE OF "AM"
-function _am_security_check() {
-	function _am_dependences_check() {
-		# Check for essential commands required by the application
-		missing_deps=()
-		AMDEPENDENCES="cat chmod chown curl grep sed wget"
-		for name in $AMDEPENDENCES; do
-			if ! command -v "$name" &>/dev/null; then
-				missing_deps+=("$name")
-			fi
-		done
+###########################################
 
-		# Exit if any essential command is missing
-		if [ -n "$missing_deps" ]; then
-			echo '--------------------------------------------------------------------------'
-			printf " ${RED}💀 ERROR! MISSING ESSENTIAL COMMANDS\033[0m: %s\n\n Install the above and try again! \n" "${missing_deps[*]}"
-			echo '--------------------------------------------------------------------------'
-			echo -e "\n ${Green}List of the $(echo "$AMCLI" | tr a-z A-Z) $AMVERSION core dependences\033[0m:\n"
-			echo $AMDEPENDENCES | tr ' ' ',' | sed 's/,/, /g' | sed 's/^/ /g'
-			echo -e '\n--------------------------------------------------------------------------'
-			echo " If this message appears it is because you are missing some dependency"
-			echo " and if its the first time its because something new has been introduced."
-			echo -e "\n See ${LightBlue}https://github.com/ivan-hc/AM#dependences\033[0m for more information"
-			echo '--------------------------------------------------------------------------'
-			exit 1
+function _am_dependences_check() {
+	# Check for essential commands required by the application
+	missing_deps=()
+	AMDEPENDENCES="cat chmod chown curl grep sed wget"
+	for name in $AMDEPENDENCES; do
+		if ! command -v "$name" &>/dev/null; then
+			missing_deps+=("$name")
 		fi
-	}
+	done
 
+	# Exit if any essential command is missing
+	if [ -n "$missing_deps" ]; then
+		echo '--------------------------------------------------------------------------'
+		printf " ${RED}💀 ERROR! MISSING ESSENTIAL COMMANDS\033[0m: %s\n\n Install the above and try again! \n" "${missing_deps[*]}"
+		echo '--------------------------------------------------------------------------'
+		echo -e "\n ${Green}List of the $(echo "$AMCLI" | tr a-z A-Z) $AMVERSION core dependences\033[0m:\n"
+		echo $AMDEPENDENCES | tr ' ' ',' | sed 's/,/, /g' | sed 's/^/ /g'
+		echo -e '\n--------------------------------------------------------------------------'
+		echo " If this message appears it is because you are missing some dependency"
+		echo " and if its the first time its because something new has been introduced."
+		echo -e "\n See ${LightBlue}https://github.com/ivan-hc/AM#dependences\033[0m for more information"
+		echo '--------------------------------------------------------------------------'
+		exit 1
+	fi
+}
+
+function _am_security_check() {
 	_am_dependences_check
-
 	# Check and create the $AMPATH directory if it does not exist
 	if [ ! -d "$AMPATH" ]; then
 		$SUDOCOMMAND mkdir -p "$AMPATH"
 	fi
-
-	# Function to check online connections (uses github.com by default, as the database and CLI itself are stored/hosted there)
-	function _online_check() {
-		if ! wget -q --tries=10 --timeout=20 --spider https://github.com; then
-			echo -e "\n $AMCLI is offline, please check your internet connection and try again\n"
-			exit
-		fi
-	}
 }
 
-_am_security_check
+# Function to check online connections (uses github.com by default, as the database and CLI itself are stored/hosted there)
+function _online_check() {
+	if ! wget -q --tries=10 --timeout=20 --spider https://github.com; then
+		echo -e "\n $AMCLI is offline, please check your internet connection and try again\n"
+		exit
+	fi
+}
 
+#######################
 # SECURE INSTALLED APPS
+#######################
+
 function _prevent_apps_from_being_removed_by_third_parties() {
 	# Add a security layer to scripts named "remove" of installed apps to prevent file removal by non-privileged users
 	if [ $AMCLI == am ] 2>/dev/null; then
@@ -293,36 +291,35 @@ function _prevent_apps_from_being_removed_by_third_parties() {
 	fi
 }
 
-_prevent_apps_from_being_removed_by_third_parties 2> /dev/null
-
+###########################################
 # FUNCTIONS RELATED TO THE DATABASE OF APPS
+###########################################
+
+function _am_newrepo_check() {
+	# Determine if the CLI uses the "main" branch of https://github.com/ivan-hc/AM or an alternative one
+	if [[ -f "$AMPATH"/new-repo.txt ]]; then
+		AMREPO=$(<"$AMPATH/new-repo.txt") # Utilizing command substitution with < for more efficient file reading
+		export AMBRANCH=$(basename "$AMREPO")
+		export APPSDB="$AMREPO/programs/$arch"
+		export APPSLISTDB="$AMREPO/programs/$arch-apps"
+		export LIBSLISTDB="$AMREPO/programs/libs-list"
+		if [[ "$*" != "newrepo off" ]]; then
+			echo '--------------------------------------------------------------------------'
+			echo " Source: $AMREPO"
+			echo '--------------------------------------------------------------------------'
+		fi
+	else
+		export APPSDB="$AMREPO/programs/$arch"
+		export APPSLISTDB="$AMREPO/programs/$arch-apps"
+		export LIBSLISTDB="$AMREPO/programs/libs-list"
+	fi
+}
+
 function _am_databases_check() {
 	# Determine catalogue in use
 	export AMCATALOGUEMARKDOWNS="https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/main/apps"
 	export AMCATALOGUEICONS="https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/main/icons"
-
-	function _am_newrepo_check() {
-		# Determine if the CLI uses the "main" branch of https://github.com/ivan-hc/AM or an alternative one
-		if [[ -f "$AMPATH"/new-repo.txt ]]; then
-			AMREPO=$(<"$AMPATH/new-repo.txt") # Utilizing command substitution with < for more efficient file reading
-			AMBRANCH=$(basename "$AMREPO")
-			APPSDB="$AMREPO/programs/$arch"
-			APPSLISTDB="$AMREPO/programs/$arch-apps"
-			LIBSLISTDB="$AMREPO/programs/libs-list"
-			if [[ "$@" != "newrepo off" ]]; then
-				echo '--------------------------------------------------------------------------'
-				echo " Source: $AMREPO"
-				echo '--------------------------------------------------------------------------'
-			fi
-		else
-			APPSDB="$AMREPO/programs/$arch"
-			APPSLISTDB="$AMREPO/programs/$arch-apps"
-			LIBSLISTDB="$AMREPO/programs/libs-list"
-		fi
-	}
-
 	_am_newrepo_check
-
 	# To implement future application database changes
 	if [ -f "$AMPATH/neodb" ]; then
 		if grep -q "://" "$AMPATH/neodb"; then
@@ -339,21 +336,22 @@ function _am_databases_check() {
 	fi
 }
 
-_am_databases_check
+#####################################
+# CHECK VERSION OF THE INSTALLED APPS
+#####################################
 
-# Check version of the installed apps
 function _check_version() {
 	rm -f $AMPATH/.cache/version-args
 	cd $APPSPATH &&
 	INSTALLED_APPS=$(find -name 'remove' -printf "%h\n" 2>/dev/null | du -sh -- * 2> /dev/null | sort -rh | sed 's@.*	@@')
 	for arg in $INSTALLED_APPS; do
 		 if test -f ./$arg/remove 2>/dev/null; then
-	 		if test -f ./$arg/version 2>/dev/null; then
+	 		if test -f ./$arg/*.zsync 2>/dev/null; then
+				APPVERSION=$(strings -d ./$arg/*.zsync | grep -i "$(echo $arg | sed 's/-appimage//g')" | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
+	 		elif test -f ./$arg/version 2>/dev/null; then
 				APPVERSION=$(cat $APPSPATH/$arg/version | head -1 | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
 				if [ -z "$APPVERSION" ]; then
-					if test -f ./$arg/*.zsync 2>/dev/null; then
-						APPVERSION=$(strings -d ./$arg/*.zsync | grep -i $arg | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
-					elif grep -q -- "-$arch/" ./$arg/version; then
+					if grep -q -- "-$arch/" ./$arg/version; then
 						ALPHANUMERICTEST=$(cat $APPSPATH/$arg/version | tr '-' '\n' | grep -vi "appimage\|$arg\|$arch" | tail -1)
 						if ! [[ "$ALPHANUMERICTEST" =~ [^a-zA-Z0-9] ]]; then
 							APPVERSION="$ALPHANUMERICTEST"
@@ -388,6 +386,54 @@ function _check_version() {
 			echo " ◆ $arg	|	$APPVERSION" >> $AMPATH/.cache/version-args
 		fi
 	done
+}
+
+###################################################################################
+# FUNCTIONS RELATED TO INTERNAL OPTIONS TO ENABLE/DISABLE BASH (AND ZSH) COMPLETION
+###################################################################################
+
+function _use_disable-completion() {
+	if [ "$(grep -o "$AMCLI" 0<"$COMPLETIONPATH/$COMPLETIONFILE" | head -1)" == "$AMCLI" ]; then
+		grep -v 'complete -W "$(cat '"$AMPATH"'/list 2>/dev/null)" '"$AMCLI"'' "$COMPLETIONPATH/$COMPLETIONFILE" > "$AMPATH"/$COMPLETIONFILE.backup &&
+		$SUDOCOMMAND mv "$AMPATH"/$COMPLETIONFILE.backup "$COMPLETIONPATH/$COMPLETIONFILE"
+		echo " Completion disabled! "
+	else
+		echo " Completion script is NOT enabled! "
+	fi
+}
+
+function _use_enable_completion() {
+	if [ "$(grep -o "$AMCLI" 0<"$COMPLETIONPATH/$COMPLETIONFILE" | head -1)" == "$AMCLI" ]; then
+		echo " Completion script is already enabled!"
+	else
+		$SUDOCOMMAND mkdir -p "$COMPLETIONPATH"
+		if [ "$AMCLI" == appman ]; then
+			if ! test -f "$COMPLETIONPATH/$COMPLETIONFILE"; then
+				echo '#!/usr/bin/env bash' >> "$COMPLETIONFILE"
+			fi
+		else
+			echo '#!/usr/bin/env bash' >> "$COMPLETIONFILE"
+		fi
+		echo 'complete -W "$(cat '"$AMPATH"'/list 2>/dev/null)" '"$AMCLI"'' >> "$COMPLETIONFILE"
+		chmod a+x "$COMPLETIONFILE"
+		$SUDOCOMMAND mv "$COMPLETIONFILE" "$COMPLETIONPATH/" 2> /dev/null
+		echo " Completion has been enabled!"
+	fi
+	if [ -f "$HOME/.zshrc" ] || [ -f "$ZDOTDIR/.zshrc" ]; then
+		if [ -n "$ZDOTDIR" ]; then
+			ZSHDIR="$ZDOTDIR"
+		else
+			ZSHDIR="$HOME"
+		fi
+		if grep -q "source $ZSHDIR/$COMPLETIONFILE" "$ZSHDIR/.zshrc"; then
+			echo "Zsh completion already enabled!"
+		else
+			echo '#!/usr/bin/env bash' >> "$ZSHDIR/$COMPLETIONFILE"
+			echo 'complete -W "$(cat '"$AMPATH"'/list 2>/dev/null)" '"$AMCLI"'' >> "$ZSHDIR/$COMPLETIONFILE"
+			chmod a+x "$ZSHDIR/$COMPLETIONFILE"
+			echo -e "\nautoload bashcompinit\nbashcompinit\nsource $ZSHDIR/$COMPLETIONFILE" >> "$ZSHDIR/.zshrc"
+		fi
+	fi
 }
 
 # Generate a list of words to use in bash completion
@@ -433,52 +479,40 @@ cat <<-HEREDOC >> "$AMPATH/options"
 	--user
 HEREDOC
 
-# Functions related to internal options to enable/disable bash (and zsh) completion.
-function _use_disable-completion() {
-	if [ "$(grep -o "$AMCLI" 0<"$COMPLETIONPATH/$COMPLETIONFILE" | head -1)" == "$AMCLI" ]; then
-		grep -v 'complete -W "$(cat '"$AMPATH"'/list 2>/dev/null)" '"$AMCLI"'' "$COMPLETIONPATH/$COMPLETIONFILE" > "$AMPATH"/$COMPLETIONFILE.backup &&
-		$SUDOCOMMAND mv "$AMPATH"/$COMPLETIONFILE.backup "$COMPLETIONPATH/$COMPLETIONFILE"
-		echo " Completion disabled! "
-	else
-		echo " Completion script is NOT enabled! "
-	fi
-}
+function _completion_lists() {
+	# Remove existing lists and download new ones
+	rm -Rf "$AMPATH"/{$arch-apps,list,libs-list} &&
+	wget -q "$APPSLISTDB" -P "$AMPATH" &&
+	wget -q "$LIBSLISTDB" -P "$AMPATH"
 
-function _use_enable_completion() {
-	if [ "$(grep -o "$AMCLI" 0<"$COMPLETIONPATH/$COMPLETIONFILE" | head -1)" == "$AMCLI" ]; then
-		echo " Completion script is already enabled!"
-	else
-		$SUDOCOMMAND mkdir -p "$COMPLETIONPATH"
-		if [ "$AMCLI" == appman ]; then
-			if ! test -f "$COMPLETIONPATH/$COMPLETIONFILE"; then
-				echo '#!/usr/bin/env bash' >> "$COMPLETIONFILE"
+	# THIRD PARTY APPS
+	if test -f "$AMPATH/neodb"; then
+		rm -R -f "$AMPATH/.cache/multirepo-args"
+		MULTIREPO=$(cat "$AMPATH/neodb" | grep "List=" | grep -E "$arch-apps" | sed 's/List=//g')
+		for anyrepo in $MULTIREPO; do
+			if curl --output /dev/null --silent --head --fail "$anyrepo" 1>/dev/null; then
+				wget -q "$anyrepo" -O - | grep "◆" >> "$AMPATH"/$arch-apps
 			fi
-		else
-			echo '#!/usr/bin/env bash' >> "$COMPLETIONFILE"
-		fi
-		echo 'complete -W "$(cat '"$AMPATH"'/list 2>/dev/null)" '"$AMCLI"'' >> "$COMPLETIONFILE"
-		chmod a+x "$COMPLETIONFILE"
-		$SUDOCOMMAND mv "$COMPLETIONFILE" "$COMPLETIONPATH/" 2> /dev/null
-		echo " Completion has been enabled!"
+		done
+		cat "$AMPATH"/$arch-apps | sort | uniq > "$AMPATH"/$arch-apps-backup
+		rm -R -f "$AMPATH"/$arch-apps
+		mv "$AMPATH"/$arch-apps-backup "$AMPATH"/$arch-apps
 	fi
-	if [ -f "$HOME/.zshrc" ] || [ -f "$ZDOTDIR/.zshrc" ]; then
-		if [ -n "$ZDOTDIR" ]; then
-			ZSHDIR="$ZDOTDIR"
-		else
-			ZSHDIR="$HOME"
-		fi
-		if grep -q "source $ZSHDIR/$COMPLETIONFILE" "$ZSHDIR/.zshrc"; then
-			echo "Zsh completion already enabled!"
-		else
-			echo '#!/usr/bin/env bash' >> "$ZSHDIR/$COMPLETIONFILE"
-			echo 'complete -W "$(cat '"$AMPATH"'/list 2>/dev/null)" '"$AMCLI"'' >> "$ZSHDIR/$COMPLETIONFILE"
-			chmod a+x "$ZSHDIR/$COMPLETIONFILE"
-			echo -e "\nautoload bashcompinit\nbashcompinit\nsource $ZSHDIR/$COMPLETIONFILE" >> "$ZSHDIR/.zshrc"
-		fi
-	fi
+
+	# Extract and append program and library names to the list
+	for file in $arch-apps libs-list; do
+		awk -v FS="(◆ | : )" '{print $2}' <$AMPATH/$file >> $AMPATH/list
+	done
+
+	# Append options to the list
+	cat "$AMPATH"/options >> "$AMPATH"/list
 }
 
-# Function for the option that helps "AM" function like "AppMan", via alias
+#############################################
+# OTHER FUNCTIONS RELATED TO INTERNAL OPTIONS
+#############################################
+
+# Function for the option "appman" or "--user" that helps "AM" function like "AppMan", via alias
 function _use_appman() {
 	_online_check
 	if [ "$AMCLI" == appman ] 2>/dev/null; then
@@ -495,7 +529,10 @@ function _use_appman() {
 	fi
 }
 
-# Handle external modules
+#############################################
+# FUNCTION TO HANDLE ALL THE EXTERNAL MODULES
+#############################################
+
 function _use_module() {
 	# Test if module exists
 	if ! test -f "$AMPATH/modules/$MODULE"; then
@@ -506,7 +543,10 @@ function _use_module() {
 	source "$AMPATH/modules/$MODULE" "$@"
 }
 
-# ALL THE OPTIONS
+_am_security_check
+_prevent_apps_from_being_removed_by_third_parties 2> /dev/null
+_am_databases_check
+
 case "$1" in
 	'')
 		echo -e "\n USAGE: '$AMCLI [option]'\n        '$AMCLI [option] [argument]'\n\n Run the '$AMCLI -h' command to find out more\n"

@@ -178,7 +178,7 @@ The full list is [here](https://github.com/ivan-hc/AM/blob/main/libraries/libs-l
 To update all the programs and "AM" itself, just run the command (without `sudo`):
 
     am -u
-    
+
 To update only the programs:
 
     am -u --apps
@@ -272,7 +272,7 @@ git clone https://github.com/ivan-hc/AM.git
 cd AM
 chmod a+x INSTALL
 sudo ./INSTALL
-```    
+```
 In both cases, the "INSTALL" script will create a dedicated /opt/am directory containing the ["APP-MANAGER"](https://github.com/ivan-hc/AM/blob/main/APP-MANAGER) script (ie "AM" itself), a symlink for it in /usr/local/bin named `am` and the /opt/am/remove script needed to [uninstall](#uninstall) "AM" itself, if needed. A temporary folder named /opt/am/.cache will be created too, in wich each installation script or list of available applications (for your architecture) is downloaded.
 
 -----------------------------------------------------------------------------
@@ -286,11 +286,11 @@ to have a list of the installed programs use the option `-f` or `files` (syntax 
 - To uninstall "AM" just run the command `am -R am`
 - To uninstall "AppMan" just remove it, also remove the directory $HOME/.config/appman
 
-------------------------------------------------------------------------	
+------------------------------------------------------------------------
 # USAGE
 ```
  am {OPTION}
- 
+
  am {OPTION} {ARGUMENT}
 ```
 
@@ -298,55 +298,55 @@ to have a list of the installed programs use the option `-f` or `files` (syntax 
   <summary>Click here to see the full list of options</summary>
 
  ___________________________________________________________________________
- 
- ## OPTIONS 
- 				
+
+ ## OPTIONS
+
  (standard, for both "AM" and "APPMAN")
  ___________________________________________________________________________
  ___________________________________________________________________________
- 
+
  `-a`, `about`
- 
+
  SYNOPSIS:
 
  `-a {PROGRAM}`
- 
+
  DESCRIPTION: 	Shows more info about one or more apps, all the pages are downloaded from https://portable-linux-apps.github.io
  ___________________________________________________________________________
- 
+
  `-b`, `backup`
- 
+
  SYNOPSIS:
 
  `-b {PROGRAM}`
- 
+
  DESCRIPTION:	Save the current version of one or more apps, each snapshot is stored into a dedicated directory, under $HOME/.am-snapshots/$PROGRAM
- 
+
  To restore the snapshots see the "-o" option.
  ___________________________________________________________________________
- 
+
  `-c`, `clean`
- 
+
  SYNOPSIS:
 
  `-c`
- 
+
  DESCRIPTION:	Removes all the unnecessary files and folders.
  ___________________________________________________________________________
- 
+
  `-d`, `download`
- 
+
  SYNOPSIS:
 
  `-d {PROGRAM}`
 
   `-d --convert {PROGRAM}`
- 
+
  DESCRIPTION:	Download one or more installation scripts to your desktop. With the option "--convert" its converted to a standalone local installer, but AM requires AppMan to be installed to add custom directory settings.
  ___________________________________________________________________________
- 
+
  `-f`, `files`
- 
+
  SYNOPSIS:
 
  `-f`
@@ -354,30 +354,30 @@ to have a list of the installed programs use the option `-f` or `files` (syntax 
  `-f --byname`
 
  `-f --less`
- 
+
  DESCRIPTION:	Shows the list of all installed programs, with sizes. By default apps are sorted by size, use "--byname" to sort by name. With the option "--less" it shows only the number of installed apps.
  ___________________________________________________________________________
- 
+
  `-h`, `help`
- 
+
  SYNOPSIS:
 
  `-h`
- 
+
  DESCRIPTION:	Prints this message.
  ___________________________________________________________________________
- 
+
  `-H`, `--home`
- 
+
  SYNOPSIS:
 
  `-H {PROGRAM}`
- 
+
  DESCRIPTION:	Set a dedicated $HOME directory for one or more AppImages.
  ___________________________________________________________________________
- 
+
  `-i`, `install`
- 
+
  SYNOPSIS:
 
  `-i {PROGRAM}`
@@ -385,234 +385,234 @@ to have a list of the installed programs use the option `-f` or `files` (syntax 
  `-i --debug {PROGRAM}`
 
  `-i --force-latest {PROGRAM}`
- 
+
  DESCRIPTION:   Install one or more programs or libraries from the list. With the "--debug" option you can see log messages to debug the script. For more details on "--force-latest", see the dedicated option, below.
  ___________________________________________________________________________
- 
+
  `-l`, `list`
- 
+
  SYNOPSIS:
 
  `-l`
 
  DESCRIPTION:	Shows the list of all the apps available in the repository.
  ___________________________________________________________________________
- 
+
  `-o`, `overwrite`
- 
+
  SYNOPSIS:
 
  `-o {PROGRAM}`
- 
+
  DESCRIPTION:	Overwrite the existing version of the app with a snapshot saved previously (see the option "-b", above).
  ___________________________________________________________________________
- 
+
  `-q`, `query`
- 
+
  SYNOPSIS:
 
  `-q {KEYWORD}`
- 
+
  DESCRIPTION:	Can be used to search for keywords and terms in the list of available applications packages to display matches. This can be useful if you are looking for applications having a specific feature.
  ___________________________________________________________________________
- 
+
  `-r`, `remove`
- 
+
  SYNOPSIS:
 
  `-r {PROGRAM}`
- 
+
  DESCRIPTION:	Removes one or more apps, requires confirmation.
  ___________________________________________________________________________
- 
+
  `-R`
- 
+
  SYNOPSIS:
 
  `-R {PROGRAM}`
- 
+
  DESCRIPTION:	Removes one or more apps without asking.
  ___________________________________________________________________________
- 
+
  `-s`, `sync`
- 
+
  SYNOPSIS:
 
  `-s`
- 
+
  DESCRIPTION:	Updates this script to the latest version hosted.
  ___________________________________________________________________________
- 
+
  `-t`, `template`
- 
+
  SYNOPSIS:
 
  `-t {PROGRAM}`
- 
+
  DESCRIPTION:	This option allows you to generate a custom script from a list of different templates that may be vary according to the kind of app you want to upload to the "AM" repo, and the source where it is available. You can install it using the `am test /path/to/your-script` command.
  ___________________________________________________________________________
- 
+
  `-u`, `-U`, `update`
- 
+
  SYNOPSIS:
 
  `-u`
 
  `-u apps`
- 
+
  `-u {PROGRAM}`
- 		
+
  DESCRIPTION: Update all the apps (and "am" itself) or just one. If you add the "`--apps`" suboption you only update apps.
  ___________________________________________________________________________
- 
+
  `-v`, `version`
- 
+
  SYNOPSIS:
 
  `-v`
- 
+
  DESCRIPTION:	Shows the version.
  ___________________________________________________________________________
- 
+
  `--disable-completion`
- 
+
  SYNOPSIS:
 
  `--disable-completion`
- 
+
  DESCRIPTION:	Disable bash-completion.
  ___________________________________________________________________________
- 
+
  `--enable-completion`
- 
+
  SYNOPSIS:
 
  `--enable-completion`
- 
+
  DESCRIPTION:	Enable bash-completion to complete a keyword with the "TAB" key, using the names of all installable applications available.
  ___________________________________________________________________________
- 
+
  `--firejail`, `--sandbox`
- 
+
  SYNOPSIS:
 
  `--firejail {PROGRAM}`
- 
+
  DESCRIPTION:	Run an AppImage in a sandbox using Firejail.
  ___________________________________________________________________________
- 
+
  `--force-latest`
- 
+
  SYNOPSIS:
 
  `--force-latest {PROGRAM}`
 
  `-i --force-latest {PROGRAM}`
- 
+
  DESCRIPTION:	Downgrades an installed app from pre-release to "latest". This can be used with "-i" to force the installation of apps from "latest". Many scripts point to "releases" to find the latest build for GNU/Linux if the developer has not uploaded one in "latest".
  ___________________________________________________________________________
 
  `--launcher`
- 
+
  SYNOPSIS:
- 
+
  `--launcher /path/to/${APPIMAGE}`
 
  DESCRIPTION:	Embed one or more local AppImages in the applications menu. I suggest dragging the files into the terminal to get the desired effect. Launchers are located in ~/.local/share/applications/AppImages by default.
  ___________________________________________________________________________
- 
+
  `--rollback`
- 
+
  SYNOPSIS:
 
  `--rollback {PROGRAM}`
- 
+
  DESCRIPTION:	Download an older or specific version of the software you are interested in (only works with Github).
- ___________________________________________________________________________ 
- 
+ ___________________________________________________________________________
+
  `apikey`
- 
+
  SYNOPSIS:
- 
+
  `apikey {Github Token}`
- 
+
  `apikey delete`
- 
+
  DESCRIPTION:	Get unlimited access to https://api.github.com using your personal access tokens. The configuration file named "ghapikey.txt" will be saved in '$AMPATH' . Use the command "'$AMCLI' apikey delete/del/remove" to remove the file.
  __________________________________________________________________________
- 
+
  `dev`, `devmode`
- 
+
  SYNOPSIS:
- 
+
  `dev off`
- 
+
  `dev on`
- 
+
  DESCRIPTION:	View the installer output during installation, use "on". It can be disabled with "off" or with the "`-s`" and "`-u`" options.
- __________________________________________________________________________ 
- 
+ __________________________________________________________________________
+
  `lock`
- 
+
  SYNOPSIS:
 
  `lock {PROGRAM}`
- 
+
  DESCRIPTION:	Lock the selected app to the current version installed, this only works if exists a dedicated "AM-updater" installed with the app.
  __________________________________________________________________________
- 
+
  `neodb`
- 
+
  SYNOPSIS:
- 
+
  `neodb`
 
  `neodb --silent`
- 
+
  DESCRIPTION:   Add third-party repos to extend the existing database. Use "--silent" to hide messages about third-party repos in use.
  __________________________________________________________________________
- 
+
  `newrepo`
- 
+
  SYNOPSIS:
- 
+
  `newrepo {URL}`
- 
+
  `newrepo off`
- 
+
  `newrepo on`
- 
+
  DESCRIPTION:   Set the variable "$AMREPO" to a new custom repository. Use "off" to restore the default one or overwrite it with a new one.
  __________________________________________________________________________
- 
+
  `nolibfuse`
- 
+
  SYNOPSIS:
- 
+
  `nolibfuse {PROGRAM}`
- 
+
  DESCRIPTION:   Convert an installed Type2 AppImage to a Type3 AppImage. Type3 AppImages does not require libfuse2 installed. Only AppImages updatable with "zsync" can be updated keeping this format. Others will be replaced with the one provided from the upstream.
  __________________________________________________________________________
- 
+
  `unlock`
- 
+
  SYNOPSIS:
 
  `unlock {PROGRAM}`
- 
+
  DESCRIPTION:	Unlock updates for the selected program. This option nulls the option "lock" (see above).
  ___________________________________________________________________________
  ___________________________________________________________________________
 
 ## EXTRA OPTIONS
  ___________________________________________________________________________
- 
+
  `--user`, `appman`			(only available for "AM")
- 
+
  SYNOPSIS:
 
  `--user`
- 
+
  DESCRIPTION:	Run "AM" as an unprivileged user making it act as "AppMan".
  __________________________________________________________________________
 
@@ -670,8 +670,8 @@ All the snapshots are stored into an hidden `/home/$USER/.am-snapshots` folder c
 ```
 /opt/$PROGRAM/AM-updater
 ```
-Note that this works only if the program has a /opt/$PROGRAM/AM-updater script, other programs like Firefox and Thunderbird are auto-updatable. 
-	
+Note that this works only if the program has a /opt/$PROGRAM/AM-updater script, other programs like Firefox and Thunderbird are auto-updatable.
+
 - To uninstall a program without "am":
 ```
 sudo /opt/$PROGRAM/remove
@@ -872,7 +872,7 @@ Accept the integration request, the launcher will be saved in the walc.home dire
 This is a choice I made as many developers have abandoned support for AppImage or GNU/Linux in general. My aim here is to introduce you to other developers' applications, then it's up to you to contact them, support them, help improve the software through forks and pull requests, opening issues and encouraging developers to keep the software in the format you prefer.
 
 In case you are sure that the upstream developer will maintain the package for each stable release, you can fix this in several ways:
-#### Method 1: Direct installation by combining `-d` and `-i` options 
+#### Method 1: Direct installation by combining `-d` and `-i` options
 ```
 am -d $PROGRAM
 sed -i 's#releases -O -#releases/latest -O -#g' $(xdg-user-dir DESKTOP)/$PROGRAM
@@ -942,3 +942,4 @@ The reasons may be two:
 --------
 
 *© 2020-present Ivan Alessandro Sala aka 'Ivan-HC'* - I'm here just for fun! 
+
