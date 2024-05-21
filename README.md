@@ -3,6 +3,7 @@
 
 ------------------------------------------------------------------------
 [Introducing "AM"](#introducing-am)
+- [See it in action](#see-it-in-action)
 - [Differences between "AM" and "AppMan"](#differences-between-am-and-appman)
 - [Use AM locally like AppMan does](#use-am-locally-like-appman-does)
 - [What programs can be installed](#what-programs-can-be-installed)
@@ -49,10 +50,6 @@ This project is the set of two Command Line Interfaces that coexist in the same 
 
 *For specific guide on using "AppMan", see https://github.com/ivan-hc/AppMan*
 
-*See it in action ("AM" version 4.3.2):*
-
-https://github.com/ivan-hc/AM/assets/88724353/b2dd8ca6-5ee7-4bb2-8480-9a53f5cfcf56
-
 Being "[APP-MANAGER](https://github.com/ivan-hc/AM/blob/main/APP-MANAGER)" a bash-based script, it can be used on all the architectures supported by the Linux kernel and works with all the GNU/Linux distributions.
 
 "AM"/"AppMan" aims to be a merger for GNU/Linux distributions, using not just AppImage as the main package format, but also other standalone programs, so without having to risk breaking anything on your system: no daemons, no shared libraries. Just your program!
@@ -70,6 +67,40 @@ https://github.com/ivan-hc/AM/commits/main/APP-MANAGER
 - ***For a summary of the new versions, consult the "releases" section of the "AM" repository at the following link***:
 
 https://github.com/ivan-hc/AM/releases
+
+------------------------------------------------------------------------
+## See it in action
+
+### How to install applications (option -i)
+https://github.com/ivan-hc/AM/assets/88724353/c2e8b654-29d3-4ded-8877-f77ef11d58fc
+
+### How to list installed applications (option -f)
+https://github.com/ivan-hc/AM/assets/88724353/a11ccb22-f2fa-491f-85dd-7f9440776a54
+
+### How to list and query all the applications available on the database (options -l and -q)
+https://github.com/ivan-hc/AM/assets/88724353/2ac875df-5210-4d77-91d7-24c45eceaa2b
+
+### How to update all installed apps, modules and "AM" itself (option -u)
+https://github.com/ivan-hc/AM/assets/88724353/f93ca782-2fc6-45a0-a3f2-1fba297a92bf
+
+### How to create a snapshot of an installed application (option -b)
+https://github.com/ivan-hc/AM/assets/88724353/ae581bc0-f1c5-47da-a2c4-3d01c37cc5a4
+
+### How to restore an application using the already created snapshots (option -o)
+https://github.com/ivan-hc/AM/assets/88724353/f9904ad2-42ec-4fce-9b21-b6b0f8a99414
+
+### How to remove one or more applications (option -R)
+https://github.com/ivan-hc/AM/assets/88724353/4d26d2d7-4476-4322-a0ab-a0a1ec14f751
+
+### How can I try to convert my Type2 AppImages (requiring libfuse2) to Type3 AppImages (option nolibfuse)
+https://github.com/ivan-hc/AM/assets/88724353/06b8e946-ef02-4678-a5a0-d8c2c24c22f9
+
+### How to create launchers and shortcuts for my local AppImages (option --launcher)
+https://github.com/ivan-hc/AM/assets/88724353/97c2b88d-f330-490c-970b-0f0bb89040dc
+
+### How to use "AM" in non-privileged mode, like "AppMan" (option --user)
+https://github.com/ivan-hc/AM/assets/88724353/65b27cf6-edc5-4a4c-b2f9-42e8623dc76f
+
 
 ------------------------------------------------------------------------
 ## Differences between "AM" and "AppMan"
