@@ -1,0 +1,72 @@
+#!/bin/sh
+
+APP=i3lock-color
+SITE="Raymo111/i3lock-color"
+
+# CREATE DIRECTORIES
+if [ -z "$APP" ]; then exit 1; fi
+mkdir -p "/opt/$APP/tmp" "/opt/$APP/pam" && cd "/opt/$APP/tmp" || exit 1
+
+# ADD THE REMOVER
+echo "#!/bin/sh
+rm -f /usr/local/bin/i3lock
+rm -R -f /opt/$APP" > "/opt/$APP/remove"
+chmod a+x "/opt/$APP/remove"
+
+# DOWNLOAD AND PREPARE THE APP
+# $version is also used for updates
+
+version=$(curl -Ls https://api.github.com/repos/"$SITE"/releases | jq '.' | sed 's/[()",{}]/ /g; s/ /\n/g' | grep -o 'https.*i3lock$' | head -1)
+wget "$version"
+echo "$version" > "/opt/$APP/version"
+cd ..
+mv --backup=t ./tmp/i3lock ./
+rm -R -f ./tmp
+chmod a+x "/opt/$APP/i3lock"
+cat >> "/opt/$APP/pam/i3lock" << 'EOF'
+#
+# PAM configuration file for the i3lock-color screen locker. By default, it includes
+# the 'system-local-login' configuration file (see /etc/pam.d/system-local-login)
+# for Arch and Gentoo and 'login' for Debian. Note that upstream uses only 'login',
+# which doesn't work on Arch and Gentoo.
+#
+
+#auth include system-local-login # For Arch/Gentoo
+auth include login # For Debian
+EOF
+
+# LINK
+cat >> "/usr/local/bin/i3lock" << 'EOF'
+#!/bin/sh
+APP=i3lock-color
+cat /etc/pam.d/i3lock >/dev/null 2>&1 && /opt/"$APP"/i3lock "$@" || ( 
+echo "You need to copy the i3lock pam file to /etc/pam.d for i3lock to work
+That is: cp /opt/$APP/pam/i3lock /etc/pam.d/i3lock
+MAKE SURE TO READ THE PAM FILE FIRST as it has to be configured for your distro.
+If you are still getting this error there might be something wrong with i3lock." \
+&& notify-send -u critical "Error i3lock: launch from terminal to see instructions" )
+EOF
+chmod a+x "/usr/local/bin/i3lock"
+
+# SCRIPT TO UPDATE THE PROGRAM
+cat >> "/opt/$APP/AM-updater" << 'EOF'
+#!/bin/sh
+APP=i3lock-color
+SITE="Raymo111/i3lock-color"
+version0=$(cat /opt/$APP/version)
+version=$(curl -Ls https://api.github.com/repos/"$SITE"/releases | jq '.' | sed 's/[()",{}]/ /g; s/ /\n/g' | grep -o 'https.*i3lock$' | head -1)
+if [ "$version" = "$version0" ]; then
+	echo "Update not needed!" && exit 0
+else
+	notify-send "A new version of $APP is available, please wait"
+	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
+	wget "$version"
+	cd ..
+	mv --backup=t ./tmp/i3lock ./
+	echo "$version" > ./version
+	rm -R -f ./tmp ./*~
+	chmod a+x "/opt/$APP/$APP"
+	notify-send "$APP is updated!"
+fi
+EOF
+chmod a+x "/opt/$APP/AM-updater"
