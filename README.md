@@ -114,7 +114,7 @@ Initially the two projects traveled in parallel to each other, until version 5, 
 - "**AM**" applies system-wide programs integration (for all users), i.e. installs programs in the `/opt` directory (see [Linux Standard Base](https://refspecs.linuxfoundation.org/FHS_3.0/fhs/ch03s13.html)), the launchers instead are installed in `/usr/share/applications` (or `/usr/local/share/applications` if the distribution is "immutable") with the "AM-" suffix and the links are placed in `/usr/local/bin` or `/usr/local/games`. To manage programs system wide, AM needs to be installed in `/opt/am` as "`APP-MANAGER`" with a `/usr/local/bin/am` as a symlink (see https://github.com/ivan-hc/AM#installation);
 - "**AppMan**", on the other hand, works in a portable way and allows you to install and manage the same applications locally, in your "$HOME" directory, and without root privileges. However, it is important that it is renamed to `appman` to work (see https://github.com/ivan-hc/AppMan#installation)
 
-***NOTE, "AM" can be set to work like "AppMan" by enabling an alias provided with the command "`am --user`".***
+***NOTE, "AM" can be set to work like "AppMan" using the command "`am --user`".***
 
 #### To be more detailed, here is an overview of how apps are installed by "AM" and "AppMan"
 
@@ -161,8 +161,6 @@ To switch "AM" back to "AM" from "AppMan Mode", use the option `--system`:
 am --system
 ```
 To perform a test and see if you are in "AppMan Mode" or not, run for example the command `am -f` to see the list of the installed apps.
-
-***NOTE: using AM with the `--user` option enabled and the alias for AppMan, "sudo" allows normal use of AM, absence allows use of AppMan.***
 
 </details>
 
