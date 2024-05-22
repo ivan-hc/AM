@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="6.8.2"
+AMVERSION="6.8.2-1"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -439,6 +439,24 @@ function _check_version() {
 		fi
 	done
 }
+
+function _check_version_for_auto_updatable_apps() {
+	cd "$APPSPATH" &&
+	INSTALLED_APPS=$(find -name 'remove' -printf "%h\n" 2>/dev/null | du -sh -- * 2> /dev/null | sort -rh | sed 's@.*	@@')
+	for arg in $INSTALLED_APPS; do
+		if test -f ./$arg/updater 2>/dev/null; then
+			if [ -z "$(strings -d "./$arg/$arg" 2>/dev/null | grep -F 'appimage')" ] 2>/dev/null; then
+				_check_version_if_an_updater_exists
+				OLDAPPVERSION=$(cat "$AMPATH"/.cache/version-args | grep " ◆ $arg	|" | tr '|' '\n' | sed 's/	//g' | head -2 | tail -1)
+				sed -i "/ ◆ $arg	|/s#$OLDAPPVERSION#$APPVERSION#" "$AMPATH"/.cache/*
+			fi
+		fi
+	done
+}
+
+if test -f "$AMPATH"/.cache/version-args; then
+	_check_version_for_auto_updatable_apps
+fi
 
 ###################################################################################
 # FUNCTIONS RELATED TO INTERNAL OPTIONS TO ENABLE/DISABLE BASH (AND ZSH) COMPLETION
