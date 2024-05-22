@@ -5,17 +5,17 @@ case $2 in
 esac
 
 function _remove_check_removals() {
-	if test -f $AMPATH/.cache/unavailable-args; then
+	if test -f "$AMPATH"/.cache/unavailable-args; then
 		echo -e "-----------------------------------------------------------------------\n"
 		if [ $AMCLI == am ] 2>/dev/null; then
-			echo -e " 💀 ERROR, the following programs you want to remove are NOT in $APPSPATH :\n\n$(cat $AMPATH/.cache/unavailable-args | sort)"
+			echo -e " 💀 ERROR, the following programs you want to remove are NOT in $APPSPATH :\n\n$(cat "$AMPATH"/.cache/unavailable-args | sort)"
 		else
-			echo -e " 💀 ERROR, the following programs you want to remove are NOT in\n    $APPSPATH :\n\n$(cat $AMPATH/.cache/unavailable-args | sort)"
+			echo -e " 💀 ERROR, the following programs you want to remove are NOT in\n    $APPSPATH :\n\n$(cat "$AMPATH"/.cache/unavailable-args | sort)"
 		fi
 		echo -e '\n INVALID "APPNAME"!'
 		echo -e "\n-----------------------------------------------------------------------\n"
 		echo ' ◆ INSTALLED PROGRAMS/VALID ARGUMENTS (SEE THE "APPNAME" COLUMN):'
-		$AMCLIPATH -f | grep -v "STANDALONE PROGRAMS MANAGED"; rm $AMPATH/.cache/unavailable-args
+		$AMCLIPATH -f | grep -v "STANDALONE PROGRAMS MANAGED"; rm "$AMPATH"/.cache/unavailable-args
 		echo -e "-----------------------------------------------------------------------"
 		exit
 	else
@@ -23,23 +23,40 @@ function _remove_check_removals() {
 	fi
 }
 
+function _REMOVE() {
+	if ls $APPSPATH/$arg > /dev/null 2>&1; then
+		$SUDOCOMMAND $APPSPATH/$arg/remove && sleep 0.5 && echo ' ◆ "'"$(echo $arg | tr a-z A-Z)"'" HAS BEEN SUCCESSFULLY REMOVED!'
+	else
+		echo " - $arg" >> "$AMPATH"/.cache/unavailable-args
+	fi
+}
+
+function _remove() {
+	if ls $APPSPATH/$arg > /dev/null 2>&1; then
+		case $arg in
+		*) 
+			$SUDOCOMMAND echo "" > /dev/null; read -p ' ◆ DO YOU WISH TO REMOVE "'"$(echo $arg | tr a-z A-Z)"'" (Y,n)?' yn
+			case $yn in
+			[Nn]* ) 
+				echo ' - "'"$(echo $arg | tr a-z A-Z)"'" HAS NOT BEEN REMOVED!'; echo "";;
+			[Yy]*|* ) 
+				$SUDOCOMMAND $APPSPATH/$arg/remove && sleep 0.5 && echo ' ◆ "'"$(echo $arg | tr a-z A-Z)"'" HAS BEEN SUCCESSFULLY REMOVED!';;
+			esac
+		esac
+	else
+		echo " - $arg" >> "$AMPATH"/.cache/unavailable-args
+	fi
+}
+
 case "$1" in
 
   '-R') # THIS OPTION REMOVES PROGRAMS WITHOUT ASKING
 	while [ -n "$1" ]; do
-		rm -f $AMPATH/.cache/remove-args
-		echo "$@" | tr ' ' '\n' >> $AMPATH/.cache/remove-args && echo STOP >> $AMPATH/.cache/remove-args
-		ARGS=$(tail -n +2 $AMPATH/.cache/remove-args)
+		rm -f "$AMPATH"/.cache/remove-args
+		echo "$@" | tr ' ' '\n' >> "$AMPATH"/.cache/remove-args && echo STOP >> "$AMPATH"/.cache/remove-args
+		ARGS=$(tail -n +2 "$AMPATH"/.cache/remove-args)
 
 		for arg in $ARGS; do
-
-			function _REMOVE() {
-				if ls $APPSPATH/$arg > /dev/null 2>&1; then
-					$SUDOCOMMAND $APPSPATH/$arg/remove && sleep 0.5 && echo ' ◆ "'"$(echo $arg | tr a-z A-Z)"'" HAS BEEN SUCCESSFULLY REMOVED!'
-				else
-					echo " - $arg" >> $AMPATH/.cache/unavailable-args
-				fi
-			}
 
 			if [ $arg == STOP ]; then
 				_remove_check_removals
@@ -54,28 +71,11 @@ case "$1" in
 
   '-r'|'remove') # THIS OPTION ALLOWS YOU TO CHOOSE WHETHER TO REMOVE PROGRAMS OR NOT
 	while [ -n "$1" ]; do
-		rm -f $AMPATH/.cache/remove-args
-		echo "$@" | tr ' ' '\n' >> $AMPATH/.cache/remove-args && echo STOP >> $AMPATH/.cache/remove-args
-		ARGS=$(tail -n +2 $AMPATH/.cache/remove-args)
+		rm -f "$AMPATH"/.cache/remove-args
+		echo "$@" | tr ' ' '\n' >> "$AMPATH"/.cache/remove-args && echo STOP >> "$AMPATH"/.cache/remove-args
+		ARGS=$(tail -n +2 "$AMPATH"/.cache/remove-args)
 
 		for arg in $ARGS; do
-
-			function _remove() {
-				if ls $APPSPATH/$arg > /dev/null 2>&1; then
-					case $arg in
-					*) 
-						$SUDOCOMMAND echo "" > /dev/null; read -p ' ◆ DO YOU WISH TO REMOVE "'"$(echo $arg | tr a-z A-Z)"'" (Y,n)?' yn
-						case $yn in
-						[Nn]* ) 
-							echo ' - "'"$(echo $arg | tr a-z A-Z)"'" HAS NOT BEEN REMOVED!'; echo "";;
-						[Yy]*|* ) 
-							$SUDOCOMMAND $APPSPATH/$arg/remove && sleep 0.5 && echo ' ◆ "'"$(echo $arg | tr a-z A-Z)"'" HAS BEEN SUCCESSFULLY REMOVED!';;
-						esac
-					esac
-				else
-					echo " - $arg" >> $AMPATH/.cache/unavailable-args
-				fi
-			}
 
 			if [ $arg == STOP ]; then
 				_remove_check_removals
