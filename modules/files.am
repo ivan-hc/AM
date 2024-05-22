@@ -14,10 +14,12 @@ function _files_header() {
 }
 
 function _files() {
-	rm -f $AMPATH/.cache/files-args*
+	rm -f "$AMPATH"/.cache/files-args*
 	cd $APPSPATH &&
 	INSTALLED_APPS=$(find -name 'remove' -printf "%h\n" 2>/dev/null | du -sh -- * 2> /dev/null | sort -rh | sed 's@.*	@@')
-	_check_version
+	if ! test -f "$AMPATH"/.cache/version-args; then
+		_check_version
+	fi
 	for arg in $INSTALLED_APPS; do
 		 if test -f ./$arg/remove 2>/dev/null; then
 	 		if grep -q "usr/local/lib" ./$arg/remove; then
@@ -26,80 +28,92 @@ function _files() {
 	 		else
 	 			SIZE=$(du -sh -- $arg | cut -f1 -d"	")
 	 		fi
-	 		APPVERSION=$(cat $AMPATH/.cache/version-args | grep -w " ◆ $arg	|" | sed 's:.*|	::')
+	 		APPVERSION=$(cat "$AMPATH"/.cache/version-args | grep -w " ◆ $arg	|" | sed 's:.*|	::')
 			if [ -z "$(strings -d "./$arg/$arg" 2>/dev/null | grep -F 'if you run it with the --appimage-extract option')" ] 2>/dev/null; then
 				string=$(strings -d "./$arg/$arg" 2>/dev/null | head -1 )
 				if grep -q "usr/local/lib" ./$arg/remove; then
-					echo " ◆ $arg	|	$APPVERSION	|	library	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
+					echo " ◆ $arg	|	$APPVERSION	|	library	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> "$AMPATH"/.cache/files-args
 				elif echo "$string" | grep -q "ld-linux"; then
-					echo " ◆ $arg	|	$APPVERSION	|	binary/executable	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
+					echo " ◆ $arg	|	$APPVERSION	|	binary/executable	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> "$AMPATH"/.cache/files-args
 				elif echo "$string" | grep -q "#!"; then
-					echo " ◆ $arg	|	$APPVERSION	|	script	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
+					echo " ◆ $arg	|	$APPVERSION	|	script	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> "$AMPATH"/.cache/files-args
 				elif ! test -f  "./$arg/$arg"; then
 					link_in_path=$(cat "./$arg/remove" | tr " " "\n" | grep 'local/bin' | tail -1)
 					realpath=$(realpath "$link_in_path")
 					realstring=$(strings -d "$realpath" 2>/dev/null | head -1 )
 					if [[ -L "$link_in_path" ]]; then
 						if echo "$realstring" | grep -q "ld-linux"; then
-							echo " ◆ $arg	|	$APPVERSION	|	binary/executable	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
+							echo " ◆ $arg	|	$APPVERSION	|	binary/executable	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> "$AMPATH"/.cache/files-args
 						elif echo "$realstring" | grep -q "#!"; then
-							echo " ◆ $arg	|	$APPVERSION	|	script	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
+							echo " ◆ $arg	|	$APPVERSION	|	script	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> "$AMPATH"/.cache/files-args
 						else
-							echo " ◆ $arg	|	$APPVERSION	|	unknown	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
+							echo " ◆ $arg	|	$APPVERSION	|	unknown	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> "$AMPATH"/.cache/files-args
 						fi
 					elif cat "./$arg/remove" | tail -1 | grep -q 'xtype l -exec rm'; then
-						echo " ◆ $arg	|	$APPVERSION	|	set/tools	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
+						echo " ◆ $arg	|	$APPVERSION	|	set/tools	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> "$AMPATH"/.cache/files-args
 					elif echo "$realstring" | grep -q "#!"; then
 						script2path=$(cat "$link_in_path" | tail -1 | sed 's#$APP#'$arg'#g' | sed 's#exec ##g')
 						realrealstring=$(strings -d "$script2path" 2>/dev/null | head -1 )
 						if echo "$realrealstring" | grep -q "ld-linux"; then
-							echo " ◆ $arg	|	$APPVERSION	|	binary/executable	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
+							echo " ◆ $arg	|	$APPVERSION	|	binary/executable	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> "$AMPATH"/.cache/files-args
 						elif echo "$realrealstring" | grep -q "#!"; then
-							echo " ◆ $arg	|	$APPVERSION	|	script	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
+							echo " ◆ $arg	|	$APPVERSION	|	script	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> "$AMPATH"/.cache/files-args
 						elif [[ $(test -f "$link_in_path") != 0 ]]; then
-							echo " ◆ $arg	|	$APPVERSION	|	launcher	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
+							echo " ◆ $arg	|	$APPVERSION	|	launcher	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> "$AMPATH"/.cache/files-args
 						else
-							echo " ◆ $arg	|	$APPVERSION	|	unknown	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
+							echo " ◆ $arg	|	$APPVERSION	|	unknown	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> "$AMPATH"/.cache/files-args
 						fi
 					else
-						echo " ◆ $arg	|	$APPVERSION	|	other	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
+						echo " ◆ $arg	|	$APPVERSION	|	other	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> "$AMPATH"/.cache/files-args
 					fi
 				else
-					echo " ◆ $arg	|	$APPVERSION	|	other	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
+					echo " ◆ $arg	|	$APPVERSION	|	other	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> "$AMPATH"/.cache/files-args
 				fi
 			else
 				if [ -z "$(strings -d "./$arg/$arg" 2>/dev/null | grep -F 'AppImages require FUSE to run')" ] 2>/dev/null; then
-					echo " ◆ $arg	|	$APPVERSION	|	appimage-type3	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
+					echo " ◆ $arg	|	$APPVERSION	|	appimage-type3	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> "$AMPATH"/.cache/files-args
 				else
-					echo " ◆ $arg	|	$APPVERSION	|	appimage-type2	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> $AMPATH/.cache/files-args
+					echo " ◆ $arg	|	$APPVERSION	|	appimage-type2	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> "$AMPATH"/.cache/files-args
 				fi
 			fi
 		fi
 	done
 }
 
+if test -f "$AMPATH"/.cache/remove-args; then
+	rm -f "$AMPATH"/.cache/files-args*
+	rm -f "$AMPATH"/.cache/remove-args
+fi
 if [ "$2" = "--less" ]; then
 	cd "$APPSPATH" &&
 	find . -type f -name 'remove' 2>/dev/null | sed -r 's|/[^/]+$||' | sort | uniq | wc -l
 	exit 0
 elif [ "$2" = "--byname" ]; then
 	_files_header
-	_files
-	echo "- APPNAME | VERSION | TYPE | SIZE " >> $AMPATH/.cache/files-args-byname
-	echo "- ------- | ------- | ---- | ----" >> $AMPATH/.cache/files-args-byname
-	if test -f $AMPATH/.cache/files-args; then
-		cat $AMPATH/.cache/files-args | sort >> $AMPATH/.cache/files-args-byname
+	echo "- APPNAME | VERSION | TYPE | SIZE " >> "$AMPATH"/.cache/files-args-byname
+	echo "- ------- | ------- | ---- | ----" >> "$AMPATH"/.cache/files-args-byname
+	if test -f "$AMPATH"/.cache/files-args; then
+		rm -f "$AMPATH"/.cache/files-args-byname
+		cat "$AMPATH"/.cache/files-args | sort >> "$AMPATH"/.cache/files-args-byname
+	else
+		_files
+		rm -f "$AMPATH"/.cache/files-args-byname
+		cat "$AMPATH"/.cache/files-args | sort >> "$AMPATH"/.cache/files-args-byname
 	fi
-	cat $AMPATH/.cache/files-args-byname | column -t
+	cat "$AMPATH"/.cache/files-args-byname | column -t
 	echo ""
 else
 	_files_header
-	_files
-	echo "- APPNAME | VERSION | TYPE | SIZE " >> $AMPATH/.cache/files-args-bysize
-	echo "- ------- | ------- | ---- | ----" >> $AMPATH/.cache/files-args-bysize
-	if test -f $AMPATH/.cache/files-args; then
-		cat $AMPATH/.cache/files-args >> $AMPATH/.cache/files-args-bysize
+	echo "- APPNAME | VERSION | TYPE | SIZE " >> "$AMPATH"/.cache/files-args-bysize
+	echo "- ------- | ------- | ---- | ----" >> "$AMPATH"/.cache/files-args-bysize
+	if test -f "$AMPATH"/.cache/files-args; then
+		rm -f "$AMPATH"/.cache/files-args-bysize
+		cat "$AMPATH"/.cache/files-args >> "$AMPATH"/.cache/files-args-bysize
+	else
+		_files
+		rm -f "$AMPATH"/.cache/files-args-bysize
+		cat "$AMPATH"/.cache/files-args >> "$AMPATH"/.cache/files-args-bysize
 	fi
-	cat $AMPATH/.cache/files-args-bysize | column -t
+	cat "$AMPATH"/.cache/files-args-bysize | column -t
 	echo ""
 fi
