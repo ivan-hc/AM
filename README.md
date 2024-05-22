@@ -135,7 +135,7 @@ Option `--launcher` allows you to drag/drop a local AppImage and creates the lau
 https://github.com/ivan-hc/AM/assets/88724353/97c2b88d-f330-490c-970b-0f0bb89040dc
 
 ### How to use "AM" in non-privileged mode, like "AppMan"
-Option `--user` or `appman` allows you to use "AM" as "AppMan", to install apps locally and withour root privileges. In this video I'll install LXtask locally. To use "AM" normally, at system level, use the option `--system` instead:
+Option `--user` or `appman` allows you to use "AM" as "AppMan", to install apps locally and withour root privileges. In this video I'll install LXtask locally. To use "AM" normally again, at system level, exiting from the "AppMan Mode", use the option `--system` instead (always suggested when using "AM" as "AppMan"):
 
 https://github.com/ivan-hc/AM/assets/88724353/65b27cf6-edc5-4a4c-b2f9-42e8623dc76f
 
