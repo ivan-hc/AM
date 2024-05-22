@@ -1,42 +1,38 @@
 #!/usr/bin/env bash
 
-echo "-----------------------------------------------------------------------------"
-echo -e " Checking for changes of the installation scripts in the online database..."
-rm -R -f $AMPATH/.cache/sync-args && echo "" >> $AMPATH/.cache/sync-args
-cd $APPSPATH && find -name 'AM-updater' -printf "%h\n" 2>/dev/null | sort -u | cut -c 3- > $AMPATH/.cache/sync-args
-ARGS=$(cat $AMPATH/.cache/sync-args)
+function _sync_installation_scripts() {
+	echo "-----------------------------------------------------------------------------"
+	echo -e " Checking for changes of the installation scripts in the online database..."
+	rm -R -f "$AMPATH"/.cache/sync-args && echo "" >> "$AMPATH"/.cache/sync-args
+	cd "$APPSPATH" && find -name 'AM-updater' -printf "%h\n" 2>/dev/null | sort -u | cut -c 3- > "$AMPATH"/.cache/sync-args
+	ARGS=$(cat "$AMPATH"/.cache/sync-args)
 
-for arg in $ARGS; do
-
-	function _sync_installation_scripts() {
-		mkdir -p $APPSPATH/$arg/.am-installer
-		if test -f $APPSPATH/$arg/.am-installer/$arg; then
-			CURRENT=$(cat $APPSPATH/$arg/.am-installer/$arg)
-			SOURCE=$(wget -q $APPSDB/$arg -O -)
+	for arg in $ARGS; do
+		mkdir -p "$APPSPATH/$arg/.am-installer"
+		if test -f "$APPSPATH/$arg/.am-installer/$arg"; then
+			CURRENT=$(cat "$APPSPATH"/$arg/.am-installer/$arg)
+			SOURCE=$(wget -q "$APPSDB"/$arg -O -)
 			if [ "$CURRENT" == "$SOURCE" ]; then
 				echo -ne "\r" 2> /dev/null
 			else
 				echo -e " ◆ Changed https://github.com/ivan-hc/AM/blob/main/programs/$arch/$arg"
 			fi
 		else
-			if curl --output /dev/null --silent --head --fail $APPSDB/$arg  1>/dev/null; then
+			if curl --output /dev/null --silent --head --fail "$APPSDB"/$arg  1>/dev/null; then
 				echo -e " ◆ No installation script for $arg, downloading one..."
-				mkdir -p $APPSPATH/$arg/.am-installer
-				wget -q $APPSDB/$arg -O $APPSPATH/$arg/.am-installer/$arg
+				mkdir -p "$APPSPATH/$arg/.am-installer"
+				wget -q "$APPSDB/$arg" -O "$APPSPATH/$arg/.am-installer/$arg"
 			fi
 		fi
-	}
+	done
+}
 
-	_sync_installation_scripts
-
-done
-
-echo "-----------------------------------------------------------------------------"
-echo -e " Check for updates in modules..."
 function _sync_modules() {
+	echo "-----------------------------------------------------------------------------"
+	echo -e " Check for updates in modules..."
 	MODULES=$(curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/ivan-hc/AM/contents/modules?ref="$AMBRANCH" | sed 's/[()",{}]/ /g; s/ /\n/g' | grep -o 'https.*raw.*modules.*am$')
 	for v in $MODULES; do
-		cd $AMPATH/modules || return
+		cd "$AMPATH"/modules || return
 		MODULENAME=$(echo "$v" | sed 's:.*/::')
 		if ! test -f ./$MODULENAME; then
 			echo " ◆ Downloading $MODULENAME (not previously installed)..."
@@ -59,10 +55,6 @@ function _sync_modules() {
 		fi
 	done
 }
-
-if [[ "$AMREPO" = *://* ]]; then
-	_sync_modules
-fi
 
 function _sync_amcli() {
 	echo "-----------------------------------------------------------------------------"
@@ -90,5 +82,7 @@ function _sync_amcli() {
 }
 
 if [[ "$AMREPO" = *://* ]]; then
+	_sync_installation_scripts
+	_sync_modules
 	_sync_amcli
 fi
