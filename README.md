@@ -130,7 +130,7 @@ Option `nolibfuse` "just tries" to convert old Type2 AppImages asking for "libfu
 https://github.com/ivan-hc/AM/assets/88724353/06b8e946-ef02-4678-a5a0-d8c2c24c22f9
 
 ### How to create launchers and shortcuts for my local AppImages
-Option `--launcher` allows you to drag/drop a local AppImage and creates the launcher (like any other classic AppImage manager, but in SHELL, so no daemons or bloated runtimes are required here) in $HOME/.local/share/applications/AppImages, also prompts you the opportunity to rename a symlink in $HOME/.local/bin that you can use from the command line like any other program:
+Option `--launcher` allows you to drag/drop a local AppImage and creates the launcher (like any other classic AppImage manager, but in SHELL, so no daemons or bloated runtimes are required here) in $HOME/.local/share/applications/AppImages, also allows you to rename a symlink in $HOME/.local/bin that you can use from the command line like any other program:
 
 https://github.com/ivan-hc/AM/assets/88724353/97c2b88d-f330-490c-970b-0f0bb89040dc
 
