@@ -3,7 +3,19 @@
 
 ------------------------------------------------------------------------
 [Introducing "AM"](#introducing-am)
+
 - [See it in action](#see-it-in-action)
+  - [How to install applications](#how-to-install-applications)
+  - [How to list installed applications](#how-to-list-installed-applications)
+  - [How to list and query all the applications available on the database](#how-to-list-and-query-all-the-applications-available-on-the-database)
+  - [How to update all installed apps, modules and "AM" itself](#how-to-update-all-installed-apps-modules-and-am-itself)
+  - [How to create a snapshot of an installed application](#how-to-create-a-snapshot-of-an-installed-application)
+  - [How to restore an application using the already created snapshots](#how-to-restore-an-application-using-the-already-created-snapshots)
+  - [How to remove one or more applications](#how-to-remove-one-or-more-applications)
+  - [How to convert Type2 AppImages requiring libfuse2 to Type3 AppImages](#how-to-convert-type2-appimages-requiring-libfuse2-to-type3-appimages)
+  - [How to create launchers and shortcuts for my local AppImages](#how-to-create-launchers-and-shortcuts-for-my-local-appimages)
+  - [How to use "AM" in non-privileged mode, like "AppMan"](#how-to-use-am-in-non-privileged-mode-like-appman)
+
 - [Differences between "AM" and "AppMan"](#differences-between-am-and-appman)
 - [Use AM locally like AppMan does](#use-am-locally-like-appman-does)
 - [What programs can be installed](#what-programs-can-be-installed)
@@ -71,34 +83,60 @@ https://github.com/ivan-hc/AM/releases
 ------------------------------------------------------------------------
 ## See it in action
 
-### How to install applications (option -i)
+### How to install applications
+Option `-i` or `install`, usage:
+```
+am -i $PROGRAM
+```
+in this video I'll install AnyDesk and LXtask:
+
 https://github.com/ivan-hc/AM/assets/88724353/c2e8b654-29d3-4ded-8877-f77ef11d58fc
 
-### How to list installed applications (option -f)
+### How to list installed applications
+Option `-f` or `files`, it shows the installed apps, the version, the size and the type of application:
+
 https://github.com/ivan-hc/AM/assets/88724353/a11ccb22-f2fa-491f-85dd-7f9440776a54
 
-### How to list and query all the applications available on the database (options -l and -q)
+### How to list and query all the applications available on the database
+Options `-l` or `list` shows the whole list of apps available in this repository.
+
+Option `-q` or `query` shows search results from the list above.
+
 https://github.com/ivan-hc/AM/assets/88724353/2ac875df-5210-4d77-91d7-24c45eceaa2b
 
-### How to update all installed apps, modules and "AM" itself (option -u)
+### How to update all installed apps, modules and "AM" itself
+Option `-u` or `update` updates all the installed apps and keeps "AM" in sync with the latest version and all latest bug fixes:
+
 https://github.com/ivan-hc/AM/assets/88724353/f93ca782-2fc6-45a0-a3f2-1fba297a92bf
 
-### How to create a snapshot of an installed application (option -b)
+### How to create a snapshot of an installed application
+Option `-b` or `backup` creates a copy of the installed app into a dedicated directory under $HOME/.am-snapshots:
+
 https://github.com/ivan-hc/AM/assets/88724353/ae581bc0-f1c5-47da-a2c4-3d01c37cc5a4
 
-### How to restore an application using the already created snapshots (option -o)
+### How to restore an application using the already created snapshots
+Option `-o` or `overwrite` lists all the snapshots you have created with the option `-o` (see above), and allows you to overwrite the new one:
+
 https://github.com/ivan-hc/AM/assets/88724353/f9904ad2-42ec-4fce-9b21-b6b0f8a99414
 
-### How to remove one or more applications (option -R)
+### How to remove one or more applications
+Option `-R` removes the selected apps without asking (to have a prompt, use `-r` or `remove`):
+
 https://github.com/ivan-hc/AM/assets/88724353/4d26d2d7-4476-4322-a0ab-a0a1ec14f751
 
-### How can I try to convert my Type2 AppImages (requiring libfuse2) to Type3 AppImages (option nolibfuse)
+### How to convert Type2 AppImages requiring libfuse2 to Type3 AppImages
+Option `nolibfuse` "just tries" to convert old Type2 AppImages asking for "libfuse2" into new Type3 AppImages:
+
 https://github.com/ivan-hc/AM/assets/88724353/06b8e946-ef02-4678-a5a0-d8c2c24c22f9
 
-### How to create launchers and shortcuts for my local AppImages (option --launcher)
+### How to create launchers and shortcuts for my local AppImages
+Option `--launcher` allows you to drag/drop a local AppImage and creates the launcher (like any other classic AppImage manager, but in SHELL, so no daemons or bloated runtimes are required here) in $HOME/.local/share/applications/AppImages, also prompts you the opportunity to rename a symlink in $HOME/.local/bin that you can use from the command line like any other program:
+
 https://github.com/ivan-hc/AM/assets/88724353/97c2b88d-f330-490c-970b-0f0bb89040dc
 
-### How to use "AM" in non-privileged mode, like "AppMan" (option --user)
+### How to use "AM" in non-privileged mode, like "AppMan"
+Option `--user` or `appman` allows you to use "AM" as "AppMan", to install apps locally and withour root privileges. In this video I'll install LXtask locally. To use "AM" normally, at system level, use the option `--system` instead:
+
 https://github.com/ivan-hc/AM/assets/88724353/65b27cf6-edc5-4a4c-b2f9-42e8623dc76f
 
 
