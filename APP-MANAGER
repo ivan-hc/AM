@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="6.8.1"
+AMVERSION="6.8.2-1"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -340,53 +340,123 @@ function _am_databases_check() {
 # CHECK VERSION OF THE INSTALLED APPS
 #####################################
 
+function _check_version_if_any_version_reference_is_somewhere() {
+	APPVERSION=$(grep -i "version=" $APPSPATH/$arg/* 2>/dev/null | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
+}
+
+function _check_version_if_zsync_file_exists() {
+	APPVERSION=$(strings -d ./$arg/*.zsync | grep -i "$(echo $arg | sed 's/-appimage//g')" | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
+}
+
+function _check_version_if_version_file_exists() {
+	APPVERSION=$(cat $APPSPATH/$arg/version | head -1 | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
+	if [ -z "$APPVERSION" ]; then
+		if grep -q -- "-$arch/" ./$arg/version; then
+			ALPHANUMERICTEST=$(cat $APPSPATH/$arg/version | tr '-' '\n' | grep -vi "appimage\|$arg\|$arch" | tail -1)
+			if ! [[ "$ALPHANUMERICTEST" =~ [^a-zA-Z0-9] ]]; then
+				APPVERSION="$ALPHANUMERICTEST"
+			fi
+		elif ! sed "s/$arch//g" $APPSPATH/$arg/version | grep -q "[0-9]"; then
+			if grep -qi "/continuous/" $APPSPATH/$arg/version 2>/dev/null; then
+				APPVERSION="continuous"
+			fi
+		else
+			APPVERSION=$(cat $APPSPATH/$arg/version | sed 's:.*/::' | tr '-' '\n' | tr '_' '\n' | grep -vi "appimage\|$arg\|$arch\|amd64" | grep "[0-9]" | head -1)
+		fi
+	fi
+}
+
+function _check_version_if_an_updater_exists() {
+	APPVERSION=$($APPSPATH/$arg/updater -d $APPSPATH/$arg/$arg 2>/dev/null | grep -i $arg | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
+	if [ -z "$APPVERSION" ]; then
+		_check_version_if_any_version_reference_is_somewhere
+	fi
+}
+
+function _check_version_if_amcli() {
+	APPVERSION="$AMVERSION"
+}
+
+function _check_version_if_firefox_webapp() {
+	APPVERSION="WebApp"
+}
+
+function _check_version_if_library() {
+	APPVERSION=$(strings -d $(cat $APPSPATH/$arg/remove | tr ' ' '\n' | grep "usr/local/lib") | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | tail -1)
+}
+
+function _check_version_if_no_version_found() {
+	APPVERSION="unknown"
+}
+
 function _check_version() {
-	rm -f $AMPATH/.cache/version-args
-	cd $APPSPATH &&
+	rm -f "$AMPATH"/.cache/version-args
+	cd "$APPSPATH" &&
 	INSTALLED_APPS=$(find -name 'remove' -printf "%h\n" 2>/dev/null | du -sh -- * 2> /dev/null | sort -rh | sed 's@.*	@@')
 	for arg in $INSTALLED_APPS; do
 		 if test -f ./$arg/remove 2>/dev/null; then
+
 	 		if test -f ./$arg/*.zsync 2>/dev/null; then
-				APPVERSION=$(strings -d ./$arg/*.zsync | grep -i "$(echo $arg | sed 's/-appimage//g')" | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
+
+	 			_check_version_if_zsync_file_exists
+
 	 		elif test -f ./$arg/version 2>/dev/null; then
-				APPVERSION=$(cat $APPSPATH/$arg/version | head -1 | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
-				if [ -z "$APPVERSION" ]; then
-					if grep -q -- "-$arch/" ./$arg/version; then
-						ALPHANUMERICTEST=$(cat $APPSPATH/$arg/version | tr '-' '\n' | grep -vi "appimage\|$arg\|$arch" | tail -1)
-						if ! [[ "$ALPHANUMERICTEST" =~ [^a-zA-Z0-9] ]]; then
-							APPVERSION="$ALPHANUMERICTEST"
-						fi
-					elif ! sed "s/$arch//g" $APPSPATH/$arg/version | grep -q "[0-9]"; then
-						if grep -qi "/continuous/" $APPSPATH/$arg/version 2>/dev/null; then
-							APPVERSION="continuous"
-						fi
-					else
-						APPVERSION=$(cat $APPSPATH/$arg/version | sed 's:.*/::' | tr '-' '\n' | tr '_' '\n' | grep -vi "appimage\|$arg\|$arch\|amd64" | grep "[0-9]" | head -1)
-					fi
-				fi
+
+	 			_check_version_if_version_file_exists
+
 			elif test -f ./$arg/updater 2>/dev/null; then
-				APPVERSION=$($APPSPATH/$arg/updater -d $APPSPATH/$arg/$arg 2>/dev/null | grep -i $arg | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
-				if [ -z "$APPVERSION" ]; then
-					APPVERSION=$(grep -i "version=" $APPSPATH/$arg/* 2>/dev/null | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
-				fi
+
+				_check_version_if_an_updater_exists
+
 			elif [ "$arg" == "$AMCLI" ]; then
-				APPVERSION="$AMVERSION"
+
+				_check_version_if_amcli
+
 			elif grep -qi "version=" ./$arg/* 2>/dev/null; then
-				APPVERSION=$(grep -i "version=" $APPSPATH/$arg/* 2>/dev/null | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
+
+				_check_version_if_any_version_reference_is_somewhere
+
 			elif echo "$arg" | grep -q "ffwa-"; then
-				APPVERSION="WebApp"
-			elif cat $APPSPATH/$arg/remove 2> /dev/null | grep -q "usr/local/lib"; then
-				APPVERSION=$(strings -d $(cat $APPSPATH/$arg/remove | tr ' ' '\n' | grep "usr/local/lib") | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | tail -1)
+
+				_check_version_if_firefox_webapp
+
+			elif cat "$APPSPATH"/$arg/remove 2> /dev/null | grep -q "usr/local/lib"; then
+
+				_check_version_if_library
+
 			else
-				APPVERSION="unknown"
+
+				_check_version_if_no_version_found
+
 			fi
+
 			if [ -z "$APPVERSION" ]; then
-				APPVERSION="unknown"
+
+				_check_version_if_no_version_found
+
 			fi
-			echo " ◆ $arg	|	$APPVERSION" >> $AMPATH/.cache/version-args
+			echo " ◆ $arg	|	$APPVERSION" >> "$AMPATH"/.cache/version-args
 		fi
 	done
 }
+
+function _check_version_for_auto_updatable_apps() {
+	cd "$APPSPATH" &&
+	INSTALLED_APPS=$(find -name 'remove' -printf "%h\n" 2>/dev/null | du -sh -- * 2> /dev/null | sort -rh | sed 's@.*	@@')
+	for arg in $INSTALLED_APPS; do
+		if test -f ./$arg/updater 2>/dev/null; then
+			if [ -z "$(strings -d "./$arg/$arg" 2>/dev/null | grep -F 'appimage')" ] 2>/dev/null; then
+				_check_version_if_an_updater_exists
+				OLDAPPVERSION=$(cat "$AMPATH"/.cache/version-args | grep " ◆ $arg	|" | tr '|' '\n' | sed 's/	//g' | head -2 | tail -1)
+				sed -i "/ ◆ $arg	|/s#$OLDAPPVERSION#$APPVERSION#" "$AMPATH"/.cache/*
+			fi
+		fi
+	done
+}
+
+if test -f "$AMPATH"/.cache/version-args; then
+	_check_version_for_auto_updatable_apps
+fi
 
 ###################################################################################
 # FUNCTIONS RELATED TO INTERNAL OPTIONS TO ENABLE/DISABLE BASH (AND ZSH) COMPLETION
