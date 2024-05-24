@@ -309,7 +309,6 @@ A warning message will prevent you from using "AM"/"AppMan" if the following pac
 - "`jq`", to handle JSON files (some scripts need to check a download URL from api.github.com);
 - "`sed`", to edit/adapt installed files;
 - "`wget`" to download all programs and update "AM"/AppMan itself;
-- "`xdg-user-dirs`" to download or manage files in well known local folders;
 
 - "`sudo`" (only required by "AM")
 
