@@ -1,67 +1,69 @@
 #!/bin/sh
 
 APP=filezilla
+SITE="https://filezilla-project.org"
 
-# CREATING THE FOLDER
+# CREATE THE FOLDER
 mkdir /opt/$APP
-cd /opt/$APP;
+cd /opt/$APP
 
 # ADD THE REMOVER
 echo '#!/bin/sh' >> /opt/$APP/remove
 echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
 chmod a+x /opt/$APP/remove
 
-mkdir tmp;
-cd tmp;
+# DOWNLOAD THE ARCHIVE
+mkdir tmp
+cd ./tmp
 
-# DOWNLOADING THE PROGRAM
-DLLINK=$(wget -q https://filezilla-project.org/download.php?platform=linux64 -O - | grep https://dl | cut -d '"' -f 4)
-wget -O filezilla-latest.tar.bz2 $DLLINK
-tar fx filezilla-latest.tar.bz2
-cd FileZilla3
+version=$(wget -q https://filezilla-project.org/download.php?platform=linux64 -O - | grep https://dl | cut -d '"' -f 4)
+wget $version
+echo "$version" >> /opt/$APP/version
+tar fx ./*; rm -R -f ./*tar*
+cd ..
+mv --backup=t ./tmp/FileZilla3/* ./
+rm -R -f ./tmp
+
+# LINK
 echo '#!/bin/sh
 HERE="$(dirname "$(readlink -f "${0}")")"
 export PATH="${HERE}"/bin/:"${PATH}"
 export LD_LIBRARY_PATH="${HERE}"/lib/:"${LD_LIBRARY_PATH}"
 export XDG_DATA_DIRS="${HERE}"/usr/share/:"${HERE}"/usr/share/filezilla/:"${XDG_DATA_DIRS}"
-exec "${HERE}"/bin/filezilla' >> filezilla
-chmod a+x filezilla
-cd ..
-cd ..
-mv ./tmp/FileZilla3/* ./
-rm -R -f ./tmp
-echo "latest" ./version
-cp ./share/pixmaps/filezilla.png ./
-
-# LINK
+exec "${HERE}"/bin/filezilla' >> /opt/$APP/$APP
+chmod a+x /opt/$APP/$APP
 ln -s /opt/$APP/$APP /usr/local/bin/$APP
 
 # SCRIPT TO UPDATE THE PROGRAM
-initial=$(echo $APP | head -c 1)
 cat >> /opt/$APP/AM-updater << 'EOF'
-#!/bin/sh
-cd /opt/filezilla
-mkdir tmp
-cd tmp
-DLLINK=$(wget -q https://filezilla-project.org/download.php?platform=linux64 -O - | grep https://dl | cut -d '"' -f 4)
-wget -O filezilla-latest.tar.bz2 $DLLINK
-tar fx filezilla-latest.tar.bz2
-cd FileZilla3
-echo '#!/bin/sh
-HERE="$(dirname "$(readlink -f "${0}")")"
-export PATH="${HERE}"/bin/:"${PATH}"
-export LD_LIBRARY_PATH="${HERE}"/lib/:"${LD_LIBRARY_PATH}"
-export XDG_DATA_DIRS="${HERE}"/usr/share/:"${HERE}"/usr/share/filezilla/:"${XDG_DATA_DIRS}"
-exec "${HERE}"/bin/filezilla' >> filezilla
-chmod a+x filezilla
-cd ..
-cd ..
-mv --backup=t ./tmp/FileZilla3/* ./
-rm -R -f ./tmp ./*~
+#!/usr/bin/env bash
+APP=filezilla
+version0=$(cat /opt/$APP/version)
+version=$(wget -q https://filezilla-project.org/download.php?platform=linux64 -O - | grep https://dl | cut -d '"' -f 4)
+if [ $version = $version0 ]; then
+	echo "Update not needed!"
+else
+	notify-send "A new version of $APP is available, please wait"
+	mkdir /opt/$APP/tmp
+	cd /opt/$APP/tmp
+	wget $version
+	tar fx ./*; rm -R -f ./*tar*
+	cd ..
+	mv --backup=t ./tmp/FileZilla3/* ./
+	rm ./version
+	echo $version >> ./version
+	rm -R -f ./tmp ./*~
+	notify-send "$APP is updated!"
+fi
 EOF
 chmod a+x /opt/$APP/AM-updater
 
+# ICON
+mkdir icons
+wget https://portable-linux-apps.github.io/icons/filezilla.png -O ./icons/$APP 2> /dev/null
+
 # LAUNCHER
+rm -f /usr/share/applications/AM-$APP.desktop
 echo "[Desktop Entry]
 Name=FileZilla
 GenericName=FTP client
@@ -74,9 +76,7 @@ Comment[de]=Dateien über FTP, FTPS und SFTP übertragen
 Comment[fr]=Transférer des fichiers via FTP, FTPS et SFTP
 Exec=filezilla
 Terminal=false
-Icon=/opt/$APP/filezilla.png
+Icon=/opt/$APP/icons/$APP
 Type=Application
 Categories=Network;FileTransfer;
 Version=1.0" >> /usr/share/applications/AM-$APP.desktop
-
-
