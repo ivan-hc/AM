@@ -22,6 +22,16 @@ function _files_sizes() {
 	fi
 }
 
+function _if_script_is_too_big() {
+	APPSIZE=$(du -s -- $APPSPATH/$arg | cut -f1 -d" ")
+	SCRIPTSIZELIMIT="2048"
+	if [[ "$APPSIZE" < "$SCRIPTSIZELIMIT" ]]; then
+		echo " ◆ $arg	|	$APPVERSION	|	binary/executable	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> "$AMPATH"/.cache/files-args
+	else
+		echo " ◆ $arg	|	$APPVERSION	|	script	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> "$AMPATH"/.cache/files-args
+	fi
+}
+
 function _files_type() {
 	APPVERSION=$(cat "$AMPATH"/.cache/version-args | grep -w " ◆ $arg	|" | sed 's:.*|	::')
 	if [ -z "$(strings -d "./$arg/$arg" 2>/dev/null | grep -F 'if you run it with the --appimage-extract option')" ] 2>/dev/null; then
@@ -31,7 +41,7 @@ function _files_type() {
 		elif echo "$string" | grep -q "ld-linux"; then
 			echo " ◆ $arg	|	$APPVERSION	|	binary/executable	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> "$AMPATH"/.cache/files-args
 		elif echo "$string" | grep -q "#!"; then
-			echo " ◆ $arg	|	$APPVERSION	|	script	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> "$AMPATH"/.cache/files-args
+			_if_script_is_too_big
 		elif ! test -f  "./$arg/$arg"; then
 			link_in_path=$(cat "./$arg/remove" | tr " " "\n" | grep 'local/bin' | tail -1)
 			realpath=$(realpath "$link_in_path")
@@ -40,7 +50,7 @@ function _files_type() {
 				if echo "$realstring" | grep -q "ld-linux"; then
 					echo " ◆ $arg	|	$APPVERSION	|	binary/executable	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> "$AMPATH"/.cache/files-args
 				elif echo "$realstring" | grep -q "#!"; then
-					echo " ◆ $arg	|	$APPVERSION	|	script	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> "$AMPATH"/.cache/files-args
+					_if_script_is_too_big
 				else
 					echo " ◆ $arg	|	$APPVERSION	|	unknown	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> "$AMPATH"/.cache/files-args
 				fi
@@ -52,7 +62,7 @@ function _files_type() {
 				if echo "$realrealstring" | grep -q "ld-linux"; then
 					echo " ◆ $arg	|	$APPVERSION	|	binary/executable	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> "$AMPATH"/.cache/files-args
 				elif echo "$realrealstring" | grep -q "#!"; then
-					echo " ◆ $arg	|	$APPVERSION	|	script	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> "$AMPATH"/.cache/files-args
+					_if_script_is_too_big
 				elif [[ $(test -f "$link_in_path") != 0 ]]; then
 					echo " ◆ $arg	|	$APPVERSION	|	launcher	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> "$AMPATH"/.cache/files-args
 				else
@@ -61,6 +71,8 @@ function _files_type() {
 			else
 				echo " ◆ $arg	|	$APPVERSION	|	other	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> "$AMPATH"/.cache/files-args
 			fi
+		elif test -d ./$arg/bin; then
+			echo " ◆ $arg	|	$APPVERSION	|	binary/executable	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> "$AMPATH"/.cache/files-args
 		else
 			echo " ◆ $arg	|	$APPVERSION	|	other	|	$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')" >> "$AMPATH"/.cache/files-args
 		fi
