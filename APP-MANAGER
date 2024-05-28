@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="6.8.3-1"
+AMVERSION="6.8.4"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -346,22 +346,20 @@ function _check_version_if_any_version_reference_is_somewhere() {
 
 function _check_version_if_zsync_file_exists() {
 	APPVERSION=$(strings -d ./$arg/*.zsync | grep -i "$(echo $arg | sed 's/-appimage//g')" | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
+	if [ -z "$APPVERSION" ]; then
+		if grep -q "continuous" ./$arg/version; then
+			APPVERSION="continuous"
+		fi
+	fi
 }
 
 function _check_version_if_version_file_exists() {
-	APPVERSION=$(cat $APPSPATH/$arg/version | head -1 | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
+	APPVERSION=$(cat $APPSPATH/$arg/version | head -1 | sed 's:.*/::' | sed "s/$arch//g" | sed "s/amd64//g" | tr '-' '\n' | tr '_' '\n' | grep -vi "appimage\|$arg\|?\|tar." | grep "[0-9]" | head -1 | sed 's/^v//g')
 	if [ -z "$APPVERSION" ]; then
-		if grep -q -- "-$arch/" ./$arg/version; then
-			ALPHANUMERICTEST=$(cat $APPSPATH/$arg/version | tr '-' '\n' | grep -vi "appimage\|$arg\|$arch" | tail -1)
-			if ! [[ "$ALPHANUMERICTEST" =~ [^a-zA-Z0-9] ]]; then
-				APPVERSION="$ALPHANUMERICTEST"
-			fi
-		elif ! sed "s/$arch//g" $APPSPATH/$arg/version | grep -q "[0-9]"; then
-			if grep -qi "/continuous/" $APPSPATH/$arg/version 2>/dev/null; then
-				APPVERSION="continuous"
-			fi
-		else
-			APPVERSION=$(cat $APPSPATH/$arg/version | sed 's:.*/::' | tr '-' '\n' | tr '_' '\n' | grep -vi "appimage\|$arg\|$arch\|amd64" | grep "[0-9]" | head -1)
+		if grep -q "/v[0-9]*" ./$arg/version; then
+			APPVERSION=$(cat $APPSPATH/$arg/version | tr '/' '\n' | grep "^v[0-9]" | head -1 | sed 's/^v//g')
+		elif grep -q "download$" ./$arg/version; then
+			APPVERSION=$(cat $APPSPATH/$arg/version | tr '/' '\n' | sed "s/$arch//g" | sed "s/amd64//g" | tr '_' '\n' | grep -vi "appimage\|$arg\|?\|tar." | grep "[0-9]" | tail -1 | sed 's/^v//g')
 		fi
 	fi
 }
