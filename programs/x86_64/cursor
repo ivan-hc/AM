@@ -1,110 +1,66 @@
 #!/bin/sh
 
+# AM INSTALL SCRIPT VERSION 3.
+
+set -u
 APP=cursor
-SITE="https://cursor.so"
+SITE="https://repology.org/project/cursor/versions"
 
-# CREATE THE FOLDER
-mkdir /opt/$APP
-cd /opt/$APP
+# CREATE DIRECTORIES AND ADD REMOVER
+[ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
+echo "#!/bin/sh\nset -e\nrm -f /usr/local/bin/$APP\nrm -R -f /opt/$APP" > "/opt/$APP/remove"
+echo "rm -f /usr/share/applications/AM-$APP.desktop" >> "/opt/$APP/remove"
+chmod a+x "/opt/$APP/remove"
 
-# ADD THE REMOVER
-echo '#!/bin/sh' >> /opt/$APP/remove
-echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
-chmod a+x /opt/$APP/remove
+# DOWNLOAD AND PREPARE THE APP
+# $version is also used for updates
 
-# DOWNLOAD THE ARCHIVE
-mkdir tmp
-cd ./tmp
-
-version=$(wget -q https://repology.org/project/cursor/versions -O - | grep "newest version" | head -1 | grep -o -P '(?<=">).*(?=</a)' | sed 's/^.*>//')
-wget https://download.cursor.sh/linux/appImage/x64 -O $APP.AppImage
-echo "$version" >> /opt/$APP/version
+version=$(wget -q "$SITE" -O - | grep "newest version" | head -1 | grep -o -P '(?<=">).*(?=</a)' | sed 's/^.*>//')
+wget https://downloader.cursor.sh/linux/appImage/x64 -O $APP.AppImage || exit 1
+echo "$version" > "/opt/$APP/version"
 cd ..
-mv ./tmp/* ./$APP
-chmod a+x /opt/$APP/$APP
-rmdir ./tmp
+mv --backup=t ./tmp/*mage ./"$APP"
+rm -R -f ./tmp || exit 1
+chmod a+x "/opt/$APP/$APP" || exit 1
 
-# LINK
-ln -s /opt/$APP/$APP /usr/local/bin/$APP
+# LINK TO PATH
+ln -s "/opt/$APP/$APP" "/usr/local/bin/$APP"
 
 # SCRIPT TO UPDATE THE PROGRAM
-cat >> /opt/$APP/AM-updater << 'EOF'
-#!/usr/bin/env bash
+cat >> "/opt/$APP/AM-updater" << 'EOF'
+#!/bin/sh
 APP=cursor
+SITE="https://repology.org/project/cursor/versions"
 version0=$(cat /opt/$APP/version)
-version=$(wget -q https://repology.org/project/cursor/versions -O - | grep "newest version" | head -1 | grep -o -P '(?<=">).*(?=</a)' | sed 's/^.*>//')
-if [ $version = $version0 ]; then
-  echo "Update not needed!"
-else
-  notify-send "A new version of $APP is available, please wait"
-  mkdir /opt/$APP/tmp
-  cd /opt/$APP/tmp
-  wget https://download.cursor.sh/linux/appImage/x64 -O $APP.AppImage
-  cd ..
-  rm ./version
-  echo $version >> ./version
-  mv --backup=t ./tmp/* ./$APP
-  chmod a+x /opt/$APP/$APP
-  rm -R -f ./tmp ./*~
-  notify-send "$APP is updated!"
+version=$(wget -q "$SITE" -O - | grep "newest version" | head -1 | grep -o -P '(?<=">).*(?=</a)' | sed 's/^.*>//')
+[ -n "$version" ] || { echo "Error getting link"; exit 1; }
+if [ "$version" != "$version0" ]; then
+	notify-send "A new version of $APP is available, please wait"
+	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
+	wget https://downloader.cursor.sh/linux/appImage/x64 -O $APP.AppImage || exit 1
+	echo "$version" > "/opt/$APP/version"
+	cd ..
+	mv --backup=t ./tmp/*mage ./"$APP" || exit 1
+	echo "$version" > ./version
+	rm -R -f ./tmp ./*~
+	chmod a+x "/opt/$APP/$APP" || exit 1
+	notify-send "$APP is updated!"
+	exit 0
 fi
+echo "Update not needed!"
 EOF
-chmod a+x /opt/$APP/AM-updater
+chmod a+x "/opt/$APP/AM-updater"
 
 # LAUNCHER & ICON
-app=$(echo $APP | cut -c -3)
-cd /opt/$APP
-./$APP --appimage-extract *.desktop 1>/dev/null
-./$APP --appimage-extract share/applications/*.desktop 1>/dev/null
-./$APP --appimage-extract usr/share/applications/*.desktop 1>/dev/null
-mv squashfs-root/*.desktop ./$APP.desktop
-mv squashfs-root/share/applications/*.desktop ./$APP.desktop
-mv squashfs-root/usr/share/applications/*.desktop ./$APP.desktop
-if [ ! -e ./$APP.desktop ]; then 
-	rm ./$APP.desktop; ./$APP --appimage-extract usr/share/applications/*$app*.desktop 
-	mv squashfs-root/usr/share/applications/*.desktop ./$APP.desktop
+cd "/opt/$APP" || exit 1
+./"$APP" --appimage-extract .DirIcon 1>/dev/null && mv ./squashfs-root/.DirIcon ./DirIcon
+./"$APP" --appimage-extract *.desktop 1>/dev/null && mv ./squashfs-root/*.desktop ./"$APP".desktop
+./"$APP" --appimage-extract share/applications/*.desktop 1>/dev/null && mv ./squashfs-root/share/applications/*.desktop ./"$APP".desktop
+./"$APP" --appimage-extract usr/share/applications/*.desktop 1>/dev/null && mv ./squashfs-root/usr/share/applications/*.desktop ./"$APP".desktop
+if [ -L ./DirIcon ]; then
+	LINKPATH=$(readlink ./DirIcon)
+	./"$APP" --appimage-extract "$LINKPATH" && mv ./squashfs-root/"$LINKPATH" ./DirIcon
 fi
-if [ ! -e ./$APP.desktop ]; then 
-	rm ./$APP.desktop; ./$APP --appimage-extract share/applications/*$app*.desktop 1>/dev/null
-	mv squashfs-root/share/applications/*.desktop ./$APP.desktop
-fi
-CHANGEEXEC=$(cat ./$APP.desktop | grep Exec= | tr ' ' '\n' | tr '=' '\n' | tr '/' '\n' | grep $app | head -1)
-sed -i "s#$CHANGEEXEC#$APP#g" ./$APP.desktop
-sed -i "s#AppRun#$APP#g" ./$APP.desktop
-sed -i "s#Exec=/bin/#Exec=#g" ./$APP.desktop
-sed -i "s#Exec=/usr/bin/#Exec=#g" ./$APP.desktop
-CHANGEICON=$(cat ./$APP.desktop | grep Icon= | head -1)
-sed -i "s#$CHANGEICON#Icon=/opt/$APP/icons/$APP#g" ./$APP.desktop
-
-mkdir icons
-./$APP --appimage-extract *.png 2>&1 | grep -v "squashfs-root"; mv ./squashfs-root/*$app* ./icons/$APP 2>/dev/null
-./$APP --appimage-extract *.svg 2>&1 | grep -v "squashfs-root"; mv ./squashfs-root/*$app* ./icons/$APP 2>/dev/null
-./$APP --appimage-extract share/icons/*/*/* 1>/dev/null
-./$APP --appimage-extract usr/share/icons/*/*/* 1>/dev/null
-./$APP --appimage-extract share/icons/*/*/*/* 1>/dev/null
-./$APP --appimage-extract usr/share/icons/*/*/*/* 1>/dev/null
-mv ./squashfs-root/share/icons/hicolor/22x22/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/share/icons/hicolor/24x24/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/share/icons/hicolor/32x32/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/share/icons/hicolor/48x48/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/share/icons/hicolor/64x64/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/share/icons/hicolor/128x128/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/share/icons/hicolor/256x256/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/share/icons/hicolor/512x512/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/share/icons/hicolor/scalable/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/usr/share/icons/hicolor/22x22/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/usr/share/icons/hicolor/24x24/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/usr/share/icons/hicolor/32x32/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/usr/share/icons/hicolor/48x48/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/usr/share/icons/hicolor/64x64/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/usr/share/icons/hicolor/128x128/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/usr/share/icons/hicolor/256x256/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/usr/share/icons/hicolor/512x512/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/usr/share/icons/hicolor/scalable/apps/*$app* ./icons/$APP 2>/dev/null
-
-rm -R -f /opt/$APP/squashfs-root
-mv ./$APP.desktop /usr/share/applications/AM-$APP.desktop
-
-
-
-
+sed -i "s#Exec=[^ ]*#Exec=$APP#g; s#Icon=.*#Icon=/opt/$APP/icons/$APP#g" ./"$APP".desktop
+mv ./"$APP".desktop /usr/share/applications/AM-"$APP".desktop && mv ./DirIcon ./icons/"$APP" 2>/dev/null
+rm -R -f ./squashfs-root
