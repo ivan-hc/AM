@@ -3,111 +3,69 @@
 APP=lmstudio
 SITE="https://lmstudio.ai"
 
-# CREATE THE FOLDER
-mkdir /opt/$APP
-cd /opt/$APP
+# CREATE DIRECTORIES
+if [ -z "$APP" ]; then exit 1; fi
+mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
 
 # ADD THE REMOVER
-echo '#!/bin/sh' >> /opt/$APP/remove
-echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
-chmod a+x /opt/$APP/remove
+echo "#!/bin/sh
+rm -f /usr/share/applications/AM-$APP.desktop /usr/local/bin/$APP
+rm -R -f /opt/$APP" > "/opt/$APP/remove"
+chmod a+x "/opt/$APP/remove"
 
-# DOWNLOAD THE ARCHIVE
-mkdir tmp
-cd ./tmp
+# DOWNLOAD AND PREPARE THE APP
+# $version is also used for updates
 
-version=$(mkdir -p "$HOME"/.cache && cd "$HOME"/.cache && wget -rq https://lmstudio.ai 2>&1 && cat ./lmstudio.ai/static/js/main*.js | tr '"' '\n' | grep -i appimage && rm -Rf "$HOME"/.cache/lmstudio.ai)
-wget $version
+version=$(wget -q https://raw.githubusercontent.com/lmstudio-ai/lms/main/src/subcommands/version.ts -O - | grep "return" | head -1 | cut -d '"' -f 2)
+wget https://releases.lmstudio.ai/linux/"$version"/beta/LM_Studio-"$version".AppImage
 echo "$version" >> /opt/$APP/version
+# Use tar fx ./*tar* for example in this line in case a compressed file is downloaded.
 cd ..
-mv ./tmp/*mage ./$APP
-chmod a+x /opt/$APP/$APP
-rmdir ./tmp
+mv ./tmp/*mage ./"$APP"
+chmod a+x "/opt/$APP/$APP"
+rm -R -f ./tmp
 
 # LINK
-ln -s /opt/$APP/$APP /usr/local/bin/$APP
+ln -s "/opt/$APP/$APP" "/usr/local/bin/$APP"
 
 # SCRIPT TO UPDATE THE PROGRAM
-cat >> /opt/$APP/AM-updater << 'EOF'
-#!/usr/bin/env bash
+cat >> "/opt/$APP/AM-updater" << 'EOF'
+#!/bin/sh
 APP=lmstudio
-version0=$(cat /opt/$APP/version)
-version=$(mkdir -p "$HOME"/.cache && cd "$HOME"/.cache && wget -rq https://lmstudio.ai 2>&1 && cat ./lmstudio.ai/static/js/main*.js | tr '"' '\n' | grep -i appimage && rm -Rf "$HOME"/.cache/lmstudio.ai)
-if [ $version = $version0 ]; then
-  echo "Update not needed!"
+SITE="https://lmstudio.ai"
+if [ -z "$APP" ]; then exit 1; fi
+version0=$(cat "/opt/$APP/version")
+version=$(wget -q https://raw.githubusercontent.com/lmstudio-ai/lms/main/src/subcommands/version.ts -O - | grep "return" | head -1 | cut -d '"' -f 2)
+if [ "$version" = "$version0" ]; then
+	echo "Update not needed!" && exit 0
 else
-  notify-send "A new version of $APP is available, please wait"
-  mkdir /opt/$APP/tmp
-  cd /opt/$APP/tmp
-  wget $version
-  if ls . | grep mage; then
-	cd ..
-  	if test -f ./tmp/*mage; then rm ./version
-  	fi
-  	echo $version >> ./version
-  	mv --backup=t ./tmp/*mage ./$APP
-  	chmod a+x /opt/$APP/$APP
-  	rm -R -f ./tmp ./*~
-  fi
-  notify-send "$APP is updated!"
+	notify-send "A new version of $APP is available, please wait"
+	mkdir "/opt/$APP/tmp"
+	cd "/opt/$APP/tmp" || exit 1
+	wget https://releases.lmstudio.ai/linux/"$version"/beta/LM_Studio-"$version".AppImage
+	if ls . | grep mage; then
+		cd ..
+  		if ! test -f ./tmp/*mage; then exit 1; fi
+  		echo "$version" > ./version
+  		mv --backup=t ./tmp/* ./"$APP"
+  		chmod a+x "/opt/$APP/$APP"
+  		rm -R -f ./tmp ./*~
+	fi
+	notify-send "$APP is updated!"
 fi
 EOF
-chmod a+x /opt/$APP/AM-updater
+chmod a+x "/opt/$APP/AM-updater"
 
 # LAUNCHER & ICON
-app=$(echo $APP | cut -c -3)
-cd /opt/$APP
-./$APP --appimage-extract *.desktop 1>/dev/null
-./$APP --appimage-extract share/applications/*.desktop 1>/dev/null
-./$APP --appimage-extract usr/share/applications/*.desktop 1>/dev/null
-mv squashfs-root/*.desktop ./$APP.desktop
-mv squashfs-root/share/applications/*.desktop ./$APP.desktop
-mv squashfs-root/usr/share/applications/*.desktop ./$APP.desktop
-if [ ! -e ./$APP.desktop ]; then 
-	rm ./$APP.desktop; ./$APP --appimage-extract usr/share/applications/*$app*.desktop 
-	mv squashfs-root/usr/share/applications/*.desktop ./$APP.desktop
+cd "/opt/$APP" || exit 1
+./"$APP" --appimage-extract .DirIcon 1>/dev/null && mv ./squashfs-root/.DirIcon ./DirIcon
+./"$APP" --appimage-extract *.desktop 1>/dev/null && mv ./squashfs-root/*.desktop ./"$APP".desktop
+./"$APP" --appimage-extract share/applications/*.desktop 1>/dev/null && mv ./squashfs-root/share/applications/*.desktop ./"$APP".desktop
+./"$APP" --appimage-extract usr/share/applications/*.desktop 1>/dev/null && mv ./squashfs-root/usr/share/applications/*.desktop ./"$APP".desktop
+if [ -L ./DirIcon ]; then
+	LINKPATH=$(readlink ./DirIcon)
+	./"$APP" --appimage-extract "$LINKPATH" && mv ./squashfs-root/"$LINKPATH" ./DirIcon
 fi
-if [ ! -e ./$APP.desktop ]; then 
-	rm ./$APP.desktop; ./$APP --appimage-extract share/applications/*$app*.desktop 1>/dev/null
-	mv squashfs-root/share/applications/*.desktop ./$APP.desktop
-fi
-CHANGEEXEC=$(cat ./$APP.desktop | grep Exec= | tr ' ' '\n' | tr '=' '\n' | tr '/' '\n' | grep $app | head -1)
-sed -i "s#$CHANGEEXEC#$APP#g" ./$APP.desktop
-sed -i "s#AppRun#$APP#g" ./$APP.desktop
-sed -i "s#Exec=/bin/#Exec=#g" ./$APP.desktop
-sed -i "s#Exec=/usr/bin/#Exec=#g" ./$APP.desktop
-CHANGEICON=$(cat ./$APP.desktop | grep Icon= | head -1)
-sed -i "s#$CHANGEICON#Icon=/opt/$APP/icons/$APP#g" ./$APP.desktop
-
-mkdir icons
-./$APP --appimage-extract *.png 2>&1 | grep -v "squashfs-root"; mv ./squashfs-root/*$app* ./icons/$APP 2>/dev/null
-./$APP --appimage-extract *.svg 2>&1 | grep -v "squashfs-root"; mv ./squashfs-root/*$app* ./icons/$APP 2>/dev/null
-./$APP --appimage-extract share/icons/*/*/* 1>/dev/null
-./$APP --appimage-extract usr/share/icons/*/*/* 1>/dev/null
-./$APP --appimage-extract share/icons/*/*/*/* 1>/dev/null
-./$APP --appimage-extract usr/share/icons/*/*/*/* 1>/dev/null
-mv ./squashfs-root/share/icons/hicolor/22x22/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/share/icons/hicolor/24x24/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/share/icons/hicolor/32x32/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/share/icons/hicolor/48x48/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/share/icons/hicolor/64x64/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/share/icons/hicolor/128x128/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/share/icons/hicolor/256x256/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/share/icons/hicolor/512x512/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/share/icons/hicolor/scalable/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/usr/share/icons/hicolor/22x22/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/usr/share/icons/hicolor/24x24/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/usr/share/icons/hicolor/32x32/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/usr/share/icons/hicolor/48x48/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/usr/share/icons/hicolor/64x64/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/usr/share/icons/hicolor/128x128/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/usr/share/icons/hicolor/256x256/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/usr/share/icons/hicolor/512x512/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/usr/share/icons/hicolor/scalable/apps/*$app* ./icons/$APP 2>/dev/null
-
-rm -R -f /opt/$APP/squashfs-root
-mv ./$APP.desktop /usr/share/applications/AM-$APP.desktop
-
-
-
-
+sed -i "s#Exec=[^ ]*#Exec=$APP#g; s#Icon=.*#Icon=/opt/$APP/icons/$APP#g" ./"$APP".desktop
+mv ./"$APP".desktop /usr/share/applications/AM-"$APP".desktop && mv ./DirIcon ./icons/"$APP" 2>/dev/null
+rm -R -f ./squashfs-root
