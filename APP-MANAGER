@@ -871,7 +871,10 @@ function _use_update() {
 		*) 
 			if test -f "$APPSPATH"/$2/AM-updater; then
 				start=$(date +%s); "$APPSPATH"/$2/AM-updater > /dev/null 2>&1 | echo -ne " UPDATING $(echo $2 | tr a-z A-Z)\r"; end=$(date +%s)
-				echo -e " ◆ $(echo $2 | tr a-z A-Z) is updated, $(($end-$start)) seconds elapsed!" && break
+				echo -e " ◆ $(echo $2 | tr a-z A-Z) is updated, $(($end-$start)) seconds elapsed!"
+				rm -R -f "$AMPATH"/.cache/*
+				_list_updatable_apps
+				break
 			else
 				echo ' "'"$(echo "$AMCLI" | tr a-z A-Z)"'" CANNOT MANAGE UPDATES FOR "'"$(echo $2 | tr a-z A-Z)"'"'
 				UPDATERS=$(cd "$APPSPATH"/$2 2>/dev/null && find . -name "*update*" -print 2>/dev/null)
@@ -930,13 +933,20 @@ case "$1" in
 		echo -e "\n USAGE: '$AMCLI [option]'\n        '$AMCLI [option] [argument]'\n\n Run the '$AMCLI -h' command to find out more\n"
 		;;
 	# OPTIONS BASED ON EXTERNAL MODULES
-	'-a'|'about'|'-l'|'list'|'-q'|'query')
+	'-a'|'about'|\
+	'-l'|'list'|\
+	'-q'|'query')
 		MODULE="database.am"
 		_if_appman_mode_enabled
 		_use_module "$@"
 		;;
-	'-b'|'backup'|'-o'|'overwrite'|'lock'|'unlock')
-		MODULE="no-updates.am"
+	'-b'|'backup'|\
+	'-o'|'overwrite'|\
+	'-R'|'-r'|'remove'|\
+	'--rollback'|\
+	'lock'|'unlock'|\
+	'nolibfuse')
+		MODULE="management.am"
 		_use_module "$@"
 		;;
 	'-d'|'download')
@@ -967,10 +977,6 @@ case "$1" in
 		_portable_dependences_setup
 		_use_module "$@"
 		;;
-	'-R'|'-r'|'remove')
-		MODULE="remove.am"
-		_use_module "$@"
-		;;
 	'-t'|'template')
 		MODULE="template.am"
 		_online_check
@@ -980,18 +986,8 @@ case "$1" in
 		MODULE="launcher.am"
 		_use_module "$@"
 		;;
-	'--rollback')
-		MODULE="rollback.am"
-		_online_check
-		_use_module "$@"
-		;;
 	'neodb'|'apikey'|'newrepo')
 		MODULE="devtools.am"
-		_online_check
-		_use_module "$@"
-		;;
-	'nolibfuse')
-		MODULE="nolibfuse.am"
 		_online_check
 		_use_module "$@"
 		;;
