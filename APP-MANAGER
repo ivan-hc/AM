@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="6.8.4"
+AMVERSION="6.9"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -564,9 +564,9 @@ function _completion_lists() {
 	cat "$AMPATH"/options >> "$AMPATH"/list
 }
 
-#############################################
-# OTHER FUNCTIONS RELATED TO INTERNAL OPTIONS
-#############################################
+#####################################################################
+# FUNCTIONS RELATED TO INTERNAL OPTIONS TO MADE "AM" WORK AS "APPMAN"
+#####################################################################
 
 # Function for the option "appman" or "--user" that helps "AM" function like "AppMan"
 function _appman_mode_enabled_message() {
@@ -629,6 +629,287 @@ if [ "$AMCLI" == am ] 2>/dev/null; then
 	fi
 fi
 
+##############################################################
+# FUNCTIONS RELATED TO INTERNAL OPTION TO CLEAN UNNEEDED FILES
+##############################################################
+
+function _clean_launchers() {
+	for var in "$DATADIR"/applications/AppImages/*.desktop; do
+		APPIMAGENAME=$(grep "Exec=" 0<"$var" 2>/dev/null | head -1 | cut -c 6- | sed 's/\s.*$//')
+		MOUNTPOINTS=$(echo "$APPIMAGENAME" | cut -d'/' -f1-4)
+		if ! test -f "$APPIMAGENAME" 2> /dev/null; then
+			if ! test -d "$(echo "$MOUNTPOINTS")" 2> /dev/null; then
+				if echo "$MOUNTPOINTS" | grep -q "/media/"; then
+					echo -e "\n 💀ERROR: cannot remove $(basename "$var")\n   related AppImage is located in an unmounted path of /media\n"
+				elif echo "$MOUNTPOINTS" | grep -q "/mnt/"; then
+					echo -e "\n 💀ERROR: cannot remove $(basename "$var")\n   related AppImage is located in an unmounted path of /mnt\n"
+				fi
+			else
+				rm -f "$var"
+				rm -f "$HOME"/.local/bin/"$(basename -- "$(echo "$APPIMAGENAME" | tr A-Z a-z)")"*
+				cd "$HOME"/.local/bin && find . -xtype l -delete
+			fi
+		fi
+	done
+}
+
+function _clean_old_modules() {
+	if [ $AMCLI == am ] 2>/dev/null; then
+		MODULES=$(cat /opt/am/APP-MANAGER | grep -Eo '\S*.am\S*' | sed 's@.*/@@' | grep -v ";" | grep ".am" | uniq | sort)
+	else
+		MODULES=$(cat "$AMCLIPATH" | grep -Eo '\S*.am\S*' | sed 's@.*/@@' | grep -v ";" | grep ".am" | uniq | sort)
+	fi
+	for m in "$APPSPATH"/"$AMCLI"/modules/*; do
+		if [[ "${MODULES}" != *"$(basename -- "$m")"* ]];then
+			rm -f "$m"
+		fi
+	done
+}
+
+function _use_clean() {
+	echo -e "\n Cleaning of temporary files and folders in progress...\n" && sleep 0.1 &&
+	for i in {1000..0000}; do 
+		echo -ne " $i\r" && sleep 0.0001
+	done
+	rm -R -f "$AMPATH"/.cache/* && echo " ◆ Cleaning up the content of $AMPATH/.cache"
+	rm -R -f "$APPSPATH"/*/tmp && echo ' ◆ Removed all '"$APPSPATH"'/*/tmp directories'
+	if test -f "$DATADIR"/applications/AppImages/*.desktop 2> /dev/null; then
+		_clean_launchers && echo ' ◆ Removed orphaned launchers produced with the "--launcher" option'
+	fi
+	_clean_old_modules && echo ' ◆ Removed obsolete modules'
+	echo -e "\n DONE!\n"
+}
+
+#########################################################################################
+# FUNCTIONS RELATED TO INTERNAL OPTIONS TO UPDATE "AM"/"APPMAN", THE APPS AND THE MODULES
+#########################################################################################
+
+# Function to update GitHub API key in AM-updater files
+function _update_github_api() {
+	local ghapikey_file="$AMPATH/ghapikey.txt"
+	if [[ -f "$ghapikey_file" ]]; then
+		ghapikey=$(<"$ghapikey_file")
+		local updater_files=("$APPSPATH"/*/AM-updater) # Assuming AM-updater is one level deeper
+		for f in "${updater_files[@]}"; do
+		if [[ -f "$f" ]] && grep -q "https://api.github.com" "$f"; then
+			# Check if the file already contains a valid API key
+			if ! grep -qE "(gh[ps]_[a-zA-Z0-9]{36}|github_pat_[a-zA-Z0-9]{22}_[a-zA-Z0-9]{59})" "$f"; then
+				# Insert HeaderAuthWithGITPAT before the GitHub API URL
+				sed -i "s#https://api.github.com#$HeaderAuthWithGITPAT https://api.github.com#g" "$f"
+			else
+				# Replace existing API key with the one from ghapikey.txt
+				sed -i "s#\(gh[ps]_[a-zA-Z0-9]\{36\}\|github_pat_[a-zA-Z0-9]\{22\}_[a-zA-Z0-9]\{59\}\)#$ghapikey#g" "$f"
+			fi
+		fi
+		done
+    	fi
+}
+
+function _list_updatable_apps() {
+	_check_version
+	cd "$APPSPATH" && find -name 'AM-updater' -printf " %h\n" 2>/dev/null | sort -u | xargs -n 1 basename 2>/dev/null > "$AMPATH"/.cache/updatable-args
+	ARGS=$(cat "$AMPATH"/.cache/updatable-args)
+	for arg in $ARGS; do
+		app_version=$(cat "$AMPATH/.cache/version-args" | grep -w " ◆ $arg	|" | sed 's:.*|	::')
+		echo " ◆ $arg $app_version" >> $AMPATH/.cache/updatable-args-list
+	done
+}
+
+function _sync_installation_scripts() {
+	echo "-----------------------------------------------------------------------------"
+	echo -e " Checking for changes of the installation scripts in the online database..."
+	rm -R -f "$AMPATH"/.cache/sync-args && echo "" >> "$AMPATH"/.cache/sync-args
+	cd "$APPSPATH" && find -name 'AM-updater' -printf "%h\n" 2>/dev/null | sort -u | cut -c 3- > "$AMPATH"/.cache/sync-args
+	ARGS=$(cat "$AMPATH"/.cache/sync-args)
+	for arg in $ARGS; do
+		mkdir -p "$APPSPATH/$arg/.am-installer"
+		if test -f "$APPSPATH/$arg/.am-installer/$arg"; then
+			CURRENT=$(cat "$APPSPATH"/$arg/.am-installer/$arg)
+			SOURCE=$(wget -q "$APPSDB"/$arg -O -)
+			if [ "$CURRENT" == "$SOURCE" ]; then
+				echo -ne "\r" 2> /dev/null
+			else
+				echo -e " ◆ Changed https://github.com/ivan-hc/AM/blob/main/programs/$arch/$arg"
+			fi
+		else
+			if curl --output /dev/null --silent --head --fail "$APPSDB"/$arg  1>/dev/null; then
+				echo -e " ◆ No installation script for $arg, downloading one..."
+				mkdir -p "$APPSPATH/$arg/.am-installer"
+				wget -q "$APPSDB/$arg" -O "$APPSPATH/$arg/.am-installer/$arg"
+			fi
+		fi
+	done
+}
+
+function _sync_modules() {
+	echo "-----------------------------------------------------------------------------"
+	echo -e " Check for updates in modules..."
+	MODULES=$(curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/ivan-hc/AM/contents/modules?ref="$AMBRANCH" | sed 's/[()",{}]/ /g; s/ /\n/g' | grep -o 'https.*raw.*modules.*am$' | grep -v "sync\|update")
+	for v in $MODULES; do
+		cd "$AMPATH"/modules || return
+		MODULENAME=$(echo "$v" | sed 's:.*/::')
+		if ! test -f ./"$MODULENAME"; then
+			echo " ◆ Downloading $MODULENAME (not previously installed)..."
+			wget -q "$v"
+			chmod a+x ./"$MODULENAME"
+		fi
+		CURRENT=$(cat ./"$MODULENAME")
+		SOURCE=$(wget -q "$v" -O -)
+		if [ "$CURRENT" == "$SOURCE" ]; then
+			echo -ne "\r" 2> /dev/null
+		else
+			echo " ◆ Updating $MODULENAME..."
+			mkdir tmp
+			cd tmp || return
+			wget -q "$v"
+			cd ..
+			mv tmp/*.am ./
+			chmod a+x ./*.am
+			rmdir tmp
+		fi
+	done
+	_clean_old_modules
+}
+
+function _sync_amcli() {
+	echo "-----------------------------------------------------------------------------"
+	_completion_lists
+	rm -f /opt/am/appman
+	if [ "$AMCLIPATH" == /opt/am/appman ] 2>/dev/null; then
+		AMCLIPATH="/opt/am/APP-MANAGER"
+		CURRENT_AM_VERSION=$("$AMCLIPATH" -v)
+	else
+		CURRENT_AM_VERSION=$("$AMCLIPATH" -v)
+	fi
+	echo -ne '\n ◆ SYNCHRONIZING "'"$(echo "$AMCLI" | tr a-z A-Z)"'" VERSION '"$CURRENT_AM_VERSION"'...\r'; sleep 1
+	rm -R -f "$AMPATH"/.cache/* 1>/dev/null; cd "$AMPATH"/.cache || return
+	if [ "$AMCLI" == am ] 2>/dev/null; then
+		wget -q "$AMREPO"/APP-MANAGER && chmod a+x ./APP-MANAGER && chmod 777 ./APP-MANAGER
+		cd ..
+		echo y | mv "$AMPATH"/.cache/APP-MANAGER /opt/am/APP-MANAGER
+	else
+		wget -q "$AMREPO"/APP-MANAGER -O appman && chmod a+x ./"$AMCLI"
+		cd ..
+		echo y | mv "$AMPATH"/.cache/"$AMCLI" "$AMCLIPATH"
+	fi
+	if [ ! "$CURRENT_AM_VERSION" == "$("$AMCLIPATH" -v)" ] ; then
+		echo -ne ' A new release of "'"$(echo "$AMCLI" | tr a-z A-Z)"'" is available, please wait...\r'
+		echo -e ' ◆ "'"$(echo "$AMCLI" | tr a-z A-Z)"'" IS NOW UPDATED TO THE BRAND NEW '"$("$AMCLIPATH" -v)"' VERSION!           \n\n  Replacement of version '"$CURRENT_AM_VERSION"' currently in use, COMPLETED!'
+		echo -e "\n See https://github.com/ivan-hc/AM/commits/main\n"
+	else
+		echo -e ' ◆ "'"$(echo "$AMCLI" | tr a-z A-Z)"'" IS ALREADY UPDATED, CURRENT VERSION '"$CURRENT_AM_VERSION"''
+		echo -e "\n See https://github.com/ivan-hc/AM/commits/$AMBRANCH\n"
+	fi
+}
+
+function _use_sync() {
+	if [[ "$AMREPO" = *://* ]]; then
+		_sync_installation_scripts
+		_sync_modules
+		_sync_amcli
+	fi
+}
+
+function _use_update() {
+	_update_github_api
+	while [ -n "$1" ]; do
+		case $2 in
+		''|'--apps') 
+			rm -R -f "$AMPATH"/.cache/*
+			_list_updatable_apps
+			echo '-----------------------------------------------------------------------------'
+			echo -e ' "'"$(echo "$AMCLI" | tr a-z A-Z)"'" CAN MANAGE UPDATES FOR THE FOLLOWING PROGRAMS:\n'
+			if test -f "$AMPATH/.cache/updatable-args-list"; then
+				cat "$AMPATH/.cache/updatable-args-list"
+			else
+				echo " None"
+			fi
+			echo -e '\n All self-updatable programs are excluded'; sleep 0.1
+			echo '-----------------------------------------------------------------------------'
+			echo ' >> START OF ALL PROCESSES <<'
+			echo '-----------------------------------------------------------------------------'
+
+			for f in "$APPSPATH"/*/; do 
+				cd $f 2>/dev/null && 
+				if test -f ./AM-updater; then
+					APPNAME=$(echo "$(printf '%s\n' "${PWD##*/}")")
+					start=$(date +%s) && sh -x ./AM-updater > /dev/null 2>&1 | echo -ne ' Updating "'"$APPNAME"'"...\r' && end=$(date +%s) &&
+					echo -e " ◆ $(echo "$APPNAME" | tr a-z A-Z) is updated, $(($end-$start)) seconds elapsed!" &
+				else
+					echo ""  > /dev/null 2>&1
+				fi
+			done
+			wait
+
+			echo '-----------------------------------------------------------------------------'
+
+			if test -f "$AMPATH"/.cache/updatable-args-list; then
+				mv "$AMPATH"/.cache/updatable-args-list "$AMPATH"/.cache/updatable-args-list-old
+				_list_updatable_apps
+				OLDVER="$AMPATH/.cache/updatable-args-list-old"
+				NEWVER="$AMPATH/.cache/updatable-args-list"
+				if cmp --silent -- "$NEWVER" "$OLDVER"; then
+					echo ' Nothing to do here!'
+				else
+					echo -e " The following apps have been updated:\n"
+					diff --new-line-format="" --unchanged-line-format="" "$NEWVER" "$OLDVER"
+					echo ""
+				fi
+			else
+				echo ' No apps to update here!'
+			fi
+			rm -R -f $APPSPATH/*/tmp
+			if [ -z "$2" ]; then
+				echo "-----------------------------------------------------------------------------"
+				_use_sync
+			fi
+			echo '-----------------------------------------------------------------------------'
+			echo ' >> END OF ALL PROCESSES << '
+			echo '-----------------------------------------------------------------------------'
+			sleep 0.2
+			exit;;
+		*) 
+			if test -f "$APPSPATH"/$2/AM-updater; then
+				start=$(date +%s); "$APPSPATH"/$2/AM-updater > /dev/null 2>&1 | echo -ne " UPDATING $(echo $2 | tr a-z A-Z)\r"; end=$(date +%s)
+				echo -e " ◆ $(echo $2 | tr a-z A-Z) is updated, $(($end-$start)) seconds elapsed!"
+				rm -R -f "$AMPATH"/.cache/*
+				_list_updatable_apps
+				break
+			else
+				echo ' "'"$(echo "$AMCLI" | tr a-z A-Z)"'" CANNOT MANAGE UPDATES FOR "'"$(echo $2 | tr a-z A-Z)"'"'
+				UPDATERS=$(cd "$APPSPATH"/$2 2>/dev/null && find . -name "*update*" -print 2>/dev/null)
+				if [ -n "$UPDATERS" ]; then
+					echo ' This program probably includes its own update system!'
+				fi
+				exit
+			fi
+		esac
+	done
+	shift
+}
+
+function _use_force_latest() {
+  	case $2 in
+	'') 
+		echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit
+		;;
+	*)
+		if ! test -d "$APPSPATH"/$2; then
+			echo ' ERROR: "'$2'" is not installed, see "-f"'
+		elif ! test -f "$APPSPATH"/$2/AM-updater; then
+			echo ' ERROR: "'$AMCLI'" cannot manage updates for "'$2'"'
+		elif ! grep -q "api.github.com" "$APPSPATH"/$2/AM-updater; then
+			echo ' ERROR: "'$2'" source is not on Github'
+		elif ! grep -q "/releases | jq " "$APPSPATH"/$2/AM-updater; then
+			echo ' ERROR: "'$2'" does not redirect to a generic "releases"'
+		else
+			sed -i 's#/releases | jq #/releases/latest | jq #g' "$APPSPATH"/$2/AM-updater
+			$AMCLIPATH -u $2
+		fi
+		;;
+	esac
+}
+
 #############################################
 # FUNCTION TO HANDLE ALL THE EXTERNAL MODULES
 #############################################
@@ -652,18 +933,21 @@ case "$1" in
 		echo -e "\n USAGE: '$AMCLI [option]'\n        '$AMCLI [option] [argument]'\n\n Run the '$AMCLI -h' command to find out more\n"
 		;;
 	# OPTIONS BASED ON EXTERNAL MODULES
-	'-a'|'about'|'-l'|'list'|'-q'|'query')
+	'-a'|'about'|\
+	'-l'|'list'|\
+	'-q'|'query')
 		MODULE="database.am"
 		_if_appman_mode_enabled
 		_use_module "$@"
 		;;
-	'-b'|'backup'|'-o'|'overwrite'|'lock'|'unlock')
-		MODULE="no-updates.am"
+	'-b'|'backup'|\
+	'-o'|'overwrite'|\
+	'-R'|'-r'|'remove'|\
+	'--rollback'|\
+	'lock'|'unlock'|\
+	'nolibfuse')
+		MODULE="management.am"
 		_use_module "$@"
-		;;
-	'-c'|'clean')
-		MODULE="clean.am"
-		_use_module
 		;;
 	'-d'|'download')
 		MODULE="download.am"
@@ -681,7 +965,8 @@ case "$1" in
 		_if_appman_mode_enabled
 		_use_module "$@"
 		;;
-	'-H'|'--home'|'--firejail'|'--sandbox')
+	'-H'|'--home'|\
+	'--firejail'|'--sandbox')
 		MODULE="sandboxes.am"
 		_use_module "$@"
 		;;
@@ -693,43 +978,19 @@ case "$1" in
 		_portable_dependences_setup
 		_use_module "$@"
 		;;
-	'-R'|'-r'|'remove')
-		MODULE="remove.am"
-		_use_module "$@"
-		;;
-	'-s'|'sync')
-		MODULE="sync.am"
-		_online_check
-		_betatester_message_on
-		_use_module "$@"
-		;;
 	'-t'|'template')
 		MODULE="template.am"
 		_online_check
-		_use_module "$@"
-		;;
-	'-u'|'-U'|'update'|'--force-latest')
-		MODULE="update.am"
-		_online_check
-		_portable_dependences_setup
 		_use_module "$@"
 		;;
 	'--launcher')
 		MODULE="launcher.am"
 		_use_module "$@"
 		;;
-	'--rollback')
-		MODULE="rollback.am"
-		_online_check
-		_use_module "$@"
-		;;
-	'neodb'|'apikey'|'newrepo')
+	'neodb'|\
+	'apikey'|\
+	'newrepo')
 		MODULE="devtools.am"
-		_online_check
-		_use_module "$@"
-		;;
-	'nolibfuse')
-		MODULE="nolibfuse.am"
 		_online_check
 		_use_module "$@"
 		;;
@@ -747,11 +1008,29 @@ case "$1" in
 	'--enable-completion')
 		_use_enable_completion
 		;;
+	'--force-latest')
+		_online_check
+		_portable_dependences_setup
+		_use_force_latest "$@"
+		;;
 	'--system')
 		_back_to_am
 		;;
 	'--user'|'appman')
 		_use_appman
+		;;
+	'clean'|'-c')
+		_use_clean
+		;;
+	'sync'|'-s')
+		_online_check
+		_betatester_message_on
+		_use_sync
+		;;
+	'update'|'-u'|'-U')
+		_online_check
+		_portable_dependences_setup
+		_use_update "$@"
 		;;
 	'version'|'-v'|'--version')
 		echo "$AMVERSION"

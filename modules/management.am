@@ -1,0 +1,432 @@
+#!/usr/bin/env bash
+
+##############################################################################################
+# THIS MODULE INCLUDES ALL THE ACTIONS INTENDED TO MANAGE THE APPS INSTALLED FROM THE DATABASE
+##############################################################################################
+
+case $2 in
+  '') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
+esac
+
+########################################
+# FUNCTIONS RELATED TO THE APP'S REMOVAL
+########################################
+
+function _remove_check_removals() {
+	if test -f "$AMPATH"/.cache/unavailable-args; then
+		echo -e "-----------------------------------------------------------------------\n"
+		if [ "$AMCLI" == am ] 2>/dev/null; then
+			echo -e " 💀 ERROR, the following programs you want to remove are NOT in $APPSPATH :\n\n$(cat "$AMPATH"/.cache/unavailable-args | sort)"
+		else
+			echo -e " 💀 ERROR, the following programs you want to remove are NOT in\n    $APPSPATH :\n\n$(cat "$AMPATH"/.cache/unavailable-args | sort)"
+		fi
+		echo -e '\n INVALID "APPNAME"!'
+		echo -e "\n-----------------------------------------------------------------------\n"
+		echo ' ◆ INSTALLED PROGRAMS/VALID ARGUMENTS (SEE THE "APPNAME" COLUMN):'
+		$AMCLIPATH -f | grep -v "STANDALONE PROGRAMS MANAGED"; rm "$AMPATH"/.cache/unavailable-args
+		echo -e "-----------------------------------------------------------------------"
+		exit
+	else
+		exit
+	fi
+}
+
+function _REMOVE() {
+	if ls "$APPSPATH"/$arg > /dev/null 2>&1; then
+		$SUDOCOMMAND "$APPSPATH"/$arg/remove && sleep 0.5 && echo ' ◆ "'"$(echo $arg | tr a-z A-Z)"'" HAS BEEN SUCCESSFULLY REMOVED!'
+	else
+		echo " - $arg" >> "$AMPATH"/.cache/unavailable-args
+	fi
+}
+
+function _remove() {
+	if ls "$APPSPATH"/$arg > /dev/null 2>&1; then
+		case $arg in
+		*) 
+			$SUDOCOMMAND echo "" > /dev/null; read -p ' ◆ DO YOU WISH TO REMOVE "'"$(echo $arg | tr a-z A-Z)"'" (Y,n)?' yn
+			case $yn in
+			[Nn]* ) 
+				echo ' - "'"$(echo $arg | tr a-z A-Z)"'" HAS NOT BEEN REMOVED!'; echo "";;
+			[Yy]*|* ) 
+				$SUDOCOMMAND "$APPSPATH"/$arg/remove && sleep 0.5 && echo ' ◆ "'"$(echo $arg | tr a-z A-Z)"'" HAS BEEN SUCCESSFULLY REMOVED!';;
+			esac
+		esac
+	else
+		echo " - $arg" >> "$AMPATH"/.cache/unavailable-args
+	fi
+}
+
+######################################
+# FUNCTION TO DOWNGRADE INSTALLED APPS
+######################################
+
+function _do_rollback() {
+	if test -f "$APPSPATH"/$2/AM-updater; then
+		if test -f "$APPSPATH"/$2/$2-rollback; then
+			cd "$APPSPATH"/$2 || return
+			./$2-rollback
+			exit
+		elif test -f "$APPSPATH"/$2/*.zsync; then
+			echo " AppImage packages updatable with zsync have not previous versions."; exit
+		elif test -f "$APPSPATH"/$2/updater; then
+			echo ' When an executable called "updater" is available, the app is only updateable.'; exit
+		else
+			if grep -q "api.github.com" "$APPSPATH"/$2/AM-updater; then
+				rm -f "$AMPATH/.cache/rollback-args";
+				extension=$(cat "$APPSPATH"/$2/version | tr '.' '\n' | tail -1)
+				REPO=$(grep -i "REPO=" "$APPSPATH"/$2/AM-updater | grep -o -P '(?<=").*(?=")')
+				printf "%s\n" "$(curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/$REPO/releases?per_page=100 \
+					| grep browser_download_url | cut -d '"' -f 4)" | tr ' ' '\n' | grep -i "$extension$" >> "$AMPATH/.cache/rollback-args"
+				if ! grep -q "[0-9]" "$AMPATH"/.cache/rollback-args; then
+					echo " ERROR: No valid links found, sorry!"
+					exit
+				else
+					echo "-----------------------------------------------------------------------"
+					echo "You have chosen to roll back $2."
+					echo "Rollback will be done from https://github.com/$REPO"
+					echo "-----------------------------------------------------------------------"
+					printf "Select a URL from this menu (read carefully) or press CTRL+C to abort:\n-----------------------------------------------------------------------\n"; sleep 1;
+					select d in $(cat "$AMPATH/.cache/rollback-args"); do test -n "$d" && break; echo ">>> Invalid Selection"; done
+					cp "$APPSPATH"/$2/AM-updater "$APPSPATH"/$2/AM-rollback
+					sed -i 's/version0/#version0/g' "$APPSPATH"/$2/AM-rollback
+					sed -i '/show-progress/c\wget -q --show-progress '$d'' "$APPSPATH"/$2/AM-rollback
+					if test -f ./AM-rollback; then
+						if grep -q '/$APP/*.zsync' ./AM-rollback; then
+							mv "$APPSPATH"/$2/AM-rollback "$APPSPATH"/$2/AM-rollback.old
+							sed -n '1,6p' "$APPSPATH"/$2/AM-rollback.old >> "$APPSPATH"/$2/AM-rollback
+							sed -n '17,36p' "$APPSPATH"/$2/AM-rollback.old >> "$APPSPATH"/$2/AM-rollback
+							rm -f "$APPSPATH"/$2/AM-rollback.old
+							sed -i 's/	//g' "$APPSPATH"/$2/AM-rollback
+							chmod a+x "$APPSPATH"/$2/AM-rollback
+						fi
+					fi
+					"$APPSPATH"/$2/AM-rollback
+					rm -f "$APPSPATH"/$2/AM-rollback
+					rm -f "$APPSPATH"/$2/version
+					echo $d >> "$APPSPATH"/$2/version
+					rm -R -f "$AMPATH"/.cache/*
+					_list_updatable_apps
+					echo -e "\nROLLBACK SUCCESSFUL!"
+					exit
+				fi
+			else
+				echo " The option '$1' only works for https://github.com"; exit
+			fi
+		fi
+	else
+		echo ' No AM-updater available for '$2', cannot detect any URL!'; exit
+	fi
+}
+
+#############################################
+# FUNCTIONS TO PREVENT THE APPS TO BE UPDATED
+#############################################
+
+function _do_lock() {
+	while [ -n "$1" ]; do
+		if test -f "$APPSPATH"/$2/AM-updater; then
+			case $2 in
+				*)
+					read -p " Do you wish to keep $2  at the current version (y,N)?" yn
+					case $yn in
+						[Yy]* )
+							mv "$APPSPATH"/$2/AM-updater "$APPSPATH"/$2/AM-LOCK 1>/dev/null &&
+							echo " $2 has been locked at current version!"
+							exit
+							;;
+						[Nn]*|* )
+							echo " Operation aborted!"
+							exit
+							;;
+					esac
+					;;
+			esac
+		else
+			echo -e '\n '"$(echo $AMCLI | tr a-z A-Z)"' cannot manage updates for '$2', "AM-updater" file not found!\n'; exit
+			exit
+		fi
+	done
+}
+
+function _do_unlock() {
+	while [ -n "$1" ]; do
+		if test -f "$APPSPATH"/$2/AM-LOCK; then
+			case $2 in
+				*)
+					read -p " Do you wish to unlock updates for $2 (Y,n)?" yn
+					case $yn in
+						[Nn]* )
+							echo " $2 is still locked at current version!"
+							exit
+							;;
+						[Yy]*|* )
+							mv "$APPSPATH"/$2/AM-LOCK "$APPSPATH"/$2/AM-updater 1>/dev/null
+							echo ' '$2' can now receive updates!'
+							exit
+							;;
+					esac
+					;;
+			esac
+		else
+			echo ' '$2' cannot be unlocked, "AM-LOCK" file not found!'; exit
+		fi
+	done
+}
+
+################################################################
+# FUNCTIONS TO BACKUP/RESTORE THE INSTALLED APPS USING SNAPSHOTS
+################################################################
+
+function _backup() {
+	case $arg in
+	'')
+		echo " Specify the name of a program to back up"; echo ""; exit;;
+	*)
+		if test -f "$APPSPATH"/$arg/remove; then
+			echo ""; read -p " Do you wish to backup the current version of $arg (y,N)?" yn
+			case $yn in
+			[Yy]* )
+				mkdir -p "$HOME/.am-snapshots/$arg"
+				cp -r "$APPSPATH"/$arg "$HOME/.am-snapshots/$arg/$(date +%F-%X | sed 's/://g' | sed 's/-//g')"
+				echo -e "\n SAVED in $HOME/.am-snapshots/$arg\n";;
+			[Nn]*|* )
+				echo ""; echo " OPERATION ABORTED!"; echo "";;
+			esac
+		else
+			echo -e "\n '$arg' is not a valid argument or is not installed.\n"
+		fi
+	esac
+}
+
+function _do_backup() {
+	while [ -n "$1" ]; do
+		rm -f $AMPATH/.cache/backup-args;
+		echo "$@" | tr ' ' '\n' >> $AMPATH/.cache/backup-args && echo STOP >> $AMPATH/.cache/backup-args;
+		ARGS=$(tail -n +2 $AMPATH/.cache/backup-args)
+		for arg in $ARGS; do
+			if [ $arg == STOP ]; then
+				exit
+			else
+				_backup
+			fi
+		done
+	done
+}
+
+function _overwrite() {
+	case $arg in
+	'')
+		echo " Specify the name of a program to overwrite"; echo "";;
+	*)
+		if test -f "$APPSPATH"/$arg/remove; then
+			echo ""; read -p " Do you wish to overwrite this version of $arg with an old one (y,N)?" yn
+			case $yn in
+			[Yy]* )
+				printf "\n Please, select a snapshot or press CTRL+C to abort:\n\n"; sleep 1;
+				select d in $HOME/.am-snapshots/$arg/*; do test -n "$d" && break; echo ">>> Invalid Selection"; done
+				cp -r --backup=t $d/* "$APPSPATH"/$arg/
+				rm -R -f ./tmp "$APPSPATH"/$arg/*~
+				echo -e "\n RESTORE COMPLETED SUCCESSFULLY!\n";;
+			[Nn]*|* )
+				echo ""; echo " OPERATION ABORTED!"; echo "";;
+			esac
+		else
+			echo ""; echo " '$arg' is not a valid argument or is not installed."; echo ""
+		fi
+	esac
+}
+
+function _do_overwrite() {
+	while [ -n "$1" ]; do
+		rm -f "$AMPATH"/.cache/overwrite-args
+		echo "$@" | tr ' ' '\n' >> "$AMPATH"/.cache/overwrite-args && echo STOP >> "$AMPATH"/.cache/overwrite-args
+		ARGS=$(tail -n +2 $AMPATH/.cache/overwrite-args)
+		for arg in $ARGS; do
+			if [ $arg == STOP ]; then
+				exit
+			else
+				_overwrite
+			fi
+		done
+	done
+}
+
+##############################################
+# FUNCTION TO CONVERT TYPE2 APPIMAGES TO TYPE3
+##############################################
+
+function _do_nolibfuse() {
+	cd "$APPSPATH" || exit 1
+	if test -f ./$2/$2 2>/dev/null; then
+		cd ./$2 || return
+		if [ -z "$(strings -d "./$2" 2>/dev/null | grep -F 'if you run it with the --appimage-extract option')" ] 2>/dev/null; then
+			echo " ⚠️ Error: $(echo "${2}" | tr a-z A-Z) is NOT an AppImage."
+			exit
+		else
+			if [ -z "$(strings -d "./$2" 2>/dev/null | grep -F 'AppImages require FUSE to run')" ] 2>/dev/null; then
+				echo " ◆ $(echo "${2}" | tr a-z A-Z) is already a Type3 AppImage."
+				exit
+			else
+				wget -q "$(curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/probonopd/go-appimage/releases | grep -v zsync | grep -i continuous | grep -i appimagetool | grep -i "$(uname -m)" | grep browser_download_url | cut -d '"' -f 4 | head -1)" -O appimagetool
+				chmod a+x ./appimagetool
+				echo -ne " ...extracting the AppImage\r"
+				./$2 --appimage-extract 2> /dev/null | grep -v "squashfs-root"
+				echo -ne " ...trying to convert in Type3 AppImage\r"
+				chmod 0755 ./squashfs-root
+				ARCH="$(uname -m)" VERSION=$(./appimagetool -v | grep -o '[[:digit:]]*') ./appimagetool -s ./squashfs-root > /dev/null 2> /dev/null
+				if test -f ./*.AppImage; then
+					_remove_info_files
+					mv ./"$2" ./"$2".old
+					mv ./*.AppImage ./"$2"
+					echo " ◆ $(echo $2 | tr a-z A-Z) has been converted to Type3 AppImage."
+					rm -R -f ./appimagetool ./squashfs-root
+					if ! test -f ./*.zsync; then
+						echo " Note, your installed Appimage have not a .zsync file."
+						if test -f ./AM-updater; then
+							if ! grep -q 'nolibfuse' ./AM-updater; then
+								echo -e '\necho y | '$AMCLIPATH' nolibfuse $APP' >> ./AM-updater
+								echo " The next update may replace this AppImage with a Type2 one..."
+								echo ' ...so I added this command to the bottom of the "AM-updater" script!'
+							fi
+						fi
+					fi
+					echo -e " Contact the upstream developers to make them officially switch to Type3!\n"
+					read -p " Do you wish to remove the old Type2 AppImage (Y,n)?" yn
+					case $yn in
+						[Nn]* )
+							exit
+							;;
+						[Yy]*|* )
+							rm -R -f ./$2.old
+							exit
+							;;
+					esac
+				else
+					metainfodir=$(find ./squashfs-root -type d -name metainfo | grep "share/metainfo" | head -1)
+					if [ -z "$metainfodir" ]; then
+						echo " 💀Errors while trying to export $(echo "${2}" | tr a-z A-Z) from Type2 AppImage. Aborted."
+						rm -R -f ./appimagetool ./squashfs-root
+						exit
+					else
+						cd "$metainfodir" || return
+						rm -R -f ./*.xml
+						cd - > /dev/null || return
+					fi
+					echo -ne " ...found Appstream errors, I'm trying to fix them...\r"
+					ARCH="$(uname -m)" VERSION=$(./appimagetool -v | grep -o '[[:digit:]]*') ./appimagetool -s ./squashfs-root > /dev/null 2> /dev/null
+					if test -f ./*.AppImage; then
+						_remove_info_files
+						mv ./"$2" ./"$2".old
+						mv ./*.AppImage ./"$2"
+						echo " ◆ $(echo $2 | tr a-z A-Z) has been converted to Type3 AppImage."
+						if test -f ./*.zsync; then
+							echo 'However, when trying again I had to remove some files to update with "zsync".'
+						else
+							if test -f ./AM-updater; then
+							if ! grep -q 'nolibfuse' ./AM-updater; then
+								echo -e '\necho y | '$AMCLIPATH' nolibfuse $APP' >> ./AM-updater
+								echo " The next update may replace this AppImage with a Type2 one..."
+								echo ' ...so I added this command to the bottom of the "AM-updater" script!'
+							fi
+						fi
+						fi
+						echo -e " Contact the upstream developers to make them officially switch to Type3!\n"
+						rm -R -f ./appimagetool ./squashfs-root
+						read -p " Do you wish to remove the old one (Y,n)?" yn
+						case $yn in
+							[Nn]* )
+								exit
+								;;
+							[Yy]*|* )
+								rm -R -f ./$2.old
+								exit
+								;;
+						esac
+					else
+						echo " 💀Errors while trying to export $(echo $2 | tr a-z A-Z) from Type2 AppImage. Aborted."
+						rm -R -f ./appimagetool ./squashfs-root; exit
+					fi
+				fi
+			fi
+		fi
+	else
+		echo " ⚠️ Error: \"$(echo "${2}" | tr a-z A-Z)\" is NOT installed."
+		exit
+	fi
+}
+
+##################################
+# OPTIONS AVAILABLE IN THIS MODULE
+##################################
+
+case "$1" in
+	'-b'|'backup') # DO A BACKUP OF AN INSTALLED APPLICATION
+		_do_backup "${@}"
+		shift
+		;;
+
+	'-o'|'overwrite') # OVERWRITE A NEW VERSION WITH THE PREVIOUS ONE FROM A BACKUP DONE WITH THE PREVIOUS OPTION
+		_do_overwrite "${@}"
+		shift
+		;;
+
+	'-R') # THIS OPTION REMOVES PROGRAMS WITHOUT ASKING
+		while [ -n "$1" ]; do
+			rm -f "$AMPATH"/.cache/remove-args
+			echo "$@" | tr ' ' '\n' >> "$AMPATH"/.cache/remove-args && echo STOP >> "$AMPATH"/.cache/remove-args
+			ARGS=$(tail -n +2 "$AMPATH"/.cache/remove-args)
+			for arg in $ARGS; do
+				if [ $arg == STOP ]; then
+					_remove_check_removals
+				else
+					_REMOVE
+					_remove_info_files
+				fi
+			done
+		done
+		shift
+		;;
+
+  	'-r'|'remove') # THIS OPTION ALLOWS YOU TO CHOOSE WHETHER TO REMOVE PROGRAMS OR NOT
+		while [ -n "$1" ]; do
+			rm -f "$AMPATH"/.cache/remove-args
+			echo "$@" | tr ' ' '\n' >> "$AMPATH"/.cache/remove-args && echo STOP >> "$AMPATH"/.cache/remove-args
+			ARGS=$(tail -n +2 "$AMPATH"/.cache/remove-args)
+			for arg in $ARGS; do
+				if [ $arg == STOP ]; then
+					_remove_check_removals
+				else
+					_remove
+					_remove_info_files
+				fi
+			done
+		done
+		shift
+		;;
+
+	'--rollback') # THIS OPTION ALLOWS YOU TO DOWNGRADE THE INSTALLED APP TO A PREVIOUS VERSION, IF EXISTS
+		_online_check
+		while [ -n "$1" ]; do
+			_do_rollback "${@}"
+		done
+		shift
+		;;
+
+	'lock') # LOCK THE INSTALLED VERSION
+		_do_lock "${@}"
+		shift
+		;;
+
+	'nolibfuse') # CONVERT TYPE2 APPIMAGES TO TYPE2
+		_online_check
+		while [ -n "$1" ]; do
+			_do_nolibfuse "${@}"
+		done
+		shift
+		;;
+
+	'unlock') # REVERT THE OPTION "lock" ABOVE
+		_do_unlock "${@}"
+		shift
+		;;
+esac
