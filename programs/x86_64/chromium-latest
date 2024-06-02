@@ -1,54 +1,62 @@
 #!/bin/sh
 
 APP=chromium-latest
+SITE="https://www.chromium.org"
 
-# CREATING THE FOLDER
+# CREATE THE FOLDER
 mkdir /opt/$APP
-cd /opt/$APP;
+cd /opt/$APP
 
 # ADD THE REMOVER
 echo '#!/bin/sh' >> /opt/$APP/remove
 echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
 chmod a+x /opt/$APP/remove
 
-mkdir tmp;
-cd tmp;
+# DOWNLOAD THE ARCHIVE
+mkdir tmp
+cd ./tmp
 
-# DOWNLOADING THE PROGRAM
-build=$(curl -s "https://commondatastorage.googleapis.com/chromium-browser-snapshots/Linux_x64/LAST_CHANGE")
-wget https://commondatastorage.googleapis.com/chromium-browser-snapshots/Linux_x64/$build/chrome-linux.zip
-unzip -qq chrome-linux.zip
-
-echo $build >> /opt/$APP/LAST_CHANGE
-
-cd ..;
-mv ./tmp/chrome-linux/* ./;
+version=$(curl -s "https://commondatastorage.googleapis.com/chromium-browser-snapshots/Linux_x64/LAST_CHANGE")
+wget "https://commondatastorage.googleapis.com/chromium-browser-snapshots/Linux_x64/$version/chrome-linux.zip"
+echo "$version" >> /opt/$APP/version
+unzip -qq ./*; rm -R -f ./*.zip
+cd ..
+mv --backup=t ./tmp/chrome-linux/* ./
 rm -R -f ./tmp
 
 # LINK
 ln -s /opt/$APP/chrome /usr/local/bin/$APP
 
 # SCRIPT TO UPDATE THE PROGRAM
-echo '#!/bin/sh
-version=$(cat /opt/'$APP'/LAST_CHANGE)
-build=$(curl -s "https://commondatastorage.googleapis.com/chromium-browser-snapshots/Linux_x64/LAST_CHANGE")
-if [ "$version" = "$build" ]; then
-  echo "Update not needed, exit!"
- else
-  notify-send "A new version of '$APP' is available, please wait!"
-  mkdir /opt/'$APP'/tmp
-  cd /opt/'$APP'/tmp
-  wget https://commondatastorage.googleapis.com/chromium-browser-snapshots/Linux_x64/$build/chrome-linux.zip
-  unzip -qq chrome-linux.zip
-  cd ..
-  mv --backup=t ./tmp/chrome-linux/* ./
-  rm -R -f ./tmp ./*~
-  rm -R -f /opt/'$APP'/LAST_CHANGE && echo $build >> /opt/'$APP'/LAST_CHANGE
-  notify-send "'$APP' is updated!"
-fi' >> /opt/$APP/AM-updater
+cat >> /opt/$APP/AM-updater << 'EOF'
+#!/usr/bin/env bash
+APP=chromium-latest
+version0=$(cat /opt/$APP/version)
+version=$(curl -s "https://commondatastorage.googleapis.com/chromium-browser-snapshots/Linux_x64/LAST_CHANGE")
+if [ $version = $version0 ]; then
+	echo "Update not needed!"
+else
+	notify-send "A new version of $APP is available, please wait"
+	mkdir /opt/$APP/tmp
+	cd /opt/$APP/tmp
+	wget "https://commondatastorage.googleapis.com/chromium-browser-snapshots/Linux_x64/$version/chrome-linux.zip"
+	unzip -qq ./*; rm -R -f ./*.zip
+	cd ..
+	mv --backup=t ./tmp/chrome-linux/* ./
+	rm ./version
+	echo $version >> ./version
+	rm -R -f ./tmp ./*~
+	notify-send "$APP is updated!"
+fi
+EOF
 chmod a+x /opt/$APP/AM-updater
 
+# ICON
+mkdir icons
+cp ./*48.png ./icons/$APP 2> /dev/null
+
 # LAUNCHER
+rm -f /usr/share/applications/AM-$APP.desktop
 echo "[Desktop Entry]
 Version=1.0
 Name=Chromium Latest Snapshot
@@ -56,7 +64,7 @@ GenericName=Web Browser
 Comment=Access the Internet
 Exec=$APP %U
 Terminal=false
-Icon=/opt/$APP/product_logo_48.png 2> /dev/null
+Icon=/opt/$APP/icons/$APP
 Type=Application
 Categories=Network;WebBrowser;
 MimeType=application/pdf;application/rdf+xml;application/rss+xml;application/xhtml+xml;application/xhtml_xml;application/xml;image/gif;image/jpeg;image/png;image/webp;text/html;text/xml;x-scheme-handler/ftp;x-scheme-handler/http;x-scheme-handler/https;
@@ -68,6 +76,4 @@ Exec=$APP %U
 
 [Desktop Action new-private-window]
 Name=New Incognito Window
-Exec=$APP --incognito %U" >> /usr/share/applications/AM-$APP.desktop;
-
-
+Exec=$APP --incognito %U" >> /usr/share/applications/AM-$APP.desktop
