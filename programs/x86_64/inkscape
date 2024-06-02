@@ -1,135 +1,92 @@
 #!/bin/sh
 
 APP=inkscape
+SITE="https://inkscape.org"
 
-# CREATE THE FOLDER
-mkdir /opt/$APP
-cd /opt/$APP
+# CREATE DIRECTORIES
+if [ -z "$APP" ]; then exit 1; fi
+mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
 
 # ADD THE REMOVER
-echo '#!/bin/sh' >> /opt/$APP/remove
-echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
-chmod a+x /opt/$APP/remove
+echo "#!/bin/sh
+rm -f /usr/share/applications/AM-$APP.desktop /usr/local/bin/$APP
+rm -R -f /opt/$APP" > "/opt/$APP/remove"
+chmod a+x "/opt/$APP/remove"
 
-# DOWNLOAD THE PROGRAM
-mkdir tmp
-cd ./tmp
+# DOWNLOAD AND PREPARE THE APP
+# $version is also used for updates
 
-version=$(echo https://inkscape.org/$(curl -Ls $(echo "https://inkscape.org/release/inkscape-$(curl -Ls https://inkscape.org/ | grep -Po '(?<=class="info")[^"]*' | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)/gnulinux/appimage/dl/") | grep "click here" | grep -o -P '(?<=href=").*(?=">click)'))
-wget $version
+version=$(wget -q https://repology.org/project/inkscape/related -O - | grep "version-newest" | head -1 | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}")
+dl=$(echo https://inkscape.org/$(curl -Ls $(echo "https://inkscape.org/release/inkscape-$(curl -Ls https://inkscape.org/ | grep -Po '(?<=class="info")[^"]*' | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)/gnulinux/appimage/dl/") | grep "click here" | grep -o -P '(?<=href=").*(?=">click)'))
+wget "$dl"
+wget "$dl.zsync" 2> /dev/null
 echo "$version" >> /opt/$APP/version
-
+# Use tar fx ./*tar* for example in this line in case a compressed file is downloaded.
 cd ..
-mv ./tmp/*mage ./$APP
-chmod a+x /opt/$APP/$APP
-rmdir ./tmp
+mv ./tmp/*mage ./"$APP"
+mv ./tmp/*.zsync ./"$APP".zsync 2> /dev/null
+chmod a+x "/opt/$APP/$APP"
+rm -R -f ./tmp
 
 # LINK
-ln -s /opt/$APP/$APP /usr/local/bin/$APP
+ln -s "/opt/$APP/$APP" "/usr/local/bin/$APP"
 
 # SCRIPT TO UPDATE THE PROGRAM
-cat >> /opt/$APP/AM-updater << 'EOF'
-#!/usr/bin/env bash
+cat >> "/opt/$APP/AM-updater" << 'EOF'
+#!/bin/sh
 APP=inkscape
-version0=$(cat /opt/$APP/version)
-version=$(echo https://inkscape.org/$(curl -Ls $(echo "https://inkscape.org/release/inkscape-$(curl -Ls https://inkscape.org/ | grep -Po '(?<=class="info")[^"]*' | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)/gnulinux/appimage/dl/") | grep "click here" | grep -o -P '(?<=href=").*(?=">click)'))
-if [ $version = $version0 ]; then
-  echo "Update not needed!"
-else
-  notify-send "A new version of $APP is available, please wait"
-  mkdir /opt/$APP/tmp
-  cd /opt/$APP/tmp
-  wget $version
-  if ls . | grep mage; then
+SITE="https://inkscape.org"
+if [ -z "$APP" ]; then exit 1; fi
+version0=$(cat "/opt/$APP/version")
+version=$(wget -q https://repology.org/project/inkscape/related -O - | grep "version-newest" | head -1 | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}")
+dl=$(echo https://inkscape.org/$(curl -Ls $(echo "https://inkscape.org/release/inkscape-$(curl -Ls https://inkscape.org/ | grep -Po '(?<=class="info")[^"]*' | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)/gnulinux/appimage/dl/") | grep "click here" | grep -o -P '(?<=href=").*(?=">click)'))
+if test -f "/opt/$APP/*.zsync"; then
+	mkdir "/opt/$APP/tmp"
+	cd "/opt/$APP/tmp" || exit 1
+	wget "$dl.zsync" 2> /dev/null
 	cd ..
-  	if test -f ./tmp/*mage; then rm ./version
-  	fi
-  	echo $version >> ./version
-  	mv --backup=t ./tmp/*mage ./$APP
-  	chmod a+x /opt/$APP/$APP
-  	rm -R -f ./tmp ./*~
-  fi
-  notify-send "$APP is updated!"
+	mv ./tmp/*.zsync ./"$APP".zsync
+	rm -R -f ./tmp
+	zsync "/opt/$APP/$APP.zsync"
+	rm -R -f "/opt/$APP/*zs-old" "/opt/$APP/*.part"
+	chmod a+x "/opt/$APP/$APP"
+	if [ "$version" != "$version0" ]; then
+		echo "$version" > /opt/$APP/version
+	fi
+else
+	if [ "$version" = "$version0" ]; then
+		echo "Update not needed!" && exit 0
+	else
+		notify-send "A new version of $APP is available, please wait"
+		mkdir "/opt/$APP/tmp"
+		cd "/opt/$APP/tmp" || exit 1
+		wget $dl
+		if ls . | grep mage; then
+			
+			cd ..
+			
+	  		if ! test -f ./tmp/*mage; then exit 1; fi
+	  		echo "$version" > ./version
+	  		mv --backup=t ./tmp/* ./"$APP"
+	  		chmod a+x "/opt/$APP/$APP"
+	  		rm -R -f ./tmp ./*~
+		fi
+		notify-send "$APP is updated!"
+	fi
 fi
 EOF
-chmod a+x /opt/$APP/AM-updater
+chmod a+x "/opt/$APP/AM-updater"
 
 # LAUNCHER & ICON
-app=$(echo $APP | cut -c -3)
-cd /opt/$APP
-./$APP --appimage-extract *.desktop 1>/dev/null
-./$APP --appimage-extract share/applications/*.desktop 1>/dev/null
-./$APP --appimage-extract usr/share/applications/*.desktop 1>/dev/null
-mv squashfs-root/*.desktop ./$APP.desktop
-mv squashfs-root/share/applications/*.desktop ./$APP.desktop
-mv squashfs-root/usr/share/applications/*.desktop ./$APP.desktop
-if [ ! -e ./$APP.desktop ]; then 
-	rm ./$APP.desktop; ./$APP --appimage-extract usr/share/applications/*$app*.desktop 
-	mv squashfs-root/usr/share/applications/*.desktop ./$APP.desktop
+cd "/opt/$APP" || exit 1
+./"$APP" --appimage-extract .DirIcon 1>/dev/null && mv ./squashfs-root/.DirIcon ./DirIcon
+./"$APP" --appimage-extract *.desktop 1>/dev/null && mv ./squashfs-root/*.desktop ./"$APP".desktop
+./"$APP" --appimage-extract share/applications/*.desktop 1>/dev/null && mv ./squashfs-root/share/applications/*.desktop ./"$APP".desktop
+./"$APP" --appimage-extract usr/share/applications/*.desktop 1>/dev/null && mv ./squashfs-root/usr/share/applications/*.desktop ./"$APP".desktop
+if [ -L ./DirIcon ]; then
+	LINKPATH=$(readlink ./DirIcon)
+	./"$APP" --appimage-extract "$LINKPATH" && mv ./squashfs-root/"$LINKPATH" ./DirIcon
 fi
-if [ ! -e ./$APP.desktop ]; then 
-	rm ./$APP.desktop; ./$APP --appimage-extract share/applications/*$app*.desktop 1>/dev/null
-	mv squashfs-root/share/applications/*.desktop ./$APP.desktop
-fi
-CHANGEEXEC=$(cat ./$APP.desktop | grep Exec= | tr ' ' '\n' | tr '=' '\n' | tr '/' '\n' | grep $app | head -1)
-sed -i "s#$CHANGEEXEC#$APP#g" ./$APP.desktop
-sed -i "s#AppRun#$APP#g" ./$APP.desktop
-sed -i "s#Exec=/bin/#Exec=#g" ./$APP.desktop
-sed -i "s#Exec=/usr/bin/#Exec=#g" ./$APP.desktop
-CHANGEICON=$(cat ./$APP.desktop | grep Icon= | head -1)
-sed -i "s#$CHANGEICON#Icon=/opt/$APP/icons/$APP#g" ./$APP.desktop
-
-mkdir icons
-./$APP --appimage-extract *.png 2>&1 | grep -v "squashfs-root"; mv ./squashfs-root/*$app* ./icons/$APP 2>/dev/null
-./$APP --appimage-extract *.svg 2>&1 | grep -v "squashfs-root"; mv ./squashfs-root/*$app* ./icons/$APP 2>/dev/null
-./$APP --appimage-extract share/icons/*/*/* 1>/dev/null
-./$APP --appimage-extract usr/share/icons/*/*/* 1>/dev/null
-./$APP --appimage-extract share/icons/*/*/*/* 1>/dev/null
-./$APP --appimage-extract usr/share/icons/*/*/*/* 1>/dev/null
-mv ./squashfs-root/share/icons/hicolor/22x22/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/share/icons/hicolor/24x24/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/share/icons/hicolor/32x32/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/share/icons/hicolor/48x48/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/share/icons/hicolor/64x64/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/share/icons/hicolor/128x128/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/share/icons/hicolor/256x256/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/share/icons/hicolor/512x512/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/share/icons/hicolor/scalable/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/usr/share/icons/hicolor/22x22/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/usr/share/icons/hicolor/24x24/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/usr/share/icons/hicolor/32x32/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/usr/share/icons/hicolor/48x48/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/usr/share/icons/hicolor/64x64/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/usr/share/icons/hicolor/128x128/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/usr/share/icons/hicolor/256x256/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/usr/share/icons/hicolor/512x512/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/usr/share/icons/hicolor/scalable/apps/*$app* ./icons/$APP 2>/dev/null
-
-rm -R -f /opt/$APP/squashfs-root
-mv ./$APP.desktop /usr/share/applications/AM-$APP.desktop
-
-# ROLLBACK SCRIPT
-cat >> /opt/$APP/$APP-rollback << 'EOF'
-#!/usr/bin/env bash
-
-APP=inkscape
-rm -f ./rollback-args ./AM-rollback
-printf "%s\n" $(curl -Ls https://inkscape.org/release/all/gnulinux/appimage/ | grep -i "gallery/item" | grep -Eo "gallery/item/[a-zA-Z0-9./?=_%:-]*" | sed 's#^#https://inkscape.org/#' | sort -r) >> "./rollback-args" &&
-echo -e "-----------------------------------------------------------------------\nYou have chosen to roll back $APP.\nRollback will be done from https://inkscape.org\n-----------------------------------------------------------------------"
-printf "Select a URL from this menu (read carefully) or press CTRL+C to abort:\n-----------------------------------------------------------------------\n"; sleep 1;
-select d in $(cat "./rollback-args"); do test -n "$d" && break; echo ">>> Invalid Selection"; done
-cp ./AM-updater ./AM-rollback
-sed -i 's/version0/#version0/g' ./AM-rollback
-sed -i '/show-progress/c\wget -q --show-progress '$d'' ./AM-rollback
-./AM-rollback
-rm -f ./version
-echo $d >> ./version
-rm -f ./rollback-args ./AM-rollback
-echo -e "\nROLLBACK SUCCESSFUL!"
-exit
-EOF
-chmod a+x /opt/$APP/$APP-rollback
-
-
-
-
+sed -i "s#Exec=[^ ]*#Exec=$APP#g; s#Icon=.*#Icon=/opt/$APP/icons/$APP#g" ./"$APP".desktop
+mv ./"$APP".desktop /usr/share/applications/AM-"$APP".desktop && mv ./DirIcon ./icons/"$APP" 2>/dev/null
+rm -R -f ./squashfs-root
