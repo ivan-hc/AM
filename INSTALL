@@ -20,12 +20,9 @@ _check_dependency() {
 _check_dependency 'wget'
 _check_dependency 'curl'
 
-web_get() {
-	wget -q "$@"
-}
-
 # CREATING THE MAIN DIRECTORY FOR "AM"
-mkdir -p /opt/am/.cache /opt/am/modules || exit 1
+mkdir -p /opt/am/.cache /opt/am/modules || exit 1 &&
+chmod 777 /opt/am/.cache /opt/am/modules
 cd /opt/am || exit 1
 
 # CREATE THE SCRIPT NEEDED TO UNINSTALL "AM"
@@ -36,14 +33,15 @@ rm -R -f /usr/local/bin/am /opt/am /etc/bash_completion.d/am-completion.sh' >> /
 chmod a+x /opt/am/remove || exit 1
 
 # DOWNLOAD THE MAIN SCRIPT
-web_get https://raw.githubusercontent.com/ivan-hc/AM/main/APP-MANAGER
-chmod a+x /opt/am/APP-MANAGER || exit 1
+wget -q https://raw.githubusercontent.com/ivan-hc/AM/main/APP-MANAGER &&
+chmod a+x /opt/am/APP-MANAGER || exit 1 &&
+chmod 777 /opt/am/APP-MANAGER || exit 1
 
 # LINK THE MAIN SCRIPT TO A KNOWN PATH
 ln -s /opt/am/APP-MANAGER /usr/local/bin/am || echo "WARNING: Something went wrong!"
 
 # DOWNLOAD THE LIST OF THE AVAILABLE PROGRAMS
-web_get "https://raw.githubusercontent.com/ivan-hc/AM/main/programs/$arch-apps" || exit 1
+wget -q "https://raw.githubusercontent.com/ivan-hc/AM/main/programs/$arch-apps" || exit 1
 
 # DOWNLOAD MODULES
 MODULES=$(curl -Ls https://api.github.com/repos/ivan-hc/AM/contents/modules | sed 's/[()",{}]/ /g; s/ /\n/g' | grep -o 'https.*raw.*modules.*am$' | grep -v "sync\|update")
@@ -52,7 +50,7 @@ for module in $MODULES; do
 		cd /opt/am/modules || exit
 		mkdir -p tmp
 		cd tmp || exit
-		wget -q "$v"
+		wget -q "$v" && chmod a+x ./*.am && chmod 777 ./*.am
 		cd ..
 		mv tmp/*.am ./
 		chmod a+x ./*.am
