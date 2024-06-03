@@ -13,17 +13,17 @@ esac
 ########################################
 
 function _remove_check_removals() {
-	if test -f "$AMPATH"/.cache/unavailable-args; then
+	if test -f "$AMCACHEDIR"/unavailable-args; then
 		echo -e "-----------------------------------------------------------------------\n"
 		if [ "$AMCLI" == am ] 2>/dev/null; then
-			echo -e " 💀 ERROR, the following programs you want to remove are NOT in $APPSPATH :\n\n$(cat "$AMPATH"/.cache/unavailable-args | sort)"
+			echo -e " 💀 ERROR, the following programs you want to remove are NOT in $APPSPATH :\n\n$(cat "$AMCACHEDIR"/unavailable-args | sort)"
 		else
-			echo -e " 💀 ERROR, the following programs you want to remove are NOT in\n    $APPSPATH :\n\n$(cat "$AMPATH"/.cache/unavailable-args | sort)"
+			echo -e " 💀 ERROR, the following programs you want to remove are NOT in\n    $APPSPATH :\n\n$(cat "$AMCACHEDIR"/unavailable-args | sort)"
 		fi
 		echo -e '\n INVALID "APPNAME"!'
 		echo -e "\n-----------------------------------------------------------------------\n"
 		echo ' ◆ INSTALLED PROGRAMS/VALID ARGUMENTS (SEE THE "APPNAME" COLUMN):'
-		$AMCLIPATH -f | grep -v "STANDALONE PROGRAMS MANAGED"; rm "$AMPATH"/.cache/unavailable-args
+		$AMCLIPATH -f | grep -v "STANDALONE PROGRAMS MANAGED"; rm "$AMCACHEDIR"/unavailable-args
 		echo -e "-----------------------------------------------------------------------"
 		exit
 	else
@@ -35,7 +35,7 @@ function _REMOVE() {
 	if ls "$APPSPATH"/$arg > /dev/null 2>&1; then
 		$SUDOCOMMAND "$APPSPATH"/$arg/remove && sleep 0.5 && echo ' ◆ "'"$(echo $arg | tr a-z A-Z)"'" HAS BEEN SUCCESSFULLY REMOVED!'
 	else
-		echo " - $arg" >> "$AMPATH"/.cache/unavailable-args
+		echo " - $arg" >> "$AMCACHEDIR"/unavailable-args
 	fi
 }
 
@@ -52,7 +52,7 @@ function _remove() {
 			esac
 		esac
 	else
-		echo " - $arg" >> "$AMPATH"/.cache/unavailable-args
+		echo " - $arg" >> "$AMCACHEDIR"/unavailable-args
 	fi
 }
 
@@ -72,12 +72,12 @@ function _do_rollback() {
 			echo ' When an executable called "updater" is available, the app is only updateable.'; exit
 		else
 			if grep -q "api.github.com" "$APPSPATH"/$2/AM-updater; then
-				rm -f "$AMPATH/.cache/rollback-args";
+				rm -f "$AMCACHEDIR/rollback-args";
 				extension=$(cat "$APPSPATH"/$2/version | tr '.' '\n' | tail -1)
 				REPO=$(grep -i "REPO=" "$APPSPATH"/$2/AM-updater | grep -o -P '(?<=").*(?=")')
 				printf "%s\n" "$(curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/$REPO/releases?per_page=100 \
-					| grep browser_download_url | cut -d '"' -f 4)" | tr ' ' '\n' | grep -i "$extension$" >> "$AMPATH/.cache/rollback-args"
-				if ! grep -q "[0-9]" "$AMPATH"/.cache/rollback-args; then
+					| grep browser_download_url | cut -d '"' -f 4)" | tr ' ' '\n' | grep -i "$extension$" >> "$AMCACHEDIR/rollback-args"
+				if ! grep -q "[0-9]" "$AMCACHEDIR"/rollback-args; then
 					echo " ERROR: No valid links found, sorry!"
 					exit
 				else
@@ -86,7 +86,7 @@ function _do_rollback() {
 					echo "Rollback will be done from https://github.com/$REPO"
 					echo "-----------------------------------------------------------------------"
 					printf "Select a URL from this menu (read carefully) or press CTRL+C to abort:\n-----------------------------------------------------------------------\n"; sleep 1;
-					select d in $(cat "$AMPATH/.cache/rollback-args"); do test -n "$d" && break; echo ">>> Invalid Selection"; done
+					select d in $(cat "$AMCACHEDIR/rollback-args"); do test -n "$d" && break; echo ">>> Invalid Selection"; done
 					cp "$APPSPATH"/$2/AM-updater "$APPSPATH"/$2/AM-rollback
 					sed -i 's/version0/#version0/g' "$APPSPATH"/$2/AM-rollback
 					sed -i '/show-progress/c\wget -q --show-progress '$d'' "$APPSPATH"/$2/AM-rollback
@@ -104,7 +104,7 @@ function _do_rollback() {
 					rm -f "$APPSPATH"/$2/AM-rollback
 					rm -f "$APPSPATH"/$2/version
 					echo $d >> "$APPSPATH"/$2/version
-					rm -R -f "$AMPATH"/.cache/*
+					_clean_amcachedir
 					_list_updatable_apps
 					echo -e "\nROLLBACK SUCCESSFUL!"
 					exit
@@ -200,9 +200,9 @@ function _backup() {
 
 function _do_backup() {
 	while [ -n "$1" ]; do
-		rm -f $AMPATH/.cache/backup-args;
-		echo "$@" | tr ' ' '\n' >> $AMPATH/.cache/backup-args && echo STOP >> $AMPATH/.cache/backup-args;
-		ARGS=$(tail -n +2 $AMPATH/.cache/backup-args)
+		rm -f "$AMCACHEDIR"/backup-args;
+		echo "$@" | tr ' ' '\n' >> "$AMCACHEDIR"/backup-args && echo STOP >> "$AMCACHEDIR"/backup-args;
+		ARGS=$(tail -n +2 "$AMCACHEDIR"/backup-args)
 		for arg in $ARGS; do
 			if [ $arg == STOP ]; then
 				exit
@@ -238,9 +238,9 @@ function _overwrite() {
 
 function _do_overwrite() {
 	while [ -n "$1" ]; do
-		rm -f "$AMPATH"/.cache/overwrite-args
-		echo "$@" | tr ' ' '\n' >> "$AMPATH"/.cache/overwrite-args && echo STOP >> "$AMPATH"/.cache/overwrite-args
-		ARGS=$(tail -n +2 $AMPATH/.cache/overwrite-args)
+		rm -f "$AMCACHEDIR"/overwrite-args
+		echo "$@" | tr ' ' '\n' >> "$AMCACHEDIR"/overwrite-args && echo STOP >> "$AMCACHEDIR"/overwrite-args
+		ARGS=$(tail -n +2 "$AMCACHEDIR"/overwrite-args)
 		for arg in $ARGS; do
 			if [ $arg == STOP ]; then
 				exit
@@ -372,9 +372,9 @@ case "$1" in
 
 	'-R') # THIS OPTION REMOVES PROGRAMS WITHOUT ASKING
 		while [ -n "$1" ]; do
-			rm -f "$AMPATH"/.cache/remove-args
-			echo "$@" | tr ' ' '\n' >> "$AMPATH"/.cache/remove-args && echo STOP >> "$AMPATH"/.cache/remove-args
-			ARGS=$(tail -n +2 "$AMPATH"/.cache/remove-args)
+			rm -f "$AMCACHEDIR"/remove-args
+			echo "$@" | tr ' ' '\n' >> "$AMCACHEDIR"/remove-args && echo STOP >> "$AMCACHEDIR"/remove-args
+			ARGS=$(tail -n +2 "$AMCACHEDIR"/remove-args)
 			for arg in $ARGS; do
 				if [ $arg == STOP ]; then
 					_remove_check_removals
@@ -389,9 +389,9 @@ case "$1" in
 
   	'-r'|'remove') # THIS OPTION ALLOWS YOU TO CHOOSE WHETHER TO REMOVE PROGRAMS OR NOT
 		while [ -n "$1" ]; do
-			rm -f "$AMPATH"/.cache/remove-args
-			echo "$@" | tr ' ' '\n' >> "$AMPATH"/.cache/remove-args && echo STOP >> "$AMPATH"/.cache/remove-args
-			ARGS=$(tail -n +2 "$AMPATH"/.cache/remove-args)
+			rm -f "$AMCACHEDIR"/remove-args
+			echo "$@" | tr ' ' '\n' >> "$AMCACHEDIR"/remove-args && echo STOP >> "$AMCACHEDIR"/remove-args
+			ARGS=$(tail -n +2 "$AMCACHEDIR"/remove-args)
 			for arg in $ARGS; do
 				if [ $arg == STOP ]; then
 					_remove_check_removals

@@ -19,6 +19,20 @@ DATADIR="${XDG_DATA_HOME:-$HOME/.local/share}"
 CONFIGDIR="${XDG_CONFIG_HOME:-$HOME/.config}"
 CACHEDIR="${XDG_CACHE_HOME:-$HOME/.cache}"
 
+function _create_cache_dir() {
+	if [ "$CLI" == am ] 2>/dev/null; then
+		AMCACHEDIR="$CACHEDIR/am"
+	else
+		AMCACHEDIR="$CACHEDIR/appman"
+	fi
+	mkdir -p "$AMCACHEDIR"
+}
+
+function _clean_amcachedir() {
+	if [ -z "$AMCACHEDIR" ]; then exit 1; fi
+	rm -f "$AMCACHEDIR"/*
+}
+
 APPMANCONFIG="$CONFIGDIR/appman"
 
 export SCRIPTDIR="$(if command -v xdg-user-dir &>/dev/null; then xdg-user-dir DESKTOP; else echo $HOME; fi)"
@@ -59,7 +73,7 @@ function _am() {
 	COMPLETIONFILE="am-completion.sh"
 	APPSPATH="/opt"
 	AMPATH="$APPSPATH/$AMCLI"
-	mkdir -p "$AMPATH"/.cache
+	_create_cache_dir
 	mkdir -p "$AMPATH"/modules
 }
 
@@ -90,7 +104,7 @@ function _patch_bashrc_and_profile() {
 
 function _appman_initialize() {
 	APPSDIR=$1
-	mkdir -p ~/"$APPSDIR"/appman/.cache
+	_create_cache_dir
 	mkdir -p ~/"$APPSDIR"/appman/modules
 	mkdir -p ~/.local/bin "$DATADIR"/applications "$DATADIR"/icons
 	AMCLI="appman"
@@ -211,7 +225,7 @@ function _jq_installer() {
 				echo -e " You need to install it at least via your package manager to use \"$AMCLI\".\n\n Missing essential command ${RED}jq\033[0m, aborted!"; exit
 				;;
 			'Y'|'y'|*)
-				rm -f "$AMPATH"/.cache/*
+				_clean_amcachedir
 				echo ""
 				source "$AMPATH"/modules/install.am -i jq 2>&1 | grep "INSTALLED"
 				echo ""
@@ -390,7 +404,7 @@ function _check_version_if_no_version_found() {
 }
 
 function _check_version() {
-	rm -f "$AMPATH"/.cache/version-args
+	rm -f "$AMCACHEDIR"/version-args
 	cd "$APPSPATH" &&
 	INSTALLED_APPS=$(find -name 'remove' -printf "%h\n" 2>/dev/null | du -sh -- * 2> /dev/null | sort -rh | sed 's@.*	@@')
 	for arg in $INSTALLED_APPS; do
@@ -415,7 +429,7 @@ function _check_version() {
 			if [ -z "$APPVERSION" ]; then
 				_check_version_if_no_version_found
 			fi
-			echo " ◆ $arg	|	$APPVERSION" >> "$AMPATH"/.cache/version-args
+			echo " ◆ $arg	|	$APPVERSION" >> "$AMCACHEDIR"/version-args
 		fi
 	done
 }
@@ -427,20 +441,20 @@ function _check_version_for_auto_updatable_apps() {
 		if test -f ./$arg/updater 2>/dev/null; then
 			if [ -z "$(strings -d "./$arg/$arg" 2>/dev/null | grep -F 'appimage')" ] 2>/dev/null; then
 				_check_version_if_an_updater_exists
-				OLDAPPVERSION=$(cat "$AMPATH"/.cache/version-args | grep " ◆ $arg	|" | tr '|' '\n' | sed 's/	//g' | head -2 | tail -1)
-				sed -i "/ ◆ $arg	|/s#$OLDAPPVERSION#$APPVERSION#" "$AMPATH"/.cache/*
+				OLDAPPVERSION=$(cat "$AMCACHEDIR"/version-args | grep " ◆ $arg	|" | tr '|' '\n' | sed 's/	//g' | head -2 | tail -1)
+				sed -i "/ ◆ $arg	|/s#$OLDAPPVERSION#$APPVERSION#" "$AMCACHEDIR"/*
 			fi
 		fi
 	done
 }
 
-if test -f "$AMPATH"/.cache/version-args; then
+if test -f "$AMCACHEDIR"/version-args; then
 	_check_version_for_auto_updatable_apps
 fi
 
 function _remove_info_files() {
-	rm -f "$AMPATH"/.cache/files-args*
-	rm -f "$AMPATH"/.cache/version-args
+	rm -f "$AMCACHEDIR"/files-args*
+	rm -f "$AMCACHEDIR"/version-args
 }
 
 ###################################################################################
@@ -543,7 +557,7 @@ function _completion_lists() {
 
 	# THIRD PARTY APPS
 	if test -f "$AMPATH/neodb"; then
-		rm -R -f "$AMPATH/.cache/multirepo-args"
+		rm -R -f "$AMCACHEDIR/multirepo-args"
 		MULTIREPO=$(cat "$AMPATH/neodb" | grep "List=" | grep -E "$arch-apps" | sed 's/List=//g')
 		for anyrepo in $MULTIREPO; do
 			if curl --output /dev/null --silent --head --fail "$anyrepo" 1>/dev/null; then
@@ -671,7 +685,7 @@ function _use_clean() {
 	for i in {1000..0000}; do 
 		echo -ne " $i\r" && sleep 0.0001
 	done
-	rm -R -f "$AMPATH"/.cache/* && echo " ◆ Cleaning up the content of $AMPATH/.cache"
+	_clean_amcachedir && echo " ◆ Cleaning up the content of $AMCACHEDIR"
 	rm -R -f "$APPSPATH"/*/tmp && echo ' ◆ Removed all '"$APPSPATH"'/*/tmp directories'
 	if test -f "$DATADIR"/applications/AppImages/*.desktop 2> /dev/null; then
 		_clean_launchers && echo ' ◆ Removed orphaned launchers produced with the "--launcher" option'
@@ -707,20 +721,20 @@ function _update_github_api() {
 
 function _list_updatable_apps() {
 	_check_version
-	cd "$APPSPATH" && find -name 'AM-updater' -printf " %h\n" 2>/dev/null | sort -u | xargs -n 1 basename 2>/dev/null > "$AMPATH"/.cache/updatable-args
-	ARGS=$(cat "$AMPATH"/.cache/updatable-args)
+	cd "$APPSPATH" && find -name 'AM-updater' -printf " %h\n" 2>/dev/null | sort -u | xargs -n 1 basename 2>/dev/null > "$AMCACHEDIR"/updatable-args
+	ARGS=$(cat "$AMCACHEDIR"/updatable-args)
 	for arg in $ARGS; do
-		app_version=$(cat "$AMPATH/.cache/version-args" | grep -w " ◆ $arg	|" | sed 's:.*|	::')
-		echo " ◆ $arg $app_version" >> $AMPATH/.cache/updatable-args-list
+		app_version=$(cat "$AMCACHEDIR/version-args" | grep -w " ◆ $arg	|" | sed 's:.*|	::')
+		echo " ◆ $arg $app_version" >> "$AMCACHEDIR"/updatable-args-list
 	done
 }
 
 function _sync_installation_scripts() {
 	echo "-----------------------------------------------------------------------------"
 	echo -e " Checking for changes of the installation scripts in the online database..."
-	rm -R -f "$AMPATH"/.cache/sync-args && echo "" >> "$AMPATH"/.cache/sync-args
-	cd "$APPSPATH" && find -name 'AM-updater' -printf "%h\n" 2>/dev/null | sort -u | cut -c 3- > "$AMPATH"/.cache/sync-args
-	ARGS=$(cat "$AMPATH"/.cache/sync-args)
+	rm -R -f "$AMCACHEDIR"/sync-args && echo "" >> "$AMCACHEDIR"/sync-args
+	cd "$APPSPATH" && find -name 'AM-updater' -printf "%h\n" 2>/dev/null | sort -u | cut -c 3- > "$AMCACHEDIR"/sync-args
+	ARGS=$(cat "$AMCACHEDIR"/sync-args)
 	for arg in $ARGS; do
 		mkdir -p "$APPSPATH/$arg/.am-installer"
 		if test -f "$APPSPATH/$arg/.am-installer/$arg"; then
@@ -782,15 +796,15 @@ function _sync_amcli() {
 		CURRENT_AM_VERSION=$("$AMCLIPATH" -v)
 	fi
 	echo -ne '\n ◆ SYNCHRONIZING "'"$(echo "$AMCLI" | tr a-z A-Z)"'" VERSION '"$CURRENT_AM_VERSION"'...\r'; sleep 1
-	rm -R -f "$AMPATH"/.cache/* 1>/dev/null; cd "$AMPATH"/.cache || return
+	_clean_amcachedir 1>/dev/null; cd "$AMCACHEDIR" || return
 	if [ "$AMCLI" == am ] 2>/dev/null; then
 		wget -q "$AMREPO"/APP-MANAGER && chmod a+x ./APP-MANAGER && chmod 777 ./APP-MANAGER
 		cd ..
-		echo y | mv "$AMPATH"/.cache/APP-MANAGER /opt/am/APP-MANAGER
+		echo y | mv "$AMCACHEDIR"/APP-MANAGER /opt/am/APP-MANAGER
 	else
 		wget -q "$AMREPO"/APP-MANAGER -O appman && chmod a+x ./"$AMCLI"
 		cd ..
-		echo y | mv "$AMPATH"/.cache/"$AMCLI" "$AMCLIPATH"
+		echo y | mv "$AMCACHEDIR"/"$AMCLI" "$AMCLIPATH"
 	fi
 	if [ ! "$CURRENT_AM_VERSION" == "$("$AMCLIPATH" -v)" ] ; then
 		echo -ne ' A new release of "'"$(echo "$AMCLI" | tr a-z A-Z)"'" is available, please wait...\r'
@@ -815,12 +829,12 @@ function _use_update() {
 	while [ -n "$1" ]; do
 		case $2 in
 		''|'--apps') 
-			rm -R -f "$AMPATH"/.cache/*
+			_clean_amcachedir
 			_list_updatable_apps
 			echo '-----------------------------------------------------------------------------'
 			echo -e ' "'"$(echo "$AMCLI" | tr a-z A-Z)"'" CAN MANAGE UPDATES FOR THE FOLLOWING PROGRAMS:\n'
-			if test -f "$AMPATH/.cache/updatable-args-list"; then
-				cat "$AMPATH/.cache/updatable-args-list"
+			if test -f "$AMCACHEDIR/updatable-args-list"; then
+				cat "$AMCACHEDIR/updatable-args-list"
 			else
 				echo " None"
 			fi
@@ -843,11 +857,11 @@ function _use_update() {
 
 			echo '-----------------------------------------------------------------------------'
 
-			if test -f "$AMPATH"/.cache/updatable-args-list; then
-				mv "$AMPATH"/.cache/updatable-args-list "$AMPATH"/.cache/updatable-args-list-old
+			if test -f "$AMCACHEDIR"/updatable-args-list; then
+				mv "$AMCACHEDIR"/updatable-args-list "$AMCACHEDIR"/updatable-args-list-old
 				_list_updatable_apps
-				OLDVER="$AMPATH/.cache/updatable-args-list-old"
-				NEWVER="$AMPATH/.cache/updatable-args-list"
+				OLDVER="$AMCACHEDIR/updatable-args-list-old"
+				NEWVER="$AMCACHEDIR/updatable-args-list"
 				if cmp --silent -- "$NEWVER" "$OLDVER"; then
 					echo ' Nothing to do here!'
 				else
@@ -872,7 +886,7 @@ function _use_update() {
 			if test -f "$APPSPATH"/$2/AM-updater; then
 				start=$(date +%s); "$APPSPATH"/$2/AM-updater > /dev/null 2>&1 | echo -ne " UPDATING $(echo $2 | tr a-z A-Z)\r"; end=$(date +%s)
 				echo -e " ◆ $(echo $2 | tr a-z A-Z) is updated, $(($end-$start)) seconds elapsed!"
-				rm -R -f "$AMPATH"/.cache/*
+				_clean_amcachedir
 				_list_updatable_apps
 				break
 			else
