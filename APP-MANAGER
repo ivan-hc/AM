@@ -820,6 +820,37 @@ function _use_sync() {
 	fi
 }
 
+function _update_all_apps() {
+	for f in "$APPSPATH"/*/; do 
+		cd $f 2>/dev/null && 
+		if test -f ./AM-updater; then
+			APPNAME=$(echo "$(printf '%s\n' "${PWD##*/}")")
+			start=$(date +%s) && sh -x ./AM-updater > /dev/null 2>&1 | echo -ne ' Updating "'"$APPNAME"'"...\r' && end=$(date +%s) &&
+			echo -e " ◆ $(echo "$APPNAME" | tr a-z A-Z) is updated, $(($end-$start)) seconds elapsed!" &
+		else
+			echo ""  > /dev/null 2>&1
+		fi
+	done
+	wait
+	echo '-----------------------------------------------------------------------------'
+	if test -f "$AMCACHEDIR"/updatable-args-list; then
+		mv "$AMCACHEDIR"/updatable-args-list "$AMCACHEDIR"/updatable-args-list-old
+		_list_updatable_apps
+		OLDVER="$AMCACHEDIR/updatable-args-list-old"
+		NEWVER="$AMCACHEDIR/updatable-args-list"
+		if cmp --silent -- "$NEWVER" "$OLDVER"; then
+			echo ' Nothing to do here!'
+		else
+			echo -e " The following apps have been updated:\n"
+			diff --new-line-format="" --unchanged-line-format="" "$NEWVER" "$OLDVER"
+			echo ""
+		fi
+	else
+		echo ' No apps to update here!'
+	fi
+	rm -R -f "$APPSPATH/*/tmp"
+}
+
 function _use_update() {
 	_update_github_api
 	while [ -n "$1" ]; do
@@ -839,36 +870,8 @@ function _use_update() {
 			echo ' >> START OF ALL PROCESSES <<'
 			echo '-----------------------------------------------------------------------------'
 
-			for f in "$APPSPATH"/*/; do 
-				cd $f 2>/dev/null && 
-				if test -f ./AM-updater; then
-					APPNAME=$(echo "$(printf '%s\n' "${PWD##*/}")")
-					start=$(date +%s) && sh -x ./AM-updater > /dev/null 2>&1 | echo -ne ' Updating "'"$APPNAME"'"...\r' && end=$(date +%s) &&
-					echo -e " ◆ $(echo "$APPNAME" | tr a-z A-Z) is updated, $(($end-$start)) seconds elapsed!" &
-				else
-					echo ""  > /dev/null 2>&1
-				fi
-			done
-			wait
+			_update_all_apps
 
-			echo '-----------------------------------------------------------------------------'
-
-			if test -f "$AMCACHEDIR"/updatable-args-list; then
-				mv "$AMCACHEDIR"/updatable-args-list "$AMCACHEDIR"/updatable-args-list-old
-				_list_updatable_apps
-				OLDVER="$AMCACHEDIR/updatable-args-list-old"
-				NEWVER="$AMCACHEDIR/updatable-args-list"
-				if cmp --silent -- "$NEWVER" "$OLDVER"; then
-					echo ' Nothing to do here!'
-				else
-					echo -e " The following apps have been updated:\n"
-					diff --new-line-format="" --unchanged-line-format="" "$NEWVER" "$OLDVER"
-					echo ""
-				fi
-			else
-				echo ' No apps to update here!'
-			fi
-			rm -R -f $APPSPATH/*/tmp
 			if [ -z "$2" ]; then
 				echo "-----------------------------------------------------------------------------"
 				_use_sync
@@ -892,7 +895,7 @@ function _use_update() {
 					echo ' This program probably includes its own update system!'
 				fi
 				exit
-			fi
+			fi;;
 		esac
 	done
 	shift
