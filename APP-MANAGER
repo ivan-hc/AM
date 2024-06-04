@@ -822,11 +822,16 @@ function _use_sync() {
 
 function _update_all_apps() {
 	for f in "$APPSPATH"/*/; do 
-		cd $f 2>/dev/null && 
+		cd $f 2>/dev/null &&
 		if test -f ./AM-updater; then
-			APPNAME=$(echo "$(printf '%s\n' "${PWD##*/}")")
-			start=$(date +%s) && sh -x ./AM-updater > /dev/null 2>&1 | echo -ne ' Updating "'"$APPNAME"'"...\r' && end=$(date +%s) &&
-			echo -e " ◆ $(echo "$APPNAME" | tr a-z A-Z) is updated, $(($end-$start)) seconds elapsed!" &
+			if [ -w ./AM-updater ]; then
+				APPNAME=$(echo "$(printf '%s\n' "${PWD##*/}")")
+				start=$(date +%s) && sh -x ./AM-updater > /dev/null 2>&1 | echo -ne ' Updating "'"$APPNAME"'"...\r' && end=$(date +%s) &&
+				echo -e " ◆ $(echo "$APPNAME" | tr a-z A-Z) is updated, $(($end-$start)) seconds elapsed!" &
+			else
+				APPNAME=$(echo "$(printf '%s\n' "${PWD##*/}")")
+				echo -e " - $(echo "$APPNAME" | tr a-z A-Z) is read-only!"
+			fi
 		else
 			echo ""  > /dev/null 2>&1
 		fi
@@ -883,11 +888,16 @@ function _use_update() {
 			exit;;
 		*) 
 			if test -f "$APPSPATH"/$2/AM-updater; then
-				start=$(date +%s); "$APPSPATH"/$2/AM-updater > /dev/null 2>&1 | echo -ne " UPDATING $(echo $2 | tr a-z A-Z)\r"; end=$(date +%s)
-				echo -e " ◆ $(echo $2 | tr a-z A-Z) is updated, $(($end-$start)) seconds elapsed!"
-				_clean_amcachedir
-				_list_updatable_apps
-				break
+				if [ -w "$APPSPATH"/$2/AM-updater ]; then
+					start=$(date +%s); "$APPSPATH"/$2/AM-updater > /dev/null 2>&1 | echo -ne " UPDATING $(echo $2 | tr a-z A-Z)\r"; end=$(date +%s)
+					echo -e " ◆ $(echo $2 | tr a-z A-Z) is updated, $(($end-$start)) seconds elapsed!"
+					_clean_amcachedir
+					_list_updatable_apps
+					break
+				else
+					echo -e " - $(echo "$2" | tr a-z A-Z) is read-only!"
+					exit
+				fi
 			else
 				echo ' "'"$(echo "$AMCLI" | tr a-z A-Z)"'" CANNOT MANAGE UPDATES FOR "'"$(echo $2 | tr a-z A-Z)"'"'
 				UPDATERS=$(cd "$APPSPATH"/$2 2>/dev/null && find . -name "*update*" -print 2>/dev/null)
