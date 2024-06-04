@@ -1,0 +1,53 @@
+#!/bin/sh
+
+# AM INSTALL SCRIPT VERSION 3. 
+
+set -u
+APP=yazi
+SITE="sxyazi/yazi"
+
+# CREATE DIRECTORIES AND ADD REMOVER
+[ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
+echo "#!/bin/sh\nset -e\nrm -f /usr/local/bin/$APP\nrm -R -f /opt/$APP" > "/opt/$APP/remove"
+echo "rm -f /usr/local/bin/ya" >> "/opt/$APP/remove"
+chmod a+x "/opt/$APP/remove"
+
+# DOWNLOAD AND PREPARE THE APP
+# $version is also used for updates
+
+
+version=$(curl -Ls https://api.github.com/repos/"$SITE"/releases | jq '.' | sed 's/[()",{}]/ /g; s/ /\n/g' | grep -o 'https.*aarch64.*linux.*gnu.*zip$' | head -1)
+wget "$version" && echo "$version" > "/opt/$APP/version" || exit 1
+unzip ./*zip || exit 1
+cd ..
+mv --backup=t ./tmp/*/* ./ && rm -R -f ./tmp || exit 1
+chmod a+x "/opt/$APP/$APP" "/opt/$APP/ya" || exit 1
+
+# LINK TO PATH
+ln -s "/opt/$APP/$APP" "/usr/local/bin/$APP" && ln -s "/opt/$APP/ya" "/usr/local/bin/ya"
+
+# SCRIPT TO UPDATE THE PROGRAM
+cat >> "/opt/$APP/AM-updater" << 'EOF'
+#!/bin/sh
+set -u
+APP=yazi
+SITE="sxyazi/yazi"
+version0=$(cat /opt/$APP/version)
+version=$(curl -Ls https://api.github.com/repos/"$SITE"/releases | jq '.' | sed 's/[()",{}]/ /g; s/ /\n/g' | grep -o 'https.*aarch64.*linux.*gnu.*zip$' | head -1)
+[ -n "$version" ] || { echo "Error getting link"; exit 1; }
+if [ "$version" != "$version0" ]; then
+	notify-send "A new version of $APP is available, please wait"
+	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
+	wget "$version" || exit 1
+	unzip ./*zip || exit 1
+	cd ..
+	mv --backup=t ./tmp/*/* ./ && rm -R -f ./tmp || exit 1
+	echo "$version" > ./version
+	rm -R -f ./tmp ./*~
+	chmod a+x "/opt/$APP/$APP" "/opt/$APP/ya" || exit 1
+	notify-send "$APP is updated!"
+	exit 0
+fi
+echo "Update not needed!"
+EOF
+chmod a+x "/opt/$APP/AM-updater" || exit 1
