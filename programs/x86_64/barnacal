@@ -1,0 +1,90 @@
+#!/bin/sh
+
+APP=barnacal
+SITE="mike-engel/Barnacal"
+
+# CREATE DIRECTORIES
+if [ -z "$APP" ]; then exit 1; fi
+mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
+
+# ADD THE REMOVER
+echo "#!/bin/sh
+rm -f /usr/share/applications/AM-$APP.desktop /usr/local/bin/$APP
+rm -R -f /opt/$APP" > "/opt/$APP/remove"
+chmod a+x "/opt/$APP/remove"
+
+# DOWNLOAD AND PREPARE THE APP
+# $version is also used for updates
+
+version=$(curl -Ls https://api.github.com/repos/mike-engel/Barnacal/releases | jq '.' | grep browser_download_url | grep -w -v i386  | grep -i appimage | cut -d '"' -f 4 | head -1)
+wget "$version"
+wget "$version.zsync" 2> /dev/null
+echo "$version" >> /opt/$APP/version
+# Use tar fx ./*tar* for example in this line in case a compressed file is downloaded.
+cd ..
+mv ./tmp/*mage ./"$APP"
+mv ./tmp/*.zsync ./"$APP".zsync 2> /dev/null
+chmod a+x "/opt/$APP/$APP"
+rm -R -f ./tmp
+
+# LINK
+ln -s "/opt/$APP/$APP" "/usr/local/bin/$APP"
+
+# SCRIPT TO UPDATE THE PROGRAM
+cat >> "/opt/$APP/AM-updater" << 'EOF'
+#!/bin/sh
+APP=barnacal
+SITE="mike-engel/Barnacal"
+if [ -z "$APP" ]; then exit 1; fi
+version0=$(cat "/opt/$APP/version")
+version=$(curl -Ls https://api.github.com/repos/mike-engel/Barnacal/releases | jq '.' | grep browser_download_url | grep -w -v i386  | grep -i appimage | cut -d '"' -f 4 | head -1)
+if test -f "/opt/$APP/*.zsync"; then
+	mkdir "/opt/$APP/tmp"
+	cd "/opt/$APP/tmp" || exit 1
+	wget "$version.zsync" 2> /dev/null
+	cd ..
+	mv ./tmp/*.zsync ./"$APP".zsync
+	rm -R -f ./tmp
+	zsync "/opt/$APP/$APP.zsync"
+	rm -R -f "/opt/$APP/*zs-old" "/opt/$APP/*.part"
+	chmod a+x "/opt/$APP/$APP"
+	if [ "$version" != "$version0" ]; then
+		echo "$version" > /opt/$APP/version
+	fi
+else
+	if [ "$version" = "$version0" ]; then
+		echo "Update not needed!" && exit 0
+	else
+		notify-send "A new version of $APP is available, please wait"
+		mkdir "/opt/$APP/tmp"
+		cd "/opt/$APP/tmp" || exit 1
+		wget $version
+		if ls . | grep mage; then
+			
+			cd ..
+			
+	  		if ! test -f ./tmp/*mage; then exit 1; fi
+	  		echo "$version" > ./version
+	  		mv --backup=t ./tmp/* ./"$APP"
+	  		chmod a+x "/opt/$APP/$APP"
+	  		rm -R -f ./tmp ./*~
+		fi
+		notify-send "$APP is updated!"
+	fi
+fi
+EOF
+chmod a+x "/opt/$APP/AM-updater"
+
+# LAUNCHER & ICON
+cd "/opt/$APP" || exit 1
+./"$APP" --appimage-extract .DirIcon 1>/dev/null && mv ./squashfs-root/.DirIcon ./DirIcon
+./"$APP" --appimage-extract *.desktop 1>/dev/null && mv ./squashfs-root/*.desktop ./"$APP".desktop
+./"$APP" --appimage-extract share/applications/*.desktop 1>/dev/null && mv ./squashfs-root/share/applications/*.desktop ./"$APP".desktop
+./"$APP" --appimage-extract usr/share/applications/*.desktop 1>/dev/null && mv ./squashfs-root/usr/share/applications/*.desktop ./"$APP".desktop
+if [ -L ./DirIcon ]; then
+	LINKPATH=$(readlink ./DirIcon)
+	./"$APP" --appimage-extract "$LINKPATH" && mv ./squashfs-root/"$LINKPATH" ./DirIcon
+fi
+sed -i "s#Exec=[^ ]*#Exec=$APP#g; s#Icon=.*#Icon=/opt/$APP/icons/$APP#g" ./"$APP".desktop
+mv ./"$APP".desktop /usr/share/applications/AM-"$APP".desktop && mv ./DirIcon ./icons/"$APP" 2>/dev/null
+rm -R -f ./squashfs-root
