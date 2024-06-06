@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="6.10"
+AMVERSION="6.10.1"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -657,24 +657,46 @@ fi
 # FUNCTIONS RELATED TO INTERNAL OPTION TO CLEAN UNNEEDED FILES
 ##############################################################
 
+function _clean_amcachedir_message() {
+	_clean_amcachedir
+	echo " ◆ Clear the contents of $AMCACHEDIR"
+}
+
+function _clean_all_home_cache_directories_of_appimages() {
+	if test -d "$APPSPATH"/*/*.home/.cache 2> /dev/null; then
+		rm -Rf "$APPSPATH"/*/*.home/.cache/* &&
+		echo " ◆ Clear the contents of all *.home/.cache AppImages directories"
+	fi
+}
+
+function _clean_all_tmp_directories_from_appspath() {
+	if test -d "$APPSPATH"/*/tmp 2> /dev/null; then
+		rm -Rf "$APPSPATH"/*/tmp &&
+		echo ' ◆ Removed all '"$APPSPATH"'/*/tmp directories'
+	fi
+}
+
 function _clean_launchers() {
-	for var in "$DATADIR"/applications/AppImages/*.desktop; do
-		APPIMAGENAME=$(grep "Exec=" 0<"$var" 2>/dev/null | head -1 | cut -c 6- | sed 's/\s.*$//')
-		MOUNTPOINTS=$(echo "$APPIMAGENAME" | cut -d'/' -f1-4)
-		if ! test -f "$APPIMAGENAME" 2> /dev/null; then
-			if ! test -d "$(echo "$MOUNTPOINTS")" 2> /dev/null; then
-				if echo "$MOUNTPOINTS" | grep -q "/media/"; then
-					echo -e "\n 💀ERROR: cannot remove $(basename "$var")\n   related AppImage is located in an unmounted path of /media\n"
-				elif echo "$MOUNTPOINTS" | grep -q "/mnt/"; then
-					echo -e "\n 💀ERROR: cannot remove $(basename "$var")\n   related AppImage is located in an unmounted path of /mnt\n"
+	if test -f "$DATADIR"/applications/AppImages/*.desktop 2> /dev/null; then
+		for var in "$DATADIR"/applications/AppImages/*.desktop; do
+			APPIMAGENAME=$(grep "Exec=" 0<"$var" 2>/dev/null | head -1 | cut -c 6- | sed 's/\s.*$//')
+			MOUNTPOINTS=$(echo "$APPIMAGENAME" | cut -d'/' -f1-4)
+			if ! test -f "$APPIMAGENAME" 2> /dev/null; then
+				if ! test -d "$(echo "$MOUNTPOINTS")" 2> /dev/null; then
+					if echo "$MOUNTPOINTS" | grep -q "/media/"; then
+						echo -e "\n 💀ERROR: cannot remove $(basename "$var")\n   related AppImage is located in an unmounted path of /media\n"
+					elif echo "$MOUNTPOINTS" | grep -q "/mnt/"; then
+						echo -e "\n 💀ERROR: cannot remove $(basename "$var")\n   related AppImage is located in an unmounted path of /mnt\n"
+					fi
+				else
+					rm -f "$var"
+					rm -f "$HOME"/.local/bin/"$(basename -- "$(echo "$APPIMAGENAME" | tr A-Z a-z)")"*
+					cd "$HOME"/.local/bin && find . -xtype l -delete
 				fi
-			else
-				rm -f "$var"
-				rm -f "$HOME"/.local/bin/"$(basename -- "$(echo "$APPIMAGENAME" | tr A-Z a-z)")"*
-				cd "$HOME"/.local/bin && find . -xtype l -delete
 			fi
-		fi
-	done
+		done
+		echo ' ◆ Removed orphaned launchers produced with the "--launcher" option'
+	fi
 }
 
 function _clean_old_modules() {
@@ -685,22 +707,22 @@ function _clean_old_modules() {
 	fi
 	for m in "$APPSPATH"/"$AMCLI"/modules/*; do
 		if [[ "${MODULES}" != *"$(basename -- "$m")"* ]];then
-			rm -f "$m"
+			rm -f "$m" 2>/dev/null
+			echo " ◆ Removed obsolete module named \"$(basename -- "$m")\""
 		fi
 	done
 }
 
 function _use_clean() {
-	echo -e "\n Cleaning of temporary files and folders in progress...\n" && sleep 0.1 &&
-	for i in {1000..0000}; do 
+	echo -e "\n Cleaning temporary files and folders...\n" && sleep 0.1 &&
+	for i in {100..000}; do 
 		echo -ne " $i\r" && sleep 0.0001
 	done
-	_clean_amcachedir && echo " ◆ Cleaning up the content of $AMCACHEDIR"
-	rm -R -f "$APPSPATH"/*/tmp && echo ' ◆ Removed all '"$APPSPATH"'/*/tmp directories'
-	if test -f "$DATADIR"/applications/AppImages/*.desktop 2> /dev/null; then
-		_clean_launchers && echo ' ◆ Removed orphaned launchers produced with the "--launcher" option'
-	fi
-	_clean_old_modules && echo ' ◆ Removed obsolete modules'
+	_clean_amcachedir_message
+	_clean_all_home_cache_directories_of_appimages
+	_clean_all_tmp_directories_from_appspath
+	_clean_launchers
+	_clean_old_modules
 	echo -e "\n DONE!\n"
 }
 
