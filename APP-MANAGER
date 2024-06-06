@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="6.9-3"
+AMVERSION="6.10"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -639,6 +639,17 @@ if [ "$AMCLI" == am ] 2>/dev/null; then
 			AMCLIPATH="/opt/am/APP-MANAGER"
 			;;
 		esac
+	elif [ ! -w /opt/am ]; then
+		read -p " \"AM\" is read-only, want to use it in \"AppMan Mode\" (Y,n)? " yn
+		case $yn in
+		'N'|'n')
+			exit 0;;
+		'Y'|'y'|*)
+			echo '--------------------------------------------------------------------------'
+			echo " \"AppMan Mode\" enabled!" | tr a-z A-Z
+			echo '--------------------------------------------------------------------------'
+			_use_appman 1>/dev/null;;
+		esac
 	fi
 fi
 
@@ -670,7 +681,7 @@ function _clean_old_modules() {
 	if [ $AMCLI == am ] 2>/dev/null; then
 		MODULES=$(cat /opt/am/APP-MANAGER | grep -Eo '\S*.am\S*' | sed 's@.*/@@' | grep -v ";" | grep ".am" | uniq | sort)
 	else
-		MODULES=$(cat "$AMCLIPATH" | grep -Eo '\S*.am\S*' | sed 's@.*/@@' | grep -v ";" | grep ".am" | uniq | sort)
+		MODULES=$(cat "$AMCLIPATH" 2>/dev/null | grep -Eo '\S*.am\S*' | sed 's@.*/@@' | grep -v ";" | grep ".am" | uniq | sort)
 	fi
 	for m in "$APPSPATH"/"$AMCLI"/modules/*; do
 		if [[ "${MODULES}" != *"$(basename -- "$m")"* ]];then
@@ -766,7 +777,7 @@ function _sync_modules() {
 			wget -q "$v"
 			chmod a+x ./"$MODULENAME"
 		fi
-		CURRENT=$(cat ./"$MODULENAME")
+		CURRENT=$(cat ./"$MODULENAME" 2>/dev/null)
 		SOURCE=$(wget -q "$v" -O -)
 		if [ "$CURRENT" == "$SOURCE" ]; then
 			echo -ne "\r" 2> /dev/null
@@ -791,20 +802,20 @@ function _sync_amcli() {
 		AMCLIPATH="/opt/am/APP-MANAGER"
 		CURRENT_AM_VERSION=$("$AMCLIPATH" -v)
 	else
-		CURRENT_AM_VERSION=$("$AMCLIPATH" -v)
+		CURRENT_AM_VERSION=$("$AMCLIPATH" -v 2>/dev/null)
 	fi
 	echo -ne '\n ◆ SYNCHRONIZING "'"$(echo "$AMCLI" | tr a-z A-Z)"'" VERSION '"$CURRENT_AM_VERSION"'...\r'; sleep 1
 	_clean_amcachedir 1>/dev/null; cd "$AMCACHEDIR" || return
 	if [ "$AMCLI" == am ] 2>/dev/null; then
-		wget -q "$AMREPO"/APP-MANAGER && chmod a+x ./APP-MANAGER && chmod 777 ./APP-MANAGER
+		wget -q "$AMREPO"/APP-MANAGER && chmod a+x ./APP-MANAGER
 		cd ..
 		echo y | mv "$AMCACHEDIR"/APP-MANAGER /opt/am/APP-MANAGER
 	else
 		wget -q "$AMREPO"/APP-MANAGER -O appman && chmod a+x ./"$AMCLI"
 		cd ..
-		echo y | mv "$AMCACHEDIR"/"$AMCLI" "$AMCLIPATH"
+		echo y | mv "$AMCACHEDIR"/"$AMCLI" "$AMCLIPATH" 2>/dev/null
 	fi
-	if [ ! "$CURRENT_AM_VERSION" == "$("$AMCLIPATH" -v)" ] ; then
+	if [ ! "$CURRENT_AM_VERSION" == "$("$AMCLIPATH" -v 2>/dev/null)" ] ; then
 		echo -ne ' A new release of "'"$(echo "$AMCLI" | tr a-z A-Z)"'" is available, please wait...\r'
 		echo -e ' ◆ "'"$(echo "$AMCLI" | tr a-z A-Z)"'" IS NOW UPDATED TO THE BRAND NEW '"$("$AMCLIPATH" -v)"' VERSION!           \n\n  Replacement of version '"$CURRENT_AM_VERSION"' currently in use, COMPLETED!'
 		echo -e "\n See https://github.com/ivan-hc/AM/commits/main\n"
@@ -962,7 +973,6 @@ case "$1" in
 	'-l'|'list'|\
 	'-q'|'query')
 		MODULE="database.am"
-		_if_appman_mode_enabled
 		_use_module "$@"
 		;;
 	'-b'|'backup'|\
@@ -981,7 +991,6 @@ case "$1" in
 		;;
 	'-f'|'files')
 		MODULE="files.am"
-		_if_appman_mode_enabled
 		_use_module "$@"
 		_betatester_message_on
 		;;
