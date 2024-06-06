@@ -25,30 +25,31 @@ function _files_sizes() {
 		SIZE=$(du -sh -- $arg | cut -f1 -d"	")
 	fi
 	SIZE=$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')
+	echo " ◆ $arg	|	$SIZE" >> "$AMCACHEDIR"/files-sizes
 }
 
 function _files_if_binary_executable() {
-	echo " ◆ $arg	|	$APPVERSION	|	binary/executable	|	$SIZE" >> "$AMCACHEDIR"/files-args
+	echo " ◆ $arg	|	binary/executable" >> "$AMCACHEDIR"/files-type
 }
 
 function _files_if_unknown() {
-	echo " ◆ $arg	|	$APPVERSION	|	unknown	|	$SIZE" >> "$AMCACHEDIR"/files-args
+	echo " ◆ $arg	|	unknown" >> "$AMCACHEDIR"/files-type
 }
 
 function _files_if_other() {
-	echo " ◆ $arg	|	$APPVERSION	|	other	|	$SIZE" >> "$AMCACHEDIR"/files-args
+	echo " ◆ $arg	|	other" >> "$AMCACHEDIR"/files-type
 }
 
 function _files_if_launcher() {
-	echo " ◆ $arg	|	$APPVERSION	|	launcher	|	$SIZE" >> "$AMCACHEDIR"/files-args
+	echo " ◆ $arg	|	launcher" >> "$AMCACHEDIR"/files-type
 }
 
 function _files_if_set_tools() {
-	echo " ◆ $arg	|	$APPVERSION	|	set/tools	|	$SIZE" >> "$AMCACHEDIR"/files-args
+	echo " ◆ $arg	|	set/tools" >> "$AMCACHEDIR"/files-type
 }
 
 function _files_if_library() {
-	echo " ◆ $arg	|	$APPVERSION	|	library	|	$SIZE" >> "$AMCACHEDIR"/files-args
+	echo " ◆ $arg	|	library" >> "$AMCACHEDIR"/files-type
 }
 
 function _files_if_script() {
@@ -57,15 +58,15 @@ function _files_if_script() {
 	elif test -f $APPSPATH/$arg/$arg-bin; then
 		_files_if_binary_executable
 	else
-		echo " ◆ $arg	|	$APPVERSION	|	script	|	$SIZE" >> "$AMCACHEDIR"/files-args
+		echo " ◆ $arg	|	script" >> "$AMCACHEDIR"/files-type
 	fi
 }
 
 function _files_if_appimage() {
 	if [ -z "$(strings -d "./$arg/$arg" 2>/dev/null | grep -F 'AppImages require FUSE to run')" ] 2>/dev/null; then
-		echo " ◆ $arg	|	$APPVERSION	|	appimage-type3	|	$SIZE" >> "$AMCACHEDIR"/files-args
+		echo " ◆ $arg	|	appimage-type3" >> "$AMCACHEDIR"/files-type
 	else
-		echo " ◆ $arg	|	$APPVERSION	|	appimage-type2	|	$SIZE" >> "$AMCACHEDIR"/files-args
+		echo " ◆ $arg	|	appimage-type2" >> "$AMCACHEDIR"/files-type
 	fi
 }
 
@@ -118,17 +119,37 @@ function _files_type() {
 	fi
 }
 
-function _files() {
-	rm -f "$AMCACHEDIR"/files-args*
+function _files_files() {
 	cd $APPSPATH &&
 	INSTALLED_APPS=$(find -name 'remove' -printf "%h\n" 2>/dev/null | du -sh -- * 2> /dev/null | sort -rh | sed 's@.*	@@')
 	if ! test -f "$AMCACHEDIR"/version-args; then
 		_check_version
 	fi
+	if ! test -f "$AMCACHEDIR"/files-type; then
+		for arg in $INSTALLED_APPS; do
+			if test -f ./$arg/remove 2>/dev/null; then
+		 		_files_type
+			fi
+		done
+	fi
+	rm -f "$AMCACHEDIR"/files-sizes
 	for arg in $INSTALLED_APPS; do
 		if test -f ./$arg/remove 2>/dev/null; then
-	 		_files_sizes
-	 		_files_type
+			_files_sizes
+		fi
+	done
+}
+
+function _files() {
+	_files_files
+	rm -f "$AMCACHEDIR"/files-args
+	INSTALLED_APPS=$(find -name 'remove' -printf "%h\n" 2>/dev/null | du -sh -- * 2> /dev/null | sort -rh | sed 's@.*	@@')
+	for arg in $INSTALLED_APPS; do
+		if test -f ./$arg/remove 2>/dev/null; then
+			APPVERSION=$(cat "$AMCACHEDIR"/version-args | grep -w " ◆ $arg	|" | sed 's:.*|	::')
+			APPTYPE=$(cat "$AMCACHEDIR"/files-type | grep -w " ◆ $arg	|" | sed 's:.*|	::')
+			APPSYZE=$(cat "$AMCACHEDIR"/files-sizes | grep -w " ◆ $arg	|" | sed 's:.*|	::')
+			echo " ◆ $arg	|	$APPVERSION	|	$APPTYPE	|	$APPSYZE" >> "$AMCACHEDIR"/files-args
 		fi
 	done
 }
@@ -142,14 +163,9 @@ function _files_show_only_number() {
 function _files_sort_by_name() {
 	_files_header
 	rm -f "$AMCACHEDIR"/files-args-byname
-	if test -f "$AMCACHEDIR"/files-args; then
-		echo -e "- APPNAME | VERSION | TYPE | SIZE \n- ------- | ------- | ---- | ----" >> "$AMCACHEDIR"/files-args-byname
-		cat "$AMCACHEDIR"/files-args 2>/dev/null | sort >> "$AMCACHEDIR"/files-args-byname
-	else
-		_files
-		echo -e "- APPNAME | VERSION | TYPE | SIZE \n- ------- | ------- | ---- | ----" >> "$AMCACHEDIR"/files-args-byname
-		cat "$AMCACHEDIR"/files-args 2>/dev/null | sort >> "$AMCACHEDIR"/files-args-byname
-	fi
+	_files
+	echo -e "- APPNAME | VERSION | TYPE | SIZE \n- ------- | ------- | ---- | ----" >> "$AMCACHEDIR"/files-args-byname
+	cat "$AMCACHEDIR"/files-args 2>/dev/null | sort >> "$AMCACHEDIR"/files-args-byname
 	cat "$AMCACHEDIR"/files-args-byname | column -t
 	echo ""
 }
@@ -157,14 +173,9 @@ function _files_sort_by_name() {
 function _files_sort_by_size() {
 	_files_header
 	rm -f "$AMCACHEDIR"/files-args-bysize
-	if test -f "$AMCACHEDIR"/files-args; then
-		echo -e "- APPNAME | VERSION | TYPE | SIZE \n- ------- | ------- | ---- | ----" >> "$AMCACHEDIR"/files-args-bysize
-		cat "$AMCACHEDIR"/files-args >> "$AMCACHEDIR"/files-args-bysize 2>/dev/null
-	else
-		_files
-		echo -e "- APPNAME | VERSION | TYPE | SIZE \n- ------- | ------- | ---- | ----" >> "$AMCACHEDIR"/files-args-bysize
-		cat "$AMCACHEDIR"/files-args >> "$AMCACHEDIR"/files-args-bysize 2>/dev/null
-	fi
+	_files
+	echo -e "- APPNAME | VERSION | TYPE | SIZE \n- ------- | ------- | ---- | ----" >> "$AMCACHEDIR"/files-args-bysize
+	cat "$AMCACHEDIR"/files-args >> "$AMCACHEDIR"/files-args-bysize 2>/dev/null
 	cat "$AMCACHEDIR"/files-args-bysize | column -t
 	echo ""
 }
