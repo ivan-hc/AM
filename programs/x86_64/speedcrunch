@@ -1,0 +1,60 @@
+#!/bin/sh
+
+# AM INSTALL SCRIPT VERSION 3. 
+
+set -u
+APP=speedcrunch
+SITE="heldercorreia/speedcrunch"
+
+# CREATE DIRECTORIES AND ADD REMOVER
+[ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
+echo "#!/bin/sh\nset -e\nrm -f /usr/local/bin/$APP\nrm -R -f /opt/$APP" > "/opt/$APP/remove"
+echo "rm -f /usr/share/applications/AM-$APP.desktop" >> "/opt/$APP/remove"
+chmod a+x "/opt/$APP/remove"
+
+# DOWNLOAD AND PREPARE THE APP
+# $version is also used for updates
+
+version=$(curl -Ls https://api.bitbucket.org/2.0/repositories/"$SITE"/downloads | jq '.' | sed 's/[()",{}]/ /g; s/ /\n/g' | grep -o 'https.*SpeedCrunch.*64.*bz2$' | head -1)
+wget "$version" && echo "$version" > "/opt/$APP/version" || exit 1
+tar fx ./*tar*
+cd ..
+mv --backup=t ./tmp/"$APP" ./ && rm -R -f ./tmp || exit 1
+chmod a+x "/opt/$APP/$APP" || exit 1
+
+# LINK TO PATH
+ln -s "/opt/$APP/$APP" "/usr/local/bin/$APP"
+
+# SCRIPT TO UPDATE THE PROGRAM
+cat >> "/opt/$APP/AM-updater" << 'EOF'
+#!/bin/sh
+APP=speedcrunch
+SITE="heldercorreia/speedcrunch"
+if [ -z "$APP" ]; then exit 1; fi
+version0=$(cat "/opt/$APP/version")
+version=$(curl -Ls https://api.bitbucket.org/2.0/repositories/"$SITE"/downloads | jq '.' | sed 's/[()",{}]/ /g; s/ /\n/g' | grep -o 'https.*SpeedCrunch.*64.*bz2$' | head -1)
+[ -n "$version" ] || { echo "Error getting link"; exit 1; }
+if [ "$version" != "$version0" ]; then
+	notify-send "A new version of $APP is available, please wait"
+	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
+	wget "$version" || exit 1
+	tar fx ./*tar*
+	cd ..
+	mv --backup=t ./tmp/"$APP" ./ || exit 1
+	echo "$version" > ./version
+	rm -R -f ./tmp ./*~
+	chmod a+x "/opt/$APP/$APP" || exit 1
+	notify-send "$APP is updated!"
+	exit 0
+fi
+echo "Update not needed!"
+EOF
+chmod a+x "/opt/$APP/AM-updater"
+
+# LAUNCHER & ICON
+cd "/opt/$APP" || exit 1
+DESKTOP="https://bitbucket.org/heldercorreia/speedcrunch/raw/fa4f5d23f28b6458b54c617230f66af41fc94d7e/pkg/org.speedcrunch.SpeedCrunch.desktop"
+ICON="https://bitbucket.org/heldercorreia/speedcrunch/raw/fa4f5d23f28b6458b54c617230f66af41fc94d7e/gfx/speedcrunch.svg"
+wget -q "$DESKTOP" -O ./"$APP".desktop && wget -q "$ICON" -O ./"$APP".svg 
+sed -i "s#Exec=[^ ]*#Exec=$APP#g; s#Icon=.*#Icon=/opt/$APP/icons/$APP#g" ./"$APP".desktop
+mv ./"$APP".desktop /usr/share/applications/AM-"$APP".desktop && mv ./"$APP".svg ./icons/"$APP" 2>/dev/null
