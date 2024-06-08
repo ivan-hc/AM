@@ -1,14 +1,13 @@
-#!/usr/bin/env bash
+#!/bin/sh
 
 ##########################################################################
 # THIS MODULE ALLOWS YOU TO SEE THE MAIN INFORMATION ON THE INSTALLED APPS
 ##########################################################################
 
-function _files_header() {
+_files_header() {
 	echo ""
-	echo $(echo "YOU HAVE INSTALLED "
-	cd "$APPSPATH" &&
-	find . -type f -name 'remove' 2>/dev/null | sed -r 's|/[^/]+$||' | sort | uniq | wc -l
+	echo $(echo "- YOU HAVE INSTALLED "
+	find "$APPSPATH" -type f -name 'remove' 2>/dev/null | sed -r 's|/[^/]+$||' | sort | uniq | wc -l
 	if grep -q 'usr/local/lib' $APPSPATH/*/remove 2> /dev/null; then
 		echo " STANDALONE PROGRAMS AND LIBRARIES MANAGED BY '$(echo $AMCLI | tr a-z A-Z)':"
 	else
@@ -17,42 +16,42 @@ function _files_header() {
 	echo ""
 }
 
-function _files_sizes() {
+_files_sizes() {
 	if grep -q "usr/local/lib" ./$arg/remove; then
 		LIBNAME=$(cat $APPSPATH/$arg/remove | tr ' ' '\n' | grep "usr/local/lib" | head -1)
 		SIZE=$(du -sh $LIBNAME | cut -f1 | sort -rh | head -1)
 	else
 		SIZE=$(du -sh -- $arg | cut -f1 -d"	")
 	fi
-	SIZE=$(echo "$SIZE" | sed 's/.$/ &/' | sed 's/$/iB/')
+	SIZE=$(echo "$SIZE" | sed 's/.$/ &/; s/$/iB/')
 	echo " ◆ $arg	|	$SIZE" >> "$AMCACHEDIR"/files-sizes
 }
 
-function _files_if_binary_executable() {
+_files_if_binary_executable() {
 	echo " ◆ $arg	|	binary/executable" >> "$AMCACHEDIR"/files-type
 }
 
-function _files_if_unknown() {
+_files_if_unknown() {
 	echo " ◆ $arg	|	unknown" >> "$AMCACHEDIR"/files-type
 }
 
-function _files_if_other() {
+_files_if_other() {
 	echo " ◆ $arg	|	other" >> "$AMCACHEDIR"/files-type
 }
 
-function _files_if_launcher() {
+_files_if_launcher() {
 	echo " ◆ $arg	|	launcher" >> "$AMCACHEDIR"/files-type
 }
 
-function _files_if_set_tools() {
+_files_if_set_tools() {
 	echo " ◆ $arg	|	set/tools" >> "$AMCACHEDIR"/files-type
 }
 
-function _files_if_library() {
+_files_if_library() {
 	echo " ◆ $arg	|	library" >> "$AMCACHEDIR"/files-type
 }
 
-function _files_if_script() {
+_files_if_script() {
 	if test -f $APPSPATH/$arg/bin/$arg; then
 		_files_if_binary_executable
 	elif test -f $APPSPATH/$arg/$arg-bin; then
@@ -62,7 +61,7 @@ function _files_if_script() {
 	fi
 }
 
-function _files_if_appimage() {
+_files_if_appimage() {
 	if [ -z "$(strings -d "./$arg/$arg" 2>/dev/null | grep -F 'AppImages require FUSE to run')" ] 2>/dev/null; then
 		echo " ◆ $arg	|	appimage-type3" >> "$AMCACHEDIR"/files-type
 	else
@@ -70,7 +69,7 @@ function _files_if_appimage() {
 	fi
 }
 
-function _files_type() {
+_files_type() {
 	APPVERSION=$(cat "$AMCACHEDIR"/version-args | grep -w " ◆ $arg	|" | sed 's:.*|	::')
 	if [ -z "$(strings -d "./$arg/$arg" 2>/dev/null | grep -F 'if you run it with the --appimage-extract option')" ] 2>/dev/null; then
 		string=$(strings -d "./$arg/$arg" 2>/dev/null | head -1 )
@@ -95,7 +94,7 @@ function _files_type() {
 			elif cat "./$arg/remove" | tail -1 | grep -q 'xtype l -exec rm'; then
 				_files_if_set_tools
 			elif echo "$realstring" | grep -q "#!"; then
-				script2path=$(cat "$link_in_path" | tail -1 | sed 's#$APP#'$arg'#g' | sed 's#exec ##g')
+				script2path=$(cat "$link_in_path" | tail -1 | sed 's#$APP#'$arg'#g; s#exec ##g')
 				realrealstring=$(strings -d "$script2path" 2>/dev/null | head -1 )
 				if echo "$realrealstring" | grep -q "ld-linux"; then
 					_files_if_binary_executable
@@ -119,7 +118,7 @@ function _files_type() {
 	fi
 }
 
-function _files_files() {
+_files_files() {
 	cd $APPSPATH &&
 	INSTALLED_APPS=$(find -name 'remove' -printf "%h\n" 2>/dev/null | du -sh -- * 2> /dev/null | sort -rh | sed 's@.*	@@')
 	if ! test -f "$AMCACHEDIR"/version-args; then
@@ -140,7 +139,7 @@ function _files_files() {
 	done
 }
 
-function _files() {
+_files() {
 	_files_files
 	rm -f "$AMCACHEDIR"/files-args
 	INSTALLED_APPS=$(find -name 'remove' -printf "%h\n" 2>/dev/null | du -sh -- * 2> /dev/null | sort -rh | sed 's@.*	@@')
@@ -154,29 +153,32 @@ function _files() {
 	done
 }
 
-function _files_show_only_number() {
-	cd "$APPSPATH" &&
-	find . -type f -name 'remove' 2>/dev/null | sed -r 's|/[^/]+$||' | sort | uniq | wc -l
+_files_show_only_number() {
+	find "$APPSPATH" -type f -name 'remove' 2>/dev/null | uniq | wc -l
 	exit 0
 }
 
-function _files_sort_by_name() {
+_files_sort_by_name() {
 	_files_header
 	rm -f "$AMCACHEDIR"/files-args-byname
 	_files
 	echo -e "- APPNAME | VERSION | TYPE | SIZE \n- ------- | ------- | ---- | ----" >> "$AMCACHEDIR"/files-args-byname
 	cat "$AMCACHEDIR"/files-args 2>/dev/null | sort >> "$AMCACHEDIR"/files-args-byname
 	cat "$AMCACHEDIR"/files-args-byname | column -t
+	echo "--------------------------------------------------------------------------------"
+	echo "- Total Size:							      $(du -sh "$APPSPATH" | awk '{print $1}' | sed 's/.$/   &/; s/$/iB/')"
 	echo ""
 }
 
-function _files_sort_by_size() {
+_files_sort_by_size() {
 	_files_header
 	rm -f "$AMCACHEDIR"/files-args-bysize
 	_files
 	echo -e "- APPNAME | VERSION | TYPE | SIZE \n- ------- | ------- | ---- | ----" >> "$AMCACHEDIR"/files-args-bysize
 	cat "$AMCACHEDIR"/files-args >> "$AMCACHEDIR"/files-args-bysize 2>/dev/null
 	cat "$AMCACHEDIR"/files-args-bysize | column -t
+	echo "--------------------------------------------------------------------------------"
+	echo "- Total Size:							      $(du -sh "$APPSPATH" | awk '{print $1}' | sed 's/.$/   &/; s/$/iB/')"
 	echo ""
 }
 
