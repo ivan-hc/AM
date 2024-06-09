@@ -1,15 +1,15 @@
-#!/usr/bin/env bash
+#!/bin/sh
 
 ############################################################################################
 # THIS MODULE INCLUDES ALL THE ACTIONS INTENDED FOR THE MANAGEMENT OF LISTS AND SINGLE PAGES
 ############################################################################################
 
-function _clean_lists_and_queries() {
+_clean_lists_and_queries() {
 	# Remove references to URLs, "-a" elements and limit message length to a maximum of 80 characters in "-l" and "-q"
-	cut -c -81 | sed 's#http://[^ ]*##g' | sed 's#https://[^ ]*##g' | sed 's#ftp://[^ ]*##g' | sed 's/SITE://g' | sed 's/SOURCE://g'
+	sed -E 's#(http|https|ftp)://[^ ]*##g; s#(SITE|SOURCE):##g'
 }
 
-function download_markdown() {
+_download_markdown() {
 	local disk_usage=""
 	local app_version=""
 	local markdown_url="$AMCATALOGUEMARKDOWNS/${1}.md"
@@ -28,13 +28,17 @@ function download_markdown() {
 		fi
 		printf '%s\n' "$app_status"
 		cat -s "$cache_dir/$1.md"
+		if [ -z "$cache_dir" ]; then
+			exit 1
+		fi
 		rm -R -f "$cache_dir"
+		
 	else
 		printf ' "%s" IS NOT A VALID ARGUMENT\n' "$package_name"
 	fi
 }
 
-function generate_3rd_party() {
+_generate_3rd_party() {
 	local disk_usage=""
 	local app_version=""
 	local app_status=" STATUS: NOT INSTALLED"
@@ -53,7 +57,7 @@ function generate_3rd_party() {
 	fi
 }
 
-function download_lib() {
+_download_lib() {
 	local lib_name_upper=${1^^}
 	printf "%s\n" " LIBRARY: $lib_name_upper"
 	if [[ -f "$APPSPATH/$1/remove" ]]; then 
@@ -76,7 +80,7 @@ function download_lib() {
 	echo ""
 }
 
-function _list() {
+_list() {
 	LIBNUMBER=$(cat $APPSPATH/*/remove 2> /dev/null | grep "usr/local/lib" | wc -l)
 	ITEMSNUMBER=$(cd $APPSPATH && find -name 'remove' -printf "%h\n" 2>/dev/null | sort -u | wc -l)
 	if [ "$AMCLI" == am ]; then
@@ -92,10 +96,7 @@ function _list() {
 		MESSAGE2="\n$INSTALLED\n"
 	fi
 
-	wget -q --tries=10 --timeout=20 --spider https://github.com
-	if [[ $? -eq 0 ]]; then
-		_completion_lists
-	fi
+	wget -q --tries=10 --timeout=20 --spider https://github.com && _completion_lists
 	if cat $APPSPATH/*/remove 2> /dev/null | grep -q "usr/local/lib"; then
 		if [ "$LIBNUMBER" == 1 ]; then
 			MESSAGE=$(echo " YOU HAVE INSTALLED $APPSNUMBER APPLICATIONS OUT OF $(grep -e "$" -c $AMPATH/$arch-apps) AVAILABLE, AND $LIBNUMBER LIBRARY")
@@ -110,7 +111,7 @@ function _list() {
 }
 
 # Define functions
-function usage() {
+usage() {
 	echo " USAGE: $AMCLI $1 [ARGUMENT]"
 }
 
@@ -135,11 +136,11 @@ case "$1" in
 		# Skip the first argument which is not part of ARGS
 		for arg in "${@:2}"; do
 			if curl -o /dev/null -sIf "$AMCATALOGUEMARKDOWNS/${arg}.md" 1>/dev/null; then
-				download_markdown "$arg"
+				_download_markdown "$arg"
 			elif grep -q "◆ $arg : " "$AMPATH/$arch-apps"; then
-				generate_3rd_party
+				_generate_3rd_party
 			elif grep -q "◆ $arg : " "$AMPATH/libs-list"; then
-				download_lib "$arg"
+				_download_lib "$arg"
 			else
 				printf '%s is not a valid argument\n' " $arg" | tr a-z A-Z
 			fi
@@ -158,15 +159,21 @@ case "$1" in
 				exit
 				;;
 		esac
-		wget -q --tries=10 --timeout=20 --spider https://github.com
-		if [[ $? -eq 0 ]]; then
-			_completion_lists
+		wget -q --tries=10 --timeout=20 --spider https://github.com && _completion_lists
+		if [ "$2" = --pkg ]; then
+			ARGS=$(echo "$@" | cut -f3- -d ' ' | sed 's/ /, /g')
+			echo -e "\n Search results for packages: $ARGS\n" | tr a-z A-Z
+			grep -i -E "$(echo "$@" | cut -f3- -d ' ' | tr -s ' ' '|')" "$AMPATH/$arch-apps" --color=always | _clean_lists_and_queries
+			grep -i -E "$(echo "$@" | cut -f3- -d ' ' | tr -s ' ' '|')" "$AMPATH/libs-list" --color=always | _clean_lists_and_queries
+			echo ""
+			exit 0
 		fi
-		ARGS=$(echo "$@" | sed 's/-q //')
+		ARGS=$(echo "$@" | cut -f2- -d ' ')
 		echo -e "\n Search results for \"$ARGS\":\n" | tr a-z A-Z
-		grep -i -E "$2" "$AMPATH/$arch-apps" | grep -i -E "$3" | grep -i -E "$4" | grep -i -E "$5" | grep -i -E "$6" | grep -i -E "$7" | grep -i -E "$8" | grep -i -E "$9" | _clean_lists_and_queries
-		grep -i -E "$2" "$AMPATH/libs-list" | grep -i -E "$3" | grep -i -E "$4" | grep -i -E "$5" | grep -i -E "$6" | grep -i -E "$7" | grep -i -E "$8" | grep -i -E "$9" | _clean_lists_and_queries
+		PATTERN="$(echo "$@" | cut -f2- -d ' ' | sed 's/ /(?=.*/g; s/$/)/g; s/(/)(/g; s/^/(?=.*/g;')"
+		grep -P -i "$PATTERN" "$AMPATH/$arch-apps" | _clean_lists_and_queries
+		grep -P -i "$PATTERN" "$AMPATH/libs-list" | _clean_lists_and_queries
 		echo ""
-		exit
+		exit 0
 		;;
 esac
