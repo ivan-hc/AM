@@ -1,52 +1,53 @@
 #!/bin/sh
 
+# AM INSTALL SCRIPT VERSION 3. 
+
+set -u
 APP=hyperfine
 SITE="sharkdp/hyperfine"
 
-# CREATE DIRECTORIES
-if [ -z "$APP" ]; then exit 1; fi
-mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
-
-# ADD THE REMOVER
-echo "#!/bin/sh
-rm -f /usr/share/applications/AM-$APP.desktop /usr/local/bin/$APP
-rm -R -f /opt/$APP" >> "/opt/$APP/remove"
+# CREATE DIRECTORIES AND ADD REMOVER
+[ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
+echo "#!/bin/sh\nset -e\nrm -f /usr/local/bin/$APP\nrm -R -f /opt/$APP" > "/opt/$APP/remove"
+#echo "rm -f /usr/share/applications/AM-$APP.desktop" >> "/opt/$APP/remove"
 chmod a+x "/opt/$APP/remove"
 
 # DOWNLOAD AND PREPARE THE APP
 # $version is also used for updates
 
-version=$(curl -Ls https://api.github.com/repos/sharkdp/hyperfine/releases | jq '.' | grep browser_download_url | grep -i x86_64-unknown-linux-gnu.tar.gz   | cut -d '"' -f 4 | head -1)
-wget "$version"
-echo "$version" >> "/opt/$APP/version"
-tar fx ./*tar*; rm -R -f ./*tar*
-cd ..
-mv --backup=t ./tmp/*/"$APP" ./
-rm -R -f ./tmp
 
-# LINK
+version=$(curl -Ls https://api.github.com/repos/"$SITE"/releases | jq '.' | sed 's/[()",{}]/ /g; s/ /\n/g' | grep -o 'https.*hyperfine.*x86_64.*.*gnu.*tar.gz$' | head -1)
+wget "$version" && echo "$version" > "/opt/$APP/version" 
+tar fx ./*tar* || exit 1
+cd ..
+mv --backup=t ./tmp/*/"$APP" ./ && rm -R -f ./tmp || exit 1
+chmod a+x "/opt/$APP/$APP" || exit 1
+
+# LINK TO PATH
 ln -s "/opt/$APP/$APP" "/usr/local/bin/$APP"
 
 # SCRIPT TO UPDATE THE PROGRAM
-cat >> /opt/$APP/AM-updater << 'EOF'
+cat >> "/opt/$APP/AM-updater" << 'EOF'
 #!/bin/sh
+set -u
 APP=hyperfine
+SITE="sharkdp/hyperfine"
 version0=$(cat /opt/$APP/version)
-version=$(curl -Ls https://api.github.com/repos/sharkdp/hyperfine/releases | jq '.' | grep browser_download_url | grep -i x86_64-unknown-linux-gnu.tar.gz  | cut -d '"' -f 4 | head -1)
-if [ $version = $version0 ]; then
-	echo "Update not needed!"
-else
+version=$(curl -Ls https://api.github.com/repos/"$SITE"/releases | jq '.' | sed 's/[()",{}]/ /g; s/ /\n/g' | grep -o 'https.*hyperfine.*x86_64.*.*gnu.*tar.gz$' | head -1)
+[ -n "$version" ] || { echo "Error getting link"; exit 1; }
+if [ "$version" != "$version0" ]; then
 	notify-send "A new version of $APP is available, please wait"
 	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
-	wget $version
-  tar fx ./*tar*; rm -R -f ./*tar*
+	wget "$version" || exit 1
+	tar fx ./*tar* || exit 1
 	cd ..
-  mv --backup=t ./tmp/*/"$APP" ./
-	rm ./version
-	echo "$version" >> ./version
+	mv --backup=t ./tmp/*/"$APP" ./ || exit 1
+	echo "$version" > ./version
 	rm -R -f ./tmp ./*~
+	chmod a+x "/opt/$APP/$APP" || exit 1
 	notify-send "$APP is updated!"
+	exit 0
 fi
+echo "Update not needed!"
 EOF
-chmod a+x "/opt/$APP/AM-updater"
-
+chmod a+x "/opt/$APP/AM-updater" || exit 1
