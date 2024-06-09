@@ -1,51 +1,54 @@
 #!/bin/sh
 
 APP=wine-devel
-REPO=mmtrt/WINE_AppImage
+SITE="mmtrt/WINE_AppImage"
 
-# CREATE THE FOLDER
-mkdir /opt/$APP
-cd /opt/$APP
+# CREATE DIRECTORIES
+if [ -z "$APP" ]; then exit 1; fi
+mkdir -p "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
 
 # ADD THE REMOVER
-echo '#!/bin/sh' >> /opt/$APP/remove
-echo "rm -R -f /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
-chmod a+x /opt/$APP/remove
+echo "#!/bin/sh
+rm -f /usr/share/applications/AM-$APP.desktop /usr/local/bin/$APP
+rm -R -f /opt/$APP" > "/opt/$APP/remove"
+chmod a+x "/opt/$APP/remove"
 
-# DOWNLOAD THE APPIMAGE
-mkdir tmp
-cd ./tmp
+# DOWNLOAD AND PREPARE THE APP
+# $version is also used for updates
 
-version=$(curl -s https://api.github.com/repos/$REPO/releases | grep browser_download_url | grep continuous-devel | grep -v zsync | cut -d '"' -f 4 | head -1)
-wget $version
-echo "appimage" >> /opt/$APP/version
+version=$(curl -Ls https://api.github.com/repos/mmtrt/WINE_AppImage/releases | jq '.' | grep browser_download_url | grep -i continuous-devel  | grep -i appimage | cut -d '"' -f 4 | head -1)
+wget "$version"
+wget "$version.zsync" 2> /dev/null
+echo "$version" >> /opt/$APP/version
+# Use tar fx ./*tar* for example in this line in case a compressed file is downloaded.
 cd ..
-mv ./tmp/*mage ./$APP
-chmod a+x /opt/$APP/$APP
-
-cd ./tmp
-wget https://github.com/ivan-hc/AppImageUpdate/releases/download/continuous/appimageupdatetool-x86_64.AppImage
-cd ..
-mv ./tmp/appimageupdatetool-x86_64.AppImage ./updater
-chmod a+x ./updater
-
-rmdir ./tmp
+mv ./tmp/*mage ./"$APP"
+mv ./tmp/*.zsync ./"$APP".zsync 2> /dev/null
+chmod a+x "/opt/$APP/$APP"
+rm -R -f ./tmp
 
 # LINK
-ln -s /opt/$APP/$APP /usr/local/bin/$APP
+ln -s "/opt/$APP/$APP" "/usr/local/bin/$APP"
 
 # SCRIPT TO UPDATE THE PROGRAM
-
-echo '#!/bin/sh' >> /opt/$APP/AM-updater
-echo "APP=$APP" >> /opt/$APP/AM-updater
-echo 'cd /opt/$APP
-./updater -O ./$APP
-chmod a+x /opt/$APP/$APP
-rm -R -f /opt/$APP/*zs-old && rm -R -f /opt/$APP/*.part' >> /opt/$APP/AM-updater
-chmod a+x /opt/$APP/AM-updater
-
-ln -s /usr/local/bin/$APP /opt/$APP/wine
-
-
-
-
+cat >> "/opt/$APP/AM-updater" << 'EOF'
+#!/bin/sh
+APP=wine-devel
+SITE="mmtrt/WINE_AppImage"
+if [ -z "$APP" ]; then exit 1; fi
+version0=$(cat "/opt/$APP/version")
+version=$(curl -Ls https://api.github.com/repos/mmtrt/WINE_AppImage/releases | jq '.' | grep browser_download_url | grep -i continuous-devel  | grep -i appimage | cut -d '"' -f 4 | head -1)
+mkdir "/opt/$APP/tmp"
+cd "/opt/$APP/tmp" || exit 1
+wget "$version.zsync" 2> /dev/null
+cd ..
+mv ./tmp/*.zsync ./"$APP".zsync
+rm -R -f ./tmp
+zsync "/opt/$APP/$APP.zsync"
+rm -R -f "/opt/$APP/*zs-old" "/opt/$APP/*.part"
+chmod a+x "/opt/$APP/$APP"
+if [ "$version" != "$version0" ]; then
+	echo "$version" > /opt/$APP/version
+fi
+EOF
+chmod a+x "/opt/$APP/AM-updater"
