@@ -481,7 +481,9 @@ to have a list of the installed programs use the option `-f` or `files` (syntax 
 
  `-q {KEYWORD}`
 
- DESCRIPTION:	Can be used to search for keywords and terms in the list of available applications packages to display matches. This can be useful if you are looking for applications having a specific feature.
+ `-q --pkg {PROGRAM1} {PROGRAM2}`
+
+ DESCRIPTION:	Can be used to search for keywords and terms in the list of available applications packages to display matches. This can be useful if you are looking for applications having a specific feature. Add the suboption "--pkg" to search only the names of one or more apps.
  ___________________________________________________________________________
 
  `-r`, `remove`
