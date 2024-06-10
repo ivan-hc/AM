@@ -55,15 +55,20 @@ chmod a+x "/opt/$APP/AM-updater"
 # LAUNCHER & ICON
 cd "/opt/$APP" || exit 1
 ./"$APP" --appimage-extract *.desktop 1>/dev/null && mv ./squashfs-root/*.desktop ./"$APP".desktop
-if [ -L ./"$APP".desktop ]; then
-	LINKPATH=$(readlink ./"$APP".desktop)
-	./"$APP" --appimage-extract "$LINKPATH" && mv ./squashfs-root/"$LINKPATH" ./"$APP".desktop
-fi
 ./"$APP" --appimage-extract .DirIcon 1>/dev/null && mv ./squashfs-root/.DirIcon ./DirIcon
-if [ -L ./DirIcon ]; then
-	LINKPATH=$(readlink ./DirIcon)
-	./"$APP" --appimage-extract "$LINKPATH" && mv ./squashfs-root/"$LINKPATH" ./DirIcon
-fi
+COUNT=0
+while [ "$COUNT" -lt 10 ]; do # Tries to get the actual icon/desktop if it is a symlink to another symlink
+	if [ -L ./"$APP".desktop ]; then
+		LINKPATH=$(readlink ./"$APP".desktop)
+		./"$APP" --appimage-extract "$LINKPATH" && mv ./squashfs-root/"$LINKPATH" ./"$APP".desktop
+	fi
+	if [ -L ./DirIcon ]; then
+		LINKPATH=$(readlink ./DirIcon)
+		./"$APP" --appimage-extract "$LINKPATH" && mv ./squashfs-root/"$LINKPATH" ./DirIcon
+	fi
+	[ ! -L ./"$APP".desktop ] && [ ! -L ./DirIcon ] && break
+	COUNT=$((COUNT + 1))
+done
 sed -i "s#Exec=[^ ]*#Exec=$APP#g; s#Icon=.*#Icon=/opt/$APP/icons/$APP#g" ./"$APP".desktop
 mv ./"$APP".desktop /usr/share/applications/AM-"$APP".desktop && mv ./DirIcon ./icons/"$APP" 1>/dev/null
 rm -R -f ./squashfs-root
