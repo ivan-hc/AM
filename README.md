@@ -661,7 +661,7 @@ to have a list of the installed programs use the option `-f` or `files` (syntax 
 
  `nolibfuse {PROGRAM}`
 
- DESCRIPTION:   Convert an installed Type2 AppImage to a Type3 AppImage. Type3 AppImages does not require libfuse2 installed. Only AppImages updatable with "zsync" can be updated keeping this format. Others will be replaced with the one provided from the upstream.
+ DESCRIPTION:   Convert an installed Type2 AppImage to a Type3 AppImage. Type3 AppImages does not require libfuse2 installed.
  __________________________________________________________________________
 
  `unlock`
@@ -781,17 +781,15 @@ Since version 6.1 it is possible to convert old Type2 AppImages (dependent on `l
 am nolibfuse ${PROGRAM}
 ```
 First the selected program type is checked, if it is a Type2 AppImage, it will be extracted and repackaged using the new version of `appimagetool` from https://github.com/probonopd/go-appimage :
-- If the installed AppImage can be updated via `zsync`, the update will take place while maintaining the status of Type3 AppImage;
-- On the contrary, if the update occurs through "comparison" of versions, the converted AppImage will be replaced by the upstream version, which could still be Type2. But from version 6.1.1 the command is added within the application's AM-updater script, so as to automatically start the conversion at each update (prolonging the update time, depending on the size of the AppImage). **I suggest anyone to contact the developers to update the packaging method of their AppImage!**
+- if the update occurs through "comparison" of versions, the converted AppImage will be replaced by the upstream version and the command is added within the application's AM-updater script, so as to automatically start the conversion at each update (prolonging the update time, depending on the size of the AppImage);
+- instead, if the installed AppImage can be updated via `zsync`, **this may no longer be updatable**.
+
+**I suggest anyone to contact the developers to update the packaging method of their AppImage!**
 
 NOTE, the conversion is not always successful, a lot depends on how the program is packaged. The conversion occurs in two steps:
-- if in the first case it succeeds without problems, the package will be repackaged as it was, but of Type 3 (and the AM-updater script will be patched if a .zsync file doesn't exist);
-- if the script encounters problems (due to Appstream validation), it will attempt to delete the contents of the /usr/share/metainfo directory inside the AppImage, as a workaround (which will probably make updates via `zsync` unusable);
+- if in the first case it succeeds without problems, the package will be repackaged as it was, but of Type 3;
+- if the script encounters problems (due to Appstream validation), it will attempt to delete the contents of the /usr/share/metainfo directory inside the AppImage, as a workaround;
 - if this step does not succeed either, the process will end with an error and the AppImage will remain Type2.
-
-See the video:
-
-https://github.com/ivan-hc/AM/assets/88724353/8b45d2c2-d2da-4a07-8b43-0cd77ffcb7cc
 
 </details>
 
