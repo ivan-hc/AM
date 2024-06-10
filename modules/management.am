@@ -256,10 +256,62 @@ function _do_overwrite() {
 # FUNCTION TO CONVERT TYPE2 APPIMAGES TO TYPE3
 ##############################################
 
+function _nolibfuse_if_zsync_file_exists() {
+	if test -f ./*.zsync; then
+		echo "-----------------------------------------------------------------------"
+		echo -e " Warning! Your AppImage uses \"zsync\" to update. The .zsync file will\n no longer work and will be removed.\n"
+		echo -e " If your \"AM-updater\" script can compare versions, the update method\n will be changed, by downloading the new AppImage version in full,\n from the source.\n"
+		read -p " Do you want to proceede anyway (N,y)?" yn
+		case "$yn" in
+		'y'|'Y') echo "-----------------------------------------------------------------------";;
+		'n'|'N'|*) echo "-----------------------------------------------------------------------"; exit;;
+		esac
+	fi
+}
+
+function _nolibfuse_download_appimagetool() {
+	wget -q "$(curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/probonopd/go-appimage/releases \
+		| grep -v zsync | grep -i continuous | grep -i appimagetool | grep -i "$(uname -m)" | grep browser_download_url \
+		| cut -d '"' -f 4 | head -1)" -O appimagetool
+	chmod a+x ./appimagetool
+}
+
+function _nolibfuse_command_to_convert_to_type3_appimage() {
+	chmod 0755 ./squashfs-root
+	ARCH="$(uname -m)" VERSION=$(./appimagetool -v | grep -o '[[:digit:]]*') ./appimagetool -s ./squashfs-root > /dev/null 2> /dev/null
+}
+
+function _nolibfuse_if_appimage_has_been_converted() {
+	rm -R -f ./appimagetool ./squashfs-root
+	if test -f ./AM-updater; then
+		if test -f ./*.zsync; then
+			rm -f ./*.zsync
+		fi
+		if ! grep -q 'nolibfuse' ./AM-updater; then
+			echo -e '\necho y | '$AMCLIPATH' nolibfuse $APP' >> ./AM-updater
+			echo -e "\n The next update may replace this AppImage with a Type2 one\n so I added this command to the bottom of the \"AM-updater\" script!"
+		fi
+	fi
+	echo -e "\n Contact the upstream developers to make them officially switch to Type3! \n"
+	read -p " Do you wish to remove the old Type2 AppImage (Y,n)?" yn
+	case $yn in
+	[Nn]* )
+		exit
+		;;
+	[Yy]*|* )
+		rm -R -f ./*.old
+		if test -f ./*.zsync; then
+			rm -f ./*.zsync
+		fi
+		exit
+		;;
+	esac
+}
+
 function _do_nolibfuse() {
 	cd "$APPSPATH" || exit 1
-	if test -f ./$2/$2 2>/dev/null; then
-		cd ./$2 || return
+	if test -f "./$2/$2" 2>/dev/null; then
+		cd ./"$2" || return
 		if [ -z "$(strings -d "./$2" 2>/dev/null | grep -F 'if you run it with the --appimage-extract option')" ] 2>/dev/null; then
 			echo " ⚠️ Error: $(echo "${2}" | tr a-z A-Z) is NOT an AppImage."
 			exit
@@ -268,40 +320,18 @@ function _do_nolibfuse() {
 				echo " ◆ $(echo "${2}" | tr a-z A-Z) is already a Type3 AppImage."
 				exit
 			else
-				wget -q "$(curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/probonopd/go-appimage/releases | grep -v zsync | grep -i continuous | grep -i appimagetool | grep -i "$(uname -m)" | grep browser_download_url | cut -d '"' -f 4 | head -1)" -O appimagetool
-				chmod a+x ./appimagetool
+				_nolibfuse_if_zsync_file_exists
+				_nolibfuse_download_appimagetool
 				echo -ne " ...extracting the AppImage\r"
-				./$2 --appimage-extract 2> /dev/null | grep -v "squashfs-root"
+				./"$2" --appimage-extract 2> /dev/null | grep -v "squashfs-root"
 				echo -ne " ...trying to convert in Type3 AppImage\r"
-				chmod 0755 ./squashfs-root
-				ARCH="$(uname -m)" VERSION=$(./appimagetool -v | grep -o '[[:digit:]]*') ./appimagetool -s ./squashfs-root > /dev/null 2> /dev/null
+				_nolibfuse_command_to_convert_to_type3_appimage
 				if test -f ./*.AppImage; then
 					_remove_info_files
 					mv ./"$2" ./"$2".old
 					mv ./*.AppImage ./"$2"
-					echo " ◆ $(echo $2 | tr a-z A-Z) has been converted to Type3 AppImage."
-					rm -R -f ./appimagetool ./squashfs-root
-					if ! test -f ./*.zsync; then
-						echo " Note, your installed Appimage have not a .zsync file."
-						if test -f ./AM-updater; then
-							if ! grep -q 'nolibfuse' ./AM-updater; then
-								echo -e '\necho y | '$AMCLIPATH' nolibfuse $APP' >> ./AM-updater
-								echo " The next update may replace this AppImage with a Type2 one..."
-								echo ' ...so I added this command to the bottom of the "AM-updater" script!'
-							fi
-						fi
-					fi
-					echo -e " Contact the upstream developers to make them officially switch to Type3!\n"
-					read -p " Do you wish to remove the old Type2 AppImage (Y,n)?" yn
-					case $yn in
-						[Nn]* )
-							exit
-							;;
-						[Yy]*|* )
-							rm -R -f ./$2.old
-							exit
-							;;
-					esac
+					echo " ◆ $(echo "$2" | tr a-z A-Z) has been converted to Type3 AppImage."
+					_nolibfuse_if_appimage_has_been_converted
 				else
 					metainfodir=$(find ./squashfs-root -type d -name metainfo | grep "share/metainfo" | head -1)
 					if [ -z "$metainfodir" ]; then
@@ -314,37 +344,15 @@ function _do_nolibfuse() {
 						cd - > /dev/null || return
 					fi
 					echo -ne " ...found Appstream errors, I'm trying to fix them...\r"
-					ARCH="$(uname -m)" VERSION=$(./appimagetool -v | grep -o '[[:digit:]]*') ./appimagetool -s ./squashfs-root > /dev/null 2> /dev/null
+					_nolibfuse_command_to_convert_to_type3_appimage
 					if test -f ./*.AppImage; then
 						_remove_info_files
 						mv ./"$2" ./"$2".old
 						mv ./*.AppImage ./"$2"
-						echo " ◆ $(echo $2 | tr a-z A-Z) has been converted to Type3 AppImage."
-						if test -f ./*.zsync; then
-							echo 'However, when trying again I had to remove some files to update with "zsync".'
-						else
-							if test -f ./AM-updater; then
-							if ! grep -q 'nolibfuse' ./AM-updater; then
-								echo -e '\necho y | '$AMCLIPATH' nolibfuse $APP' >> ./AM-updater
-								echo " The next update may replace this AppImage with a Type2 one..."
-								echo ' ...so I added this command to the bottom of the "AM-updater" script!'
-							fi
-						fi
-						fi
-						echo -e " Contact the upstream developers to make them officially switch to Type3!\n"
-						rm -R -f ./appimagetool ./squashfs-root
-						read -p " Do you wish to remove the old one (Y,n)?" yn
-						case $yn in
-							[Nn]* )
-								exit
-								;;
-							[Yy]*|* )
-								rm -R -f ./$2.old
-								exit
-								;;
-						esac
+						echo " ◆ $(echo "$2" | tr a-z A-Z) has been converted to Type3 AppImage."
+						_nolibfuse_if_appimage_has_been_converted
 					else
-						echo " 💀Errors while trying to export $(echo $2 | tr a-z A-Z) from Type2 AppImage. Aborted."
+						echo " 💀Errors while trying to export $(echo "$2" | tr a-z A-Z) from Type2 AppImage. Aborted."
 						rm -R -f ./appimagetool ./squashfs-root; exit
 					fi
 				fi
