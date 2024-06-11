@@ -60,6 +60,14 @@ function _remove() {
 # FUNCTION TO DOWNGRADE INSTALLED APPS
 ######################################
 
+function _rollback_if_not_an_appimage() {
+	cp ./AM-updater ./AM-rollback
+	sed -i 's/version0/#version0/g' ./AM-rollback
+	sed -i '/show-progress/c\wget -q --show-progress '"$d"'' ./AM-rollback
+	./AM-rollback
+	rm -f ./AM-rollback
+}
+
 function _do_rollback() {
 	if test -f "$APPSPATH"/"$2"/AM-updater; then
 		if test -f "$APPSPATH"/"$2"/"$2"-rollback; then
@@ -67,12 +75,13 @@ function _do_rollback() {
 			./"$2"-rollback
 			exit
 		elif grep -q "api.github.com" "$APPSPATH"/"$2"/AM-updater; then
+			cd "$APPSPATH"/"$2" || return
 			rm -f "$AMCACHEDIR/rollback-args";
-			extension=$(cat "$APPSPATH"/"$2"/version | tr '.' '\n' | tail -1)
-			if grep -q "^REPO=" "$APPSPATH"/"$2"/AM-updater; then
-				REPO=$(grep -i "REPO=" "$APPSPATH"/"$2"/AM-updater | grep -o -P '(?<=").*(?=")')
-			elif grep -q "^SITE=" "$APPSPATH"/"$2"/AM-updater; then
-				REPO=$(grep -i "SITE=" "$APPSPATH"/"$2"/AM-updater | grep -o -P '(?<=").*(?=")')
+			extension=$(cat ./version | tr '.' '\n' | tail -1)
+			if grep -q "^REPO=" ./AM-updater; then
+				REPO=$(grep -i "REPO=" ./AM-updater | grep -o -P '(?<=").*(?=")')
+			elif grep -q "^SITE=" ./AM-updater; then
+				REPO=$(grep -i "SITE=" ./AM-updater | grep -o -P '(?<=").*(?=")')
 			fi
 			printf "%s\n" "$(curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/$REPO/releases?per_page=100 \
 				| grep browser_download_url | cut -d '"' -f 4)" | tr ' ' '\n' | grep -i "$extension$" >> "$AMCACHEDIR/rollback-args"
@@ -86,23 +95,31 @@ function _do_rollback() {
 				echo "-----------------------------------------------------------------------"
 				printf "Select a URL from this menu (read carefully) or press CTRL+C to abort:\n-----------------------------------------------------------------------\n"; sleep 1;
 				select d in $(cat "$AMCACHEDIR/rollback-args"); do test -n "$d" && break; echo ">>> Invalid Selection"; done
-				cp "$APPSPATH"/"$2"/AM-updater "$APPSPATH"/"$2"/AM-rollback
-				sed -i 's/version0/#version0/g' "$APPSPATH"/"$2"/AM-rollback
-				sed -i '/show-progress/c\wget -q --show-progress '$d'' "$APPSPATH"/"$2"/AM-rollback
-				if test -f ./AM-rollback; then
-					if grep -q '/$APP/*.zsync' ./AM-rollback; then
-						mv "$APPSPATH"/"$2"/AM-rollback "$APPSPATH"/"$2"/AM-rollback.old
-						sed -n '1,6p' "$APPSPATH"/"$2"/AM-rollback.old >> "$APPSPATH"/"$2"/AM-rollback
-						sed -n '17,36p' "$APPSPATH"/"$2"/AM-rollback.old >> "$APPSPATH"/"$2"/AM-rollback
-						rm -f "$APPSPATH"/"$2"/AM-rollback.old
-						sed -i 's/	//g' "$APPSPATH"/"$2"/AM-rollback
-						chmod a+x "$APPSPATH"/"$2"/AM-rollback
+
+				if test -f ./"$2"; then
+					if [ -z "$(strings -d "./$arg/$arg" 2>/dev/null | grep -F 'AppImage')" ]; then
+						mkdir tmp && cd tmp || exit 1
+						if wget --version | head -1 | grep -q ' 1.'; then
+							wget -q --no-verbose --show-progress --progress=bar "$d"
+						else
+							wget "$d"
+						fi
+						if test -f ./*.zip; then
+							unzip -qq ./*.zip 2>/dev/null && ./*.zip
+						elif test -f ./*.tar*; then
+							tar xf ./*.tar* 2>/dev/null && rm -f ./*.tar*
+						fi
+						cd ..
+						mv ./tmp/* ./"$2" && chmod a+x ./"$2"
+						rm -R -f ./tmp
+					else
+						_rollback_if_not_an_appimage
 					fi
+				else
+					_rollback_if_not_an_appimage
 				fi
-				"$APPSPATH"/"$2"/AM-rollback
-				rm -f "$APPSPATH"/"$2"/AM-rollback
-				rm -f "$APPSPATH"/"$2"/version
-				echo $d >> "$APPSPATH"/"$2"/version
+
+				echo "$d" > ./version
 				_clean_amcachedir
 				_list_updatable_apps
 				echo -e "\nROLLBACK SUCCESSFUL!"
