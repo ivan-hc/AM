@@ -60,14 +60,6 @@ function _remove() {
 # FUNCTION TO DOWNGRADE INSTALLED APPS
 ######################################
 
-function _rollback_if_not_an_appimage() {
-	cp ./AM-updater ./AM-rollback
-	sed -i 's/version0/#version0/g' ./AM-rollback
-	sed -i '/show-progress/c\wget -q --show-progress '"$d"'' ./AM-rollback
-	./AM-rollback
-	rm -f ./AM-rollback
-}
-
 function _do_rollback() {
 	if test -f "$APPSPATH"/"$2"/AM-updater; then
 		if test -f "$APPSPATH"/"$2"/"$2"-rollback; then
@@ -96,28 +88,20 @@ function _do_rollback() {
 				printf "Select a URL from this menu (read carefully) or press CTRL+C to abort:\n-----------------------------------------------------------------------\n"; sleep 1;
 				select d in $(cat "$AMCACHEDIR/rollback-args"); do test -n "$d" && break; echo ">>> Invalid Selection"; done
 
-				if test -f ./"$2"; then
-					if [ -z "$(strings -d "./$arg/$arg" 2>/dev/null | grep -F 'AppImage')" ]; then
-						mkdir tmp && cd tmp || exit 1
-						if wget --version | head -1 | grep -q ' 1.'; then
-							wget -q --no-verbose --show-progress --progress=bar "$d"
-						else
-							wget "$d"
-						fi
-						if test -f ./*.zip; then
-							unzip -qq ./*.zip 2>/dev/null && ./*.zip
-						elif test -f ./*.tar*; then
-							tar xf ./*.tar* 2>/dev/null && rm -f ./*.tar*
-						fi
-						cd ..
-						mv ./tmp/* ./"$2" && chmod a+x ./"$2"
-						rm -R -f ./tmp
-					else
-						_rollback_if_not_an_appimage
-					fi
+				cp ./AM-updater ./AM-rollback
+				sed -i 's/version0/#version0/g' ./AM-rollback
+
+				if test -f ./"$2".zsync; then mv ./"$2".zsync ./"$2".zsync.old;	fi
+
+				if wget --version | head -1 | grep -q ' 1.'; then
+					sed -i '/wget/c\wget -q --show-progress '"$d"'' ./AM-rollback
 				else
-					_rollback_if_not_an_appimage
+					sed -i '/wget/c\wget '"$d"'' ./AM-rollback
 				fi
+				./AM-rollback
+				rm -f ./AM-rollback
+
+				if test -f ./"$2".zsync.old; then mv ./"$2".zsync.old ./"$2".zsync; fi
 
 				echo "$d" > ./version
 				_clean_amcachedir
