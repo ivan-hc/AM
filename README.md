@@ -35,7 +35,7 @@
 - [How to enable bash completion](#how-to-enable-bash-completion)
 - [Snapshots: backup your app and restore to a previous version](#snapshots-backup-your-app-and-restore-to-a-previous-version)
 - [Update/remove programs without "AM"](#updateremove-programs-without-am)
-- [Rollback](#rollback)
+- [Downgrade](#downgrade)
 - [Convert old Type2 AppImages to Type3](#convert-old-type2-appimages-to-type3)
 - [Manage local AppImages](#manage-local-appimages)
 - [Sandbox using Firejail](#sandbox-using-firejail)
@@ -591,7 +591,7 @@ to have a list of the installed programs use the option `-f` or `files` (syntax 
  DESCRIPTION:	Embed one or more local AppImages in the applications menu. I suggest dragging the files into the terminal to get the desired effect. Launchers are located in ~/.local/share/applications/AppImages by default.
  ___________________________________________________________________________
 
- `--rollback`
+ `--rollback`, `downgrade`
 
  SYNOPSIS:
 
@@ -759,11 +759,11 @@ sudo /opt/$PROGRAM/remove
 </details>
 
 ------------------------------------------------------------------------
-### Rollback
+### Downgrade
 <details>
   <summary></summary>
 
-From version 4.4 it is possible to directly select from a list of URLs the version of the app that interests you most from the main source. Use the `--rollback` option in this mode:
+From version 4.4 it is possible to directly select from a list of URLs the version of the app that interests you most from the main source. Use the `--rollback` option or `downgrade` in this mode:
 ```
 am --rollback ${PROGRAM}
 ```
@@ -884,7 +884,7 @@ Use the `-a` option and go to the developer's site to report the problem. The ta
 There can be many reasons:
 - check your internet connection;
 - if the app is hosted on github.com, you have probably exceeded the hourly limit of API calls;
-- the referring link may have been changed, try the `--rollback` option;
+- the referring link may have been changed, try the `--rollback` option or `downgrade`;
 - the reference site has changed, report any changes at https://github.com/ivan-hc/AM/issues
 
 </details>
@@ -993,7 +993,7 @@ NOTE, the binary is called from a script in /usr/local/bin that runs "wget" with
   <summary></summary>
 
 The reasons may be two:
-- the referring link may have been changed, try the `--rollback` option;
+- the referring link may have been changed, try the `--rollback` option or `downgrade`;
 - the reference site has changed, report any changes at https://github.com/ivan-hc/AM/issues
 
 </details>
