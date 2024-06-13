@@ -2,12 +2,14 @@
 
 # AM INSTALL SCRIPT VERSION 3. 
 set -u
-APP=hyperfine
-SITE="sharkdp/hyperfine"
+APP=ripgrep-all
+SITE="phiresky/ripgrep-all"
 
 # CREATE DIRECTORIES AND ADD REMOVER
 [ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
-echo "#!/bin/sh\nset -e\nrm -f /usr/local/bin/btm\nrm -R -f /opt/$APP" > "/opt/$APP/remove"
+echo "#!/bin/sh\nset -e\nrm -f /usr/local/bin/rga\nrm -R -f /opt/$APP" > "/opt/$APP/remove"
+echo "rm -f /usr/local/bin/rga-fzf" >> "/opt/$APP/remove"
+echo "rm -f /usr/local/bin/rga-preproc" >> "/opt/$APP/remove"
 chmod a+x "/opt/$APP/remove"
 
 # DOWNLOAD AND PREPARE THE APP, $version is also used for updates
@@ -18,17 +20,17 @@ cd ..
 mv ./tmp/*/* ./
 rm -R -f ./tmp || exit 1
 echo "$version" > ./version
-chmod a+x "/opt/$APP/$APP" || exit 1
+chmod a+x /opt/"$APP"/rga* || exit 1
 
 # LINK TO PATH
-ln -s "/opt/$APP/$APP" "/usr/local/bin/$APP"
+ln -s /opt/"$APP"/rga* /usr/local/bin
 
 # SCRIPT TO UPDATE THE PROGRAM
 cat >> "/opt/$APP/AM-updater" << 'EOF'
 #!/bin/sh
 set -u
-APP=hyperfine
-SITE="sharkdp/hyperfine"
+APP=ripgrep-all
+SITE="phiresky/ripgrep-all"
 version0=$(cat "/opt/$APP/version")
 version=$(curl -Ls https://api.github.com/repos/"$SITE"/releases | jq '.' | sed 's/[()",{}]/ /g; s/ /\n/g' | grep -oi 'https.*x86_64.*unknown.*linux.*musl.*gz$' | head -1)
 [ -n "$version" ] || { echo "Error getting link"; exit 1; }
@@ -39,7 +41,7 @@ if [ "$version" != "$version0" ]; then
 	tar fx ./*tar*
 	cd ..
 	mv --backup=t ./tmp/*/* ./
-	chmod a+x "/opt/$APP/$APP" || exit 1
+	chmod a+x /opt/"$APP"/rga* || exit 1
 	echo "$version" > ./version
 	rm -R -f ./tmp ./*~
 	notify-send "$APP is updated!"
