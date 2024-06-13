@@ -1,0 +1,83 @@
+#!/bin/sh
+
+# AM INSTALL SCRIPT VERSION 3. 
+set -u
+APP=bat-extras
+SITE="eth-p/bat-extras"
+
+# Dependency check
+if ! command -v bat 1>/dev/null; then
+	echo "This application needs \"bat\" to be installed"
+	read -p "Do want to install bat with am? (y/n): " yn
+	if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
+		echo " Installing..."
+		am -i bat >/dev/null 2>&1 || appman -i bat >/dev/null 2>&1
+		command -v bat 1>/dev/null && echo " bat successfully installed" || { echo "Error!"; exit 1; }
+	else
+		echo "Installation cancelled"
+		exit 1
+	fi
+fi
+
+if ! command -v rg 1>/dev/null; then
+	echo "This application needs \"ripgrep\" to be installed"
+	read -p "Do want to install ripgrep with am? (y/n): " yn
+	if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
+		echo " Installing..."
+		am -i ripgrep >/dev/null 2>&1 || appman -i ripgrep >/dev/null 2>&1
+		command -v rg 1>/dev/null && echo " ripgrep successfully installed" || { echo "Error!"; exit 1; }
+	else
+		echo "Intallation cancelled"
+		exit 1
+	fi
+fi
+
+# CREATE DIRECTORIES AND ADD REMOVER
+[ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
+echo "#!/bin/sh\nset -e\nrm -f /usr/local/bin/batdiff\nrm -R -f /opt/$APP" > "/opt/$APP/remove"
+echo "rm -f /usr/local/bin/batgrep" >> "/opt/$APP/remove"
+echo "rm -f /usr/local/bin/batman" >> "/opt/$APP/remove"
+echo "rm -f /usr/local/bin/bat-modules" >> "/opt/$APP/remove"
+echo "rm -f /usr/local/bin/batpipe" >> "/opt/$APP/remove"
+echo "rm -f /usr/local/bin/batwatch" >> "/opt/$APP/remove"
+echo "rm -f /usr/local/bin/prettybat" >> "/opt/$APP/remove"
+chmod a+x "/opt/$APP/remove"
+
+# DOWNLOAD AND PREPARE THE APP, $version is also used for updates
+version=$(curl -Ls https://api.github.com/repos/"$SITE"/releases | jq '.' | sed 's/[()",{}]/ /g; s/ /\n/g' | grep -oi 'https.*bat-extras.*zip$' | head -1)
+wget "$version" || exit 1
+unzip ./*zip 1>/dev/null && rm -f ./*zip
+cd ..
+mv ./tmp/* ./
+rm -R -f ./tmp || exit 1
+echo "$version" > ./version
+chmod a+x /opt/"$APP"/bin/*bat* || exit 1
+
+# LINK TO PATH
+ln -s /opt/"$APP"/bin/*bat* /usr/local/bin
+
+# SCRIPT TO UPDATE THE PROGRAM
+cat >> "/opt/$APP/AM-updater" << 'EOF'
+#!/bin/sh
+set -u
+APP=bat-extras
+SITE="eth-p/bat-extras"
+version0=$(cat "/opt/$APP/version")
+version=$(curl -Ls https://api.github.com/repos/"$SITE"/releases | jq '.' | sed 's/[()",{}]/ /g; s/ /\n/g' | grep -oi 'https.*bat-extras.*zip$' | head -1)
+[ -n "$version" ] || { echo "Error getting link"; exit 1; }
+if [ "$version" != "$version0" ]; then
+	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
+	notify-send "A new version of $APP is available, please wait"
+	wget "$version" || exit 1
+	unzip ./*zip 1>/dev/null && rm -f ./*zip
+	cd ..
+	mv --backup=t ./tmp/* ./
+	chmod a+x /opt/"$APP"/bin/*bat* || exit 1
+	echo "$version" > ./version
+	rm -R -f ./tmp ./*~
+	notify-send "$APP is updated!"
+	exit 0
+fi
+echo "Update not needed!"
+EOF
+chmod a+x "/opt/$APP/AM-updater"
