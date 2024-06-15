@@ -1,123 +1,148 @@
-#!/usr/bin/env bash
+#!/bin/sh
 
-##############################################################################################
-# THIS MODULE INCLUDES ALL ACTIONS INTENDED TO ISOLATE DOTFILES OR CONTAINERIZE INSTALLED APPS
-##############################################################################################
+###################################################################################################
+# THIS MODULE INCLUDES ALL ACTIONS INTENDED TO ISOLATE DOTFILES OR CONTAINERIZE INSTALLED APPIMAGES
+###################################################################################################
 
 # Set a dedicated .home directory for a selected AppImage
-function _home() {
-	cd $APPSPATH || return
-	if ! test -d ./$arg; then
-		echo ' ERROR: "'$arg'" is not installed'
+_home() {
+	cd "$APPSPATH" || return
+	if ! test -d ./"$arg"; then
+		echo " ERROR: \"$arg\" is not installed"
 	else
-		case $arg in
+		case "$arg" in
 		*)
-			if [ -z "$(strings -d "./$arg/$arg" 2>/dev/null | grep -F 'if you run it with the --appimage-extract option')" ] 2>/dev/null; then
-				echo ' ERROR: "'$arg'" is NOT an AppImage'
+			if [ -z "$(strings -d "./$arg/$arg" 2>/dev/null | grep -F "if you run it with the --appimage-extract option")" ] 2>/dev/null; then
+				echo " ERROR: \"$arg\" is NOT an AppImage"
 			else
-				cd ./$arg || return
-				mkdir -p ./$arg.home
-				echo ' Setting $HOME to '$APPSPATH'/'$arg'/'$arg'.home for this AppImage'
+				cd ./"$arg" || return
+				mkdir -p ./"$arg.home"
+				echo ' Setting $HOME to '"$APPSPATH/$arg/$arg"'.home for this AppImage'
 			fi
 		esac
 	fi
 }
 
 case "$1" in
-  '--firejail'|'--sandbox')
-	if ! command -v firejail 1>/dev/null; then
-		printf "\n%s\n" 'ERROR: "firejail" is not installed!'; deps=1
-		[ "$deps" != "1" ] || { printf "\nInstall the above from your package manager and try again\n\n"; exit 1; }
-	fi
+  '--sandbox')
 
 	case $2 in
 	'') 
 		echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
 	esac
 
+	# This script makes it easy to sandbox AppImages installed with AppMan or AM
+	# The default location for the sandboxed homes is at $HOME/.local/am-sandboxes
+	# But that location can be changed by setting the $SANDBOXDIR env variable
+	# aisap: https://github.com/mgord9518/aisap
+
 	while [ -n "$1" ]; do
-
-		if ! test -f $APPSPATH/$2/remove; then
+		# Safety checks
+		if ! test -f "$APPSPATH/$2/remove"; then
 			echo " '$2' is not a valid argument or is not installed."; exit
-		fi
-
-		if [ -z "$(strings -d $APPSPATH/$2/"$2" 2>/dev/null | grep -F 'if you run it with the --appimage-extract option')" ]; then
-	    		echo ' ERROR: "'$2'" is NOT an AppImage'; exit
-	    	fi
-
-		echo -e '---------------------------------------------------------------------\nYOU ARE USING FIREJAIL VIA "'$(echo $AMCLI | tr a-z A-Z)'".\n---------------------------------------------------------------------'
-
-		if ! test -f $APPSPATH/$2/firejail.profile; then
-			cp /etc/firejail/default.profile $APPSPATH/$2/firejail.profile
-			echo -e "◆ Created $APPSPATH/$2/firejail.profile, do what you will with it! \n---------------------------------------------------------------------"
-		fi
-
-		DESKTOPFILEANDPATH=$(cat $APPSPATH/$2/remove | tr " " "\n" | grep "/share/applications" | head -1)
-
-		if ! test -f $APPSPATH/$2/firejail.profile; then
-			cp /etc/firejail/default.profile $APPSPATH/$2/firejail.profile
-			echo -e "◆ Created $APPSPATH/$2/firejail.profile\n---------------------------------------------------------------------"
-		else
-			echo -e "◆ Found $APPSPATH/$2/firejail.profile\n---------------------------------------------------------------------"
-		fi
-
-		echo -e "\n Choose to run once using Firejail (options 1 & 2) or make the"
-		echo " changes permanent by editing the available .desktop files, if"
-		echo -e " available (options 3 & 4).\n\n"
-		echo " NOTE, once that the .desktop files are patched, they will be"
-		echo " saved in ~/.local/share/applications, which means that if you"
-		echo " use AppMan, the originals will be overwritten."
-		echo -e ' Supported text editors (option 5) are "vim" and "nano".\n'
-		echo "1) Sandbox once using Firejail's defaults"
-		echo "2) Sandbox once using the custom profile"
-		echo "3) Patch the .desktop file using Firejail's defaults"
-		echo "4) Patch the .desktop file using the custom profile"
-		echo "5) Edit the custom $APPSPATH/$2/firejail.profile file\n"
-		read -p 'CHOOSE BETWEEN 1, 2, 3, 4 AND 5, OR LEAVE BLANK TO EXIT: ' response
-
-		case $response in
-
-		1)	echo -e "\n############################### START FIREJAIL ###############################\n"
-			firejail --appimage $APPSPATH/$2/$2
-			echo -e "\n############################### STOP FIREJAIL ###############################\n"
-			;;
-
-		2)	echo -e "\n############################### START FIREJAIL ###############################\n"
-			firejail --appimage --profile=$APPSPATH/$2/firejail.profile $APPSPATH/$2/$2
-			echo -e "\n############################### STOP FIREJAIL ###############################\n"
-			;;
-
-		3)	mkdir -p "$DATADIR"/applications; mkdir -p .am-patchinglauncher
-			cp $DESKTOPFILEANDPATH ./.am-patchinglauncher/
-			for f in ./.am-patchinglauncher/*; do
-				CHANGEEXEC=$(grep -e '^Exec=.*' $f | head -n 1 | cut -d "=" -f 2- | sed -e 's|%.||g')
-				sed -i "s#Exec=$CHANGEEXEC#Exec=firejail --appimage $APPSPATH/$2/$CHANGEEXEC#g" ./$f
-			done
-			mv ./.am-patchinglauncher/* "$DATADIR"/applications/ 2> /dev/null;	rmdir .am-patchinglauncher
-			break
-			;;
-
-		4)	mkdir -p "$DATADIR"/applications; mkdir -p .am-patchinglauncher
-			cp $DESKTOPFILEANDPATH ./.am-patchinglauncher/
-			for f in ./.am-patchinglauncher/*; do
-				CHANGEEXEC=$(grep -e '^Exec=.*' $f | head -n 1 | cut -d "=" -f 2- | sed -e 's|%.||g')
-				sed -i "s#Exec=$CHANGEEXEC#Exec=firejail --appimage --profile=$APPSPATH/$2/firejail.profile $APPSPATH/$2/$CHANGEEXEC#g" ./$f
-			done
-			mv ./.am-patchinglauncher/* "$DATADIR"/applications/ 2> /dev/null;	rmdir .am-patchinglauncher
-			break
-			;;
-
-		5)	if command -v vim 1>/dev/null; then
-				vim $APPSPATH/$2/firejail.profile
-			else
-				nano $APPSPATH/$2/firejail.profile
+		elif [ "$2" = "aisap" ]; then
+			echo " Error: You can't sandbox aisap"; exit 1
+		elif ! command -v am 1>/dev/null && ! command -v appman 1>/dev/null; then
+			echo -e " Error: You need AM or AppMan for this script work\nInstall AM/AppMan and try again"; exit 1
+		elif ! command -v aisap 1>/dev/null; then
+			echo -e " Error: You need aisap for this script work\n"
+			read -p " ◆ DO YOU WISH TO INSTALL AISAP (y,n)?: " yn
+			if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
+				$AMCLIPATH -i aisap >/dev/null 2>&1
 			fi
-			;;
+			command -v aisap 1>/dev/null && echo " aisap installed successfully" || exit 1
+		fi
 
-		*)	exit
-			;;
-		esac
+		# Set variables
+		if [ "$AMCLI" = am ]; then
+			TARGET="/usr/local/bin/$2"
+		else
+			mkdir -p "$HOME/.local/bin"
+			TARGET="$HOME/.local/bin/$2"
+		fi
+		APPIMAGEPATH="$APPSPATH/$2"
+		APPIMAGE="$APPIMAGEPATH/$2"
 
+		# Check if TARGET is an AppImage or was already sandboxed
+		if grep "aisap-am" "$TARGET" >/dev/null 2>&1; then
+			echo " $2 is already sandboxed!"; exit 1
+		elif ! strings -d "$APPIMAGE" | grep -- '--appimage-extract' 1>/dev/null; then
+			echo " $TARGET doesn't look like an AppImage, aborting"; exit 1
+		fi
+
+		# Remove the exec permission from the AppImage and its updater for better safety™
+		$SUDOCOMMAND rm -f "$TARGET" &&
+		chmod a-x "$APPIMAGE" &&
+		sed -i 's|chmod a+x|chmod a-x|g' "$APPIMAGEPATH/AM-updater" || exit 1
+
+		# Check if we are using AM or AppMan
+		echo -e "\n Making aisap script for \"$(echo "$AMCLI" | tr a-z A-Z)\"..."
+
+		mkdir -p "$AMCACHEDIR/sandbox-scripts"
+		cat <<-"HEREDOC" >> "$AMCACHEDIR/sandbox-scripts/$2"
+		#!/bin/sh
+
+		# aisap-am sandboxing script
+		# Run this script with --disable-sandbox to do what the flag name implies
+
+		# Dependency check
+		if ! command -v aisap 1>/dev/null; then
+			echo "You need aisap for this to work"
+			notify-send -u critical "Sandbox error; Missing aisap dependency!"
+			exit 1
+		fi
+
+		# Set variables and create sandboxed dir.
+		APPEXEC=DUMMY
+		chmod a-x "$APPEXEC" # Prevents accidental launch of the app outside the sandbox
+		SANDBOXDIR="${SANDBOXDIR:-$HOME/.local/am-sandboxes}/$(echo "$APPEXEC" | awk -F "/" '{print $NF}')"
+		DATADIR="${XDG_DATA_HOME:-$HOME/.local/share}"
+		CONFIGDIR="${XDG_CONFIG_HOME:-$HOME/.config}"
+		CACHEDIR="${XDG_CACHE_HOME:-$HOME/.cache}"
+		mkdir -p "$SANDBOXDIR"
+		if [ "$1" = "--disable-sandbox" ]; then
+			APPIMAGEPATH="$(echo ${APPEXEC%/*})"
+			echo "\n Giving exec permissions back to $APPEXEC..."
+			chmod a+x "$APPEXEC" || exit 1
+			echo " Patching $APPIMAGEPATH/AM-updater to give permissions back..."
+			sed -i 's|chmod a-x|chmod a+x|g' "$APPIMAGEPATH/AM-updater" || exit 1
+			THISFILE="$(realpath "$0")"
+			echo " Replacing $THISFILE with a link to the AppImage...\n"
+			SUDO ln -sf "$APPEXEC" "$THISFILE" || exit 1
+			echo " \033[32m$APPEXEC successfully unsandboxed!\n"
+			exit 0
+		fi
+		# Start at sandboxed home
+		# Edit below this to add or remove access to parts of the system
+		exec aisap --trust-once \
+		--level 2 \
+		--data-dir "$SANDBOXDIR" \
+		--add-file "$DATADIR"/themes \
+		--add-file "$DATADIR"/icons \
+		--add-file "$CONFIGDIR"/gtk3.0 \
+		--add-file "$CONFIGDIR"/gtk4.0 \
+		--add-file "$CONFIGDIR"/kdeglobals \
+		--add-file "$CONFIGDIR"/qt5ct \
+		--add-file "$CONFIGDIR"/qt6ct \
+		--add-file "$CONFIGDIR"/Kvantum \
+		--add-file "$HOME"/.local/lib \
+		--add-socket x11 \
+		--add-socket wayland \
+		--add-socket pulseaudio \
+		--add-socket network \
+		--add-device dri \
+		"$APPEXEC" "$@"
+		HEREDOC
+		$SUDOCOMMAND mv "$AMCACHEDIR/sandbox-scripts/$2" "$TARGET" &&
+		rmdir "$AMCACHEDIR/sandbox-scripts" &&
+		$SUDOCOMMAND chmod a+x "$TARGET" && $SUDOCOMMAND sed -i "s|DUMMY|$APPIMAGE|g; s|SUDO |$SUDOCOMMAND |g" "$TARGET" || exit 1
+		echo -e "\n \033[33m\"$2\" successfully sandboxed!"
+		echo -e "\n \033[0mThe sandboxed app home will be in "${SANDBOXDIR:-$HOME/.local/am-sandboxes}" once launched"
+		echo -e "\n This location can be moved by setting the 'SANDBOXDIR' env variable"
+		echo -e "\n --------------------------------------------------------------------------"
+		echo -e "\n \033[33mUse the --disable-sandbox flag if you want to revert the changes"
+		echo -e "\n \033[0mIn this case that is: \033[33m$2 --disable-sandbox\n"
+		exit 0
 	done
 
 	shift
@@ -129,11 +154,11 @@ case "$1" in
 	esac
 
 	while [ -n "$1" ]; do
-		rm -f "$AMCACHEDIR"/home-args
-		echo "$@" | tr ' ' '\n' >> "$AMCACHEDIR"/home-args && echo STOP >> "$AMCACHEDIR"/home-args
+		rm -f "$AMCACHEDIR/home-args"
+		echo "$@" | tr ' ' '\n' >> "$AMCACHEDIR/home-args" && echo STOP >> "$AMCACHEDIR/home-args"
 		ARGS=$(tail -n +2 "$AMCACHEDIR"/home-args)
 		for arg in $ARGS; do
-			if [ $arg == STOP ]; then
+			if [ "$arg" = STOP ]; then
 				exit
 			else
 				_home
