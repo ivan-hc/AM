@@ -147,8 +147,6 @@ https://github.com/ivan-hc/AM/assets/88724353/420bfa1c-274f-4ac3-a79f-78ad64f012
 
 ------------------------------------------------------------------------
 ## Differences between "AM" and "AppMan"
-<details>
-  <summary></summary>
 
 Initially the two projects traveled in parallel to each other, until version 5, in which the codes merged. However, depending on whether it is installed permanently using a specific method ("AM") or downloaded portablely ("AppMan", if renamed "`appman`") the two CLIs work slightly differently.
 
@@ -188,12 +186,10 @@ Since version 5.1 the installation process have introduced a check to find read-
 
 For everything else, the controls and operation are always the same for both command line tools. The only thing that changes is that the installation scripts are written only for "AM", while "AppMan" uses the same scripts and includes commands that can modify them to make them work locally during the installation process.
 
-</details>
-
 -----------------------------------------------------------------------------
 ## Use AM locally like AppMan does
 <details>
-  <summary></summary>
+  <summary> Click here to expand </summary>
 
 If you use "AM" and have the needing of installing apps at system level and locally, use the option `--user` that allows to run "AM" in "AppMan Mode":
 ```
@@ -210,7 +206,7 @@ To perform a test and see if you are in "AppMan Mode" or not, run for example th
 -----------------------------------------------------------------------------
 ## What programs can be installed
 <details>
-  <summary></summary>
+  <summary> Click here to expand </summary>
 
 "AM"/"AppMan" installs/removes/updates/manages only standalone programs, ie those programs that can be run from a single directory in which they are contained (where `$PROGRAM` is the name of the application, "AM" installs them always into a dedicated folder named `/opt/$PROGRAM`, while "AppMan" lets you choose to install them in a dedicated directory in your `$HOME`).
 
@@ -247,7 +243,7 @@ The full list is [here](https://github.com/ivan-hc/AM/blob/main/libraries/libs-l
 -----------------------------------------------------------------------------
 ## How to update all programs, for real
 <details>
-  <summary></summary>
+  <summary> Click here to expand </summary>
 
 To update all the programs and "AM" itself, just run the command (without `sudo`):
 
@@ -277,7 +273,7 @@ https://github.com/ivan-hc/AM/assets/88724353/7e1845e7-bd02-495a-a1b5-735867a765
 -----------------------------------------------------------------------------
 ## Repository and Multiarchitecture
 <details>
-  <summary></summary>
+  <summary> Click here to expand </summary>
 
 Each program is installed through a dedicated script, and all these scripts are listed in the "[repository](https://github.com/ivan-hc/AM/tree/main/programs)" and divided by architecture.
 
@@ -296,7 +292,7 @@ If you are interested, you can deliberately join this project to improve the lis
 -----------------------------------------------------------------------------
 ## Comparison with other AppImage managers
 <details>
-  <summary></summary>
+  <summary> Click here to expand </summary>
 
 - There are many other AppImage managers around, and almost all of them support their database on appimagehub or other official AppImage resources, but the big problem is at the base of the compilation of these packages, being very often without an integrated update system. Furthermore, AppImage is a format that many developers are abandoning in favor of Flatpak, also because there were no centralized repositories or software that managed its updates in a universal way... at least until the invention of the first draft of [AppMan](https://github.com/ivan-hc/AppMan);
 - With "AM"/"AppMan" each installed program has its own script (AM-updater) that compares the installed version with the one available in the sources or uses official tools to update the AppImages ([see above](#how-to-update-all-programs-for-real)), there is support for multiple architectures (including i686 and aarch64) and anyone can create a script to install that particular program (if available for its architecture).
@@ -707,7 +703,7 @@ to have a list of the installed programs use the option `-f` or `files` (syntax 
 ------------------------------------------------------------------------
 ### How to enable bash completion
 <details>
-  <summary></summary>
+  <summary> Click here to expand </summary>
 
 Since 2.3.1 release "AM" has its inbuilt bash completion script that can be enabled using the following command:
 
@@ -727,7 +723,7 @@ A more detailed guide on how to create your own bash completion script for your 
 ------------------------------------------------------------------------
 ### Snapshots: backup your app and restore to a previous version
 <details>
-  <summary></summary>
+  <summary> Click here to expand </summary>
 
 Since 2.6.1 release, "AM" supports snapshots of all installed applications. A selected program can be copied locally into your home folder.
 
@@ -748,7 +744,7 @@ All the snapshots are stored into an hidden `/home/$USER/.am-snapshots` folder c
 ------------------------------------------------------------------------
 ### Update/remove programs without "AM"
 <details>
-  <summary></summary>
+  <summary> Click here to expand </summary>
 
 - To update a program without "am":
 ```
@@ -766,7 +762,7 @@ sudo /opt/$PROGRAM/remove
 ------------------------------------------------------------------------
 ### Downgrade
 <details>
-  <summary></summary>
+  <summary> Click here to expand </summary>
 
 From version 4.4 it is possible to directly select from a list of URLs the version of the app that interests you most from the main source. Use the `--rollback` option or `downgrade` in this mode:
 ```
@@ -779,7 +775,7 @@ This only works with the apps hosted on Github.
 ------------------------------------------------------------------------
 ### Convert old Type2 AppImages to Type3
 <details>
-  <summary></summary>
+  <summary> Click here to expand </summary>
 
 Since version 6.1 it is possible to convert old Type2 AppImages (dependent on `libfuse2`) to Type3 using the option `nolibfuse`.
 ```
@@ -801,7 +797,7 @@ NOTE, the conversion is not always successful, a lot depends on how the program 
 ------------------------------------------------------------------------
 ### Manage local AppImages
 <details>
-  <summary></summary>
+  <summary> Click here to expand </summary>
 
 Since version 4.4.2 you can use the `--launcher` option to integrate your local AppImage packages by simply dragging and dropping them into the terminal (see video).
 
@@ -812,7 +808,7 @@ https://github.com/ivan-hc/AM/assets/88724353/c4b889f4-8504-4853-8918-44d52084fe
 ------------------------------------------------------------------------
 ### Sandbox AppImages
 <details>
-  <summary></summary>
+  <summary> Click here to expand </summary>
 
 Since version 5.3 you can use the `--sandbox` option to run AppImages using a sandbox, and since version 6.12 Firejails has been dropped in favour of "[Aisap](https://github.com/mgord9518/aisap)"!
 
@@ -849,7 +845,7 @@ EXTRA: The behavior of this option can be tested in a completely standalone way 
 ------------------------------------------------------------------------
 ### Create and test your own installation script
 <details>
-  <summary></summary>
+  <summary> Click here to expand </summary>
 
 "AM"/"AppMan" has a `-t` option (or `template`) with which you can get a script to customize according to your needs. With this option, you can quickly create scripts to download existing programs or even create AppImage or AppDirs through tools such as [appimagetool](https://github.com/AppImage/AppImageKit) and [pkg2appimage](https://github.com/AppImage/pkg2appimage).
 
@@ -883,7 +879,7 @@ To install and test your own script, use the command `am -i /path/to/your-script
 ------------------------------------------------------------------------
 # Third-party databases for applications (NeoDB)
 <details>
-  <summary></summary>
+  <summary> Click here to expand </summary>
 
 From version 6.4, "AM"/"AppMan" can be extended by adding new application databases using a configuration file named "neodb".
 
@@ -897,7 +893,7 @@ From version 6.4, "AM"/"AppMan" can be extended by adding new application databa
 -----------------------------------------------------------------------------
 ### An application does not work, is old and unsupported
 <details>
-  <summary></summary>
+  <summary> Click here to expand </summary>
 
 Use the `-a` option and go to the developer's site to report the problem. The task of "AM" is solely to install / remove / update the applications managed by it. Problems related to the failure of an installed program or any related bugs are attributable solely to its developers.
 
@@ -906,7 +902,7 @@ Use the `-a` option and go to the developer's site to report the problem. The ta
 -----------------------------------------------------------------------------
 ### Cannot download or update an application
 <details>
-  <summary></summary>
+  <summary> Click here to expand </summary>
 
 There can be many reasons:
 - check your internet connection;
@@ -919,7 +915,7 @@ There can be many reasons:
 -----------------------------------------------------------------------------
 ### Cannot mount and run AppImages
 <details>
-  <summary></summary>
+  <summary> Click here to expand </summary>
 
 If by running it in the terminal you get an error message about "FUSE" or "libfuse"/"libfuse2" missing, take a look at the official documentation:
 
@@ -944,7 +940,7 @@ However, I suggest contacting the upstream developers to convince them to upgrad
 -----------------------------------------------------------------------------
 ### Spyware, malware and dangerous software
 <details>
-  <summary></summary>
+  <summary> Click here to expand </summary>
 
 Before installing any application, try to know where it comes from first. This program provides you with two basic options for this purpose:
 - Option `-a` or `about` (medium safety), allows you to read a short description and know the links from the pages of the site [https://portable-linux-apps.github.io](https://portable-linux-apps.github.io) locally, however these links may be inaccurate due to continuous updates of the initial scripts (you can provide additional info yourself by modifying the pages of the site, [here](https://github.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io), it is also open source);
@@ -957,7 +953,7 @@ Before installing any application, try to know where it comes from first. This p
 -----------------------------------------------------------------------------
 ### Stop AppImage prompt to create its own launcher, desktop integration and doubled launchers
 <details>
-  <summary></summary>
+  <summary> Click here to expand </summary>
 
 Some developers insist on creating Appimages that create their own launcher on first launch (like WALC and OpenShot). If the official solution proposed [here](https://discourse.appimage.org/t/stop-appimage-from-asking-to-integrate/488) doesn't work, create a .home directory with the `-H` option, launch the app and accept the request. For example (with "AM"):
 ```
@@ -971,7 +967,7 @@ Accept the integration request, the launcher will be saved in the walc.home dire
 -----------------------------------------------------------------------------
 ### The script points to "releases" instead of downloading the latest stable
 <details>
-  <summary></summary>
+  <summary> Click here to expand </summary>
 
 This is a choice I made as many developers have abandoned support for AppImage or GNU/Linux in general. My aim here is to introduce you to other developers' applications, then it's up to you to contact them, support them, help improve the software through forks and pull requests, opening issues and encouraging developers to keep the software in the format you prefer.
 
@@ -998,7 +994,7 @@ am -u $PROGRAM
 ------------------------------------------------------------------------
 ### Wget2 prevents me from downloading apps and modules
 <details>
-  <summary></summary>
+  <summary> Click here to expand </summary>
 
 With the arrival of Fedora 40 in April 2024, many users began to complain about the inability to download any application from github and the inability to update modules (see https://github.com/ivan-hc/AM/issues/496). This is because "wget" is no longer actively developed, and its successor "wget2" was not yet ready to take its place immediately. Yet the Fedora team decided to replace it anyway, causing quite a few problems for this project and many others that use api.github.com to function.
 
@@ -1017,7 +1013,7 @@ NOTE, the binary is called from a script in /usr/local/bin that runs "wget" with
 ------------------------------------------------------------------------
 ### Wrong download link
 <details>
-  <summary></summary>
+  <summary> Click here to expand </summary>
 
 The reasons may be two:
 - the referring link may have been changed, try the `--rollback` option or `downgrade`;
