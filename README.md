@@ -141,7 +141,7 @@ Option `--user` or `appman` allows you to use "AM" as "AppMan", to install apps 
 https://github.com/ivan-hc/AM/assets/88724353/65b27cf6-edc5-4a4c-b2f9-42e8623dc76f
 
 ### How to sandbox an AppImage
-Option `--sandbox` allows you to use Aisap to run installed AppImages into a sandbox. Jump to "[Sandbox AppImages](#sandbox-appimages)" to learn more:
+Option `--sandbox` allows you to use "[Aisap](https://github.com/mgord9518/aisap)" as a Bubblewrap frontend to run installed AppImages in a sandbox. Go to "[Sandbox AppImages](#sandbox-appimages)" to learn more:
 
 https://github.com/ivan-hc/AM/assets/88724353/420bfa1c-274f-4ac3-a79f-78ad64f01254
 
