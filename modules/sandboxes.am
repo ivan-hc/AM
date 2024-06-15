@@ -1,125 +1,174 @@
 #!/bin/sh
 
-###########################################################################################
-# THIS MODULE INCLUDES ALL ACTIONS INTENDED TO ISOLATE AND CONTAINERIZE INSTALLED APPIMAGES
-###########################################################################################
+###################################################################################################
+# THIS MODULE INCLUDES ALL ACTIONS INTENDED TO ISOLATE DOTFILES OR CONTAINERIZE INSTALLED APPIMAGES
+###################################################################################################
 
-# This script makes it easy to sandbox AppImages installed with AppMan or AM
-# The default location for the sandboxed homes is at $HOME/.local/am-sandboxes
-# But that location can be changed by setting the $SANDBOXDIR env variable
-# aisap: https://github.com/mgord9518/aisap
-
-while [ -n "$1" ]; do
-	# Safety checks
-	if [ -z "$2" ]; then
-		echo " Error: No arguments given. Usage: $0 SOMEAPP"
-		echo " SOMEAPP being the symlink name to an AM/AppMan AppImage in PATH, which can difer from the name of the AM/AppMan package"
-		echo " For example: \"$0 librewolf\" to sandbox librewolf"
-		exit 1
-	elif [ "$2" = "aisap" ]; then
-		echo " Error: You can't sandbox aisap"; exit 1
-	elif ! command -v am 1>/dev/null && ! command -v appman 1>/dev/null; then
-		echo " Error: You need AM or AppMan for this script work\nInstall AM/AppMan and try again"; exit 1
-	elif ! command -v aisap 1>/dev/null; then
-		echo " Error: You need aisap for this script work\n"
-		read -p " ◆ DO YOU WISH TO INSTALL AISAP (y,n)?: " yn
-		if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
-			$AMCLIPATH -i aisap >/dev/null 2>&1
-		fi
-		command -v aisap 1>/dev/null && echo " aisap installed successfully" || exit 1
-	fi
-
-	# Set variables
-	if [ "$AMCLI" == am ]; then
-		TARGET="/usr/local/bin/$2"
+# Set a dedicated .home directory for a selected AppImage
+_home() {
+	cd "$APPSPATH" || return
+	if ! test -d ./"$arg"; then
+		echo " ERROR: \"$arg\" is not installed"
 	else
-		mkdir -p "$HOME/.local/bin"
-		TARGET="$HOME/.local/bin/$2"
+		case "$arg" in
+		*)
+			if [ -z "$(strings -d "./$arg/$arg" 2>/dev/null | grep -F "if you run it with the --appimage-extract option")" ] 2>/dev/null; then
+				echo " ERROR: \"$arg\" is NOT an AppImage"
+			else
+				cd ./"$arg" || return
+				mkdir -p ./"$arg.home"
+				echo ' Setting $HOME to '"$APPSPATH/$arg/$arg"'.home for this AppImage'
+			fi
+		esac
 	fi
-	APPIMAGEPATH="$APPSPATH/$2"
-	APPIMAGE="$APPIMAGEPATH/$2"
+}
 
-	# Check if TARGET is an AppImage or was already sandboxed
-	if grep "aisap-am" "$TARGET" >/dev/null 2>&1; then
-		echo " $2 is already sandboxed!"; exit 1
-	elif ! strings -d "$APPIMAGE" | grep -- '--appimage-extract' 1>/dev/null; then
-		echo " $TARGET doesn't look like an AppImage, aborting"; exit 1
-	fi
+case "$1" in
+  '--sandbox')
 
-	# Remove the exec permission from the AppImage and its updater for better safety™
-	$SUDOCOMMAND rm -f "$TARGET" &&
-	chmod a-x "$APPIMAGE" &&
-	sed -i 's|chmod a+x|chmod a-x|g' "$APPIMAGEPATH/AM-updater" || exit 1
+	case $2 in
+	'') 
+		echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
+	esac
 
+	# This script makes it easy to sandbox AppImages installed with AppMan or AM
+	# The default location for the sandboxed homes is at $HOME/.local/am-sandboxes
+	# But that location can be changed by setting the $SANDBOXDIR env variable
+	# aisap: https://github.com/mgord9518/aisap
 
-	# Check if we are using AM or AppMan
-	echo -e "\n Making aisap script for \"$(echo "$AMCLI" | tr a-z A-Z)\"..."
+	while [ -n "$1" ]; do
+		# Safety checks
+		if ! test -f "$APPSPATH/$2/remove"; then
+			echo " '$2' is not a valid argument or is not installed."; exit
+		elif [ -z "$2" ]; then
+			echo " Error: No arguments given. Usage: $0 SOMEAPP"
+			echo " SOMEAPP being the symlink name to an AM/AppMan AppImage in PATH, which can difer from the name of the AM/AppMan package"
+			echo " For example: \"$0 librewolf\" to sandbox librewolf"
+			exit 1
+		elif [ "$2" = "aisap" ]; then
+			echo " Error: You can't sandbox aisap"; exit 1
+		elif ! command -v am 1>/dev/null && ! command -v appman 1>/dev/null; then
+			echo -e " Error: You need AM or AppMan for this script work\nInstall AM/AppMan and try again"; exit 1
+		elif ! command -v aisap 1>/dev/null; then
+			echo -e " Error: You need aisap for this script work\n"
+			read -p " ◆ DO YOU WISH TO INSTALL AISAP (y,n)?: " yn
+			if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
+				$AMCLIPATH -i aisap >/dev/null 2>&1
+			fi
+			command -v aisap 1>/dev/null && echo " aisap installed successfully" || exit 1
+		fi
 
-	mkdir -p "$AMCACHEDIR/sandbox-scripts"
-	cat <<-"HEREDOC" >> "$AMCACHEDIR/sandbox-scripts/$2"
-	#!/bin/sh
+		# Set variables
+		if [ "$AMCLI" = am ]; then
+			TARGET="/usr/local/bin/$2"
+		else
+			mkdir -p "$HOME/.local/bin"
+			TARGET="$HOME/.local/bin/$2"
+		fi
+		APPIMAGEPATH="$APPSPATH/$2"
+		APPIMAGE="$APPIMAGEPATH/$2"
 
-	# aisap-am sandboxing script
-	# Run this script with --disable-sandbox to do what the flag name implies
+		# Check if TARGET is an AppImage or was already sandboxed
+		if grep "aisap-am" "$TARGET" >/dev/null 2>&1; then
+			echo " $2 is already sandboxed!"; exit 1
+		elif ! strings -d "$APPIMAGE" | grep -- '--appimage-extract' 1>/dev/null; then
+			echo " $TARGET doesn't look like an AppImage, aborting"; exit 1
+		fi
 
-	# Dependency check
-	if ! command -v aisap 1>/dev/null; then
-		echo "You need aisap for this to work"
-		notify-send -u critical "Sandbox error; Missing aisap dependency!"
-		exit 1
-	fi
+		# Remove the exec permission from the AppImage and its updater for better safety™
+		$SUDOCOMMAND rm -f "$TARGET" &&
+		chmod a-x "$APPIMAGE" &&
+		sed -i 's|chmod a+x|chmod a-x|g' "$APPIMAGEPATH/AM-updater" || exit 1
 
-	# Set variables and create sandboxed dir.
-	APPEXEC=DUMMY
-	chmod a-x "$APPEXEC" # Prevents accidental launch of the app outside the sandbox
-	SANDBOXDIR="${SANDBOXDIR:-$HOME/.local/am-sandboxes}/$(echo "$APPEXEC" | awk -F "/" '{print $NF}')"
-	DATADIR="${XDG_DATA_HOME:-$HOME/.local/share}"
-	CONFIGDIR="${XDG_CONFIG_HOME:-$HOME/.config}"
-	CACHEDIR="${XDG_CACHE_HOME:-$HOME/.cache}"
-	mkdir -p "$SANDBOXDIR"
-	if [ "$1" = "--disable-sandbox" ]; then
-		APPIMAGEPATH="$(echo ${APPEXEC%/*})"
-		echo "\n Giving exec permissions back to $APPEXEC..."
-		chmod a+x "$APPEXEC" || exit 1
-		echo " Patching $APPIMAGEPATH/AM-updater to give permissions back..."
-		sed -i 's|chmod a-x|chmod a+x|g' "$APPIMAGEPATH/AM-updater" || exit 1
-		THISFILE="$(realpath "$0")"
-		echo " Replacing $THISFILE with a link to the AppImage...\n"
-		SUDO ln -sf "$APPEXEC" "$THISFILE" || exit 1
-		echo " \033[32m$APPEXEC successfully unsandboxed!\n"
+		# Check if we are using AM or AppMan
+		echo -e "\n Making aisap script for \"$(echo "$AMCLI" | tr a-z A-Z)\"..."
+
+		mkdir -p "$AMCACHEDIR/sandbox-scripts"
+		cat <<-"HEREDOC" >> "$AMCACHEDIR/sandbox-scripts/$2"
+		#!/bin/sh
+
+		# aisap-am sandboxing script
+		# Run this script with --disable-sandbox to do what the flag name implies
+
+		# Dependency check
+		if ! command -v aisap 1>/dev/null; then
+			echo "You need aisap for this to work"
+			notify-send -u critical "Sandbox error; Missing aisap dependency!"
+			exit 1
+		fi
+
+		# Set variables and create sandboxed dir.
+		APPEXEC=DUMMY
+		chmod a-x "$APPEXEC" # Prevents accidental launch of the app outside the sandbox
+		SANDBOXDIR="${SANDBOXDIR:-$HOME/.local/am-sandboxes}/$(echo "$APPEXEC" | awk -F "/" '{print $NF}')"
+		DATADIR="${XDG_DATA_HOME:-$HOME/.local/share}"
+		CONFIGDIR="${XDG_CONFIG_HOME:-$HOME/.config}"
+		CACHEDIR="${XDG_CACHE_HOME:-$HOME/.cache}"
+		mkdir -p "$SANDBOXDIR"
+		if [ "$1" = "--disable-sandbox" ]; then
+			APPIMAGEPATH="$(echo ${APPEXEC%/*})"
+			echo "\n Giving exec permissions back to $APPEXEC..."
+			chmod a+x "$APPEXEC" || exit 1
+			echo " Patching $APPIMAGEPATH/AM-updater to give permissions back..."
+			sed -i 's|chmod a-x|chmod a+x|g' "$APPIMAGEPATH/AM-updater" || exit 1
+			THISFILE="$(realpath "$0")"
+			echo " Replacing $THISFILE with a link to the AppImage...\n"
+			SUDO ln -sf "$APPEXEC" "$THISFILE" || exit 1
+			echo " \033[32m$APPEXEC successfully unsandboxed!\n"
+			exit 0
+		fi
+		# Start at sandboxed home
+		# Edit below this to add or remove access to parts of the system
+		exec aisap --trust-once \
+		--level 2 \
+		--data-dir "$SANDBOXDIR" \
+		--add-file "$DATADIR"/themes \
+		--add-file "$DATADIR"/icons \
+		--add-file "$CONFIGDIR"/gtk3.0 \
+		--add-file "$CONFIGDIR"/gtk4.0 \
+		--add-file "$CONFIGDIR"/kdeglobals \
+		--add-file "$CONFIGDIR"/qt5ct \
+		--add-file "$CONFIGDIR"/qt6ct \
+		--add-file "$CONFIGDIR"/Kvantum \
+		--add-file "$HOME"/.local/lib \
+		--add-socket x11 \
+		--add-socket wayland \
+		--add-socket pulseaudio \
+		--add-socket network \
+		--add-device dri \
+		"$APPEXEC" "$@"
+		HEREDOC
+		$SUDOCOMMAND mv "$AMCACHEDIR/sandbox-scripts/$2" "$TARGET" &&
+		rmdir "$AMCACHEDIR/sandbox-scripts" &&
+		$SUDOCOMMAND chmod a+x "$TARGET" && $SUDOCOMMAND sed -i "s|DUMMY|$APPIMAGE|g; s|SUDO |$SUDOCOMMAND |g" "$TARGET" || exit 1
+		echo -e "\n \033[33m\"$2\" successfully sandboxed!"
+		echo -e "\n \033[0mThe sandboxed app home will be in "${SANDBOXDIR:-$HOME/.local/am-sandboxes}" once launched"
+		echo -e "\n This location can be moved by setting the 'SANDBOXDIR' env variable"
+		echo -e "\n --------------------------------------------------------------------------"
+		echo -e "\n \033[33mUse the --disable-sandbox flag if you want to revert the changes"
+		echo -e "\n \033[0mIn this case that is: \033[33m$2 --disable-sandbox\n"
 		exit 0
-	fi
-	# Start at sandboxed home
-	# Edit below this to add or remove access to parts of the system
-	exec aisap --trust-once \
-	--level 2 \
-	--data-dir "$SANDBOXDIR" \
-	--add-file "$DATADIR"/themes \
-	--add-file "$DATADIR"/icons \
-	--add-file "$CONFIGDIR"/gtk3.0 \
-	--add-file "$CONFIGDIR"/gtk4.0 \
-	--add-file "$CONFIGDIR"/kdeglobals \
-	--add-file "$CONFIGDIR"/qt5ct \
-	--add-file "$CONFIGDIR"/qt6ct \
-	--add-file "$CONFIGDIR"/Kvantum \
-	--add-file "$HOME"/.local/lib \
-	--add-socket x11 \
-	--add-socket wayland \
-	--add-socket pulseaudio \
-	--add-socket network \
-	--add-device dri \
-	"$APPEXEC" "$@"
-	HEREDOC
-	$SUDOCOMMAND mv "$AMCACHEDIR/sandbox-scripts/$2" "$TARGET" &&
-	rmdir "$AMCACHEDIR/sandbox-scripts" &&
-	$SUDOCOMMAND chmod a+x "$TARGET" && $SUDOCOMMAND sed -i "s|DUMMY|$APPIMAGE|g; s|SUDO |$SUDOCOMMAND |g" "$TARGET" || exit 1
-	echo -e "\n \033[33m\"$2\" successfully sandboxed!"
-	echo -e "\n \033[0mThe sandboxed app home will be in "${SANDBOXDIR:-$HOME/.local/am-sandboxes}" once launched"
-	echo -e "\n This location can be moved by setting the 'SANDBOXDIR' env variable"
-	echo -e "\n --------------------------------------------------------------------------"
-	echo -e "\n \033[33mUse the --disable-sandbox flag if you want to revert the changes"
-	echo -e "\n \033[0mIn this case that is: \033[33m$2 --disable-sandbox\n"
-	exit 0
-done
+	done
 
-shift
+	shift
+	;;
+
+  '-H'|'--home')
+	case $2 in
+	'') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
+	esac
+
+	while [ -n "$1" ]; do
+		rm -f "$AMCACHEDIR/home-args"
+		echo "$@" | tr ' ' '\n' >> "$AMCACHEDIR/home-args" && echo STOP >> "$AMCACHEDIR/home-args"
+		ARGS=$(tail -n +2 "$AMCACHEDIR"/home-args)
+		for arg in $ARGS; do
+			if [ "$arg" = STOP ]; then
+				exit
+			else
+				_home
+			fi
+		done
+	done
+	;;
+esac
