@@ -969,60 +969,6 @@ function _use_force_latest() {
 	esac
 }
 
-###############################
-# FUNCTIONS TO MANAGE SANDBOXES
-###############################
-
-# Set a dedicated .home directory for a selected AppImage
-function _home() {
-	cd "$APPSPATH" || return
-	if ! test -d ./"$arg"; then
-		echo ' ERROR: "'$arg'" is not installed'
-	else
-		case $arg in
-		*)
-			if [ -z "$(strings -d "./$arg/$arg" 2>/dev/null | grep -F "if you run it with the --appimage-extract option")" ] 2>/dev/null; then
-				echo " ERROR: \"$arg\" is NOT an AppImage"
-			else
-				cd ./$arg || return
-				mkdir -p ./$arg.home
-				echo " Setting $HOME to $APPSPATH/$arg/$arg.home for this AppImage"
-			fi
-		esac
-	fi
-}
-
-function _use_sandbox() {
-	if ! test -f "$AMCACHEDIR/aisap-am"; then
-		_online_check
-		wget -q https://raw.githubusercontent.com/Samueru-sama/aisap-am/main/aisap-am -O "$AMCACHEDIR/aisap-am" && chmod a+x "$AMCACHEDIR/aisap-am"
-	fi
-
-	case $2 in
-	'')
-		echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit
-		;;
-	*)
-		$SUDOCOMMAND "$AMCACHEDIR/aisap-am" "$2"
-		;;
-	esac
-}
-
-function _use_home() {
-	while [ -n "$1" ]; do
-		rm -f "$AMCACHEDIR/home-args"
-		echo "$@" | tr ' ' '\n' >> "$AMCACHEDIR/home-args" && echo STOP >> "$AMCACHEDIR/home-args"
-		ARGS=$(tail -n +2 "$AMCACHEDIR"/home-args)
-		for arg in $ARGS; do
-			if [ $arg == STOP ]; then
-				exit
-			else
-				_home
-			fi
-		done
-	done
-}
-
 #############################################
 # FUNCTION TO HANDLE ALL THE EXTERNAL MODULES
 #############################################
@@ -1076,6 +1022,11 @@ case "$1" in
 		_if_appman_mode_enabled
 		_use_module "$@"
 		;;
+	'-H'|'--home'|\
+	'--sandbox')
+		MODULE="sandboxes.am"
+		_use_module "$@"
+		;;
 	'-i'|'install')
 		MODULE="install.am"
 		_online_check
@@ -1118,12 +1069,6 @@ case "$1" in
 		_online_check
 		_portable_dependences_setup
 		_use_force_latest "$@"
-		;;
-	'-H'|'--home')
-		_use_home "$@"
-		;;
-	'--sandbox')
-		_use_sandbox "$@"
 		;;
 	'--system')
 		_back_to_am
