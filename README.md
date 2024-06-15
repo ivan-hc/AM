@@ -1021,8 +1021,7 @@ The reasons may be two:
 # Related projects
 #### External tools and forks used in this project
 - [aisap](https://github.com/mgord9518/aisap)
-- [appimagetool](https://github.com/AppImage/AppImageKit)
-- [go-appimage](https://github.com/probonopd/go-appimage)
+- [appimagetool/go-appimage](https://github.com/probonopd/go-appimage)
 - [pkg2appimage](https://github.com/AppImage/pkg2appimage)
 
 #### My other projects
