@@ -15,6 +15,7 @@
   - [How to convert Type2 AppImages requiring libfuse2 to Type3 AppImages](#how-to-convert-type2-appimages-requiring-libfuse2-to-type3-appimages)
   - [How to create launchers and shortcuts for my local AppImages](#how-to-create-launchers-and-shortcuts-for-my-local-appimages)
   - [How to use "AM" in non-privileged mode, like "AppMan"](#how-to-use-am-in-non-privileged-mode-like-appman)
+  - [How to sandbox an AppImage](#how-to-sandbox-an-appimage)
 
 - [Differences between "AM" and "AppMan"](#differences-between-am-and-appman)
 - [Use AM locally like AppMan does](#use-am-locally-like-appman-does)
@@ -139,6 +140,10 @@ Option `--user` or `appman` allows you to use "AM" as "AppMan", to install apps 
 
 https://github.com/ivan-hc/AM/assets/88724353/65b27cf6-edc5-4a4c-b2f9-42e8623dc76f
 
+### How to sandbox an AppImage
+Option `--sandbox` allows you to use Aisap to run installed AppImages into a sandbox. Jump to "[Sandbox AppImages](#sandbox-appimages)" to learn more:
+
+https://github.com/ivan-hc/AM/assets/88724353/420bfa1c-274f-4ac3-a79f-78ad64f01254
 
 ------------------------------------------------------------------------
 ## Differences between "AM" and "AppMan"
