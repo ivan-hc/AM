@@ -266,60 +266,68 @@ while [ -n "$1" ]; do
 			echo ""
 			case $arg in
 
-			'--debug'|'--force-latest')
-				return 0
+			'--debug')
+				echo " You have decided to read the complete messages to debug the installation"
+				echo "____________________________________________________________________________"
+				;;
+			'--force-latest')
+				echo " You have decided to force downloads for the latest version (if it exists)"
+				echo "____________________________________________________________________________"
 				;;
 			*)
+				# If the "tmp" directory is not removed, the installation failed, so remove the app
+				if test -d $APPSPATH/$arg/tmp; then
+					$SUDOCOMMAND $APPSPATH/$arg/remove 2> /dev/null
+				fi
 
-			esac
-
-			# If the "tmp" directory is not removed, the installation failed, so remove the app
-			if test -d $APPSPATH/$arg/tmp; then
-				$SUDOCOMMAND $APPSPATH/$arg/remove 2> /dev/null
-			fi
-
-			# Various cases that may occur during installation (for example if you use a third-party repository)
-			if test -f $APPSPATH/$arg/remove; then
-				echo " ◆ $(echo '"'$arg'"' | tr a-z A-Z): app already installed previously! Try removing it."
-			else
-				if test -f ./$arg 2> /dev/null; then
-					mkdir -p "$AMCACHEDIR"/tmp; cp ./$arg "$AMCACHEDIR"/tmp/$arg; cd "$AMCACHEDIR" || return; mv ./tmp/$arg ./$arg; rmdir ./tmp
-					_install_arg
-				elif test -f $arg 2> /dev/null; then
-					path2arg=$(echo "$arg")
-					arg=$(echo "$path2arg" | sed 's:.*/::')
-					cd "$AMCACHEDIR" || return; mkdir -p tmp; cd tmp || return; cp $path2arg ./$arg; cd ..; mv ./tmp/$arg ./$arg; rmdir ./tmp
-					_install_arg
-				elif test -f "$AMPATH/neodb"; then
-					rm -R -f "$AMCACHEDIR/multirepo-args"
-					MULTIREPO=$(cat "$AMPATH/neodb" | grep "Source=" | sed 's/Source=//g')
-					for anyrepo in $MULTIREPO; do
-						if curl --output /dev/null --silent --head --fail $anyrepo/$arg  1>/dev/null; then
-							echo "$anyrepo" >> "$AMCACHEDIR/multirepo-args"
-						fi
-					done
-					if test -f "$AMCACHEDIR/multirepo-args"; then
-						anyrepoargs=$(cat "$AMCACHEDIR/multirepo-args" 2>/dev/null | wc -l)
-						if [ $anyrepoargs -gt 0 ]; then
-							if curl --output /dev/null --silent --head --fail $APPSDB/$arg  1>/dev/null; then
-								echo "$APPSDB" >> "$AMCACHEDIR/multirepo-args"
+				# Various cases that may occur during installation (for example if you use a third-party repository)
+				if test -f $APPSPATH/$arg/remove; then
+					echo " ◆ $(echo '"'$arg'"' | tr a-z A-Z): app already installed previously! Try removing it."
+				else
+					if test -f ./$arg 2> /dev/null; then
+						mkdir -p "$AMCACHEDIR"/tmp; cp ./$arg "$AMCACHEDIR"/tmp/$arg; cd "$AMCACHEDIR" || return; mv ./tmp/$arg ./$arg; rmdir ./tmp
+						_install_arg
+					elif test -f $arg 2> /dev/null; then
+						path2arg=$(echo "$arg")
+						arg=$(echo "$path2arg" | sed 's:.*/::')
+						cd "$AMCACHEDIR" || return; mkdir -p tmp; cd tmp || return; cp $path2arg ./$arg; cd ..; mv ./tmp/$arg ./$arg; rmdir ./tmp
+						_install_arg
+					elif test -f "$AMPATH/neodb"; then
+						rm -R -f "$AMCACHEDIR/multirepo-args"
+						MULTIREPO=$(cat "$AMPATH/neodb" | grep "Source=" | sed 's/Source=//g')
+						for anyrepo in $MULTIREPO; do
+							if curl --output /dev/null --silent --head --fail $anyrepo/$arg  1>/dev/null; then
+								echo "$anyrepo" >> "$AMCACHEDIR/multirepo-args"
 							fi
-							anyrepoargall=$(cat "$AMCACHEDIR/multirepo-args" 2>/dev/null | wc -l)
-							if [ $anyrepoargall == 1 ]; then
-								cd "$AMCACHEDIR" || return; mkdir -p tmp; cd tmp || return; wget -q "$(cat "$AMCACHEDIR/multirepo-args" | head -1)/$arg"; cd ..; mv ./tmp/$arg ./$arg; rmdir ./tmp
+						done
+						if test -f "$AMCACHEDIR/multirepo-args"; then
+							anyrepoargs=$(cat "$AMCACHEDIR/multirepo-args" 2>/dev/null | wc -l)
+							if [ $anyrepoargs -gt 0 ]; then
+								if curl --output /dev/null --silent --head --fail $APPSDB/$arg  1>/dev/null; then
+									echo "$APPSDB" >> "$AMCACHEDIR/multirepo-args"
+								fi
+								anyrepoargall=$(cat "$AMCACHEDIR/multirepo-args" 2>/dev/null | wc -l)
+								if [ $anyrepoargall == 1 ]; then
+									cd "$AMCACHEDIR" || return; mkdir -p tmp; cd tmp || return; wget -q "$(cat "$AMCACHEDIR/multirepo-args" | head -1)/$arg"; cd ..; mv ./tmp/$arg ./$arg; rmdir ./tmp
+									rm -R -f "$AMCACHEDIR/multirepo-args"
+									_install_arg
+								else
+									echo -e "\n ◆ FOUND $(echo '"'$arg'"' | tr a-z A-Z) FROM MULTIPLE SOURCES:\n" &&
+									printf " Select a URL from this menu (read carefully) or press CTRL+C to abort:\n\n"; sleep 1;
+									select d in $(cat "$AMCACHEDIR/multirepo-args"); do test -n "$d" && break; echo ">>> Invalid Selection"; done
+									cd "$AMCACHEDIR" || return; mkdir -p tmp; cd tmp || return; wget -q "$d/$arg"; cd ..; mv ./tmp/$arg ./$arg; rmdir ./tmp
+									rm -R -f "$AMCACHEDIR/multirepo-args"
+									_install_arg
+								fi
+							elif curl --output /dev/null --silent --head --fail $APPSDB/$arg  1>/dev/null; then
+								cd "$AMCACHEDIR" || return; mkdir -p tmp; cd tmp || return; wget -q $APPSDB/$arg; cd ..; mv ./tmp/$arg ./$arg; rmdir ./tmp
 								rm -R -f "$AMCACHEDIR/multirepo-args"
 								_install_arg
 							else
-								echo -e "\n ◆ FOUND $(echo '"'$arg'"' | tr a-z A-Z) FROM MULTIPLE SOURCES:\n" &&
-								printf " Select a URL from this menu (read carefully) or press CTRL+C to abort:\n\n"; sleep 1;
-								select d in $(cat "$AMCACHEDIR/multirepo-args"); do test -n "$d" && break; echo ">>> Invalid Selection"; done
-								cd "$AMCACHEDIR" || return; mkdir -p tmp; cd tmp || return; wget -q "$d/$arg"; cd ..; mv ./tmp/$arg ./$arg; rmdir ./tmp
-								rm -R -f "$AMCACHEDIR/multirepo-args"
-								_install_arg
+								echo ' 💀 ERROR: "'$arg'" does NOT exist in the database, see "'$AMCLI' -l"'
 							fi
 						elif curl --output /dev/null --silent --head --fail $APPSDB/$arg  1>/dev/null; then
 							cd "$AMCACHEDIR" || return; mkdir -p tmp; cd tmp || return; wget -q $APPSDB/$arg; cd ..; mv ./tmp/$arg ./$arg; rmdir ./tmp
-							rm -R -f "$AMCACHEDIR/multirepo-args"
 							_install_arg
 						else
 							echo ' 💀 ERROR: "'$arg'" does NOT exist in the database, see "'$AMCLI' -l"'
@@ -330,14 +338,10 @@ while [ -n "$1" ]; do
 					else
 						echo ' 💀 ERROR: "'$arg'" does NOT exist in the database, see "'$AMCLI' -l"'
 					fi
-				elif curl --output /dev/null --silent --head --fail $APPSDB/$arg  1>/dev/null; then
-					cd "$AMCACHEDIR" || return; mkdir -p tmp; cd tmp || return; wget -q $APPSDB/$arg; cd ..; mv ./tmp/$arg ./$arg; rmdir ./tmp
-					_install_arg
-				else
-					echo ' 💀 ERROR: "'$arg'" does NOT exist in the database, see "'$AMCLI' -l"'
 				fi
-			fi
-			echo "____________________________________________________________________________"
+				echo "____________________________________________________________________________"
+				;;
+			esac
 		fi
 	done
 done
