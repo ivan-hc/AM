@@ -829,6 +829,12 @@ $APP --disable-sandbox
 ```
 NOTE, "AM" users will need to use the root password to replace the symlink in $PATH with the script, while AppMan users will need to close the terminal for the changes to take effect.
 
+For more information aboit "Aisap", visit https://github.com/mgord9518/aisap
+
+Available profiles are listed at https://github.com/mgord9518/aisap/tree/main/profiles
+
+To learn more about permissions, see https://github.com/mgord9518/aisap/tree/main/permissions
+
 </details>
 
 ------------------------------------------------------------------------
