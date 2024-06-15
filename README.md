@@ -148,45 +148,62 @@ https://github.com/ivan-hc/AM/assets/88724353/420bfa1c-274f-4ac3-a79f-78ad64f012
 ------------------------------------------------------------------------
 ## Differences between "AM" and "AppMan"
 
-Initially the two projects traveled in parallel to each other, until version 5, in which the codes merged. However, depending on whether it is installed permanently using a specific method ("AM") or downloaded portablely ("AppMan", if renamed "`appman`") the two CLIs work slightly differently.
+Until version 5 the two projects traveled in parallel to each other. 
 
-#### In short:
+"AM" and "AppMan" differ in how they are installed/placed/renamed in the system and how/where they install apps:
 
-- "**AM**" applies system-wide programs integration (for all users), i.e. installs programs in the `/opt` directory (see [Linux Standard Base](https://refspecs.linuxfoundation.org/FHS_3.0/fhs/ch03s13.html)), the launchers instead are installed in `/usr/share/applications` (or `/usr/local/share/applications` if the distribution is "immutable") with the "AM-" suffix and the links are placed in `/usr/local/bin` or `/usr/local/games`. To manage programs system wide, AM needs to be installed in `/opt/am` as "`APP-MANAGER`" with a `/usr/local/bin/am` as a symlink (see https://github.com/ivan-hc/AM#installation);
-- "**AppMan**", on the other hand, works in a portable way and allows you to install and manage the same applications locally, in your "$HOME" directory, and without root privileges. However, it is important that it is renamed to `appman` to work (see https://github.com/ivan-hc/AppMan#installation)
+# "AM"
+#### "**AM**" is a program that works at system level
+It is installed in `/opt/am/` as "**APP-MANAGER**", with a symlink named "`am`" in `/usr/local/bin` (see [AM#installation](https://github.com/ivan-hc/AM#installation)).
 
-***NOTE, "AM" can be set to work like "AppMan" using the command "`am --user`".***
+"AM" is owned by the user that have installed it, since other users have not read/write permissions in "/opt/am".
 
-#### To be more detailed, here is an overview of how apps are installed by "AM" and "AppMan"
+Apps are installed system wide, in `/opt` to follow the [Linux Standard Base](https://refspecs.linuxfoundation.org/FHS_3.0/fhs/ch03s13.html), using the following structure:
+```
+/opt/$PROGRAM/
+/opt/$PROGRAM/$PROGRAM
+/opt/$PROGRAM/AM-updater
+/opt/$PROGRAM/remove
+/opt/$PROGRAM/icons/$ICON-NAME
+/usr/local/bin/$PROGRAM
+/usr/share/applications/AM-$PROGRAM.desktop
+```
+If the distro is immutable or have read-only mount points instead, the path of the launcher (the last line above) will change like this:
+```
+/usr/local/share/applications/AM-$PROGRAM.desktop
+```
 
-Where `$PROGRAM` is the application we're going to install:
-- "AM" (ie the `am` command) installs programs system-wide. "AM" requires the `sudo` privileges but only to install and remove the app, all the other commands can be executed as a normal user. This allows multiple users of the same system to be able to use the same installed applications. This is what an installation script installs with "AM":
+Being "AM" installed at system level, it requires `sudo` to be installed.
 
-      /opt/$PROGRAM/
-      /opt/$PROGRAM/$PROGRAM
-      /opt/$PROGRAM/AM-updater
-      /opt/$PROGRAM/remove
-      /opt/$PROGRAM/icons/$ICON-NAME
-      /usr/local/bin/$PROGRAM
-      /usr/share/applications/AM-$PROGRAM.desktop
-If the distro is immutable instead, the path of the launcher (the last line above) will change like this:
+However, the command `sudo` is used only to install, remove, sandbox the apps and to enable/disable bash-completion.
 
-      /usr/local/share/applications/AM-$PROGRAM.desktop
-Since version 5.1 the installation process have introduced a check to find read-only filesystems (`grep "[[:space:]]ro[[:space:],]" /proc/mounts`), if there are mountpoints like this, your distro may be an immutable one, so an `/usr/local/share/applications` directory will be created and the installation script will be patched to redirect the installation of launchers in that path to solve the issue.
+NOTE: also if "AM" is owned by the user that have installed it, all system users are allowed to run the command `am --user` to made "AM" work locally, as "AppMan". See "[Use AM locally like AppMan does](#use-am-locally-like-appman-does)" to learn more.
 
-- "AppMan" (ie the `appman` command) instead does not need root privileges to work, it allows you to choose where to install your applications into your `$HOME` directory. AppMan is also usable as a portable app (i.e. you can download and place it wherever you want) and it is able to update itself, anywhere! At first start it will ask you where to install the apps and it will create the directory for you (the configuration file is in `~/.config/appman`). For example, suppose you want install everything in "Applicazioni" (the italian of "applications"), this is the structure of what an installation scripts installs with "AppMan" instead:
+# "AppMan"
+### "**AppMan**" is for all unprivileged users, since it works locally
+On the contrary of "AM", "**AppMan**" works in a portable way.
 
-      ~/Applicazioni/$PROGRAM/
-      ~/Applicazioni/$PROGRAM/$PROGRAM
-      ~/Applicazioni/$PROGRAM/AM-updater
-      ~/Applicazioni/$PROGRAM/remove
-      ~/Applicazioni/$PROGRAM/icons/$ICON-NAME
-      ~/.local/bin/$PROGRAM
-      ~/.local/share/applications/AM-$PROGRAM.desktop
+You need just to rename the "APP-MANAGER" script as "`appman`" and put it wherewer you want.
 
-For everything else, the controls and operation are always the same for both command line tools. The only thing that changes is that the installation scripts are written only for "AM", while "AppMan" uses the same scripts and includes commands that can modify them to make them work locally during the installation process.
+However, I recommend to use it in `$HOME/.local/bin` to be used in $PATH to be supported by other tools (for exaple "[Topgrade](https://github.com/topgrade-rs/topgrade)"), see [AppMan#installation](https://github.com/ivan-hc/AppMan#installation)).
+
+At first start, "AppMan" will ask you where to install the apps in your $HOME directory (the configuration file is in `~/.config/appman`).
+
+For example, suppose you want install everything in "Applicazioni" (the italian of "applications"), this is the structure of what an installation scripts installs with "AppMan" instead:
+```
+~/Applicazioni/$PROGRAM/
+~/Applicazioni/$PROGRAM/$PROGRAM
+~/Applicazioni/$PROGRAM/AM-updater
+~/Applicazioni/$PROGRAM/remove
+~/Applicazioni/$PROGRAM/icons/$ICON-NAME
+~/.local/bin/$PROGRAM
+~/.local/share/applications/AM-$PROGRAM.desktop
+```
+
+And as I've already wrote above, all users are allowed to run the command `am --user` to made "AM" work locally, as "AppMan" (see [next paragraph](#use-am-locally-like-appman-does)).
 
 -----------------------------------------------------------------------------
+
 ## Use AM locally like AppMan does
 <details>
   <summary> Click here to expand </summary>
