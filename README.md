@@ -1014,15 +1014,15 @@ The reasons may be two:
 ------------------------------------------------------------------------
 # Related projects
 #### External tools and forks used in this project
+- [aisap](https://github.com/mgord9518/aisap)
 - [appimagetool](https://github.com/AppImage/AppImageKit)
-- [appimageupdatetool](https://github.com/AppImage/AppImageUpdate)
-- [libunionpreload](https://github.com/project-portable/libunionpreload)
 - [pkg2appimage](https://github.com/AppImage/pkg2appimage)
 
 #### My other projects
 - [AppImaGen](https://github.com/ivan-hc/AppImaGen), a script that generates AppImages from Debian or from a PPA for the previous Ubuntu LTS;
 - [ArchImage](https://github.com/ivan-hc/ArchImage), build AppImage packages for all distributions but including Arch Linux packages. Powered by JuNest;
 - [Firefox for Linux scripts](https://github.com/ivan-hc/Firefox-for-Linux-scripts), easily install the official releases of Firefox for Linux.
+- [My AppImage packages](https://github.com/ivan-hc#my-appimage-packages)
 
 ------------------------------------------------------------------------
 
