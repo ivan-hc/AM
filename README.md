@@ -828,6 +828,8 @@ appman --sandbox $APP
 - requires replacing the symlink in $PATH with a script;
 - to work, the Appimage will be set to "not executable", and the AM-updater will also have its `chmod` command set to `a-x` instead of `a+x`.
 
+The default location for the sandboxed homes is at $HOME/.local/am-sandboxes, but that location can be changed by setting the $SANDBOXDIR env variable.
+
 To restore the use of the AppImage without sandbox, you need to run the application command with the "--disable-sandbox" option:
 ```
 $APP --disable-sandbox
@@ -839,6 +841,8 @@ For more information aboit "Aisap", visit https://github.com/mgord9518/aisap
 Available profiles are listed at https://github.com/mgord9518/aisap/tree/main/profiles
 
 To learn more about permissions, see https://github.com/mgord9518/aisap/tree/main/permissions
+
+EXTRA: The behavior of this option can be tested in a completely standalone way by consulting the repository of its creator, at [Samueru-sama/aisap-am](https://github.com/Samueru-sama/aisap-am)
 
 </details>
 
