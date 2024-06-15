@@ -38,7 +38,7 @@
 - [Downgrade](#downgrade)
 - [Convert old Type2 AppImages to Type3](#convert-old-type2-appimages-to-type3)
 - [Manage local AppImages](#manage-local-appimages)
-- [Sandbox using Firejail](#sandbox-using-firejail)
+- [Sandbox AppImages](#sandbox-appimages)
 - [Create and test your own installation script](#create-and-test-your-own-installation-script)
 - [Third-party databases for applications (NeoDB)](#third-party-databases-for-applications-neodb)
 
@@ -562,15 +562,6 @@ to have a list of the installed programs use the option `-f` or `files` (syntax 
  DESCRIPTION:	Enable bash-completion to complete a keyword with the "TAB" key, using the names of all installable applications available.
  ___________________________________________________________________________
 
- `--firejail`, `--sandbox`
-
- SYNOPSIS:
-
- `--firejail {PROGRAM}`
-
- DESCRIPTION:	Run an AppImage in a sandbox using Firejail.
- ___________________________________________________________________________
-
  `--force-latest`
 
  SYNOPSIS:
@@ -598,6 +589,15 @@ to have a list of the installed programs use the option `-f` or `files` (syntax 
  `--rollback {PROGRAM}`
 
  DESCRIPTION:	Download an older or specific version of the software you are interested in (only works with Github).
+ ___________________________________________________________________________
+
+ `--sandbox`
+
+ SYNOPSIS:
+
+ `--sandbox {PROGRAM}`
+
+ DESCRIPTION:	Run an AppImage in a sandbox using Aisap.
  ___________________________________________________________________________
 
  `apikey`
@@ -805,17 +805,29 @@ https://github.com/ivan-hc/AM/assets/88724353/c4b889f4-8504-4853-8918-44d52084fe
 </details>
 
 ------------------------------------------------------------------------
-### Sandbox using Firejail
+### Sandbox AppImages
 <details>
   <summary></summary>
 
-Since version 5.3 you can use the `--firejail` option to run AppImages using a sandbox (requires Firejail installed on the host).
+Since version 5.3 you can use the `--sandbox` option to run AppImages using a sandbox, and since version 6.12 Firejails has been dropped in favour of "[Aisap](https://github.com/mgord9518/aisap)"!
 
-At first start a copy of /etc/firejail/default.profile will be saved in your application's directory, so you're free to launch the AppImage once using the default Firejail profile (option 1) or the custom one (2), you can also patch the .desktop files (if available) to in sandbox-mode always (options 3 and 4). You can handle the custom firejail.profile file of the app using `vim` or `nano` using the option 5 (the first selection is `vim`).
+This method works as follows:
+```
+am --sandbox $APP
+```
+or
+```
+appman --sandbox $APP
+```
+- if the "aisap" package is not installed, you will be asked if you want to install it via "AM"/AppMan;
+- requires replacing the symlink in $PATH with a script;
+- to work, the Appimage will be set to "not executable", and the AM-updater will also have its `chmod` command set to `a-x` instead of `a+x`.
 
-Options 1, 2 and 5 are continuous to let you edit the file and test your changes immediately. Press any key to exit.
-
-NOTE: once patched the .desktop files (options 3 and 4), they will be placed in ~/.local/share/applications, this means that if you have installed apps using AppMan, the original launchers will be overwrited.
+To restore the use of the AppImage without sandbox, you need to run the application command with the "--disable-sandbox" option:
+```
+$APP --disable-sandbox
+```
+NOTE, "AM" users will need to use the root password to replace the symlink in $PATH with the script, while AppMan users will need to close the terminal for the changes to take effect.
 
 </details>
 
