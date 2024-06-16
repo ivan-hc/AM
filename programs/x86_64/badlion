@@ -12,8 +12,8 @@ echo "rm -f /usr/share/applications/AM-$APP.desktop" >> "/opt/$APP/remove"
 chmod a+x "/opt/$APP/remove"
 
 # DOWNLOAD AND PREPARE THE APP, $version is also used for updates
-version=$(wget -q "$SITE" -O - | sed 's/[()",{}]/ /g; s/ /\n/g' | grep -oi 'https.*badlion.*client$' | head -1)
-wget "$version" || exit 1
+version=$(wget -q "$SITE" -O - | grep -i 'version' | tr '"' '\n' | grep [0-9]  | head -1)
+wget "$(wget -q "$SITE" -O - | sed 's/[()",{}]/ /g; s/ /\n/g' | grep -oi 'https.*badlion.*client$' | head -1)" || exit 1
 cd ..
 mv ./tmp/* ./"$APP"
 rm -R -f ./tmp || exit 1
@@ -29,22 +29,21 @@ cat >> "/opt/$APP/AM-updater" << 'EOF'
 set -u
 APP=badlion
 SITE="https://raw.githubusercontent.com/NixOS/nixpkgs/master/pkgs/games/badlion-client/default.nix"
-# This will always update the app because the download link is a fixed url
-#version0=$(cat "/opt/$APP/version")
-version=$(wget -q "$SITE" -O - | sed 's/[()",{}]/ /g; s/ /\n/g' | grep -oi 'https.*badlion.*client$' | head -1)
+version0=$(cat "/opt/$APP/version")
+version=$(wget -q "$SITE" -O - | grep -i 'version' | tr '"' '\n' | grep [0-9]  | head -1)
 [ -n "$version" ] || { echo "Error getting link"; exit 1; }
-#if [ "$version" != "$version0" ]; then
+if [ "$version" != "$version0" ]; then
 	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
-#	notify-send "A new version of $APP is available, please wait"
-	wget "$version" || exit 1
+	notify-send "A new version of $APP is available, please wait"
+	wget "$(wget -q "$SITE" -O - | sed 's/[()",{}]/ /g; s/ /\n/g' | grep -oi 'https.*badlion.*client$' | head -1)" || exit 1
 	cd ..
 	mv --backup=t ./tmp/* ./"$APP"
 	chmod a+x "/opt/$APP/$APP" || exit 1
 	echo "$version" > ./version
 	rm -R -f ./tmp ./*~
-#	notify-send "$APP is updated!"
+	notify-send "$APP is updated!"
 	exit 0
-#fi
+fi
 echo "Update not needed!"
 EOF
 chmod a+x "/opt/$APP/AM-updater"
