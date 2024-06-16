@@ -95,11 +95,12 @@ case "$1" in
 		# Set variables and create sandboxed dir.
 		APPEXEC=DUMMY
 		chmod a-x "$APPEXEC" # Prevents accidental launch of the app outside the sandbox
-		SANDBOXDIR="${SANDBOXDIR:-$HOME/.local/am-sandboxes}/$(echo "$APPEXEC" | awk -F "/" '{print $NF}')"
+		APPNAME="$(echo "$APPEXEC" | awk -F "/" '{print $NF}')"
+		SANDBOXDIR="${SANDBOXDIR:-$HOME/.local/am-sandboxes}"
 		DATADIR="${XDG_DATA_HOME:-$HOME/.local/share}"
 		CONFIGDIR="${XDG_CONFIG_HOME:-$HOME/.config}"
 		CACHEDIR="${XDG_CACHE_HOME:-$HOME/.cache}"
-		mkdir -p "$SANDBOXDIR"
+		mkdir -p "$SANDBOXDIR/$APPNAME"
 		if [ "$1" = "--disable-sandbox" ]; then
 			APPIMAGEPATH="$(echo ${APPEXEC%/*})"
 			echo "\n Giving exec permissions back to $APPEXEC..."
@@ -112,12 +113,15 @@ case "$1" in
 			echo " \033[32m$APPEXEC successfully unsandboxed!\n"
 			exit 0
 		fi
+
 		# Start at sandboxed home
 		# Edit below this to add or remove access to parts of the system
 		exec aisap --trust-once --level 2 \
-		--data-dir "$SANDBOXDIR" \
+		--data-dir "$SANDBOXDIR/$APPNAME" \
+		--add-file "$DATADIR/$APPNAME" \
 		--add-file "$DATADIR"/themes \
 		--add-file "$DATADIR"/icons \
+		--add-file "$CONFIGDIR/$APPNAME" \
 		--add-file "$CONFIGDIR"/gtk3.0 \
 		--add-file "$CONFIGDIR"/gtk4.0 \
 		--add-file "$CONFIGDIR"/kdeglobals \
@@ -129,8 +133,8 @@ case "$1" in
 		--add-socket wayland \
 		--add-socket pulseaudio \
 		--add-socket network \
-		--add-device dri \
-		"$APPEXEC" -- "$@"
+		--add-device dri -- \
+		"$APPEXEC" "$@"
 		HEREDOC
 		$SUDOCOMMAND mv "$AMCACHEDIR/sandbox-scripts/$2" "$TARGET" &&
 		rmdir "$AMCACHEDIR/sandbox-scripts" &&
