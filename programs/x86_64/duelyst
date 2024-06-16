@@ -1,0 +1,50 @@
+#!/bin/sh
+
+# AM INSTALL SCRIPT VERSION 3. 
+set -u
+APP=duelyst
+SITE="open-duelyst/duelyst"
+
+# CREATE DIRECTORIES AND ADD REMOVER
+[ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
+echo "#!/bin/sh\nset -e\nrm -f /usr/local/bin/$APP\nrm -R -f /opt/$APP" > "/opt/$APP/remove"
+chmod a+x "/opt/$APP/remove"
+
+# DOWNLOAD AND PREPARE THE APP, $version is also used for updates
+version=$(curl -Ls https://api.github.com/repos/"$SITE"/releases | jq '.' | sed 's/[()",{}]/ /g; s/ /\n/g' | grep -oi 'https.*duel.*linux-x64.*zip$' | head -1)
+wget "$version" || exit 1
+unzip ./*zip 1>/dev/null && rm -f ./*zip
+cd ..
+mv ./tmp/* ./
+rm -R -f ./tmp || exit 1
+echo "$version" > ./version
+chmod a+x "/opt/$APP/Duelyst" || exit 1
+
+# LINK TO PATH
+ln -s "/opt/$APP/Duelyst" "/usr/local/bin/$APP"
+
+# SCRIPT TO UPDATE THE PROGRAM
+cat >> "/opt/$APP/AM-updater" << 'EOF'
+#!/bin/sh
+set -u
+APP=duelyst
+SITE="open-duelyst/duelyst"
+version0=$(cat "/opt/$APP/version")
+version=$(curl -Ls https://api.github.com/repos/"$SITE"/releases | jq '.' | sed 's/[()",{}]/ /g; s/ /\n/g' | grep -oi 'https.*duel.*linux-x64.*zip$' | head -1)
+[ -n "$version" ] || { echo "Error getting link"; exit 1; }
+if [ "$version" != "$version0" ]; then
+	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
+	notify-send "A new version of $APP is available, please wait"
+	wget "$version" || exit 1
+	unzip ./*zip 1>/dev/null && rm -f ./*zip
+	cd ..
+	mv --backup=t ./tmp/* ./
+	chmod a+x "/opt/$APP/Duelyst" || exit 1
+	echo "$version" > ./version
+	rm -R -f ./tmp ./*~
+	notify-send "$APP is updated!"
+	exit 0
+fi
+echo "Update not needed!"
+EOF
+chmod a+x "/opt/$APP/AM-updater"

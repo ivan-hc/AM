@@ -1,0 +1,70 @@
+#!/bin/sh
+
+# AM INSTALL SCRIPT VERSION 3. 
+set -u
+APP=badlion
+SITE="https://raw.githubusercontent.com/NixOS/nixpkgs/master/pkgs/games/badlion-client/default.nix"
+
+# CREATE DIRECTORIES AND ADD REMOVER
+[ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
+echo "#!/bin/sh\nset -e\nrm -f /usr/local/bin/$APP\nrm -R -f /opt/$APP" > "/opt/$APP/remove"
+echo "rm -f /usr/share/applications/AM-$APP.desktop" >> "/opt/$APP/remove"
+chmod a+x "/opt/$APP/remove"
+
+# DOWNLOAD AND PREPARE THE APP, $version is also used for updates
+version=$(wget -q "$SITE" -O - | grep -i 'version' | tr '"' '\n' | grep [0-9]  | head -1)
+wget "$(wget -q "$SITE" -O - | sed 's/[()",{}]/ /g; s/ /\n/g' | grep -oi 'https.*badlion.*client$' | head -1)" || exit 1
+cd ..
+mv ./tmp/* ./"$APP"
+rm -R -f ./tmp || exit 1
+echo "$version" > ./version
+chmod a+x "/opt/$APP/$APP" || exit 1
+
+# LINK TO PATH
+ln -s "/opt/$APP/$APP" "/usr/local/bin/$APP"
+
+# SCRIPT TO UPDATE THE PROGRAM
+cat >> "/opt/$APP/AM-updater" << 'EOF'
+#!/bin/sh
+set -u
+APP=badlion
+SITE="https://raw.githubusercontent.com/NixOS/nixpkgs/master/pkgs/games/badlion-client/default.nix"
+version0=$(cat "/opt/$APP/version")
+version=$(wget -q "$SITE" -O - | grep -i 'version' | tr '"' '\n' | grep [0-9]  | head -1)
+[ -n "$version" ] || { echo "Error getting link"; exit 1; }
+if [ "$version" != "$version0" ]; then
+	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
+	notify-send "A new version of $APP is available, please wait"
+	wget "$(wget -q "$SITE" -O - | sed 's/[()",{}]/ /g; s/ /\n/g' | grep -oi 'https.*badlion.*client$' | head -1)" || exit 1
+	cd ..
+	mv --backup=t ./tmp/* ./"$APP"
+	chmod a+x "/opt/$APP/$APP" || exit 1
+	echo "$version" > ./version
+	rm -R -f ./tmp ./*~
+	notify-send "$APP is updated!"
+	exit 0
+fi
+echo "Update not needed!"
+EOF
+chmod a+x "/opt/$APP/AM-updater"
+
+# LAUNCHER & ICON
+cd "/opt/$APP" || exit 1
+./"$APP" --appimage-extract *.desktop 1>/dev/null && mv ./squashfs-root/*.desktop ./"$APP".desktop
+./"$APP" --appimage-extract .DirIcon 1>/dev/null && mv ./squashfs-root/.DirIcon ./DirIcon
+COUNT=0
+while [ "$COUNT" -lt 10 ]; do # Tries to get the actual icon/desktop if it is a symlink to another symlink
+	if [ -L ./"$APP".desktop ]; then
+		LINKPATH=$(readlink ./"$APP".desktop)
+		./"$APP" --appimage-extract "$LINKPATH" && mv ./squashfs-root/"$LINKPATH" ./"$APP".desktop
+	fi
+	if [ -L ./DirIcon ]; then
+		LINKPATH=$(readlink ./DirIcon)
+		./"$APP" --appimage-extract "$LINKPATH" && mv ./squashfs-root/"$LINKPATH" ./DirIcon
+	fi
+	[ ! -L ./"$APP".desktop ] && [ ! -L ./DirIcon ] && break
+	COUNT=$((COUNT + 1))
+done
+sed -i "s#Exec=[^ ]*#Exec=$APP#g; s#Icon=.*#Icon=/opt/$APP/icons/$APP#g" ./"$APP".desktop
+mv ./"$APP".desktop /usr/share/applications/AM-"$APP".desktop && mv ./DirIcon ./icons/"$APP" 1>/dev/null
+rm -R -f ./squashfs-root
