@@ -205,9 +205,6 @@ And as I've already wrote above, all users are allowed to run the command `am --
 -----------------------------------------------------------------------------
 
 ## Use AM locally like AppMan does
-<details>
-  <summary> Click here to expand </summary>
-
 If you use "AM" and have the needing of installing apps at system level and locally, use the option `--user` that allows to run "AM" in "AppMan Mode":
 ```
 am --user
@@ -218,13 +215,8 @@ am --system
 ```
 To perform a test and see if you are in "AppMan Mode" or not, run for example the command `am -f` to see the list of the installed apps.
 
-</details>
-
 -----------------------------------------------------------------------------
 ## What programs can be installed
-<details>
-  <summary> Click here to expand </summary>
-
 "AM"/"AppMan" installs/removes/updates/manages only standalone programs, ie those programs that can be run from a single directory in which they are contained (where `$PROGRAM` is the name of the application, "AM" installs them always into a dedicated folder named `/opt/$PROGRAM`, while "AppMan" lets you choose to install them in a dedicated directory in your `$HOME`).
 
 The "AM" repository aims to be a reference point where you can download all the AppImage packages scattered around the web, otherwise unobtainable, as you would expect from any package manager, through specific installation scripts for each application, as happens with the AUR PKGBUILDs, on Arch Linux. "AM" is intended to be a kind of Arch User Repository (AUR) of AppImage packages, providing them a home to stay. An both "AM" and "AppMan" are the key of this home. Visit...
@@ -255,43 +247,27 @@ From version 5.8 it is also possible to install [third-party libraries](https://
 
 The full list is [here](https://github.com/ivan-hc/AM/blob/main/libraries/libs-list).
 
-</details>
-
 -----------------------------------------------------------------------------
 ## How to update all programs, for real
-<details>
-  <summary> Click here to expand </summary>
-
 To update all the programs and "AM" itself, just run the command (without `sudo`):
-
-    am -u
-
+```
+am -u
+```
 To update only the programs:
-
-    am -u --apps
-
+```
+am -u --apps
+```
 To update just one program:
-
-    am -u $PROGRAM
-
+```
+am -u $PROGRAM
+```
 Here are the ways in which the updates will be made:
 - Updateable AppImages can rely on an [appimageupdatetool](https://github.com/AppImage/AppImageUpdate)-based "updater" or on their external zsync file (if provided by the developer);
 - Non-updateable AppImages and other standalone programs will be replaced only with a more recent version if available, this will be taken by comparing the installed version with the one available on the source (using "curl", "grep" and "cat"), the same is for some AppImages created with [pkg2appimage](https://github.com/AppImage/pkg2appimage) and [appimagetool](https://github.com/AppImage/AppImageKit);
 - Fixed versions will be listed with their build number (e.g. $PROGRAM-1.1.1). Note that most of the programs are updateable, so fixed versions will only be added upon request (or if it is really difficult to find a right wget/curl command to download the latest version).
 
-***NOTE, with "AM", during the first installation, the main user (`$currentuser`) will take the necessary permissions on each `/opt/$PROGRAM` directory, in this way all updates will be automatic and without root permissions.***
-
-###### *In this video I'll show you how to test an update on "Avidemux" using "AM" (I use my custom AppImage I have built from "deb-multimedia", for my use case, but don't worry, the official Avidemux AppImage is also available on this repository). Firefox, on the other hand, is not affected by this management, as it can be updated automatically*:
-
-https://github.com/ivan-hc/AM/assets/88724353/7e1845e7-bd02-495a-a1b5-735867a765d1
-
-</details>
-
 -----------------------------------------------------------------------------
 ## Repository and Multiarchitecture
-<details>
-  <summary> Click here to expand </summary>
-
 Each program is installed through a dedicated script, and all these scripts are listed in the "[repository](https://github.com/ivan-hc/AM/tree/main/programs)" and divided by architecture.
 
 ***NOTE that currently my work focuses on applications for x86_64 architecture, but it is possible to extend "AM" to all other available architectures.***
@@ -304,17 +280,10 @@ Click on the link of your architecture to see the list of all the apps available
 
 If you are interested, you can deliberately join this project to improve the lists above.
 
-</details>
-
 -----------------------------------------------------------------------------
 ## Comparison with other AppImage managers
-<details>
-  <summary> Click here to expand </summary>
-
 - There are many other AppImage managers around, and almost all of them support their database on appimagehub or other official AppImage resources, but the big problem is at the base of the compilation of these packages, being very often without an integrated update system. Furthermore, AppImage is a format that many developers are abandoning in favor of Flatpak, also because there were no centralized repositories or software that managed its updates in a universal way... at least until the invention of the first draft of [AppMan](https://github.com/ivan-hc/AppMan);
 - With "AM"/"AppMan" each installed program has its own script (AM-updater) that compares the installed version with the one available in the sources or uses official tools to update the AppImages ([see above](#how-to-update-all-programs-for-real)), there is support for multiple architectures (including i686 and aarch64) and anyone can create a script to install that particular program (if available for its architecture).
-
-</details>
 
 ------------------------------------------------------------------------
 # Installation
@@ -719,9 +688,6 @@ to have a list of the installed programs use the option `-f` or `files` (syntax 
 # Features
 ------------------------------------------------------------------------
 ### How to enable bash completion
-<details>
-  <summary> Click here to expand </summary>
-
 Since 2.3.1 release "AM" has its inbuilt bash completion script that can be enabled using the following command:
 
     am --enable-completion
@@ -735,13 +701,8 @@ https://user-images.githubusercontent.com/88724353/155971864-783c098c-e696-47b5-
 
 A more detailed guide on how to create your own bash completion script for your project is available [here](https://iridakos.com/programming/2018/03/01/bash-programmable-completion-tutorial).
 
-</details>
-
 ------------------------------------------------------------------------
 ### Snapshots: backup your app and restore to a previous version
-<details>
-  <summary> Click here to expand </summary>
-
 Since 2.6.1 release, "AM" supports snapshots of all installed applications. A selected program can be copied locally into your home folder.
 
 Here you are a video on how to backup/restore works in "AM":
@@ -756,12 +717,8 @@ https://user-images.githubusercontent.com/88724353/157094646-0e29ddbe-6cb7-4880-
       am -o $PROGRAM
 All the snapshots are stored into an hidden `/home/$USER/.am-snapshots` folder containing other subfolders, each one has the name of the programs you've done a backup before. Each snapshot is named with the date and time you have done the backup. To restore the application to a previous version, copy/paste the name of the snapshot when the `-o` option will prompt it.
 
-</details>
-
 ------------------------------------------------------------------------
 ### Update/remove programs without "AM"
-<details>
-  <summary> Click here to expand </summary>
 
 - To update a program without "am":
 ```
@@ -774,26 +731,16 @@ Note that this works only if the program has a /opt/$PROGRAM/AM-updater script, 
 sudo /opt/$PROGRAM/remove
 ```
 
-</details>
-
 ------------------------------------------------------------------------
 ### Downgrade
-<details>
-  <summary> Click here to expand </summary>
-
 From version 4.4 it is possible to directly select from a list of URLs the version of the app that interests you most from the main source. Use the `--rollback` option or `downgrade` in this mode:
 ```
 am --rollback ${PROGRAM}
 ```
 This only works with the apps hosted on Github.
 
-</details>
-
 ------------------------------------------------------------------------
 ### Convert old Type2 AppImages to Type3
-<details>
-  <summary> Click here to expand </summary>
-
 Since version 6.1 it is possible to convert old Type2 AppImages (dependent on `libfuse2`) to Type3 using the option `nolibfuse`.
 ```
 am nolibfuse ${PROGRAM}
@@ -809,24 +756,14 @@ NOTE, the conversion is not always successful, a lot depends on how the program 
 - if the script encounters problems (due to Appstream validation), it will attempt to delete the contents of the /usr/share/metainfo directory inside the AppImage, as a workaround;
 - if this step does not succeed either, the process will end with an error and the AppImage will remain Type2.
 
-</details>
-
 ------------------------------------------------------------------------
 ### Manage local AppImages
-<details>
-  <summary> Click here to expand </summary>
-
 Since version 4.4.2 you can use the `--launcher` option to integrate your local AppImage packages by simply dragging and dropping them into the terminal (see video).
 
 https://github.com/ivan-hc/AM/assets/88724353/c4b889f4-8504-4853-8918-44d52084fe6c
 
-</details>
-
 ------------------------------------------------------------------------
 ### Sandbox AppImages
-<details>
-  <summary> Click here to expand </summary>
-
 Since version 5.3 you can use the `--sandbox` option to run AppImages using a sandbox, and since version 6.12 Firejails has been dropped in favour of "[Aisap](https://github.com/mgord9518/aisap)"!
 
 This method works as follows:
@@ -857,13 +794,8 @@ To learn more about permissions, see https://github.com/mgord9518/aisap/tree/mai
 
 EXTRA: The behavior of this option can be tested in a completely standalone way by consulting the repository of its creator, at [Samueru-sama/aisap-am](https://github.com/Samueru-sama/aisap-am)
 
-</details>
-
 ------------------------------------------------------------------------
 ### Create and test your own installation script
-<details>
-  <summary> Click here to expand </summary>
-
 "AM"/"AppMan" has a `-t` option (or `template`) with which you can get a script to customize according to your needs. With this option, you can quickly create scripts to download existing programs or even create AppImage or AppDirs through tools such as [appimagetool](https://github.com/AppImage/AppImageKit) and [pkg2appimage](https://github.com/AppImage/pkg2appimage).
 
 The following video shows how to create and test an AppImage of "Abiword" from Debian Unstable repository with a custom AppRun (option 5):
@@ -891,49 +823,29 @@ The most difficult step to overcome is certainly the number "3", given the great
 
 To install and test your own script, use the command `am -i /path/to/your-script` or `appman -i /path/to/your-script` depending on your CLI
 
-</details>
-
 ------------------------------------------------------------------------
 # Third-party databases for applications (NeoDB)
-<details>
-  <summary> Click here to expand </summary>
-
 From version 6.4, "AM"/"AppMan" can be extended by adding new application databases using a configuration file named "neodb".
 
 ### For more details, see the full guide at https://github.com/ivan-hc/neodb
-
-</details>
 
 ------------------------------------------------------------------------
 -----------------------------------------------------------------------------
 # Troubleshooting
 -----------------------------------------------------------------------------
 ### An application does not work, is old and unsupported
-<details>
-  <summary> Click here to expand </summary>
-
 Use the `-a` option and go to the developer's site to report the problem. The task of "AM" is solely to install / remove / update the applications managed by it. Problems related to the failure of an installed program or any related bugs are attributable solely to its developers.
-
-</details>
 
 -----------------------------------------------------------------------------
 ### Cannot download or update an application
-<details>
-  <summary> Click here to expand </summary>
-
 There can be many reasons:
 - check your internet connection;
 - if the app is hosted on github.com, you have probably exceeded the hourly limit of API calls;
 - the referring link may have been changed, try the `--rollback` option or `downgrade`;
 - the reference site has changed, report any changes at https://github.com/ivan-hc/AM/issues
 
-</details>
-
 -----------------------------------------------------------------------------
 ### Cannot mount and run AppImages
-<details>
-  <summary> Click here to expand </summary>
-
 If by running it in the terminal you get an error message about "FUSE" or "libfuse"/"libfuse2" missing, take a look at the official documentation:
 
 https://docs.appimage.org/user-guide/troubleshooting/fuse.html
@@ -955,26 +867,16 @@ However, I suggest contacting the upstream developers to convince them to upgrad
 * **If you cannot run some AppImages on Ubuntu 23.10+ or its derivatives, then refer to [Restricted unprivileged user namespaces are coming to Ubuntu 23.10 | Ubuntu](https://ubuntu.com/blog/ubuntu-23-10-restricted-unprivileged-user-namespaces) for possible causes and remedies.**
 * **If you cannot run chrome/chromium/electron-based AppImages, then refer to [Troubleshooting/Electron-sandboxing](https://docs.appimage.org/user-guide/troubleshooting/electron-sandboxing.html) for possible causes and remedies.**
 
-</details>
-
 -----------------------------------------------------------------------------
 ### Spyware, malware and dangerous software
-<details>
-  <summary> Click here to expand </summary>
-
 Before installing any application, try to know where it comes from first. This program provides you with two basic options for this purpose:
 - Option `-a` or `about` (medium safety), allows you to read a short description and know the links from the pages of the site [https://portable-linux-apps.github.io](https://portable-linux-apps.github.io) locally, however these links may be inaccurate due to continuous updates of the initial scripts (you can provide additional info yourself by modifying the pages of the site, [here](https://github.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io), it is also open source);
 - Option `-d` or `download` (absolute safety), this allows you to get the installation script directly on your desktop, so you can read the mechanisms and how it performs the downloads from the sources (in most cases there is a header for each step that explains what the listed commands do).
 
 “AM” and AppMan are just tools to easily install all listed programs, but what you choose to install is your complete responsibility. **Use at your own risk**!
 
-</details>
-
 -----------------------------------------------------------------------------
 ### Stop AppImage prompt to create its own launcher, desktop integration and doubled launchers
-<details>
-  <summary> Click here to expand </summary>
-
 Some developers insist on creating Appimages that create their own launcher on first launch (like WALC and OpenShot). If the official solution proposed [here](https://discourse.appimage.org/t/stop-appimage-from-asking-to-integrate/488) doesn't work, create a .home directory with the `-H` option, launch the app and accept the request. For example (with "AM"):
 ```
 am -H walc
@@ -982,13 +884,8 @@ walc
 ```
 Accept the integration request, the launcher will be saved in the walc.home directory located next to the AppImage file.
 
-</details>
-
 -----------------------------------------------------------------------------
 ### The script points to "releases" instead of downloading the latest stable
-<details>
-  <summary> Click here to expand </summary>
-
 This is a choice I made as many developers have abandoned support for AppImage or GNU/Linux in general. My aim here is to introduce you to other developers' applications, then it's up to you to contact them, support them, help improve the software through forks and pull requests, opening issues and encouraging developers to keep the software in the format you prefer.
 
 In case you are sure that the upstream developer will maintain the package for each stable release, you can fix this in several ways:
@@ -1009,13 +906,8 @@ sed -i 's#releases -O -#releases/latest -O -#g' /opt/$PROGRAM/AM-updater
 am -u $PROGRAM
 ```
 
-</details>
-
 ------------------------------------------------------------------------
 ### Wget2 prevents me from downloading apps and modules
-<details>
-  <summary> Click here to expand </summary>
-
 With the arrival of Fedora 40 in April 2024, many users began to complain about the inability to download any application from github and the inability to update modules (see https://github.com/ivan-hc/AM/issues/496). This is because "wget" is no longer actively developed, and its successor "wget2" was not yet ready to take its place immediately. Yet the Fedora team decided to replace it anyway, causing quite a few problems for this project and many others that use api.github.com to function.
 
 Attempts to add patches to avoid having dependencies like `jq` added and to rewrite all the scripts to promptly adapt them to more versatile solutions were in vain.
@@ -1028,18 +920,11 @@ am -i wget
 ```
 NOTE, the binary is called from a script in /usr/local/bin that runs "wget" with the "--no-check-certificate" option. It's not the best of solutions, but it's enough to suppress this shortcoming while the compatibility issue between wget and wget2 will not be completely resolved.
 
-</details>
-
 ------------------------------------------------------------------------
 ### Wrong download link
-<details>
-  <summary> Click here to expand </summary>
-
 The reasons may be two:
 - the referring link may have been changed, try the `--rollback` option or `downgrade`;
 - the reference site has changed, report any changes at https://github.com/ivan-hc/AM/issues
-
-</details>
 
 ------------------------------------------------------------------------
 ------------------------------------------------------------------------
