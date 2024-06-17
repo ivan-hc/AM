@@ -191,38 +191,10 @@ Option `-u` or `update` updates all the installed apps and keeps "AM"/"AppMan" i
 
 https://github.com/ivan-hc/AM/assets/88724353/f93ca782-2fc6-45a0-a3f2-1fba297a92bf
 
-1. To update only the programs:
-```
-am -u --apps
-```
-or
-```
-appman -u --apps
-```
-2. To update just one program:
-```
-am -u $PROGRAM
-```
-or
-```
-appman -u $PROGRAM
-```
-3. To update all the programs and "AM"/"AppMan" itself, just run the command:
-```
-am -u
-```
-or
-```
-appman -u
-```
-4. To update only "AM"/"AppMan" and the modules use the option `-s` instead:
-```
-am -s
-```
-or
-```
-appman -s
-```
+1. To update only the programs, use `am -u --apps` / `appman -u --apps`
+2. To update just one program, use `am -u $PROGRAM` / `appman -u $PROGRAM`
+3. To update all the programs and "AM"/"AppMan" itself, just run the command`am -u` / `appman -u`
+4. To update only "AM"/"AppMan" and the modules use the option `-s` instead, `am -s` / `appman -s`
 
 NOTE, non-privileged users using "AM" in "AppMan Mode" cannot update /opt/am/APP-MANAGER (points 3 and 4). See "[How to use AM in non-privileged mode, like AppMan](#how-to-use-am-in-non-privileged-mode-like-appman)".
 
