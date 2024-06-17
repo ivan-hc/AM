@@ -9,7 +9,7 @@ The engine of "AM"/"AppMan" is the "APP-MANAGER" script which, depending on how 
 
 "AM"/"AppMan" aims to be the default package manager for all AppImage packages, giving them a home to stay.
 
-You can consult the entire **list of managed apps** at [**portable-linux-apps.github.io/apps**](https://portable-linux-apps.github.io/apps)
+You can consult the entire **list of managed apps** at [**portable-linux-apps.github.io/apps**](https://portable-linux-apps.github.io/apps).
 
 ------------------------------------------------------------------------
 [Introducing "AM"](#introducing-am)
