@@ -15,7 +15,6 @@ You can consult the entire **list of managed apps** at [**portable-linux-apps.gi
 ### Main Index
 ------------------------------------------------------------------------
 [Differences between "AM" and "AppMan"](#differences-between-am-and-appman)
-- [Installation styles](#installation-styles)
 - [Ownership](#ownership)
 - [About "sudo" usage](#about-sudo-usage)
 - [How apps are installed](#how-apps-are-installed)
@@ -23,7 +22,7 @@ You can consult the entire **list of managed apps** at [**portable-linux-apps.gi
 
 [What programs can be installed](#what-programs-can-be-installed)
 
-[Real updates, for all apps: here's how](#real-updates-for-all-apps-heres-how)
+[How to update all programs, for real](#how-to-update-all-programs-for-real)
 
 [Installation](#installation)
 - [How to install "AM"](#how-to-install-am)
@@ -41,13 +40,7 @@ You can consult the entire **list of managed apps** at [**portable-linux-apps.gi
 
 ------------------------------------------------------------------------
 # Differences between "AM" and "AppMan"
-"AM" and "AppMan" differ in how they are installed, placed and renamed in the system and how/where they install apps.
-
-- [Installation styles](#installation-styles)
-- [Ownership](#ownership)
-- [How apps are installed](#how-apps-are-installed)
-
-### Installation styles
+"AM" and "AppMan" differ in how they are installed, placed and renamed in the system and how/where they install apps:
 - "**AM**" is installed system-wide (requires `sudo`) in `/opt/am/` as "**APP-MANAGER**", with a symlink named "`am`" in `/usr/local/bin`.
 - "**AppMan**" is portable, you need just to rename the "APP-MANAGER" script as "`appman`" and put it wherewer you want. I recommend to place it in `$HOME/.local/bin` to be used in $PATH, to be managed from other tools (see below).
 
@@ -147,7 +140,13 @@ You can consult basic information, links to sites and sources used through the r
 | - |
 
 ------------------------------------------------------------------------
-# Real updates, for all apps: here's how
+# How to update all programs, for real
+One of the reasons why many users hate Appimages is because they cannot be updated. Or at least not all.
+
+One of the reasons why many users hate Appimages is because they cannot be updated. Or at least not all.
+
+This project was born to dispel this myth and to solve the problem. And the solution is much more trivial than you expect.
+
 There are several methods to update apps, here are the most common ones, in order of priority:
 - the "comparison between versions" is the most widespread in the database, the version of the app installed is compared with the one present at the source, be it an official site or another site that tracks it;
 - if an AppImage package has a .zsync file, that will be used to download binary deltas (especially useful with large files, but not very popular among developers);
