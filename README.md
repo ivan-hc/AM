@@ -143,8 +143,6 @@ You can consult basic information, links to sites and sources used through the r
 # How to update all programs, for real
 One of the reasons why many users hate Appimages is because they cannot be updated. Or at least not all.
 
-One of the reasons why many users hate Appimages is because they cannot be updated. Or at least not all.
-
 This project was born to dispel this myth and to solve the problem. And the solution is much more trivial than you expect.
 
 There are several methods to update apps, here are the most common ones, in order of priority:
