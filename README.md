@@ -676,11 +676,25 @@ in this video I'll install AnyDesk and LXtask:
 
 https://github.com/ivan-hc/AM/assets/88724353/c2e8b654-29d3-4ded-8877-f77ef11d58fc
 
+------------------------------------------------------------------------
+
+| [Back to "Tutorials and examples"](#tutorials-and-examples) | [Back to "Main Index"](#main-index) |
+| - | - |
+
+------------------------------------------------------------------------
+
 __________________________________________________________________________
 ### How to list installed applications
 Option `-f` or `files`, it shows the installed apps, the version, the size and the type of application:
 
 https://github.com/ivan-hc/AM/assets/88724353/a11ccb22-f2fa-491f-85dd-7f9440776a54
+
+------------------------------------------------------------------------
+
+| [Back to "Tutorials and examples"](#tutorials-and-examples) | [Back to "Main Index"](#main-index) |
+| - | - |
+
+------------------------------------------------------------------------
 
 __________________________________________________________________________
 ### How to list and query all the applications available on the database
@@ -690,11 +704,25 @@ Option `-q` or `query` shows search results from the list above.
 
 https://github.com/ivan-hc/AM/assets/88724353/2ac875df-5210-4d77-91d7-24c45eceaa2b
 
+------------------------------------------------------------------------
+
+| [Back to "Tutorials and examples"](#tutorials-and-examples) | [Back to "Main Index"](#main-index) |
+| - | - |
+
+------------------------------------------------------------------------
+
 __________________________________________________________________________
 ### How to update all installed apps, modules and "AM" itself
 Option `-u` or `update` updates all the installed apps and keeps "AM" in sync with the latest version and all latest bug fixes:
 
 https://github.com/ivan-hc/AM/assets/88724353/f93ca782-2fc6-45a0-a3f2-1fba297a92bf
+
+------------------------------------------------------------------------
+
+| [Back to "Tutorials and examples"](#tutorials-and-examples) | [Back to "Main Index"](#main-index) |
+| - | - |
+
+------------------------------------------------------------------------
 
 __________________________________________________________________________
 ### How to create a snapshot of an installed application
@@ -709,11 +737,25 @@ Option `-o` or `overwrite` lists all the snapshots you have created with the opt
 
 https://github.com/ivan-hc/AM/assets/88724353/f9904ad2-42ec-4fce-9b21-b6b0f8a99414
 
+------------------------------------------------------------------------
+
+| [Back to "Tutorials and examples"](#tutorials-and-examples) | [Back to "Main Index"](#main-index) |
+| - | - |
+
+------------------------------------------------------------------------
+
 __________________________________________________________________________
 ### How to remove one or more applications
 Option `-R` removes the selected apps without asking (to have a prompt, use `-r` or `remove`):
 
 https://github.com/ivan-hc/AM/assets/88724353/4d26d2d7-4476-4322-a0ab-a0a1ec14f751
+
+------------------------------------------------------------------------
+
+| [Back to "Tutorials and examples"](#tutorials-and-examples) | [Back to "Main Index"](#main-index) |
+| - | - |
+
+------------------------------------------------------------------------
 
 __________________________________________________________________________
 ### How to convert Type2 AppImages requiring libfuse2 to Type3 AppImages
@@ -733,11 +775,25 @@ NOTE, the conversion is not always successful, a lot depends on how the program 
 
 If also the second step does not succeed either, the process will end with an error and the AppImage will remain Type2.
 
+------------------------------------------------------------------------
+
+| [Back to "Tutorials and examples"](#tutorials-and-examples) | [Back to "Main Index"](#main-index) |
+| - | - |
+
+------------------------------------------------------------------------
+
 __________________________________________________________________________
 ### How to create launchers and shortcuts for my local AppImages
 Option `--launcher` allows you to drag/drop a local AppImage and creates the launcher (like any other classic AppImage manager, but in SHELL, so no daemons or bloated runtimes are required here) in $HOME/.local/share/applications/AppImages, also allows you to rename a symlink in $HOME/.local/bin that you can use from the command line like any other program:
 
 https://github.com/ivan-hc/AM/assets/88724353/97c2b88d-f330-490c-970b-0f0bb89040dc
+
+------------------------------------------------------------------------
+
+| [Back to "Tutorials and examples"](#tutorials-and-examples) | [Back to "Main Index"](#main-index) |
+| - | - |
+
+------------------------------------------------------------------------
 
 __________________________________________________________________________
 ### How to sandbox an AppImage
@@ -771,6 +827,13 @@ To learn more about permissions, see https://github.com/mgord9518/aisap/tree/mai
 
 EXTRA: The behavior of this option can be tested in a completely standalone way by consulting the repository of its creator, at [Samueru-sama/aisap-am](https://github.com/Samueru-sama/aisap-am)
 
+------------------------------------------------------------------------
+
+| [Back to "Tutorials and examples"](#tutorials-and-examples) | [Back to "Main Index"](#main-index) |
+| - | - |
+
+------------------------------------------------------------------------
+
 __________________________________________________________________________
 ### How to enable bash completion
 Bash completion is enabled in "AM" on first installation, while the "AppMan" one requires to be enabled manually.
@@ -787,6 +850,13 @@ https://user-images.githubusercontent.com/88724353/155971864-783c098c-e696-47b5-
 
 A more detailed guide on how to create your own bash completion script for your project is available [here](https://iridakos.com/programming/2018/03/01/bash-programmable-completion-tutorial).
 
+------------------------------------------------------------------------
+
+| [Back to "Tutorials and examples"](#tutorials-and-examples) | [Back to "Main Index"](#main-index) |
+| - | - |
+
+------------------------------------------------------------------------
+
 __________________________________________________________________________
 ### How to update or remove apps manually
 Inside each installed applications directory, there are two scripts called "AM-updater" and "remove", and their purpose is indicated in their name:
@@ -800,6 +870,13 @@ Use the `--rollback` option or `downgrade` in this way:
 am --rollback ${PROGRAM}
 ```
 This only works with the apps hosted on Github.
+
+------------------------------------------------------------------------
+
+| [Back to "Tutorials and examples"](#tutorials-and-examples) | [Back to "Main Index"](#main-index) |
+| - | - |
+
+------------------------------------------------------------------------
 
 __________________________________________________________________________
 ### Create and test your own installation script
@@ -847,8 +924,8 @@ For more details, see the full guide at https://github.com/ivan-hc/neodb
 
 ------------------------------------------------------------------------
 
-| [Install "AM"/"AppMan"](#installation) | [Back to "Main Index"](#main-index) |
-| - | - |
+| [Install "AM"/"AppMan"](#installation) | [Back to "Tutorials and examples"](#tutorials-and-examples) | [Back to "Main Index"](#main-index) |
+| - | - | - |
 
 ------------------------------------------------------------------------
 # Troubleshooting
@@ -873,6 +950,10 @@ There can be many reasons:
 - if the app is hosted on github.com, you have probably exceeded the hourly limit of API calls;
 - the referring link may have been changed, try the `--rollback` option or `downgrade`;
 - the reference site has changed, report any changes at https://github.com/ivan-hc/AM/issues
+------------------------------------------------------------------------
+
+| [Back to "Troubleshooting"](#troubleshooting) | [Back to "Main Index"](#main-index) |
+| - | - |
 
 ------------------------------------------------------------------------
 ### Cannot mount and run AppImages
@@ -898,12 +979,22 @@ However, I suggest contacting the upstream developers to convince them to upgrad
 * **If you cannot run chrome/chromium/electron-based AppImages, then refer to [Troubleshooting/Electron-sandboxing](https://docs.appimage.org/user-guide/troubleshooting/electron-sandboxing.html) for possible causes and remedies.**
 
 ------------------------------------------------------------------------
+
+| [Back to "Troubleshooting"](#troubleshooting) | [Back to "Main Index"](#main-index) |
+| - | - |
+
+------------------------------------------------------------------------
 ### Spyware, malware and dangerous software
 Before installing any application, try to know where it comes from first. This program provides you with two basic options for this purpose:
 - Option `-a` or `about` (medium safety), allows you to read a short description and know the links from the pages of the site [https://portable-linux-apps.github.io](https://portable-linux-apps.github.io) locally, however these links may be inaccurate due to continuous updates of the initial scripts (you can provide additional info yourself by modifying the pages of the site, [here](https://github.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io), it is also open source);
 - Option `-d` or `download` (absolute safety), this allows you to get the installation script directly on your desktop, so you can read the mechanisms and how it performs the downloads from the sources (in most cases there is a header for each step that explains what the listed commands do).
 
 “AM” and AppMan are just tools to easily install all listed programs, but what you choose to install is your complete responsibility. **Use at your own risk**!
+
+------------------------------------------------------------------------
+
+| [Back to "Troubleshooting"](#troubleshooting) | [Back to "Main Index"](#main-index) |
+| - | - |
 
 ------------------------------------------------------------------------
 ### Stop AppImage prompt to create its own launcher, desktop integration and doubled launchers
@@ -913,6 +1004,11 @@ am -H walc
 walc
 ```
 Accept the integration request, the launcher will be saved in the walc.home directory located next to the AppImage file.
+
+------------------------------------------------------------------------
+
+| [Back to "Troubleshooting"](#troubleshooting) | [Back to "Main Index"](#main-index) |
+| - | - |
 
 ------------------------------------------------------------------------
 ### The script points to "releases" instead of downloading the latest stable
@@ -937,6 +1033,11 @@ am -u $PROGRAM
 ```
 
 ------------------------------------------------------------------------
+
+| [Back to "Troubleshooting"](#troubleshooting) | [Back to "Main Index"](#main-index) |
+| - | - |
+
+------------------------------------------------------------------------
 ### Wget2 prevents me from downloading apps and modules
 With the arrival of Fedora 40 in April 2024, many users began to complain about the inability to download any application from github and the inability to update modules (see https://github.com/ivan-hc/AM/issues/496). This is because "wget" is no longer actively developed, and its successor "wget2" was not yet ready to take its place immediately. Yet the Fedora team decided to replace it anyway, causing quite a few problems for this project and many others that use api.github.com to function.
 
@@ -958,8 +1059,8 @@ The reasons may be two:
 
 ------------------------------------------------------------------------
 
-| [Back to "Main Index"](#main-index) |
-| - |
+| [Back to "Troubleshooting"](#troubleshooting) | [Back to "Main Index"](#main-index) |
+| - | - |
 
 ------------------------------------------------------------------------
 # Related projects
