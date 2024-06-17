@@ -288,6 +288,8 @@ appman -R {PROGRAM1} {PROGRAM2} {PROGRAM3}...
 
 to have a list of the installed programs use the option `-f` or `files` (syntax `am -f` or `appman -f`).
 
+See also "[How to update or remove apps manually](#how-to-update-or-remove-apps-manually)".
+
 ------------------------------------------------------------------------
 
 | [Back to "Main Index"](#main-index) |
