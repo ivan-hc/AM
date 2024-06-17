@@ -132,7 +132,7 @@ NOTE that currently my work focuses on applications for [x86_64](https://github.
 
 4. **THIRD-PARTY LIBRARIES** (see [here](https://github.com/ivan-hc/AM/blob/main/libraries/libs-list)) if they are not provided in your distribution's repositories. These are to be installed in truly exceptional cases.
 
-You can consult basic information, links to sites and sources used through the related `am -a $PROGRAM` command.
+You can consult basic information, links to sites and sources used through the related command `am -a $PROGRAM` or `appman -a $PROGRAM`, or visit [**portable-linux-apps.github.io/apps**](https://portable-linux-apps.github.io/apps).
 
 ------------------------------------------------------------------------
 
