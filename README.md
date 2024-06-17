@@ -952,6 +952,9 @@ Alternatively you can use the "`nolibfuse`" option to "try" to convert old Type2
 
 However, I suggest contacting the upstream developers to convince them to upgrade their packages to Type3.
 
+* **If you cannot run some AppImages on Ubuntu 23.10+ or its derivatives, then refer to [Restricted unprivileged user namespaces are coming to Ubuntu 23.10 | Ubuntu](https://ubuntu.com/blog/ubuntu-23-10-restricted-unprivileged-user-namespaces) for possible causes and remedies.**
+* **If you cannot run chrome/chromium/electron-based AppImages, then refer to [Troubleshooting/Electron-sandboxing](https://docs.appimage.org/user-guide/troubleshooting/electron-sandboxing.html) for possible causes and remedies.**
+
 </details>
 
 -----------------------------------------------------------------------------
