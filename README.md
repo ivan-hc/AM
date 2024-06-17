@@ -114,7 +114,7 @@ NOTE: non-privileged users can update their own local applications and modules, 
 
 ------------------------------------------------------------------------
 
-| [Go to "Installation"](#installation) | [Go back to "Main Index"](#main-index) |
+| [Install "AM"/"AppMan"](#installation) | [Back to "Main Index"](#main-index) |
 | - | - |
 
 ------------------------------------------------------------------------
@@ -141,7 +141,7 @@ You can consult basic information, links to sites and sources used through the r
 
 ------------------------------------------------------------------------
 
-| [Go back to "Main Index"](#main-index) |
+| [Back to "Main Index"](#main-index) |
 | - |
 
 ------------------------------------------------------------------------
@@ -170,7 +170,7 @@ NOTE, non-privileged users using "AM" in "AppMan Mode" cannot update /opt/am/APP
 
 ------------------------------------------------------------------------
 
-| [Go back to "Main Index"](#main-index) |
+| [Back to "Main Index"](#main-index) |
 | - |
 
 ------------------------------------------------------------------------
@@ -222,7 +222,7 @@ sudo ./INSTALL
 ```
 In both cases, the "INSTALL" script will create a dedicated /opt/am directory containing the ["APP-MANAGER"](https://github.com/ivan-hc/AM/blob/main/APP-MANAGER) script (ie "AM" itself), a symlink for it in /usr/local/bin named `am` and the /opt/am/remove script needed to [uninstall](#uninstall) "AM" itself, if needed. A temporary folder named /opt/am/.cache will be created too, in wich each installation script or list of available applications (for your architecture) is downloaded.
 
-NOTE, if you don't feel comfortable having to always use root permissions, the installation method for "AppMan" is totally different. If you are interested, go [to the next paragraph](#how-to-install-appman), else [Go back to "Main Index"](#main-index) or jump to "[Usage (all the available options)](#usage)".
+NOTE, if you don't feel comfortable having to always use root permissions, the installation method for "AppMan" is totally different. If you are interested, go [to the next paragraph](#how-to-install-appman), else [Back to "Main Index"](#main-index) or jump to "[Usage (all the available options)](#usage)".
 
 ------------------------------------------------------------------------
 ## How to install "AppMan"
@@ -247,7 +247,7 @@ wget https://raw.githubusercontent.com/ivan-hc/AM/main/APP-MANAGER -O appman && 
 
 ------------------------------------------------------------------------
 
-| [Go back to "Main Index"](#main-index) |
+| [Back to "Main Index"](#main-index) |
 | - |
 
 ------------------------------------------------------------------------
@@ -268,7 +268,7 @@ to have a list of the installed programs use the option `-f` or `files` (syntax 
 
 ------------------------------------------------------------------------
 
-| [Go back to "Main Index"](#main-index) |
+| [Back to "Main Index"](#main-index) |
 | - |
 
 ------------------------------------------------------------------------
@@ -616,7 +616,7 @@ to have a list of the installed programs use the option `-f` or `files` (syntax 
 
 ------------------------------------------------------------------------
 
-| [Go to "Installation"](#installation) | [Go back to "Main Index"](#main-index) |
+| [Install "AM"/"AppMan"](#installation) | [Back to "Main Index"](#main-index) |
 | - | - |
 
 -----------------------------------------------------------------------------
@@ -813,7 +813,7 @@ From version 6.4, "AM"/"AppMan" can be extended by adding new application databa
 
 ------------------------------------------------------------------------
 
-| [Go to "Installation"](#installation) | [Go back to "Main Index"](#main-index) |
+| [Install "AM"/"AppMan"](#installation) | [Back to "Main Index"](#main-index) |
 | - | - |
 
 ------------------------------------------------------------------------
@@ -924,7 +924,7 @@ The reasons may be two:
 
 ------------------------------------------------------------------------
 
-| [Go back to "Main Index"](#main-index) |
+| [Back to "Main Index"](#main-index) |
 | - |
 
 ------------------------------------------------------------------------
@@ -948,3 +948,9 @@ The reasons may be two:
 
 *© 2020-present Ivan Alessandro Sala aka 'Ivan-HC'* - I'm here just for fun! 
 
+------------------------------------------------------------------------
+
+| [**ko-fi.com**](https://ko-fi.com/IvanAlexHC) | [**PayPal.me**](https://paypal.me/IvanAlexHC) | [Install "AM"/"AppMan"](#installation) | ["Main Index"](#main-index) |
+| - | - | - | - |
+
+------------------------------------------------------------------------
