@@ -110,7 +110,9 @@ In this video I'll install LXtask locally:
 
 https://github.com/ivan-hc/AM/assets/88724353/65b27cf6-edc5-4a4c-b2f9-42e8623dc76f
 
-NOTE: non-privileged users can update their own local applications and modules, but cannot update /opt/am/APP-MANAGER. It is therefore suggested to use pure "AppMan" instead of the "AppMan Mode" of "AM".
+NOTE: non-privileged users can update their own local applications and modules, but cannot update /opt/am/APP-MANAGER.
+
+It is therefore suggested to use pure "AppMan" instead of the "AppMan Mode" of "AM".
 
 ------------------------------------------------------------------------
 
