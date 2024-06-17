@@ -32,7 +32,7 @@ You can consult the entire **list of managed apps** at [**portable-linux-apps.gi
 
 [Usage (all the available options)](#usage)
 
-[Tutorials and examples](#tutorials-and-examples)
+[Guides and tutorials](#guides-and-tutorials)
 
 [Troubleshooting](#troubleshooting)
 
@@ -645,7 +645,7 @@ to have a list of the installed programs use the option `-f` or `files` (syntax 
 
 -----------------------------------------------------------------------------
 
-# Tutorials and examples
+# Guides and tutorials
 This section is committed to giving small demonstrations of each available option, with videos:
 
   - [How to install applications](#how-to-install-applications)
@@ -677,7 +677,7 @@ https://github.com/ivan-hc/AM/assets/88724353/c2e8b654-29d3-4ded-8877-f77ef11d58
 
 ------------------------------------------------------------------------
 
-| [Back to "Tutorials and examples"](#tutorials-and-examples) | [Back to "Main Index"](#main-index) |
+| [Back to "Guides and tutorials"](#guides-and-tutorials) | [Back to "Main Index"](#main-index) |
 | - | - |
 
 ------------------------------------------------------------------------
@@ -690,7 +690,7 @@ https://github.com/ivan-hc/AM/assets/88724353/a11ccb22-f2fa-491f-85dd-7f9440776a
 
 ------------------------------------------------------------------------
 
-| [Back to "Tutorials and examples"](#tutorials-and-examples) | [Back to "Main Index"](#main-index) |
+| [Back to "Guides and tutorials"](#guides-and-tutorials) | [Back to "Main Index"](#main-index) |
 | - | - |
 
 ------------------------------------------------------------------------
@@ -705,7 +705,7 @@ https://github.com/ivan-hc/AM/assets/88724353/2ac875df-5210-4d77-91d7-24c45eceaa
 
 ------------------------------------------------------------------------
 
-| [Back to "Tutorials and examples"](#tutorials-and-examples) | [Back to "Main Index"](#main-index) |
+| [Back to "Guides and tutorials"](#guides-and-tutorials) | [Back to "Main Index"](#main-index) |
 | - | - |
 
 ------------------------------------------------------------------------
@@ -720,7 +720,7 @@ See "[How to update all programs, for real](#how-to-update-all-programs-for-real
 
 ------------------------------------------------------------------------
 
-| [Back to "Tutorials and examples"](#tutorials-and-examples) | [Back to "Main Index"](#main-index) |
+| [Back to "Guides and tutorials"](#guides-and-tutorials) | [Back to "Main Index"](#main-index) |
 | - | - |
 
 ------------------------------------------------------------------------
@@ -740,7 +740,7 @@ https://github.com/ivan-hc/AM/assets/88724353/f9904ad2-42ec-4fce-9b21-b6b0f8a994
 
 ------------------------------------------------------------------------
 
-| [Back to "Tutorials and examples"](#tutorials-and-examples) | [Back to "Main Index"](#main-index) |
+| [Back to "Guides and tutorials"](#guides-and-tutorials) | [Back to "Main Index"](#main-index) |
 | - | - |
 
 ------------------------------------------------------------------------
@@ -753,7 +753,7 @@ https://github.com/ivan-hc/AM/assets/88724353/4d26d2d7-4476-4322-a0ab-a0a1ec14f7
 
 ------------------------------------------------------------------------
 
-| [Back to "Tutorials and examples"](#tutorials-and-examples) | [Back to "Main Index"](#main-index) |
+| [Back to "Guides and tutorials"](#guides-and-tutorials) | [Back to "Main Index"](#main-index) |
 | - | - |
 
 ------------------------------------------------------------------------
@@ -778,7 +778,7 @@ If also the second step does not succeed either, the process will end with an er
 
 ------------------------------------------------------------------------
 
-| [Back to "Tutorials and examples"](#tutorials-and-examples) | [Back to "Main Index"](#main-index) |
+| [Back to "Guides and tutorials"](#guides-and-tutorials) | [Back to "Main Index"](#main-index) |
 | - | - |
 
 ------------------------------------------------------------------------
@@ -791,7 +791,7 @@ https://github.com/ivan-hc/AM/assets/88724353/97c2b88d-f330-490c-970b-0f0bb89040
 
 ------------------------------------------------------------------------
 
-| [Back to "Tutorials and examples"](#tutorials-and-examples) | [Back to "Main Index"](#main-index) |
+| [Back to "Guides and tutorials"](#guides-and-tutorials) | [Back to "Main Index"](#main-index) |
 | - | - |
 
 ------------------------------------------------------------------------
@@ -830,7 +830,7 @@ EXTRA: The behavior of this option can be tested in a completely standalone way 
 
 ------------------------------------------------------------------------
 
-| [Back to "Tutorials and examples"](#tutorials-and-examples) | [Back to "Main Index"](#main-index) |
+| [Back to "Guides and tutorials"](#guides-and-tutorials) | [Back to "Main Index"](#main-index) |
 | - | - |
 
 ------------------------------------------------------------------------
@@ -853,7 +853,7 @@ A more detailed guide on how to create your own bash completion script for your 
 
 ------------------------------------------------------------------------
 
-| [Back to "Tutorials and examples"](#tutorials-and-examples) | [Back to "Main Index"](#main-index) |
+| [Back to "Guides and tutorials"](#guides-and-tutorials) | [Back to "Main Index"](#main-index) |
 | - | - |
 
 ------------------------------------------------------------------------
@@ -874,7 +874,7 @@ This only works with the apps hosted on Github.
 
 ------------------------------------------------------------------------
 
-| [Back to "Tutorials and examples"](#tutorials-and-examples) | [Back to "Main Index"](#main-index) |
+| [Back to "Guides and tutorials"](#guides-and-tutorials) | [Back to "Main Index"](#main-index) |
 | - | - |
 
 ------------------------------------------------------------------------
@@ -925,7 +925,7 @@ For more details, see the full guide at https://github.com/ivan-hc/neodb
 
 ------------------------------------------------------------------------
 
-| [Install "AM"/"AppMan"](#installation) | [Back to "Tutorials and examples"](#tutorials-and-examples) | [Back to "Main Index"](#main-index) |
+| [Install "AM"/"AppMan"](#installation) | [Back to "Guides and tutorials"](#guides-and-tutorials) | [Back to "Main Index"](#main-index) |
 | - | - | - |
 
 ------------------------------------------------------------------------
