@@ -209,20 +209,36 @@ If for some reason you don't use `sudo` and you prefer to gain administration pr
 
 
 ## How to install "AM"
-"**AM**" is ment to be installed at system level to manage apps using `sudo` privileges.
+"**AM**" is ment to be installed at system level to manage apps.
 
-To install "AM" quickly, just copy/paste the following command:
+The script "[INSTALL](https://github.com/ivan-hc/AM/blob/main/INSTALL)" is the one that take care of this.
+
+#### Using "Wget"
+```
+wget https://raw.githubusercontent.com/ivan-hc/AM/main/INSTALL
+chmod a+x ./INSTALL
+sudo ./INSTALL
+```
+or directly
 ```
 wget https://raw.githubusercontent.com/ivan-hc/AM/main/INSTALL && chmod a+x ./INSTALL && sudo ./INSTALL
 ```
-Or use "GIT":
+
+#### Using "GIT"
 ```
 git clone https://github.com/ivan-hc/AM.git
 cd AM
 chmod a+x INSTALL
 sudo ./INSTALL
 ```
-In both cases, the "INSTALL" script will create a dedicated /opt/am directory containing the ["APP-MANAGER"](https://github.com/ivan-hc/AM/blob/main/APP-MANAGER) script (ie "AM" itself), a symlink for it in /usr/local/bin named `am` and the /opt/am/remove script needed to [uninstall](#uninstall) "AM" itself, if needed. A temporary folder named /opt/am/.cache will be created too, in wich each installation script or list of available applications (for your architecture) is downloaded.
+
+### Structure of the "AM" installation
+In both cases, the "INSTALL" script will create:
+- the script "/opt/am/APP-MANAGER"
+- the script "/opt/am/remove" (to remove "AM" using the command `am -R am`)
+- the directory "/opt/am/.cache" (where all processes will been executed)
+- the directory "/opt/am/modules" (containing the .am modules for the non-core options)
+- the symlink "/usr/local/bin/am" for "/opt/am/APP-MANAGER"
 
 NOTE, if you don't feel comfortable having to always use root permissions, the installation method for "AppMan" is totally different. If you are interested, go [to the next paragraph](#how-to-install-appman), else [Back to "Main Index"](#main-index) or jump to "[Usage (all the available options)](#usage)".
 
@@ -246,6 +262,13 @@ mkdir -p ~/.local/bin && echo 'export PATH=$PATH:$(xdg-user-dir USER)/.local/bin
 ```
 wget https://raw.githubusercontent.com/ivan-hc/AM/main/APP-MANAGER -O appman && chmod a+x ./appman
 ```
+
+### Structure of the "AppMan" installation
+Unlike "AM" which needs to be placed in specific locations, "AppMan" is portable. The modules and directories will be placed in the directory you chose:
+- the script "appman" is wherever you want
+- the directory "$HOME/path/to/your/custom/directory/.cache" (where all processes will been executed)
+- the directory "$HOME/path/to/your/custom/directory/modules" (containing the .am modules for the non-core options)
+- the configuration file "$HOME/.config/appman/appman-config" (the only fixed directory)
 
 ------------------------------------------------------------------------
 
