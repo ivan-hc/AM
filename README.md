@@ -889,6 +889,8 @@ am --rollback ${PROGRAM}
 ```
 This only works with the apps hosted on Github.
 
+https://github.com/ivan-hc/AM/assets/88724353/8f286711-7934-461a-8bc2-b3a3e1d5f269
+
 ------------------------------------------------------------------------
 
 | [Back to "Guides and tutorials"](#guides-and-tutorials) | [Back to "Main Index"](#main-index) |
