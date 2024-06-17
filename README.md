@@ -150,23 +150,19 @@ NOTE: non-privileged users can update their own local applications and modules, 
 
 NOTE that currently my work focuses on applications for x86_64 architecture, but it is possible to extend "AM" to all other available architectures. If you are interested, you can deliberately join this project to improve the lists above.
 
-### STANDALONE PROGRAMS
-The programs are taken:
+1. **PROGRAMS**, they are taken:
 - from official sources (see Firefox, Thunderbird, Blender, NodeJS, Chromium Latest, Platform Tools...);
 - extracted from official .deb/tar/zip packages;
 - from the repositories and official sites of individual developers.
 
-### APPIMAGES
-The vast majority of scripts target AppImage packages:
+2. **APPIMAGES**, they are taken:
 - from official sources (if the upstream developers provide them);
 - from AppImage recipes to be compiled on-the-fly with [pkg2appimage](https://github.com/AppImage/pkg2appimage) and [appimagetool](https://github.com/AppImage/AppImageKit);
 - from unofficial third-party developers, but only if an official release is not available.
 
-### FIREFOX PROFILES
-You even create Firefox profiles to run as webapps, the ones with suffix "ffwa-" in the apps list.
+3. **FIREFOX PROFILES** to run as webapps, the ones with suffix "ffwa-" in the apps list.
 
-### THIRD-PARTY LIBRARIES
-It is also possible to install [third-party libraries](https://github.com/ivan-hc/AM/blob/main/libraries/libs-list) if they are not provided in your distribution's repositories. These are to be installed in truly exceptional cases.
+4. **THIRD-PARTY LIBRARIES** (see [here](https://github.com/ivan-hc/AM/blob/main/libraries/libs-list)) if they are not provided in your distribution's repositories. These are to be installed in truly exceptional cases.
 
 You can consult basic information, links to sites and sources used through the related `am -a $PROGRAM` command.
 
