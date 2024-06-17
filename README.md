@@ -809,7 +809,7 @@ The available options are as follows:
 
 0. Create a script for an AppImage package
 1. Build an AppImage on the fly using [appimagetool](https://github.com/AppImage/AppImageKit) and [pkg2appimage](https://github.com/AppImage/pkg2appimage)
-2. download and unpack a generic archive (ZIP, TAR...)
+2. Download and unpack a generic archive (ZIP, TAR...)
 3. Create a custom Firefox profile
 
 The currently available templates are stored [here](https://github.com/ivan-hc/AM/tree/main/templates).
