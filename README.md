@@ -201,6 +201,10 @@ If for some reason you don't use `sudo` and you prefer to gain administration pr
 
 </details>
 
+- [How to install "AM"](#how-to-install-am)
+- [How to install "AppMan"](#how-to-install-appman)
+
+
 ## How to install "AM"
 "**AM**" is ment to be installed at system level to manage apps using `sudo` privileges.
 
@@ -217,14 +221,10 @@ sudo ./INSTALL
 ```
 In both cases, the "INSTALL" script will create a dedicated /opt/am directory containing the ["APP-MANAGER"](https://github.com/ivan-hc/AM/blob/main/APP-MANAGER) script (ie "AM" itself), a symlink for it in /usr/local/bin named `am` and the /opt/am/remove script needed to [uninstall](#uninstall) "AM" itself, if needed. A temporary folder named /opt/am/.cache will be created too, in wich each installation script or list of available applications (for your architecture) is downloaded.
 
-NOTE, if you don't feel comfortable having to always use root permissions, the installation method for "AppMan" is totally different. If you are interested, go [to the next paragraph](#how-to-install-appman).
+NOTE, if you don't feel comfortable having to always use root permissions, the installation method for "AppMan" is totally different. If you are interested, go [to the next paragraph](#how-to-install-appman), else [Go back to "Main Index"](#main-index) or jump to "[Usage (all the available options)](#usage)".
 
 ------------------------------------------------------------------------
 
-| [Go back to "Main Index"](#main-index) |
-| - |
-
-------------------------------------------------------------------------
 ## How to install "AppMan"
 "**AppMan**" can be used in different places, being it portable.
 
