@@ -671,6 +671,10 @@ Option `-i` or `install`, usage:
 ```
 am -i $PROGRAM
 ```
+or
+```
+appman -i $PROGRAM
+```
 in this video I'll install AnyDesk and LXtask:
 
 https://github.com/ivan-hc/AM/assets/88724353/c2e8b654-29d3-4ded-8877-f77ef11d58fc
@@ -687,6 +691,19 @@ __________________________________________________________________________
 Option `-f` or `files`, it shows the installed apps, the version, the size and the type of application:
 
 https://github.com/ivan-hc/AM/assets/88724353/a11ccb22-f2fa-491f-85dd-7f9440776a54
+
+By default apps are sorted by size, use "`--byname`" to sort by name. With the option "`--less`" it shows only the number of installed apps.
+```
+am -f
+am -f --byname
+am -f --less
+```
+or
+```
+appman -f
+appman -f --byname
+appman -f --less
+```
 
 ------------------------------------------------------------------------
 
