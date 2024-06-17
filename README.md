@@ -12,10 +12,18 @@ The engine of "AM"/"AppMan" is the "APP-MANAGER" script which, depending on how 
 You can consult the entire **list of managed apps** at [**portable-linux-apps.github.io/apps**](https://portable-linux-apps.github.io/apps).
 
 ------------------------------------------------------------------------
+### Main Index
+------------------------------------------------------------------------
 [Differences between "AM" and "AppMan"](#differences-between-am-and-appman)
+- [Installation styles](#installation-styles)
+- [Ownership](#ownership)
+- [How apps are installed](#how-apps-are-installed)
+- [How to use "AM" in non-privileged mode, like "AppMan"](#how-to-use-am-in-non-privileged-mode-like-appman)
+
+[What programs can be installed](#what-programs-can-be-installed)
+
 
 - [See it in action](#see-it-in-action)
-  - [How to use "AM" in non-privileged mode, like "AppMan"](#how-to-use-am-in-non-privileged-mode-like-appman)
   - [How to install applications](#how-to-install-applications)
   - [How to list installed applications](#how-to-list-installed-applications)
   - [How to list and query all the applications available on the database](#how-to-list-and-query-all-the-applications-available-on-the-database)
@@ -28,11 +36,8 @@ You can consult the entire **list of managed apps** at [**portable-linux-apps.gi
   - [How to use "AM" in non-privileged mode, like "AppMan"](#how-to-use-am-in-non-privileged-mode-like-appman)
   - [How to sandbox an AppImage](#how-to-sandbox-an-appimage)
 
-- [Use AM locally like AppMan does](#use-am-locally-like-appman-does)
-- [What programs can be installed](#what-programs-can-be-installed)
+
 - [How to update all programs, for real](#how-to-update-all-programs-for-real)
-- [Repository and Multiarchitecture](#repository-and-multiarchitecture)
-- [Comparison with other AppImage managers](#comparison-with-other-appimage-managers)
 
 [Installation](#installation)
 - [Dependences](#dependences)
@@ -115,13 +120,64 @@ The configuration file for AppMan is in `~/.config/appman` and contains the path
 
 At first startup you can indicate any directory or subdirectory you want, as long as it is in your $HOME.
 
-------------------------------------------------------------------------
-## See it in action
-
 ### How to use "AM" in non-privileged mode, like "AppMan"
-Option `--user` or `appman` allows you to use "AM" as "AppMan", to install apps locally and withour root privileges. In this video I'll install LXtask locally. To use "AM" normally again, at system level, exiting from the "AppMan Mode", use the option `--system` instead (always suggested when using "AM" as "AppMan"):
+As already mentioned above, at "[Ownership](#ownership)" the user who installed "AM" is the sole owner, having write permissions for both /opt/am and for all installed apps.
+
+However, every user of the same system is allowed to use the option `--user` or `appman`, to use "AM" as "AppMan" and to install apps locally and withour root privileges:
+```
+am --user
+```
+To switch "AM" back to "AM" from "AppMan Mode", use the always suggested option `--system`:
+```
+am --system
+```
+To perform a test and see if you are in "AppMan Mode" or not, run for example the command `am -f` to see the list of the installed apps.
+
+In this video I'll install LXtask locally:
 
 https://github.com/ivan-hc/AM/assets/88724353/65b27cf6-edc5-4a4c-b2f9-42e8623dc76f
+
+NOTE: non-privileged users can update their own local applications and modules, but cannot update /opt/am/APP-MANAGER. It is therefore suggested to use pure "AppMan" instead of the "AppMan Mode" of "AM".
+
+------------------------------------------------------------------------
+
+| [Go to "Installation"](#installation) | [Go back to "Main Index"](#main-index) |
+| - | - |
+
+-----------------------------------------------------------------------------
+# What programs can be installed
+"AM"/"AppMan" installs, removes, updates and manages only standalone programs, ie those programs that can be run from a single directory in which they are contained. The database aims to be a reference point where you can download all the AppImage packages scattered around the web, otherwise unobtainable, as you would expect from any package manager, through specific installation scripts for each application, as happens with the AUR PKGBUILDs, on Arch Linux. You can see all of them [here](https://github.com/ivan-hc/AM/tree/main/programs)", divided by architecture.
+
+NOTE that currently my work focuses on applications for x86_64 architecture, but it is possible to extend "AM" to all other available architectures. If you are interested, you can deliberately join this project to improve the lists above.
+
+### STANDALONE PROGRAMS
+The programs are taken:
+- from official sources (see Firefox, Thunderbird, Blender, NodeJS, Chromium Latest, Platform Tools...);
+- extracted from official .deb/tar/zip packages;
+- from the repositories and official sites of individual developers.
+
+### APPIMAGES
+The vast majority of scripts target AppImage packages:
+- from official sources (if the upstream developers provide them);
+- from AppImage recipes to be compiled on-the-fly with [pkg2appimage](https://github.com/AppImage/pkg2appimage) and [appimagetool](https://github.com/AppImage/AppImageKit);
+- from unofficial third-party developers, but only if an official release is not available.
+
+### FIREFOX PROFILES
+You even create Firefox profiles to run as webapps, the ones with suffix "ffwa-" in the apps list.
+
+### THIRD-PARTY LIBRARIES
+It is also possible to install [third-party libraries](https://github.com/ivan-hc/AM/blob/main/libraries/libs-list) if they are not provided in your distribution's repositories. These are to be installed in truly exceptional cases.
+
+You can consult basic information, links to sites and sources used through the related `am -a $PROGRAM` command.
+
+------------------------------------------------------------------------
+
+| [Go to "Installation"](#installation) | [Go back to "Main Index"](#main-index) |
+| - | - |
+
+-----------------------------------------------------------------------------
+
+# See it in action
 
 ### How to install applications
 Option `-i` or `install`, usage:
@@ -180,51 +236,6 @@ Option `--sandbox` allows you to use "[Aisap](https://github.com/mgord9518/aisap
 https://github.com/ivan-hc/AM/assets/88724353/420bfa1c-274f-4ac3-a79f-78ad64f01254
 
 -----------------------------------------------------------------------------
-
-## Use AM locally like AppMan does
-If you use "AM" and have the needing of installing apps at system level and locally, use the option `--user` that allows to run "AM" in "AppMan Mode":
-```
-am --user
-```
-To switch "AM" back to "AM" from "AppMan Mode", use the option `--system`:
-```
-am --system
-```
-To perform a test and see if you are in "AppMan Mode" or not, run for example the command `am -f` to see the list of the installed apps.
-
------------------------------------------------------------------------------
-## What programs can be installed
-"AM"/"AppMan" installs/removes/updates/manages only standalone programs, ie those programs that can be run from a single directory in which they are contained (where `$PROGRAM` is the name of the application, "AM" installs them always into a dedicated folder named `/opt/$PROGRAM`, while "AppMan" lets you choose to install them in a dedicated directory in your `$HOME`).
-
-The "AM" repository aims to be a reference point where you can download all the AppImage packages scattered around the web, otherwise unobtainable, as you would expect from any package manager, through specific installation scripts for each application, as happens with the AUR PKGBUILDs, on Arch Linux. "AM" is intended to be a kind of Arch User Repository (AUR) of AppImage packages, providing them a home to stay. An both "AM" and "AppMan" are the key of this home. Visit...
-
-# [*https://portable-linux-apps.github.io*](https://portable-linux-apps.github.io)
-
-... for more!
-
-### STANDALONE PROGRAMS
-The programs are taken:
-- from official sources (see Firefox, Thunderbird, Blender, NodeJS, Chromium Latest, Platform Tools...);
-- extracted from official .deb/tar/zip packages;
-- from the repositories and official sites of individual developers.
-
-### APPIMAGES
-The vast majority of scripts target AppImage packages:
-- from official sources (if the upstream developers provide them);
-- from AppImage recipes to be compiled on-the-fly with [pkg2appimage](https://github.com/AppImage/pkg2appimage) and [appimagetool](https://github.com/AppImage/AppImageKit);
-- from unofficial third-party developers, but only if an official release is not available.
-
-You can consult basic information, links to sites and sources used through the related `am -a $PROGRAM` command.
-
-### FIREFOX PROFILES
-You even create Firefox profiles to run as webapps, the ones with suffix "ffwa-" in the apps list.
-
-### THIRD-PARTY LIBRARIES
-From version 5.8 it is also possible to install [third-party libraries](https://github.com/ivan-hc/AM/tree/main/libraries) if they are not provided in your distribution's repositories.
-
-The full list is [here](https://github.com/ivan-hc/AM/blob/main/libraries/libs-list).
-
------------------------------------------------------------------------------
 ## How to update all programs, for real
 To update all the programs and "AM" itself, just run the command (without `sudo`):
 ```
@@ -242,25 +253,6 @@ Here are the ways in which the updates will be made:
 - Updateable AppImages can rely on an [appimageupdatetool](https://github.com/AppImage/AppImageUpdate)-based "updater" or on their external zsync file (if provided by the developer);
 - Non-updateable AppImages and other standalone programs will be replaced only with a more recent version if available, this will be taken by comparing the installed version with the one available on the source (using "curl", "grep" and "cat"), the same is for some AppImages created with [pkg2appimage](https://github.com/AppImage/pkg2appimage) and [appimagetool](https://github.com/AppImage/AppImageKit);
 - Fixed versions will be listed with their build number (e.g. $PROGRAM-1.1.1). Note that most of the programs are updateable, so fixed versions will only be added upon request (or if it is really difficult to find a right wget/curl command to download the latest version).
-
------------------------------------------------------------------------------
-## Repository and Multiarchitecture
-Each program is installed through a dedicated script, and all these scripts are listed in the "[repository](https://github.com/ivan-hc/AM/tree/main/programs)" and divided by architecture.
-
-***NOTE that currently my work focuses on applications for x86_64 architecture, but it is possible to extend "AM" to all other available architectures.***
-
-Click on the link of your architecture to see the list of all the apps available on this repository:
-
-- [x86_64](https://raw.githubusercontent.com/ivan-hc/AM/main/programs/x86_64-apps)
-- [i686](https://raw.githubusercontent.com/ivan-hc/AM/main/programs/i686-apps)
-- [aarch64](https://raw.githubusercontent.com/ivan-hc/AM/main/programs/aarch64-apps)
-
-If you are interested, you can deliberately join this project to improve the lists above.
-
------------------------------------------------------------------------------
-## Comparison with other AppImage managers
-- There are many other AppImage managers around, and almost all of them support their database on appimagehub or other official AppImage resources, but the big problem is at the base of the compilation of these packages, being very often without an integrated update system. Furthermore, AppImage is a format that many developers are abandoning in favor of Flatpak, also because there were no centralized repositories or software that managed its updates in a universal way... at least until the invention of the first draft of [AppMan](https://github.com/ivan-hc/AppMan);
-- With "AM"/"AppMan" each installed program has its own script (AM-updater) that compares the installed version with the one available in the sources or uses official tools to update the AppImages ([see above](#how-to-update-all-programs-for-real)), there is support for multiple architectures (including i686 and aarch64) and anyone can create a script to install that particular program (if available for its architecture).
 
 ------------------------------------------------------------------------
 # Installation
