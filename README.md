@@ -716,6 +716,8 @@ Option `-u` or `update` updates all the installed apps and keeps "AM" in sync wi
 
 https://github.com/ivan-hc/AM/assets/88724353/f93ca782-2fc6-45a0-a3f2-1fba297a92bf
 
+See "[How to update all programs, for real](#how-to-update-all-programs-for-real)".
+
 ------------------------------------------------------------------------
 
 | [Back to "Tutorials and examples"](#tutorials-and-examples) | [Back to "Main Index"](#main-index) |
