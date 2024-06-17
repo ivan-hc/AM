@@ -17,10 +17,13 @@ You can consult the entire **list of managed apps** at [**portable-linux-apps.gi
 [Differences between "AM" and "AppMan"](#differences-between-am-and-appman)
 - [Installation styles](#installation-styles)
 - [Ownership](#ownership)
+- [About "sudo" usage](#about-sudo-usage)
 - [How apps are installed](#how-apps-are-installed)
 - [How to use "AM" in non-privileged mode, like "AppMan"](#how-to-use-am-in-non-privileged-mode-like-appman)
 
 [What programs can be installed](#what-programs-can-be-installed)
+
+[Real updates, for all apps: here's how](#real-updates-for-all-apps-heres-how)
 
 [Installation](#installation)
 - [How to install "AM"](#how-to-install-am)
@@ -42,11 +45,6 @@ You can consult the entire **list of managed apps** at [**portable-linux-apps.gi
   - [How to create launchers and shortcuts for my local AppImages](#how-to-create-launchers-and-shortcuts-for-my-local-appimages)
   - [How to use "AM" in non-privileged mode, like "AppMan"](#how-to-use-am-in-non-privileged-mode-like-appman)
   - [How to sandbox an AppImage](#how-to-sandbox-an-appimage)
-
-
-- [How to update all programs, for real](#how-to-update-all-programs-for-real)
-
-
 
 [Features](#features)
 - [How to enable bash completion](#how-to-enable-bash-completion)
@@ -73,7 +71,6 @@ You can consult the entire **list of managed apps** at [**portable-linux-apps.gi
 
 ------------------------------------------------------------------------
 # Differences between "AM" and "AppMan"
-
 "AM" and "AppMan" differ in how they are installed, placed and renamed in the system and how/where they install apps.
 
 - [Installation styles](#installation-styles)
@@ -90,8 +87,13 @@ Both can be updated using "[Topgrade](https://github.com/topgrade-rs/topgrade)".
 - "**AM**" is owned by the user that have installed it, since other users have not read/write permissions in "/opt/am";
 - "**AppMan**" is for all users, since it works locally, everyone can have its own apps and configurations.
 
-### How apps are installed
+### About "sudo" usage
+- "AppMan" can request the root password only in the very rare case in which you want to install a library;
+- "AM" requires the root password only to install, remove apps, enable a sandbox for an AppImage, or enable/disable bash completion.
 
+All options cannot be executed with "`sudo`".
+
+### How apps are installed
 - "**AM**" installs apps system wide, in `/opt` (see [Linux Standard Base](https://refspecs.linuxfoundation.org/FHS_3.0/fhs/ch03s13.html)), using the following structure:
 ```
 /opt/$PROGRAM/
@@ -166,6 +168,63 @@ NOTE that currently my work focuses on applications for x86_64 architecture, but
 4. **THIRD-PARTY LIBRARIES** (see [here](https://github.com/ivan-hc/AM/blob/main/libraries/libs-list)) if they are not provided in your distribution's repositories. These are to be installed in truly exceptional cases.
 
 You can consult basic information, links to sites and sources used through the related `am -a $PROGRAM` command.
+
+------------------------------------------------------------------------
+
+| [Go back to "Main Index"](#main-index) |
+| - |
+
+------------------------------------------------------------------------
+# Real updates, for all apps: here's how
+There are several methods to update apps, here are the most common ones, in order of priority:
+- the "comparison between versions" is the most widespread in the database, the version of the app installed is compared with the one present at the source, be it an official site or another site that tracks it;
+- if an AppImage package has a .zsync file, that will be used to download binary deltas (especially useful with large files, but not very popular among developers);
+- some portable apps are self-updatable (see Firefox and Thunderbird);
+- if an app or script is extremely small (a few kilobytes), it is downloaded directly from scratch;
+- in rare cases, if a file .zsync is broken, we use [appimageupdatetool](https://github.com/AppImage/AppImageUpdate);
+- in some cases, the apps have a fixed version, both due to the developers' choices to abandon a portable package in favor of other more common platforms, and because a software is no longer developed.
+
+NOTE, fixed versions will be listed with their build number (e.g. $PROGRAM-1.1.1) or will be added only upon request.
+
+### How to update all installed apps
+Option `-u` or `update` updates all the installed apps and keeps "AM"/"AppMan" in sync with the latest version and all latest bug fixes.
+
+https://github.com/ivan-hc/AM/assets/88724353/f93ca782-2fc6-45a0-a3f2-1fba297a92bf
+
+1. To update only the programs:
+```
+am -u --apps
+```
+or
+```
+appman -u --apps
+```
+2. To update just one program:
+```
+am -u $PROGRAM
+```
+or
+```
+appman -u $PROGRAM
+```
+3. To update all the programs and "AM"/"AppMan" itself, just run the command:
+```
+am -u
+```
+or
+```
+appman -u
+```
+4. To update only "AM"/"AppMan" and the modules use the option `-s` instead:
+```
+am -s
+```
+or
+```
+appman -s
+```
+
+NOTE, non-privileged users using "AM" in "AppMan Mode" cannot update /opt/am/APP-MANAGER (points 3 and 4). See "[How to use AM in non-privileged mode, like AppMan](#how-to-use-am-in-non-privileged-mode-like-appman)".
 
 ------------------------------------------------------------------------
 
@@ -678,25 +737,6 @@ https://github.com/ivan-hc/AM/assets/88724353/97c2b88d-f330-490c-970b-0f0bb89040
 Option `--sandbox` allows you to use "[Aisap](https://github.com/mgord9518/aisap)" as a Bubblewrap frontend to run installed AppImages in a sandbox. Go to "[Sandbox AppImages](#sandbox-appimages)" to learn more:
 
 https://github.com/ivan-hc/AM/assets/88724353/420bfa1c-274f-4ac3-a79f-78ad64f01254
-
------------------------------------------------------------------------------
-## How to update all programs, for real
-To update all the programs and "AM" itself, just run the command (without `sudo`):
-```
-am -u
-```
-To update only the programs:
-```
-am -u --apps
-```
-To update just one program:
-```
-am -u $PROGRAM
-```
-Here are the ways in which the updates will be made:
-- Updateable AppImages can rely on an [appimageupdatetool](https://github.com/AppImage/AppImageUpdate)-based "updater" or on their external zsync file (if provided by the developer);
-- Non-updateable AppImages and other standalone programs will be replaced only with a more recent version if available, this will be taken by comparing the installed version with the one available on the source (using "curl", "grep" and "cat"), the same is for some AppImages created with [pkg2appimage](https://github.com/AppImage/pkg2appimage) and [appimagetool](https://github.com/AppImage/AppImageKit);
-- Fixed versions will be listed with their build number (e.g. $PROGRAM-1.1.1). Note that most of the programs are updateable, so fixed versions will only be added upon request (or if it is really difficult to find a right wget/curl command to download the latest version).
 
 ------------------------------------------------------------------------
 # Features
