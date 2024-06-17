@@ -1,5 +1,8 @@
 # "AM" Application Manager
-### *Database & solutions for all AppImages and portable apps for GNU/Linux!*
+### Database & solutions for all AppImages and portable apps for GNU/Linux!
+
+![Istantanea_2024-06-17_15-58-20 png](https://github.com/ivan-hc/AM/assets/88724353/175b25fc-00a0-44f0-a8f5-2f00f26748e5)
+
 "AM"/"AppMan" is a set of scripts and modules for installing, updating, and managing AppImage packages and other portable formats, in the same way that APT manages DEBs packages, DNF the RPMs, and so on... using a large database of Shell scripts inspired by the Arch User Repository, each dedicated to an app or set of applications.
 
 The engine of "AM"/"AppMan" is the "APP-MANAGER" script which, depending on how you install or rename it, allows you to install apps system-wide (for a single system administrator) or locally (for each user).
