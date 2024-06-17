@@ -1,5 +1,12 @@
 # "AM" Application Manager
 ### *Database & solutions for all AppImages and portable apps for GNU/Linux!*
+"AM"/"AppMan" is a set of scripts and modules for installing, updating, and managing AppImage packages and other portable formats, in the same way that APT manages .deb packages, DNF .rpm packages, and so on... using a large database of Shell scripts inspired by the Arch User Repository, each dedicated to an app or set of applications.
+
+The engine of "AM"/"AppMan" is the "APP-MANAGER" script which, depending on how you install or rename it, allows you to install apps system-wide (for a single system administrator) or locally (for each user).
+
+"AM"/"AppMan" aims to be the default package manager for all AppImage packages, giving them a home to stay.
+
+You can consult the entire **list of managed apps** at [**portable-linux-apps.github.io/apps**](https://portable-linux-apps.github.io/apps)
 
 ------------------------------------------------------------------------
 [Introducing "AM"](#introducing-am)
@@ -17,7 +24,6 @@
   - [How to use "AM" in non-privileged mode, like "AppMan"](#how-to-use-am-in-non-privileged-mode-like-appman)
   - [How to sandbox an AppImage](#how-to-sandbox-an-appimage)
 
-- [Differences between "AM" and "AppMan"](#differences-between-am-and-appman)
 - [Use AM locally like AppMan does](#use-am-locally-like-appman-does)
 - [What programs can be installed](#what-programs-can-be-installed)
 - [How to update all programs, for real](#how-to-update-all-programs-for-real)
