@@ -22,6 +22,11 @@ You can consult the entire **list of managed apps** at [**portable-linux-apps.gi
 
 [What programs can be installed](#what-programs-can-be-installed)
 
+[Installation](#installation)
+- [How to install "AM"](#how-to-install-am)
+- [How to install "AppMan"](#how-to-install-appman)
+
+[Uninstall](#uninstall)
 
 - [See it in action](#see-it-in-action)
   - [How to install applications](#how-to-install-applications)
@@ -38,10 +43,6 @@ You can consult the entire **list of managed apps** at [**portable-linux-apps.gi
 
 
 - [How to update all programs, for real](#how-to-update-all-programs-for-real)
-
-[Installation](#installation)
-- [Dependences](#dependences)
-- [Proceed](#proceed)
 
 [Uninstall](#uninstall)
 
@@ -168,11 +169,97 @@ You can consult basic information, links to sites and sources used through the r
 
 ------------------------------------------------------------------------
 
-| [Go to "Installation"](#installation) | [Go back to "Main Index"](#main-index) |
-| - | - |
+| [Go back to "Main Index"](#main-index) |
+| - |
 
------------------------------------------------------------------------------
+------------------------------------------------------------------------
+# Installation
+This section explains how to install "AM" or "AppMan". If you don't know the difference, please read "[Differences between "AM" and "AppMan"](#differences-between-am-and-appman)".
 
+Below are the essential dependencies for both "AM" and "AppMan":
+- "`coreutils`", is usually installed by default in all distributions as it contains basic commands ("`cat`", "`chmod`", "`chown`"...);
+- "`curl`", to check URLs;
+- "`grep`", to check files;
+- "`jq`", to handle JSON files (some scripts need to check a download URL from api.github.com);
+- "`sed`", to edit/adapt installed files;
+- "`wget`" to download all programs and update "AM"/"AppMan" itself;
+
+NOTE, "AM" require "`sudo`" to be installed.
+
+If for some reason you don't use `sudo` and you prefer to gain administration privileges using alternative commands such as `doas` or similar, simply use "AppMan".
+
+<details>
+  <summary>See also optional dependencies, click here!</summary>
+
+#### Listed below are optional dependencies that are needed only by some programs:
+- "`binutils`", contains a series of basic commands, including "`ar`" which extracts .deb packages;
+- "`unzip`", to extract .zip packages;
+- "`tar`", to extract .tar* packages;
+- "`zsync`", about 10% of AppImages depend on this to be updated.
+
+</details>
+
+## How to install "AM"
+As we have already seen at "[Differences between "AM" and "AppMan"](#differences-between-am-and-appman)", "**AM**" is ment to be installed at system level to manage apps using `sudo` privileges.
+
+To install "AM" quickly, just copy/paste the following command:
+```
+wget https://raw.githubusercontent.com/ivan-hc/AM/main/INSTALL && chmod a+x ./INSTALL && sudo ./INSTALL
+```
+Or use "GIT":
+```
+git clone https://github.com/ivan-hc/AM.git
+cd AM
+chmod a+x INSTALL
+sudo ./INSTALL
+```
+In both cases, the "INSTALL" script will create a dedicated /opt/am directory containing the ["APP-MANAGER"](https://github.com/ivan-hc/AM/blob/main/APP-MANAGER) script (ie "AM" itself), a symlink for it in /usr/local/bin named `am` and the /opt/am/remove script needed to [uninstall](#uninstall) "AM" itself, if needed. A temporary folder named /opt/am/.cache will be created too, in wich each installation script or list of available applications (for your architecture) is downloaded.
+
+## How to install "AppMan"
+As we have already seen at "[Differences between "AM" and "AppMan"](#differences-between-am-and-appman)", "**AppMan**" can be used in different places, being it portable. However, to be easily used its recommended to place it in your local "$PATH", in `~/.local/bin`.
+
+#### Use "AppMan" in "$PATH"
+To do so, you must first enable that "$PATH":
+- add `export PATH=$PATH:$(xdg-user-dir USER)/.local/bin` in the ` ~/.bashrc`
+- create the directory `~/.local/bin` if it is not available
+
+To do all this quickly, simply copy/paste the following command:
+```
+mkdir -p ~/.local/bin && echo 'export PATH=$PATH:$(xdg-user-dir USER)/.local/bin' >> ~/.bashrc && wget https://raw.githubusercontent.com/ivan-hc/AM/main/APP-MANAGER -O appman && chmod a+x ./appman && mv ./appman ~/.local/bin/appman
+```
+#### Use "AppMan" in "Portable Mode"
+"AppMan" can run in any directory you download it, copy/paste the following command to download "APP-MANAGER", rename it to `appman` and make it executable:
+```
+wget https://raw.githubusercontent.com/ivan-hc/AM/main/APP-MANAGER -O appman && chmod a+x ./appman
+```
+
+------------------------------------------------------------------------
+
+| [Go back to "Main Index"](#main-index) |
+| - |
+
+------------------------------------------------------------------------
+# Uninstall
+- To uninstall "AM" just run the command `am -R am`
+- To uninstall "AppMan" just remove it and the directory `$HOME/.config/appman`
+
+Note, before you remove your CLI, use the option `-R` to remove the apps installed using the following syntax:
+```
+am -R {PROGRAM1} {PROGRAM2} {PROGRAM3}...
+```
+or
+```
+appman -R {PROGRAM1} {PROGRAM2} {PROGRAM3}...
+```
+
+to have a list of the installed programs use the option `-f` or `files` (syntax `am -f` or `appman -f`).
+
+------------------------------------------------------------------------
+
+| [Go back to "Main Index"](#main-index) |
+| - |
+
+------------------------------------------------------------------------
 # See it in action
 
 ### How to install applications
@@ -249,62 +336,6 @@ Here are the ways in which the updates will be made:
 - Updateable AppImages can rely on an [appimageupdatetool](https://github.com/AppImage/AppImageUpdate)-based "updater" or on their external zsync file (if provided by the developer);
 - Non-updateable AppImages and other standalone programs will be replaced only with a more recent version if available, this will be taken by comparing the installed version with the one available on the source (using "curl", "grep" and "cat"), the same is for some AppImages created with [pkg2appimage](https://github.com/AppImage/pkg2appimage) and [appimagetool](https://github.com/AppImage/AppImageKit);
 - Fixed versions will be listed with their build number (e.g. $PROGRAM-1.1.1). Note that most of the programs are updateable, so fixed versions will only be added upon request (or if it is really difficult to find a right wget/curl command to download the latest version).
-
-------------------------------------------------------------------------
-# Installation
-### Dependences
-#### *Below are the essential dependencies for both "AM" and "AppMan"!*
-A warning message will prevent you from using "AM"/"AppMan" if the following packages are not installed on your system:
-- "`coreutils`", is usually installed by default in all distributions as it contains basic commands ("`cat`", "`chmod`", "`chown`"...);
-- "`curl`", to check URLs;
-- "`grep`", to check files;
-- "`jq`", to handle JSON files (some scripts need to check a download URL from api.github.com);
-- "`sed`", to edit/adapt installed files;
-- "`wget`" to download all programs and update "AM"/AppMan itself;
-
-- "`sudo`" (only required by "AM")
-
-###### *NOTE, if for some reason you don't use `sudo` and you prefer to gain administration privileges using alternative commands such as `doas` or similar, simply use "AppMan"*
-
-<details>
-  <summary>See also optional dependencies, click here!</summary>
-
-#### *Listed below are optional dependencies that are needed only by some programs*
-Don't worry, if you come across one of these programs, a message will warn you that the program cannot be installed, skipping the installation process just for that script:
-- "`binutils`", contains a series of basic commands, including "`ar`" which extracts .deb packages (which are very few here);
-- "`unzip`", to extract .zip packages;
-- "`tar`", to extract .tar* packages;
-- "`zsync`", about 10% of AppImages depend on this to be updated.
-
-</details>
-
-------------------------------------------------------------------------
-# Proceed
-"AM" is ment to be installed at system level to manage apps using `sudo` privileges.
-
-To install "AM" quickly, just copy/paste the following command:
-```
-wget https://raw.githubusercontent.com/ivan-hc/AM/main/INSTALL && chmod a+x ./INSTALL && sudo ./INSTALL
-```
-Or use "GIT":
-```
-git clone https://github.com/ivan-hc/AM.git
-cd AM
-chmod a+x INSTALL
-sudo ./INSTALL
-```
-In both cases, the "INSTALL" script will create a dedicated /opt/am directory containing the ["APP-MANAGER"](https://github.com/ivan-hc/AM/blob/main/APP-MANAGER) script (ie "AM" itself), a symlink for it in /usr/local/bin named `am` and the /opt/am/remove script needed to [uninstall](#uninstall) "AM" itself, if needed. A temporary folder named /opt/am/.cache will be created too, in wich each installation script or list of available applications (for your architecture) is downloaded.
-
------------------------------------------------------------------------------
-# Uninstall
-Before you remove "AM"/AppMan, use the option `-R` to remove the apps installed using the following syntax (for example using "AM"):
-```
-am -R {PROGRAM1} {PROGRAM2} {PROGRAM3}...
-```
-to have a list of the installed programs use the option `-f` or `files` (syntax `am -f` or `appman -f`).
-
-- To uninstall "AM" just run the command `am -R am`
-- To uninstall "AppMan" just remove it, also remove the directory $HOME/.config/appman
 
 ------------------------------------------------------------------------
 # USAGE
