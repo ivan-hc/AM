@@ -646,7 +646,7 @@ to have a list of the installed programs use the option `-f` or `files` (syntax 
 
 -----------------------------------------------------------------------------
 
-# Tutorials
+# Tutorials and examples
 This section is committed to giving small demonstrations of each available option, with videos:
 
   - [How to install applications](#how-to-install-applications)
