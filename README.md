@@ -803,13 +803,22 @@ This only works with the apps hosted on Github.
 
 __________________________________________________________________________
 ### Create and test your own installation script
-"AM"/"AppMan" has a `-t` option (or `template`) with which you can get a script to customize according to your needs. With this option, you can quickly create scripts to download existing programs or even create AppImage or AppDirs through tools such as [appimagetool](https://github.com/AppImage/AppImageKit) and [pkg2appimage](https://github.com/AppImage/pkg2appimage).
+"AM"/"AppMan" has an option `-t` or `template` with which you can get a script to customize according to your needs.
 
-The following video shows how to create and test an AppImage of "Abiword" from Debian Unstable repository with a custom AppRun (option 5):
+The available options are as follows:
 
-https://user-images.githubusercontent.com/88724353/150619523-a45455f6-a656-4753-93fe-aa99babc1083.mp4
+0. Create a script for an AppImage package
+1. Build an AppImage on the fly using [appimagetool](https://github.com/AppImage/AppImageKit) and [pkg2appimage](https://github.com/AppImage/pkg2appimage)
+2. download and unpack a generic archive (ZIP, TAR...)
+3. Create a custom Firefox profile
 
 The currently available templates are stored [here](https://github.com/ivan-hc/AM/tree/main/templates).
+
+![Istantanea_2024-06-17_21-35-26 png](https://github.com/ivan-hc/AM/assets/88724353/6e11aeff-9a70-44f7-bd73-1324b545704e)
+
+In the following video you see how option 1 (formerly option 5) is able to create AppImage packages on the fly (here "Abiword" from Debian Unstable), like an AUR compiler would:
+
+https://user-images.githubusercontent.com/88724353/150619523-a45455f6-a656-4753-93fe-aa99babc1083.mp4
 
 A wiki is also available, here I will try to explain the installation script's workflow for a program to be better managed by "AM", trying to use a language that is as simple and elementary as possible.
 
@@ -831,10 +840,10 @@ The most difficult step to overcome is certainly the number "3", given the great
 To install and test your own script, use the command `am -i /path/to/your-script` or `appman -i /path/to/your-script` depending on your CLI
 
 __________________________________________________________________________
-# Third-party databases for applications (NeoDB)
-From version 6.4, "AM"/"AppMan" can be extended by adding new application databases using a configuration file named "neodb".
+### Third-party databases for applications (NeoDB)
+"AM"/"AppMan" can be extended by adding new application databases using a configuration file named "neodb".
 
-### For more details, see the full guide at https://github.com/ivan-hc/neodb
+For more details, see the full guide at https://github.com/ivan-hc/neodb
 
 ------------------------------------------------------------------------
 
