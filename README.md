@@ -988,6 +988,8 @@ NOTE, the video above is from before Type3 AppImages were used, the ones that do
 #### Option Two: "Archives and other programs"
 Option two is very similar to option zero. What changes is the number of questions, which allow you to customize both the application's .desktop file and the way a program should be extracted.
 
+https://github.com/ivan-hc/AM/assets/88724353/80a08024-0282-4cc0-a2a5-a31554df973b
+
 #### Option Three: "Firefox profiles"
 Option 3 creates a launcher that opens Firefox in a custom profile and on a specific page, such as in a WebApp. I created this option to counterbalance the amount of Electron/Chrome-based applications (and because I'm a firm Firefox's supporter).
 
