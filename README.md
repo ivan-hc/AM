@@ -992,25 +992,32 @@ Option two is very similar to option zero. What changes is the number of questio
 Option 3 creates a launcher that opens Firefox in a custom profile and on a specific page, such as in a WebApp. I created this option to counterbalance the amount of Electron/Chrome-based applications (and because I'm a firm Firefox's supporter).
 
 #### How an installation script works
-A wiki is also available, here I will try to explain the installation script's workflow for a program to be better managed by "AM", trying to use a language that is as simple and elementary as possible.
+The structure of an installation script is designed for a system-wide installation, with "AM", since it is intended to be hosted in the database. But every path indicated within it is written so that "AppMan" can patch the essential parts, to hijack the installation at a local level and without root privileges:
+1. In the first step, the variables are indicated, such as the name of the application and a reference to the source of the app (mostly used in `--rollback` or `downgrade`);
+2. Create the directory of the application;
+3. The first file to be created is "`remove`", to quickly remove app's pieces in case of errors;
+4. Create the "tmp" directory, in which the app will be downloaded and, in the case of archives, extracted;
+5. Most scripts contain a "$version" variable, a command to intercept the URL to download the app. If the URL is linear and without univoque versions, "$version" can be used to detect a version number. Then save the value into a file "version" (this is important for the updates, see point 7);
+6. Downloading the application (and extract it in case of archive);
+7. Create the "AM-updater" file, the script used to update the app. It resumes points 4, 5 and 6, with the difference that the "$version" variable we have saved at point 5 is compared with a new value, hosted at the app's source;
+8. Creation/extract/download launcher and icon, the methods change depending on the type of application. For AppImages they are extracted from the package.
 
-Each script is written exclusively for "AM" and is structured in such a way that even "[AppMan](https://github.com/ivan-hc/AppMan)" can modify it to manage programs locally.
-
-We can divide the stages of an installation's process as follows:
-
-* [Step 1: create the main directory](https://github.com/ivan-hc/AM/wiki/Step-1:-create-the-main-directory) in /opt, as already suggested by the [Linux Standard Base](https://tldp.org/LDP/Linux-Filesystem-Hierarchy/html/opt.html) (LSB);
-* [Step 2: create the "remove" script](https://github.com/ivan-hc/AM/wiki/Step-2:-create-the-%22remove%22-script), needed to uninstall averything (this must be the first one to be created, in order to quickly resolve any aborted/brocken installations using the `-r` option);
-* [Step 3: download the program](https://github.com/ivan-hc/AM/wiki/Step-3:-download-the-program) and/or compile the program (this operation varies depending on how the program is distributed);
-* [Step 4: link to a $PATH](https://github.com/ivan-hc/AM/wiki/Step-4:-link-to-a-$PATH) (usually `/usr/local/bin`, but also `/usr/bin`, `/usr/games` or `/usr/local/games`);
-* [Step 5: the "AM updater" script](https://github.com/ivan-hc/AM/wiki/Step-5:-the-%22AM-updater%22-script), which is a kind of "copy" of step "3" (see above) that may include options to recognize newer versions of the program. NOTE that if you intend to create a script for the fixed version of a program, you can also skip this step;
-* [Step 6: launchers and icons](https://github.com/ivan-hc/AM/wiki/Step-6:-launchers-and-icons). Note that if you intend to create a script for a command line utility, you can also skip this step;
-* [Step 7: change the permissions](https://github.com/ivan-hc/AM/wiki/Step-7:-permissions) in the program folder, so you can use the update function (step 5) without using "sudo" privileges
-* [Step 8 (optional): your signature](https://github.com/ivan-hc/AM/wiki/Step-8-(optional):-your-signature)
-
-The most difficult step to overcome is certainly the number "3", given the great variety of methods in which authors distribute their software, while all the other steps are much easier to overcome.
-
-To install and test your own script, use the command `am -i /path/to/your-script` or `appman -i /path/to/your-script` depending on your CLI
-
+To install and test your script, use the command
+```
+am -i /path/to/your-script
+```
+or
+```
+appman -i /path/to/your-script
+```
+To debug the installation, add the option `--debug`, like this
+```
+am -i --debug /path/to/your-script
+```
+or
+```
+appman -i --debug /path/to/your-script
+```
 __________________________________________________________________________
 ### Third-party databases for applications (NeoDB)
 "AM"/"AppMan" can be extended by adding new application databases using a configuration file named "neodb".
