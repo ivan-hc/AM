@@ -836,9 +836,37 @@ If also the second step does not succeed either, the process will end with an er
 
 __________________________________________________________________________
 ### How to create launchers and shortcuts for my local AppImages
-Option `--launcher` allows you to drag/drop a local AppImage and creates the launcher (like any other classic AppImage manager, but in SHELL, so no daemons or bloated runtimes are required here) in $HOME/.local/share/applications/AppImages, also allows you to rename a symlink in $HOME/.local/bin that you can use from the command line like any other program:
+If you are a user who is used to dragging your local AppImages scattered around the system and if you are a user who likes clutter and wants to place their packages in different places... this option is for you.
+
+Option `--launcher` allows you to drag and drop a local AppImage to create the menu launcher, like any other classic AppImage manager... but in SHELL, so no daemons or bloated runtimes are required here.
+```
+am --launcher /path/to/File.AppImage
+```
+or
+```
+appman --launcher /path/to/File.AppImage
+```
 
 https://github.com/ivan-hc/AM/assets/88724353/97c2b88d-f330-490c-970b-0f0bb89040dc
+
+As you can see in detail, all you need to do is drag/drop the AppImage package and press ENTER.
+
+This option also allows you to create a symbolic link or shell script that calls your AppImage, to place in "`~/.local/bin`":
+- if you choose Y or ENTER, you can choose the name to use in $PATH
+- if you choose N, the option will take care of the name to give to a script with ".appimage" extension (in lower case)
+
+In case you move your AppImages somewhere else or remove them, use the following otion `-c` or `clean` to get rid of all the orphaned launchers and dead symlinks and scripts you created earlier:
+```
+am -c
+```
+or
+```
+appman -c
+```
+
+https://github.com/ivan-hc/AM/assets/88724353/25d9df2b-3c4d-4494-8bbc-12e6ab2371fd
+
+NOTE, as you can see, icons are also placed in ~/.local/share/icons, however the `-c` option cannot remove them. This is a known issue.
 
 ------------------------------------------------------------------------
 
