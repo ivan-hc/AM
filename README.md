@@ -838,7 +838,7 @@ __________________________________________________________________________
 ### How to create launchers and shortcuts for my local AppImages
 If you are a user who is used to dragging your local AppImages scattered around the system and if you are a user who likes clutter and wants to place their packages in different places... this option is for you.
 
-The `--launcher` option allows you to drag and drop a local AppImage to create a launcher to place in the menu, like [AppImageLauncher](https://github.com/TheAssassin/AppImageLauncher) or [Gear Lever](https://github.com/mijorus/gearlever), or any other classic AppImage package helper would... but in SHELL.
+The option `--launcher` allows you to drag and drop a local AppImage to create a launcher to place in the menu, like [AppImageLauncher](https://github.com/TheAssassin/AppImageLauncher) or [Gear Lever](https://github.com/mijorus/gearlever), or any other classic AppImage package helper would... but in SHELL.
 
 ```
 am --launcher /path/to/File.AppImage
@@ -868,6 +868,8 @@ appman -c
 https://github.com/ivan-hc/AM/assets/88724353/25d9df2b-3c4d-4494-8bbc-12e6ab2371fd
 
 NOTE, as you can see, icons are also placed in ~/.local/share/icons, however the `-c` option cannot remove them. This is a known issue.
+
+Another peculiarity concerns the use of this cleanup option on launchers created on AppImage packages placed on removable devices: if in the .desktop file it appears that the path of the AppImage file is in /mnt or /media and none of the references are mounted, the option `-c` will not be able to remove the launcher. This is very useful if you have large AppImage packages that you necessarily need to place in a different partition.
 
 ------------------------------------------------------------------------
 
