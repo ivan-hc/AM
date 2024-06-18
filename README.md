@@ -925,7 +925,13 @@ https://github.com/ivan-hc/AM/assets/88724353/8f286711-7934-461a-8bc2-b3a3e1d5f2
 __________________________________________________________________________
 ### Create and test your own installation script
 "AM"/"AppMan" has an option `-t` or `template` with which you can get a script to customize according to your needs.
-
+```
+am -t $PROGRAM
+```
+or
+```
+appman -t $PROGRAM
+```
 The available options are as follows:
 
 0. Create a script for an AppImage package
@@ -933,14 +939,47 @@ The available options are as follows:
 2. Download and unpack a generic archive (ZIP, TAR...)
 3. Create a custom Firefox profile
 
+![Istantanea_2024-06-17_21-35-26 png](https://github.com/ivan-hc/AM/assets/88724353/6e11aeff-9a70-44f7-bd73-1324b545704e)
+
 The currently available templates are stored [here](https://github.com/ivan-hc/AM/tree/main/templates).
 
-![Istantanea_2024-06-17_21-35-26 png](https://github.com/ivan-hc/AM/assets/88724353/6e11aeff-9a70-44f7-bd73-1324b545704e)
+Now let's analyze the available options.
+
+#### Option Zero: "AppImages"
+The easiest script to create is certainly the one relating to AppImages, the "Zero" option.
+1. Enter the URL of the site
+   - if the AppImage is hosted on github, it will quickly detect the URL
+   - if the AppImage is not hosted on github,it will ask you to add a description of the app
+2. Detecting the  correct URL
+   - if the app is hosted on github, it will ask you if you want to add/remove keywords to use in `grep`, to detect the correct URL, else press ENTER
+   - if the app is not hosted on github, add a one-line command to detect the latest version of the app (advanced)
+  
+In this video I'll create 2 installation scripts:
+- the first one is for "gimp", detected as first reference, no extra prompts
+- the second one is for "baobab-gtk3", hosted on a repository with multiple packages, so I have to add a keyword ("baobab"), univoque for the URL I'm interested in
+
+https://github.com/ivan-hc/AM/assets/88724353/b6513e8a-17ab-4671-baf7-d86183d57c11
+
+#### Option One: "build AppImages on-the-fly"
+This was one of the very first approaches used to create this project. Before I started building AppImage packages myself, they were first compiled just like using any AUR-helper.
+
+The syntax seems simple, but you have to know what you're building. You'll need to decide what kind of AppImage you want to build on the fly, whether to include a custom AppRun, "libunionpreload", and detect system libraries. It will be used as the Debian base, but you can manually modify the script to suit your needs.
+
+https://github.com/ivan-hc/AM/assets/88724353/db516c23-9b9a-4287-9cdd-d6a153065c8b
+
+I took "Abiword" as an example because it is something I have already experienced in the past.
 
 In the following video you see how option 1 (formerly option 5) is able to create AppImage packages on the fly (here "Abiword" from Debian Unstable), like an AUR compiler would:
 
 https://user-images.githubusercontent.com/88724353/150619523-a45455f6-a656-4753-93fe-aa99babc1083.mp4
 
+#### Option two: "Archives and other programs"
+Option two is very similar to option zero. What changes is the number of questions, which allow you to customize both the application's .desktop file and the way a program should be extracted.
+
+#### Option three: "Firefox profiles"
+Option 3 creates a launcher that opens Firefox in a custom profile and on a specific page, such as in a WebApp. I created this option to counterbalance the amount of Electron/Chrome-based applications (and because I'm a firm Firefox's supporter).
+
+#### How an installation script works
 A wiki is also available, here I will try to explain the installation script's workflow for a program to be better managed by "AM", trying to use a language that is as simple and elementary as possible.
 
 Each script is written exclusively for "AM" and is structured in such a way that even "[AppMan](https://github.com/ivan-hc/AppMan)" can modify it to manage programs locally.
