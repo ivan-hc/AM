@@ -983,6 +983,8 @@ In the following video you see how option 1 (formerly option 5) is able to creat
 
 https://user-images.githubusercontent.com/88724353/150619523-a45455f6-a656-4753-93fe-aa99babc1083.mp4
 
+NOTE, the video above is from before Type3 AppImages were used, the ones that do not require "libfuse2". Encountering "Appstream" errors is very common.
+
 #### Option Two: "Archives and other programs"
 Option two is very similar to option zero. What changes is the number of questions, which allow you to customize both the application's .desktop file and the way a program should be extracted.
 
