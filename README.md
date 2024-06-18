@@ -838,7 +838,8 @@ __________________________________________________________________________
 ### How to create launchers and shortcuts for my local AppImages
 If you are a user who is used to dragging your local AppImages scattered around the system and if you are a user who likes clutter and wants to place their packages in different places... this option is for you.
 
-Option `--launcher` allows you to drag and drop a local AppImage to create the menu launcher, like any other classic AppImage manager... but in SHELL, so no daemons or bloated runtimes are required here.
+The `--launcher` option allows you to drag and drop a local AppImage to create a launcher to place in the menu, like [AppImageLauncher](https://github.com/TheAssassin/AppImageLauncher) or [Gear Lever](https://github.com/mijorus/gearlever), or any other classic AppImage package helper would... but in SHELL.
+
 ```
 am --launcher /path/to/File.AppImage
 ```
