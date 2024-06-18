@@ -48,6 +48,11 @@ You can consult the entire **list of managed apps** at [**portable-linux-apps.gi
 - [How to update or remove apps manually](#how-to-update-or-remove-apps-manually)
 - [How to downgrade an installed app to a previous version](#how-to-downgrade-an-installed-app-to-a-previous-version)
 - [Create and test your own installation script](#create-and-test-your-own-installation-script)
+  - [Option Zero: "AppImages"](#option-zero-appimages)
+  - [Option One: "build AppImages on-the-fly"](#option-one-build-appimages-on-the-fly)
+  - [Option Two: "Archives and other programs"](#option-two-archives-and-other-programs)
+  - [Option Three: "Firefox profiles"](#option-three-firefox-profiles)
+  - [How an installation script works](#how-an-installation-script-works)
 - [Third-party databases for applications (NeoDB)](#third-party-databases-for-applications-neodb)
 
 [Troubleshooting](#troubleshooting)
@@ -687,6 +692,11 @@ This section is committed to giving small demonstrations of each available optio
   - [How to update or remove apps manually](#how-to-update-or-remove-apps-manually)
   - [How to downgrade an installed app to a previous version](#how-to-downgrade-an-installed-app-to-a-previous-version)
   - [Create and test your own installation script](#create-and-test-your-own-installation-script)
+    - [Option Zero: "AppImages"](#option-zero-appimages)
+    - [Option One: "build AppImages on-the-fly"](#option-one-build-appimages-on-the-fly)
+    - [Option Two: "Archives and other programs"](#option-two-archives-and-other-programs)
+    - [Option Three: "Firefox profiles"](#option-three-firefox-profiles)
+    - [How an installation script works](#how-an-installation-script-works)
   - [Third-party databases for applications (NeoDB)](#third-party-databases-for-applications-neodb)
 
 __________________________________________________________________________
@@ -973,10 +983,10 @@ In the following video you see how option 1 (formerly option 5) is able to creat
 
 https://user-images.githubusercontent.com/88724353/150619523-a45455f6-a656-4753-93fe-aa99babc1083.mp4
 
-#### Option two: "Archives and other programs"
+#### Option Two: "Archives and other programs"
 Option two is very similar to option zero. What changes is the number of questions, which allow you to customize both the application's .desktop file and the way a program should be extracted.
 
-#### Option three: "Firefox profiles"
+#### Option Three: "Firefox profiles"
 Option 3 creates a launcher that opens Firefox in a custom profile and on a specific page, such as in a WebApp. I created this option to counterbalance the amount of Electron/Chrome-based applications (and because I'm a firm Firefox's supporter).
 
 #### How an installation script works
