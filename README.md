@@ -33,20 +33,19 @@ You can consult the entire **list of managed apps** at [**portable-linux-apps.gi
 [Usage (all the available options)](#usage)
 
 [Guides and tutorials](#guides-and-tutorials)
-- [How to install applications](#how-to-install-applications)
-- [How to list installed applications](#how-to-list-installed-applications)
-- [How to list and query all the applications available on the database](#how-to-list-and-query-all-the-applications-available-on-the-database)
-- [How to update all installed apps, modules and "AM" itself](#how-to-update-all-installed-apps-modules-and-am-itself)
-- [How to create a snapshot of an installed application](#how-to-create-a-snapshot-of-an-installed-application)
-- [How to restore an application using the already created snapshots](#how-to-restore-an-application-using-the-already-created-snapshots)
-- [How to remove one or more applications](#how-to-remove-one-or-more-applications)
-- [How to convert Type2 AppImages requiring libfuse2 to Type3 AppImages](#how-to-convert-type2-appimages-requiring-libfuse2-to-type3-appimages)
-- [How to create launchers and shortcuts for my local AppImages](#how-to-create-launchers-and-shortcuts-for-my-local-appimages)
+- [Install applications](#install-applications)
+- [List the installed applications](#list-the-installed-applications)
+- [List and query all the applications available on the database](#list-and-query-all-the-applications-available-on-the-database)
+- [Update all](#update-all)
+- [Backup and restore installed apps using snapshots](#backup-and-restore-installed-apps-using-snapshots)
+- [Remove one or more applications](#remove-one-or-more-applications)
+- [Convert Type2 AppImages requiring libfuse2 to Type3 AppImages](#convert-type2-appimages-requiring-libfuse2-to-type3-appimages)
+- [Drag local AppImages to integrate them into the application menu](#drag-local-appimages-to-integrate-them-into-the-application-menu)
 - [How to use "AM" in non-privileged mode, like "AppMan"](#how-to-use-am-in-non-privileged-mode-like-appman)
-- [How to sandbox an AppImage](#how-to-sandbox-an-appimage)
+- [Sandbox an AppImage](#sandbox-an-appimage)
 - [How to enable bash completion](#how-to-enable-bash-completion)
 - [How to update or remove apps manually](#how-to-update-or-remove-apps-manually)
-- [How to downgrade an installed app to a previous version](#how-to-downgrade-an-installed-app-to-a-previous-version)
+- [Downgrade an installed app to a previous version](#downgrade-an-installed-app-to-a-previous-version)
 - [Create and test your own installation script](#create-and-test-your-own-installation-script)
   - [Option Zero: "AppImages"](#option-zero-appimages)
   - [Option One: "build AppImages on-the-fly"](#option-one-build-appimages-on-the-fly)
@@ -62,7 +61,6 @@ You can consult the entire **list of managed apps** at [**portable-linux-apps.gi
 - [Spyware, malware and dangerous software](#spyware-malware-and-dangerous-software)
 - [Stop AppImage prompt to create its own launcher, desktop integration and doubled launchers](#stop-appimage-prompt-to-create-its-own-launcher-desktop-integration-and-doubled-launchers)
 - [The script points to "releases" instead of downloading the latest stable](#the-script-points-to-releases-instead-of-downloading-the-latest-stable)
-- [Wget2 prevents me from downloading apps and modules](#wget2-prevents-me-from-downloading-apps-and-modules)
 - [Wrong download link](#wrong-download-link)
 
 [Related projects](#related-projects)
@@ -195,6 +193,22 @@ https://github.com/ivan-hc/AM/assets/88724353/f93ca782-2fc6-45a0-a3f2-1fba297a92
 4. To update only "AM"/"AppMan" and the modules use the option `-s` instead, `am -s` / `appman -s`
 
 NOTE, non-privileged users using "AM" in "AppMan Mode" cannot update /opt/am/APP-MANAGER (points 3 and 4). See "[How to use AM in non-privileged mode, like AppMan](#how-to-use-am-in-non-privileged-mode-like-appman)".
+
+### How to update everything using "Topgrade"
+Keeping your system up to date usually involves invoking multiple package managers. This results in big, non-portable shell one-liners saved in your shell. To remedy this, Topgrade detects which tools you use and runs the appropriate commands to update them.
+
+Install the "topgrade" package using the command
+```
+am -i topgrade
+```
+or
+```
+appman -i topgrade
+```
+
+Visit [github.com/topgrade-rs/topgrade](https://github.com/topgrade-rs/topgrade) to learn more.
+
+NOTE, "AppMan" users must install `appman` in ~/.local/bin to allow updates via Topgrade. See "[How to install AppMan](#how-to-install-appman)".
 
 ------------------------------------------------------------------------
 
@@ -677,20 +691,19 @@ See also "[How to update or remove apps manually](#how-to-update-or-remove-apps-
 # Guides and tutorials
 This section is committed to giving small demonstrations of each available option, with videos:
 
-  - [How to install applications](#how-to-install-applications)
-  - [How to list installed applications](#how-to-list-installed-applications)
-  - [How to list and query all the applications available on the database](#how-to-list-and-query-all-the-applications-available-on-the-database)
-  - [How to update all installed apps, modules and "AM" itself](#how-to-update-all-installed-apps-modules-and-am-itself)
-  - [How to create a snapshot of an installed application](#how-to-create-a-snapshot-of-an-installed-application)
-  - [How to restore an application using the already created snapshots](#how-to-restore-an-application-using-the-already-created-snapshots)
-  - [How to remove one or more applications](#how-to-remove-one-or-more-applications)
-  - [How to convert Type2 AppImages requiring libfuse2 to Type3 AppImages](#how-to-convert-type2-appimages-requiring-libfuse2-to-type3-appimages)
-  - [How to create launchers and shortcuts for my local AppImages](#how-to-create-launchers-and-shortcuts-for-my-local-appimages)
+  - [Install applications](#install-applications)
+  - [List the installed applications](#list-the-installed-applications)
+  - [List and query all the applications available on the database](#list-and-query-all-the-applications-available-on-the-database)
+  - [Update all](#update-all)
+  - [Backup and restore installed apps using snapshots](#backup-and-restore-installed-apps-using-snapshots)
+  - [Remove one or more applications](#remove-one-or-more-applications)
+  - [Convert Type2 AppImages requiring libfuse2 to Type3 AppImages](#convert-type2-appimages-requiring-libfuse2-to-type3-appimages)
+  - [Drag local AppImages to integrate them into the application menu](#drag-local-appimages-to-integrate-them-into-the-application-menu)
   - [How to use "AM" in non-privileged mode, like "AppMan"](#how-to-use-am-in-non-privileged-mode-like-appman)
-  - [How to sandbox an AppImage](#how-to-sandbox-an-appimage)
+  - [Sandbox an AppImage](#sandbox-an-appimage)
   - [How to enable bash completion](#how-to-enable-bash-completion)
   - [How to update or remove apps manually](#how-to-update-or-remove-apps-manually)
-  - [How to downgrade an installed app to a previous version](#how-to-downgrade-an-installed-app-to-a-previous-version)
+  - [Downgrade an installed app to a previous version](#downgrade-an-installed-app-to-a-previous-version)
   - [Create and test your own installation script](#create-and-test-your-own-installation-script)
     - [Option Zero: "AppImages"](#option-zero-appimages)
     - [Option One: "build AppImages on-the-fly"](#option-one-build-appimages-on-the-fly)
@@ -700,7 +713,7 @@ This section is committed to giving small demonstrations of each available optio
   - [Third-party databases for applications (NeoDB)](#third-party-databases-for-applications-neodb)
 
 __________________________________________________________________________
-### How to install applications
+### Install applications
 Option `-i` or `install`, usage:
 ```
 am -i $PROGRAM
@@ -721,7 +734,7 @@ https://github.com/ivan-hc/AM/assets/88724353/c2e8b654-29d3-4ded-8877-f77ef11d58
 ------------------------------------------------------------------------
 
 __________________________________________________________________________
-### How to list installed applications
+### List the installed applications
 Option `-f` or `files`, it shows the installed apps, the version, the size and the type of application:
 
 https://github.com/ivan-hc/AM/assets/88724353/a11ccb22-f2fa-491f-85dd-7f9440776a54
@@ -747,7 +760,7 @@ appman -f --less
 ------------------------------------------------------------------------
 
 __________________________________________________________________________
-### How to list and query all the applications available on the database
+### List and query all the applications available on the database
 Options `-l` or `list` shows the whole list of apps available in this repository.
 
 Option `-q` or `query` shows search results from the list above.
@@ -762,8 +775,8 @@ https://github.com/ivan-hc/AM/assets/88724353/2ac875df-5210-4d77-91d7-24c45eceaa
 ------------------------------------------------------------------------
 
 __________________________________________________________________________
-### How to update all installed apps, modules and "AM" itself
-Option `-u` or `update` updates all the installed apps and keeps "AM" in sync with the latest version and all latest bug fixes:
+### Update all
+Option `-u` or `update` updates all the installed apps and keeps "AM"/"AppMan" in sync with the latest version and all latest bug fixes:
 
 https://github.com/ivan-hc/AM/assets/88724353/f93ca782-2fc6-45a0-a3f2-1fba297a92bf
 
@@ -777,14 +790,16 @@ See "[How to update all programs, for real](#how-to-update-all-programs-for-real
 ------------------------------------------------------------------------
 
 __________________________________________________________________________
-### How to create a snapshot of an installed application
+### Backup and restore installed apps using snapshots
+
+#### Backup
 Option `-b` or `backup` creates a copy of the installed app into a dedicated directory under $HOME/.am-snapshots:
 
 https://github.com/ivan-hc/AM/assets/88724353/ae581bc0-f1c5-47da-a2c4-3d01c37cc5a4
 
-Each snapshot is named with the date and time you have done the backup. To restore the application to a previous version, copy/paste the name of the snapshot when the `-o` option will prompt it, see "[How to restore an application using the already created snapshots](#how-to-restore-an-application-using-the-already-created-snapshots)".
-__________________________________________________________________________
-### How to restore an application using the already created snapshots
+Each snapshot is named with the date and time you have done the backup. To restore the application to a previous version, copy/paste the name of the snapshot when the `-o` option will prompt it.
+
+#### Restore
 Option `-o` or `overwrite` lists all the snapshots you have created with the option `-o` (see above), and allows you to overwrite the new one:
 
 https://github.com/ivan-hc/AM/assets/88724353/f9904ad2-42ec-4fce-9b21-b6b0f8a99414
@@ -797,7 +812,7 @@ https://github.com/ivan-hc/AM/assets/88724353/f9904ad2-42ec-4fce-9b21-b6b0f8a994
 ------------------------------------------------------------------------
 
 __________________________________________________________________________
-### How to remove one or more applications
+### Remove one or more applications
 Option `-R` removes the selected apps without asking (to have a prompt, use `-r` or `remove`):
 
 https://github.com/ivan-hc/AM/assets/88724353/4d26d2d7-4476-4322-a0ab-a0a1ec14f751
@@ -810,7 +825,7 @@ https://github.com/ivan-hc/AM/assets/88724353/4d26d2d7-4476-4322-a0ab-a0a1ec14f7
 ------------------------------------------------------------------------
 
 __________________________________________________________________________
-### How to convert Type2 AppImages requiring libfuse2 to Type3 AppImages
+### Convert Type2 AppImages requiring libfuse2 to Type3 AppImages
 Option `nolibfuse` "just tries" to convert old Type2 AppImages asking for "libfuse2" into new Type3 AppImages:
 
 https://github.com/ivan-hc/AM/assets/88724353/06b8e946-ef02-4678-a5a0-d8c2c24c22f9
@@ -835,7 +850,7 @@ If also the second step does not succeed either, the process will end with an er
 ------------------------------------------------------------------------
 
 __________________________________________________________________________
-### How to create launchers and shortcuts for my local AppImages
+### Drag local AppImages to integrate them into the application menu
 If you are a user who is used to dragging your local AppImages scattered around the system and if you are a user who likes clutter and wants to place their packages in different places... this option is for you.
 
 The option `--launcher` allows you to drag and drop a local AppImage to create a launcher to place in the menu, like [AppImageLauncher](https://github.com/TheAssassin/AppImageLauncher) or [Gear Lever](https://github.com/mijorus/gearlever), or any other classic AppImage package helper would... but in SHELL.
@@ -879,7 +894,7 @@ Another peculiarity concerns the use of this cleanup option on launchers created
 ------------------------------------------------------------------------
 
 __________________________________________________________________________
-### How to sandbox an AppImage
+### Sandbox an AppImage
 Since version 5.3 you can use the `--sandbox` option to run AppImages using a sandbox, and since version 6.12 Firejails has been dropped in favour of "[Aisap](https://github.com/mgord9518/aisap)", a [Bubblewrap](https://github.com/containers/bubblewrap) frontend for AppImages.
 
 This method works as follows:
@@ -947,7 +962,7 @@ Inside each installed applications directory, there are two scripts called "AM-u
 - To remove an application instead, run the "remove" script (with "`sudo`" if you are an "AM" user).
 
 __________________________________________________________________________
-### How to downgrade an installed app to a previous version
+### Downgrade an installed app to a previous version
 Use the `--rollback` option or `downgrade` in this way:
 ```
 am --rollback ${PROGRAM}
@@ -1071,7 +1086,6 @@ For more details, see the full guide at https://github.com/ivan-hc/neodb
 - [Spyware, malware and dangerous software](#spyware-malware-and-dangerous-software)
 - [Stop AppImage prompt to create its own launcher, desktop integration and doubled launchers](#stop-appimage-prompt-to-create-its-own-launcher-desktop-integration-and-doubled-launchers)
 - [The script points to "releases" instead of downloading the latest stable](#the-script-points-to-releases-instead-of-downloading-the-latest-stable)
-- [Wget2 prevents me from downloading apps and modules](#wget2-prevents-me-from-downloading-apps-and-modules)
 - [Wrong download link](#wrong-download-link)
 
 ------------------------------------------------------------------------
@@ -1166,25 +1180,6 @@ or do it manually:
 sed -i 's#releases -O -#releases/latest -O -#g' /opt/$PROGRAM/AM-updater
 am -u $PROGRAM
 ```
-
-------------------------------------------------------------------------
-
-| [Back to "Troubleshooting"](#troubleshooting) | [Back to "Main Index"](#main-index) |
-| - | - |
-
-------------------------------------------------------------------------
-### Wget2 prevents me from downloading apps and modules
-With the arrival of Fedora 40 in April 2024, many users began to complain about the inability to download any application from github and the inability to update modules (see https://github.com/ivan-hc/AM/issues/496). This is because "wget" is no longer actively developed, and its successor "wget2" was not yet ready to take its place immediately. Yet the Fedora team decided to replace it anyway, causing quite a few problems for this project and many others that use api.github.com to function.
-
-Attempts to add patches to avoid having dependencies like `jq` added and to rewrite all the scripts to promptly adapt them to more versatile solutions were in vain.
-
-So I decided to host on this repository the "wget" binaries directly from Debian 12 (see [here](https://github.com/ivan-hc/AM/tree/main/tools/x86_64) and [here](https://github.com/ivan-hc/AM/tree/main/tools/aarch64)), and the installation scripts dedicated to them, for the [x86_64](https://github.com/ivan-hc/AM/blob/main/programs/x86_64/wget) and [aarch64](https://github.com/ivan-hc/AM/blob/main/programs/x86_64/wget) architectures and which use "wget2" to download the executable.
-
-Run the command
-```
-am -i wget
-```
-NOTE, the binary is called from a script in /usr/local/bin that runs "wget" with the "--no-check-certificate" option. It's not the best of solutions, but it's enough to suppress this shortcoming while the compatibility issue between wget and wget2 will not be completely resolved.
 
 ------------------------------------------------------------------------
 ### Wrong download link
