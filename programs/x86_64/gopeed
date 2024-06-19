@@ -1,0 +1,75 @@
+#!/bin/sh
+
+# AM INSTALL SCRIPT VERSION 3. 
+set -u
+APP=gopeed
+SITE="GopeedLab/gopeed"
+
+# CREATE DIRECTORIES AND ADD REMOVER
+[ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
+echo "#!/bin/sh\nset -e\nrm -f /usr/local/bin/$APP\nrm -R -f /opt/$APP" > "/opt/$APP/remove"
+echo "rm -f /usr/share/applications/AM-$APP.desktop" >> "/opt/$APP/remove"
+chmod a+x "/opt/$APP/remove"
+
+# DOWNLOAD AND PREPARE THE APP, $version is also used for updates
+version=$(curl -Ls https://api.github.com/repos/GopeedLab/gopeed/releases | jq '.' | grep browser_download_url | grep -i appimage | cut -d '"' -f 4 | head -1)
+wget "$version" || exit 1
+#wget "$version.zsync" 2> /dev/null # Comment out this line if you want to use zsync, warning that more often than not it is broken
+# Use tar fx ./*tar* here for example in this line in case a compressed file is downloaded.
+cd ..
+mv ./tmp/*mage ./"$APP"
+mv ./tmp/*.zsync ./"$APP".zsync 2>/dev/null
+rm -R -f ./tmp || exit 1
+echo "$version" > ./version
+chmod a+x "/opt/$APP/$APP" || exit 1
+
+# LINK TO PATH
+ln -s "/opt/$APP/$APP" "/usr/local/bin/$APP"
+
+# SCRIPT TO UPDATE THE PROGRAM
+cat >> "/opt/$APP/AM-updater" << 'EOF'
+#!/bin/sh
+set -u
+APP=gopeed
+SITE="GopeedLab/gopeed"
+version0=$(cat "/opt/$APP/version")
+version=$(curl -Ls https://api.github.com/repos/GopeedLab/gopeed/releases | jq '.' | grep browser_download_url | grep -i appimage | cut -d '"' -f 4 | head -1)
+[ -n "$version" ] || { echo "Error getting link"; exit 1; }
+if [ "$version" != "$version0" ] || [ -e /opt/"$APP"/*.zsync ]; then
+	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
+	[ -e /opt/"$APP"/*.zsync ] || notify-send "A new version of $APP is available, please wait"
+	[ -e /opt/"$APP"/*.zsync ] && wget "$version.zsync" 2>/dev/null || { wget "$version" || exit 1; }
+	# Use tar fx ./*tar* here for example in this line in case a compressed file is downloaded.
+	cd ..
+	mv ./tmp/*.zsync ./"$APP".zsync 2>/dev/null || mv --backup=t ./tmp/*mage ./"$APP"
+	[ -e /opt/"$APP"/*.zsync ] && { zsync "/opt/$APP/$APP.zsync" || notify-send -u critical "zsync failed to update $APP"; }
+	chmod a+x "/opt/$APP/$APP" || exit 1
+	echo "$version" > ./version
+	rm -R -f ./*zs-old ./*.part ./tmp ./*~
+	notify-send "$APP is updated!"
+	exit 0
+fi
+echo "Update not needed!"
+EOF
+chmod a+x "/opt/$APP/AM-updater"
+
+# LAUNCHER & ICON
+cd "/opt/$APP" || exit 1
+./"$APP" --appimage-extract *.desktop 1>/dev/null && mv ./squashfs-root/*.desktop ./"$APP".desktop
+./"$APP" --appimage-extract .DirIcon 1>/dev/null && mv ./squashfs-root/.DirIcon ./DirIcon
+COUNT=0
+while [ "$COUNT" -lt 10 ]; do # Tries to get the actual icon/desktop if it is a symlink to another symlink
+	if [ -L ./"$APP".desktop ]; then
+		LINKPATH=$(readlink ./"$APP".desktop)
+		./"$APP" --appimage-extract "$LINKPATH" && mv ./squashfs-root/"$LINKPATH" ./"$APP".desktop
+	fi
+	if [ -L ./DirIcon ]; then
+		LINKPATH=$(readlink ./DirIcon)
+		./"$APP" --appimage-extract "$LINKPATH" && mv ./squashfs-root/"$LINKPATH" ./DirIcon
+	fi
+	[ ! -L ./"$APP".desktop ] && [ ! -L ./DirIcon ] && break
+	COUNT=$((COUNT + 1))
+done
+sed -i "s#Exec=[^ ]*#Exec=$APP#g; s#Icon=.*#Icon=/opt/$APP/icons/$APP#g" ./"$APP".desktop
+mv ./"$APP".desktop /usr/share/applications/AM-"$APP".desktop && mv ./DirIcon ./icons/"$APP" 1>/dev/null
+rm -R -f ./squashfs-root

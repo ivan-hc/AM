@@ -999,7 +999,7 @@ The available options are as follows:
 2. Download and unpack a generic archive (ZIP, TAR...)
 3. Create a custom Firefox profile
 
-To learn more about a specific options, use the index below
+To learn more about a specific option, use the index below
 - [Option Zero: "AppImages"](#option-zero-appimages)
 - [Option One: "build AppImages on-the-fly"](#option-one-build-appimages-on-the-fly)
 - [Option Two: "Archives and other programs"](#option-two-archives-and-other-programs)
