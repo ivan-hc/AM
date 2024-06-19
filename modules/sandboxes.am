@@ -42,15 +42,14 @@ case "$1" in
 			echo " '$2' is not a valid argument or is not installed."; exit
 		elif [ "$2" = "aisap" ]; then
 			echo " Error: You can't sandbox aisap"; exit 1
-		elif ! command -v am 1>/dev/null && ! command -v appman 1>/dev/null; then
-			echo -e " Error: You need AM or AppMan for this script work\nInstall AM/AppMan and try again"; exit 1
 		elif ! command -v aisap 1>/dev/null; then
-			echo -e " Error: You need aisap for this script work\n"
-			read -p " ◆ DO YOU WISH TO INSTALL AISAP (y,n)?: " yn
-			if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
-				$AMCLIPATH -i aisap >/dev/null 2>&1
+			printf '\n%s\n\n' " Error: You need aisap for this script work"
+			read -p " ◆ DO YOU WISH TO INSTALL AISAP? Install size <5 MIB, (Y/n)?: " yn
+			if echo "$yn" | grep -i '^n' >/dev/null 2>&1; then
+				printf '\n%s\n\n' "Installation aborted"; exit 1
 			fi
-			command -v aisap 1>/dev/null && echo " aisap installed successfully" || exit 1
+			$AMCLIPATH -i aisap >/dev/null 2>&1
+			command -v aisap 1>/dev/null && printf '\n%s\n\n' " aisap installed successfully" || exit 1
 		fi
 
 		# Set variables
@@ -76,7 +75,7 @@ case "$1" in
 		sed -i 's|chmod a+x|chmod a-x|g' "$APPIMAGEPATH/AM-updater" || exit 1
 
 		# Check if we are using AM or AppMan
-		echo -e "\n Making aisap script for \"$(echo "$AMCLI" | tr a-z A-Z)\"..."
+		printf '\n%s\n' " Making aisap script for \"$(echo "$AMCLI" | tr a-z A-Z)\"..."
 
 		mkdir -p "$AMCACHEDIR/sandbox-scripts"
 		cat <<-"HEREDOC" >> "$AMCACHEDIR/sandbox-scripts/$2"
@@ -114,14 +113,14 @@ case "$1" in
 		mkdir -p "$SANDBOXDIR/$APPNAME"
 		if [ "$1" = "--disable-sandbox" ]; then
 			APPIMAGEPATH="$(echo ${APPEXEC%/*})"
-			echo "\n Giving exec permissions back to $APPEXEC..."
+			printf '\n%s' " Giving exec permissions back to $APPEXEC..."
 			chmod a+x "$APPEXEC" || exit 1
-			echo " Patching $APPIMAGEPATH/AM-updater to give permissions back..."
+			printf '\n%s' " Patching $APPIMAGEPATH/AM-updater to give permissions back..."
 			sed -i 's|chmod a-x|chmod a+x|g' "$APPIMAGEPATH/AM-updater" || exit 1
 			THISFILE="$(realpath "$0")"
-			echo " Replacing $THISFILE with a link to the AppImage...\n"
+			printf '\n%s\n' " Replacing $THISFILE with a link to the AppImage..."
 			SUDO ln -sf "$APPEXEC" "$THISFILE" || exit 1
-			echo " \033[32m$APPEXEC successfully unsandboxed!\n"
+			printf '\033[32m\n%s\n\n' " $APPEXEC successfully unsandboxed!"
 			exit 0
 		fi
 		if [ -z "$APPNAME" ]; then exit 1; fi
@@ -158,12 +157,13 @@ case "$1" in
 		HEREDOC
 		$SUDOCOMMAND mv "$AMCACHEDIR/sandbox-scripts/$2" "$TARGET" && rmdir "$AMCACHEDIR/sandbox-scripts" || exit 1
 		$SUDOCOMMAND chmod a+x "$TARGET" && $SUDOCOMMAND sed -i "s|DUMMY|$APPIMAGE|g; s|SUDO |$SUDOCOMMAND |g" "$TARGET" || exit 1
-		echo -e "\n \033[33m\"$2\" successfully sandboxed!"
-		echo -e "\n \033[0mThe sandboxed app home will be in "${SANDBOXDIR:-$HOME/.local/am-sandboxes}" once launched"
-		echo -e "\n This location can be moved by setting the 'SANDBOXDIR' env variable"
-		echo -e "\n --------------------------------------------------------------------------"
-		echo -e "\n \033[33mUse the --disable-sandbox flag if you want to revert the changes"
-		echo -e "\n \033[0mIn this case that is: \033[33m$2 --disable-sandbox\n\033[36m"
+		printf '\n\033[33m%s\n' " \"$2\" successfully sandboxed!"
+		printf '\n\033[0m%s\n' " The sandboxed app home will be in "${SANDBOXDIR:-$HOME/.local/am-sandboxes}" once launched"
+		printf '\n%s\n' " This location can be moved by setting the 'SANDBOXDIR' env variable"
+		printf '\n%s\n' " --------------------------------------------------------------------------"
+		printf '\n\033[33m%s\n' " Use the --disable-sandbox flag if you want to revert the changes"
+		printf '\n\033[0m%s' " In this case that is:"
+		printf '\033[33m%s\033[36m\n\n' " $2 --disable-sandbox"
 		read -p " Allow $2 access to ~/Downloads? (y/N): " yn
 		if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
 			$SUDOCOMMAND sed -i 's|--rm-file "${XDG_DOWNLOAD_DIR:-~/Downloads}"|--add-file "${XDG_DOWNLOAD_DIR:-~/Downloads}":rw|g' "$TARGET" || exit 1
@@ -184,7 +184,7 @@ case "$1" in
 		if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
 			$SUDOCOMMAND sed -i 's|--rm-file "${XDG_VIDEOS_DIR:-~/Videos}"|--add-file "${XDG_VIDEOS_DIR:-~/Videos}":rw|g' "$TARGET" || exit 1
 		fi
-		echo -e "\n \033[33mUser directories access configured successfully!"
+		printf '\n\033[33m%s\n\n' " User directories access configured successfully!"
 		exit 0
 	done
 
