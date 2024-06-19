@@ -52,6 +52,7 @@ You can consult the entire **list of managed apps** at [**portable-linux-apps.gi
   - [Option Two: "Archives and other programs"](#option-two-archives-and-other-programs)
   - [Option Three: "Firefox profiles"](#option-three-firefox-profiles)
   - [How an installation script works](#how-an-installation-script-works)
+  - [How to test an installation script](#how-to-test-an-installation-script)
 - [Third-party databases for applications (NeoDB)](#third-party-databases-for-applications-neodb)
 
 [Troubleshooting](#troubleshooting)
@@ -710,6 +711,7 @@ This section is committed to giving small demonstrations of each available optio
     - [Option Two: "Archives and other programs"](#option-two-archives-and-other-programs)
     - [Option Three: "Firefox profiles"](#option-three-firefox-profiles)
     - [How an installation script works](#how-an-installation-script-works)
+    - [How to test an installation script](#how-to-test-an-installation-script)
   - [Third-party databases for applications (NeoDB)](#third-party-databases-for-applications-neodb)
 
 __________________________________________________________________________
@@ -980,7 +982,9 @@ https://github.com/ivan-hc/AM/assets/88724353/8f286711-7934-461a-8bc2-b3a3e1d5f2
 
 __________________________________________________________________________
 ### Create and test your own installation script
-"AM"/"AppMan" has an option `-t` or `template` with which you can get a script to customize according to your needs.
+Option `-t` or `template` allows you to create an "AM" compatible installation script using a "[templates](https://github.com/ivan-hc/AM/tree/main/templates)" that can be used by both "AM" and "AppMan". In fact, all AppMan does is take the installation scripts from this database and patch them to make them compatible with a rootless installation.
+
+The syntax to follow is this
 ```
 am -t $PROGRAM
 ```
@@ -995,11 +999,17 @@ The available options are as follows:
 2. Download and unpack a generic archive (ZIP, TAR...)
 3. Create a custom Firefox profile
 
+To learn more about a specific options, use the index below
+- [Option Zero: "AppImages"](#option-zero-appimages)
+- [Option One: "build AppImages on-the-fly"](#option-one-build-appimages-on-the-fly)
+- [Option Two: "Archives and other programs"](#option-two-archives-and-other-programs)
+- [Option Three: "Firefox profiles"](#option-three-firefox-profiles)
+
+Otherwise, go directly to the last paragraphs, which are
+- [How an installation script works](#how-an-installation-script-works)
+- [How to test an installation script](#how-to-test-an-installation-script)
+
 ![Istantanea_2024-06-17_21-35-26 png](https://github.com/ivan-hc/AM/assets/88724353/6e11aeff-9a70-44f7-bd73-1324b545704e)
-
-The currently available templates are stored [here](https://github.com/ivan-hc/AM/tree/main/templates).
-
-Now let's analyze the available options.
 
 #### Option Zero: "AppImages"
 The easiest script to create is certainly the one relating to AppImages, the "Zero" option.
@@ -1050,6 +1060,7 @@ The structure of an installation script is designed for a system-wide installati
 7. Create the "AM-updater" file, the script used to update the app. It resumes points 4, 5 and 6, with the difference that the "$version" variable we have saved at point 5 is compared with a new value, hosted at the app's source;
 8. Creation/extract/download launcher and icon, the methods change depending on the type of application. For AppImages they are extracted from the package.
 
+#### How to test an installation script
 To install and test your script, use the command
 ```
 am -i /path/to/your-script
