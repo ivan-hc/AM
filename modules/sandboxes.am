@@ -113,13 +113,13 @@ case "$1" in
 		mkdir -p "$SANDBOXDIR/$APPNAME"
 		if [ "$1" = "--disable-sandbox" ]; then
 			APPIMAGEPATH="$(echo ${APPEXEC%/*})"
+			THISFILE="$(realpath "$0")"
+			SUDO ln -sf "$APPEXEC" "$THISFILE" || exit 1
 			printf '\n%s' " Giving exec permissions back to $APPEXEC..."
 			chmod a+x "$APPEXEC" || exit 1
 			printf '\n%s' " Patching $APPIMAGEPATH/AM-updater to give permissions back..."
 			sed -i 's|chmod a-x|chmod a+x|g' "$APPIMAGEPATH/AM-updater" || exit 1
-			THISFILE="$(realpath "$0")"
 			printf '\n%s\n' " Replacing $THISFILE with a link to the AppImage..."
-			SUDO ln -sf "$APPEXEC" "$THISFILE" || exit 1
 			printf '\033[32m\n%s\n\n' " $APPEXEC successfully unsandboxed!"
 			exit 0
 		fi
@@ -196,8 +196,8 @@ case "$1" in
 		"$APPEXEC" "$@"
 		HEREDOC
 
+		chmod a+x "$AMCACHEDIR/sandbox-scripts/$2" && sed -i "s|DUMMY|$APPIMAGE|g; s|SUDO |$SUDOCOMMAND |g" "$AMCACHEDIR/sandbox-scripts/$2" || exit 1
 		$SUDOCOMMAND mv "$AMCACHEDIR/sandbox-scripts/$2" "$TARGET" && rmdir "$AMCACHEDIR/sandbox-scripts" || exit 1
-		$SUDOCOMMAND chmod a+x "$TARGET" && $SUDOCOMMAND sed -i "s|DUMMY|$APPIMAGE|g; s|SUDO |$SUDOCOMMAND |g" "$TARGET" || exit 1
 
 		printf '\n\033[33m%s\n\n' " User directories access configured successfully!"
 		exit 0
