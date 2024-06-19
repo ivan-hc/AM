@@ -62,6 +62,12 @@ case "$1" in
 		APPIMAGEPATH="$APPSPATH/$2"
 		APPIMAGE="$APPIMAGEPATH/$2"
 
+		XDG_DOCUMENTS_DIR="$(xdg-user-dir DOCUMENTS 2>/dev/null)"
+		XDG_DOWNLOAD_DIR="$(xdg-user-dir DOWNLOAD 2>/dev/null)"
+		XDG_MUSIC_DIR="$(xdg-user-dir MUSIC 2>/dev/null)"
+		XDG_PICTURES_DIR="$(xdg-user-dir PICTURES 2>/dev/null)"
+		XDG_VIDEOS_DIR="$(xdg-user-dir VIDEOS 2>/dev/null)"
+
 		# Check if TARGET is an AppImage or was already sandboxed
 		if grep "aisap-am" "$TARGET" >/dev/null 2>&1; then
 			echo " $2 is already sandboxed!"; exit 1
@@ -99,12 +105,6 @@ case "$1" in
 		DATADIR="${XDG_DATA_HOME:-$HOME/.local/share}"
 		CONFIGDIR="${XDG_CONFIG_HOME:-$HOME/.config}"
 		CACHEDIR="${XDG_CACHE_HOME:-$HOME/.cache}"
-		
-		XDG_DOWNLOAD_DIR="$(xdg-user-dir DOWNLOAD 2>/dev/null)"
-		XDG_MUSIC_DIR="$(xdg-user-dir MUSIC 2>/dev/null)"
-		XDG_PICTURES_DIR="$(xdg-user-dir PICTURES 2>/dev/null)"
-		XDG_VIDEOS_DIR="$(xdg-user-dir VIDEOS 2>/dev/null)"
-		XDG_DOCUMENTS_DIR="$(xdg-user-dir DOCUMENTS 2>/dev/null)"
 
 		# Try to find the right name of the app xdg directories, as sometimes it is not the same as $APPNAME
 		APPDATA=$( ls "$DATADIR" | grep -i "$APPNAME" | head -1 )
@@ -142,11 +142,51 @@ case "$1" in
 		--add-file "$CONFIGDIR"/Kvantum \
 		--add-file "$HOME"/.local/lib \
 		--add-file /usr/share \
-		--rm-file "${XDG_DOWNLOAD_DIR:-~/Downloads}" \
-		--rm-file "${XDG_MUSIC_DIR:-~/Music}" \
-		--rm-file "${XDG_PICTURES_DIR:-~/Pictures}" \
-		--rm-file "${XDG_VIDEOS_DIR:-~/Videos}" \
-		--rm-file "${XDG_DOCUMENTS_DIR:-~/Documents}" \
+		HEREDOC
+		printf '\n\033[33m%s\n' " \"$2\" successfully sandboxed!"
+		printf '\n\033[0m%s\n' " The sandboxed app home will be in "${SANDBOXDIR:-$HOME/.local/am-sandboxes}" once launched"
+		printf '\n%s\n' " This location can be moved by setting the 'SANDBOXDIR' env variable"
+		printf '\n%s\n' " --------------------------------------------------------------------------"
+		printf '\n\033[33m%s\n' " Use the --disable-sandbox flag if you want to revert the changes"
+		printf '\n\033[0m%s' " In this case that is:"
+		printf '\033[33m%s\033[36m\n\n' " $2 --disable-sandbox"
+
+		read -p " Allow $2 access to $XDG_DOCUMENTS_DIR? (y/N): " yn
+		if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
+			cat <<-HEREDOC >> "$AMCACHEDIR/sandbox-scripts/$2"
+			--add-file "$XDG_DOCUMENTS_DIR":rw \\
+			HEREDOC
+		fi
+
+		read -p " Allow $2 access to $XDG_DOWNLOAD_DIR? (y/N): " yn
+		if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
+			cat <<-HEREDOC >> "$AMCACHEDIR/sandbox-scripts/$2"
+			--add-file "$XDG_DOWNLOAD_DIR":rw \\
+			HEREDOC
+		fi
+
+		read -p " Allow $2 access to $XDG_MUSIC_DIR? (y/N): " yn
+		if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
+			cat <<-HEREDOC >> "$AMCACHEDIR/sandbox-scripts/$2"
+			--add-file "$XDG_MUSIC_DIR":rw \\
+			HEREDOC
+		fi
+
+		read -p " Allow $2 access to $XDG_PICTURES_DIR? (y/N): " yn
+		if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
+			cat <<-HEREDOC >> "$AMCACHEDIR/sandbox-scripts/$2"
+			--add-file "$XDG_PICTURES_DIR":rw \\
+			HEREDOC
+		fi
+
+		read -p " Allow $2 access to $XDG_VIDEOS_DIR? (y/N): " yn
+		if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
+			cat <<-HEREDOC >> "$AMCACHEDIR/sandbox-scripts/$2"
+			--add-file "$XDG_VIDEOS_DIR":rw \\
+			HEREDOC
+		fi
+
+		cat <<-"HEREDOC" >> "$AMCACHEDIR/sandbox-scripts/$2"
 		--add-socket dbus \
 		--add-socket x11 \
 		--add-socket wayland \
@@ -155,35 +195,10 @@ case "$1" in
 		--add-device dri -- \
 		"$APPEXEC" "$@"
 		HEREDOC
+
 		$SUDOCOMMAND mv "$AMCACHEDIR/sandbox-scripts/$2" "$TARGET" && rmdir "$AMCACHEDIR/sandbox-scripts" || exit 1
 		$SUDOCOMMAND chmod a+x "$TARGET" && $SUDOCOMMAND sed -i "s|DUMMY|$APPIMAGE|g; s|SUDO |$SUDOCOMMAND |g" "$TARGET" || exit 1
-		printf '\n\033[33m%s\n' " \"$2\" successfully sandboxed!"
-		printf '\n\033[0m%s\n' " The sandboxed app home will be in "${SANDBOXDIR:-$HOME/.local/am-sandboxes}" once launched"
-		printf '\n%s\n' " This location can be moved by setting the 'SANDBOXDIR' env variable"
-		printf '\n%s\n' " --------------------------------------------------------------------------"
-		printf '\n\033[33m%s\n' " Use the --disable-sandbox flag if you want to revert the changes"
-		printf '\n\033[0m%s' " In this case that is:"
-		printf '\033[33m%s\033[36m\n\n' " $2 --disable-sandbox"
-		read -p " Allow $2 access to ~/Downloads? (y/N): " yn
-		if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
-			$SUDOCOMMAND sed -i 's|--rm-file "${XDG_DOWNLOAD_DIR:-~/Downloads}"|--add-file "${XDG_DOWNLOAD_DIR:-~/Downloads}":rw|g' "$TARGET" || exit 1
-		fi
-		read -p " Allow $2 access to ~/Documents? (y/N): " yn
-		if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
-			$SUDOCOMMAND sed -i 's|--rm-file "${XDG_DOCUMENTS_DIR:-~/Documents}"|--add-file "${XDG_DOCUMENTS_DIR:-~/Documents}":rw|g' "$TARGET" || exit 1
-		fi
-		read -p " Allow $2 access to ~/Music (y/N): " yn
-		if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
-			$SUDOCOMMAND sed -i 's|--rm-file "${XDG_MUSIC_DIR:-~/Music}"|--add-file "${XDG_MUSIC_DIR:-~/Music}":rw|g' "$TARGET" || exit 1
-		fi
-		read -p " Allow $2 access to ~/Pictures (y/N): " yn
-		if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
-			$SUDOCOMMAND sed -i 's|--rm-file "${XDG_PICTURES_DIR:-~/Pictures}"|--add-file "${XDG_PICTURES_DIR:-~/Pictures}":rw|g' "$TARGET" || exit 1
-		fi
-		read -p " Allow $2 access to ~/Videos (y/N): " yn
-		if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
-			$SUDOCOMMAND sed -i 's|--rm-file "${XDG_VIDEOS_DIR:-~/Videos}"|--add-file "${XDG_VIDEOS_DIR:-~/Videos}":rw|g' "$TARGET" || exit 1
-		fi
+
 		printf '\n\033[33m%s\n\n' " User directories access configured successfully!"
 		exit 0
 	done
