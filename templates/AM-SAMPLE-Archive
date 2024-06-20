@@ -1,66 +1,61 @@
 #!/bin/sh
 
+# AM INSTALL SCRIPT VERSION 3. 
+set -u
 APP=SAMPLE
 SITE="REPLACETHIS"
 
-# CREATE THE FOLDER
-mkdir /opt/$APP
-cd /opt/$APP
+# CREATE DIRECTORIES AND ADD REMOVER
+[ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
+echo "#!/bin/sh\nset -e\nrm -f /usr/local/bin/$APP\nrm -R -f /opt/$APP" > "/opt/$APP/remove"
+#echo "rm -f /usr/share/applications/AM-$APP.desktop" >> "/opt/$APP/remove"
+chmod a+x "/opt/$APP/remove"
 
-# ADD THE REMOVER
-echo '#!/bin/sh' >> /opt/$APP/remove
-echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
-chmod a+x /opt/$APP/remove
-
-# DOWNLOAD THE ARCHIVE
-mkdir tmp
-cd ./tmp
-
-version=$(THISISTHEURL)
-wget $version
-echo "$version" >> /opt/$APP/version
-FUNCTION1
+# DOWNLOAD AND PREPARE THE APP, $version is also used for updates
+version=$(FUNCTION)
+wget "$version" || exit 1
+[ -e ./*tar* ] && tar fx ./*tar* && rm -f ./*tar*
+[ -e ./*zip ] && unzip ./*zip 1>/dev/null && rm -f ./*zip
 cd ..
-FUNCTION2
-rm -R -f ./tmp
+mv ./tmp/* ./
+rm -R -f ./tmp || exit 1
+echo "$version" > ./version
+chmod a+x "/opt/$APP/$APP" || exit 1
 
-# LINK
-ln -s /opt/$APP/$APP /usr/local/bin/$APP
+# LINK TO PATH
+ln -s "/opt/$APP/$APP" "/usr/local/bin/$APP"
 
 # SCRIPT TO UPDATE THE PROGRAM
-cat >> /opt/$APP/AM-updater << 'EOF'
-#!/usr/bin/env bash
+cat >> "/opt/$APP/AM-updater" << 'EOF'
+#!/bin/sh
+set -u
 APP=SAMPLE
-version0=$(cat /opt/$APP/version)
-version=$(THISISTHEURL)
-if [ $version = $version0 ]; then
-	echo "Update not needed!"
-else
+SITE="REPLACETHIS"
+version0=$(cat "/opt/$APP/version")
+version=$(FUNCTION)
+[ -n "$version" ] || { echo "Error getting link"; exit 1; }
+if [ "$version" != "$version0" ]; then
+	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
 	notify-send "A new version of $APP is available, please wait"
-	mkdir /opt/$APP/tmp
-	cd /opt/$APP/tmp
-	wget $version
-	FUNCTION1
+	wget "$version" || exit 1
+	[ -e ./*tar* ] && tar fx ./*tar* && rm -f ./*tar*
+	[ -e ./*zip ] && unzip ./*zip 1>/dev/null && rm -f ./*zip
 	cd ..
-	FUNCTION2
-	rm ./version
-	echo $version >> ./version
+	mv --backup=t ./tmp/* ./
+	chmod a+x "/opt/$APP/$APP" || exit 1
+	echo "$version" > ./version
 	rm -R -f ./tmp ./*~
 	notify-send "$APP is updated!"
+	exit 0
 fi
+echo "Update not needed!"
 EOF
-chmod a+x /opt/$APP/AM-updater
+chmod a+x "/opt/$APP/AM-updater"
 
-# ICON
-mkdir icons
-wget ICONURL -O ./icons/$APP 2> /dev/null
-
-# LAUNCHER
-rm -f /usr/share/applications/AM-$APP.desktop
-echo "[Desktop Entry]
-Name=APPNAME
-Exec=$APP
-Icon=/opt/$APP/icons/$APP
-Type=Application
-Terminal=false
-Categories=YOURCATEGORY;" >> /usr/share/applications/AM-$APP.desktop
+# LAUNCHER & ICON. Remove this if the app doesn't have them
+cd "/opt/$APP" || exit 1
+DESKTOP=$(FUNCTION)
+ICON=$(FUNCTION)
+wget -q "$DESKTOP" -O ./"$APP".desktop && wget -q "$ICON" -O ./"$APP".svg
+sed -i "s#Exec=[^ ]*#Exec=$APP#g; s#Icon=.*#Icon=/opt/$APP/icons/$APP#g" ./"$APP".desktop
+mv ./"$APP".desktop /usr/share/applications/AM-"$APP".desktop && mv ./"$APP".svg ./icons/"$APP" 2>/dev/null
