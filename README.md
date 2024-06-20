@@ -40,7 +40,10 @@ You can consult the entire **list of managed apps** at [**portable-linux-apps.gi
 - [Backup and restore installed apps using snapshots](#backup-and-restore-installed-apps-using-snapshots)
 - [Remove one or more applications](#remove-one-or-more-applications)
 - [Convert Type2 AppImages requiring libfuse2 to Type3 AppImages](#convert-type2-appimages-requiring-libfuse2-to-type3-appimages)
-- [Integrate local AppImages into the menu by dragging and dropping them, as you do with AppImageLauncher](#integrate-local-appimages-into-the-menu-by-dragging-and-dropping-them-as-you-do-with-appimagelauncher)
+- [Integrate local AppImages into the menu by dragging and dropping them](#integrate-local-appimages-into-the-menu-by-dragging-and-dropping-them)
+  - [How to create a launcher for a local AppImage](#how-to-create-a-launcher-for-a-local-appimage)
+  - [How to remove the orphan launchers](#how-to-remove-the-orphan-launchers)
+  - [AppImages from external media](#appimages-from-external-media)
 - [How to use "AM" in non-privileged mode, like "AppMan"](#how-to-use-am-in-non-privileged-mode-like-appman)
 - [Sandbox an AppImage](#sandbox-an-appimage)
 - [How to enable bash completion](#how-to-enable-bash-completion)
@@ -699,7 +702,10 @@ This section is committed to giving small demonstrations of each available optio
   - [Backup and restore installed apps using snapshots](#backup-and-restore-installed-apps-using-snapshots)
   - [Remove one or more applications](#remove-one-or-more-applications)
   - [Convert Type2 AppImages requiring libfuse2 to Type3 AppImages](#convert-type2-appimages-requiring-libfuse2-to-type3-appimages)
-  - [Integrate local AppImages into the menu by dragging and dropping them, as you do with AppImageLauncher](#integrate-local-appimages-into-the-menu-by-dragging-and-dropping-them-as-you-do-with-appimagelauncher)
+  - [Integrate local AppImages into the menu by dragging and dropping them](#integrate-local-appimages-into-the-menu-by-dragging-and-dropping-them)
+    - [How to create a launcher for a local AppImage](#how-to-create-a-launcher-for-a-local-appimage)
+    - [How to remove the orphan launchers](#how-to-remove-the-orphan-launchers)
+    - [AppImages from external media](#appimages-from-external-media)
   - [How to use "AM" in non-privileged mode, like "AppMan"](#how-to-use-am-in-non-privileged-mode-like-appman)
   - [Sandbox an AppImage](#sandbox-an-appimage)
   - [How to enable bash completion](#how-to-enable-bash-completion)
@@ -852,11 +858,16 @@ If also the second step does not succeed either, the process will end with an er
 ------------------------------------------------------------------------
 
 __________________________________________________________________________
-### Integrate local AppImages into the menu by dragging and dropping them, as you do with AppImageLauncher
+### Integrate local AppImages into the menu by dragging and dropping them
 If you are a user who is used to dragging your local AppImages scattered around the system and if you are a user who likes clutter and wants to place their packages in different places... this option is for you.
 
-The option `--launcher` allows you to drag and drop a local AppImage to create a launcher to place in the menu, like [AppImageLauncher](https://github.com/TheAssassin/AppImageLauncher) or [Gear Lever](https://github.com/mijorus/gearlever), or any other classic AppImage package helper would... but in SHELL.
+The option `--launcher` allows you to drag and drop a local AppImage to create a launcher to place in the menu, like any other classic AppImage helper would... but in SHELL.
 
+This option also allows you to create a symbolic link or a shell script that calls your AppImage, to place in "`~/.local/bin`", so that you can call it from the terminal:
+- if you choose Y or ENTER, you can choose the name to use in $PATH
+- if you choose N, the option will take care of the name to give to a script with ".appimage" extension (in lower case)
+
+##### How to create a launcher for a local AppImage
 ```
 am --launcher /path/to/File.AppImage
 ```
@@ -864,15 +875,7 @@ or
 ```
 appman --launcher /path/to/File.AppImage
 ```
-
-https://github.com/ivan-hc/AM/assets/88724353/97c2b88d-f330-490c-970b-0f0bb89040dc
-
-As you can see in detail, all you need to do is drag/drop the AppImage package and press ENTER.
-
-This option also allows you to create a symbolic link or shell script that calls your AppImage, to place in "`~/.local/bin`":
-- if you choose Y or ENTER, you can choose the name to use in $PATH
-- if you choose N, the option will take care of the name to give to a script with ".appimage" extension (in lower case)
-
+##### How to remove the orphan launchers
 In case you move your AppImages somewhere else or remove them, use the following otion `-c` or `clean` to get rid of all the orphaned launchers and dead symlinks and scripts you created earlier:
 ```
 am -c
@@ -881,12 +884,20 @@ or
 ```
 appman -c
 ```
+In the first video it shows three AppImages first positioned in one directory and then moved to another, in order to show you both how launchers are created (option "`--launcher`") and how to remove them (option "`-c`" , started first with the AppImage packages in the starting directory and then with the aforementioned moved elsewhere). The second video is a close-up on the terminal, to see in detail how the "`--launcher`" option works:
 
+##### Video 1
 https://github.com/ivan-hc/AM/assets/88724353/25d9df2b-3c4d-4494-8bbc-12e6ab2371fd
 
-NOTE, as you can see, icons are also placed in ~/.local/share/icons, however the `-c` option cannot remove them. This is a known issue.
+##### Video 2
+https://github.com/ivan-hc/AM/assets/88724353/97c2b88d-f330-490c-970b-0f0bb89040dc
 
-Another peculiarity concerns the use of this cleanup option on launchers created on AppImage packages placed on removable devices: if in the .desktop file it appears that the path of the AppImage file is in /mnt or /media and none of the references are mounted, the option `-c` will not be able to remove the launcher. This is very useful if you have large AppImage packages that you necessarily need to place in a different partition.
+##### AppImages from external media
+Another peculiarity concerns the use of the `-c` option on launchers created on AppImage packages placed on removable devices:
+- if in the .desktop file belongs to an AppImage placed in /mnt or /media and none of the references are mounted, the option `-c` will not be able to remove it until you mount the exact device where it was placed in the moment you have created the launcher;
+- if you mount that same device and the AppImage is not where it was when you created the launcher, it will be removed.
+
+This is very useful if you have large AppImage packages that you necessarily need to place in a different partition.
 
 ------------------------------------------------------------------------
 
@@ -1032,17 +1043,15 @@ https://github.com/ivan-hc/AM/assets/88724353/b6513e8a-17ab-4671-baf7-d86183d57c
 #### Option One: "build AppImages on-the-fly"
 This was one of the very first approaches used to create this project. Before I started building AppImage packages myself, they were first compiled just like using any AUR-helper.
 
-The syntax seems simple, but you have to know what you're building. You'll need to decide what kind of AppImage you want to build on the fly, whether to include a custom AppRun, "libunionpreload", and detect system libraries. It will be used as the Debian base, but you can manually modify the script to suit your needs.
+The syntax seems simple, but you have to know what you're building.
 
-https://github.com/ivan-hc/AM/assets/88724353/db516c23-9b9a-4287-9cdd-d6a153065c8b
+You'll need to decide what kind of AppImage you want to build on the fly, whether to include a custom AppRun, "libunionpreload", and detect system libraries.
 
-I took "Abiword" as an example because it is something I have already experienced in the past.
+It will be used as the Debian base, but you can manually modify the script to suit your needs.
 
-In the following video you see how option 1 (formerly option 5) is able to create AppImage packages on the fly (here "Abiword" from Debian Unstable), like an AUR compiler would:
+In this example I'll create the script for Abiword with "AM" and I'll install it using AppMan:
 
-https://user-images.githubusercontent.com/88724353/150619523-a45455f6-a656-4753-93fe-aa99babc1083.mp4
-
-NOTE, the video above is from before Type3 AppImages were used, the ones that do not require "libfuse2". Encountering "Appstream" errors is very common.
+https://github.com/ivan-hc/AM/assets/88724353/6ae38787-e0e5-4b63-b020-c89c1e975ddd
 
 #### Option Two: "Archives and other programs"
 Option two is very similar to option zero. What changes is the number of questions, which allow you to customize both the application's .desktop file and the way a program should be extracted.
