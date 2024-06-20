@@ -1,23 +1,17 @@
 #!/bin/sh
 
+set -u
 APP=SAMPLE
  
-# CREATING THE FOLDER
-mkdir /opt/$APP
-cd /opt/$APP;
-
-# ADD THE REMOVER
-echo '#!/bin/sh' >> /opt/$APP/remove
-echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
-chmod a+x /opt/$APP/remove
-
-mkdir tmp;
-cd tmp;
+# CREATE DIRECTORIES AND ADD REMOVER
+[ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
+echo "#!/bin/sh\nset -e\nrm -f /usr/local/bin/$APP\nrm -R -f /opt/$APP" > "/opt/$APP/remove"
+echo "rm -f /usr/share/applications/AM-$APP.desktop" >> "/opt/$APP/remove"
+chmod a+x "/opt/$APP/remove"
 
 # DOWNLOADING THE DEPENDENCIES
-wget -q $(curl -Ls https://api.github.com/repos/probonopd/go-appimage/releases | grep -v zsync | grep -i continuous | grep -i appimagetool | grep -i "$(uname -m)" | grep browser_download_url | cut -d '"' -f 4 | head -1) -O appimagetool
-wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/tools/pkg2appimage # 64 BIT ONLY (comment to disable)
-# wget https://github.com/ivan-hc/pkg2appimage-32bit/releases/download/continuous/pkg2appimage-i386.AppImage -O pkg2appimage # 32 BIT ONLY (uncomment to enable)
+wget -q "$(curl -Ls https://api.github.com/repos/probonopd/go-appimage/releases | grep -v zsync | grep -i continuous | grep -i appimagetool | grep -i "$(uname -m)" | grep browser_download_url | cut -d '"' -f 4 | head -1)" -O appimagetool
+wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/tools/pkg2appimage
 chmod a+x ./appimagetool ./pkg2appimage
 
 # CREATING THE APPIMAGE: APPDIR FROM A RECIPE...
@@ -25,18 +19,18 @@ echo "app: SAMPLE
 binpatch: true
 
 ingredients:
-  dist: oldstable
-  sources:
-    - deb http://deb.debian.org/debian/ oldstable main contrib non-free
-    - deb http://deb.debian.org/debian-security/ oldstable-security main contrib non-free
-    - deb http://deb.debian.org/debian oldstable-updates main contrib non-free
-    - deb http://deb.debian.org/debian oldstable-backports main contrib non-free
-  packages:
-    - SAMPLE" >> recipe.yml;
+	dist: oldstable
+	sources:
+		- deb http://deb.debian.org/debian/ oldstable main contrib non-free
+		- deb http://deb.debian.org/debian-security/ oldstable-security main contrib non-free
+		- deb http://deb.debian.org/debian oldstable-updates main contrib non-free
+		- deb http://deb.debian.org/debian oldstable-backports main contrib non-free
+	packages:
+		- SAMPLE" >> recipe.yml
 
-cp /opt/$APP/tmp/recipe.yml /opt/$APP/recipe.yml
+cp /opt/"$APP"/tmp/recipe.yml /opt/"$APP"/recipe.yml
 
-./pkg2appimage ./recipe.yml;
+./pkg2appimage ./recipe.yml
 
 # ...DOWNLOADING LIBUNIONPRELOAD...
 #wget https://github.com/project-portable/libunionpreload/releases/download/amd64/libunionpreload.so
@@ -44,7 +38,7 @@ cp /opt/$APP/tmp/recipe.yml /opt/$APP/recipe.yml
 #mv ./libunionpreload.so ./$APP/$APP.AppDir/
 
 # ...REPLACING THE EXISTING APPRUN WITH A CUSTOM ONE...
-rm -R -f ./$APP/$APP.AppDir/AppRun
+rm -R -f ./"$APP"/"$APP".AppDir/AppRun
 cat > AppRun << 'EOF'
 #!/bin/sh
 APP=SAMPLE
@@ -65,33 +59,33 @@ EXEC=$(grep -e '^Exec=.*' "${HERE}"/*.desktop | head -n 1 | cut -d "=" -f 2- | s
 #exec "${HERE}"CUSTOMPATH "$@"
 EOF
 chmod a+x AppRun
-cp ./AppRun /opt/$APP/
-mv ./AppRun ./$APP/$APP.AppDir
+cp ./AppRun /opt/"$APP"/
+mv ./AppRun ./"$APP"/"$APP".AppDir
 
 # IMPORT THE LAUNCHER AND THE ICON TO THE APPDIR IF THEY NOT EXIST
-if test -f ./$APP/$APP.AppDir/*.desktop; then
+if test -f ./"$APP"/"$APP".AppDir/*.desktop; then
 	echo "The desktop file exists"
 else
 	echo "Trying to get the .desktop file"
-	cp ./$APP/$APP.AppDir/usr/share/applications/*$(ls . | grep -i $APP | cut -c -4)*desktop ./$APP/$APP.AppDir/ 2>/dev/null
+	cp ./"$APP"/"$APP".AppDir/usr/share/applications/*"$(ls . | grep -i "$APP" | cut -c -4)"*desktop ./"$APP"/"$APP".AppDir/ 2>/dev/null
 fi
 
-ICONNAME=$(cat ./$APP/$APP.AppDir/*desktop | grep "Icon=" | head -1 | cut -c 6-)
-cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/22x22/apps/*$ICONNAME* ./$APP/$APP.AppDir/ 2>/dev/null
-cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/24x24/apps/*$ICONNAME* ./$APP/$APP.AppDir/ 2>/dev/null
-cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/32x32/apps/*$ICONNAME* ./$APP/$APP.AppDir/ 2>/dev/null
-cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/48x48/apps/*$ICONNAME* ./$APP/$APP.AppDir/ 2>/dev/null
-cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/64x64/apps/*$ICONNAME* ./$APP/$APP.AppDir/ 2>/dev/null
-cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/128x128/apps/*$ICONNAME* ./$APP/$APP.AppDir/ 2>/dev/null
-cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/256x256/apps/*$ICONNAME* ./$APP/$APP.AppDir/ 2>/dev/null
-cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/512x512/apps/*$ICONNAME* ./$APP/$APP.AppDir/ 2>/dev/null
-cp ./$APP/$APP.AppDir/usr/share/icons/hicolor/scalable/apps/*$ICONNAME* ./$APP/$APP.AppDir/ 2>/dev/null
-cp ./$APP/$APP.AppDir/usr/share/applications/*$ICONNAME* ./$APP/$APP.AppDir/ 2>/dev/null
+ICONNAME=$(cat ./"$APP"/"$APP".AppDir/*desktop | grep "Icon=" | head -1 | cut -c 6-)
+cp ./"$APP"/"$APP".AppDir/usr/share/icons/hicolor/22x22/apps/*"$ICONNAME"* ./"$APP"/"$APP".AppDir/ 2>/dev/null
+cp ./"$APP"/"$APP".AppDir/usr/share/icons/hicolor/24x24/apps/*"$ICONNAME"* ./"$APP"/"$APP".AppDir/ 2>/dev/null
+cp ./"$APP"/"$APP".AppDir/usr/share/icons/hicolor/32x32/apps/*"$ICONNAME"* ./"$APP"/"$APP".AppDir/ 2>/dev/null
+cp ./"$APP"/"$APP".AppDir/usr/share/icons/hicolor/48x48/apps/*"$ICONNAME"* ./"$APP"/"$APP".AppDir/ 2>/dev/null
+cp ./"$APP"/"$APP".AppDir/usr/share/icons/hicolor/64x64/apps/*"$ICONNAME"* ./"$APP"/"$APP".AppDir/ 2>/dev/null
+cp ./"$APP"/"$APP".AppDir/usr/share/icons/hicolor/128x128/apps/*"$ICONNAME"* ./"$APP"/"$APP".AppDir/ 2>/dev/null
+cp ./"$APP"/"$APP".AppDir/usr/share/icons/hicolor/256x256/apps/*"$ICONNAME"* ./"$APP"/"$APP".AppDir/ 2>/dev/null
+cp ./"$APP"/"$APP".AppDir/usr/share/icons/hicolor/512x512/apps/*"$ICONNAME"* ./"$APP"/"$APP".AppDir/ 2>/dev/null
+cp ./"$APP"/"$APP".AppDir/usr/share/icons/hicolor/scalable/apps/*"$ICONNAME"* ./"$APP"/"$APP".AppDir/ 2>/dev/null
+cp ./"$APP"/"$APP".AppDir/usr/share/applications/*"$ICONNAME"* ./"$APP"/"$APP".AppDir/ 2>/dev/null
 
 # CLEAN METAINFO DIRECTORY
-metainfodir=$(find ./$APP/$APP.AppDir -type d -name metainfo | grep "share/metainfo" | head -1)
+metainfodir=$(find ./"$APP"/"$APP".AppDir -type d -name metainfo | grep "share/metainfo" | head -1)
 if [ -z "$metainfodir" ]; then
-	exit 1
+	return
 else
 	cd "$metainfodir" || return
 	rm -R -f ./*.xml
@@ -99,112 +93,78 @@ else
 fi
 
 # ...EXPORT THE APPDIR TO AN APPIMAGE!
-ARCH=$(uname -m) VERSION=$(./appimagetool -v | grep -o '[[:digit:]]*') ./appimagetool -s ./$APP/$APP.AppDir;
+ARCH=$(uname -m) VERSION=$(./appimagetool -v | grep -o '[[:digit:]]*') ./appimagetool -s ./"$APP"/"$APP".AppDir
 underscore=_
 mkdir version
-mv ./$APP/$APP$underscore*.deb ./version/
-version=$(ls /opt/$APP/tmp/version)
-echo "$version" >> /opt/$APP/version
+mv ./"$APP"/"$APP""$underscore"*.deb ./version/
+version=$(ls /opt/"$APP"/tmp/version)
+echo "$version" >> /opt/"$APP"/version
 
-cd ..;
-mv ./tmp/*.AppImage ./$APP;
-chmod a+x ./$APP
+cd ..
+mv ./tmp/*.AppImage ./"$APP"
+chmod a+x ./"$APP"
 rm -R -f ./tmp
 
 # LINK
-ln -s /opt/$APP/$APP /usr/local/bin/$APP
+ln -s /opt/"$APP"/"$APP" /usr/local/bin/"$APP"
 
 # SCRIPT TO UPDATE THE PROGRAM
-cat >> /opt/$APP/AM-updater << 'EOF'
+cat >> /opt/"$APP"/AM-updater << 'EOF'
 #!/bin/sh
 APP=SAMPLE
 initial=$(echo $APP | head -c 1)
-version0=$(cat /opt/$APP/version)
-url="http://http.us.debian.org/debian/pool/main/$initial/$APP/$version0"
+version0=$(cat /opt/"$APP"/version)
+url="http://http.us.debian.org/debian/pool/main/$initial/"$APP"/$version0"
 if curl --output /dev/null --silent --head --fail "$url"; then
-  echo "Update not needed, exit!"
+	echo "Update not needed, exit!"
 else
-  notify-send "A new version of $APP is available, please wait!"
-  mkdir /opt/$APP/tmp
-  cd /opt/$APP/tmp
-  wget -q $(curl -Ls https://api.github.com/repos/probonopd/go-appimage/releases | grep -v zsync | grep -i continuous | grep -i appimagetool | grep -i "$(uname -m)" | grep browser_download_url | cut -d '"' -f 4 | head -1) -O appimagetool
-  wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/tools/pkg2appimage # 64 BIT ONLY (comment to disable)
-# wget https://github.com/ivan-hc/pkg2appimage-32bit/releases/download/continuous/pkg2appimage-i386.AppImage -O pkg2appimage # 32 BIT ONLY (uncomment to enable)
-  chmod a+x ./appimagetool ./pkg2appimage
-  cp /opt/$APP/recipe.yml /opt/$APP/tmp/recipe.yml
-  ./pkg2appimage ./recipe.yml;
-  #wget https://github.com/project-portable/libunionpreload/releases/download/amd64/libunionpreload.so
-  #chmod a+x libunionpreload.so
-  #mv ./libunionpreload.so ./$APP/$APP.AppDir/
-  rm -R -f ./$APP/$APP.AppDir/AppRun
-  cp /opt/$APP/AppRun ./$APP/$APP.AppDir/
-  ARCH=$(uname -m) VERSION=$(./appimagetool -v | grep -o '[[:digit:]]*') ./appimagetool -s ./$APP/$APP.AppDir
-  underscore=_
-  mkdir version
-  mv ./$APP/$APP$underscore*.deb ./version/
-  cd ..
-  version=$(ls /opt/$APP/tmp/version)
-  if test -f ./tmp/version/$version; then rm -R -f ./version
-  fi
-  echo "$version" >> /opt/$APP/version
-  mv ./tmp/*.AppImage ./$APP;
-  chmod a+x ./$APP
-  rm -R -f ./tmp
-  notify-send "$APP is updated!"
+	notify-send "A new version of $APP is available, please wait!"
+	mkdir /opt/"$APP"/tmp
+	cd /opt/"$APP"/tmp || exit 1
+	wget -q $(curl -Ls https://api.github.com/repos/probonopd/go-appimage/releases | grep -v zsync | grep -i continuous | grep -i appimagetool | grep -i "$(uname -m)" | grep browser_download_url | cut -d '"' -f 4 | head -1) -O appimagetool
+	wget https://raw.githubusercontent.com/ivan-hc/AM-application-manager/main/tools/pkg2appimage # 64 BIT ONLY (comment to disable)
+	chmod a+x ./appimagetool ./pkg2appimage
+	cp /opt/"$APP"/recipe.yml /opt/"$APP"/tmp/recipe.yml
+	./pkg2appimage ./recipe.yml
+	#wget https://github.com/project-portable/libunionpreload/releases/download/amd64/libunionpreload.so
+	#chmod a+x libunionpreload.so
+	#mv ./libunionpreload.so ./"$APP"/"$APP".AppDir/
+	rm -R -f ./"$APP"/"$APP".AppDir/AppRun
+	cp /opt/"$APP"/AppRun ./"$APP"/"$APP".AppDir/
+	ARCH=$(uname -m) VERSION=$(./appimagetool -v | grep -o '[[:digit:]]*') ./appimagetool -s ./"$APP"/"$APP".AppDir
+	underscore=_
+	mkdir version
+	mv ./"$APP"/"$APP""$underscore"*.deb ./version/
+	cd ..
+	version=$(ls /opt/"$APP"/tmp/version)
+	if test -f ./tmp/version/$version; then rm -R -f ./version
+	fi
+	echo "$version" >> /opt/"$APP"/version
+	mv ./tmp/*.AppImage ./"$APP"
+	chmod a+x ./"$APP"
+	rm -R -f ./tmp
+	notify-send "$APP is updated!"
 fi
 EOF
-chmod a+x /opt/$APP/AM-updater
+chmod a+x /opt/"$APP"/AM-updater
 
 # LAUNCHER & ICON
-app=$(echo $APP | cut -c -3)
-cd /opt/$APP
-./$APP --appimage-extract *.desktop 1>/dev/null
-./$APP --appimage-extract share/applications/*.desktop 1>/dev/null
-./$APP --appimage-extract usr/share/applications/*.desktop 1>/dev/null
-mv squashfs-root/*.desktop ./$APP.desktop
-mv squashfs-root/share/applications/*.desktop ./$APP.desktop
-mv squashfs-root/usr/share/applications/*.desktop ./$APP.desktop
-if [ ! -e ./$APP.desktop ]; then 
-	rm ./$APP.desktop; ./$APP --appimage-extract usr/share/applications/*$app*.desktop 
-	mv squashfs-root/usr/share/applications/*.desktop ./$APP.desktop
-fi
-if [ ! -e ./$APP.desktop ]; then 
-	rm ./$APP.desktop; ./$APP --appimage-extract share/applications/*$app*.desktop 1>/dev/null
-	mv squashfs-root/share/applications/*.desktop ./$APP.desktop
-fi
-CHANGEEXEC=$(cat ./$APP.desktop | grep Exec= | tr ' ' '\n' | tr '=' '\n' | tr '/' '\n' | grep $app | head -1)
-sed -i "s#$CHANGEEXEC#$APP#g" ./$APP.desktop
-sed -i "s#AppRun#$APP#g" ./$APP.desktop
-sed -i "s#Exec=/bin/#Exec=#g" ./$APP.desktop
-sed -i "s#Exec=/usr/bin/#Exec=#g" ./$APP.desktop
-CHANGEICON=$(cat ./$APP.desktop | grep Icon= | head -1)
-sed -i "s#$CHANGEICON#Icon=/opt/$APP/icons/$APP#g" ./$APP.desktop
-
-mkdir icons
-mv $(./$APP --appimage-extract *.png) ./icons/$APP 2>/dev/null
-mv $(./$APP --appimage-extract *.svg) ./icons/$APP 2>/dev/null
-./$APP --appimage-extract share/icons/*/*/* 1>/dev/null
-./$APP --appimage-extract usr/share/icons/*/*/* 1>/dev/null
-./$APP --appimage-extract share/icons/*/*/*/* 1>/dev/null
-./$APP --appimage-extract usr/share/icons/*/*/*/* 1>/dev/null
-mv ./squashfs-root/share/icons/hicolor/22x22/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/share/icons/hicolor/24x24/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/share/icons/hicolor/32x32/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/share/icons/hicolor/48x48/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/share/icons/hicolor/64x64/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/share/icons/hicolor/128x128/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/share/icons/hicolor/256x256/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/share/icons/hicolor/512x512/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/share/icons/hicolor/scalable/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/usr/share/icons/hicolor/22x22/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/usr/share/icons/hicolor/24x24/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/usr/share/icons/hicolor/32x32/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/usr/share/icons/hicolor/48x48/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/usr/share/icons/hicolor/64x64/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/usr/share/icons/hicolor/128x128/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/usr/share/icons/hicolor/256x256/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/usr/share/icons/hicolor/512x512/apps/*$app* ./icons/$APP 2>/dev/null
-mv ./squashfs-root/usr/share/icons/hicolor/scalable/apps/*$app* ./icons/$APP 2>/dev/null
-
-rm -R -f /opt/$APP/squashfs-root
-mv ./$APP.desktop /usr/share/applications/AM-$APP.desktop
+cd "/opt/$APP" || exit 1
+./"$APP" --appimage-extract *.desktop 1>/dev/null && mv ./squashfs-root/*.desktop ./"$APP".desktop
+./"$APP" --appimage-extract .DirIcon 1>/dev/null && mv ./squashfs-root/.DirIcon ./DirIcon
+COUNT=0
+while [ "$COUNT" -lt 10 ]; do # Tries to get the actual icon/desktop if it is a symlink to another symlink
+	if [ -L ./"$APP".desktop ]; then
+		LINKPATH=$(readlink ./"$APP".desktop)
+		./"$APP" --appimage-extract "$LINKPATH" && mv ./squashfs-root/"$LINKPATH" ./"$APP".desktop
+	fi
+	if [ -L ./DirIcon ]; then
+		LINKPATH=$(readlink ./DirIcon)
+		./"$APP" --appimage-extract "$LINKPATH" && mv ./squashfs-root/"$LINKPATH" ./DirIcon
+	fi
+	[ ! -L ./"$APP".desktop ] && [ ! -L ./DirIcon ] && break
+	COUNT=$((COUNT + 1))
+done
+sed -i "s#Exec=[^ ]*#Exec=$APP#g; s#Icon=.*#Icon=/opt/$APP/icons/$APP#g" ./"$APP".desktop
+mv ./"$APP".desktop /usr/share/applications/AM-"$APP".desktop && mv ./DirIcon ./icons/"$APP" 1>/dev/null
+rm -R -f ./squashfs-root
