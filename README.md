@@ -1043,17 +1043,15 @@ https://github.com/ivan-hc/AM/assets/88724353/b6513e8a-17ab-4671-baf7-d86183d57c
 #### Option One: "build AppImages on-the-fly"
 This was one of the very first approaches used to create this project. Before I started building AppImage packages myself, they were first compiled just like using any AUR-helper.
 
-The syntax seems simple, but you have to know what you're building. You'll need to decide what kind of AppImage you want to build on the fly, whether to include a custom AppRun, "libunionpreload", and detect system libraries. It will be used as the Debian base, but you can manually modify the script to suit your needs.
+The syntax seems simple, but you have to know what you're building.
 
-https://github.com/ivan-hc/AM/assets/88724353/db516c23-9b9a-4287-9cdd-d6a153065c8b
+You'll need to decide what kind of AppImage you want to build on the fly, whether to include a custom AppRun, "libunionpreload", and detect system libraries.
 
-I took "Abiword" as an example because it is something I have already experienced in the past.
+It will be used as the Debian base, but you can manually modify the script to suit your needs.
 
-In the following video you see how option 1 (formerly option 5) is able to create AppImage packages on the fly (here "Abiword" from Debian Unstable), like an AUR compiler would:
+In this example I'll create the script for Abiword with "AM" and I'll install it using AppMan:
 
-https://user-images.githubusercontent.com/88724353/150619523-a45455f6-a656-4753-93fe-aa99babc1083.mp4
-
-NOTE, the video above is from before Type3 AppImages were used, the ones that do not require "libfuse2". Encountering "Appstream" errors is very common.
+https://github.com/ivan-hc/AM/assets/88724353/6ae38787-e0e5-4b63-b020-c89c1e975ddd
 
 #### Option Two: "Archives and other programs"
 Option two is very similar to option zero. What changes is the number of questions, which allow you to customize both the application's .desktop file and the way a program should be extracted.
