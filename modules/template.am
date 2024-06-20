@@ -4,6 +4,8 @@
 # THIS MODULE IS USED TO CREATE INSTALLATION SCRIPS TO ADD TO THE DATABASE
 ##########################################################################
 
+# COMMON FUNCTIONS FOR APPIMAGES AND ARCHIVES/PROGRAMS/SCRIPTS (OPTIONS 0 AND 2)
+
 function _template_create_dirs_and_ask_for_source(){
 	mkdir -p ./am-scripts ./am-scripts/"$arch" ./am-scripts/portable-linux-apps.github.io/apps ./am-scripts/portable-linux-apps.github.io/icons
 	# DOWNLOAD THE TEMPLATE AND CONVERT THE ARGUMENT INTO A COMMAND
@@ -37,6 +39,68 @@ function _template_if_github_source() {
 	sed -i "s#FUNCTION)#$FUNCTION)#g" ./am-scripts/"$arch"/"$arg"
 }
 
+function _template_then_github_source() {
+
+	_template_if_github_source
+
+	read -p ' Do you wish to check the link to the latest version (Y,n)?' yn
+	case $yn in
+	'N'|'n') ;;
+	'Y'|'y'|*)
+		if [ "$templatetype" == 0 ]; then
+			echo ""; curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/$RESPONSE/releases | jq '.' | grep browser_download_url | grep -i appimage | cut -d '"' -f 4 | head -1
+		elif [ "$templatetype" == 2 ]; then
+			echo ""; curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/$RESPONSE/releases | jq '.' | grep browser_download_url | cut -d '"' -f 4 | head -1
+		fi
+		echo -e "\n The URL above is an example of what both\n the install and update scripts will point to.\n";;
+	esac
+	read -p ' If correct, press "ENTER", otherwise press "N": ' yn
+	case $yn in
+	'N'|'n')
+		read -p ' Press 1 to add something or 2 to remove something: ' response
+		case "$response" in
+		1)
+			read -r -ep ' URL must contain ("x64", "x86_64"... or leave blank): ' response
+			case "$response" in
+			'') ;;
+			*)
+				sed -i "s#browser_download_url#browser_download_url | grep -i $response #g" ./am-scripts/"$arch"/"$arg"
+				read -p ' Do you wish to check the link for the last time (Y,n)?' yn
+				case $yn in
+				'N'|'n') ;;
+				'Y'|'y'|*)
+					if [ "$templatetype" == 0 ]; then
+						echo ""; curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/"$RESPONSE"/releases | jq '.' | grep browser_download_url | grep -i "$response" | grep -i appimage | cut -d '"' -f 4 | head -1
+					elif [ "$templatetype" == 2 ]; then
+						echo ""; curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/"$RESPONSE"/releases | jq '.' | grep browser_download_url | grep -i "$response" | cut -d '"' -f 4 | head -1
+					fi
+					echo -e "\n The URL above is an example of what both\n the install and update scripts will point to.\n";;
+				esac;;
+			esac;;
+		2)
+			read -r -ep ' URL must NOT contain ("txt", "ARM"... or leave blank): ' response
+			case "$response" in
+			'') ;;
+			*)
+				sed -i "s#browser_download_url#browser_download_url | grep -v $response #g" ./am-scripts/"$arch"/"$arg"
+				read -p ' Do you wish to check the link for the last time (Y,n)?' yn
+				case $yn in
+				'N'|'n') ;;
+				'Y'|'y'|*)
+					if [ "$templatetype" == 0 ]; then
+						echo ""; curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/"$RESPONSE"/releases | jq '.' | grep browser_download_url | grep -v "$response" | grep -i appimage | cut -d '"' -f 4 | head -1
+					elif [ "$templatetype" == 2 ]; then
+						echo ""; curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/"$RESPONSE"/releases | jq '.' | grep browser_download_url | grep -v "$response" | cut -d '"' -f 4 | head -1
+					fi
+					echo -e "\n The URL above is an example of what both\n the install and update scripts will point to.\n";;
+				esac;;
+			esac;;
+		esac;;
+	'Y'|'y'|*)
+		;;
+	esac
+}
+
 function _template_if_hosted_elsewhere() {
 	sed -i "s#REPLACETHIS#$RESPONSE#g" ./am-scripts/"$arch"/"$arg"
 	# ADD A DESCRIPTION FOR THIS APPLICATION
@@ -66,6 +130,10 @@ function _template_if_hosted_elsewhere() {
 		rm -f ./am-scripts/"$arch"/"$arg".old;;
 	esac
 }
+
+#####################################
+# LET CREATE OUR INSTALLATION SCRIPTS
+#####################################
 
 case $2 in
 '') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
@@ -107,60 +175,7 @@ while [ -n "$1" ]; do
 					case "$RESPONSE" in
 					*)
 						if echo "$RESPONSE" | grep -q "https://github.com"; then
-							_template_if_github_source
-
-							read -p ' Do you wish to check the link to the latest version (Y,n)?' yn
-
-							case $yn in
-							'N'|'n') ;;
-							'Y'|'y'|*)
-								echo ""; curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/$RESPONSE/releases | jq '.' | grep browser_download_url | grep -i appimage | cut -d '"' -f 4 | head -1
-								echo -e "\n The URL above is an example of what both\n the install and update scripts will point to.\n";;
-							esac
-
-							read -p ' If correct, press "ENTER", otherwise press "N": ' yn
-
-							case $yn in
-							'N'|'n')
-								read -p ' Press 1 to add something or 2 to remove something: ' response
-
-								case "$response" in
-								1)
-								read -r -ep ' URL must contain ("x64", "x86_64"... or leave blank): ' response
-
-								case "$response" in
-								'') ;;
-								*)
-									sed -i "s#browser_download_url#browser_download_url | grep -i $response #g" ./am-scripts/"$arch"/"$arg"
-									read -p ' Do you wish to check the link for the last time (Y,n)?' yn
-
-									case $yn in
-									'N'|'n') ;;
-									'Y'|'y'|*)
-										echo ""; curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/"$RESPONSE"/releases | jq '.' | grep browser_download_url | grep -i "$response" | grep -i appimage | cut -d '"' -f 4 | head -1
-										echo -e "\n The URL above is an example of what both\n the install and update scripts will point to.\n";;
-									esac;;
-								esac;;
-								2)
-								read -r -ep ' URL must NOT contain ("txt", "ARM"... or leave blank): ' response
-
-								case "$response" in
-								'') ;;
-								*)
-									sed -i "s#browser_download_url#browser_download_url | grep -v $response #g" ./am-scripts/"$arch"/"$arg"
-									read -p ' Do you wish to check the link for the last time (Y,n)?' yn
-
-									case $yn in
-									'N'|'n') ;;
-									'Y'|'y'|*)
-										echo ""; curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/"$RESPONSE"/releases | jq '.' | grep browser_download_url | grep -v "$response" | grep -i appimage | cut -d '"' -f 4 | head -1
-										echo -e "\n The URL above is an example of what both\n the install and update scripts will point to.\n";;
-									esac;;
-								esac;;
-								esac;;
-							'Y'|'y'|*)
-								;;
-							esac
+							_template_then_github_source
 						else
 							_template_if_hosted_elsewhere
 						fi
@@ -242,53 +257,7 @@ while [ -n "$1" ]; do
 					case "$RESPONSE" in
 					*)
 						if echo "$RESPONSE" | grep -q "https://github.com"; then
-							_template_if_github_source
-
-							read -p ' Do you wish to check the link to the available items (Y,n)?' yn
-
-							case $yn in
-							'N'|'n') ;;
-							'Y'|'y'|*)
-								echo ""; curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/$RESPONSE/releases | jq '.' | grep browser_download_url | cut -d '"' -f 4
-								echo -e "\n The URLs above are an example of what both\n the install and update scripts will point to.\n";;
-							esac
-
-							read -p ' Press 1 to add a keyword or 2 to remove a keyword (in the name): ' response
-
-							case "$response" in
-							1)
-								read -r -ep ' URL must contain ("x64", "x86_64"... or leave blank): ' response
-
-								case "$response" in
-								'') ;;
-								*)
-								sed -i "s#browser_download_url#browser_download_url | grep -i $response #g" ./am-scripts/"$arch"/"$arg"
-								read -p ' Do you wish to check the link for the last time (Y,n)?' yn
-
-								case $yn in
-								'N'|'n') ;;
-								'Y'|'y'|*)
-									echo ""; curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/$RESPONSE/releases | jq '.' | grep browser_download_url | grep -i "$response" | cut -d '"' -f 4 | head -1
-									echo -e "\n The URL above is an example of what both\n the install and update scripts will point to.\n";;
-								esac;;
-								esac;;
-							2)
-								read -r -ep ' URL must NOT contain ("txt", "ARM"... or leave blank): ' response
-
-								case "$response" in
-								'') ;;
-								*)
-								sed -i "s#browser_download_url#browser_download_url | grep -v $response #g" ./am-scripts/"$arch"/"$arg"
-								read -p ' Do you wish to check the link for the last time (Y,n)?' yn
-
-								case $yn in
-								'N'|'n') ;;
-								'Y'|'y'|*)
-									echo ""; curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/$RESPONSE/releases | jq '.' | grep browser_download_url | grep -v "$response" | cut -d '"' -f 4 | head -1
-									echo -e "\n The URL above is an example of what both\n the install and update scripts will point to.\n";;
-								esac;;
-								esac;;
-							esac
+							_template_then_github_source
 						else
 							_template_if_hosted_elsewhere
 						fi
