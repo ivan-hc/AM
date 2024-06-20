@@ -908,6 +908,7 @@ or
 appman --sandbox $APP
 ```
 - if the "aisap" package is not installed, you will be asked if you want to install it via "AM"/AppMan;
+- you will be asked if your AppImages can have access to the main XDG directories (Pictures, Videos, Documents... using the system language);
 - requires replacing the symlink in $PATH with a script ("AM" users will need the root password);
 - to work, the Appimage will be set to "not executable", and the AM-updater will also have its `chmod` command set to `a-x` instead of `a+x`.
 
@@ -917,9 +918,11 @@ To restore the use of the AppImage without sandbox, you need to run the applicat
 ```
 $APP --disable-sandbox
 ```
-https://github.com/ivan-hc/AM/assets/88724353/420bfa1c-274f-4ac3-a79f-78ad64f01254
+In the video we will use "Baobab" (GTK3 version), a disk space analyzer, available in the database as "baobab-gtk3", and giving it read/write permissions only in "Video" (the Italian for "Videos") :
 
-For more information aboit "Aisap", visit https://github.com/mgord9518/aisap
+https://github.com/ivan-hc/AM/assets/88724353/79c1b4af-53d8-4175-9a28-136804059f6e
+
+For more information about "Aisap", visit https://github.com/mgord9518/aisap
 
 Available profiles are listed at https://github.com/mgord9518/aisap/tree/main/profiles
 
