@@ -916,6 +916,12 @@ This is very useful if you have large AppImage packages that you necessarily nee
 
 __________________________________________________________________________
 ### Sandbox an AppImage
+Since version 6.12, "AM"/"AppMan" uses Bubblewrap for sandboxing AppImage packages, thanks to "[Aisap](https://github.com/mgord9518/aisap)", a highly intuitive and configurable command line solution.
+
+The "`--sandbox`" option, which has been supported by Firejail since version 5.3, has taken on a completely different appearance and usability, thanks to the intense work of @Samueru-sama, who managed to extend and enhance "Aisap", making it extremely easy to use in our project, to the point of making us forget that we are using a command line utility.
+
+[Bubblewrap](https://github.com/containers/bubblewrap) is an highly used sanboxing solution, used in multiple projects for GNU/Linux, including Flatpak. In this sense, "Aisap" may be considered a reference point for the future of AppImages sandboxing!
+
 Since version 5.3 you can use the `--sandbox` option to run AppImages using a sandbox, and since version 6.12 Firejails has been dropped in favour of "[Aisap](https://github.com/mgord9518/aisap)", a [Bubblewrap](https://github.com/containers/bubblewrap) frontend for AppImages.
 
 #### How to enable a sandbox
