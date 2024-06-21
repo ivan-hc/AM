@@ -46,6 +46,10 @@ You can consult the entire **list of managed apps** at [**portable-linux-apps.gi
   - [AppImages from external media](#appimages-from-external-media)
 - [How to use "AM" in non-privileged mode, like "AppMan"](#how-to-use-am-in-non-privileged-mode-like-appman)
 - [Sandbox an AppImage](#sandbox-an-appimage)
+  - [How to enable a sandbox](#how-to-enable-a-sandbox)
+  - [How to disable a sandbox](#how-to-disable-a-sandbox)
+  - [Sandboxing example](#sandboxing-example)
+  - [About Aisap sandboxing](#about-aisap-sandboxing)
 - [How to enable bash completion](#how-to-enable-bash-completion)
 - [How to update or remove apps manually](#how-to-update-or-remove-apps-manually)
 - [Downgrade an installed app to a previous version](#downgrade-an-installed-app-to-a-previous-version)
@@ -708,6 +712,10 @@ This section is committed to giving small demonstrations of each available optio
     - [AppImages from external media](#appimages-from-external-media)
   - [How to use "AM" in non-privileged mode, like "AppMan"](#how-to-use-am-in-non-privileged-mode-like-appman)
   - [Sandbox an AppImage](#sandbox-an-appimage)
+    - [How to enable a sandbox](#how-to-enable-a-sandbox)
+    - [How to disable a sandbox](#how-to-disable-a-sandbox)
+    - [Sandboxing example](#sandboxing-example)
+    - [About Aisap sandboxing](#about-aisap-sandboxing)
   - [How to enable bash completion](#how-to-enable-bash-completion)
   - [How to update or remove apps manually](#how-to-update-or-remove-apps-manually)
   - [Downgrade an installed app to a previous version](#downgrade-an-installed-app-to-a-previous-version)
@@ -908,8 +916,15 @@ This is very useful if you have large AppImage packages that you necessarily nee
 
 __________________________________________________________________________
 ### Sandbox an AppImage
-Since version 5.3 you can use the `--sandbox` option to run AppImages using a sandbox, and since version 6.12 Firejails has been dropped in favour of "[Aisap](https://github.com/mgord9518/aisap)", a [Bubblewrap](https://github.com/containers/bubblewrap) frontend for AppImages.
+Since version 6.12, "AM"/"AppMan" uses Bubblewrap for sandboxing AppImage packages, thanks to "[Aisap](https://github.com/mgord9518/aisap)", a highly intuitive and configurable command line solution.
 
+The option "`--sandbox`", which since version 5.3 was using Firejail, has taken on a completely different appearance and usability, thanks to the intense work of @Samueru-sama, who managed to extend and enhance "Aisap", making it extremely easy to use in our project, to the point of making us forget that we are using a command line utility.
+
+[Bubblewrap](https://github.com/containers/bubblewrap) is an highly used sanboxing solution, used in multiple projects for GNU/Linux, including Flatpak.
+
+In this sense, "Aisap" may be considered a reference point for the future of AppImages sandboxing!
+
+#### How to enable a sandbox
 This method works as follows:
 ```
 am --sandbox $APP
@@ -918,21 +933,32 @@ or
 ```
 appman --sandbox $APP
 ```
-- if the "aisap" package is not installed, you will be asked if you want to install it via "AM"/AppMan;
-- you will be asked if your AppImages can have access to the main XDG directories (Pictures, Videos, Documents... using the system language);
-- requires replacing the symlink in $PATH with a script ("AM" users will need the root password);
-- to work, the Appimage will be set to "not executable", and the AM-updater will also have its `chmod` command set to `a-x` instead of `a+x`.
+The "aisap" package installed is required, whether it is available system-wide ("AM") or locally ("AppMan"), the important thing is that the "aisap" command is in $PATH. If it is not present, "AM"/"AppMan" will ask you if it can proceed with the installation before continuing.
 
-The default location for the sandboxed homes is at $HOME/.local/am-sandboxes, but that location can be changed by setting the $SANDBOXDIR env variable.
+We will first compile the Aisap script in a non-privileged, easy-to-access directory, before being placed in $PATH (see step 2, below).
+1. Once started, you will be asked whether to enable the sandbox (default "Y") or not (type "N"):
+  - the main XDG directories (Pictures, Videos, Documents...) will be listed, answer whether to authorize access (type "Y") or not ("N", default);
+  - at the end, choose whether to specify some directories to access (default "N"), and if "Yes", write the path.
+2. Now that the script is complete, it should be placed in $PATH. "AM" users will need to authorize writing to /usr/local/bin by entering their password. "AppMan" users do not have these problems;
+3. To allow Aipman take care of the AppImage, the latter be set to "not executable" and the related AM-updater will also have its `chmod` command set from `a+x` to `a-x`.
+4. Now your AppImage is in a sandbox!
 
-To restore the use of the AppImage without sandbox, you need to run the application command with the "--disable-sandbox" option:
+NOTE, the default location for the sandboxed homes is at $HOME/.local/am-sandboxes, but that location can be changed by setting the $SANDBOXDIR environemt variable.
+
+#### How to disable a sandbox
+To remove the sandbox just run the command of the AppImage with the flag "--disable-sandbox", like this:
 ```
 $APP --disable-sandbox
 ```
-In the video we will use "Baobab" (GTK3 version), a disk space analyzer, available in the database as "baobab-gtk3", and giving it read/write permissions only in "Video" (the Italian for "Videos") :
 
-https://github.com/ivan-hc/AM/assets/88724353/79c1b4af-53d8-4175-9a28-136804059f6e
+#### Sandboxing example
+In the video below we will use "Baobab" (GTK3 version), a disk space analyzer, available in the database as "baobab-gtk3".
 
+Among the XDG directories we will authorize "Images" (Pictures) and "Videos" (Videos), while manually we will authorize "Public". The test will be carried out in normal mode, then in sandbox and again without sandbox:
+
+https://github.com/ivan-hc/AM/assets/88724353/dd193943-7b08-474a-bbbb-4a6906de8b24
+
+#### About Aisap sandboxing
 For more information about "Aisap", visit https://github.com/mgord9518/aisap
 
 Available profiles are listed at https://github.com/mgord9518/aisap/tree/main/profiles
