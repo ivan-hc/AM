@@ -72,22 +72,25 @@ case "$1" in
 		# Check if we are using AM or AppMan
 		printf '\n%s\n' " Making aisap script for \"$(echo "$AMCLI" | tr a-z A-Z)\"..."
 
+		[ -z "$AMCACHEDIR" ] && exit 1
 		rm -Rf "$AMCACHEDIR/sandbox-scripts"
 		mkdir -p "$AMCACHEDIR/sandbox-scripts"
 
 		# Get xdg variables
+		XDG_DESKTOP_DIR="$(xdg-user-dir DESKTOP 2>/dev/null)"
+		XDG_DOCUMENTS_DIR="$(xdg-user-dir DOCUMENTS 2>/dev/null)"
 		XDG_DOWNLOAD_DIR="$(xdg-user-dir DOWNLOAD 2>/dev/null)"
 		XDG_MUSIC_DIR="$(xdg-user-dir MUSIC 2>/dev/null)"
 		XDG_PICTURES_DIR="$(xdg-user-dir PICTURES 2>/dev/null)"
 		XDG_VIDEOS_DIR="$(xdg-user-dir VIDEOS 2>/dev/null)"
-		XDG_DOCUMENTS_DIR="$(xdg-user-dir DOCUMENTS 2>/dev/null)"
 
 		# Unset the xdg variable if it equals to $HOME
+		if [ "$XDG_DESKTOP_DIR" = "$HOME" ] || [ "$XDG_DESKTOP_DIR" = "$HOME/" ]; then XDG_DESKTOP_DIR=""; fi
+		if [ "$XDG_DOCUMENTS_DIR" = "$HOME" ] || [ "$XDG_DOCUMENTS_DIR" = "$HOME/" ]; then XDG_DOCUMENTS_DIR=""; fi
 		if [ "$XDG_DOWNLOAD_DIR" = "$HOME" ] || [ "$XDG_DOWNLOAD_DIR" = "$HOME/" ]; then XDG_DOWNLOAD_DIR=""; fi
 		if [ "$XDG_MUSIC_DIR" = "$HOME" ] || [ "$XDG_MUSIC_DIR" = "$HOME/" ]; then XDG_MUSIC_DIR=""; fi
 		if [ "$XDG_PICTURES_DIR" = "$HOME" ] || [ "$XDG_PICTURES_DIR" = "$HOME/" ]; then XDG_PICTURES_DIR=""; fi
 		if [ "$XDG_VIDEOS_DIR" = "$HOME" ] || [ "$XDG_VIDEOS_DIR" = "$HOME/" ]; then XDG_VIDEOS_DIR=""; fi
-		if [ "$XDG_DOCUMENTS_DIR" = "$HOME" ] || [ "$XDG_DOCUMENTS_DIR" = "$HOME/" ]; then XDG_DOCUMENTS_DIR=""; fi
 
 		cat <<-"HEREDOC" >> "$AMCACHEDIR/sandbox-scripts/$2"
 		#!/bin/sh
@@ -111,17 +114,21 @@ case "$1" in
 		CONFIGDIR="${XDG_CONFIG_HOME:-$HOME/.config}"
 		CACHEDIR="${XDG_CACHE_HOME:-$HOME/.cache}"
 
+		XDG_DESKTOP_DIR="$(xdg-user-dir DESKTOP 2>/dev/null)"
+		XDG_DOCUMENTS_DIR="$(xdg-user-dir DOCUMENTS 2>/dev/null)"
 		XDG_DOWNLOAD_DIR="$(xdg-user-dir DOWNLOAD 2>/dev/null)"
+		XDG_GAMES_DIR="$(xdg-user-dir GAMES 2>/dev/null)"
 		XDG_MUSIC_DIR="$(xdg-user-dir MUSIC 2>/dev/null)"
 		XDG_PICTURES_DIR="$(xdg-user-dir PICTURES 2>/dev/null)"
 		XDG_VIDEOS_DIR="$(xdg-user-dir VIDEOS 2>/dev/null)"
-		XDG_DOCUMENTS_DIR="$(xdg-user-dir DOCUMENTS 2>/dev/null)"
 
+		if [ "$XDG_DESKTOP_DIR" = "$HOME" ] || [ "$XDG_DESKTOP_DIR" = "$HOME/" ]; then XDG_DESKTOP_DIR=""; fi
+		if [ "$XDG_DOCUMENTS_DIR" = "$HOME" ] || [ "$XDG_DOCUMENTS_DIR" = "$HOME/" ]; then XDG_DOCUMENTS_DIR=""; fi
 		if [ "$XDG_DOWNLOAD_DIR" = "$HOME" ] || [ "$XDG_DOWNLOAD_DIR" = "$HOME/" ]; then XDG_DOWNLOAD_DIR=""; fi
+		if [ "$XDG_GAMES_DIR" = "$HOME" ] || [ "$XDG_GAMES_DIR" = "$HOME/" ]; then XDG_GAMES_DIR=""; fi
 		if [ "$XDG_MUSIC_DIR" = "$HOME" ] || [ "$XDG_MUSIC_DIR" = "$HOME/" ]; then XDG_MUSIC_DIR=""; fi
 		if [ "$XDG_PICTURES_DIR" = "$HOME" ] || [ "$XDG_PICTURES_DIR" = "$HOME/" ]; then XDG_PICTURES_DIR=""; fi
 		if [ "$XDG_VIDEOS_DIR" = "$HOME" ] || [ "$XDG_VIDEOS_DIR" = "$HOME/" ]; then XDG_VIDEOS_DIR=""; fi
-		if [ "$XDG_DOCUMENTS_DIR" = "$HOME" ] || [ "$XDG_DOCUMENTS_DIR" = "$HOME/" ]; then XDG_DOCUMENTS_DIR=""; fi
 
 		# Try to find the right name of the app xdg directories, as sometimes it is not the same as $APPNAME
 		APPDATA=$( ls "$DATADIR" | grep -i "$APPNAME" | head -1 )
@@ -159,43 +166,70 @@ case "$1" in
 		--add-file "$CONFIGDIR"/Kvantum \
 		--add-file "$HOME"/.local/lib \
 		--add-file /usr/share \
+		--rm-file /path/to/nothing \
+		--rm-file "${XDG_DESKTOP_DIR:-~/Desktop}" \
+		--rm-file "${XDG_DOCUMENTS_DIR:-~/Documents}" \
 		--rm-file "${XDG_DOWNLOAD_DIR:-~/Downloads}" \
+		--rm-file "${XDG_GAMES_DIR:-~/Games}" \
 		--rm-file "${XDG_MUSIC_DIR:-~/Music}" \
 		--rm-file "${XDG_PICTURES_DIR:-~/Pictures}" \
 		--rm-file "${XDG_VIDEOS_DIR:-~/Videos}" \
-		--rm-file "${XDG_DOCUMENTS_DIR:-~/Documents}" \
 		--add-file /var/lib/dbus \
 		--add-file /tmp/dbus* \
+		--add-socket pulseaudio \
 		--add-socket dbus \
+		--add-socket network \
 		--add-socket x11 \
 		--add-socket wayland \
-		--add-socket pulseaudio \
-		--add-socket network \
 		--add-device dri -- \
 		"$APPEXEC" "$@"
 		HEREDOC
-		printf '\033[36m\n'
-		read -p " Allow $2 access to ${XDG_DOWNLOAD_DIR:-~/Downloads}? (y/N): " yn
-		if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
-			sed -i 's|--rm-file "${XDG_DOWNLOAD_DIR:-~/Downloads}"|--add-file "${XDG_DOWNLOAD_DIR:-~/Downloads}":rw|g' "$AMCACHEDIR/sandbox-scripts/$2" || exit 1
+		printf '\033[33m\n'
+		read -p " Do you want configure access to directories? (Y/n): " yn
+		if ! echo "$yn" | grep -i '^n' >/dev/null 2>&1; then
+			printf '\033[36m\n'
+			read -p " Allow $2 access to ${XDG_DESKTOP_DIR:-~/Desktop}? (y/N): " yn
+			if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
+				sed -i 's|--rm-file "${XDG_DESKTOP_DIR:-~/Desktop}"|--add-file "${XDG_DESKTOP_DIR:-~/Desktop}":rw|g' "$AMCACHEDIR/sandbox-scripts/$2" || exit 1
+			fi
+			read -p " Allow $2 access to ${XDG_DOCUMENTS_DIR:-~/Documents}? (y/N): " yn
+			if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
+				sed -i 's|--rm-file "${XDG_DOCUMENTS_DIR:-~/Documents}"|--add-file "${XDG_DOCUMENTS_DIR:-~/Documents}":rw|g' "$AMCACHEDIR/sandbox-scripts/$2" || exit 1
+			fi
+			read -p " Allow $2 access to ${XDG_DOWNLOAD_DIR:-~/Downloads}? (y/N): " yn
+			if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
+				sed -i 's|--rm-file "${XDG_DOWNLOAD_DIR:-~/Downloads}"|--add-file "${XDG_DOWNLOAD_DIR:-~/Downloads}":rw|g' "$AMCACHEDIR/sandbox-scripts/$2" || exit 1
+			fi
+			read -p " Allow $2 access to ${XDG_GAMES_DIR:-~/Games} (y/N): " yn
+			if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
+				sed -i 's|--rm-file "${XDG_GAMES_DIR:-~/Games}"|--add-file "${XDG_GAMES_DIR:-~/Games}":rw|g' "$AMCACHEDIR/sandbox-scripts/$2" || exit 1
+			fi
+			read -p " Allow $2 access to ${XDG_MUSIC_DIR:-~/Music} (y/N): " yn
+			if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
+				sed -i 's|--rm-file "${XDG_MUSIC_DIR:-~/Music}"|--add-file "${XDG_MUSIC_DIR:-~/Music}":rw|g' "$AMCACHEDIR/sandbox-scripts/$2" || exit 1
+			fi
+			read -p " Allow $2 access to ${XDG_PICTURES_DIR:-~/Pictures} (y/N): " yn
+			if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
+				sed -i 's|--rm-file "${XDG_PICTURES_DIR:-~/Pictures}"|--add-file "${XDG_PICTURES_DIR:-~/Pictures}":rw|g' "$AMCACHEDIR/sandbox-scripts/$2" || exit 1
+			fi
+			read -p " Allow $2 access to ${XDG_VIDEOS_DIR:-~/Videos} (y/N): " yn
+			if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
+				sed -i 's|--rm-file "${XDG_VIDEOS_DIR:-~/Videos}"|--add-file "${XDG_VIDEOS_DIR:-~/Videos}":rw|g' "$AMCACHEDIR/sandbox-scripts/$2" || exit 1
+			fi
+			printf '\033[31m'
+			read -p " Allow $2 access to a specific directory? (y/N): " yn
+			if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
+				printf '\n%s\n' "   Warning: giving access to all of $HOME or / and similar is not safe"
+				printf '%s\n\033[33m\n' "   Also aisap might not let the application start when such paths are given"
+				read -p "   Type the path to the directory, for example /media/external-drive or ~/Backups: " NEWDIR
+				if [ -n "$NEWDIR" ]; then
+					sed -i "s|--rm-file /path/to/nothing|--add-file \"$NEWDIR\":rw|g" "$AMCACHEDIR/sandbox-scripts/$2" || exit 1
+				else
+					echo "No path given, aborting"; exit 1
+				fi
+			fi
+			printf '\n\033[32m%s\n' " User directories access configured successfully!"
 		fi
-		read -p " Allow $2 access to ${XDG_DOCUMENTS_DIR:-~/Documents}? (y/N): " yn
-		if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
-			sed -i 's|--rm-file "${XDG_DOCUMENTS_DIR:-~/Documents}"|--add-file "${XDG_DOCUMENTS_DIR:-~/Documents}":rw|g' "$AMCACHEDIR/sandbox-scripts/$2" || exit 1
-		fi
-		read -p " Allow $2 access to ${XDG_MUSIC_DIR:-~/Music} (y/N): " yn
-		if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
-			sed -i 's|--rm-file "${XDG_MUSIC_DIR:-~/Music}"|--add-file "${XDG_MUSIC_DIR:-~/Music}":rw|g' "$AMCACHEDIR/sandbox-scripts/$2" || exit 1
-		fi
-		read -p " Allow $2 access to ${XDG_PICTURES_DIR:-~/Pictures} (y/N): " yn
-		if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
-			sed -i 's|--rm-file "${XDG_PICTURES_DIR:-~/Pictures}"|--add-file "${XDG_PICTURES_DIR:-~/Pictures}":rw|g' "$AMCACHEDIR/sandbox-scripts/$2" || exit 1
-		fi
-		read -p " Allow $2 access to ${XDG_VIDEOS_DIR:-~/Videos} (y/N): " yn
-		if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
-			sed -i 's|--rm-file "${XDG_VIDEOS_DIR:-~/Videos}"|--add-file "${XDG_VIDEOS_DIR:-~/Videos}":rw|g' "$AMCACHEDIR/sandbox-scripts/$2" || exit 1
-		fi
-		printf '\n\033[33m%s\n' " User directories access configured successfully!"
 
 		chmod a+x "$AMCACHEDIR/sandbox-scripts/$2" && sed -i "s|DUMMY|$APPIMAGE|g; s|SUDO |$SUDOCOMMAND |g" "$AMCACHEDIR/sandbox-scripts/$2" || exit 1
 
