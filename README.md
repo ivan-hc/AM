@@ -1056,7 +1056,17 @@ https://github.com/ivan-hc/AM/assets/88724353/6ae38787-e0e5-4b63-b020-c89c1e975d
 #### Option Two: "Archives and other programs"
 Option two is very similar to option zero. What changes is the number of questions, which allow you to customize both the application's .desktop file and the way a program should be extracted.
 
-https://github.com/ivan-hc/AM/assets/88724353/80a08024-0282-4cc0-a2a5-a31554df973b
+This script also supports extraction of *7z, *tar* and *zip files, if those archives are downloaded instead of a standalone binary.
+
+By default, the install script does not have a launcher and icon. To create one, press "Y", otherwise, press "N" or leave it blank. This is useful if you want to load scripts or tools that can be used from the command line.
+
+This option may be used also for AppImages, if you need to customize the launcher.
+
+Tu add an icon, you need an URL to that, but if you don't have one, just leave blank. The script will download an icon from [portable-linux-apps.github.io](https://portable-linux-apps.github.io/) if it is hosted there, when running the installation script.
+
+In this example, I'll use OBS Studio AppImage.
+
+https://github.com/ivan-hc/AM/assets/88724353/ce46e2f2-c251-4520-b41f-c511d4ce6c7d
 
 #### Option Three: "Firefox profiles"
 Option 3 creates a launcher that opens Firefox in a custom profile and on a specific page, such as in a WebApp. I created this option to counterbalance the amount of Electron/Chrome-based applications (and because I'm a firm Firefox's supporter).

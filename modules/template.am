@@ -4,483 +4,406 @@
 # THIS MODULE IS USED TO CREATE INSTALLATION SCRIPS TO ADD TO THE DATABASE
 ##########################################################################
 
+# COMMON FUNCTIONS FOR APPIMAGES AND ARCHIVES/PROGRAMS/SCRIPTS (OPTIONS 0 AND 2)
+
+function _template_create_dirs_and_ask_for_source(){
+	mkdir -p ./am-scripts ./am-scripts/"$arch" ./am-scripts/portable-linux-apps.github.io/apps ./am-scripts/portable-linux-apps.github.io/icons
+	# DOWNLOAD THE TEMPLATE AND CONVERT THE ARGUMENT INTO A COMMAND
+	if [ "$templatetype" == 0 ]; then
+		wget -q "$AMREPO"/templates/AM-SAMPLE-AppImage -O ./am-scripts/"$arch"/"$arg"
+	elif [ "$templatetype" == 2 ]; then
+		wget -q "$AMREPO"/templates/AM-SAMPLE-Archive -O ./am-scripts/"$arch"/"$arg"
+	fi
+	sed -i "s/SAMPLE/$arg/g" ./am-scripts/"$arch"/"$arg"
+	echo "-----------------------------------------------------------------------"
+}
+
+function _template_if_github_source() {
+	RESPONSE=$(echo "$RESPONSE" | sed 's#https://github.com/##g' | cut -f1,2 -d'/')
+	sed -i "s#REPLACETHIS#$RESPONSE#g" ./am-scripts/"$arch"/"$arg"
+	# GET THE DESCRIPTION OF THIS REPOSITORY TO ADD IN ALL CREATED FILES
+	COMMENT=$(curl $HeaderAuthWithGITPAT https://api.github.com/repos/"$RESPONSE" 2>/dev/null | grep description | sed 's/"description": "//' | sed 's/",//' | cut -c 3-)
+	# CREATE A WEBPAGE FOR https://portable-linux-apps.github.io CONTAINING ALL THE INFO ABOUT THIS APP
+	echo "# $(echo "$arg" | tr '[:lower:]' '[:upper:]')" >> ./am-scripts/portable-linux-apps.github.io/apps/"$arg".md
+	echo -e "\n $COMMENT\n\n SITE: https://github.com/$RESPONSE\n\n | [Applications](https://portable-linux-apps.github.io/apps.html) | [Home](https://portable-linux-apps.github.io)\n | --- | --- |" >> ./am-scripts/portable-linux-apps.github.io/apps/"$arg".md &&
+	# CREATE A NEW LINE FOR THE APPLICATION'S LIST
+	echo "◆ $arg : $COMMENT" >> ./am-scripts/list
+	echo "-----------------------------------------------------------------------"
+	# CHECK THE DOWNLOAD LINK, THE ONE THAT POINTS TO THE LATEST RELEASE, NOTE THAT IT MAY BE A DEVELOPMENT VERSION, ADD "/latest" AFTER "/releases" TO POINT TO THE LAST STABLE VERSION
+	q="'"
+	if [ "$templatetype" == 0 ]; then
+		FUNCTION='curl -Ls https://api.github.com/repos/'"$RESPONSE"'/releases | jq '"$q"'.'"$q"' | grep browser_download_url | grep -i appimage | cut -d '"$q"'"'"$q"' -f 4 | head -1'
+	elif [ "$templatetype" == 2 ]; then
+		FUNCTION='curl -Ls https://api.github.com/repos/'"$RESPONSE"'/releases | jq '"$q"'.'"$q"' | grep browser_download_url | cut -d '"$q"'"'"$q"' -f 4 | head -1'
+	fi
+	sed -i "s#FUNCTION)#$FUNCTION)#g" ./am-scripts/"$arch"/"$arg"
+}
+
+function _template_then_github_source() {
+
+	_template_if_github_source
+
+	read -r -p ' Do you wish to check the link to the latest version (Y,n)?' yn
+	case $yn in
+	'N'|'n')
+		;;
+	'Y'|'y'|*)
+		if [ "$templatetype" == 0 ]; then
+			echo ""; curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/$RESPONSE/releases | jq '.' | grep browser_download_url | grep -i appimage | cut -d '"' -f 4 | head -1
+		elif [ "$templatetype" == 2 ]; then
+			echo ""; curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/$RESPONSE/releases | jq '.' | grep browser_download_url | cut -d '"' -f 4 | head -1
+		fi
+		echo -e "\n The URL above is an example of what both\n the install and update scripts will point to.\n"
+		;;
+	esac
+	read -r -p ' If correct, press "ENTER", otherwise press "N": ' yn
+	case $yn in
+	'N'|'n')
+		read -r -p ' Press 1 to add something or 2 to remove something: ' response
+		case "$response" in
+		1)
+			read -r -ep ' URL must contain ("x64", "x86_64"... or leave blank): ' response
+			case "$response" in
+			'')
+				;;
+			*)
+				sed -i "s#browser_download_url#browser_download_url | grep -i $response #g" ./am-scripts/"$arch"/"$arg"
+				read -r -p ' Do you wish to check the link for the last time (Y,n)?' yn
+				case $yn in
+				'N'|'n')
+					;;
+				'Y'|'y'|*)
+					if [ "$templatetype" == 0 ]; then
+						echo ""; curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/"$RESPONSE"/releases | jq '.' | grep browser_download_url | grep -i "$response" | grep -i appimage | cut -d '"' -f 4 | head -1
+					elif [ "$templatetype" == 2 ]; then
+						echo ""; curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/"$RESPONSE"/releases | jq '.' | grep browser_download_url | grep -i "$response" | cut -d '"' -f 4 | head -1
+					fi
+					echo -e "\n The URL above is an example of what both\n the install and update scripts will point to.\n"
+					;;
+				esac
+				;;
+			esac
+			;;
+		2)
+			read -r -ep ' URL must NOT contain ("txt", "ARM"... or leave blank): ' response
+			case "$response" in
+			'')
+				;;
+			*)
+				sed -i "s#browser_download_url#browser_download_url | grep -v $response #g" ./am-scripts/"$arch"/"$arg"
+				read -r -p ' Do you wish to check the link for the last time (Y,n)?' yn
+				case $yn in
+				'N'|'n')
+					;;
+				'Y'|'y'|*)
+					if [ "$templatetype" == 0 ]; then
+						echo ""; curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/"$RESPONSE"/releases | jq '.' | grep browser_download_url | grep -v "$response" | grep -i appimage | cut -d '"' -f 4 | head -1
+					elif [ "$templatetype" == 2 ]; then
+						echo ""; curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/"$RESPONSE"/releases | jq '.' | grep browser_download_url | grep -v "$response" | cut -d '"' -f 4 | head -1
+					fi
+					echo -e "\n The URL above is an example of what both\n the install and update scripts will point to.\n"
+					;;
+				esac
+				;;
+			esac
+			;;
+		esac
+		;;
+	'Y'|'y'|*)
+		;;
+	esac
+}
+
+function _template_if_hosted_elsewhere() {
+	sed -i "s#REPLACETHIS#$RESPONSE#g" ./am-scripts/"$arch"/"$arg"
+	# ADD A DESCRIPTION FOR THIS APPLICATION
+	read -r -ep " ◆ ADD A BRIEF DESCRIPTION FOR THIS APPLICATION $(echo -e '\n : ')" COMMENT
+	case "$COMMENT" in
+	*)
+		# CREATE A WEBPAGE FOR https://portable-linux-apps.github.io CONTAINING ALL THE INFO ABOUT THIS APP
+		echo "# $(echo "$arg" | tr '[:lower:]' '[:upper:]')" >> ./am-scripts/portable-linux-apps.github.io/apps/"$arg".md
+		echo -e "\n $COMMENT\n\n SITE: $RESPONSE\n\n | [Applications](https://portable-linux-apps.github.io/apps.html) | [Home](https://portable-linux-apps.github.io)\n | --- | --- |" >> ./am-scripts/portable-linux-apps.github.io/apps/"$arg".md &&
+		# CREATE A NEW LINE FOR THE APPLICATION'S LIST
+		echo "◆ $arg : $COMMENT" >> ./am-scripts/list
+		;;
+	esac
+	echo "-----------------------------------------------------------------------"
+	# IF YOU CAN, USE A ONE-LINE COMMAND TO DOWNLOAD THE PROGRAM
+	read -r -ep " USE A ONE-LINE SHELL COMMAND TO CHECK ONLY THE URL TO THE PROGRAM $(echo -e '\n\n if the URL is fixed, simply add the "echo" command at the beginning\n\n :') " DOWNLOADURL
+	case "$DOWNLOADURL" in
+	*)
+		mv ./am-scripts/"$arch"/"$arg" ./am-scripts/"$arch"/"$arg".old
+		sed -n '1,14p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
+		echo 'version=$('$DOWNLOADURL')' >> ./am-scripts/"$arch"/"$arg"
+		sed -n '16,35p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
+		echo 'version=$('$DOWNLOADURL')' >> ./am-scripts/"$arch"/"$arg"
+		sed -n '37,132p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
+		rm -f ./am-scripts/"$arch"/"$arg".old
+		;;
+	esac
+}
+
+# Function to add a generic .desktop file and an icon to the installation script (option 2)
+function _template_generate_desktop_file() {
+	sed -i "s/#echo/echo/g" ./am-scripts/"$arch"/"$arg"
+	cat <<-'HEREDOC' >> ./am-scripts/"$arch"/"$arg"
+
+	# ICON
+	mkdir -p icons
+	wget ICONURL -O ./icons/"$APP" 2> /dev/null
+
+	# LAUNCHER
+	rm -f /usr/share/applications/AM-"$APP".desktop
+	echo "[Desktop Entry]
+	Name=APPNAME
+	Exec=$APP
+	Icon=/opt/$APP/icons/$APP
+	Type=Application
+	Terminal=false
+	Categories=YOURCATEGORY;" >> /usr/share/applications/AM-"$APP".desktop
+	HEREDOC
+}
+
+# Function to add a category to our custom .desktop file (options 2 and 3)
+function _template_desktop_file_select_category() {
+	echo -e " LIST OF CATEGORIES:\n 0) AudioVideo\n 1) Audio\n 2) Video\n 3) Development\n 4) Education\n 5) Game\n 6) Graphics\n 7) Network\n 8) Office\n 9) Science\n 10) Settings\n 11) System\n 12) Utility (default)\n "
+	read -r -p " CHOOSE A CATEGORY : " response
+	case "$response" in
+		0)	sed -i "s/YOURCATEGORY/AudioVideo/g" ./am-scripts/"$arch"/"$arg";;
+		1)	sed -i "s/YOURCATEGORY/Audio/g" ./am-scripts/"$arch"/"$arg";; 
+		2)	sed -i "s/YOURCATEGORY/Video/g" ./am-scripts/"$arch"/"$arg";; 
+		3)	sed -i "s/YOURCATEGORY/Development/g" ./am-scripts/"$arch"/"$arg";;
+		4)	sed -i "s/YOURCATEGORY/Education/g" ./am-scripts/"$arch"/"$arg";; 
+		5)	sed -i "s/YOURCATEGORY/Game/g" ./am-scripts/"$arch"/"$arg";; 
+		6)	sed -i "s/YOURCATEGORY/Graphics/g" ./am-scripts/"$arch"/"$arg";; 
+		7)	sed -i "s/YOURCATEGORY/Network/g" ./am-scripts/"$arch"/"$arg";;
+		8)	sed -i "s/YOURCATEGORY/Office/g" ./am-scripts/"$arch"/"$arg";; 
+		9)	sed -i "s/YOURCATEGORY/Science/g" ./am-scripts/"$arch"/"$arg";; 
+		10)	sed -i "s/YOURCATEGORY/Settings/g" ./am-scripts/"$arch"/"$arg";; 
+		11)	sed -i "s/YOURCATEGORY/System/g" ./am-scripts/"$arch"/"$arg";;
+		12|*)	sed -i "s/YOURCATEGORY/Utility/g" ./am-scripts/"$arch"/"$arg";;
+	esac
+	echo "-----------------------------------------------------------------------"
+}
+
+#####################################
+# LET CREATE OUR INSTALLATION SCRIPTS
+#####################################
+
 case $2 in
-'') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
+'')
+	echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit
+	;;
 esac
 
 while [ -n "$1" ]; do
 	rm -f "$AMCACHEDIR"/template-args
 	echo "$@" | tr ' ' '\n' >> "$AMCACHEDIR"/template-args && echo STOP >> "$AMCACHEDIR"/template-args
 	ARGS=$(tail -n +2 "$AMCACHEDIR"/template-args)
-
 	for arg in $ARGS; do
-		if [ $arg == STOP ]; then
+		if [ "$arg" == STOP ]; then
 			exit
 		else
-			arg=$(echo "$arg" | tr A-Z a-z)
+			arg=$(echo "$arg" | tr '[:upper:]' '[:lower:]')
 			case $arg in
 			*)
 				cd "$SCRIPTDIR" || return
-
 				echo "##############################################################"; echo ""
-				echo ' Create templates for "'$arg'"
-				' | tr a-z A-Z
+				echo -e " Create a template for \"$arg\"\n	" | tr '[:lower:]' '[:upper:]'
 				echo "--------------------------------------------------------------"; echo "" 
-				echo " EACH MODEL IS BASED ON A DIFFERENT METHOD OF BUILDING/UPDATING THE PROGRAM.
-				"
-				echo ' PLEASE, SELECT A TEMPLATE FOR "'"$(echo $arg | tr a-z A-Z)"'": 
-				'
-				echo '  0) APPIMAGE, FROM ANY WEBSITE (BETTER IF FROM GITHUB.COM)'
+				echo -e " EACH MODEL IS BASED ON A DIFFERENT METHOD OF BUILDING/UPDATING THE PROGRAM.\n"
+				echo -e " PLEASE, SELECT A TEMPLATE FOR \"$(echo "$arg" | tr '[:lower:]' '[:upper:]')\": \n"
+				echo "  0) APPIMAGE, FROM ANY WEBSITE (BETTER IF FROM GITHUB.COM)"
 				echo "  1) APPIMAGE, BUILD YOUR OWN WITH PKG2APPIMAGE"
 				echo "  2) ANY ARCHIVE/BINARY/SCRIPT FROM ANY WEBSITE"
-				echo '  3) WEBAPP BASED ON A FIREFOX PROFILE (REQUIRES "FIREFOX" IN $PATH)"'
-				echo " "
-				read -r -p " WHAT KIND OF PROGRAM DO YOU WANT TO WRITE A SCRIPT FOR? : " response
-
-				case "$response" in
+				echo -e '  3) WEBAPP BASED ON A FIREFOX PROFILE (REQUIRES "FIREFOX" IN $PATH)"\n'
+				read -r -p " WHAT KIND OF PROGRAM DO YOU WANT TO WRITE A SCRIPT FOR? : " templatetype
+				case "$templatetype" in
 
 				0) # APPIMAGE (ANY)
 
-					mkdir -p ./am-scripts ./am-scripts/$arch ./am-scripts/portable-linux-apps.github.io/apps ./am-scripts/portable-linux-apps.github.io/icons
-					# DOWNLOAD THE TEMPLATE AND CONVERT THE ARGUMENT INTO A COMMAND, ALSO ADD SOME BASIC INFO IF AVAILABLE
-					wget -c -q $AMREPO/templates/AM-SAMPLE-AppImage -O ./am-scripts/$arch/$arg &&
-					sed -i s/SAMPLE/$arg/g ./am-scripts/$arch/$arg &&
-					echo "-----------------------------------------------------------------------"
+					_template_create_dirs_and_ask_for_source
+
 					# ADD THE NAME OF THE SOURCE
 					read -r -ep " ◆ ADD THE URL OF THE SITE (BETTER IF IT COME FROM GITHUB), FOR EXAMPLE: $(echo -e '\n\n - if from github.com, use "https://github.com/USER/PROJECT"\n\n - if from other sources, use "https://www.SITENAME.com" or something\n\n URL: ')" RESPONSE
-
 					case "$RESPONSE" in
 					*)
 						if echo "$RESPONSE" | grep -q "https://github.com"; then
-							RESPONSE=$(echo "$RESPONSE" | sed 's#https://github.com/##g' | cut -f1,2 -d'/')
-							sed -i s#REPLACETHIS#$RESPONSE#g ./am-scripts/$arch/$arg
-							# GET THE DESCRIPTION OF THIS REPOSITORY TO ADD IN ALL CREATED FILES
-							COMMENT=$(curl $HeaderAuthWithGITPAT https://api.github.com/repos/$RESPONSE 2>/dev/null | grep description | sed 's/"description": "//' | sed 's/",//' | cut -c 3-)
-							# CREATE A WEBPAGE FOR https://portable-linux-apps.github.io CONTAINING ALL THE INFO ABOUT THIS APP
-							echo "# $(echo $arg | tr a-z A-Z)" >> ./am-scripts/portable-linux-apps.github.io/apps/$arg.md
-							echo -e "\n $COMMENT\n\n SITE: https://github.com/$RESPONSE\n\n | [Applications](https://portable-linux-apps.github.io/apps.html) | [Home](https://portable-linux-apps.github.io)\n | --- | --- |" >> ./am-scripts/portable-linux-apps.github.io/apps/$arg.md &&
-							# CREATE A NEW LINE FOR THE APPLICATION'S LIST
-							echo "◆ $arg : $COMMENT" >> ./am-scripts/list
-							echo "-----------------------------------------------------------------------"
-							# CHECK THE DOWNLOAD LINK, THE ONE THAT POINTS TO THE LATEST RELEASE, NOTE THAT IT MAY BE A DEVELOPMENT VERSION, ADD "/latest" AFTER "/releases" TO POINT TO THE LAST STABLE VERSION
-							q="'"
-							FUNCTION='curl -Ls https://api.github.com/repos/'$RESPONSE'/releases | jq '$q'.'$q' | grep browser_download_url | grep -i appimage | cut -d '$q'"'$q' -f 4 | head -1'
-							sed -i "s#FUNCTION#$FUNCTION#g" ./am-scripts/$arch/$arg
-
-							read -p ' Do you wish to check the link to the latest version (Y,n)?' yn
-
-							case $yn in
-							'N'|'n') ;;
-							'Y'|'y'|*)
-								echo ""; curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/$RESPONSE/releases | jq '.' | grep browser_download_url | grep -i appimage | cut -d '"' -f 4 | head -1
-								echo -e "\n The URL above is an example of what both\n the install and update scripts will point to.\n";;
-							esac
-
-							read -p ' If correct, press "ENTER", otherwise press "N": ' yn
-
-							case $yn in
-							'N'|'n')
-								read -p ' Press 1 to add something or 2 to remove something: ' response
-
-								case "$response" in
-								1)
-								read -r -ep ' URL must contain ("x64", "x86_64"... or leave blank): ' response
-
-								case "$response" in
-								'') ;;
-								*)
-									sed -i 's#browser_download_url#browser_download_url | grep -i '$response' #g' ./am-scripts/$arch/$arg
-									read -p ' Do you wish to check the link for the last time (Y,n)?' yn
-
-									case $yn in
-									'N'|'n') ;;
-									'Y'|'y'|*)
-										echo ""; curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/$RESPONSE/releases | jq '.' | grep browser_download_url | grep -i "$response" | grep -i appimage | cut -d '"' -f 4 | head -1
-										echo -e "\n The URL above is an example of what both\n the install and update scripts will point to.\n";;
-									esac;;
-								esac;;
-								2)
-								read -r -ep ' URL must NOT contain ("txt", "ARM"... or leave blank): ' response
-
-								case "$response" in
-								'') ;;
-								*)
-									sed -i 's#browser_download_url#browser_download_url | grep -w -v '$response' #g' ./am-scripts/$arch/$arg
-									read -p ' Do you wish to check the link for the last time (Y,n)?' yn
-
-									case $yn in
-									'N'|'n') ;;
-									'Y'|'y'|*)
-										echo ""; curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/$RESPONSE/releases | jq '.' | grep browser_download_url | grep -w -v "$response" | grep -i appimage | cut -d '"' -f 4 | head -1
-										echo -e "\n The URL above is an example of what both\n the install and update scripts will point to.\n";;
-									esac;;
-								esac;;
-								esac;;
-							'Y'|'y'|*)
-								;;
-							esac
+							_template_then_github_source
 						else
-							sed -i s#REPLACETHIS#$RESPONSE#g ./am-scripts/$arch/$arg
-							# ADD A DESCRIPTION FOR THIS APPLICATION
-							read -r -ep " ◆ ADD A BRIEF DESCRIPTION FOR THIS APPLICATION $(echo -e '\n : ')" COMMENT
-
-							case "$COMMENT" in
-							*)
-								# CREATE A WEBPAGE FOR https://portable-linux-apps.github.io CONTAINING ALL THE INFO ABOUT THIS APP
-								echo "# $(echo $arg | tr a-z A-Z)" >> ./am-scripts/portable-linux-apps.github.io/apps/$arg.md
-								echo -e "\n $COMMENT\n\n SITE: $RESPONSE\n\n | [Applications](https://portable-linux-apps.github.io/apps.html) | [Home](https://portable-linux-apps.github.io)\n | --- | --- |" >> ./am-scripts/portable-linux-apps.github.io/apps/$arg.md &&
-								# CREATE A NEW LINE FOR THE APPLICATION'S LIST
-								echo "◆ $arg : $COMMENT" >> ./am-scripts/list;;
-							esac
-
-							echo "-----------------------------------------------------------------------"
-							# IF YOU CAN, USE A ONE-LINE COMMAND TO DOWNLOAD THE APPIMAGE
-							read -r -ep " USE A ONE-LINE SHELL COMMAND TO CHECK ONLY THE URL TO THE APPIMAGE $(echo -e '\n\n if the URL is fixed, simply add the "echo" command at the beginning\n\n :') " DOWNLOADURL
-
-							case "$DOWNLOADURL" in
-							*)
-								mv ./am-scripts/$arch/$arg ./am-scripts/$arch/$arg.old
-								sed -n '1,14p' ./am-scripts/$arch/$arg.old >> ./am-scripts/$arch/$arg
-								echo 'version=$('$DOWNLOADURL')' >> ./am-scripts/$arch/$arg
-								sed -n '16,35p' ./am-scripts/$arch/$arg.old >> ./am-scripts/$arch/$arg
-								echo 'version=$('$DOWNLOADURL')' >> ./am-scripts/$arch/$arg
-								sed -n '37,132p' ./am-scripts/$arch/$arg.old >> ./am-scripts/$arch/$arg
-								rm -f ./am-scripts/$arch/$arg.old;;
-							esac
-							
+							_template_if_hosted_elsewhere
 						fi
 					esac
-
 					echo "-----------------------------------------------------------------------"
 					# END OF THIS FUNCTION
-					echo -e "\n All files are saved in $SCRIPTDIR/am-scripts\n";;
+					echo -e "\n All files are saved in $SCRIPTDIR/am-scripts\n"
+					;;
 
 				1) # CREATE AN APPIMAGE ON-THE-FLY
-
-					mkdir -p ./am-scripts ./am-scripts/$arch ./am-scripts/portable-linux-apps.github.io/apps ./am-scripts/portable-linux-apps.github.io/icons
+					mkdir -p ./am-scripts ./am-scripts/"$arch" ./am-scripts/portable-linux-apps.github.io/apps ./am-scripts/portable-linux-apps.github.io/icons
 					# CUSTOMEZE THE APPRUN, THE CORE SCRIPT OF THE APPIMAGE
-					read -p ' Do you wish to use a custom AppRun script (y,N)?' yn
-
+					read -r -p ' Do you wish to use a custom AppRun script (y,N)?' yn
 					case $yn in
 					'Y'|'y')
 						# DOWNLOAD THE TEMPLATE AND CONVERT THE ARGUMENT INTO A COMMAND
-						wget -c -q $AMREPO/templates/AM-SAMPLE-pkg2appimage-custom -O ./am-scripts/$arch/$arg &&
-						sed -i s/SAMPLE/$arg/g ./am-scripts/$arch/$arg &&
+						wget -q "$AMREPO"/templates/AM-SAMPLE-pkg2appimage-custom -O ./am-scripts/"$arch"/"$arg" &&
+						sed -i "s/SAMPLE/$arg/g" ./am-scripts/"$arch"/"$arg" &&
 						# LIBUNIONPRELOAD
-						read -p ' Do you wish to add libunionpreload (y,N)?' yn
-
+						read -r -p ' Do you wish to add libunionpreload (y,N)?' yn
 						case $yn in
 						'Y'|'y')
-							sed -i 's/#export LD_PRELOAD/export LD_PRELOAD/g' ./am-scripts/$arch/$arg
-							sed -i 's/#chmod/chmod/g' ./am-scripts/$arch/$arg
-							sed -i 's/#mv ./mv ./g' ./am-scripts/$arch/$arg
-							sed -i 's/#wget/wget/g' ./am-scripts/$arch/$arg;;
-						'N'|'n'|*) ;;
+							sed -i 's/#export LD_PRELOAD/export LD_PRELOAD/g' ./am-scripts/"$arch"/"$arg"
+							sed -i 's/#chmod/chmod/g' ./am-scripts/"$arch"/"$arg"
+							sed -i 's/#mv ./mv ./g' ./am-scripts/"$arch"/"$arg"
+							sed -i 's/#wget/wget/g' ./am-scripts/"$arch"/"$arg"
+							;;
+						'N'|'n'|*)
+							;;
 						esac
-
 						# SYSTEM LIBRARIES
-						read -p ' Do you wish to include system libraries (Y,n)?' yn
-
+						read -r -p ' Do you wish to include system libraries (Y,n)?' yn
 						case $yn in
 						'N'|'n')
-							sed -i 's/##export LD_LIBRARY_PATH/export LD_LIBRARY_PATH/g' ./am-scripts/$arch/$arg;;
+							sed -i 's/##export LD_LIBRARY_PATH/export LD_LIBRARY_PATH/g' ./am-scripts/"$arch"/"$arg"
+							;;
 						'Y'|'y'|*)
-							sed -i 's/#export LD_LIBRARY_PATH/export LD_LIBRARY_PATH/g' ./am-scripts/$arch/$arg;;
+							sed -i 's/#export LD_LIBRARY_PATH/export LD_LIBRARY_PATH/g' ./am-scripts/"$arch"/"$arg"
+							;;
 						esac
-
 						# BINARY PATH
-						read -p ' Do you wish to specify the binary`s path manually (y,N)?' yn
-
+						read -r -p ' Do you wish to specify the binary`s path manually (y,N)?' yn
 						case $yn in 
 						'Y'|'y')
-							read -r -ep " ◆ ADD THE PATH (EXAMPLE '/usr/lib.../$arg') $(echo -e '\n: ')" RESPONSE
-
+							read -r -ep " ◆ ADD THE PATH (EXAMPLE \"/usr/lib.../$arg\") $(echo -e '\n: ')" RESPONSE
 							case "$RESPONSE" in
 							*)
-								sed -i s/#exec/exec/g ./am-scripts/$arch/$arg
-								sed -i s#CUSTOMPATH#$RESPONSE#g ./am-scripts/$arch/$arg
-							esac;;
+								sed -i "s/#exec/exec/g" ./am-scripts/"$arch"/"$arg"
+								sed -i "s#CUSTOMPATH#$RESPONSE#g" ./am-scripts/"$arch"/"$arg"
+							esac
+							;;
 						'N'|'n'|*)
-							sed -i s/##exec/exec/g ./am-scripts/$arch/$arg;;
-						esac;;
+							sed -i "s/##exec/exec/g" ./am-scripts/"$arch"/"$arg"
+							;;
+						esac
+						;;
 					'N'|'n'|*)
 						# DOWNLOAD THE TEMPLATE AND CONVERT THE ARGUMENT INTO A COMMAND
-						wget -c -q $AMREPO/templates/AM-SAMPLE-pkg2appimage -O ./am-scripts/$arch/$arg &&
-						sed -i s/SAMPLE/$arg/g ./am-scripts/$arch/$arg
+						wget -q "$AMREPO"/templates/AM-SAMPLE-pkg2appimage -O ./am-scripts/"$arch"/"$arg" &&
+						sed -i "s/SAMPLE/$arg/g" ./am-scripts/"$arch"/"$arg"
 						;;
 					esac
-
 					# CREATE A WEBPAGE FOR https://portable-linux-apps.github.io CONTAINING ALL THE INFO ABOUT THIS APP
-					echo "# $(echo $arg | tr a-z A-Z)" >> ./am-scripts/portable-linux-apps.github.io/apps/$arg.md
-					echo -e "\n $COMMENT\n\n SITE: \n\n | [Applications](https://portable-linux-apps.github.io/apps.html) | [Home](https://portable-linux-apps.github.io)\n | --- | --- |" >> ./am-scripts/portable-linux-apps.github.io/apps/$arg.md &&
+					echo "# $(echo "$arg" | tr '[:lower:]' '[:upper:]')" >> ./am-scripts/portable-linux-apps.github.io/apps/"$arg".md
+					echo -e "\n $COMMENT\n\n SITE: \n\n | [Applications](https://portable-linux-apps.github.io/apps.html) | [Home](https://portable-linux-apps.github.io)\n | --- | --- |" >> ./am-scripts/portable-linux-apps.github.io/apps/"$arg".md &&
 					# CREATE A NEW LINE FOR THE APPLICATION'S LIST
-					echo '◆ '$arg' : '$COMMENT'' >> ./am-scripts/list; echo ""
+					echo "◆ $arg : $COMMENT" >> ./am-scripts/list; echo ""
 					# END OF THIS FUNCTION
-					echo -e "\n All files are saved in $SCRIPTDIR/am-scripts\n";;
+					echo -e "\n All files are saved in $SCRIPTDIR/am-scripts\n"
+					;;
 
 				2) # DOWNLOAD ANY ARCHIVE
-
-					mkdir -p ./am-scripts ./am-scripts/$arch ./am-scripts/portable-linux-apps.github.io/apps ./am-scripts/portable-linux-apps.github.io/icons
-					# DOWNLOAD THE TEMPLATE AND CONVERT THE ARGUMENT INTO A COMMAND
-					wget -c -q $AMREPO/templates/AM-SAMPLE-Archive -O ./am-scripts/$arch/$arg &&
-					sed -i s/SAMPLE/$arg/g ./am-scripts/$arch/$arg &&
-					echo "-----------------------------------------------------------------------"
+					_template_create_dirs_and_ask_for_source
 					# ADD THE NAME OF THE SOURCE
 					read -r -ep " ◆ ADD THE URL OF THE SITE (BETTER IF IT COME FROM GITHUB), FOR EXAMPLE: $(echo -e '\n\n - if from github.com, use "https://github.com/USER/PROJECT"\n\n - if from other sources, use "https://www.SITENAME.com" or something\n\n URL: ')" RESPONSE
-
 					case "$RESPONSE" in
 					*)
 						if echo "$RESPONSE" | grep -q "https://github.com"; then
-							RESPONSE=$(echo "$RESPONSE" | sed 's#https://github.com/##g' | cut -f1,2 -d'/')
-							sed -i s#REPLACETHIS#$RESPONSE#g ./am-scripts/$arch/$arg
-							# GET THE DESCRIPTION OF THIS REPOSITORY TO ADD IN ALL CREATED FILES
-							COMMENT=$(curl $HeaderAuthWithGITPAT https://api.github.com/repos/$RESPONSE 2>/dev/null | grep description | sed 's/"description": "//' | sed 's/",//' | cut -c 3-)
-							# CREATE A WEBPAGE FOR https://portable-linux-apps.github.io CONTAINING ALL THE INFO ABOUT THIS APP
-							echo "# $(echo $arg | tr a-z A-Z)" >> ./am-scripts/portable-linux-apps.github.io/apps/$arg.md
-							echo -e "\n $COMMENT\n\n SITE: https://github.com/$RESPONSE\n\n | [Applications](https://portable-linux-apps.github.io/apps.html) | [Home](https://portable-linux-apps.github.io)\n | --- | --- |" >> ./am-scripts/portable-linux-apps.github.io/apps/$arg.md &&
-							# CREATE A NEW LINE FOR THE APPLICATION'S LIST
-							echo "◆ $arg : $COMMENT" >> ./am-scripts/list
-							echo "-----------------------------------------------------------------------"
-							# CHECK THE DOWNLOAD LINK, THE ONE THAT POINTS TO THE LATEST RELEASE, NOTE THAT IT MAY BE A DEVELOPMENT VERSION, ADD "/latest" AFTER "/releases" TO POINT TO THE LAST STABLE VERSION
-							q="'"
-							FUNCTION='curl -Ls https://api.github.com/repos/'$RESPONSE'/releases | jq '$q'.'$q' | grep browser_download_url | cut -d '$q'"'$q' -f 4 | head -1'
-							sed -i "s#THISISTHEURL#$FUNCTION#g" ./am-scripts/$arch/$arg
-
-							read -p ' Do you wish to check the link to the available items (Y,n)?' yn
-
-							case $yn in
-							'N'|'n') ;;
-							'Y'|'y'|*)
-								echo ""; curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/$RESPONSE/releases | jq '.' | grep browser_download_url | cut -d '"' -f 4
-								echo -e "\n The URLs above are an example of what both\n the install and update scripts will point to.\n";;
-							esac
-
-							read -p ' Press 1 to add a keyword or 2 to remove a keyword (in the name): ' response
-
-							case "$response" in
-							1)
-								read -r -ep ' URL must contain ("x64", "x86_64"... or leave blank): ' response
-
-								case "$response" in
-								'') ;;
-								*)
-								sed -i 's#browser_download_url#browser_download_url | grep -i '$response' #g' ./am-scripts/$arch/$arg
-								read -p ' Do you wish to check the link for the last time (Y,n)?' yn
-
-								case $yn in
-								'N'|'n') ;;
-								'Y'|'y'|*)
-									echo ""; curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/$RESPONSE/releases | jq '.' | grep browser_download_url | grep -i "$response" | cut -d '"' -f 4 | head -1
-									echo -e "\n The URL above is an example of what both\n the install and update scripts will point to.\n";;
-								esac;;
-								esac;;
-							2)
-								read -r -ep ' URL must NOT contain ("txt", "ARM"... or leave blank): ' response
-
-								case "$response" in
-								'') ;;
-								*)
-								sed -i 's#browser_download_url#browser_download_url | grep -w -v '$response' #g' ./am-scripts/$arch/$arg
-								read -p ' Do you wish to check the link for the last time (Y,n)?' yn
-
-								case $yn in
-								'N'|'n') ;;
-								'Y'|'y'|*)
-									echo ""; curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/$RESPONSE/releases | jq '.' | grep browser_download_url | grep -w -v "$response" | cut -d '"' -f 4 | head -1
-									echo -e "\n The URL above is an example of what both\n the install and update scripts will point to.\n";;
-								esac;;
-								esac;;
-							esac
+							_template_then_github_source
 						else
-							sed -i s#REPLACETHIS#$RESPONSE#g ./am-scripts/$arch/$arg
-							# ADD A DESCRIPTION FOR THIS APPLICATION
-							read -r -ep " ◆ ADD A BRIEF DESCRIPTION FOR THIS APPLICATION $(echo -e '\n : ')" COMMENT
-
-							case "$COMMENT" in
-							*)
-								# CREATE A WEBPAGE FOR https://portable-linux-apps.github.io CONTAINING ALL THE INFO ABOUT THIS APP
-								echo "# $(echo $arg | tr a-z A-Z)" >> ./am-scripts/portable-linux-apps.github.io/apps/$arg.md
-								echo -e "\n $COMMENT\n\n SITE: $RESPONSE\n\n | [Applications](https://portable-linux-apps.github.io/apps.html) | [Home](https://portable-linux-apps.github.io)\n | --- | --- |" >> ./am-scripts/portable-linux-apps.github.io/apps/$arg.md &&
-								# CREATE A NEW LINE FOR THE APPLICATION'S LIST
-								echo "◆ $arg : $COMMENT" >> ./am-scripts/list;;
-							esac
-
-							echo "-----------------------------------------------------------------------"
-							# IF YOU CAN, USE A ONE-LINE COMMAND TO DOWNLOAD THE ARCHIVE
-							read -r -ep " USE A ONE-LINE SHELL COMMAND TO CHECK ONLY THE URL TO THE ARCHIVE $(echo -e '\n\n if the URL is fixed, simply add the "echo" command at the beginning\n\n :') " DOWNLOADURL
-
-							case "$DOWNLOADURL" in
-							*)
-								mv ./am-scripts/$arch/$arg ./am-scripts/$arch/$arg.old
-								sed -n '1,18p' ./am-scripts/$arch/$arg.old >> ./am-scripts/$arch/$arg
-								echo 'version=$('$DOWNLOADURL')' >> ./am-scripts/$arch/$arg
-								sed -n '20,34p' ./am-scripts/$arch/$arg.old >> ./am-scripts/$arch/$arg
-								echo 'version=$('$DOWNLOADURL')' >> ./am-scripts/$arch/$arg
-								sed -n '36,71p' ./am-scripts/$arch/$arg.old >> ./am-scripts/$arch/$arg
-								rm -f ./am-scripts/$arch/$arg.old;;
-							esac
-							
+							_template_if_hosted_elsewhere
 						fi
 					esac
-
 					echo "-----------------------------------------------------------------------"
-					# EXTRACT THE ARCHIVE
-					echo -e " KIND OF FILES/ARCHIVES SUPPORTED IN THIS FUNCTION:\n"
-					echo " 1) 7z"
-					echo " 2) DEB"
-					echo " 3) TAR(xz/gz/bz2/any)"
-					echo " 4) ZIP"
-					echo " 5) NONE OF THE ABOVE (it is a script or a standalone binary)"
-					echo ""
-					read -r -p " PLEASE, CHOOSE ONE: " response
+					# LAUNCHER AND ICON (OPTIONAL)
+					read -r -p " ◆ Do you wish to add a launcher and a icon (y,N)? " yn
+					case $yn in
+					'Y'|'y')
+						# ADD LAUNCHER AND ICON REFERENCES TO THE INSTALLATION SCRIPT
+						_template_generate_desktop_file
 
-					case $response in
-					1)
-						sed -i 's#FUNCTION1#7z x ./*; rm -R -f ./*7z*#g' ./am-scripts/$arch/$arg
+						# ENTER THE URL OF THE ICON THAT WILL APPEAR IN THE MENU
+						read -r -ep " ◆ COPY/PASTE THE URL OF THE ICON HERE $(echo -e '\n URL: ')" ICONURL
+						case "$ICONURL" in
+						'')	sed -i "s#ICONURL#https://portable-linux-apps.github.io/icons/$arg.png#g" ./am-scripts/"$arch"/"$arg"
+							;;
+						*)	sed -i "s#ICONURL#$ICONURL#g" ./am-scripts/"$arch"/"$arg"
+							wget -q -P ./am-scripts/portable-linux-apps.github.io/icons/ "$ICONURL"
+							;;
+						esac
+						echo "-----------------------------------------------------------------------"
+						# BINARY NAME
+						read -r -ep " ◆ NAME OF THE BINARY FILE (LEAVE BLANK IF IT IS \"$arg\"): " BINARY
+						case "$BINARY" in
+						'')
+							;;
+						*)	sed -i 's#ln -s /opt/$APP/$APP #ln -s /opt/$APP/'"$BINARY"' #g' ./am-scripts/"$arch"/"$arg"
+							;;
+						esac
+						echo "-----------------------------------------------------------------------"
+						# APPNAME
+						read -r -ep ' ◆ NAME OF THE APP (for the "Name" entry of the .desktop file): ' APPNAME
+						case "$APPNAME" in
+						*)
+							sed -i "s#APPNAME#$APPNAME#g" ./am-scripts/"$arch"/"$arg"
+							;;
+						esac
+						echo "-----------------------------------------------------------------------"
+						# PUT THE APP INTO A CATEGORY, THIS IS NEEDED FOR OUR CUSTOM DESKTOP FILE
+						_template_desktop_file_select_category
 						;;
-					2)
-						sed -i 's#FUNCTION1#ar x ./*; tar fx ./data.tar.xz; rm -R -f ./*.deb; rm -R -f ./*tar*#g' ./am-scripts/$arch/$arg
-						;;
-					3)
-						sed -i 's#FUNCTION1#tar fx ./*; rm -R -f ./*tar*#g' ./am-scripts/$arch/$arg
-						;;
-					4)
-						sed -i 's#FUNCTION1#unzip -qq ./*; rm -R -f ./*.zip#g' ./am-scripts/$arch/$arg
-						;;
-					5|*)
-						sed -i 's#FUNCTION1#chmod a+x ./*#g' ./am-scripts/$arch/$arg
+					'N'|'n'|*)
+						echo "-----------------------------------------------------------------------"
 						;;
 					esac
-
-					echo "-----------------------------------------------------------------------"
-					# MOVE THE CONTENT OF ./tmp
-					echo -e " NOW YOU ARE OUT OF ./tmp, WRITE THE PATH TO THE EXTRACTED FILE/FILES\n"
-					read -r -ep " PRESS ENTER IF THEY ARE EXTRACTED RIGHT INTO ./tmp/*$(echo -e '\n : mv --backup=t ./tmp/')" response
-
-					case $response in
-					'')
-						sed -i 's#FUNCTION2#mv --backup=t ./tmp/* ./#g' ./am-scripts/$arch/$arg;;
-					*)
-						sed -i "s#FUNCTION2#mv --backup=t ./tmp/$response ./#g" ./am-scripts/$arch/$arg;;
-					esac
-
-					echo "-----------------------------------------------------------------------"
-					# ENTER THE URL OF THE ICON THAT WILL APPEAR IN THE MENU
-					read -r -ep " ◆ COPY/PASTE THE URL OF THE ICON HERE $(echo -e '\n URL: ')" ICONURL
-
-					case "$ICONURL" in
-					'')	sed -i "s#ICONURL#https://portable-linux-apps.github.io/icons/$arg.png#g" ./am-scripts/$arch/$arg;;
-					*)	sed -i "s#ICONURL#$ICONURL#g" ./am-scripts/$arch/$arg
-						wget -q -P ./am-scripts/portable-linux-apps.github.io/icons/ $ICONURL;;
-					esac
-
-					echo "-----------------------------------------------------------------------"
-					# BINARY NAME
-					read -r -ep ' ◆ NAME OF THE BINARY FILE (LEAVE BLANK IF IT IS "'$arg'"): ' BINARY
-
-					case "$BINARY" in
-					'')	;;
-					*)	sed -i 's#ln -s /opt/$APP/$APP #ln -s /opt/$APP/'$BINARY' #g' ./am-scripts/$arch/$arg;;
-					esac
-
-					echo "-----------------------------------------------------------------------"
-					# APPNAME
-					read -r -ep ' ◆ NAME OF THE APP (for the "Name" entry of the .desktop file): ' APPNAME
-
-					case "$APPNAME" in
-					*)
-						sed -i "s#APPNAME#$APPNAME#g" ./am-scripts/$arch/$arg;;
-					esac
-
-					echo "-----------------------------------------------------------------------"
-					# PUT THE APP INTO A CATEGORY, THIS IS NEEDED FOR OUR CUSTOM DESKTOP FILE
-					echo -e " LIST OF CATEGORIES:\n 0) AudioVideo\n 1) Audio\n 2) Video\n 3) Development\n 4) Education\n 5) Game\n 6) Graphics\n 7) Network\n 8) Office\n 9) Science\n 10) Settings\n 11) System\n 12) Utility (default)\n "
-					read -r -p " CHOOSE A CATEGORY : " response
-
-					case "$response" in
-						0)	sed -i s/YOURCATEGORY/AudioVideo/g ./am-scripts/$arch/$arg;;
-						1)	sed -i s/YOURCATEGORY/Audio/g ./am-scripts/$arch/$arg;; 
-						2)	sed -i s/YOURCATEGORY/Video/g ./am-scripts/$arch/$arg;; 
-						3)	sed -i s/YOURCATEGORY/Development/g ./am-scripts/$arch/$arg;;
-						4)	sed -i s/YOURCATEGORY/Education/g ./am-scripts/$arch/$arg;; 
-						5)	sed -i s/YOURCATEGORY/Game/g ./am-scripts/$arch/$arg;; 
-						6)	sed -i s/YOURCATEGORY/Graphics/g ./am-scripts/$arch/$arg;; 
-						7)	sed -i s/YOURCATEGORY/Network/g ./am-scripts/$arch/$arg;;
-						8)	sed -i s/YOURCATEGORY/Office/g ./am-scripts/$arch/$arg;; 
-						9)	sed -i s/YOURCATEGORY/Science/g ./am-scripts/$arch/$arg;; 
-						10)	sed -i s/YOURCATEGORY/Settings/g ./am-scripts/$arch/$arg;; 
-						11)	sed -i s/YOURCATEGORY/System/g ./am-scripts/$arch/$arg;;
-						12|*)	sed -i s/YOURCATEGORY/Utility/g ./am-scripts/$arch/$arg;;
-					esac
-
-					echo "-----------------------------------------------------------------------"
 					# END OF THIS FUNCTION
-					echo -e "\n All files are saved in $SCRIPTDIR/am-scripts\n";;
+					echo -e "\n All files are saved in $SCRIPTDIR/am-scripts\n"
+					;;
 
 				3) # CREATE A CUSTOM FIREFOX PROFILE ("firefox" MUST BE IN "$PATH" TO MADE IT WORK)
-
-					mkdir -p ./am-scripts ./am-scripts/$arch ./am-scripts/portable-linux-apps.github.io/apps ./am-scripts/portable-linux-apps.github.io/icons
+					mkdir -p ./am-scripts ./am-scripts/"$arch" ./am-scripts/portable-linux-apps.github.io/apps ./am-scripts/portable-linux-apps.github.io/icons
 					# DOWNLOAD THE TEMPLATE AND CONVERT THE ARGUMENT INTO A COMMAND
-					wget -c -q $AMREPO/templates/AM-SAMPLE-Firefox-webapp -O ./am-scripts/$arch/ffwa-$arg &&
-					sed -i "s/SAMPLE/$arg/g" ./am-scripts/$arch/ffwa-$arg &&
+					wget -q "$AMREPO"/templates/AM-SAMPLE-Firefox-webapp -O ./am-scripts/"$arch"/"$arg" &&
+					sed -i "s/SAMPLE/$arg/g" ./am-scripts/"$arch"/"$arg" &&
+					# USE THE SUFFIX FROM NOW ON
+					mv ./am-scripts/"$arch"/"$arg" ./am-scripts/"$arch"/"ffwa-$arg"
+					arg="ffwa-$arg"
 					echo "-----------------------------------------------------------------------"
 					read -r -ep " ◆ NAME OF THE APP: " RESPONSE
-
 					case "$RESPONSE" in
 					*)
-						sed -i "s#GIVEMEANAME#$RESPONSE#g" ./am-scripts/$arch/ffwa-$arg
+						sed -i "s#GIVEMEANAME#$RESPONSE#g" ./am-scripts/"$arch"/"$arg"
 						# CREATE A WEBPAGE FOR https://portable-linux-apps.github.io CONTAINING ALL THE INFO ABOUT THIS APP
-						echo "# $(echo ffwa-$arg | tr a-z A-Z)" >> ./am-scripts/portable-linux-apps.github.io/apps/ffwa-$arg.md
-						echo -e "\n WebApp & Firefox Profile for $RESPONSE.\n\n SITE: MYWEBSITE\n\n | [Applications](https://portable-linux-apps.github.io/apps.html) | [Home](https://portable-linux-apps.github.io)\n | --- | --- |" >> ./am-scripts/portable-linux-apps.github.io/apps/ffwa-$arg.md &&
+						echo "# $(echo "$arg" | tr '[:lower:]' '[:upper:]')" >> ./am-scripts/portable-linux-apps.github.io/apps/"$arg".md
+						echo -e "\n WebApp & Firefox Profile for $RESPONSE.\n\n SITE: MYWEBSITE\n\n | [Applications](https://portable-linux-apps.github.io/apps.html) | [Home](https://portable-linux-apps.github.io)\n | --- | --- |" >> ./am-scripts/portable-linux-apps.github.io/apps/"$arg".md &&
 						# CREATE A NEW LINE FOR THE APPLICATION'S LIST
-						echo "◆ ffwa-$arg : WebApp & Firefox Profile for $RESPONSE." >> ./am-scripts/list
+						echo "◆ $arg : WebApp & Firefox Profile for $RESPONSE." >> ./am-scripts/list
 					esac
-
 					# PUT THE APP INTO A CATEGORY, THIS IS NEEDED FOR OUR CUSTOM DESKTOP FILE
-					echo -e " LIST OF CATEGORIES:\n 0) AudioVideo\n 1) Audio\n 2) Video\n 3) Development\n 4) Education\n 5) Game\n 6) Graphics\n 7) Network\n 8) Office\n 9) Science\n 10) Settings\n 11) System\n 12) Utility (default)\n "
-					read -r -p " CHOOSE A CATEGORY : " response
-
-					case "$response" in
-						0)	sed -i s/YOURCATEGORY/AudioVideo/g ./am-scripts/$arch/$arg;;
-						1)	sed -i s/YOURCATEGORY/Audio/g ./am-scripts/$arch/$arg;; 
-						2)	sed -i s/YOURCATEGORY/Video/g ./am-scripts/$arch/$arg;; 
-						3)	sed -i s/YOURCATEGORY/Development/g ./am-scripts/$arch/$arg;;
-						4)	sed -i s/YOURCATEGORY/Education/g ./am-scripts/$arch/$arg;; 
-						5)	sed -i s/YOURCATEGORY/Game/g ./am-scripts/$arch/$arg;; 
-						6)	sed -i s/YOURCATEGORY/Graphics/g ./am-scripts/$arch/$arg;; 
-						7)	sed -i s/YOURCATEGORY/Network/g ./am-scripts/$arch/$arg;;
-						8)	sed -i s/YOURCATEGORY/Office/g ./am-scripts/$arch/$arg;; 
-						9)	sed -i s/YOURCATEGORY/Science/g ./am-scripts/$arch/$arg;; 
-						10)	sed -i s/YOURCATEGORY/Settings/g ./am-scripts/$arch/$arg;; 
-						11)	sed -i s/YOURCATEGORY/System/g ./am-scripts/$arch/$arg;;
-						12|*)	sed -i s/YOURCATEGORY/Utility/g ./am-scripts/$arch/$arg;;
-					esac
-
-					echo "-----------------------------------------------------------------------"
+					_template_desktop_file_select_category
 					# ENTER THE URL OF THE SITE YOU WANT TO CREATE A CUSTOM FIREFOX PROFILE FOR
 					read -r -ep " ◆ URL OF THE WEBAPP: " RESPONSE
-
 					case "$RESPONSE" in
 					*)
-						sed -i "s#MYWEBSITE#$RESPONSE#g" ./am-scripts/$arch/ffwa-$arg; sed -i "s#MYWEBSITE#$RESPONSE#g" ./am-scripts/portable-linux-apps.github.io/apps/ffwa-$arg.md;;
+						sed -i "s#MYWEBSITE#$RESPONSE#g" ./am-scripts/"$arch"/"$arg"; sed -i "s#MYWEBSITE#$RESPONSE#g" ./am-scripts/portable-linux-apps.github.io/apps/"$arg".md
+						;;
 					esac 
-
 					echo "-----------------------------------------------------------------------"
 					# ENTER THE URL OF THE ICON THAT WILL APPEAR IN THE MENU
 					read -r -ep " ◆ COPY/PASTE THE URL OF THE ICON HERE $(echo -e '\n URL: ')" RESPONSE
-
 					case "$RESPONSE" in
 					*)
-						sed -i "s#YOURICONURL#$RESPONSE#g" ./am-scripts/$arch/ffwa-$arg;;
+						sed -i "s#YOURICONURL#$RESPONSE#g" ./am-scripts/"$arch"/"$arg"
+						;;
 					esac
-
 					echo "-----------------------------------------------------------------------"
 					# END OF THIS FUNCTION
-					echo -e "\n All files are saved in $SCRIPTDIR/am-scripts\n";;
+					echo -e "\n All files are saved in $SCRIPTDIR/am-scripts\n"
+					;;
 
 				# NOTHING SELECTED
 				*)
-					echo -e "\n No valid argument was chosen: process aborted! \n" | tr a-z A-Z; break;;
+					echo -e "\n No valid argument was chosen: process aborted! \n" | tr '[:lower:]' '[:upper:]'; break
+					;;
 				esac
 			esac
 		fi
