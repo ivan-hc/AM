@@ -1,59 +1,65 @@
 #!/bin/sh
 
+# AM INSTALL SCRIPT VERSION 3. 
+set -u
 APP=mercury-avx2
-REPO="Alex313031/Mercury"
+SITE="Alex313031/Mercury"
 
-# CREATE THE FOLDER
-mkdir /opt/$APP
-cd /opt/$APP
+# CREATE DIRECTORIES AND ADD REMOVER
+[ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
+printf "#!/bin/sh\nset -e\nrm -f /usr/local/bin/$APP\nrm -R -f /opt/$APP" > "/opt/$APP/remove"
+#printf '\n%s' "rm -f /usr/share/applications/AM-$APP.desktop" >> "/opt/$APP/remove"
+chmod a+x "/opt/$APP/remove"
 
-# ADD THE REMOVER
-echo '#!/bin/sh' >> /opt/$APP/remove
-echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
-chmod a+x /opt/$APP/remove
-
-# DOWNLOAD THE ARCHIVE
-mkdir tmp
-cd ./tmp
-
-version=$(curl -Ls https://api.github.com/repos/$REPO/releases | jq '.' | grep -i AVX2 | grep -w -v i686 | grep -w -v aarch64 | grep -w -v arm64 | grep -v SSE | grep browser_download_url | grep -i ".zip" | cut -d '"' -f 4 | head -1)
-wget $version
-echo "$version" >> /opt/$APP/version
+# DOWNLOAD AND PREPARE THE APP, $version is also used for updates
+version=$(curl -Ls https://api.github.com/repos/Alex313031/Mercury/releases | jq '.' | grep browser_download_url | grep -i AVX2 | grep -vi aarch64 | grep -vi arm64 | grep -i ".zip" | cut -d '"' -f 4 | head -1)
+wget "$version" || exit 1
+[ -e ./*7z ] && 7z x ./*7z && rm -f ./*7z
+[ -e ./*tar.* ] && tar fx ./*tar.* && rm -f ./*tar.*
+[ -e ./*zip ] && unzip -qq ./*zip 1>/dev/null && rm -f ./*zip
 cd ..
-unzip ./tmp/*.zip -d ./tmp/
-mv ./tmp/*/*/* ./
-mkdir icons
-wget -q https://raw.githubusercontent.com/Alex313031/Mercury/main/logos/Mercury_256.png -O ./icons/$APP
-rm -R -f ./tmp
+if [ -d ./tmp/* 2>/dev/null ]; then mv ./tmp/*/* ./; else mv ./tmp/* ./"$APP" 2>/dev/null || mv ./tmp/* ./; fi
+rm -R -f ./tmp || exit 1
+echo "$version" > ./version
+chmod a+x "/opt/$APP/$APP" || exit 1
 
-# LINK
-ln -s /opt/$APP/mercury /usr/local/bin/$APP
+# LINK TO PATH
+ln -s "/opt/$APP/$APP" "/usr/local/bin/$APP"
 
 # SCRIPT TO UPDATE THE PROGRAM
-cat >> /opt/$APP/AM-updater << 'EOF'
-#!/usr/bin/env bash
+cat >> "/opt/$APP/AM-updater" << 'EOF'
+#!/bin/sh
+set -u
 APP=mercury-avx2
-REPO="Alex313031/Mercury"
-version0=$(cat /opt/$APP/version)
-version=$(curl -Ls https://api.github.com/repos/$REPO/releases | jq '.' | grep -i AVX2 | grep -w -v i686 | grep -w -v aarch64 | grep -w -v arm64 | grep -v SSE | grep browser_download_url | grep -i ".zip" | cut -d '"' -f 4 | head -1)
-if [ $version = $version0 ]; then
-  echo "Update not needed!"
-else
-  notify-send "A new version of $APP is available, please wait"
-  mkdir /opt/$APP/tmp
-  cd /opt/$APP/tmp
-  wget $version
-  cd ..
-  unzip ./tmp/*.zip -d ./tmp/; mv --backup=t ./tmp/*/*/* ./
-  rm ./version
-  echo $version >> ./version
-  rm -R -f ./tmp ./*~
-  notify-send "$APP is updated!"
+SITE="Alex313031/Mercury"
+version0=$(cat "/opt/$APP/version")
+version=$(curl -Ls https://api.github.com/repos/Alex313031/Mercury/releases | jq '.' | grep browser_download_url | grep -i AVX2 | grep -vi aarch64 | grep -vi arm64 | grep -i ".zip" | cut -d '"' -f 4 | head -1)
+[ -n "$version" ] || { echo "Error getting link"; exit 1; }
+if [ "$version" != "$version0" ]; then
+	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
+	notify-send "A new version of $APP is available, please wait"
+	wget "$version" || exit 1
+	[ -e ./*7z ] && 7z x ./*7z && rm -f ./*7z
+	[ -e ./*tar.* ] && tar fx ./*tar.* && rm -f ./*tar.*
+	[ -e ./*zip ] && unzip -qq ./*zip 1>/dev/null && rm -f ./*zip
+	cd ..
+	if [ -d ./tmp/* 2>/dev/null ]; then mv --backup=t ./tmp/*/* ./; else mv --backup=t ./tmp/* ./"$APP" 2>/dev/null || mv --backup=t ./tmp/* ./; fi
+	chmod a+x "/opt/$APP/$APP" || exit 1
+	echo "$version" > ./version
+	rm -R -f ./tmp ./*~
+	notify-send "$APP is updated!"
+	exit 0
 fi
+echo "Update not needed!"
 EOF
-chmod a+x /opt/$APP/AM-updater
+chmod a+x "/opt/$APP/AM-updater"
 
-# LAUNCHER & ICON
+# ICON
+mkdir -p icons
+wget https://portable-linux-apps.github.io/icons/mercury.png -O ./icons/"$APP" 2> /dev/null
+
+# LAUNCHER
+rm -f /usr/share/applications/AM-"$APP".desktop
 echo "
 [Desktop Entry]
 Version=1.0
@@ -99,15 +105,11 @@ Comment[pt]=Navegue na Internet
 Comment[pt_BR]=Navegue na Internet
 Comment[sk]=Prehliadanie internetu
 Comment[sv]=Surfa på webben
-Exec=/opt/$APP/mercury %u
+Exec=/opt/$APP/$APP %u
 Terminal=false
 Type=Application
 Icon=/opt/$APP/icons/$APP
 MimeType=text/html;text/xml;application/xhtml+xml;application/xml;application/vnd.mozilla.xul+xml;application/rss+xml;application/rdf+xml;image/gif;image/jpeg;image/png;x-scheme-handler/http;x-scheme-handler/https;
 StartupNotify=true
 Categories=Network;WebBrowser;
-Keywords=web;browser;internet;" >> /usr/share/applications/AM-$APP.desktop
-
-
-
-
+Keywords=web;browser;internet;" >> /usr/share/applications/AM-"$APP".desktop
