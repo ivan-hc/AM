@@ -15,6 +15,7 @@ arch="$HOSTTYPE"
 export currentuser="$USER"
 
 # XDG Variables
+BINDIR="${XDG_BIN_HOME:-$HOME/.local/bin}"
 DATADIR="${XDG_DATA_HOME:-$HOME/.local/share}"
 CONFIGDIR="${XDG_CONFIG_HOME:-$HOME/.config}"
 export CACHEDIR="${XDG_CACHE_HOME:-$HOME/.cache}"
@@ -77,22 +78,11 @@ function _am() {
 #######################################
 
 function _patch_bashrc_and_profile() {
-	# Fix order in "echo $PATH" in case "$HOME/.local/bin" is placed at the beginning instead of the end
-	# Check if the custom PATH is not already in .bashrc, then append it (fix - exclamation mark negates the entire command substitution)
-	if test -f "$HOME/.bashrc"; then
-		if ! grep -q 'export PATH=$PATH:$HOME/.local/bin' "$HOME/.bashrc"; then
-			echo 'export PATH=$(echo $PATH | tr ":" "\n" | grep -v "/.local/bin" | tr "\n" ":" | sed ''s/.$//'')' >> "$HOME/.bashrc"
-			echo -e 'export PATH=$PATH:$HOME/.local/bin\n' >> "$HOME/.bashrc"
-		fi
-	fi
-	# Correct the order of .local/bin in .profile if necessary
-	if test -f "$HOME/.profile"; then
-		if grep -q 'PATH="$HOME/.local/bin:$PATH"' "$HOME/.profile"; then
-			sed -i 's#PATH="$HOME/.local/bin:$PATH"#PATH="$PATH:$HOME/.local/bin"#g' "$HOME/.profile"
-		fi
-	elif test -f "$HOME/.bash_profile"; then
-		if grep -q 'PATH="$HOME/.local/bin:$PATH"' "$HOME/.bash_profile"; then
-			sed -i 's#PATH="$HOME/.local/bin:$PATH"#PATH="$PATH:$HOME/.local/bin"#g' "$HOME/.bash_profile"
+	if ! echo "$PATH" | grep -q "$BINDIR"; then
+		if test -f "$HOME/.profile"; then
+			printf '\n%s\n' 'export PATH="$PATH:${XDG_BIN_HOME:-$HOME/.local/bin}"' >> "$HOME/.profile"
+		elif test -f "$HOME/.bash_profile"; then
+			printf '\n%s\n' 'export PATH="$PATH:${XDG_BIN_HOME:-$HOME/.local/bin}"' >> "$HOME/.bash_profile"
 		fi
 	fi
 }
