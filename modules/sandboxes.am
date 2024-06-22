@@ -23,6 +23,13 @@ _home() {
 	fi
 }
 
+if [ "$1" = "--disable-sandbox" ]; then
+	[ -z "$2" ] && echo "You need to specify the application to unsandbox, aborting" && exit 1
+	grep "aisap-am sandboxing script" "$(command -v "$2")" >/dev/null 2>&1 || { echo "Not a sandboxed application, aborting"; exit 1; }
+	"$2" --disable-sandbox
+	exit 0
+fi 
+
 case "$1" in
   '--sandbox')
 
@@ -188,34 +195,35 @@ case "$1" in
 		read -p " Do you want configure access to directories? (Y/n): " yn
 		if ! echo "$yn" | grep -i '^n' >/dev/null 2>&1; then
 			printf '\033[36m\n'
-			read -p " Allow $2 access to ${XDG_DESKTOP_DIR:-~/Desktop}? (y/N): " yn
+			read -p " Allow $2 access to $(echo ${XDG_DESKTOP_DIR:-~/Desktop} | sed "s|$HOME|~|g")? (y/N): " yn
 			if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
 				sed -i 's|--rm-file "${XDG_DESKTOP_DIR:-~/Desktop}"|--add-file "${XDG_DESKTOP_DIR:-~/Desktop}":rw|g' "$AMCACHEDIR/sandbox-scripts/$2" || exit 1
 			fi
-			read -p " Allow $2 access to ${XDG_DOCUMENTS_DIR:-~/Documents}? (y/N): " yn
+			read -p " Allow $2 access to $(echo ${XDG_DOCUMENTS_DIR:-~/Documents} | sed "s|$HOME|~|g")? (y/N): " yn
 			if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
 				sed -i 's|--rm-file "${XDG_DOCUMENTS_DIR:-~/Documents}"|--add-file "${XDG_DOCUMENTS_DIR:-~/Documents}":rw|g' "$AMCACHEDIR/sandbox-scripts/$2" || exit 1
 			fi
-			read -p " Allow $2 access to ${XDG_DOWNLOAD_DIR:-~/Downloads}? (y/N): " yn
+			read -p " Allow $2 access to $(echo ${XDG_DOWNLOAD_DIR:-~/Downloads} | sed "s|$HOME|~|g")? (y/N): " yn
 			if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
 				sed -i 's|--rm-file "${XDG_DOWNLOAD_DIR:-~/Downloads}"|--add-file "${XDG_DOWNLOAD_DIR:-~/Downloads}":rw|g' "$AMCACHEDIR/sandbox-scripts/$2" || exit 1
 			fi
-			read -p " Allow $2 access to ${XDG_GAMES_DIR:-~/Games} (y/N): " yn
+			read -p " Allow $2 access to $(echo ${XDG_GAMES_DIR:-~/Games} | sed "s|$HOME|~|g")? (y/N): " yn
 			if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
 				sed -i 's|--rm-file "${XDG_GAMES_DIR:-~/Games}"|--add-file "${XDG_GAMES_DIR:-~/Games}":rw|g' "$AMCACHEDIR/sandbox-scripts/$2" || exit 1
 			fi
-			read -p " Allow $2 access to ${XDG_MUSIC_DIR:-~/Music} (y/N): " yn
+			read -p " Allow $2 access to $(echo ${XDG_MUSIC_DIR:-~/Music} | sed "s|$HOME|~|g")? (y/N): " yn
 			if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
 				sed -i 's|--rm-file "${XDG_MUSIC_DIR:-~/Music}"|--add-file "${XDG_MUSIC_DIR:-~/Music}":rw|g' "$AMCACHEDIR/sandbox-scripts/$2" || exit 1
 			fi
-			read -p " Allow $2 access to ${XDG_PICTURES_DIR:-~/Pictures} (y/N): " yn
+			read -p " Allow $2 access to $(echo ${XDG_PICTURES_DIR:-~/Pictures} | sed "s|$HOME|~|g")? (y/N): " yn
 			if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
 				sed -i 's|--rm-file "${XDG_PICTURES_DIR:-~/Pictures}"|--add-file "${XDG_PICTURES_DIR:-~/Pictures}":rw|g' "$AMCACHEDIR/sandbox-scripts/$2" || exit 1
 			fi
-			read -p " Allow $2 access to ${XDG_VIDEOS_DIR:-~/Videos} (y/N): " yn
+			read -p " Allow $2 access to $(echo ${XDG_VIDEOS_DIR:-~/Videos} | sed "s|$HOME|~|g")? (y/N): " yn
 			if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
 				sed -i 's|--rm-file "${XDG_VIDEOS_DIR:-~/Videos}"|--add-file "${XDG_VIDEOS_DIR:-~/Videos}":rw|g' "$AMCACHEDIR/sandbox-scripts/$2" || exit 1
 			fi
+			sleep 0.5
 			printf '\033[31m'
 			read -p " Allow $2 access to a specific directory? (y/N): " yn
 			if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
@@ -224,8 +232,8 @@ case "$1" in
 				printf '\n%s\n' "   Type the path to the directory"
 				read -p "   Example /media/external-drive or ~/Backups: " NEWDIR
 				[ -z "$NEWDIR" ] && printf '\033[31m\n%s\n' "   No path given, aborting" && exit 1
-				if [ "$NEWDIR" = '$HOME' ] || [ "$NEWDIR" = '$HOME/' ] || [ "$NEWDIR" = "~/" ] || [ "$NEWDIR" = "~" ] \
-				|| [ "$NEWDIR" = "/" ] || [ "$NEWDIR" = "/home" ] || [ "$NEWDIR" = "/home" ] || [ "$NEWDIR" = "/home/" ]; then
+				if [ "$NEWDIR" = '$HOME' ] || [ "$NEWDIR" = '$HOME/' ] || [ "$NEWDIR" = "$HOME" ] || [ "$NEWDIR" = "$HOME/" ] || [ "$NEWDIR" = "/" ] \
+				|| [ "$NEWDIR" = "~" ] || [ "$NEWDIR" = "~/" ] || [ "$NEWDIR" = "/home" ] || [ "$NEWDIR" = "/home" ] || [ "$NEWDIR" = "/home/" ]; then
 					notify-send -u critical "DO YOU WANT THE FBI TO GET YA?"
 					printf '\033[31m%s\n' && read -p "   SPOOKY LOCATION DETECTED! ARE YOU SURE? IF SO TYPE \"YES\": "
 					[ $YES != "YES" ] && echo "That's not a \"YES\", aborting" && exit 1
