@@ -545,6 +545,15 @@ See also "[How to update or remove apps manually](#how-to-update-or-remove-apps-
  DESCRIPTION:	Disable bash-completion.
  ___________________________________________________________________________
 
+ `--disable-sandbox`
+
+ SYNOPSIS:
+
+ `--disable-sandbox {PROGRAM}`
+
+ DESCRIPTION:	Disable the sandbox for the selected app.
+ ___________________________________________________________________________
+
  `--enable-completion`
 
  SYNOPSIS:
