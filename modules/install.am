@@ -4,65 +4,6 @@
 # THIS MODULE IS USED TO INSTALL APPS FROM THE DATABASE OR FROM LOCAL SCRIPTS
 #############################################################################
 
-# Check if the installation script is a metapackage (example one of the 40+ kdegames scripts)
-function _if_metapackage() {
-	for metapackage in $METAPACKAGES; do
-		if grep -q "$metapackage" ./"$arg" 2> /dev/null; then
-			if test -d "$APPSPATH"/"$metapackage"/tmp; then
-				$SUDOCOMMAND "$APPSPATH"/"$metapackage"/remove 2> /dev/null
-			elif test -d "$APPSPATH"/"$metapackage"; then
-				echo ' ◆ '"$(echo "\"$arg\"" | tr '[:lower:]' '[:upper:]')"' IS PART OF "'"$(echo "$metapackage" | tr '[:lower:]' '[:upper:]')"'", ALREADY INSTALLED'; break
-			fi
-		fi
-	done
-}
-
-# Prevent "appman" installing itself
-function _if_appman() {
-	if [ "$arg" == appman ]; then
-		if [ "$AMCLI" == appman ] 2>/dev/null; then
-			echo ' 💀 ERROR: YOU CANNOT INSTALL APPMAN USING APPMAN'; return 0
-		fi
-	fi
-}
-
-# Check if the installation script contain a keyword related to a missing dependence
-function _if_missing_dependence() {
-	if grep -q '.deb' ./"$arg"; then
-		if ! command -v ar 1>/dev/null; then
-			echo ' 💀 ERROR: YOU CANNOT INSTALL '"$(echo "\"$arg\"" | tr '[:lower:]' '[:upper:]')"' WITHOUT INSTALLING "BINUTILS"!'; return 0
-		fi
-	fi
-	if grep -q 'ffwa-' ./"$arg"; then
-		ffbrowser=$(find ${PATH//:/ } -maxdepth 1 -name firefox* | sort | head -1)
-		if [[ -z "$ffbrowser" ]]; then
-			echo ' 💀 ERROR: YOU CANNOT INSTALL '"$(echo "\"$arg\"" | tr '[:lower:]' '[:upper:]')"' WITHOUT INSTALLING "FIREFOX"!'; return 0
-		else
-			sed -i 's#firefox --class#'"$(echo "$ffbrowser" | xargs -L 1 basename)"' --class#g' ./"$arg"
-		fi
-	fi
-	if grep -q '.tar' ./"$arg"; then
-		if ! command -v tar 1>/dev/null; then
-			echo ' 💀 ERROR: YOU CANNOT INSTALL '"$(echo "\"$arg\"" | tr '[:lower:]' '[:upper:]')"' WITHOUT INSTALLING "TAR"!'; return 0
-		fi
-	fi
-	if grep -q '.zip' ./"$arg"; then
-		if ! command -v unzip 1>/dev/null; then
-			echo ' 💀 ERROR: YOU CANNOT INSTALL '"$(echo "\"$arg\"" | tr '[:lower:]' '[:upper:]')"' WITHOUT INSTALLING "UNZIP"!'; return 0
-		fi
-	fi
-	if grep -q 'zsync /opt' ./"$arg"; then
-		if ! command -v zsync 1>/dev/null; then
-			optzsync=$(grep -F 'if test -f /opt/$APP/*.zsync' ./"$arg" | wc -l)
-			if [ "$optzsync" == 0 ]; then
-				echo ' 💀 ERROR: YOU CANNOT INSTALL '"$(echo "\"$arg\"" | tr '[:lower:]' '[:upper:]')"' WITHOUT INSTALLING "ZSYNC"!'; return 0
-			else
-				echo -e ' ⚠️ WARNING: '"$(echo "\"$arg\"" | tr '[:lower:]' '[:upper:]')"' MAY NOT BE UPDATABLE WITHOUT "ZSYNC".\n\n THE APP WILL STILL BE INSTALLED, BUT INSTALLING "ZSYNC" IS RECOMMENDED!\n'
-			fi
-		fi
-	fi
-}
-
 # If you use the --latest option, add the "latest" flag to scripts that point to a very common "release"
 function _if_latest() {
 	if grep -q 'force-latest' "$AMCACHEDIR"/install-args; then
@@ -112,21 +53,6 @@ function _apply_patches() {
 			sed -i 's# "/usr/share/applications# "/usr/local/share/applications#g' ./"$arg"
 		fi
 		_install_common_patch
-	fi
-}
-
-# Check if you are installing an app or a library
-function _if_library() {
-	echo -e "◆ $(echo "\"$arg\"" | tr '[:lower:]' '[:upper:]'): starting installation script" &&
-	if grep -q "/usr/local/lib" ./"$arg"; then
-		echo -e '\n ⚠️ This script installs a system library in /usr/local/lib, cancel it if:\n'
-		echo ' - it is already installed in the system;'
-		echo -e ' - its already present in your repositories (so install it from there).\n'
-		read -p " Do you wish to continue (N,y)?" yn
-		case "$yn" in
-		'y'|'Y')	;;
-		'n'|'N'|*)	echo -e "\n INSTALLATION ABORTED!"; return 0;;
-		esac	
 	fi
 }
 
@@ -203,12 +129,70 @@ function _ending_the_installation() {
 
 function _install_arg() {
 	chmod a+x ./"$arg"
-	_if_metapackage
-	_if_appman
-	_if_missing_dependence
+	# Check if the installation script is a metapackage (example one of the 40+ kdegames scripts)
+	for metapackage in $METAPACKAGES; do
+		if grep -q "$metapackage" ./"$arg" 2> /dev/null; then
+			if test -d "$APPSPATH"/"$metapackage"/tmp; then
+				$SUDOCOMMAND "$APPSPATH"/"$metapackage"/remove 2> /dev/null
+			elif test -d "$APPSPATH"/"$metapackage"; then
+				echo ' ◆ '"$(echo "\"$arg\"" | tr '[:lower:]' '[:upper:]')"' IS PART OF "'"$(echo "$metapackage" | tr '[:lower:]' '[:upper:]')"'", ALREADY INSTALLED'; return 0
+			fi
+		fi
+	done
+	# Prevent "appman" installing itself
+	if [ "$arg" == appman ]; then
+		if [ "$AMCLI" == appman ] 2>/dev/null; then
+			echo ' 💀 ERROR: YOU CANNOT INSTALL APPMAN USING APPMAN'; return 0
+		fi
+	fi
+	# Check if the installation script contain a keyword related to a missing dependence
+	if grep -q '.deb' ./"$arg"; then
+		if ! command -v ar 1>/dev/null; then
+			echo ' 💀 ERROR: YOU CANNOT INSTALL '"$(echo "\"$arg\"" | tr '[:lower:]' '[:upper:]')"' WITHOUT INSTALLING "BINUTILS"!'; return 0
+		fi
+	fi
+	if grep -q 'ffwa-' ./"$arg"; then
+		ffbrowser=$(find ${PATH//:/ } -maxdepth 1 -name firefox* | sort | head -1)
+		if [[ -z "$ffbrowser" ]]; then
+			echo ' 💀 ERROR: YOU CANNOT INSTALL '"$(echo "\"$arg\"" | tr '[:lower:]' '[:upper:]')"' WITHOUT INSTALLING "FIREFOX"!'; return 0
+		else
+			sed -i 's#firefox --class#'"$(echo "$ffbrowser" | xargs -L 1 basename)"' --class#g' ./"$arg"
+		fi
+	fi
+	if grep -q '.tar' ./"$arg"; then
+		if ! command -v tar 1>/dev/null; then
+			echo ' 💀 ERROR: YOU CANNOT INSTALL '"$(echo "\"$arg\"" | tr '[:lower:]' '[:upper:]')"' WITHOUT INSTALLING "TAR"!'; return 0
+		fi
+	fi
+	if grep -q '.zip' ./"$arg"; then
+		if ! command -v unzip 1>/dev/null; then
+			echo ' 💀 ERROR: YOU CANNOT INSTALL '"$(echo "\"$arg\"" | tr '[:lower:]' '[:upper:]')"' WITHOUT INSTALLING "UNZIP"!'; return 0
+		fi
+	fi
+	if grep -q 'zsync /opt' ./"$arg"; then
+		if ! command -v zsync 1>/dev/null; then
+			optzsync=$(grep -F 'if test -f /opt/$APP/*.zsync' ./"$arg" | wc -l)
+			if [ "$optzsync" == 0 ]; then
+				echo ' 💀 ERROR: YOU CANNOT INSTALL '"$(echo "\"$arg\"" | tr '[:lower:]' '[:upper:]')"' WITHOUT INSTALLING "ZSYNC"!'; return 0
+			else
+				echo -e ' ⚠️ WARNING: '"$(echo "\"$arg\"" | tr '[:lower:]' '[:upper:]')"' MAY NOT BE UPDATABLE WITHOUT "ZSYNC".\n\n THE APP WILL STILL BE INSTALLED, BUT INSTALLING "ZSYNC" IS RECOMMENDED!\n'
+			fi
+		fi
+	fi
+	# Check if you are installing an app or a library
+	echo -e "◆ $(echo "\"$arg\"" | tr '[:lower:]' '[:upper:]'): starting installation script" &&
+	if grep -q "/usr/local/lib" ./"$arg"; then
+		echo -e '\n ⚠️ This script installs a system library in /usr/local/lib, cancel it if:\n'
+		echo ' - it is already installed in the system;'
+		echo -e ' - its already present in your repositories (so install it from there).\n'
+		read -p " Do you wish to continue (N,y)?" yn
+		case "$yn" in
+		'y'|'Y')	;;
+		'n'|'N'|*)	echo -e "\n INSTALLATION ABORTED!"; return 0;;
+		esac	
+	fi
 	_if_latest
 	_apply_patches
-	_if_library
 	echo ""
 	$SUDOCOMMAND ./"$arg"
 	echo ""
