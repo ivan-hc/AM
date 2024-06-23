@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="6.14-1"
+AMVERSION="6.14-2"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -15,6 +15,7 @@ arch="$HOSTTYPE"
 export currentuser="$USER"
 
 # XDG Variables
+BINDIR="${XDG_BIN_HOME:-$HOME/.local/bin}"
 DATADIR="${XDG_DATA_HOME:-$HOME/.local/share}"
 CONFIGDIR="${XDG_CONFIG_HOME:-$HOME/.config}"
 export CACHEDIR="${XDG_CACHE_HOME:-$HOME/.cache}"
@@ -76,23 +77,20 @@ function _am() {
 # "APPMAN" CORE VARIABLES AND FUNCTIONS
 #######################################
 
-function _patch_bashrc_and_profile() {
-	# Fix order in "echo $PATH" in case "$HOME/.local/bin" is placed at the beginning instead of the end
-	# Check if the custom PATH is not already in .bashrc, then append it (fix - exclamation mark negates the entire command substitution)
-	if test -f "$HOME/.bashrc"; then
-		if ! grep -q 'export PATH=$PATH:$HOME/.local/bin' "$HOME/.bashrc"; then
-			echo 'export PATH=$(echo $PATH | tr ":" "\n" | grep -v "/.local/bin" | tr "\n" ":" | sed ''s/.$//'')' >> "$HOME/.bashrc"
-			echo -e 'export PATH=$PATH:$HOME/.local/bin\n' >> "$HOME/.bashrc"
-		fi
-	fi
-	# Correct the order of .local/bin in .profile if necessary
-	if test -f "$HOME/.profile"; then
-		if grep -q 'PATH="$HOME/.local/bin:$PATH"' "$HOME/.profile"; then
-			sed -i 's#PATH="$HOME/.local/bin:$PATH"#PATH="$PATH:$HOME/.local/bin"#g' "$HOME/.profile"
-		fi
-	elif test -f "$HOME/.bash_profile"; then
-		if grep -q 'PATH="$HOME/.local/bin:$PATH"' "$HOME/.bash_profile"; then
-			sed -i 's#PATH="$HOME/.local/bin:$PATH"#PATH="$PATH:$HOME/.local/bin"#g' "$HOME/.bash_profile"
+function _check_if_home_local_bin_is_not_in_path() {
+	if  echo "$PATH" | grep -q "$BINDIR"; then
+		echo "--------------------------------------------------------------------------"
+		echo " ⚠️ WARNING: \"${XDG_BIN_HOME:-$HOME/.local/bin}\" is not in PATH, apps may not run."
+		read -rp " ◆ Want to add it to ~/.profile and ~/.bash_profile? (Y/n): " yn
+		if ! echo "$yn" | grep -i '^n' >/dev/null 2>&1; then
+			if test -f "$HOME/.profile"; then
+				printf '\n%s\n' 'export PATH="$PATH:${XDG_BIN_HOME:-$HOME/.local/bin}"' >> "$HOME/.profile"
+			elif test -f "$HOME/.bash_profile"; then
+				printf '\n%s\n' 'export PATH="$PATH:${XDG_BIN_HOME:-$HOME/.local/bin}"' >> "$HOME/.bash_profile"
+			fi
+			echo "--------------------------------------------------------------------------"
+			echo " You might need to resource above files or reboot to apply these changes."
+			echo "--------------------------------------------------------------------------"
 		fi
 	fi
 }
@@ -163,7 +161,7 @@ function _appman() {
 	fi
 	_appman_initialize "$(<"$APPMANCONFIG"/appman-config)"
 
-	_patch_bashrc_and_profile
+	_check_if_home_local_bin_is_not_in_path
 }
 
 ########################################
