@@ -1,16 +1,27 @@
 #!/bin/sh
 
+# AM INSTALL SCRIPT VERSION 3. 
+set -u
 APP=libreoffice
+SITE="https://www.libreoffice.org"
 
-# CREATE DIRECTORIES
-if [ -z "$APP" ]; then exit 1; fi
-mkdir -p "/opt/$APP/icons" && cd "/opt/$APP" || exit 1
-
-# ADD THE REMOVER
-echo "#!/bin/sh
-rm -f /usr/share/applications/AM-$APP* /usr/local/bin/$APP
-rm -R -f /opt/$APP" >> "/opt/$APP/remove"
+# CREATE DIRECTORIES AND ADD REMOVER
+[ -n "$APP" ] && mkdir -p "/opt/$APP/icons" && cd "/opt/$APP" || exit 1
+printf "#!/bin/sh\nset -e\nrm -f /usr/local/bin/$APP\nrm -R -f /opt/$APP" > "/opt/$APP/remove"
+printf '\n%s' "rm -f /usr/share/applications/AM-$APP*" >> "/opt/$APP/remove"
 chmod a+x "/opt/$APP/remove"
+
+_release_still() {
+	chooseone=" tail -1 "
+	release=$(wget -q https://www.libreoffice.org/download/release-notes/ -O - | tr '>' '\n' | grep -i "^LibreOffice [0-9]*" | grep " Release" | tr ' ' '\n' | grep "^[0-9]" | tail -1)
+	version=$(wget -q https://appimages.libreitalia.org/ -O - | tr '"' '\n' | grep -oi "libreoffice-.*appimage$" | grep -v ">\|LibreOffice-fresh\|LibreOffice-still" | sort -t- -k1,1V -k2,2V -k3,3V -k4,4V | grep "$edition" | grep "$release" | tail -1 )
+}
+
+_release_fresh() {
+	chooseone=" head -1 "
+	release=$(wget -q https://www.libreoffice.org/download/release-notes/ -O - | tr '>' '\n' | grep -i "^LibreOffice [0-9]*" | grep " Release" | tr ' ' '\n' | grep "^[0-9]" | head -1)
+	version=$(wget -q https://appimages.libreitalia.org/ -O - | tr '"' '\n' | grep -oi "libreoffice-.*appimage$" | grep -v ">\|LibreOffice-fresh\|LibreOffice-still" | sort -t- -k1,1V -k2,2V -k3,3V -k4,4V | grep "$edition" | grep "$release" | tail -1 )
+}
 
 # CHOOSE A VERSION
 
@@ -40,41 +51,57 @@ read -r -p "
  
  Which version you choose (type a number and press ENTER)?" response
 case "$response" in
-	1) rm -f /opt/"$APP"/version
-	   wget https://appimages.libreitalia.org/LibreOffice-still.standard-x86_64.AppImage -O "$APP"
-	   wget https://appimages.libreitalia.org/LibreOffice-still.standard-x86_64.AppImage.zsync -O "$APP".zsync 2> /dev/null
-	   echo "https://appimages.libreitalia.org/LibreOffice-still.standard-x86_64.AppImage" >> version;;
-	2) rm -f /opt/"$APP"/version
-	   wget https://appimages.libreitalia.org/LibreOffice-still.standard.help-x86_64.AppImage -O "$APP"
-	   wget https://appimages.libreitalia.org/LibreOffice-still.standard.help-x86_64.AppImage.zsync -O "$APP".zsync 2> /dev/null
-	   echo "https://appimages.libreitalia.org/LibreOffice-still.standard.help-x86_64.AppImage" >> version;;	
-	3) rm -f /opt/"$APP"/version
-	   wget https://appimages.libreitalia.org/LibreOffice-still.full-x86_64.AppImage -O "$APP"
-	   wget https://appimages.libreitalia.org/LibreOffice-still.full-x86_64.AppImage.zsync -O "$APP".zsync 2> /dev/null
-	   echo "https://appimages.libreitalia.org/LibreOffice-still.full-x86_64.AppImage" >> version;;
-	4) rm -f /opt/"$APP"/version
-	   wget https://appimages.libreitalia.org/LibreOffice-still.full.help-x86_64.AppImage -O "$APP"
-	   wget https://appimages.libreitalia.org/LibreOffice-still.full.help-x86_64.AppImage.zsync -O "$APP".zsync 2> /dev/null
-	   echo "https://appimages.libreitalia.org/LibreOffice-still.full.help-x86_64.AppImage" >> version;;	   
-	5) rm -f /opt/"$APP"/version
-	   wget https://appimages.libreitalia.org/LibreOffice-fresh.standard-x86_64.AppImage -O "$APP"
-	   wget https://appimages.libreitalia.org/LibreOffice-fresh.standard-x86_64.AppImage.zsync -O "$APP".zsync 2> /dev/null
-	   echo "https://appimages.libreitalia.org/LibreOffice-fresh.standard-x86_64.AppImage" >> version;;
-	6) rm -f /opt/"$APP"/version
-	   wget https://appimages.libreitalia.org/LibreOffice-fresh.standard.help-x86_64.AppImage -O "$APP"
-	   wget https://appimages.libreitalia.org/LibreOffice-fresh.standard.help-x86_64.AppImage.zsync -O "$APP".zsync 2> /dev/null
-	   echo "https://appimages.libreitalia.org/LibreOffice-fresh.standard.help-x86_64.AppImage" >> version;;	   
-	7) rm -f /opt/"$APP"/version
-	   wget https://appimages.libreitalia.org/LibreOffice-fresh.full-x86_64.AppImage -O "$APP"
-	   wget https://appimages.libreitalia.org/LibreOffice-fresh.full-x86_64.AppImage.zsync -O "$APP".zsync 2> /dev/null
-	   echo "https://appimages.libreitalia.org/LibreOffice-fresh.full-x86_64.AppImage" >> version;;	   
-	8) rm -f /opt/"$APP"/version
-	   wget https://appimages.libreitalia.org/LibreOffice-fresh.full.help-x86_64.AppImage -O "$APP"
-	   wget https://appimages.libreitalia.org/LibreOffice-fresh.full.help-x86_64.AppImage.zsync -O "$APP".zsync 2> /dev/null
-	   echo "https://appimages.libreitalia.org/LibreOffice-fresh.full.help-x86_64.AppImage" >> version;;
+	1)	rm -f /opt/"$APP"/version
+		edition="standard-x86_64"
+		_release_still 2> /dev/null 
+		wget "https://appimages.libreitalia.org/$version" -O "$APP"
+		wget "https://appimages.libreitalia.org/$version".zsync -O "$APP".zsync 2> /dev/null
+		echo "$version" >> version;;
+	2)	rm -f /opt/"$APP"/version
+		edition="standard.help-x86_64"
+		_release_still 2> /dev/null 
+		wget "https://appimages.libreitalia.org/$version" -O "$APP"
+		wget "https://appimages.libreitalia.org/$version".zsync -O "$APP".zsync 2> /dev/null
+		echo "$version" >> version;;
+	3)	rm -f /opt/"$APP"/version
+		edition="full-x86_64"
+		_release_still 2> /dev/null 
+		wget "https://appimages.libreitalia.org/$version" -O "$APP"
+		wget "https://appimages.libreitalia.org/$version".zsync -O "$APP".zsync 2> /dev/null
+		echo "$version" >> version;;
+	4)	rm -f /opt/"$APP"/version
+		edition="full.help-x86_64"
+		_release_still 2> /dev/null 
+		wget "https://appimages.libreitalia.org/$version" -O "$APP"
+		wget "https://appimages.libreitalia.org/$version".zsync -O "$APP".zsync 2> /dev/null
+		echo "$version" >> version;;
+	5)	rm -f /opt/"$APP"/version
+		edition="standard-x86_64"
+		_release_fresh 2> /dev/null 
+		wget "https://appimages.libreitalia.org/$version" -O "$APP"
+		wget "https://appimages.libreitalia.org/$version".zsync -O "$APP".zsync 2> /dev/null
+		echo "$version" >> version;;
+	6)	rm -f /opt/"$APP"/version
+		edition="standard.help-x86_64"
+		_release_fresh 2> /dev/null 
+		wget "https://appimages.libreitalia.org/$version" -O "$APP"
+		wget "https://appimages.libreitalia.org/$version".zsync -O "$APP".zsync 2> /dev/null
+		echo "$version" >> version;;
+	7)	rm -f /opt/"$APP"/version
+		edition="full-x86_64"
+		_release_fresh 2> /dev/null 
+		wget "https://appimages.libreitalia.org/$version" -O "$APP"
+		wget "https://appimages.libreitalia.org/$version".zsync -O "$APP".zsync 2> /dev/null
+		echo "$version" >> version;;
+	8)	rm -f /opt/"$APP"/version
+		edition="full.help-x86_64"
+		_release_fresh 2> /dev/null 
+		wget "https://appimages.libreitalia.org/$version" -O "$APP"
+		wget "https://appimages.libreitalia.org/$version".zsync -O "$APP".zsync 2> /dev/null
+		echo "$version" >> version;;
 	*) /opt/"$APP"/remove && exit;;
 esac
-chmod a+x /opt/$APP/$APP
+chmod a+x "/opt/$APP/$APP"
 
 # LINK
 ln -s "/opt/$APP/$APP" "/usr/local/bin/$APP"
@@ -82,16 +109,31 @@ ln -s "/opt/$APP/$APP" "/usr/local/bin/$APP"
 # SCRIPT TO UPDATE THE PROGRAM
 cat >> "/opt/$APP/AM-updater" << 'EOF'
 #!/bin/sh
+set -u
 APP=libreoffice
-mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
-wget $(cat "/opt/$APP/version").zsync;
-cd ..
-mv ./tmp/*mage.zsync ./$APP.zsync
-rmdir ./tmp
-zsync ./"$APP".zsync
-rm -f ./*zs-old ./*.part
-chmod a+x "/opt/$APP/$APP"
+SITE="https://www.libreoffice.org"
+version0=$(cat "/opt/$APP/version")
+edition="EDITION"
+release=$(wget -q https://www.libreoffice.org/download/release-notes/ -O - | tr '>' '\n' | grep -i "^LibreOffice [0-9]*" | grep " Release" | tr ' ' '\n' | grep "^[0-9]" | RELEASE)
+version=$(wget -q https://appimages.libreitalia.org/ -O - | tr '"' '\n' | grep -oi "libreoffice-.*appimage$" | grep -v ">\|LibreOffice-fresh\|LibreOffice-still" | sort -t- -k1,1V -k2,2V -k3,3V -k4,4V | grep "$edition" | grep "$release" | tail -1 )
+[ -n "$version" ] || { echo "Error getting link"; exit 1; }
+if [ "$version" != "$version0" ] || [ -e /opt/"$APP"/*.zsync ]; then
+	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
+	[ -e /opt/"$APP"/*.zsync ] || notify-send "A new version of $APP is available, please wait"
+	[ -e /opt/"$APP"/*.zsync ] && wget "https://appimages.libreitalia.org/$version.zsync" 2>/dev/null || { wget "https://appimages.libreitalia.org/$version" || exit 1; }
+	# Use tar fx ./*tar* here for example in this line in case a compressed file is downloaded.
+	cd ..
+	mv ./tmp/*.zsync ./"$APP".zsync 2>/dev/null || mv --backup=t ./tmp/*mage ./"$APP"
+	[ -e /opt/"$APP"/*.zsync ] && { zsync "/opt/$APP/$APP.zsync" || notify-send -u critical "zsync failed to update $APP"; }
+	chmod a+x "/opt/$APP/$APP" || exit 1
+	echo "$version" > ./version
+	rm -R -f ./*zs-old ./*.part ./tmp ./*~
+	notify-send "$APP is updated!"
+else
+	echo "Update not needed!"
+fi
 EOF
+sed -i 's#EDITION#'"$edition"'#g; s#RELEASE#'"$chooseone"'#g; s###g' "/opt/$APP/AM-updater"
 chmod a+x "/opt/$APP/AM-updater"
 
 # ICONS
