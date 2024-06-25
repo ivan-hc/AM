@@ -28,7 +28,7 @@ _files_sizes() {
 }
 
 _files_if_binary_executable() {
-	echo " ◆ $arg	|	binary/executable" >> "$AMCACHEDIR"/files-type
+	echo " ◆ $arg	|	binary" >> "$AMCACHEDIR"/files-type
 }
 
 _files_if_unknown() {
@@ -62,10 +62,18 @@ _files_if_script() {
 }
 
 _files_if_appimage() {
-	if [ -z "$(strings -d "./$arg/$arg" 2>/dev/null | grep -F 'AppImages require FUSE to run')" ] 2>/dev/null; then
-		echo " ◆ $arg	|	appimage-type3" >> "$AMCACHEDIR"/files-type
+	if ! strings -d "./$arg/$arg" | grep 'AppImages require FUSE to run' >/dev/null 2>&1; then
+		if grep "aisap-am" "$(command -v "$arg")" >/dev/null 2>&1; then
+			echo " ◆ $arg	|	appimage3🔒" >> "$AMCACHEDIR"/files-type
+		else
+			echo " ◆ $arg	|	appimage3" >> "$AMCACHEDIR"/files-type
+		fi
 	else
-		echo " ◆ $arg	|	appimage-type2" >> "$AMCACHEDIR"/files-type
+		if grep "aisap-am" "$(command -v "$arg")" >/dev/null 2>&1; then
+			echo " ◆ $arg	|	appimage2🔒" >> "$AMCACHEDIR"/files-type
+		else
+			echo " ◆ $arg	|	appimage2" >> "$AMCACHEDIR"/files-type
+		fi
 	fi
 }
 
@@ -83,7 +91,7 @@ _files_type() {
 			link_in_path=$(cat "./$arg/remove" | tr " " "\n" | grep 'local/bin' | tail -1)
 			realpath=$(realpath "$link_in_path")
 			realstring=$(strings -d "$realpath" 2>/dev/null | head -1 )
-			if [[ -L "$link_in_path" ]]; then
+			if [ -L "$link_in_path" ]; then
 				if echo "$realstring" | grep -q "ld-linux"; then
 					_files_if_binary_executable
 				elif echo "$realstring" | grep -q "#!"; then
@@ -145,9 +153,9 @@ _files() {
 	INSTALLED_APPS=$(find -name 'remove' -printf "%h\n" 2>/dev/null | du -sh -- * 2>/dev/null | sort -rh | sed 's@.*	@@')
 	for arg in $INSTALLED_APPS; do
 		if test -f ./$arg/remove 2>/dev/null; then
-			APPVERSION=$(cat "$AMCACHEDIR"/version-args | grep -w " ◆ $arg	|" | tr '	' '\n' | tail -1)
-			APPTYPE=$(cat "$AMCACHEDIR"/files-type | grep -w " ◆ $arg	|" | tr '	' '\n' | tail -1)
-			APPSYZE=$(cat "$AMCACHEDIR"/files-sizes | grep -w " ◆ $arg	|" | tr '	' '\n' | tail -1)
+			APPVERSION=$(grep -w " ◆ $arg	|" "$AMCACHEDIR"/version-args | tr '	' '\n' | tail -1)
+			APPTYPE=$(grep -w " ◆ $arg	|" "$AMCACHEDIR"/files-type | tr '	' '\n' | tail -1)
+			APPSYZE=$(grep -w " ◆ $arg	|" "$AMCACHEDIR"/files-sizes | tr '	' '\n' | tail -1)
 			echo " ◆ $arg	|	$APPVERSION	|	$APPTYPE	|	$APPSYZE" >> "$AMCACHEDIR"/files-args
 		fi
 	done
@@ -160,9 +168,10 @@ _files_show_only_number() {
 
 _files_total_size() {
 	if [ "$(_files_show_only_number)" = "0" ]; then
-		printf "\n TOTAL SIZE: $(du -ch $(find -type d -name 'modules' -printf "%h\n") 2>/dev/null | awk 'END {print $1"iB"}' | sed 's/...$/ &/') of disk space in use\n"
+		printf "\n TOTAL SIZE: $(du -ch $(find -type d -name 'modules' -printf "%h\n") 2>/dev/null | awk 'END {print $1"iB"}' | sed 's/...$/ &/') of disk space in use\n\n"
 	else
-		printf "\n TOTAL SIZE: $(du -ch $(find -type f -name 'remove' -printf "%h\n") 2>/dev/null | awk 'END {print $1"iB"}' | sed 's/...$/ &/') of disk space in use\n"
+		command -v aisap >/dev/null 2>&1 && printf '\n%s\n' " AppImages with 🔒 are sandboxed with aisap"
+		printf "\n TOTAL SIZE: $(du -ch $(find -type f -name 'remove' -printf "%h\n") 2>/dev/null | awk 'END {print $1"iB"}' | sed 's/...$/ &/') of disk space in use\n\n"
 	fi
 }
 
@@ -172,8 +181,8 @@ _files_sort_by_name() {
 	_files
 	printf '%s\n' "- APPNAME | VERSION | TYPE | SIZE " >> "$AMCACHEDIR"/files-args-byname
 	printf '%s\n' "- ------- | ------- | ---- | ----" >> "$AMCACHEDIR"/files-args-byname
-	cat "$AMCACHEDIR"/files-args 2>/dev/null | sort >> "$AMCACHEDIR"/files-args-byname
-	cat "$AMCACHEDIR"/files-args-byname | column -t
+	sort "$AMCACHEDIR"/files-args 2>/dev/null >> "$AMCACHEDIR"/files-args-byname
+	column -t "$AMCACHEDIR"/files-args-byname
 	_files_total_size
 }
 
@@ -184,7 +193,7 @@ _files_sort_by_size() {
 	printf '%s\n' "- APPNAME | VERSION | TYPE | SIZE " >> "$AMCACHEDIR"/files-args-bysize
 	printf '%s\n' "- ------- | ------- | ---- | ----" >> "$AMCACHEDIR"/files-args-bysize
 	cat "$AMCACHEDIR"/files-args >> "$AMCACHEDIR"/files-args-bysize 2>/dev/null
-	cat "$AMCACHEDIR"/files-args-bysize | column -t
+	column -t "$AMCACHEDIR"/files-args-bysize
 	_files_total_size
 }
 
