@@ -2,8 +2,8 @@
 
 # AM INSTALL SCRIPT VERSION 3. 
 set -u
-APP=SAMPLE
-SITE="REPLACETHIS"
+APP=freshfetch
+SITE="K4rakara/freshfetch"
 
 # CREATE DIRECTORIES AND ADD REMOVER
 [ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
@@ -12,13 +12,13 @@ printf "#!/bin/sh\nset -e\nrm -f /usr/local/bin/$APP\nrm -R -f /opt/$APP" > "/op
 chmod a+x "/opt/$APP/remove"
 
 # DOWNLOAD AND PREPARE THE APP, $version is also used for updates
-version=$(FUNCTION)
+version=$(curl -Ls https://api.github.com/repos/"$SITE"/releases | sed 's/[()",{} ]/\n/g' | grep -oiE "https.*$APP.*(z$|ip$|$APP$)" | grep -vi "apple\|windows\|darwin\|aarch64" | head -1)
 wget "$version" || exit 1
 [ -e ./*7z ] && 7z x ./*7z && rm -f ./*7z
 [ -e ./*tar.* ] && tar fx ./*tar.* && rm -f ./*tar.*
 [ -e ./*zip ] && unzip -qq ./*zip 1>/dev/null && rm -f ./*zip
 cd ..
-if [ -d ./tmp/* 2>/dev/null ]; then mv ./tmp/*/* ./; else mv ./tmp/* ./"$APP" 2>/dev/null || mv ./tmp/* ./; fi
+if [ -d ./tmp/* 2>/dev/null ]; then mv ./tmp/*/*/* ./; else mv ./tmp/* ./"$APP" 2>/dev/null || mv ./tmp/* ./; fi
 rm -R -f ./tmp || exit 1
 echo "$version" > ./version
 chmod a+x "/opt/$APP/$APP" || exit 1
@@ -30,10 +30,10 @@ ln -s "/opt/$APP/$APP" "/usr/local/bin/$APP"
 cat >> "/opt/$APP/AM-updater" << 'EOF'
 #!/bin/sh
 set -u
-APP=SAMPLE
-SITE="REPLACETHIS"
+APP=freshfetch
+SITE="K4rakara/freshfetch"
 version0=$(cat "/opt/$APP/version")
-version=$(FUNCTION)
+version=$(curl -Ls https://api.github.com/repos/"$SITE"/releases | sed 's/[()",{} ]/\n/g' | grep -oiE "https.*$APP.*(z$|ip$|$APP$)" | grep -vi "apple\|windows\|darwin\|aarch64" | head -1)
 [ -n "$version" ] || { echo "Error getting link"; exit 1; }
 if [ "$version" != "$version0" ]; then
 	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
@@ -43,7 +43,7 @@ if [ "$version" != "$version0" ]; then
 	[ -e ./*tar.* ] && tar fx ./*tar.* && rm -f ./*tar.*
 	[ -e ./*zip ] && unzip -qq ./*zip 1>/dev/null && rm -f ./*zip
 	cd ..
-	if [ -d ./tmp/* 2>/dev/null ]; then mv --backup=t ./tmp/*/* ./; else mv --backup=t ./tmp/* ./"$APP" 2>/dev/null || mv --backup=t ./tmp/* ./; fi
+	if [ -d ./tmp/* 2>/dev/null ]; then mv --backup=t ./tmp/*/*/* ./; else mv --backup=t ./tmp/* ./"$APP" 2>/dev/null || mv --backup=t ./tmp/* ./; fi
 	chmod a+x "/opt/$APP/$APP" || exit 1
 	echo "$version" > ./version
 	rm -R -f ./tmp ./*~
