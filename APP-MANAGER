@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="6.15"
+AMVERSION="6.15.1"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -288,13 +288,15 @@ function _online_check() {
 function _prevent_apps_from_being_removed_by_third_parties() {
 	# Add a security layer to scripts named "remove" of installed apps to prevent file removal by non-privileged users
 	if [ "$AMCLI" == am ] 2>/dev/null; then
-		if ! grep -q '"$SUDO_COMMAND"' /opt/*/remove 2> /dev/null; then
-			for r in /opt/*/; do
-				if test -f "$r"/remove; then
-					sed -i '1 a if [ -z "$SUDO_COMMAND" ]; then echo "Permission denied"; exit 1; fi' "$r"/remove 2> /dev/null
+		for r in /opt/*/; do
+			if test -f "$r"/remove; then
+				if ! grep -q '"$SUDO_COMMAND"' "$r"/remove 2> /dev/null; then
+					if [[ "$r" != "/opt/am/" ]]; then
+						sed -i '1 a if [ -z "$SUDO_COMMAND" ]; then echo "Permission denied"; exit 1; fi' "$r"/remove 2> /dev/null
+					fi
 				fi
-			done
-		fi
+			fi
+		done
 	fi
 }
 
@@ -389,7 +391,7 @@ function _check_version_if_firefox_webapp() {
 }
 
 function _check_version_if_library() {
-	APPVERSION=$(find "$(cat "$APPSPATH"/"$arg"/remove | tr ' ' '\n' | grep "usr/local/lib")" -type f | sed 's:.*.so.::' | tail -1)
+	APPVERSION=$(find $(cat "$APPSPATH"/"$arg"/remove | tr ' ' '\n' | grep "usr/local/lib") -type f | sed 's:.*.so.::' | tail -1)
 }
 
 function _check_version_if_no_version_found() {

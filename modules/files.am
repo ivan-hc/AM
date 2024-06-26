@@ -27,24 +27,12 @@ _files_sizes() {
 	echo " ◆ $arg	|	$SIZE" >> "$AMCACHEDIR"/files-sizes
 }
 
-_files_if_binary_executable() {
-	echo " ◆ $arg	|	binary" >> "$AMCACHEDIR"/files-type
-}
-
-_files_if_unknown() {
-	echo " ◆ $arg	|	unknown" >> "$AMCACHEDIR"/files-type
-}
-
-_files_if_other() {
-	echo " ◆ $arg	|	other" >> "$AMCACHEDIR"/files-type
-}
-
-_files_if_launcher() {
-	echo " ◆ $arg	|	launcher" >> "$AMCACHEDIR"/files-type
-}
-
-_files_if_set_tools() {
-	echo " ◆ $arg	|	set/tools" >> "$AMCACHEDIR"/files-type
+_files_if_binary() {
+	if file ./"$arg"/* | grep "static" >/dev/null 2>&1; then
+		echo " ◆ $arg	|	static-binary" >> "$AMCACHEDIR"/files-type
+	else
+		echo " ◆ $arg	|	dynamic-binary" >> "$AMCACHEDIR"/files-type
+	fi
 }
 
 _files_if_library() {
@@ -52,24 +40,30 @@ _files_if_library() {
 }
 
 _files_if_script() {
-	if test -f $APPSPATH/$arg/bin/$arg; then
-		_files_if_binary_executable
-	elif test -f $APPSPATH/$arg/$arg-bin; then
-		_files_if_binary_executable
+	if grep "/ffwa" "${LINK:-$FILE}" >/dev/null 2>&1; then
+		echo " ◆ $arg	|	launcher" >> "$AMCACHEDIR"/files-type
+	elif grep '#!.*bash' "${LINK:-$FILE}" >/dev/null 2>&1; then
+		echo " ◆ $arg	|	bash-script" >> "$AMCACHEDIR"/files-type
+	elif grep '#!.*dash' "${LINK:-$FILE}" >/dev/null 2>&1; then
+		echo " ◆ $arg	|	dash-script" >> "$AMCACHEDIR"/files-type
+	elif grep '#!.*bin.*sh' "${LINK:-$FILE}" >/dev/null 2>&1; then
+		echo " ◆ $arg	|	posix-script" >> "$AMCACHEDIR"/files-type
+	elif grep '#!.*awk' "${LINK:-$FILE}" >/dev/null 2>&1; then
+		echo " ◆ $arg	|	awk-script" >> "$AMCACHEDIR"/files-type
 	else
 		echo " ◆ $arg	|	script" >> "$AMCACHEDIR"/files-type
 	fi
 }
 
 _files_if_appimage() {
-	if ! strings -d "./$arg/$arg" | grep 'AppImages require FUSE to run' >/dev/null 2>&1; then
-		if grep "aisap-am" "$(command -v "$arg")" >/dev/null 2>&1; then
+	if ! echo "$string" | grep 'AppImages require FUSE to run' >/dev/null 2>&1; then
+		if grep "SANDBOXDIR" "$FILE" >/dev/null 2>&1; then
 			echo " ◆ $arg	|	appimage3🔒" >> "$AMCACHEDIR"/files-type
 		else
 			echo " ◆ $arg	|	appimage3" >> "$AMCACHEDIR"/files-type
 		fi
 	else
-		if grep "aisap-am" "$(command -v "$arg")" >/dev/null 2>&1; then
+		if grep "SANDBOXDIR" "$(command -v "$arg")" >/dev/null 2>&1; then
 			echo " ◆ $arg	|	appimage2🔒" >> "$AMCACHEDIR"/files-type
 		else
 			echo " ◆ $arg	|	appimage2" >> "$AMCACHEDIR"/files-type
@@ -79,50 +73,19 @@ _files_if_appimage() {
 
 _files_type() {
 	APPVERSION=$(cat "$AMCACHEDIR"/version-args | grep -w " ◆ $arg	|" | sed 's:.*|	::')
-	if [ -z "$(strings -d "./$arg/$arg" 2>/dev/null | grep -F 'if you run it with the --appimage-extract option')" ] 2>/dev/null; then
-		string=$(strings -d "./$arg/$arg" 2>/dev/null | head -1 )
-		if grep -q "usr/local/lib" ./$arg/remove; then
-			_files_if_library
-		elif echo "$string" | grep -q "ld-linux"; then
-			_files_if_binary_executable
-		elif echo "$string" | grep -q "#!"; then
-			_files_if_script
-		elif ! test -f  "./$arg/$arg"; then
-			link_in_path=$(cat "./$arg/remove" | tr " " "\n" | grep 'local/bin' | tail -1)
-			realpath=$(realpath "$link_in_path")
-			realstring=$(strings -d "$realpath" 2>/dev/null | head -1 )
-			if [ -L "$link_in_path" ]; then
-				if echo "$realstring" | grep -q "ld-linux"; then
-					_files_if_binary_executable
-				elif echo "$realstring" | grep -q "#!"; then
-					_files_if_script
-				else
-					_files_if_unknown
-				fi
-			elif cat "./$arg/remove" | tail -1 | grep -q 'xtype l -exec rm'; then
-				_files_if_set_tools
-			elif echo "$realstring" | grep -q "#!"; then
-				script2path=$(cat "$link_in_path" | tail -1 | sed 's#$APP#'$arg'#g; s#exec ##g')
-				realrealstring=$(strings -d "$script2path" 2>/dev/null | head -1 )
-				if echo "$realrealstring" | grep -q "ld-linux"; then
-					_files_if_binary_executable
-				elif echo "$realrealstring" | grep -q "#!"; then
-					_files_if_script
-				elif [[ $(test -f "$link_in_path") != 0 ]]; then
-					_files_if_launcher
-				else
-					_files_if_unknown
-				fi
-			else
-				_files_if_other
-			fi
-		elif test -d ./$arg/bin; then
-			_files_if_binary_executable
-		else
-			_files_if_other
-		fi
-	else
+	string=$(strings -d ./"$arg/$arg" 2>/dev/null)
+	FILE=$(command -v "$arg" 2>/dev/null)
+	LINK=$(readlink "$FILE" 2>/dev/null)
+	if echo "$string" | grep -- '--appimage-extract option' >/dev/null 2>&1; then
 		_files_if_appimage
+	elif file ./"$arg"/* | grep -E 'LSB|/bin' >/dev/null 2>&1; then
+		_files_if_binary
+	elif grep "#!" "${LINK:-$FILE}" >/dev/null 2>&1; then
+		_files_if_script
+	elif grep  "usr/local/lib" ./"$arg"/remove >/dev/null 2>&1; then
+		_files_if_library
+	else
+		echo " ◆ $arg	|	other" >> "$AMCACHEDIR"/files-type
 	fi
 }
 
