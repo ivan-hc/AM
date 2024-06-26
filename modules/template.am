@@ -114,6 +114,32 @@ function _template_then_github_source() {
 	esac
 }
 
+function _template_if_sourceforge() {
+	sed -i "s#REPLACETHIS#$RESPONSE#g" ./am-scripts/"$arch"/"$arg"
+	# ADD A DESCRIPTION FOR THIS APPLICATION
+	read -r -ep " ◆ ADD A BRIEF DESCRIPTION FOR THIS APPLICATION $(echo -e '\n : ')" COMMENT
+	case "$COMMENT" in
+	*)
+		# CREATE A WEBPAGE FOR https://portable-linux-apps.github.io CONTAINING ALL THE INFO ABOUT THIS APP
+		echo "# $(echo "$arg" | tr '[:lower:]' '[:upper:]')" >> ./am-scripts/portable-linux-apps.github.io/apps/"$arg".md
+		echo -e "\n $COMMENT\n\n SITE: $RESPONSE\n\n | [Applications](https://portable-linux-apps.github.io/apps.html) | [Home](https://portable-linux-apps.github.io)\n | --- | --- |" >> ./am-scripts/portable-linux-apps.github.io/apps/"$arg".md &&
+		# CREATE A NEW LINE FOR THE APPLICATION'S LIST
+		echo "◆ $arg : $COMMENT" >> ./am-scripts/list
+		;;
+	esac
+	echo "-----------------------------------------------------------------------"
+	mv ./am-scripts/"$arch"/"$arg" ./am-scripts/"$arch"/"$arg".old
+	sed -n '1,14p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
+	echo "version=\$(curl -Ls https://sourceforge.net/p/$arg/activity/feed | grep -Eo \"(http|https)://[a-zA-Z0-9./?=_%:-]*\" | grep -i appimage | head -1 | sed 's#https%3A//sourceforge.net##g')" >> ./am-scripts/"$arch"/"$arg"
+	sed -n '16,35p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
+	echo "version=\$(curl -Ls https://sourceforge.net/p/$arg/activity/feed | grep -Eo \"(http|https)://[a-zA-Z0-9./?=_%:-]*\" | grep -i appimage | head -1 | sed 's#https%3A//sourceforge.net##g')" >> ./am-scripts/"$arch"/"$arg"
+	sed -n '37,132p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
+	rm -f ./am-scripts/"$arch"/"$arg".old
+	sed -i 's#./tmp/*mage#./tmp/download#g' ./am-scripts/"$arch"/"$arg"
+	curl -Ls https://sourceforge.net/p/$arg/activity/feed | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep -i appimage | head -1 | sed 's#https%3A//sourceforge.net##g'
+	echo -e "\n The URL above is an example of what both\n the install and update scripts will point to.\n"
+}
+
 function _template_if_hosted_elsewhere() {
 	sed -i "s#REPLACETHIS#$RESPONSE#g" ./am-scripts/"$arch"/"$arg"
 	# ADD A DESCRIPTION FOR THIS APPLICATION
@@ -230,6 +256,8 @@ while [ -n "$1" ]; do
 					*)
 						if echo "$RESPONSE" | grep -q "https://github.com"; then
 							_template_then_github_source
+						elif echo "$RESPONSE" | grep -q "https://sourceforge.net"; then
+							_template_if_sourceforge
 						else
 							_template_if_hosted_elsewhere
 						fi
