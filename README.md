@@ -229,28 +229,27 @@ This section explains how to install "AM" or "AppMan".
 
 If you don't know the difference, please read "[Differences between "AM" and "AppMan"](#differences-between-am-and-appman)" first.
 
-Below are the essential dependencies for both "AM" and "AppMan":
-- "`coreutils`", is usually installed by default in all distributions as it contains basic commands ("`cat`", "`chmod`", "`chown`"...);
+#### Core dependences
+Below are the **essential system dependencies** that you must install before proceeding:
+- "`coreutils`" (contains "`cat`", "`chmod`", "`chown`"...);
 - "`curl`", to check URLs;
 - "`grep`", to check files;
-- "`jq`", to handle JSON files (some scripts need to check a download URL from api.github.com);
 - "`sed`", to edit/adapt installed files;
-- "`wget`" to download all programs and update "AM"/"AppMan" itself;
+- "`wget`" to download all programs and update "AM"/"AppMan" itself.
 
-NOTE, "AM" require "`sudo`" to be installed.
+#### Dependency only for "AM"
+- "`sudo`", required by "AM" to install/remove programs, sandbox AppImages and enable/disable bash-completion.
 
-If for some reason you don't use `sudo` and you prefer to gain administration privileges using alternative commands such as `doas` or similar, simply use "AppMan".
+NOTE: use "AppMan" for non privileged use or if you prefer to gain administration privileges using alternative commands such as `doas` or similar.
 
-<details>
-  <summary>See also optional dependencies, click here!</summary>
-
-#### Listed below are optional dependencies that are needed only by some programs:
+#### Extra dependences (you may not need them)
+The following are optional dependencies that some programs may require:
 - "`binutils`", contains a series of basic commands, including "`ar`" which extracts .deb packages;
 - "`unzip`", to extract .zip packages;
 - "`tar`", to extract .tar* packages;
 - "`zsync`", about 10% of AppImages depend on this to be updated.
 
-</details>
+### Proceede
 
 - [How to install "AM"](#how-to-install-am)
 - [How to install "AppMan"](#how-to-install-appman)
