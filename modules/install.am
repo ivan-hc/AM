@@ -4,10 +4,12 @@
 # THIS MODULE IS USED TO INSTALL APPS FROM THE DATABASE OR FROM LOCAL SCRIPTS
 #############################################################################
 
+BINDIR="${XDG_BIN_HOME:-$HOME/.local/bin}"
+
 # If you use the --latest option, add the "latest" flag to scripts that point to a very common "release"
 function _if_latest() {
 	if grep -q 'force-latest' "$AMCACHEDIR"/install-args; then
-		sed -i 's#/releases | jq #/releases/latest | jq #g' ./"$arg"
+		sed -i 's#/releases#/releases/latest#g' ./"$arg"
 	fi
 }
 
@@ -31,11 +33,11 @@ function _install_common_patch() {
 function _install_appman_local_patch() {
 	sed -i "s#/opt/#$APPSPATH/#g" ./"$arg"
 	sed -i "s# /opt# $APPSPATH#g" ./"$arg"
-	sed -i "s# /usr/local/bin# $HOME/.local/bin#g" ./"$arg"
-	sed -i 's# "/usr/local/bin# "'"$HOME"'/.local/bin#g' ./"$arg"
-	sed -i "s# /usr/bin# $HOME/.local/bin#g" ./"$arg"
-	sed -i "s# /usr/local/games# $HOME/.local/bin#g" ./"$arg"
-	sed -i "s# /usr/games# $HOME/.local/bin#g" ./"$arg"
+	sed -i "s# /usr/local/bin# $BINDIR#g" ./"$arg"
+	sed -i 's# "/usr/local/bin# "'"$BINDIR"'#g' ./"$arg"
+	sed -i "s# /usr/bin# $BINDIR#g" ./"$arg"
+	sed -i "s# /usr/local/games# $BINDIR#g" ./"$arg"
+	sed -i "s# /usr/games# $BINDIR#g" ./"$arg"
 	sed -i "s# /usr/share/applications# $DATADIR/applications#g" ./"$arg"
 	sed -i "s# /usr/local/share/applications# $DATADIR/applications#g" ./"$arg"
 	sed -i "s# /usr/share/pixmaps# $DATADIR/icons#g" ./"$arg"
@@ -58,12 +60,12 @@ function _apply_patches() {
 
 # Post-installation processes
 function _post_installation_processes() {
-	echo -ne " Configuring $(echo "\"$arg\"" | tr '[:lower:]' '[:upper:]')...\r" && echo -ne "                                                                          \r" &&
+	echo -ne " Configuring $(echo "\"$arg\"" | tr '[:lower:]' '[:upper:]')...\r" && echo -ne "                                                                          \r"
 
 	# Add a command to line 2 of the "remove" script to prevent use without root privileges
 	# and take control of the directory to be able to manage and update the app without root privileges
 	if [ "$AMCLI" == am ] 2>/dev/null; then
-		$SUDOCOMMAND sed -i '1 a if [ -z "$SUDO_COMMAND" ]; then echo "Permission denied"; exit 1; fi' "$APPSPATH"/"$(cd "$APPSPATH" && ls -td * | head -1)"/remove 2> /dev/null
+		$SUDOCOMMAND sed -i '1 a  if [ "$(id -u)" -ne 0 ]; then echo "Permission denied"; exit 1; fi' "$APPSPATH"/"$(cd "$APPSPATH" && ls -td * | head -1)"/remove 2> /dev/null
 		$SUDOCOMMAND chown -R $currentuser "$APPSPATH"/"$(cd "$APPSPATH" && ls -td * | head -1)" 2> /dev/null
 	fi
 	# Check if an AM-updater script exists, so the CLI can manage updates for the installed app
@@ -78,14 +80,14 @@ function _post_installation_processes() {
 		if [ -z "$(ls -A "$APPSPATH"/"$(cd "$APPSPATH" && ls -td * | head -1)"/icons)" ]; then
 			wget -q "$AMCATALOGUEICONS"/"$arg".png -O "$APPSPATH"/"$(cd "$APPSPATH" && ls -td * | head -1)"/icons/"$arg"
 		fi 
-	fi &&
+	fi
 	# Patch .desktop to change paths if the app is installed locally
 	if [ "$AMCLI" == appman ] 2>/dev/null; then
 		sed -i "s#Icon=/opt#Icon=$HOME/$APPSDIR#g" "$DATADIR"/applications/AM*.desktop 2> /dev/null
-		sed -i "s#Exec=$arg#Exec=$HOME/.local/bin/$arg#g" "$DATADIR"/applications/AM*.desktop 2> /dev/null
-		sed -i 's#Exec=$APP#Exec='"$HOME"'/.local/bin/$APP#g' "$DATADIR"/applications/AM*.desktop 2> /dev/null
-		sed -i "s#Exec=/usr/bin/#Exec=$HOME/.local/bin/#g" "$DATADIR"/applications/AM*.desktop 2> /dev/null
-		sed -i "s#Exec=/opt/#Exec=$HOME/.local/bin/#g" "$DATADIR"/applications/AM*.desktop 2> /dev/null
+		sed -i "s#Exec=$arg#Exec=$BINDIR/$arg#g" "$DATADIR"/applications/AM*.desktop 2> /dev/null
+		sed -i 's#Exec=$APP#Exec='"$BINDIR"'/$APP#g' "$DATADIR"/applications/AM*.desktop 2> /dev/null
+		sed -i "s#Exec=/usr/bin/#Exec=$BINDIR/#g" "$DATADIR"/applications/AM*.desktop 2> /dev/null
+		sed -i "s#Exec=/opt/#Exec=$BINDIR/#g" "$DATADIR"/applications/AM*.desktop 2> /dev/null
 	fi					
 }
 
@@ -290,8 +292,8 @@ while [ -n "$1" ]; do
 									rm -R -f "$AMCACHEDIR/multirepo-args"
 									_install_arg
 								else
-									echo -e "\n ◆ FOUND $(echo "\"$arg\"" | tr '[:lower:]' '[:upper:]') FROM MULTIPLE SOURCES:\n" &&
-									printf " Select a URL from this menu (read carefully) or press CTRL+C to abort:\n\n"; sleep 1;
+									printf '\n%s\n' " ◆ FOUND $(echo "\"$arg\"" | tr '[:lower:]' '[:upper:]') FROM MULTIPLE SOURCES:"
+									printf '%s\n\n' " Select a URL from this menu (read carefully) or press CTRL+C to abort:"; sleep 1
 									select d in $(cat "$AMCACHEDIR/multirepo-args"); do test -n "$d" && break; echo ">>> Invalid Selection"; done
 									cd "$AMCACHEDIR" || return; mkdir -p tmp; cd tmp || return; wget -q "$d/$arg"; cd ..; mv ./tmp/"$arg" ./"$arg"; rmdir ./tmp
 									rm -R -f "$AMCACHEDIR/multirepo-args"
