@@ -114,6 +114,68 @@ function _template_then_github_source() {
 	esac
 }
 
+function _template_custom_download_url() {
+	# IF YOU CAN, USE A ONE-LINE COMMAND TO DOWNLOAD THE PROGRAM
+	read -r -ep " USE A ONE-LINE SHELL COMMAND TO CHECK ONLY THE URL TO THE PROGRAM $(echo -e '\n\n if the URL is fixed, simply add the "echo" command at the beginning\n\n :') " DOWNLOADURL
+	case "$DOWNLOADURL" in
+	*)
+		mv ./am-scripts/"$arch"/"$arg" ./am-scripts/"$arch"/"$arg".old
+		sed -n '1,14p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
+		echo 'version=$('$DOWNLOADURL')' >> ./am-scripts/"$arch"/"$arg"
+		sed -n '16,35p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
+		echo 'version=$('$DOWNLOADURL')' >> ./am-scripts/"$arch"/"$arg"
+		sed -n '37,132p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
+		rm -f ./am-scripts/"$arch"/"$arg".old
+		;;
+	esac
+}
+
+function _template_if_sourceforge() {
+	sed -i "s#REPLACETHIS#$RESPONSE#g" ./am-scripts/"$arch"/"$arg"
+	# ADD PROJECTNAME
+	read -r -ep " ◆ ADD THE NAME OF THE PROJECT OR LEAVE BLANK IF ITS THE SAME $(echo -e '\n : ')" projectname
+	case "$projectname" in
+	'')	SOURCEFORGE="https://sourceforge.net/p/$arg/activity/feed";;
+	*)	SOURCEFORGE="https://sourceforge.net/p/$projectname/activity/feed";;
+	esac
+	echo "-----------------------------------------------------------------------"
+	# FILE TYPE
+	if [ "$templatetype" == 0 ]; then
+		filetype="appimage"
+	elif [ "$templatetype" == 2 ]; then
+		read -r -ep " ◆ ADD an univoque keyword for the file (for example \"tar.gz\", \"linux\"):" filekeyword
+		case "$filekeyword" in
+		*) filetype="$filekeyword";;
+		esac
+	fi
+	# ADD A DESCRIPTION FOR THIS APPLICATION
+	read -r -ep " ◆ ADD A BRIEF DESCRIPTION FOR THIS APPLICATION $(echo -e '\n : ')" COMMENT
+	case "$COMMENT" in
+	*)
+		# CREATE A WEBPAGE FOR https://portable-linux-apps.github.io CONTAINING ALL THE INFO ABOUT THIS APP
+		echo "# $(echo "$arg" | tr '[:lower:]' '[:upper:]')" >> ./am-scripts/portable-linux-apps.github.io/apps/"$arg".md
+		echo -e "\n $COMMENT\n\n SITE: $RESPONSE\n\n | [Applications](https://portable-linux-apps.github.io/apps.html) | [Home](https://portable-linux-apps.github.io)\n | --- | --- |" >> ./am-scripts/portable-linux-apps.github.io/apps/"$arg".md &&
+		# CREATE A NEW LINE FOR THE APPLICATION'S LIST
+		echo "◆ $arg : $COMMENT" >> ./am-scripts/list
+		;;
+	esac
+	echo "-----------------------------------------------------------------------"
+	if curl --head --silent --fail $(curl -Ls $SOURCEFORGE | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep -i "$filetype" | grep -v '%' | head -1) 1> /dev/null; then
+		mv ./am-scripts/"$arch"/"$arg" ./am-scripts/"$arch"/"$arg".old
+		sed -n '1,14p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
+		echo "version=\$(curl -Ls $SOURCEFORGE | grep -Eo \"(http|https)://[a-zA-Z0-9./?=_%:-]*\" | grep -i \"$filetype\" | grep -v '%' | head -1)" >> ./am-scripts/"$arch"/"$arg"
+		sed -n '16,35p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
+		echo "version=\$(curl -Ls $SOURCEFORGE | grep -Eo \"(http|https)://[a-zA-Z0-9./?=_%:-]*\" | grep -i \"$filetype\" | grep -v '%' | head -1)" >> ./am-scripts/"$arch"/"$arg"
+		sed -n '37,132p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
+		rm -f ./am-scripts/"$arch"/"$arg".old
+		curl -Ls $SOURCEFORGE | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep -i "$filetype" | grep -v '%' | head -1
+		echo -e "\n The URL above is an example of what both\n the install and update scripts will point to.\n"
+	else
+		_template_custom_download_url
+	fi
+	sed -i 's/*mage/*/g' ./am-scripts/"$arch"/"$arg"
+}
+
 function _template_if_hosted_elsewhere() {
 	sed -i "s#REPLACETHIS#$RESPONSE#g" ./am-scripts/"$arch"/"$arg"
 	# ADD A DESCRIPTION FOR THIS APPLICATION
@@ -128,19 +190,7 @@ function _template_if_hosted_elsewhere() {
 		;;
 	esac
 	echo "-----------------------------------------------------------------------"
-	# IF YOU CAN, USE A ONE-LINE COMMAND TO DOWNLOAD THE PROGRAM
-	read -r -ep " USE A ONE-LINE SHELL COMMAND TO CHECK ONLY THE URL TO THE PROGRAM $(echo -e '\n\n if the URL is fixed, simply add the "echo" command at the beginning\n\n :') " DOWNLOADURL
-	case "$DOWNLOADURL" in
-	*)
-		mv ./am-scripts/"$arch"/"$arg" ./am-scripts/"$arch"/"$arg".old
-		sed -n '1,14p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
-		echo 'version=$('$DOWNLOADURL')' >> ./am-scripts/"$arch"/"$arg"
-		sed -n '16,35p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
-		echo 'version=$('$DOWNLOADURL')' >> ./am-scripts/"$arch"/"$arg"
-		sed -n '37,132p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
-		rm -f ./am-scripts/"$arch"/"$arg".old
-		;;
-	esac
+	_template_custom_download_url
 }
 
 # Function to add a generic .desktop file and an icon to the installation script (option 2)
@@ -230,6 +280,8 @@ while [ -n "$1" ]; do
 					*)
 						if echo "$RESPONSE" | grep -q "https://github.com"; then
 							_template_then_github_source
+						elif echo "$RESPONSE" | grep -q "sourceforge"; then
+							_template_if_sourceforge
 						else
 							_template_if_hosted_elsewhere
 						fi
@@ -302,13 +354,17 @@ while [ -n "$1" ]; do
 					;;
 
 				2) # DOWNLOAD ANY ARCHIVE
+
 					_template_create_dirs_and_ask_for_source
+
 					# ADD THE NAME OF THE SOURCE
 					read -r -ep " ◆ ADD THE URL OF THE SITE (BETTER IF IT COME FROM GITHUB), FOR EXAMPLE: $(echo -e '\n\n - if from github.com, use "https://github.com/USER/PROJECT"\n\n - if from other sources, use "https://www.SITENAME.com" or something\n\n URL: ')" RESPONSE
 					case "$RESPONSE" in
 					*)
 						if echo "$RESPONSE" | grep -q "https://github.com"; then
 							_template_then_github_source
+						elif echo "$RESPONSE" | grep -q "sourceforge"; then
+							_template_if_sourceforge
 						else
 							_template_if_hosted_elsewhere
 						fi
