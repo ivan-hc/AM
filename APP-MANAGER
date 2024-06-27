@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="6.15.1"
+AMVERSION="6.15.1-1"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -32,17 +32,6 @@ function _clean_amcachedir() {
 
 APPMANCONFIG="$CONFIGDIR/appman"
 export SCRIPTDIR="$(xdg-user-dir DESKTOP 2>/dev/null || echo "$HOME")"
-
-# Determine sytem package manager
-function _system_package_manager_check() {
-	for cmd in dnf pacman emerge zypper apt-get apk; do
-		if command -v $cmd &> /dev/null; then
-			osPKGman="$cmd"
-			return
-		fi
-	done
-	osPKGman=""
-}
 
 # Colors
 RED='\033[0;31m'; LightBlue='\033[1;34m'; Green='\033[0;32m'
@@ -199,40 +188,6 @@ function _use_betatester_on() {
 
 function _use_betatester_off() {
 	rm -f "$AMPATH"/betatester
-}
-
-###############################
-# DOWNLOAD PORTABLE DEPENDENCES
-###############################
-
-function _jq_installer() {
-	if ! command -v jq 1>/dev/null; then
-		_system_package_manager_check
-		if [[ -z "$osPKGman" ]];then
-			echo -e " ${RED}💀 ERROR!\033[0m Missing essential command ${Green}jq\033[0m\n"
-			read -r -p " Do you wish to install it using $AMCLI (Y,n)? " yn
-			case $yn in
-			'N'|'n')
-				echo -e "\n The \"jq\" command is essential for parsing JSON files on sites"
-				echo " for example api.github.com, to list the URLs of apps to download."
-				echo -e " You need to install it at least via your package manager to use \"$AMCLI\".\n\n Missing essential command ${RED}jq\033[0m, aborted!"; exit
-				;;
-			'Y'|'y'|*)
-				_clean_amcachedir
-				echo ""
-				source "$AMPATH"/modules/install.am -i jq 2>&1 | grep "INSTALLED"
-				echo ""
-				;;
-			esac
-		else
-			echo -e " ${RED}💀 ERROR!\033[0m Missing essential command ${Green}jq\033[0m\n"
-			echo " Install it from your system package manager and retry!"; exit
-		fi
-	fi
-}
-
-function _portable_dependences_setup() {
-	_jq_installer
 }
 
 ###########################################
@@ -941,10 +896,10 @@ function _use_force_latest() {
 			echo " ERROR: \"$AMCLI\" cannot manage updates for \"$2\""
 		elif ! grep -q "api.github.com" "$APPSPATH"/"$2"/AM-updater; then
 			echo " ERROR: \"$2\" source is not on Github"
-		elif ! grep -q "/releases | jq " "$APPSPATH"/"$2"/AM-updater; then
+		elif ! grep -q "/releases | " "$APPSPATH"/"$2"/AM-updater; then
 			echo " ERROR: \"$2\" does not redirect to a generic \"releases\""
 		else
-			sed -i 's#/releases | jq #/releases/latest | jq #g' "$APPSPATH"/"$2"/AM-updater
+			sed -i 's#/releases | #/releases/latest | #g' "$APPSPATH"/"$2"/AM-updater
 			"$AMCLIPATH" -u "$2"
 		fi
 		;;
@@ -1014,7 +969,6 @@ case "$1" in
 		_online_check
 		_if_appman_mode_enabled
 		_betatester_message_on
-		_portable_dependences_setup
 		_use_module "$@"
 		;;
 	'-t'|'template')
@@ -1049,7 +1003,6 @@ case "$1" in
 		;;
 	'--force-latest')
 		_online_check
-		_portable_dependences_setup
 		_use_force_latest "$@"
 		;;
 	'--system')
@@ -1068,7 +1021,6 @@ case "$1" in
 		;;
 	'update'|'-u'|'-U')
 		_online_check
-		_portable_dependences_setup
 		_use_update "$@"
 		;;
 	'version'|'-v'|'--version')
