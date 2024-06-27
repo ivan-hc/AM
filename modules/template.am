@@ -114,6 +114,22 @@ function _template_then_github_source() {
 	esac
 }
 
+function _template_custom_download_url() {
+	# IF YOU CAN, USE A ONE-LINE COMMAND TO DOWNLOAD THE PROGRAM
+	read -r -ep " USE A ONE-LINE SHELL COMMAND TO CHECK ONLY THE URL TO THE PROGRAM $(echo -e '\n\n if the URL is fixed, simply add the "echo" command at the beginning\n\n :') " DOWNLOADURL
+	case "$DOWNLOADURL" in
+	*)
+		mv ./am-scripts/"$arch"/"$arg" ./am-scripts/"$arch"/"$arg".old
+		sed -n '1,14p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
+		echo 'version=$('$DOWNLOADURL')' >> ./am-scripts/"$arch"/"$arg"
+		sed -n '16,35p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
+		echo 'version=$('$DOWNLOADURL')' >> ./am-scripts/"$arch"/"$arg"
+		sed -n '37,132p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
+		rm -f ./am-scripts/"$arch"/"$arg".old
+		;;
+	esac
+}
+
 function _template_if_sourceforge() {
 	sed -i "s#REPLACETHIS#$RESPONSE#g" ./am-scripts/"$arch"/"$arg"
 	# ADD PROJECTNAME
@@ -144,16 +160,20 @@ function _template_if_sourceforge() {
 		;;
 	esac
 	echo "-----------------------------------------------------------------------"
-	mv ./am-scripts/"$arch"/"$arg" ./am-scripts/"$arch"/"$arg".old
-	sed -n '1,14p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
-	echo "version=\$(curl -Ls $SOURCEFORGE | grep -Eo \"(http|https)://[a-zA-Z0-9./?=_%:-]*\" | grep -i \"$filetype\" | grep -v '%' | head -1)" >> ./am-scripts/"$arch"/"$arg"
-	sed -n '16,35p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
-	echo "version=\$(curl -Ls $SOURCEFORGE | grep -Eo \"(http|https)://[a-zA-Z0-9./?=_%:-]*\" | grep -i \"$filetype\" | grep -v '%' | head -1)" >> ./am-scripts/"$arch"/"$arg"
-	sed -n '37,132p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
-	rm -f ./am-scripts/"$arch"/"$arg".old
-	curl -Ls $SOURCEFORGE | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep -i "$filetype" | grep -v '%' | head -1
+	if curl --head --silent --fail $(curl -Ls $SOURCEFORGE | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep -i "$filetype" | grep -v '%' | head -1) 1> /dev/null; then
+		mv ./am-scripts/"$arch"/"$arg" ./am-scripts/"$arch"/"$arg".old
+		sed -n '1,14p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
+		echo "version=\$(curl -Ls $SOURCEFORGE | grep -Eo \"(http|https)://[a-zA-Z0-9./?=_%:-]*\" | grep -i \"$filetype\" | grep -v '%' | head -1)" >> ./am-scripts/"$arch"/"$arg"
+		sed -n '16,35p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
+		echo "version=\$(curl -Ls $SOURCEFORGE | grep -Eo \"(http|https)://[a-zA-Z0-9./?=_%:-]*\" | grep -i \"$filetype\" | grep -v '%' | head -1)" >> ./am-scripts/"$arch"/"$arg"
+		sed -n '37,132p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
+		rm -f ./am-scripts/"$arch"/"$arg".old
+		curl -Ls $SOURCEFORGE | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep -i "$filetype" | grep -v '%' | head -1
+		echo -e "\n The URL above is an example of what both\n the install and update scripts will point to.\n"
+	else
+		_template_custom_download_url
+	fi
 	sed -i 's/*mage/*/g' ./am-scripts/"$arch"/"$arg"
-	echo -e "\n The URL above is an example of what both\n the install and update scripts will point to.\n"
 }
 
 function _template_if_hosted_elsewhere() {
@@ -170,19 +190,7 @@ function _template_if_hosted_elsewhere() {
 		;;
 	esac
 	echo "-----------------------------------------------------------------------"
-	# IF YOU CAN, USE A ONE-LINE COMMAND TO DOWNLOAD THE PROGRAM
-	read -r -ep " USE A ONE-LINE SHELL COMMAND TO CHECK ONLY THE URL TO THE PROGRAM $(echo -e '\n\n if the URL is fixed, simply add the "echo" command at the beginning\n\n :') " DOWNLOADURL
-	case "$DOWNLOADURL" in
-	*)
-		mv ./am-scripts/"$arch"/"$arg" ./am-scripts/"$arch"/"$arg".old
-		sed -n '1,14p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
-		echo 'version=$('$DOWNLOADURL')' >> ./am-scripts/"$arch"/"$arg"
-		sed -n '16,35p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
-		echo 'version=$('$DOWNLOADURL')' >> ./am-scripts/"$arch"/"$arg"
-		sed -n '37,132p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
-		rm -f ./am-scripts/"$arch"/"$arg".old
-		;;
-	esac
+	_template_custom_download_url
 }
 
 # Function to add a generic .desktop file and an icon to the installation script (option 2)
