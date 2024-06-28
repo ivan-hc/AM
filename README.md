@@ -1217,6 +1217,7 @@ Before installing any application, try to know where it comes from first. This p
 Some developers insist on creating Appimages that create their own launcher on first launch (like WALC and OpenShot). If the official solution proposed [here](https://discourse.appimage.org/t/stop-appimage-from-asking-to-integrate/488) doesn't work, you have two options to escape this trouble: "`-H`" (or "`home`") and "`--sandbox`".
 
 **1. Option "-H": create a .home directory for the AppImage**
+
 Use the option `-H`, then launch the app and accept the request. Dotfiles and launcher will be saved in the $APP.home near the AppImage:
 ```
 am -H $APP
@@ -1234,6 +1235,7 @@ $APP --appimage-portable-home
 This method works in the 99% of cases.
 
 **2. Option "--sandbox": run the AppImage into a Aisap/bubblewrap sandbox**
+
 Use the option `--sandbox`, then launch the app and accept the request. Dotfiles and launcher will be saved in the dedicated sandbox:
 ```
 am ---sandbox $APP
