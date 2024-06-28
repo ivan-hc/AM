@@ -1214,12 +1214,35 @@ Before installing any application, try to know where it comes from first. This p
 
 ------------------------------------------------------------------------
 ### Stop AppImage prompt to create its own launcher, desktop integration and doubled launchers
-Some developers insist on creating Appimages that create their own launcher on first launch (like WALC and OpenShot). If the official solution proposed [here](https://discourse.appimage.org/t/stop-appimage-from-asking-to-integrate/488) doesn't work, create a .home directory with the `-H` option, launch the app and accept the request. For example (with "AM"):
+Some developers insist on creating Appimages that create their own launcher on first launch (like WALC and OpenShot). If the official solution proposed [here](https://discourse.appimage.org/t/stop-appimage-from-asking-to-integrate/488) doesn't work, you have two ways to escape this trouble:
+
+##### 1. create a .home directory for the AppImage, with the `-H` option
+Use the option `-H`, then launch the app and accept the request. Dotfiles and launcher will be saved in the $APP.directory near the AppImage:
 ```
-am -H walc
-walc
+am -H $APP
+$APP
 ```
-Accept the integration request, the launcher will be saved in the walc.home directory located next to the AppImage file.
+or
+```
+appman -H $APP
+$APP
+```
+This method works in the 99% of cases. Launch the app and accept the request.
+
+##### 2. sandbox the AppImage
+Use the option `--sandbox`, then launch the app and accept the request. Dotfiles and launcher will be saved in the dedicated sandbox:
+```
+am ---sandbox $APP
+$APP
+```
+or
+```
+appman --sandbox $APP
+$APP
+```
+This is the best method, since you decide wheter to allow the use of user's directories or not.
+
+For more details, see "[**Sandbox an AppImage**](#sandbox-an-appimage)".
 
 ------------------------------------------------------------------------
 
