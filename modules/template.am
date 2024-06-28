@@ -43,73 +43,83 @@ function _template_then_github_source() {
 
 	_template_if_github_source
 
-	read -r -p ' Do you wish to check the link to the latest version (Y,n)?' yn
+	# Set the release as "latest" or keep it generic
+	read -r -p ' Latest release (y) or a generic one (N or leave blank)?' yn
+	case $yn in
+	'Y'|'y')
+		setlatest="/latest"
+		sed -i 's#/releases #/releases/latest #g' ./am-scripts/"$arch"/"$arg"
+		;;
+	''|'N'|'n'|*)
+		setlatest=""
+		;;
+	esac
+	echo "-----------------------------------------------------------------------"
+	# Check if the URL is correct
+	read -r -p ' Do you wish to check the link (Y,n)?' yn
 	case $yn in
 	'N'|'n')
 		;;
 	'Y'|'y'|*)
 		if [ "$templatetype" == 0 ]; then
-			echo ""; curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/"$RESPONSE"/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | head -1
+			echo ""; curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/"$RESPONSE"/releases$setlatest | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | head -1
 		elif [ "$templatetype" == 2 ]; then
-			echo ""; curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/"$RESPONSE"/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*"| head -1
+			echo ""; curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/"$RESPONSE"/releases$setlatest | sed 's/[()",{} ]/\n/g' | grep -oi "https.*"| head -1
 		fi
 		echo -e "\n The URL above is an example of what both\n the install and update scripts will point to.\n"
 		;;
 	esac
-	read -r -p ' If correct, press "ENTER", otherwise press "N": ' yn
-	case $yn in
-	'N'|'n')
-		read -r -p ' Press 1 to add something or 2 to remove something: ' response
+	echo "-----------------------------------------------------------------------"
+	# Add/remove keywords or leave blank to skip
+	read -r -p ' If correct, press "ENTER", 1 to add keywords and 2 to remove keywords: ' response
+	case "$response" in
+	1)
+		read -r -ep ' URL must contain ("x64", "x86_64"... or leave blank): ' response
 		case "$response" in
-		1)
-			read -r -ep ' URL must contain ("x64", "x86_64"... or leave blank): ' response
-			case "$response" in
-			'')
-				;;
-			*)
-				sed -i "s# grep -oi \"https.\*# grep -oi \"https.\*$response#g" ./am-scripts/"$arch"/"$arg"
-				read -r -p ' Do you wish to check the link for the last time (Y,n)?' yn
-				case $yn in
-				'N'|'n')
-					;;
-				'Y'|'y'|*)
-					if [ "$templatetype" == 0 ]; then
-						echo ""; curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/"$RESPONSE"/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*$response.*mage$" | head -1
-					elif [ "$templatetype" == 2 ]; then
-						echo ""; curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/"$RESPONSE"/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*$response" | head -1
-					fi
-					echo -e "\n The URL above is an example of what both\n the install and update scripts will point to.\n"
-					;;
-				esac
-				;;
-			esac
+		'')
 			;;
-		2)
-			read -r -ep ' URL must NOT contain ("txt", "ARM"... or leave blank): ' response
-			case "$response" in
-			'')
+		*)
+			sed -i "s# head -1# grep -i \"$response\" | head -1#g" ./am-scripts/"$arch"/"$arg"
+			read -r -p ' Do you wish to check the link for the last time (Y,n)?' yn
+			case $yn in
+			'N'|'n')
 				;;
-			*)
-				sed -i "s# head -1# grep -v \"$response\" | head -1#g" ./am-scripts/"$arch"/"$arg"
-				read -r -p ' Do you wish to check the link for the last time (Y,n)?' yn
-				case $yn in
-				'N'|'n')
-					;;
-				'Y'|'y'|*)
-					if [ "$templatetype" == 0 ]; then
-						echo ""; curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/"$RESPONSE"/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -v "$response" | head -1
-					elif [ "$templatetype" == 2 ]; then
-						echo ""; curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/"$RESPONSE"/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*" | grep -v "$response" | head -1
-					fi
-					echo -e "\n The URL above is an example of what both\n the install and update scripts will point to.\n"
-					;;
-				esac
+			'Y'|'y'|*)
+				if [ "$templatetype" == 0 ]; then
+					echo ""; curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/"$RESPONSE"/releases$setlatest | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -i "$response" | head -1
+				elif [ "$templatetype" == 2 ]; then
+					echo ""; curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/"$RESPONSE"/releases$setlatest | sed 's/[()",{} ]/\n/g' | grep -oi "https.*" | grep -i "$response" | head -1
+				fi
+				echo -e "\n The URL above is an example of what both\n the install and update scripts will point to.\n"
 				;;
 			esac
 			;;
 		esac
 		;;
-	'Y'|'y'|*)
+	2)
+		read -r -ep ' URL must NOT contain ("txt", "ARM"... or leave blank): ' response
+		case "$response" in
+		'')
+			;;
+		*)
+			sed -i "s# head -1# grep -v \"$response\" | head -1#g" ./am-scripts/"$arch"/"$arg"
+			read -r -p ' Do you wish to check the link for the last time (Y,n)?' yn
+			case $yn in
+			'N'|'n')
+				;;
+			'Y'|'y'|*)
+				if [ "$templatetype" == 0 ]; then
+					echo ""; curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/"$RESPONSE"/releases$setlatest | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -v "$response" | head -1
+				elif [ "$templatetype" == 2 ]; then
+					echo ""; curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/"$RESPONSE"/releases$setlatest | sed 's/[()",{} ]/\n/g' | grep -oi "https.*" | grep -v "$response" | head -1
+				fi
+				echo -e "\n The URL above is an example of what both\n the install and update scripts will point to.\n"
+				;;
+			esac
+			;;
+		esac
+		;;
+	''|*)
 		;;
 	esac
 }
