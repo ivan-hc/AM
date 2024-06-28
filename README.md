@@ -106,6 +106,10 @@ If the distro is immutable or have read-only mount points instead, the path of t
 ```
 /usr/local/share/applications/AM-$PROGRAM.desktop
 ```
+NOTE, installation scripts created or updated after June 28, 2024 will be all installed in /usr/local/share/applications by default, and will have the "-AM.desktop" extension instead of the "AM-" suffix, like this:
+```
+/usr/local/share/applications/$PROGRAM-AM.desktop
+```
 
 - "**AppMan**" is more flexible, since it asks you where to install the apps in your $HOME directory. For example, suppose you want install everything in "Applicazioni" (the italian of "applications"), this is the structure of what an installation scripts installs with "AppMan" instead:
 ```
@@ -116,6 +120,10 @@ If the distro is immutable or have read-only mount points instead, the path of t
 ~/Applicazioni/$PROGRAM/icons/$ICON-NAME
 ~/.local/bin/$PROGRAM
 ~/.local/share/applications/AM-$PROGRAM.desktop
+```
+NOTE, installation scripts created or updated after June 28, 2024 will have the "-AM.desktop" extension instead of the "AM-" suffix, like this:
+```
+~/.local/share/applications/$PROGRAM-AM.desktop
 ```
 The configuration file for AppMan is in `~/.config/appman` and contains the path you indicated at first startup. Changing its contents will result in changing the paths for each subsequent operation carried out with "AppMan", the apps and modules stored in the old path will not be manageable.
 
