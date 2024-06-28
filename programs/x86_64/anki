@@ -1,18 +1,18 @@
 #!/bin/sh
 
-# AM INSTALL SCRIPT VERSION 3. 
+# AM INSTALL SCRIPT VERSION 3.5
 set -u
 APP=anki
 SITE="ankitects/anki"
 
 # CREATE DIRECTORIES AND ADD REMOVER
 [ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
-printf "#!/bin/sh\nset -e\nrm -f /usr/local/bin/$APP\nrm -R -f /opt/$APP" > "/opt/$APP/remove"
-printf '\n%s' "rm -f /usr/share/applications/AM-$APP.desktop" >> "/opt/$APP/remove"
-chmod a+x "/opt/$APP/remove"
+printf "#!/bin/sh\nset -e\nrm -f /usr/local/bin/$APP\nrm -R -f /opt/$APP" > ../remove
+printf '\n%s' "rm -f /usr/local/share/applications/$APP-AM.desktop" >> ../remove
+chmod a+x ../remove || exit 1
 
 # DOWNLOAD AND PREPARE THE APP, $version is also used for updates
-version=$(curl -Ls https://api.github.com/repos/ankitects/anki/releases | grep browser_download_url | grep -i tar.zst  | cut -d '"' -f 4 | head -1)
+version=$(curl -Ls https://api.github.com/repos/ankitects/anki/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*$APP.*linux.*zst$" | head -1)
 wget "$version" || exit 1
 [ -e ./*7z ] && 7z x ./*7z && rm -f ./*7z
 [ -e ./*tar.* ] && tar fx ./*tar.* && rm -f ./*tar.*
@@ -21,19 +21,19 @@ cd ..
 if [ -d ./tmp/* 2>/dev/null ]; then mv ./tmp/*/* ./; else mv ./tmp/* ./"$APP" 2>/dev/null || mv ./tmp/* ./; fi
 rm -R -f ./tmp || exit 1
 echo "$version" > ./version
-chmod a+x "/opt/$APP/$APP" || exit 1
+chmod a+x ./"$APP" || exit 1
 
 # LINK TO PATH
 ln -s "/opt/$APP/$APP" "/usr/local/bin/$APP"
 
 # SCRIPT TO UPDATE THE PROGRAM
-cat >> "/opt/$APP/AM-updater" << 'EOF'
+cat >> ./AM-updater << 'EOF'
 #!/bin/sh
 set -u
 APP=anki
 SITE="ankitects/anki"
 version0=$(cat "/opt/$APP/version")
-version=$(curl -Ls https://api.github.com/repos/ankitects/anki/releases | grep browser_download_url | grep -i tar.zst  | cut -d '"' -f 4 | head -1)
+version=$(curl -Ls https://api.github.com/repos/ankitects/anki/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*$APP.*linux.*zst$" | head -1)
 [ -n "$version" ] || { echo "Error getting link"; exit 1; }
 if [ "$version" != "$version0" ]; then
 	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
@@ -44,7 +44,7 @@ if [ "$version" != "$version0" ]; then
 	[ -e ./*zip ] && unzip -qq ./*zip 1>/dev/null && rm -f ./*zip
 	cd ..
 	if [ -d ./tmp/* 2>/dev/null ]; then mv --backup=t ./tmp/*/* ./; else mv --backup=t ./tmp/* ./"$APP" 2>/dev/null || mv --backup=t ./tmp/* ./; fi
-	chmod a+x "/opt/$APP/$APP" || exit 1
+	chmod a+x ./"$APP" || exit 1
 	echo "$version" > ./version
 	rm -R -f ./tmp ./*~
 	notify-send "$APP is updated!"
@@ -52,14 +52,13 @@ else
 	echo "Update not needed!"
 fi
 EOF
-chmod a+x "/opt/$APP/AM-updater"
+chmod a+x ./AM-updater || exit 1
 
 # ICON
 mkdir -p icons
 wget https://raw.githubusercontent.com/ankitects/anki/main/qt/bundle/lin/anki.png -O ./icons/"$APP" 2> /dev/null
 
 # LAUNCHER
-rm -f /usr/share/applications/AM-"$APP".desktop
 echo "[Desktop Entry]
 Name=Anki
 Comment=An intelligent spaced-repetition memory training program
@@ -75,4 +74,4 @@ MimeType=application/x-apkg;application/x-anki;application/x-ankiaddon;
 #should be removed eventually as it was upstreamed as to be an XDG specification called SingleMainWindow
 X-GNOME-SingleWindow=true
 SingleMainWindow=true
-StartupWMClass=anki" >> /usr/share/applications/AM-"$APP".desktop
+StartupWMClass=anki" >> /usr/local/share/applications/"$APP"-AM.desktop
