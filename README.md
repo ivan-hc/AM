@@ -1214,9 +1214,9 @@ Before installing any application, try to know where it comes from first. This p
 
 ------------------------------------------------------------------------
 ### Stop AppImage prompt to create its own launcher, desktop integration and doubled launchers
-Some developers insist on creating Appimages that create their own launcher on first launch (like WALC and OpenShot). If the official solution proposed [here](https://discourse.appimage.org/t/stop-appimage-from-asking-to-integrate/488) doesn't work, you have two options to escape this trouble: "`-H`" (or "`home`") and "`--sandbox`".
+Some developers insist on creating Appimages that create their own launcher on first launch (like WALC and OpenShot). If the official solution proposed [here](https://discourse.appimage.org/t/stop-appimage-from-asking-to-integrate/488) doesn't work, you have two options to escape this trouble: "`-H`" and "`--sandbox`".
 
-**1. Option "-H": create a .home directory for the AppImage**
+**1. Option "-H" or "home": create a .home directory for the AppImage**
 
 Use the option `-H`, then launch the app and accept the request. Dotfiles and launcher will be saved in the $APP.home near the AppImage:
 ```
