@@ -2,8 +2,8 @@
 
 # AM INSTALL SCRIPT VERSION 3.5
 set -u
-APP=i3-auto-layout
-SITE="pando85/i3-auto-layout"
+APP=lsd
+SITE="lsd-rs/lsd"
 
 # CREATE DIRECTORIES AND ADD REMOVER
 [ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
@@ -12,7 +12,7 @@ printf "#!/bin/sh\nset -e\nrm -f /usr/local/bin/$APP\nrm -R -f /opt/$APP" > ../r
 chmod a+x ../remove || exit 1
 
 # DOWNLOAD AND PREPARE THE APP, $version is also used for updates
-version=$(curl -Ls https://api.github.com/repos/"$SITE"/releases | sed 's/[()",{} ]/\n/g' | grep -o 'https.*i3-auto-layout.*tar.gz$' | head -1)
+version=$(curl -Ls https://api.github.com/repos/"$SITE"/releases | sed 's/[()",{} ]/\n/g' | grep -oi 'https.*x86_64.*unknown.*linux.*musl.*gz$' | head -1)
 wget "$version" || exit 1
 [ -e ./*7z ] && 7z x ./*7z && rm -f ./*7z
 [ -e ./*tar.* ] && tar fx ./*tar.* && rm -f ./*tar.*
@@ -30,10 +30,10 @@ ln -s "/opt/$APP/$APP" "/usr/local/bin/$APP"
 cat >> ./AM-updater << 'EOF'
 #!/bin/sh
 set -u
-APP=i3-auto-layout
-SITE="pando85/i3-auto-layout"
-version0=$(cat /opt/$APP/version)
-version=$(curl -Ls https://api.github.com/repos/"$SITE"/releases | sed 's/[()",{} ]/\n/g' | grep -o 'https.*i3-auto-layout.*tar.gz$' | head -1)
+APP=lsd
+SITE="lsd-rs/lsd"
+version0=$(cat "/opt/$APP/version")
+version=$(curl -Ls https://api.github.com/repos/"$SITE"/releases | sed 's/[()",{} ]/\n/g' | grep -oi 'https.*x86_64.*unknown.*linux.*musl.*gz$' | head -1)
 [ -n "$version" ] || { echo "Error getting link"; exit 1; }
 if [ "$version" != "$version0" ]; then
 	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
