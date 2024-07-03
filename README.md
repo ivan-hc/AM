@@ -1268,11 +1268,9 @@ For more details, see "[**Sandbox an AppImage**](#sandbox-an-appimage)".
 This is a choice I made as many developers have abandoned support for AppImage or GNU/Linux in general. My aim here is to introduce you to other developers' applications, then it's up to you to contact them, support them, help improve the software through forks and pull requests, opening issues and encouraging developers to keep the software in the format you prefer.
 
 In case you are sure that the upstream developer will maintain the package for each stable release, you can fix this in several ways:
-#### Method 1: Direct installation by combining `-d` and `-i` options
+#### Method 1: Direct installation by combining `-i` and `--force-latest` options
 ```
-am -d $PROGRAM
-sed -i 's#releases -O -#releases/latest -O -#g' $(xdg-user-dir DESKTOP)/$PROGRAM
-am -i $(xdg-user-dir DESKTOP)/$PROGRAM
+am -i --force-latest $PROGRAM
 ```
 #### Method 2: "Downgrade" the installed app to "latest"
 Use the option `--force-latest` to patch the AM-updater and perform the "update"/"downgrade":
