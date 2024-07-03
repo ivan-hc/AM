@@ -1,32 +1,60 @@
 #!/bin/sh
 
+# AM INSTALL SCRIPT VERSION 3. 
+set -u
 APP=waterfox-classic
-SITE="https://classic.waterfox.net"
+SITE="WaterfoxCo/Waterfox-Classic"
 
-# CREATE THE FOLDER
-mkdir /opt/$APP
-cd /opt/$APP
+# CREATE DIRECTORIES AND ADD REMOVER
+[ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
+printf "#!/bin/sh\nset -e\nrm -f /usr/local/bin/$APP\nrm -R -f /opt/$APP" > ../remove
+printf '\n%s' "rm -f /usr/local/share/applications/$APP-AM.desktop" >> ../remove
+chmod a+x ../remove || exit 1
 
-# ADD THE REMOVER
-echo '#!/bin/sh' >> /opt/$APP/remove
-echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
-chmod a+x /opt/$APP/remove
-
-# DOWNLOAD THE ARCHIVE
-mkdir tmp
-cd ./tmp
-
-wget $(curl -Ls https://api.github.com/repos/WaterfoxCo/Waterfox-Classic/releases | grep -i linux-x86_64.tar.bz2 | grep browser_download_url | cut -d '"' -f 4 | head -1)
-tar fx ./*tar.bz2
+# DOWNLOAD AND PREPARE THE APP, $version is also used for updates
+version=$(curl -Ls https://api.github.com/repos/WaterfoxCo/Waterfox-Classic/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*" | grep -vi "i386|i686|aarch64|arm64|armv7l" | grep -i "linux-x86_64.tar.bz2" | head -1)
+wget "$version" || exit 1
+[ -e ./*7z ] && 7z x ./*7z && rm -f ./*7z
+[ -e ./*tar.* ] && tar fx ./*tar.* && rm -f ./*tar.*
+[ -e ./*zip ] && unzip -qq ./*zip 1>/dev/null && rm -f ./*zip
 cd ..
-mv ./tmp/$APP/* ./
-rm -R ./tmp
+if [ -d ./tmp/* 2>/dev/null ]; then mv ./tmp/*/* ./; else mv ./tmp/* ./"$APP" 2>/dev/null || mv ./tmp/* ./; fi
+rm -R -f ./tmp || exit 1
+echo "$version" > ./version
+chmod a+x ./waterfox || exit 1
 
-# LINK
-ln -s /opt/$APP/$APP /usr/local/bin/$APP
+# LINK TO PATH
+ln -s "/opt/$APP/waterfox" "/usr/local/bin/$APP"
 
-# LAUNCHER & ICON
-rm -R -f  /usr/share/applications/AM-$APP.desktop
+# SCRIPT TO UPDATE THE PROGRAM
+cat >> ./AM-updater << 'EOF'
+#!/bin/sh
+set -u
+APP=waterfox-classic
+SITE="WaterfoxCo/Waterfox-Classic"
+version0=$(cat "/opt/$APP/version")
+version=$(curl -Ls https://api.github.com/repos/WaterfoxCo/Waterfox-Classic/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*" | grep -vi "i386|i686|aarch64|arm64|armv7l" | grep -i "linux-x86_64.tar.bz2" | head -1)
+[ -n "$version" ] || { echo "Error getting link"; exit 1; }
+if [ "$version" != "$version0" ]; then
+	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
+	notify-send "A new version of $APP is available, please wait"
+	wget "$version" || exit 1
+	[ -e ./*7z ] && 7z x ./*7z && rm -f ./*7z
+	[ -e ./*tar.* ] && tar fx ./*tar.* && rm -f ./*tar.*
+	[ -e ./*zip ] && unzip -qq ./*zip 1>/dev/null && rm -f ./*zip
+	cd ..
+	if [ -d ./tmp/* 2>/dev/null ]; then mv --backup=t ./tmp/*/* ./; else mv --backup=t ./tmp/* ./"$APP" 2>/dev/null || mv --backup=t ./tmp/* ./; fi
+	chmod a+x ./waterfox || exit 1
+	echo "$version" > ./version
+	rm -R -f ./tmp ./*~
+	notify-send "$APP is updated!"
+else
+	echo "Update not needed!"
+fi
+EOF
+chmod a+x ./AM-updater || exit 1
+
+# LAUNCHER
 echo "[Desktop Entry]
 Name=Waterfox Classic
 Comment=Browse the Web
@@ -52,8 +80,8 @@ Comment[sk]=Prehliadanie internetu
 Comment[sv]=Surfa på webben
 Version=1.0
 Type=Application
-Exec=/opt/waterfox/waterfox %u #alias
-Icon=/opt/waterfox/browser/chrome/icons/default/default128.png
+Exec=$APP %u #alias
+Icon=/opt/$APP/browser/chrome/icons/default/default128.png
 MimeType=text/html;text/xml;application/xhtml+xml;application/xml;application/vnd.mozilla.xul+xml;application/rss+xml;application/rdf+xml;image/gif;image/jpeg;image/png;x-scheme-handler/http;x-scheme-handler/https;
 StartupNotify=true
 Categories=Network;WebBrowser;
@@ -61,7 +89,7 @@ Keywords=web;browser;internet;
 Actions=new-window;new-private-window;profile-manager-window;
 
 [Desktop Action Private]
-Exec=/opt/waterfox/waterfox --private-window %u
+Exec=$APP --private-window %u
 Name=Open a New Private Window
 Name[ach]=Dirica manyen me mung
 Name[af]=Nuwe privaatvenster
@@ -166,8 +194,4 @@ Name[vi]=Cửa sổ riêng tư mới
 Name[wo]=Panlanteeru biir bu bees
 Name[xh]=Ifestile yangasese entsha
 Name[zh-CN]=新建隐私浏览窗口
-Name[zh-TW]=新增隱私視窗"  >> /usr/share/applications/AM-$APP.desktop
-
-
-
-
+Name[zh-TW]=新增隱私視窗" > /usr/local/share/applications/"$APP"-AM.desktop

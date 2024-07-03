@@ -1,75 +1,66 @@
 #!/bin/sh
 
+# AM INSTALL SCRIPT VERSION 3. 
+set -u
 APP=windows95
-REPO="felixrieseberg/windows95"
+SITE="felixrieseberg/windows95"
 
-# CREATE THE FOLDER
-mkdir /opt/$APP
-cd /opt/$APP
+# CREATE DIRECTORIES AND ADD REMOVER
+[ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
+printf "#!/bin/sh\nset -e\nrm -f /usr/local/bin/$APP\nrm -R -f /opt/$APP" > ../remove
+printf '\n%s' "rm -f /usr/local/share/applications/$APP-AM.desktop" >> ../remove
+chmod a+x ../remove || exit 1
 
-# ADD THE REMOVER
-echo '#!/bin/sh' >> /opt/$APP/remove
-echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
-chmod a+x /opt/$APP/remove
-
-# DOWNLOAD THE ARCHIVE
-mkdir tmp
-cd ./tmp
-
-version=$(curl -Ls https://api.github.com/repos/$REPO/releases | grep -w -v i386 | grep -w -v i686 | grep -w -v aarch64 | grep -w -v arm64 | grep -w -v armv7l | grep browser_download_url | grep -i "amd64.deb" | cut -d '"' -f 4 | head -1)
-wget $version
-echo "$version" >> /opt/$APP/version
+# DOWNLOAD AND PREPARE THE APP, $version is also used for updates
+version=$(curl -Ls https://api.github.com/repos/felixrieseberg/windows95/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*" | grep -vi "i386|i686|aarch64|arm64|armv7l" | grep -i "amd64.deb" | head -1)
+wget "$version" || exit 1
+ar x *.deb
+tar xf data.tar.xz
 cd ..
-ar x --output=./tmp ./tmp/*.deb && tar xf ./tmp/data.tar.xz -C ./tmp/; mv --backup=t ./tmp/usr/lib/windows95/* ./; mv ./tmp/usr/share/applications/* .; mv ./tmp/usr/share/pixmaps/* .
-rm -R -f ./tmp
+mv --backup=t ./tmp/usr/lib/windows95/* ./
+rm -R -f ./tmp || exit 1
+echo "$version" > ./version
 
-# LINK
-ln -s /opt/$APP/$APP /usr/local/bin/$APP
+# LINK TO PATH
+ln -s "/opt/$APP/$APP" "/usr/local/bin/$APP"
 
 # SCRIPT TO UPDATE THE PROGRAM
-cat >> /opt/$APP/AM-updater << 'EOF'
-#!/usr/bin/env bash
+cat >> ./AM-updater << 'EOF'
+#!/bin/sh
+set -u
 APP=windows95
-REPO="felixrieseberg/windows95"
-version0=$(cat /opt/$APP/version)
-version=$(curl -Ls https://api.github.com/repos/$REPO/releases | grep -w -v i386 | grep -w -v i686 | grep -w -v aarch64 | grep -w -v arm64 | grep -w -v armv7l | grep browser_download_url | grep -i "amd64.deb" | cut -d '"' -f 4 | head -1)
-if [ $version = $version0 ]; then
-  echo "Update not needed!"
+SITE="felixrieseberg/windows95"
+version0=$(cat "/opt/$APP/version")
+version=$(curl -Ls https://api.github.com/repos/felixrieseberg/windows95/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*" | grep -vi "i386|i686|aarch64|arm64|armv7l" | grep -i "amd64.deb" | head -1)
+[ -n "$version" ] || { echo "Error getting link"; exit 1; }
+if [ "$version" != "$version0" ]; then
+	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
+	notify-send "A new version of $APP is available, please wait"
+	wget "$version" || exit 1
+	ar x *.deb
+	tar xf data.tar.xz
+	cd ..
+	mv --backup=t ./tmp/usr/lib/windows95/* ./
+	echo "$version" > ./version
+	rm -R -f ./tmp ./*~
+	notify-send "$APP is updated!"
 else
-  notify-send "A new version of $APP is available, please wait"
-  mkdir /opt/$APP/tmp
-  cd /opt/$APP/tmp
-  wget $version
-  cd ..
-  ar x --output=./tmp ./tmp/*.deb && tar xf ./tmp/data.tar.xz -C ./tmp/; mv --backup=t ./tmp/usr/lib/windows95/* ./
-  rm ./version
-  echo $version >> ./version
-  rm -R -f ./tmp ./*~
-  notify-send "$APP is updated!"
+	echo "Update not needed!"
 fi
 EOF
-chmod a+x /opt/$APP/AM-updater
+chmod a+x ./AM-updater || exit 1
 
-# LAUNCHER & ICON
-app=$(echo $APP | cut -c -3)
-cd /opt/$APP
-mv ./*.desktop ./$APP.desktop 2>/dev/null
-CHANGEEXEC=$(cat ./$APP.desktop | grep Exec= | tr ' ' '\n' | tr '=' '\n' | tr '/' '\n' | grep $app | head -1)
-sed -i "s#$CHANGEEXEC#$APP#g" ./$APP.desktop
-sed -i "s#Exec=/bin/#Exec=#g" ./$APP.desktop
-sed -i "s#Exec=/usr/bin/#Exec=#g" ./$APP.desktop
-CHANGEICON=$(cat ./$APP.desktop | grep Icon= | head -1)
-sed -i "s#$CHANGEICON#Icon=/opt/$APP/icons/$APP#g" ./$APP.desktop
+# ICON
+mkdir -p icons
+wget https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/main/icons/windows95.png -O ./icons/"$APP" 2> /dev/null
 
-mkdir icons
-mv ./*.svg ./icons/$APP 2>/dev/null
-mv ./*.png ./icons/$APP 2>/dev/null
-mv ./*$app*.png ./icons/$APP 2>/dev/null
-mv ./*128*.png ./icons/$APP 2>/dev/null
-mv ./*256*.png ./icons/$APP 2>/dev/null
-
-mv ./$APP.desktop /usr/share/applications/AM-$APP.desktop
-
-
-
-
+# LAUNCHER
+echo "[Desktop Entry]
+Name=windows95
+Comment=Windows 95, in an app. I'm sorry.
+GenericName=windows95
+Exec=windows95 %U
+Icon=/opt/$APP/icons/$APP
+Type=Application
+StartupNotify=true
+Categories=GNOME;GTK;Utility;" > /usr/local/share/applications/"$APP"-AM.desktop
