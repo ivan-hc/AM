@@ -1,29 +1,33 @@
 #!/bin/sh
 
-mkdir /opt/firefox
-cd /opt/firefox
+APP=firefox
 
-echo "#!/bin/sh
-rm -R -f  /opt/firefox /usr/share/applications/firefox-stable-AM.desktop /usr/local/bin/firefox" >> /opt/firefox/remove
-chmod a+x /opt/firefox/remove
+# CREATE THE DIRECTORY
+mkdir -p /opt/"$APP"
+cd /opt/"$APP"
 
-mkdir tmp;
-cd ./tmp;
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/"$APP"/remove
+echo "rm -R -f  /opt/$APP /usr/local/share/applications/$APP-stable-AM.desktop /usr/local/bin/$APP" >> /opt/"$APP"/remove
+chmod a+x /opt/"$APP"/remove
+
+# DOWNLOAD THE ARCHIVE
+mkdir -p tmp
+cd ./tmp
 
 LANGUAGE=$(curl -Ls https://raw.githubusercontent.com/linuxmint/mdm/master/config/locale.alias | grep -i "$LANG" | grep -o '^\S*')
-CODE=$(curl -Ls https://releases.mozilla.org/pub/firefox/releases/latest/README.txt | cut -d ':' -f2 | grep -i $LANGUAGE | cut -d '=' -f2)
-wget "https://download.mozilla.org/?product=firefox-latest&os=linux64&lang=$CODE" --trust-server-names
+CODE=$(curl -Ls https://releases.mozilla.org/pub/$APP/releases/latest/README.txt | cut -d ':' -f2 | grep -i $LANGUAGE | cut -d '=' -f2)
+wget "https://download.mozilla.org/?product=$APP-latest&os=linux64&lang=$CODE" --trust-server-names
 
-tar fx firefox-*.tar.bz2
+[ -e ./*tar.* ] && tar fx ./*tar.* && rm -f ./*tar.*
 cd ..
-mv ./tmp/firefox/* ./
+mv ./tmp/$APP/* ./
 rm -R ./tmp
 
+# LINK TO PATH
+ln -s "/opt/$APP/$APP" "/usr/local/bin/$APP"
 
-
-ln -s /opt/firefox/firefox /usr/local/bin/firefox
-
-rm -R -f  /usr/share/applications/firefox-stable-AM.desktop
+# LAUNCHER
 echo "[Desktop Entry]
 [Desktop Entry]
 Version=1.0
@@ -69,10 +73,10 @@ Comment[pt]=Navegue na Internet
 Comment[pt_BR]=Navegue na Internet
 Comment[sk]=Prehliadanie internetu
 Comment[sv]=Surfa på webben
-Exec=/opt/firefox/firefox %u
+Exec=/opt/$APP/$APP %u
 Terminal=false
 Type=Application
-Icon=/opt/firefox/browser/chrome/icons/default/default128.png
+Icon=/opt/$APP/browser/chrome/icons/default/default128.png
 MimeType=text/html;text/xml;application/xhtml+xml;application/xml;application/vnd.mozilla.xul+xml;application/rss+xml;application/rdf+xml;image/gif;image/jpeg;image/png;x-scheme-handler/http;x-scheme-handler/https;
 StartupNotify=true
 Categories=Network;WebBrowser;
@@ -80,7 +84,7 @@ Keywords=web;browser;internet;
 Actions=new-window;new-private-window;profile-manager-window;
 
 [Desktop Action Private]
-Exec=/opt/firefox/firefox --private-window %u
+Exec=/opt/$APP/$APP --private-window %u
 Name=Open a New Private Window
 Name[ach]=Dirica manyen me mung
 Name[af]=Nuwe privaatvenster
@@ -185,4 +189,4 @@ Name[vi]=Cửa sổ riêng tư mới
 Name[wo]=Panlanteeru biir bu bees
 Name[xh]=Ifestile yangasese entsha
 Name[zh-CN]=新建隐私浏览窗口
-Name[zh-TW]=新增隱私視窗"  >> /usr/share/applications/firefox-stable-AM.desktop
+Name[zh-TW]=新增隱私視窗"  > /usr/local/share/applications/"$APP"-stable-AM.desktop

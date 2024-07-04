@@ -1,27 +1,33 @@
 #!/bin/sh
 
-mkdir /opt/thunderbird
-cd /opt/thunderbird
+APP=thunderbird
 
-echo "#!/bin/sh
-rm -R -f  /opt/thunderbird /usr/share/applications/thunderbird-AM.desktop /usr/local/bin/thunderbird" >> /opt/thunderbird/remove
-chmod a+x /opt/thunderbird/remove
+# CREATE THE DIRECTORY
+mkdir -p /opt/"$APP"
+cd /opt/"$APP"
 
-mkdir tmp;
-cd ./tmp;
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/"$APP"/remove
+echo "rm -R -f  /opt/$APP /usr/local/share/applications/$APP-AM.desktop /usr/local/bin/$APP" >> /opt/"$APP"/remove
+chmod a+x /opt/"$APP"/remove
+
+# DOWNLOAD THE ARCHIVE
+mkdir -p tmp
+cd ./tmp
 
 LANGUAGE=$(curl -Ls https://raw.githubusercontent.com/linuxmint/mdm/master/config/locale.alias | grep -i "$LANG" | grep -o '^\S*')
-CODE=$(curl -Ls https://releases.mozilla.org/pub/thunderbird/releases/latest/README.txt | cut -d ':' -f2 | grep -i $LANGUAGE | cut -d '=' -f2)
-wget "https://download.mozilla.org/?product=thunderbird-latest&os=linux64&lang=$CODE" --trust-server-names
+CODE=$(curl -Ls https://releases.mozilla.org/pub/$APP/releases/latest/README.txt | cut -d ':' -f2 | grep -i $LANGUAGE | cut -d '=' -f2)
+wget "https://download.mozilla.org/?product=$APP-latest&os=linux64&lang=$CODE" --trust-server-names
 
-tar fx thunderbird-*.tar.bz2
+[ -e ./*tar.* ] && tar fx ./*tar.* && rm -f ./*tar.*
 cd ..
-mv ./tmp/thunderbird/* ./
+mv ./tmp/"$APP"/* ./
 rm -R ./tmp
 
-ln -s /opt/thunderbird/thunderbird /usr/local/bin/thunderbird
+# LINK TO PATH
+ln -s "/opt/$APP/$APP" "/usr/local/bin/$APP"
 
-rm -R -f  /usr/share/applications/thunderbird-AM.desktop
+# LAUNCHER
 echo "[Desktop Entry]
 Name=Thunderbird
 Comment=Send and receive mail with Thunderbird
@@ -79,13 +85,13 @@ GenericName[uk]=Поштова програма
 GenericName[vi]=Phần mềm khách quản lý thư điện tử
 GenericName[zh_CN]=邮件新闻客户端
 GenericName[zh_TW]=郵件用戶端
-Exec=thunderbird %u
+Exec=$APP %u
 Terminal=false
 Type=Application
-Icon=/opt/thunderbird/chrome/icons/default/default128.png
+Icon=/opt/$APP/chrome/icons/default/default128.png
 Categories=Network;Email;
 MimeType=message/rfc822;x-scheme-handler/mailto;application/x-xpinstall;
 StartupNotify=true
-Actions=ComposeMessage;OpenAddressBook;"  >> /usr/share/applications/thunderbird-AM.desktop
+Actions=ComposeMessage;OpenAddressBook;" > /usr/local/share/applications/"$APP"-AM.desktop
 
 
