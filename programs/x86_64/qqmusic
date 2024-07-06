@@ -2,8 +2,8 @@
 
 # AM INSTALL SCRIPT VERSION 3.5
 set -u
-APP=qtads
-SITE="realnc/qtads"
+APP=qqmusic
+SITE="https://y.qq.com"
 
 # CREATE DIRECTORIES AND ADD REMOVER
 [ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
@@ -12,10 +12,10 @@ printf '\n%s' "rm -f /usr/local/share/applications/$APP-AM.desktop" >> ../remove
 chmod a+x ../remove || exit 1
 
 # DOWNLOAD AND PREPARE THE APP, $version is also used for updates
-version=$(curl -Ls https://api.github.com/repos/realnc/qtads/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*x86_64.*mage.*tar.gz$" | head -1)
+version=$(echo "https://dldir1.qq.com/music/clntupate/linux/AppImage/qqmusic-$(wget -q https://repology.org/project/qqmusic/versions -O - | grep -i "AUR" | head -4 | grep -o -P '(?<=">).*(?=</a)' | sed 's/^.*>//' | tail -1).AppImage")
 wget "$version" || exit 1
 #wget "$version.zsync" 2> /dev/null # Comment out this line if you want to use zsync
-tar fx ./*tar.gz
+# Use tar fx ./*tar* here for example in this line in case a compressed file is downloaded.
 cd ..
 mv ./tmp/*mage ./"$APP"
 mv ./tmp/*.zsync ./"$APP".zsync 2>/dev/null
@@ -30,16 +30,16 @@ ln -s "/opt/$APP/$APP" "/usr/local/bin/$APP"
 cat >> ./AM-updater << 'EOF'
 #!/bin/sh
 set -u
-APP=qtads
-SITE="realnc/qtads"
+APP=qqmusic
+SITE="https://y.qq.com"
 version0=$(cat "/opt/$APP/version")
-version=$(curl -Ls https://api.github.com/repos/realnc/qtads/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*x86_64.*mage.*tar.gz$" | head -1)
+version=$(echo "https://dldir1.qq.com/music/clntupate/linux/AppImage/qqmusic-$(wget -q https://repology.org/project/qqmusic/versions -O - | grep -i "AUR" | head -4 | grep -o -P '(?<=">).*(?=</a)' | sed 's/^.*>//' | tail -1).AppImage")
 [ -n "$version" ] || { echo "Error getting link"; exit 1; }
 if [ "$version" != "$version0" ] || [ -e /opt/"$APP"/*.zsync ]; then
 	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
 	[ -e ../*.zsync ] || notify-send "A new version of $APP is available, please wait"
 	[ -e ../*.zsync ] && wget "$version.zsync" 2>/dev/null || { wget "$version" || exit 1; }
-	tar fx ./*tar.gz
+	# Use tar fx ./*tar* here for example in this line in case a compressed file is downloaded.
 	cd ..
 	mv ./tmp/*.zsync ./"$APP".zsync 2>/dev/null || mv --backup=t ./tmp/*mage ./"$APP"
 	[ -e ./*.zsync ] && { zsync ./"$APP".zsync || notify-send -u critical "zsync failed to update $APP"; }
