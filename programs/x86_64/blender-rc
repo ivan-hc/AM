@@ -5,38 +5,37 @@ APP=blender-rc
 APPNAME="Blender Release Candidate"
 
 # CREATE THE FOLDER
-mkdir /opt/$APP
-cd /opt/$APP
+mkdir -p /opt/"$APP" && cd /opt/"$APP" || exit 1
 
 # ADD THE REMOVER
-echo '#!/bin/sh' >> /opt/$APP/remove
-echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
-chmod a+x /opt/$APP/remove
+echo '#!/bin/sh' >> /opt/"$APP"/remove
+echo "rm -R -f /usr/share/applications/$APP-AM.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/"$APP"/remove
+chmod a+x /opt/"$APP"/remove
 
 # DOWNLOAD
 mkdir tmp
 cd ./tmp
 
-url=https://builder.blender.org/download/daily/archive/
-version=$(curl -Ls $url | tr '"' '\n' | grep "^https" | grep .tar.xz | grep -w -v sha256 | grep $branch | head -1)
-wget $version
+url="https://builder.blender.org/download/daily/archive/"
+version=$(curl -Ls "$url" | tr '"' '\n' | grep "^https" | grep -i "tar.xz$" | grep -w -v sha256 | grep "$branch" | head -1)
+wget "$version"
 echo "$version" >> /opt/$APP/version
 tar fx *.tar.xz
 dir=$(ls . | grep -w -v *.tar.*)
 cd ..
-mv ./tmp/$(echo $dir)/* ./
+mv ./tmp/"$dir"/* ./
 rm -R -f ./tmp
 
 # LINK
-ln -s /opt/$APP/blender /usr/local/bin/$APP
+ln -s "/opt/$APP/blender" "/usr/local/bin/$APP"
 
 # SCRIPT TO UPDATE THE PROGRAM
-cat >> /opt/$APP/AM-updater << 'EOF'
+cat >> /opt/"$APP"/AM-updater << 'EOF'
 #!/usr/bin/env bash
 branch=DEVELOPMENTBRANCH
 APP=blender-rc
-url=https://builder.blender.org/download/daily/archive/
-version=$(curl -Ls $url | tr '"' '\n' | grep "^https" | grep .tar.xz | grep -w -v sha256 | grep $branch | head -1)
+url="https://builder.blender.org/download/daily/archive/"
+version=$(curl -Ls "$url" | tr '"' '\n' | grep "^https" | grep -i "tar.xz$" | grep -w -v sha256 | grep "$branch" | head -1)
 version0=$(cat /opt/$APP/version)
 if [ $version0 = $version ]; then
   echo "Update not needed, exit!"
@@ -44,7 +43,7 @@ else
   notify-send "A new version of blender is available, please wait"
   mkdir /opt/$APP/tmp
   cd /opt/$APP/tmp
-  wget $version
+  wget "$version"
   tar fx *.tar.xz
   dir=$(ls . | grep -w -v *.tar.*)
   cd ..
@@ -56,18 +55,18 @@ else
   notify-send "$APP is updated!"
 fi
 EOF
-sed -i s/DEVELOPMENTBRANCH/$branch/g /opt/$APP/AM-updater
-chmod a+x /opt/$APP/AM-updater
+sed -i "s/DEVELOPMENTBRANCH/$branch/g" /opt/"$APP"/AM-updater
+chmod a+x /opt/"$APP"/AM-updater
 
 # ADD SCRIPT TO ROLLBACK
-cat >> /opt/$APP/$APP-rollback << 'EOF'
+cat >> /opt/"$APP"/"$APP"-rollback << 'EOF'
 #!/usr/bin/env bash
 branch=DEVELOPMENTBRANCH
 APP=BLENDEDITION
 rm -f ./rollback-args ./AM-rollback
-URL=https://builder.blender.org/download/daily/archive/
+url="https://builder.blender.org/download/daily/archive/"
 SITE=https://www.blender.org
-printf "%s\n" $(curl -Ls $URL | grep -Eo "$url[a-zA-Z0-9./?=_%:-]+[+a-zA-Z0-9./?=_%:-]*" | grep .tar.xz | grep -w -v sha256 | grep $branch) >> "./rollback-args" &&
+printf "%s\n" $(curl -Ls $URL | grep -Eo "$url[a-zA-Z0-9./?=_%:-]+[+a-zA-Z0-9./?=_%:-]*" | grep -i "tar.xz$" | grep -w -v sha256 | grep $branch) >> "./rollback-args" &&
 echo -e "-----------------------------------------------------------------------\nYou have chosen to roll back $APP.\nRollback will be done from $SITE\n-----------------------------------------------------------------------"
 printf "Select a URL from this menu (read carefully) or press CTRL+C to abort:\n-----------------------------------------------------------------------\n"; sleep 1;
 select d in $(cat "./rollback-args"); do test -n "$d" && break; echo ">>> Invalid Selection"; done
@@ -81,15 +80,14 @@ rm -f ./rollback-args ./AM-rollback
 echo -e "\nROLLBACK SUCCESSFUL!"
 exit
 EOF
-sed -i s/DEVELOPMENTBRANCH/$branch/g /opt/$APP/$APP-rollback
-sed -i s/BLENDEDITION/$APP/g /opt/$APP/$APP-rollback
-chmod a+x /opt/$APP/$APP-rollback
+sed -i "s/DEVELOPMENTBRANCH/$branch/g" /opt/"$APP"/"$APP"-rollback
+sed -i "s/BLENDEDITION/$APP/g" /opt/"$APP"/"$APP"-rollback
+chmod a+x /opt/"$APP"/"$APP"-rollback
 
 # ICON
-icon=$(ls /opt/$APP/ | grep .svg | head -1)
+icon=$(ls /opt/"$APP"/ | grep .svg | head -1)
 
 # LAUNCHER
-rm -f /usr/share/applications/AM-$APP.desktop
 echo "[Desktop Entry]
 Name=$APPNAME
 GenericName=3D modeler
@@ -176,7 +174,7 @@ Icon=/opt/$APP/$(echo $icon)
 Terminal=false
 Type=Application
 Categories=Graphics;3DGraphics;
-MimeType=application/x-blender;" >> /usr/share/applications/AM-$APP.desktop
+MimeType=application/x-blender;" > /usr/local/share/applications/"$APP"-AM.desktop
 
 
 
