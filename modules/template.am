@@ -164,6 +164,48 @@ function _template_custom_download_url() {
 	esac
 }
 
+function _template_help_by_repology() {
+	# IF A DOWNLOAD URL IS LINEAR, USE https://repology.org
+	read -r -ep " Do you want to use repology.org to identify version (y,N)? " yn
+	case "$yn" in
+	'Y'|'y')
+		repology=$(wget -q https://repology.org/project/$arg/versions -O - | grep -i "new.*version" | head -1 | tr '><' '\n' | grep "^[0-9]")
+		repology_command="wget -q https://repology.org/project/$arg/versions -O - | grep -i \"new.*version\" | head -1 | tr '><' '\\n' | grep \"^[0-9]\""
+		if [ -z "$repology" ]; then
+			repology=$(wget -q https://repology.org/project/$arg/versions -O - | grep -i "uniq.*version" | head -1 | tr '><' '\n' | grep "^[0-9]")
+			repology_command="wget -q https://repology.org/project/$arg/versions -O - | grep -i \"uniq.*version\" | head -1 | tr '><' '\\n' | grep \"^[0-9]\""
+			echo ""; echo "$repology"; echo ""
+			mv ./am-scripts/"$arch"/"$arg" ./am-scripts/"$arch"/"$arg".old
+			sed -n '1,14p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
+			echo 'version=$('$repology_command')' >> ./am-scripts/"$arch"/"$arg"
+			sed -n '16,35p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
+			echo 'version=$('$repology_command')' >> ./am-scripts/"$arch"/"$arg"
+			sed -n '37,132p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
+			rm -f ./am-scripts/"$arch"/"$arg".old
+		else
+			echo ""; echo "$repology"; echo ""
+			mv ./am-scripts/"$arch"/"$arg" ./am-scripts/"$arch"/"$arg".old
+			sed -n '1,14p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
+			echo 'version=$('$repology_command')' >> ./am-scripts/"$arch"/"$arg"
+			sed -n '16,35p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
+			echo 'version=$('$repology_command')' >> ./am-scripts/"$arch"/"$arg"
+			sed -n '37,132p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
+			rm -f ./am-scripts/"$arch"/"$arg".old
+		fi
+		# ADD A LINEAR DOWNLOAD URL
+		read -r -ep " ◆ ADD A LINEAR DOWNLOAD URL $(echo -e '\n : ')" dlurl
+		case "$dlurl" in
+		*)
+			sed -i 's#wget "$version"#wget "'"$dlurl"'"#g' ./am-scripts/"$arch"/"$arg"
+			;;
+		esac
+		;;
+	'N'|'n'*)
+		_template_custom_download_url
+		;;
+	esac
+}
+
 function _template_if_sourceforge() {
 	sed -i "s#REPLACETHIS#$RESPONSE#g" ./am-scripts/"$arch"/"$arg"
 	# ADD PROJECTNAME
@@ -224,7 +266,7 @@ function _template_if_hosted_elsewhere() {
 		;;
 	esac
 	echo "-----------------------------------------------------------------------"
-	_template_custom_download_url
+	_template_help_by_repology
 }
 
 # Function to add a generic .desktop file and an icon to the installation script (option 2)
