@@ -1,58 +1,64 @@
 #!/bin/sh
 
+# AM INSTALL SCRIPT VERSION 3.5
+set -u
 APP=palemoon
+SITE="https://www.palemoon.org"
 
-# CREATE THE FOLDER
-mkdir /opt/$APP
-cd /opt/$APP
+# CREATE DIRECTORIES AND ADD REMOVER
+[ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
+printf "#!/bin/sh\nset -e\nrm -f /usr/local/bin/$APP\nrm -R -f /opt/$APP" > ../remove
+printf '\n%s' "rm -f /usr/local/share/applications/$APP-AM.desktop" >> ../remove
+chmod a+x ../remove || exit 1
 
-# ADD THE REMOVER
-echo '#!/bin/sh' >> /opt/$APP/remove
-echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
-chmod a+x /opt/$APP/remove
-
-# DOWNLOAD THE PROGRAM
-mkdir tmp
-cd ./tmp
-
-wget -r -A palemoon-gtk3-bin-*-x86_64.pkg.tar.zst -nd https://builds.garudalinux.org/repos/chaotic-aur/x86_64/
-
-version=$(ls /opt/$APP/tmp)
-echo "$version" >> /opt/$APP/version
-
-tar xf ./*.tar.zst
+# DOWNLOAD AND PREPARE THE APP, $version is also used for updates
+version=$(echo "https://rm-us.palemoon.org/release/$(curl -Ls https://www.palemoon.org/download.shtml | tr '"' '\n' | grep -i "linux.*tar.xz" | tail -1)")
+wget "$(echo "$version"  | tr ' ' '\n' | grep "tar.xz$")" || exit 1
+[ -e ./*7z ] && 7z x ./*7z && rm -f ./*7z
+[ -e ./*tar.* ] && tar fx ./*tar.* && rm -f ./*tar.*
+[ -e ./*zip ] && unzip -qq ./*zip 1>/dev/null && rm -f ./*zip
 cd ..
-mv ./tmp/usr/lib/$APP/* ./
-rm -R -f ./tmp
+if [ -d ./tmp/* 2>/dev/null ]; then mv ./tmp/*/* ./; else mv ./tmp/* ./"$APP" 2>/dev/null || mv ./tmp/* ./; fi
+rm -R -f ./tmp || exit 1
+echo "$version" > ./version
+chmod a+x ./$APP || exit 1
 
-# LINK
-ln -s /opt/$APP/$APP /usr/local/bin/$APP
+# LINK TO PATH
+ln -s "/opt/$APP/$APP" "/usr/local/bin/$APP"
 
 # SCRIPT TO UPDATE THE PROGRAM
-echo '#!/bin/sh
-version0=$(cat /opt/'$APP'/version)
-url="https://builds.garudalinux.org/repos/chaotic-aur/x86_64/"
-if curl -L -s $url | grep -ioF "$version0"; then
-  echo "Update not needed, exit!"
- else
-  notify-send "A new version of '$APP' is available, please wait!"
-  mkdir /opt/'$APP'/tmp
-  cd /opt/'$APP'/tmp
-  wget -r -A palemoon-gtk3-bin-*-x86_64.pkg.tar.zst -nd https://builds.garudalinux.org/repos/chaotic-aur/x86_64/
-  version=$(ls /opt/'$APP'/tmp)
-  if test -f /opt/'$APP'/tmp/*tar.zst; then rm -R -f /opt/'$APP'/version
-  fi
-  echo "$version" >> /opt/'$APP'/version
-  tar xf ./*.tar.zst
-  cd ..
-  mv --backup=t ./tmp/usr/lib/'$APP'/* ./
-  rm -R -f ./tmp ./*~
-  notify-send "'$APP' is updated!"
-fi' >> /opt/$APP/AM-updater
-chmod a+x /opt/$APP/AM-updater
+cat >> ./AM-updater << 'EOF'
+#!/bin/sh
+set -u
+APP=palemoon
+SITE="https://www.palemoon.org"
+version0=$(cat "/opt/$APP/version")
+version=$(echo "https://rm-us.palemoon.org/release/$(curl -Ls https://www.palemoon.org/download.shtml | tr '"' '\n' | grep -i "linux.*tar.xz" | tail -1)")
+[ -n "$version" ] || { echo "Error getting link"; exit 1; }
+if [ "$version" != "$version0" ]; then
+	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
+	notify-send "A new version of $APP is available, please wait"
+	wget "$(echo "$version"  | tr ' ' '\n' | grep "tar.xz$")" || exit 1
+	[ -e ./*7z ] && 7z x ./*7z && rm -f ./*7z
+	[ -e ./*tar.* ] && tar fx ./*tar.* && rm -f ./*tar.*
+	[ -e ./*zip ] && unzip -qq ./*zip 1>/dev/null && rm -f ./*zip
+	cd ..
+	if [ -d ./tmp/* 2>/dev/null ]; then mv --backup=t ./tmp/*/* ./; else mv --backup=t ./tmp/* ./"$APP" 2>/dev/null || mv --backup=t ./tmp/* ./; fi
+	chmod a+x ./"$APP" || exit 1
+	echo "$version" > ./version
+	rm -R -f ./tmp ./*~
+	notify-send "$APP is updated!"
+else
+	echo "Update not needed!"
+fi
+EOF
+chmod a+x ./AM-updater || exit 1
+
+# ICON
+mkdir -p icons
+wget https://upload.wikimedia.org/wikipedia/en/a/a2/Pale_Moon_browser_icon.png -O ./icons/"$APP" 2> /dev/null
 
 # LAUNCHER
-rm -f /usr/share/applications/AM-$APP.desktop 2> /dev/null
 echo "[Desktop Entry]
 Name=Pale Moon
 GenericName=Web Browser
@@ -139,7 +145,7 @@ Comment[zh_TW]=瀏覽網際網路
 Exec=palemoon %u
 Terminal=false
 Type=Application
-Icon=/opt/$APP/browser/chrome/icons/default/default48.png 2> /dev/null
+Icon=/opt/$APP/icons/$APP
 Categories=Network;WebBrowser;
 MimeType=text/html;text/xml;application/xhtml+xml;application/vnd.mozilla.xul+xml;text/mml;x-scheme-handler/http;x-scheme-handler/https;x-scheme-handler/ftp;
 StartupNotify=true
@@ -404,8 +410,4 @@ Name[vi]=Cửa sổ riêng tư mới
 Name[xh]=Ifestile yangasese entsha
 Name[zh_CN]=新建隐私浏览窗口
 Name[zh_TW]=新增隱私視窗
-Exec=palemoon --private-window" >> /usr/share/applications/AM-$APP.desktop 2> /dev/null
-
-
-
-
+Exec=palemoon --private-window" > /usr/local/share/applications/"$APP"-AM.desktop
