@@ -1,69 +1,71 @@
 #!/bin/sh
 
+# AM INSTALL SCRIPT VERSION 3.5
+set -u
 APP=filezilla
 SITE="https://filezilla-project.org"
 
-# CREATE THE FOLDER
-mkdir /opt/$APP
-cd /opt/$APP
+# CREATE DIRECTORIES AND ADD REMOVER
+[ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
+printf "#!/bin/sh\nset -e\nrm -f /usr/local/bin/$APP\nrm -R -f /opt/$APP" > ../remove
+printf '\n%s' "rm -f /usr/local/share/applications/$APP-AM.desktop" >> ../remove
+chmod a+x ../remove || exit 1
 
-# ADD THE REMOVER
-echo '#!/bin/sh' >> /opt/$APP/remove
-echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
-chmod a+x /opt/$APP/remove
-
-# DOWNLOAD THE ARCHIVE
-mkdir tmp
-cd ./tmp
-
+# DOWNLOAD AND PREPARE THE APP, $version is also used for updates
 version=$(wget -q https://filezilla-project.org/download.php?platform=linux64 -O - | grep https://dl | cut -d '"' -f 4)
-wget $version
-echo "$version" >> /opt/$APP/version
-tar fx ./*; rm -R -f ./*tar*
+wget "$version" || exit 1
+[ -e ./*7z ] && 7z x ./*7z && rm -f ./*7z
+[ -e ./*tar.* ] && tar fx ./*tar.* && rm -f ./*tar.*
+[ -e ./*zip ] && unzip -qq ./*zip 1>/dev/null && rm -f ./*zip
 cd ..
-mv --backup=t ./tmp/FileZilla3/* ./
-rm -R -f ./tmp
+if [ -d ./tmp/* 2>/dev/null ]; then mv ./tmp/*/* ./; else mv ./tmp/* ./"$APP" 2>/dev/null || mv ./tmp/* ./; fi
+rm -R -f ./tmp || exit 1
+echo "$version" > ./version
+chmod a+x ./bin/$APP || exit 1
 
-# LINK
+# LINK TO PATH
 echo '#!/bin/sh
 HERE="$(dirname "$(readlink -f "${0}")")"
 export PATH="${HERE}"/bin/:"${PATH}"
 export LD_LIBRARY_PATH="${HERE}"/lib/:"${LD_LIBRARY_PATH}"
 export XDG_DATA_DIRS="${HERE}"/usr/share/:"${HERE}"/usr/share/filezilla/:"${XDG_DATA_DIRS}"
-exec "${HERE}"/bin/filezilla' >> /opt/$APP/$APP
-chmod a+x /opt/$APP/$APP
-ln -s /opt/$APP/$APP /usr/local/bin/$APP
+exec "${HERE}"/bin/filezilla' > ./"$APP"
+chmod a+x ./"$APP"
+ln -s "/opt/$APP/$APP" "/usr/local/bin/$APP"
 
 # SCRIPT TO UPDATE THE PROGRAM
-cat >> /opt/$APP/AM-updater << 'EOF'
-#!/usr/bin/env bash
+cat >> ./AM-updater << 'EOF'
+#!/bin/sh
+set -u
 APP=filezilla
-version0=$(cat /opt/$APP/version)
+SITE="https://filezilla-project.org"
+version0=$(cat "/opt/$APP/version")
 version=$(wget -q https://filezilla-project.org/download.php?platform=linux64 -O - | grep https://dl | cut -d '"' -f 4)
-if [ $version = $version0 ]; then
-	echo "Update not needed!"
-else
+[ -n "$version" ] || { echo "Error getting link"; exit 1; }
+if [ "$version" != "$version0" ]; then
+	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
 	notify-send "A new version of $APP is available, please wait"
-	mkdir /opt/$APP/tmp
-	cd /opt/$APP/tmp
-	wget $version
-	tar fx ./*; rm -R -f ./*tar*
+	wget "$version" || exit 1
+	[ -e ./*7z ] && 7z x ./*7z && rm -f ./*7z
+	[ -e ./*tar.* ] && tar fx ./*tar.* && rm -f ./*tar.*
+	[ -e ./*zip ] && unzip -qq ./*zip 1>/dev/null && rm -f ./*zip
 	cd ..
-	mv --backup=t ./tmp/FileZilla3/* ./
-	rm ./version
-	echo $version >> ./version
+	if [ -d ./tmp/* 2>/dev/null ]; then mv --backup=t ./tmp/*/* ./; else mv --backup=t ./tmp/* ./"$APP" 2>/dev/null || mv --backup=t ./tmp/* ./; fi
+	chmod a+x ./bin/"$APP" || exit 1
+	echo "$version" > ./version
 	rm -R -f ./tmp ./*~
 	notify-send "$APP is updated!"
+else
+	echo "Update not needed!"
 fi
 EOF
-chmod a+x /opt/$APP/AM-updater
+chmod a+x ./AM-updater || exit 1
 
 # ICON
-mkdir icons
-wget https://portable-linux-apps.github.io/icons/filezilla.png -O ./icons/$APP 2> /dev/null
+mkdir -p icons
+wget https://portable-linux-apps.github.io/icons/filezilla.png -O ./icons/"$APP" 2> /dev/null
 
 # LAUNCHER
-rm -f /usr/share/applications/AM-$APP.desktop
 echo "[Desktop Entry]
 Name=FileZilla
 GenericName=FTP client
@@ -79,4 +81,4 @@ Terminal=false
 Icon=/opt/$APP/icons/$APP
 Type=Application
 Categories=Network;FileTransfer;
-Version=1.0" >> /usr/share/applications/AM-$APP.desktop
+Version=1.0" > /usr/local/share/applications/"$APP"-AM.desktop

@@ -12,9 +12,11 @@ printf "#!/bin/sh\nset -e\nrm -f /usr/local/bin/$APP\nrm -R -f /opt/$APP" > ../r
 chmod a+x ../remove || exit 1
 
 # DOWNLOAD AND PREPARE THE APP, $version is also used for updates
-version=$(curl -Ls https://api.github.com/repos/xonixx/gron.awk/releases | sed 's/[()",{} ]/\n/g' | grep 'https.*.gron.awk.*tarball' | head -1)
-wget "$version" -O download.tar.gz || exit 1
+version=$(curl -Ls https://api.github.com/repos/xonixx/gron.awk/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | grep -i "https.*.gron.awk.*tarball" | head -1)
+wget "$version" || exit 1
+[ -e ./*7z ] && 7z x ./*7z && rm -f ./*7z
 [ -e ./*tar.* ] && tar fx ./*tar.* && rm -f ./*tar.*
+[ -e ./*zip ] && unzip -qq ./*zip 1>/dev/null && rm -f ./*zip
 cd ..
 if [ -d ./tmp/* 2>/dev/null ]; then mv ./tmp/*/* ./; else mv ./tmp/* ./"$APP" 2>/dev/null || mv ./tmp/* ./; fi
 rm -R -f ./tmp || exit 1
@@ -31,13 +33,15 @@ set -u
 APP=gron.awk
 SITE="xonixx/gron.awk"
 version0=$(cat "/opt/$APP/version")
-version=$(curl -Ls https://api.github.com/repos/xonixx/gron.awk/releases | sed 's/[()",{} ]/\n/g' | grep 'https.*.gron.awk.*tarball' | head -1)
+version=$(curl -Ls https://api.github.com/repos/xonixx/gron.awk/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | grep -i "https.*.gron.awk.*tarball" | head -1)
 [ -n "$version" ] || { echo "Error getting link"; exit 1; }
 if [ "$version" != "$version0" ]; then
 	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
 	notify-send "A new version of $APP is available, please wait"
-	wget "$version" -O download.tar.gz || exit 1
+	wget "$version" || exit 1
+	[ -e ./*7z ] && 7z x ./*7z && rm -f ./*7z
 	[ -e ./*tar.* ] && tar fx ./*tar.* && rm -f ./*tar.*
+	[ -e ./*zip ] && unzip -qq ./*zip 1>/dev/null && rm -f ./*zip
 	cd ..
 	if [ -d ./tmp/* 2>/dev/null ]; then mv --backup=t ./tmp/*/* ./; else mv --backup=t ./tmp/* ./"$APP" 2>/dev/null || mv --backup=t ./tmp/* ./; fi
 	chmod a+x ./"$APP" || exit 1
