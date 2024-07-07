@@ -1,55 +1,58 @@
 #!/bin/sh
 
+# AM INSTALL SCRIPT VERSION 3.5
+set -u
 APP=jgrasp
-SITE="https://www.jgrasp.org/"
+SITE="https://www.jgrasp.org"
 
-# CREATE THE FOLDER
-mkdir /opt/$APP
-cd /opt/$APP
+# CREATE DIRECTORIES AND ADD REMOVER
+[ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
+printf "#!/bin/sh\nset -e\nrm -f /usr/local/bin/$APP\nrm -R -f /opt/$APP" > ../remove
+printf '\n%s' "rm -f /usr/local/share/applications/$APP-AM.desktop" >> ../remove
+chmod a+x ../remove || exit 1
 
-# ADD THE REMOVER
-echo '#!/bin/sh' >> /opt/$APP/remove
-echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
-chmod a+x /opt/$APP/remove
-
-# DOWNLOAD THE ARCHIVE
-mkdir tmp
-cd ./tmp
-
+# DOWNLOAD AND PREPARE THE APP, $version is also used for updates
 version=$(echo "https://www.jgrasp.org/dl4g/jgrasp/jgrasp_bdl$(curl -Ls https://www.jgrasp.org/ | grep "release" | head -1 | tr ' ' '\n' | grep [0-9] | head -1 | tr -d '.').zip")
-wget $version
-echo "$version" >> /opt/$APP/version
-unzip ./*.zip
+wget "$version" || exit 1
+[ -e ./*7z ] && 7z x ./*7z && rm -f ./*7z
+[ -e ./*tar.* ] && tar fx ./*tar.* && rm -f ./*tar.*
+[ -e ./*zip ] && unzip -qq ./*zip 1>/dev/null && rm -f ./*zip
 cd ..
-mv ./tmp/*/* ./
-rm -R -f ./tmp
+if [ -d ./tmp/* 2>/dev/null ]; then mv ./tmp/*/* ./; else mv ./tmp/* ./"$APP" 2>/dev/null || mv ./tmp/* ./; fi
+rm -R -f ./tmp || exit 1
+echo "$version" > ./version
+chmod a+x ./bin/$APP || exit 1
 
-# LINK
-ln -s /opt/$APP/bin/$APP /usr/local/bin/$APP
+# LINK TO PATH
+ln -s "/opt/$APP/bin/$APP" "/usr/local/bin/$APP"
 
 # SCRIPT TO UPDATE THE PROGRAM
-cat >> /opt/$APP/AM-updater << 'EOF'
-#!/usr/bin/env bash
+cat >> ./AM-updater << 'EOF'
+#!/bin/sh
+set -u
 APP=jgrasp
-version0=$(cat /opt/$APP/version)
+SITE="https://www.jgrasp.org"
+version0=$(cat "/opt/$APP/version")
 version=$(echo "https://www.jgrasp.org/dl4g/jgrasp/jgrasp_bdl$(curl -Ls https://www.jgrasp.org/ | grep "release" | head -1 | tr ' ' '\n' | grep [0-9] | head -1 | tr -d '.').zip")
-if [ $version = $version0 ]; then
-  echo "Update not needed!"
+[ -n "$version" ] || { echo "Error getting link"; exit 1; }
+if [ "$version" != "$version0" ]; then
+	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
+	notify-send "A new version of $APP is available, please wait"
+	wget "$version" || exit 1
+	[ -e ./*7z ] && 7z x ./*7z && rm -f ./*7z
+	[ -e ./*tar.* ] && tar fx ./*tar.* && rm -f ./*tar.*
+	[ -e ./*zip ] && unzip -qq ./*zip 1>/dev/null && rm -f ./*zip
+	cd ..
+	if [ -d ./tmp/* 2>/dev/null ]; then mv --backup=t ./tmp/*/* ./; else mv --backup=t ./tmp/* ./"$APP" 2>/dev/null || mv --backup=t ./tmp/* ./; fi
+	chmod a+x ./bin/"$APP" || exit 1
+	echo "$version" > ./version
+	rm -R -f ./tmp ./*~
+	notify-send "$APP is updated!"
 else
-  notify-send "A new version of $APP is available, please wait"
-  mkdir /opt/$APP/tmp
-  cd /opt/$APP/tmp
-  wget $version
-  unzip ./*.zip
-  cd ..
-  mv --backup=t ./tmp/*/* ./
-  rm ./version
-  echo $version >> ./version
-  rm -R -f ./tmp ./*~
-  notify-send "$APP is updated!"
+	echo "Update not needed!"
 fi
 EOF
-chmod a+x /opt/$APP/AM-updater
+chmod a+x ./AM-updater || exit 1
 
 # LAUNCHER
 echo "[Desktop Entry]
@@ -61,8 +64,4 @@ Exec=$APP
 Terminal=false
 Icon=/opt/$APP/data/gric48.png
 Type=Application\nCategories=Application;Development;IDE;
-Comment[en_US]=jGRASP IDE" >> /usr/share/applications/AM-$APP.desktop
-
-
-
-
+Comment[en_US]=jGRASP IDE" > /usr/local/share/applications/"$APP"-AM.desktop
