@@ -20,14 +20,6 @@ function _install_common_patch() {
 		if wget --version | head -1 | grep -q ' 1.'; then
 			sed -i "s#wget #wget -q --no-verbose --show-progress --progress=bar #g" ./"$arg"
 		fi
-		# Silence "mv", "sed" errors and "squashfs-root" messages
-		if ! grep -q "VERSION 3.5" ./"$arg"; then
-			sed -i 's/ \&& mv/ | grep -v "squashfs-root" | grep -v ":" | grep -v "help"; mv/g' ./"$arg"
-			sed -i '/appimage-extract/ s/$/ 2>\&1 | grep -v "squashfs-root" | grep -v ":" | grep -v "help"/' ./"$arg"
-			sed -i '/^mv / s/$/ 2>\/dev\/null | grep -v "squashfs-root" | grep -v ":" | grep -v "help"/' ./"$arg"
-			sed -i '/^sed / s/$/ 2>\/dev\/null | grep -v "squashfs-root" | grep -v ":" | grep -v "help"/' ./"$arg"
-			sed -i '/squashfs-root/ s/$/ 2>\/dev\/null | grep -v "squashfs-root" | grep -v ":" | grep -v "help"/' ./"$arg"
-		fi
 	fi
 	sed -i "s# https://api.github.com#$HeaderAuthWithGITPAT https://api.github.com#g" ./"$arg"
 }
@@ -37,13 +29,7 @@ function _install_appman_local_patch() {
 	sed -i "s# /opt# $APPSPATH#g" ./"$arg"
 	sed -i "s# /usr/local/bin# $BINDIR#g" ./"$arg"
 	sed -i 's# "/usr/local/bin# "'"$BINDIR"'#g' ./"$arg"
-	sed -i "s# /usr/bin# $BINDIR#g" ./"$arg"
-	sed -i "s# /usr/local/games# $BINDIR#g" ./"$arg"
-	sed -i "s# /usr/games# $BINDIR#g" ./"$arg"
-	sed -i "s# /usr/share/applications# $DATADIR/applications#g" ./"$arg"
 	sed -i "s# /usr/local/share/applications# $DATADIR/applications#g" ./"$arg"
-	sed -i "s# /usr/share/pixmaps# $DATADIR/icons#g" ./"$arg"
-	sed -i "s# /usr/local/share/pixmaps# $DATADIR/icons#g" ./"$arg"
 }
 
 function _apply_patches() {
@@ -51,11 +37,6 @@ function _apply_patches() {
 		_install_common_patch
 		_install_appman_local_patch
 	else
-		if [[ $(grep "[[:space:]]ro[[:space:],]" /proc/mounts) ]]; then
-			$SUDOCOMMAND mkdir -p /usr/local/share/applications
-			sed -i 's# /usr/share/applications# /usr/local/share/applications#g' ./"$arg"
-			sed -i 's# "/usr/share/applications# "/usr/local/share/applications#g' ./"$arg"
-		fi
 		_install_common_patch
 	fi
 }
@@ -149,7 +130,7 @@ function _install_arg() {
 		fi
 	done
 	# Check if the installation script contain a keyword related to a missing dependence
-	if grep -q '.deb' ./"$arg"; then
+	if grep -q 'ar.*x .*\.deb' ./"$arg"; then
 		if ! command -v ar 1>/dev/null; then
 			echo ' 💀 ERROR: YOU CANNOT INSTALL '"$(echo "\"$arg\"" | tr '[:lower:]' '[:upper:]')"' WITHOUT INSTALLING "BINUTILS"!'; return 0
 		fi
@@ -162,17 +143,17 @@ function _install_arg() {
 			sed -i 's#firefox --class#'"$(echo "$ffbrowser" | xargs -L 1 basename)"' --class#g' ./"$arg"
 		fi
 	fi
-	if grep -q '.tar' ./"$arg"; then
+	if grep -q 'http.*\.tar' ./"$arg"; then
 		if ! command -v tar 1>/dev/null; then
 			echo ' 💀 ERROR: YOU CANNOT INSTALL '"$(echo "\"$arg\"" | tr '[:lower:]' '[:upper:]')"' WITHOUT INSTALLING "TAR"!'; return 0
 		fi
 	fi
-	if grep -q '.zip' ./"$arg"; then
+	if grep -q 'http.*\.zip' ./"$arg"; then
 		if ! command -v unzip 1>/dev/null; then
 			echo ' 💀 ERROR: YOU CANNOT INSTALL '"$(echo "\"$arg\"" | tr '[:lower:]' '[:upper:]')"' WITHOUT INSTALLING "UNZIP"!'; return 0
 		fi
 	fi
-	if grep -q 'zsync /opt' ./"$arg"; then
+	if grep -q '^wget "$version.zsync"' ./"$arg"; then
 		if ! command -v zsync 1>/dev/null; then
 			optzsync=$(grep -F 'if test -f /opt/$APP/*.zsync' ./"$arg" | wc -l)
 			if [ "$optzsync" == 0 ]; then
