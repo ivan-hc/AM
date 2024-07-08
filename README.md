@@ -1312,15 +1312,17 @@ The reasons may be two:
 ------------------------------------------------------------------------
 # Related projects
 #### External tools and forks used in this project
-- [aisap](https://github.com/mgord9518/aisap)
-- [appimagetool/go-appimage](https://github.com/probonopd/go-appimage)
-- [pkg2appimage](https://github.com/AppImage/pkg2appimage)
+- [aisap](https://github.com/mgord9518/aisap), sandboxing solutions for AppImages
+- [appimagetool/go-appimage](https://github.com/probonopd/go-appimage), get rid of libfuse2 from your AppImages
+- [pkg2appimage](https://github.com/AppImage/pkg2appimage), create AppImages on the fly from existing .deb packages
+- [repology](https://github.com/repology), the encyclopedia of all software versions
 
 #### My other projects
-- [AppImaGen](https://github.com/ivan-hc/AppImaGen), a script that generates AppImages from Debian or from a PPA for the previous Ubuntu LTS;
-- [ArchImage](https://github.com/ivan-hc/ArchImage), build AppImage packages for all distributions but including Arch Linux packages. Powered by JuNest;
-- [Firefox for Linux scripts](https://github.com/ivan-hc/Firefox-for-Linux-scripts), easily install the official releases of Firefox for Linux.
-- [My AppImage packages](https://github.com/ivan-hc#my-appimage-packages)
+- [AppImaGen](https://github.com/ivan-hc/AppImaGen), easily create AppImages from Ubuntu PPAs or Debian using pkg2appimage and appimagetool;
+- [ArchImage](https://github.com/ivan-hc/ArchImage), create AppImages for all distributions using Arch Linux packages. Powered by JuNest;
+- [Firefox for Linux scripts](https://github.com/ivan-hc/Firefox-for-Linux-scripts), easily install the official releases of Firefox for Linux;
+- [My AppImage packages](https://github.com/ivan-hc#my-appimage-packages) the complete list of packages managed by me and available in this database;
+- [Snap2AppImage](https://github.com/ivan-hc/Snap2AppImage), try to convert Snap packages to AppImages.
 
 ------------------------------------------------------------------------
 
