@@ -265,7 +265,7 @@ Below are the **essential system dependencies** that you must install before pro
 
 NOTE: use "AppMan" for non privileged use or if you prefer to gain administration privileges using alternative commands such as `doas` or similar.
 
-#### Extra dependences (you may not need them)
+#### Extra dependences (recommended)
 The following are optional dependencies that some programs may require:
 - "`binutils`", contains a series of basic commands, including "`ar`" which extracts .deb packages;
 - "`unzip`", to extract .zip packages;
