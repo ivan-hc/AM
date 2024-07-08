@@ -118,6 +118,8 @@ NOTE, all installation scripts used before June 28, 2024 show launchers in /usr/
 ```
 From 8 July 2024 this configuration is no longer available. Reinstall the application to get the new configuration.
 
+The change to the default location for .desktop files from /usr/share/applications to /usr/local/share/applications was made to bring "AM" in line with GNU/Linux standards for installing system-wide third-party applications, see [here](https://refspecs.linuxfoundation.org/FHS_3.0/fhs/ch04s09.html).
+
 ------------------------------------------------------------------------
 
 - "**AppMan**" is more flexible, since it asks you where to install the apps in your $HOME directory. For example, suppose you want install everything in "Applicazioni" (the italian of "applications"), this is the structure of what an installation scripts installs with "AppMan" instead:
