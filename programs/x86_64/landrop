@@ -1,57 +1,81 @@
 #!/bin/sh
-set -u
+set -e
+set -x
+
 APP=landrop
 SITE="https://landrop.app"
-[ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
-printf "#!/bin/sh\nset -e\nrm -f /usr/local/bin/$APP\nrm -R -f /opt/$APP" > ../remove
-printf '\n%s' "rm -f /usr/local/share/applications/$APP-AM.desktop" >> ../remove
-chmod a+x ../remove || exit 1
-version=$(wget -qO- https://landrop.app | grep -oP '(?<=id="version-linux">)[^<]+' | head -n1)
-wget "https://releases.landrop.app/LANDrop-latest-linux.AppImage" || exit 1
-cd ..
-mv ./tmp/* ./"$APP"
-rm -R -f ./tmp || exit 1
-echo "$version" > ./version
-chmod a+x ./"$APP" || exit 1
-ln -s "/opt/$APP/$APP" "/usr/local/bin/$APP"
-cat >> ./AM-updater << 'EOF'
+
+# Create directories
+mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" || { echo "Failed to create directories"; exit 1; }
+cd "/opt/$APP/tmp" || { echo "Failed to change directory to /opt/$APP/tmp"; exit 1; }
+
+# Create remover script
+cat > ../remove << EOF
 #!/bin/sh
-set -u
+set -e
+rm -f /usr/local/bin/$APP
+rm -R -f /opt/$APP
+rm -f /usr/local/share/applications/$APP-AM.desktop
+EOF
+chmod a+x ../remove || { echo "Failed to make remover script executable"; exit 1; }
+
+# Get version and download AppImage
+version=$(wget -qO- https://landrop.app | grep -oP '(?<=version">\s*v)[0-9.]+' | head -n1)
+if [ -z "$version" ]; then
+    echo "Failed to get version from website. Using fallback version."
+    version="latest"
+fi
+echo "Version: $version"
+
+wget "https://releases.landrop.app/LANDrop-latest-linux.AppImage" -O "$APP" || { echo "Failed to download AppImage"; exit 1; }
+
+# Move AppImage and set permissions
+cd .. || { echo "Failed to change directory to /opt/$APP"; exit 1; }
+mv "./tmp/$APP" "./$APP" || { echo "Failed to move AppImage"; exit 1; }
+rm -R -f ./tmp || { echo "Failed to remove tmp directory"; exit 1; }
+echo "$version" > ./version || { echo "Failed to create version file"; exit 1; }
+chmod a+x "./$APP" || { echo "Failed to make AppImage executable"; exit 1; }
+
+# Create symlink
+ln -sf "/opt/$APP/$APP" "/usr/local/bin/$APP" || { echo "Failed to create symlink"; exit 1; }
+
+# Create updater script
+cat > ./AM-updater << 'EOF'
+#!/bin/sh
+set -e
 APP=landrop
 SITE="https://landrop.app"
 version0=$(cat "/opt/$APP/version")
-version=$(wget -qO- https://landrop.app | grep -oP '(?<=id="version-linux">)[^<]+' | head -n1)
-[ -n "$version" ] || { echo "Error getting version"; exit 1; }
+version=$(wget -qO- https://landrop.app | grep -oP '(?<=version">\s*v)[0-9.]+' | head -n1)
+if [ -z "$version" ]; then
+    echo "Failed to get new version. Skipping update."
+    exit 0
+fi
 if [ "$version" != "$version0" ]; then
-    mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
+    mkdir -p "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
     notify-send "A new version of $APP is available, please wait"
-    wget "https://releases.landrop.app/LANDrop-latest-linux.AppImage" || exit 1
-    cd ..
-    mv --backup=t ./tmp/* ./"$APP"
-    chmod a+x ./"$APP" || exit 1
+    wget "https://releases.landrop.app/LANDrop-latest-linux.AppImage" -O "$APP" || exit 1
+    cd .. || exit 1
+    mv "./tmp/$APP" "./$APP" || exit 1
+    chmod a+x "./$APP" || exit 1
     echo "$version" > ./version
-    rm -R -f ./*~old ./*.part ./tmp
+    rm -R -f ./tmp
     notify-send "$APP is updated!"
 else
     echo "Update not needed!"
 fi
 EOF
-chmod a+x ./AM-updater || exit 1
-./"$APP" --appimage-extract *.desktop 1>/dev/null && mv ./squashfs-root/*.desktop ./"$APP".desktop
-./"$APP" --appimage-extract .DirIcon 1>/dev/null && mv ./squashfs-root/.DirIcon ./DirIcon
-COUNT=0
-while [ "$COUNT" -lt 10 ]; do
-    if [ -L ./"$APP".desktop ]; then
-        LINKPATH="$(readlink ./"$APP".desktop | sed 's|^\./||' 2>/dev/null)"
-        ./"$APP" --appimage-extract "$LINKPATH" 1>/dev/null && mv ./squashfs-root/"$LINKPATH" ./"$APP".desktop
-    fi
-    if [ -L ./DirIcon ]; then
-        LINKPATH="$(readlink ./DirIcon | sed 's|^\./||' 2>/dev/null)"
-        ./"$APP" --appimage-extract "$LINKPATH" 1>/dev/null && mv ./squashfs-root/"$LINKPATH" ./DirIcon
-    fi
-    [ ! -L ./"$APP".desktop ] && [ ! -L ./DirIcon ] && break
-    COUNT=$((COUNT + 1))
-done
-sed -i "s#Exec=[^ ]*#Exec=$APP#g; s#Icon=.*#Icon=/opt/$APP/icons/$APP#g" ./"$APP".desktop
-mv ./"$APP".desktop /usr/local/share/applications/"$APP"-AM.desktop && mv ./DirIcon ./icons/"$APP" 1>/dev/null
-rm -R -f ./squashfs-root
+chmod a+x ./AM-updater || { echo "Failed to make updater script executable"; exit 1; }
+
+# Extract desktop file and icon
+./"$APP" --appimage-extract *.desktop 1>/dev/null && mv ./squashfs-root/*.desktop ./"$APP".desktop || { echo "Failed to extract desktop file"; exit 1; }
+./"$APP" --appimage-extract .DirIcon 1>/dev/null && mv ./squashfs-root/.DirIcon ./DirIcon || { echo "Failed to extract icon"; exit 1; }
+
+# Update desktop file
+sed -i "s#Exec=[^ ]*#Exec=$APP#g; s#Icon=.*#Icon=/opt/$APP/icons/$APP#g" ./"$APP".desktop || { echo "Failed to update desktop file"; exit 1; }
+mv ./"$APP".desktop /usr/local/share/applications/"$APP"-AM.desktop && mv ./DirIcon ./icons/"$APP" || { echo "Failed to move desktop file and icon"; exit 1; }
+
+# Cleanup
+rm -R -f ./squashfs-root || { echo "Failed to remove squashfs-root"; exit 1; }
+
+echo "Installation completed successfully"
