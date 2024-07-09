@@ -15,10 +15,11 @@ chmod a+x ./appimagetool
 mkdir -p "$APP".AppDir/
 
 # DOWNLOAD THE ARCHIVE
+DOWNLOAD_URL=$(curl -Ls https://api.github.com/repos/kovidgoyal/calibre/releases | sed 's/[()",{} ]/\n/g' | grep -v "i386\|i686\|aarch64\|arm64\|armv7l" | grep -i "http.*x86_64.txz$" | head -1)
 if wget --version | head -1 | grep -q ' 1.'; then
-	wget -q --no-verbose --show-progress --progress=bar "$version"
+	wget -q --no-verbose --show-progress --progress=bar "$DOWNLOAD_URL"
 else
-	wget "$version"
+	wget "$DOWNLOAD_URL"
 fi
 
 # EXTRACT THE ARCHIVE
