@@ -56,5 +56,5 @@ EOF
 chmod a+x ./"$APP".AppDir/AppRun
 
 # CONVERT THE APPDIR TO AN APPIMAGE
-echo " Converting the AppDir to an AppImage..."
-ARCH=x86_64 VERSION=$(./appimagetool -v | grep -o '[[:digit:]]*') ./appimagetool -s ./"$APP".AppDir
+echo "\nConverting the AppDir to an AppImage...\n"
+ARCH=x86_64 VERSION=$(./appimagetool -v | grep -o '[[:digit:]]*') ./appimagetool -s ./"$APP".AppDir 2>&1 | grep "Architecture\|Creating\|====\|Exportable"
