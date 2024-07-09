@@ -333,15 +333,21 @@ while [ -n "$1" ]; do
 			case $arg in
 			*)
 				cd "$SCRIPTDIR" || return
-				echo "##############################################################"; echo ""
-				echo -e " Create a template for \"$arg\"\n	" | tr '[:lower:]' '[:upper:]'
-				echo "--------------------------------------------------------------"; echo "" 
-				echo -e " EACH MODEL IS BASED ON A DIFFERENT METHOD OF BUILDING/UPDATING THE PROGRAM.\n"
-				echo -e " PLEASE, SELECT A TEMPLATE FOR \"$(echo "$arg" | tr '[:lower:]' '[:upper:]')\": \n"
+				echo "##############################################################"
+				echo ""
+				echo " Create a template for \"$arg\"" | tr '[:lower:]' '[:upper:]'
+				echo ""
+				echo "--------------------------------------------------------------"
+				echo "" 
+				echo " EACH MODEL IS BASED ON A DIFFERENT METHOD OF BUILDING/UPDATING THE PROGRAM."
+				echo ""
+				echo " PLEASE, SELECT A TEMPLATE FOR \"$(echo "$arg" | tr '[:lower:]' '[:upper:]')\":"
+				echo ""
 				echo "  0) APPIMAGE, FROM ANY WEBSITE (BETTER IF FROM GITHUB.COM)"
-				echo "  1) APPIMAGE, BUILD YOUR OWN WITH PKG2APPIMAGE"
+				echo "  1) APPIMAGE ON-THE-FLY, USING A DEDICATED SCRIPT"
 				echo "  2) ANY ARCHIVE/BINARY/SCRIPT FROM ANY WEBSITE"
-				echo -e '  3) WEBAPP BASED ON A FIREFOX PROFILE (REQUIRES "FIREFOX" IN $PATH)"\n'
+				echo '  3) WEBAPP BASED ON A FIREFOX PROFILE (REQUIRES "FIREFOX" IN $PATH)'
+				echo ""
 				read -r -p " WHAT KIND OF PROGRAM DO YOU WANT TO WRITE A SCRIPT FOR? : " templatetype
 				case "$templatetype" in
 
@@ -370,62 +376,22 @@ while [ -n "$1" ]; do
 
 				1) # CREATE AN APPIMAGE ON-THE-FLY
 					mkdir -p ./am-scripts ./am-scripts/"$arch" ./am-scripts/portable-linux-apps.github.io/apps ./am-scripts/portable-linux-apps.github.io/icons
-					# CUSTOMEZE THE APPRUN, THE CORE SCRIPT OF THE APPIMAGE
-					read -r -p ' Do you wish to use a custom AppRun script (y,N)?' yn
-					case $yn in
-					'Y'|'y')
-						# DOWNLOAD THE TEMPLATE AND CONVERT THE ARGUMENT INTO A COMMAND
-						wget -q "$AMREPO"/templates/AM-SAMPLE-pkg2appimage-custom -O ./am-scripts/"$arch"/"$arg" &&
-						sed -i "s/SAMPLE/$arg/g" ./am-scripts/"$arch"/"$arg" &&
-						# LIBUNIONPRELOAD
-						read -r -p ' Do you wish to add libunionpreload (y,N)?' yn
-						case $yn in
-						'Y'|'y')
-							sed -i 's/#export LD_PRELOAD/export LD_PRELOAD/g' ./am-scripts/"$arch"/"$arg"
-							sed -i 's/#chmod/chmod/g' ./am-scripts/"$arch"/"$arg"
-							sed -i 's/#mv ./mv ./g' ./am-scripts/"$arch"/"$arg"
-							sed -i 's/#wget/wget/g' ./am-scripts/"$arch"/"$arg"
-							;;
-						'N'|'n'|*)
-							;;
-						esac
-						# SYSTEM LIBRARIES
-						read -r -p ' Do you wish to include system libraries (Y,n)?' yn
-						case $yn in
-						'N'|'n')
-							sed -i 's/##export LD_LIBRARY_PATH/export LD_LIBRARY_PATH/g' ./am-scripts/"$arch"/"$arg"
-							;;
-						'Y'|'y'|*)
-							sed -i 's/#export LD_LIBRARY_PATH/export LD_LIBRARY_PATH/g' ./am-scripts/"$arch"/"$arg"
-							;;
-						esac
-						# BINARY PATH
-						read -r -p ' Do you wish to specify the binary`s path manually (y,N)?' yn
-						case $yn in 
-						'Y'|'y')
-							read -r -ep " ◆ ADD THE PATH (EXAMPLE \"/usr/lib.../$arg\") $(echo -e '\n: ')" RESPONSE
-							case "$RESPONSE" in
-							*)
-								sed -i "s/#exec/exec/g" ./am-scripts/"$arch"/"$arg"
-								sed -i "s#CUSTOMPATH#$RESPONSE#g" ./am-scripts/"$arch"/"$arg"
-							esac
-							;;
-						'N'|'n'|*)
-							sed -i "s/##exec/exec/g" ./am-scripts/"$arch"/"$arg"
-							;;
-						esac
-						;;
-					'N'|'n'|*)
-						# DOWNLOAD THE TEMPLATE AND CONVERT THE ARGUMENT INTO A COMMAND
-						wget -q "$AMREPO"/templates/AM-SAMPLE-pkg2appimage -O ./am-scripts/"$arch"/"$arg" &&
-						sed -i "s/SAMPLE/$arg/g" ./am-scripts/"$arch"/"$arg"
-						;;
+					# DOWNLOAD THE TEMPLATE AND CONVERT THE ARGUMENT INTO A COMMAND
+					wget -q "$AMREPO"/templates/AM-SAMPLE-AppImage -O ./am-scripts/"$arch"/"$arg"
+					sed -i "s/SAMPLE/$arg/g" ./am-scripts/"$arch"/"$arg"
+
+					_template_if_hosted_elsewhere
+
+					# ADD A LINEAR DOWNLOAD URL
+					read -r -ep " ◆ ADD A LINEAR DOWNLOAD URL FOR THE SCRIPT OR LEAVE BLANK $(echo -e '\n : ')" dlurl
+					case "$dlurl" in
+					'')
+						sed -i 's#wget "$version"#wget "'"$AMREPO"'/appimage-bulder-scripts/'"$arch"'/$APP.sh" \&\& chmod a+x "$APP".sh \&\& ./"$APP".sh#g' ./am-scripts/"$arch"/"$arg"
+					;;
+					*)
+						sed -i 's#wget "$version"#wget "'"$dlurl"'" -O '"$arg"'.sh && chmod '"$arg"'.sh && ./'"$arg"'.sh#g' ./am-scripts/"$arch"/"$arg"
+					;;
 					esac
-					# CREATE A WEBPAGE FOR https://portable-linux-apps.github.io CONTAINING ALL THE INFO ABOUT THIS APP
-					echo "# $(echo "$arg" | tr '[:lower:]' '[:upper:]')" >> ./am-scripts/portable-linux-apps.github.io/apps/"$arg".md
-					echo -e "\n $COMMENT\n\n SITE: \n\n | [Applications](https://portable-linux-apps.github.io/apps.html) | [Home](https://portable-linux-apps.github.io)\n | --- | --- |" >> ./am-scripts/portable-linux-apps.github.io/apps/"$arg".md &&
-					# CREATE A NEW LINE FOR THE APPLICATION'S LIST
-					echo "◆ $arg : $COMMENT" >> ./am-scripts/list; echo ""
 					# END OF THIS FUNCTION
 					echo -e "\n All files are saved in $SCRIPTDIR/am-scripts\n"
 					;;
