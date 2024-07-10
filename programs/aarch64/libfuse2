@@ -1,42 +1,20 @@
-#!/usr/bin/env bash
+#!/bin/sh
 
 LIB=libfuse2
 ARCH=$(uname -m)
 
-# CREATE THE FOLDER
-mkdir /opt/$LIB
-cd /opt/$LIB
+# CREATE DIRECTORIES AND ADD REMOVER
+[ -n "$LIB" ] && mkdir -p "/opt/$LIB/tmp" && cd "/opt/$LIB/tmp" || exit 1
+printf "#!/bin/sh\nset -e\nsudo rm -f /usr/local/lib/libfuse*\nrm -R -f /opt/$LIB" > ../remove
+chmod a+x ../remove || exit 1
 
-# ADD THE REMOVER
-echo '#!/bin/sh
-sudo rm -R -f /opt/'$LIB' /usr/local/lib/libfuse*' >> /opt/$LIB/remove
-chmod a+x /opt/$LIB/remove
+# DOWNLOAD AND PREPARE THE LIBRARY
+LIBFUSE2_DEB=$(curl -Ls http://ftp.debian.org/debian/pool/main/f/fuse/ | grep -Po '(?<=href=")[^"]*' | sort | grep -v exp | grep arm64 | grep "libfuse2_" | tail -1)
+wget http://ftp.debian.org/debian/pool/main/f/fuse/"$LIBFUSE2_DEB" || exit 1
+ar x ./*.deb && tar fx ./data.tar.xz || exit 1
+cd .. || exit 1
+sudo mkdir -p /usr/local/lib || exit 1
+sudo mv ./tmp/lib/*/libfuse* /usr/local/lib/ && rm -R -f ./tmp || exit 1
 
-# DOWNLOAD THE ARCHIVE
-mkdir tmp
-cd ./tmp
-
-function _debian_dl(){
-	LIBFUSE2_DEB=$(curl -Ls http://ftp.debian.org/debian/pool/main/f/fuse/ | grep -Po '(?<=href=")[^"]*' | sort | grep -v exp | grep arm64 | grep "libfuse2_" | tail -1)
-	wget http://ftp.debian.org/debian/pool/main/f/fuse/"$LIBFUSE2_DEB"
-	ar x ./*.deb
-	tar fx ./data.tar.xz
-	cd ..
-	sudo mkdir -p /usr/local/lib
-	sudo mv ./tmp/lib/*/libfuse* /usr/local/lib/
-}
-
-function _archlinux_dl(){
-	wget https://archlinux.org/packages/extra/${ARCH}/fuse2/download && mv ./download ./$LIB.tar.zst
-	tar fx ./*.tar.zst
-	cd ..
-	sudo mkdir -p /usr/local/lib
-	sudo mv ./tmp/usr/lib/libfuse*2* /usr/local/lib/
-}
-
-_debian_dl
-
-#_archlinux_dl
-
-rm -R -f ./tmp
+# CONFIGURE DYNAMIC LINKER RUN-TIME BINDINGS
 sudo ldconfig
