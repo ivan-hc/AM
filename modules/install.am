@@ -161,20 +161,27 @@ function _install_arg() {
 	elif grep -q 'appimage-bulder-scripts' ./"$arg"; then
 		appimage_bulder_script=$(grep "^wget " ./"$arg" | tr '"' '\n' | grep -i "^http" | sed 's/$APP/'"$arg"'/g')
 		if curl --output /dev/null --silent --head --fail "$appimage_bulder_script" 1>/dev/null; then
-			appimage_build_deps="ar convert glib-compile-schemas tar unzip"
+			appimage_build_deps="ar gcc glib-compile-schemas make tar unzip"
 			for name in $appimage_build_deps; do
 				if curl -Ls "$appimage_bulder_script" | grep "^$name" 1>/dev/null; then
 					if ! command -v "$name" &>/dev/null; then
 						if [ "$name" == "ar" ]; then
 							echo " 💀 ERROR: cannot create \"$arg\" without \"binutils\""; return 0
-						elif [ "$name" == "convert" ]; then
-							echo " 💀 ERROR: cannot create \"$arg\" without \"$name\" (from \"imagemagick\")"; return 0
 						else
 							echo " 💀 ERROR: cannot create \"$arg\" without \"$name\""; return 0
 						fi
 					fi
 				fi
 			done
+			if curl -Ls "$appimage_bulder_script" | grep -i "appimagetool" 1>/dev/null; then
+				if ! command -v convert &>/dev/null; then
+					echo " 💀 ERROR: cannot create \"$arg\" without \"convert\" (from \"imagemagick\")"; return 0
+				fi
+			elif curl -Ls "$appimage_bulder_script" | grep -i "pkg2appimage" 1>/dev/null; then
+				if ! command -v convert &>/dev/null; then
+					echo " 💀 ERROR: cannot create \"$arg\" without \"convert\" (from \"imagemagick\")"; return 0
+				fi
+			fi
 		else
 			echo " 💀 ERROR: cannot create \"$arg\", the builder does not exists"; return 0
 		fi
