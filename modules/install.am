@@ -158,23 +158,37 @@ function _install_arg() {
 				echo -e " ⚠️ WARNING: \"$arg\" may not be updatable without \"zsync\".\n\n The app will still be installed, but installing \"zsync\" is recommended! \n"
 			fi
 		fi
-	elif grep -q 'appimage-bulder-scripts' ./"$arg"; then
-		appimage_build_deps="ar convert glib-compile-schemas tar unzip"
-		for name in $appimage_build_deps; do
-			if ! command -v "$name" &>/dev/null; then
-				if [ "$name" == "ar" ]; then
-					echo " 💀 ERROR: cannot create \"$arg\" without \"binutils\""; return 0
-				elif [ "$name" == "convert" ]; then
-					echo " 💀 ERROR: cannot create \"$arg\" without \"$name\" (from \"imagemagick\")"; return 0
-				else
-					echo " 💀 ERROR: cannot create \"$arg\" without \"$name\""; return 0
+	elif grep -qi "^wget.*.sh.*chmod.*&&" ./"$arg"; then
+		appimage_bulder_script=$(grep "^wget " ./"$arg" | tr '"' '\n' | grep -i "^http" | sed 's/$APP/'"$arg"'/g')
+		if curl --output /dev/null --silent --head --fail "$appimage_bulder_script" 1>/dev/null; then
+			appimage_build_deps="ar gcc glib-compile-schemas make tar unzip"
+			for name in $appimage_build_deps; do
+				if curl -Ls "$appimage_bulder_script" | grep "^$name" 1>/dev/null; then
+					if ! command -v "$name" &>/dev/null; then
+						if [ "$name" == "ar" ]; then
+							echo " 💀 ERROR: cannot create \"$arg\" without \"binutils\""; return 0
+						else
+							echo " 💀 ERROR: cannot create \"$arg\" without \"$name\""; return 0
+						fi
+					fi
+				fi
+			done
+			if curl -Ls "$appimage_bulder_script" | grep -i "appimagetool" 1>/dev/null; then
+				if ! command -v convert &>/dev/null; then
+					echo " 💀 ERROR: cannot create \"$arg\" without \"convert\" (from \"imagemagick\")"; return 0
+				fi
+			elif curl -Ls "$appimage_bulder_script" | grep -i "pkg2appimage" 1>/dev/null; then
+				if ! command -v convert &>/dev/null; then
+					echo " 💀 ERROR: cannot create \"$arg\" without \"convert\" (from \"imagemagick\")"; return 0
 				fi
 			fi
-		done
+		else
+			echo " 💀 ERROR: cannot create \"$arg\", the builder does not exists"; return 0
+		fi
 	fi
 	# Check if you are installing an app or a library
 	echo -e "◆ $(echo "\"$arg\"" | tr '[:lower:]' '[:upper:]'): starting installation script"
-	if grep -q 'appimage-bulder-scripts' ./"$arg"; then
+	if grep -qi "^wget.*.sh.*chmod.*&&" ./"$arg"; then
 		echo -e "\n This script will create an AppImage on the fly, please wait..."
 	elif grep -q "/usr/local/lib" ./"$arg"; then
 		echo -e '\n ⚠️ This script installs a system library in /usr/local/lib, cancel it if:\n'

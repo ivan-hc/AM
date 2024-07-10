@@ -17,3 +17,11 @@ Try not to use [Archimage](https://github.com/ivan-hc/ArchImage), as build times
 If your AppImage creation script requires specific dependencies, please let me know with a PR.
 
 TIP, creating AppImage on the fly can take time and resources, depending on the complexity of the program being compiled. It is highly suggested to publish the AppImages to a repository, using Github Actions, [as I do](https://github.com/ivan-hc#my-appimage-packages).
+
+### Syntax
+try to use key commands at the beginning of the line, to allow the "install.am" module to determine whether a command not installed on the system is required by the Appimage assembly script. Fore example:
+```
+tar fx ...
+ar x ...
+```
+to detect if "`tar`" and "`ar`" (from `binutils`) are needed.
