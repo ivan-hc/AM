@@ -3,13 +3,34 @@
 # THIS IS A SCRIPT i USE TO CREATE AND UPDATE THE APPLICATION LIST ON https://portable-linux-apps.github.io/
 # ONCE CREATED, THE PAGE WILL APPEAR LIKE THIS: https://portable-linux-apps.github.io/apps.html
 # FIRST OF ALL, WE NEED TO CREATE A FILE CONTAINING ALL THE ARGUMENTS THAT THIS SCRIPT MUST READ
-cd $(xdg-user-dir DESKTOP)
+
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
 arch="x86_64"
-echo "" >> args
-cp /opt/am/$arch-apps $arch-apps && echo -e "$(cat ./$arch-apps | awk -v FS="(◆ | : )" '{print $2}')" >> args
-echo STOP >> args
-ARGS=$(sed '1d' ./args)
+
+# ENTER THE DESKTOP DIRECTORY
+cd "$(xdg-user-dir DESKTOP)" || exit 1
+
+# GET THE NAMES OF ALL APPLICATION
+cp /opt/am/"$arch"-apps "$arch"-apps && echo -e "$(cat ./"$arch"-apps | awk -v FS="(◆ | : )" '{print $2}')" >> args
+
+# GET THE EXACT NUMBER OF AVAILABLE APPS
+ARGS=$(cat ./args)
+APPS_NUMBER=$(cat ./args | wc -l)
+
+######################################
+# COMPILE THE MAIN PAGE OF THE WEBSITE
+######################################
+
+wget -q https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/main/index.md -O index.old
+sed -n '1,10p' ./index.old > ./index.md
+echo "#### *This site lists **$APPS_NUMBER** Appimage packages and standalone applications.*" >> ./index.md
+sed -n '12,500p' ./index.old >> ./index.md
+
+###############################
+# COMPILE THE APPLICATIONS LIST
+###############################
+
+# HEADER
 echo "# APPLICATIONS
 
 | [Home](https://portable-linux-apps.github.io/) |
@@ -19,31 +40,21 @@ echo "# APPLICATIONS
 
 *Use your browser's built-in search tool to easily navigate to this page.*
 
-#### *This database contains* **$(echo $(($(wc -l ./args | tail -5 | head -1 | grep -Eo "[0-9]*") - 2)))** *Appimage packages and standalone applications*.
+#### *This database contains* **$APPS_NUMBER** *Appimage packages and standalone applications*.
 
 -----------------
 
 | ICON | PACKAGE NAME | DESCRIPTION | INSTALLER |
-| --- | --- | --- | --- |" >> apps.md
-# THIS IS THE WORKFLOW
+| --- | --- | --- | --- |" > apps.md
+
+# BODY
 for arg in $ARGS; do
-	for var in $arg; do
-	if [ $arg == STOP ]; then
-		break
-	else
-	case $arg in
-	am) ;;
-	appman) ;;
-	*) for var in $arg;
-		do
-		description=$(cat $arch-apps | grep "◆ $arg :" | sed 's/^.*: //' | sed 's/ *$//')
-		echo '| <img src="icons/'$arg'.png" width="48" height="48"> | [***'$arg'***](apps/'$arg'.md) | *'$description'*..[ *read more* ](apps/'$arg'.md)*!* | [*blob*](https://github.com/ivan-hc/AM/blob/main/programs/'$arch'/'$arg') **/** [*raw*](https://raw.githubusercontent.com/ivan-hc/AM/main/programs/'$arch'/'$arg') |' >> apps.md
-		sleep 0.005
-		done;;
-	esac
-	fi
+	description=$(cat "$arch"-apps | grep "◆ $arg :" | sed 's/^.*: //' | sed 's/ *$//')
+	echo "| <img src=\"icons/$arg.png\" width=\"48\" height=\"48\"> | [***$arg***](apps/$arg.md) | *$description*..[ *read more* ](apps/$arg.md)*!* | [*blob*](https://github.com/ivan-hc/AM/blob/main/programs/$arch/$arg) **/** [*raw*](https://raw.githubusercontent.com/ivan-hc/AM/main/programs/$arch/$arg) |" >> apps.md
+	sleep 0.005
 done
-done
+
+# FOOTER
 echo "
 
 ---
@@ -71,32 +82,25 @@ You can improve these pages via a [pull request](https://github.com/Portable-Lin
 
 " >> apps.md
 
-wget -q https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/main/README.md -O README.old
-sed -n '1,9p' ./README.old >> ./README.md
-echo "##### This site lists **$(echo $(($(wc -l ./args | tail -5 | head -1 | grep -Eo "[0-9]*") - 2)))** Appimage packages and standalone applications. From here you can download them, install them, update them (for real), get more information about the sources and their developers... and if you want, you can contribute yourself by adding the missing information, because this site is **open source**!" >> ./README.md
-sed -n '11,1400p' ./README.old >> ./README.md
+##########################################################
+# UPDATE THE JSON FILE FOR FURTER ELECTRON-BASED FRONTENDS
+##########################################################
 
-# ADD A JSON VERSION OF THE LIST ABOVE
-echo "[" >> apps.json
+echo "[" > apps.json
 for arg in $ARGS; do
-	for var in $arg; do
-	if [ $arg == STOP ]; then
-		break
-	else
-	case $arg in
-	am) ;;
-	appman) ;;
-	*) for var in $arg;
-		do
-		description=$(cat $arch-apps | grep "◆ $arg :" | sed 's/"//g' | sed 's/^.*: //')
-		echo -e '  {\n    "packageName": "'$arg'",\n    "description": "'$description'..",\n    "icon": "https://portable-linux-apps.github.io/icons/'$arg'.png"\n  },' >> apps.json
-		sleep 0.005
-		done;;
-	esac
-	fi
-done
+	description=$(cat "$arch"-apps | grep "◆ $arg :" | sed 's/"//g' | sed 's/^.*: //')
+	echo "  {" >> apps.json
+	echo "    \"packageName\": \"$arg\"," >> apps.json
+	echo "    \"description\": \"$description..\"," >> apps.json
+	echo "    \"icon\": \"https://portable-linux-apps.github.io/icons/$arg.png\"" >> apps.json
+	echo "  }," >> apps.json
+	sleep 0.005
 done
 sed -i '$s/,$//' apps.json
-echo -e "]" >> apps.json
+echo "]" >> apps.json
 
-rm ./args ./README.old ./$arch-apps
+######################
+# END OF ALL PROCESSES
+######################
+
+rm ./args ./index.old ./$arch-apps
