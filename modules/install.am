@@ -344,26 +344,57 @@ while [ -n "$1" ]; do
 	'-e'|'extra')
 		case $2 in
 		'')
-			echo " USAGE: $AMCLI $1 'https://github.com/user/project' [ARGUMENT]"; exit
+			echo " USAGE: $AMCLI $1 user/project [ARGUMENT]"
+			echo " USAGE: $AMCLI $1 https://github.com/user/project [ARGUMENT]"; exit
 			;;
 		esac
 		case $3 in
 		'')
-			echo " USAGE: $AMCLI $1 'https://github.com/user/project' [ARGUMENT]"; exit
+			echo " USAGE: $AMCLI $1 user/project [ARGUMENT]"
+			echo " USAGE: $AMCLI $1 https://github.com/user/project [ARGUMENT]"; exit
 			;;
 		esac
 
 		mkdir -p "$CACHEDIR/extra"
+		if test -f "$CACHEDIR/extra/$3"; then
+			rm -f "$CACHEDIR/extra/$3"
+		fi
 		wget -q "$AMREPO"/templates/AM-SAMPLE-AppImage -O "$CACHEDIR/extra/$3" || exit 1
 		sed -i "s#APP=SAMPLE#APP=$3#g" "$CACHEDIR/extra/$3"
 		CUSTOMREPO=$(echo "$2" | sed 's#https://github.com/##g' | cut -f1,2 -d'/')
 		sed -i "s#REPLACETHIS#$CUSTOMREPO#g" "$CACHEDIR/extra/$3"
 		q="'"
-		FUNCTION='curl -Ls https://api.github.com/repos/'"$CUSTOMREPO"'/releases | sed '"$q"'s/[()",{} ]/\\n/g'"$q"' | grep -oi "https.*mage$" | grep -vi "i386\\|i686\\|aarch64\\|arm64\\|armv7l" | head -1'
+		if [ "$arch" == "x86_64" ]; then
+			if curl --output /dev/null --silent --head --fail "https://api.github.com/repos/$CUSTOMREPO/releases" | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -i "x86_64" | head -1 1>/dev/null; then
+				FILTER=' | grep -i "x86_64" '
+			elif curl --output /dev/null --silent --head --fail "https://api.github.com/repos/$CUSTOMREPO/releases" | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -i "x64" | head -1 1>/dev/null; then
+				FILTER=' | grep -i "x64" '
+			elif curl --output /dev/null --silent --head --fail "https://api.github.com/repos/$CUSTOMREPO/releases" | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -i "amd64" | head -1 1>/dev/null; then
+				FILTER=' | grep -i "amd64" '
+			else
+				FILTER=' | grep -vi "i386\\|i686\\|aarch64\\|arm64\\|armv7l"'
+			fi
+		elif [ "$arch" == "i686" ]; then
+			if curl --output /dev/null --silent --head --fail "https://api.github.com/repos/$CUSTOMREPO/releases" | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -i "i386" | head -1 1>/dev/null; then
+				FILTER=' | grep -i "i386" '
+			elif curl --output /dev/null --silent --head --fail "https://api.github.com/repos/$CUSTOMREPO/releases" | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -i "i686" | head -1 1>/dev/null; then
+				FILTER=' | grep -i "i686" '
+			elif curl --output /dev/null --silent --head --fail "https://api.github.com/repos/$CUSTOMREPO/releases" | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -i "i586" | head -1 1>/dev/null; then
+				FILTER=' | grep -i "i586" '
+			elif curl --output /dev/null --silent --head --fail "https://api.github.com/repos/$CUSTOMREPO/releases" | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -i "i486" | head -1 1>/dev/null; then
+				FILTER=' | grep -i "i486" '
+			fi
+		elif [ "$arch" == "aarch64" ]; then
+			if curl --output /dev/null --silent --head --fail "https://api.github.com/repos/$CUSTOMREPO/releases" | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -i "aarch64" | head -1 1>/dev/null; then
+				FILTER=' | grep -i "aarch64" '
+			elif curl --output /dev/null --silent --head --fail "https://api.github.com/repos/$CUSTOMREPO/releases" | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -i "amd64" | head -1 1>/dev/null; then
+				FILTER=' | grep -i "amd64" '
+			fi
+		fi
+		FUNCTION='curl -Ls https://api.github.com/repos/'"$CUSTOMREPO"'/releases | sed '"$q"'s/[()",{} ]/\\n/g'"$q"' | grep -oi "https.*mage$"'"$FILTER"' | head -1'
 		sed -i "s#FUNCTION)#$FUNCTION)#g" "$CACHEDIR/extra/$3"
 		chmod a+x "$CACHEDIR/extra/$3"
 		"$AMCLIPATH" -i "$CACHEDIR/extra/$3"
-		rm -f "$CACHEDIR/extra/$3"
 		exit 1
 		;;
 	esac
