@@ -823,11 +823,15 @@ https://github.com/user-attachments/assets/aa546905-38da-48b5-bb10-658426e8372b
 
 You can give whatever name you want to the apps (as long as they does not overlap with commands already existing on your system, be careful).
 
-In this other example, I'll install an obsolete version of WINE AppImage, fro ma repo that lists more versions of the same app. The first attempt is withyout a a keyword, so the script picks the first AppImage in the list (for Debian Buster), then in the second attempt I'll use the keyword "arch" to pick the Arch-based AppImage:
+In this other example, I'll install an obsolete version of WINE AppImage, from a repo that lists more versions of the same app:
+1. the first attempt is without a keyword, so that the script picks the first AppImage in the list (for Debian Buster)
+2. in the second attempt I'll use the keyword "arch" to pick the Arch-based AppImage
 
 https://github.com/user-attachments/assets/af00a5f2-f3fe-4616-899a-155cb31d2acd
 
-Apps installed this way will enjoy the same benefits as those that can already be installed from the database with the "`-i`" or "`install`" option [mentioned above](#install-applications).
+As you can see, there are all the files needed by any app listed in this database, also if an installation script for them does not exists.
+
+Apps installed this way will enjoy the same benefits as those that can already be installed from the database with the "`-i`" or "`install`" option [mentioned above](#install-applications), including updates and sandboxing.
 
 ------------------------------------------------------------------------
 
