@@ -804,17 +804,11 @@ Optionally, you can add a "keyword" if more AppImages are listed in the same rep
 Usage:
 ```
 am -e $USER/$PROJECT $PROGRAM
-```
-or
-```
 am -e $USER/$PROJECT $PROGRAM $KEYWORD
 ```
 or
 ```
 appman -e $USER/$PROJECT $PROGRAM
-```
-or
-```
 appman -e $USER/$PROJECT $PROGRAM $KEYWORD
 ```
 in this video I'll install AnyDesk as "remote-desktop-client":
