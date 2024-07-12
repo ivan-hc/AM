@@ -795,7 +795,7 @@ https://github.com/ivan-hc/AM/assets/88724353/c2e8b654-29d3-4ded-8877-f77ef11d58
 
 __________________________________________________________________________
 ### Install AppImages not listed in this database but available in other github repos
-From [version 7.2](https://github.com/ivan-hc/AM/releases/tag/7.2) its possible to install AppImages not listed in this database, thanks to the option `-e` or `extra`.
+From version 7.2 its possible to install AppImages not listed in this database, thanks to the option `-e` or `extra`.
 
 You need to add the URL to the github repo before the name you want to give to the AppImage (for command line usage, for example).
 
@@ -822,6 +822,10 @@ in this video I'll install AnyDesk as "remote-desktop-client":
 https://github.com/user-attachments/assets/aa546905-38da-48b5-bb10-658426e8372b
 
 You can give whatever name you want to the apps (as long as they does not overlap with commands already existing on your system, be careful).
+
+In this other example, I'll install an obsolete version of WINE AppImage, fro ma repo that lists more versions of the same app. The first attempt is withyout a a keyword, so the script picks the first AppImage in the list (for Debian Buster), then in the second attempt I'll use the keyword "arch" to pick the Arch-based AppImage:
+
+https://github.com/user-attachments/assets/af00a5f2-f3fe-4616-899a-155cb31d2acd
 
 Apps installed this way will enjoy the same benefits as those that can already be installed from the database with the "`-i`" or "`install`" option [mentioned above](#install-applications).
 
