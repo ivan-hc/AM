@@ -811,11 +811,11 @@ or
 appman -e $USER/$PROJECT $PROGRAM
 appman -e $USER/$PROJECT $PROGRAM $KEYWORD
 ```
-in this video I'll install AnyDesk as "remote-desktop-client":
+You can give whatever name you want to the apps (as long as they does not overlap with commands already existing on your system, be careful).
+
+In this video I'll install AnyDesk as "remote-desktop-client":
 
 https://github.com/user-attachments/assets/aa546905-38da-48b5-bb10-658426e8372b
-
-You can give whatever name you want to the apps (as long as they does not overlap with commands already existing on your system, be careful).
 
 In this other example, I'll install an obsolete version of WINE AppImage, from a repo that lists more versions of the same app:
 1. the first attempt is without a keyword, so that the script picks the first AppImage in the list (for Debian Buster)
