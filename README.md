@@ -423,9 +423,20 @@ See also "[How to update or remove apps manually](#how-to-update-or-remove-apps-
 
  `-d {PROGRAM}`
 
-  `-d --convert {PROGRAM}`
+ `-d --convert {PROGRAM}`
 
  DESCRIPTION:	Download one or more installation scripts to your desktop. With the option "--convert" its converted to a standalone local installer, but AM requires AppMan to be installed to add custom directory settings.
+ ___________________________________________________________________________
+
+ `-e`, `extra`
+
+ SYNOPSIS:
+
+ `-e {USER}/{PROJECT} {PROGRAM}`
+
+ `-e {USER}/{PROJECT} {PROGRAM} {KEYWORD}`
+
+ DESCRIPTION:	Install AppImages from github.com, outside the database. This allows you to install, update and manage them all like the others. Where "user/project" can be the whole URL to the github repository, give a name to the program so that it can be used from the command line. Optionally, add an "univoque" keyword if multiple AppImages are listed.
  ___________________________________________________________________________
 
  `-f`, `files`
