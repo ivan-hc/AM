@@ -34,6 +34,7 @@ You can consult the entire **list of managed apps** at [**portable-linux-apps.gi
 
 [Guides and tutorials](#guides-and-tutorials)
 - [Install applications](#install-applications)
+- [Install AppImages not listed in this database but available in other github repos](#install-appimages-not-listed-in-this-database-but-available-in-other-github-repos)
 - [List the installed applications](#list-the-installed-applications)
 - [List and query all the applications available on the database](#list-and-query-all-the-applications-available-on-the-database)
 - [Update all](#update-all)
@@ -422,9 +423,20 @@ See also "[How to update or remove apps manually](#how-to-update-or-remove-apps-
 
  `-d {PROGRAM}`
 
-  `-d --convert {PROGRAM}`
+ `-d --convert {PROGRAM}`
 
  DESCRIPTION:	Download one or more installation scripts to your desktop. With the option "--convert" its converted to a standalone local installer, but AM requires AppMan to be installed to add custom directory settings.
+ ___________________________________________________________________________
+
+ `-e`, `extra`
+
+ SYNOPSIS:
+
+ `-e {USER}/{PROJECT} {PROGRAM}`
+
+ `-e {USER}/{PROJECT} {PROGRAM} {KEYWORD}`
+
+ DESCRIPTION:	Install AppImages from github.com, outside the database. This allows you to install, update and manage them all like the others. Where "user/project" can be the whole URL to the github repository, give a name to the program so that it can be used from the command line. Optionally, add an "univoque" keyword if multiple AppImages are listed.
  ___________________________________________________________________________
 
  `-f`, `files`
@@ -731,6 +743,7 @@ See also "[How to update or remove apps manually](#how-to-update-or-remove-apps-
 This section is committed to giving small demonstrations of each available option, with videos:
 
   - [Install applications](#install-applications)
+  - [Install AppImages not listed in this database but available in other github repos](#install-appimages-not-listed-in-this-database-but-available-in-other-github-repos)
   - [List the installed applications](#list-the-installed-applications)
   - [List and query all the applications available on the database](#list-and-query-all-the-applications-available-on-the-database)
   - [Update all](#update-all)
@@ -772,6 +785,47 @@ appman -i $PROGRAM
 in this video I'll install AnyDesk and LXtask:
 
 https://github.com/ivan-hc/AM/assets/88724353/c2e8b654-29d3-4ded-8877-f77ef11d58fc
+
+------------------------------------------------------------------------
+
+| [Back to "Guides and tutorials"](#guides-and-tutorials) | [Back to "Main Index"](#main-index) |
+| - | - |
+
+------------------------------------------------------------------------
+
+__________________________________________________________________________
+### Install AppImages not listed in this database but available in other github repos
+From version 7.2 its possible to install AppImages not listed in this database, thanks to the option `-e` or `extra`.
+
+You need to add the URL to the github repo before the name you want to give to the AppImage (for command line usage, for example).
+
+Optionally, you can add a "keyword" if more AppImages are listed in the same repo.
+
+Usage:
+```
+am -e $USER/$PROJECT $PROGRAM
+am -e $USER/$PROJECT $PROGRAM $KEYWORD
+```
+or
+```
+appman -e $USER/$PROJECT $PROGRAM
+appman -e $USER/$PROJECT $PROGRAM $KEYWORD
+```
+in this video I'll install AnyDesk as "remote-desktop-client":
+
+https://github.com/user-attachments/assets/aa546905-38da-48b5-bb10-658426e8372b
+
+You can give whatever name you want to the apps (as long as they does not overlap with commands already existing on your system, be careful).
+
+In this other example, I'll install an obsolete version of WINE AppImage, from a repo that lists more versions of the same app:
+1. the first attempt is without a keyword, so that the script picks the first AppImage in the list (for Debian Buster)
+2. in the second attempt I'll use the keyword "arch" to pick the Arch-based AppImage
+
+https://github.com/user-attachments/assets/af00a5f2-f3fe-4616-899a-155cb31d2acd
+
+As you can see, there are all the files needed by any app listed in this database, also if an installation script for them does not exists.
+
+Apps installed this way will enjoy the same benefits as those that can already be installed from the database with the "`-i`" or "`install`" option [mentioned above](#install-applications), including updates and sandboxing.
 
 ------------------------------------------------------------------------
 
