@@ -6,7 +6,7 @@
 
 # COMMON FUNCTIONS FOR APPIMAGES AND ARCHIVES/PROGRAMS/SCRIPTS (OPTIONS 0 AND 2)
 
-function _template_create_dirs_and_ask_for_source(){
+function _template_create_dirs_and_ask_for_source() {
 	mkdir -p ./am-scripts ./am-scripts/"$arch" ./am-scripts/portable-linux-apps.github.io/apps ./am-scripts/portable-linux-apps.github.io/icons
 	# DOWNLOAD THE TEMPLATE AND CONVERT THE ARGUMENT INTO A COMMAND
 	if [ "$templatetype" == 0 ]; then
@@ -148,9 +148,9 @@ function _template_then_github_source() {
 	esac
 }
 
-function _template_custom_download_url() {
+function _template_custom_download_url_as_version_variable() {
 	# IF YOU CAN, USE A ONE-LINE COMMAND TO DOWNLOAD THE PROGRAM
-	read -r -ep " USE A ONE-LINE SHELL COMMAND TO CHECK ONLY THE URL TO THE PROGRAM $(echo -e '\n\n if the URL is fixed, simply add the "echo" command at the beginning\n\n :') " DOWNLOADURL
+	read -r -ep " USE A ONE-LINE COMMAND TO CHECK THE URL TO THE PROGRAM OR THE VERSION $(echo -e '\n\n if the URL is fixed, simply add the "echo" command at the beginning\n\n :') " DOWNLOADURL
 	case "$DOWNLOADURL" in
 	*)
 		mv ./am-scripts/"$arch"/"$arg" ./am-scripts/"$arch"/"$arg".old
@@ -160,6 +160,28 @@ function _template_custom_download_url() {
 		echo 'version=$('$DOWNLOADURL')' >> ./am-scripts/"$arch"/"$arg"
 		sed -n '37,132p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
 		rm -f ./am-scripts/"$arch"/"$arg".old
+		echo "-----------------------------------------------------------------------"
+		;;
+	esac
+}
+
+function _template_use_wget_to_download_a_linear_url_or_a_command() {
+	# FOR "WGET", ADD A LINEAR DOWNLOAD URL OR CHECK THE URL USING THE "$( ... )" SYNTAX
+	read -r -ep " ◆ FOR \"WGET\", ADD A COMMAND AS \"\$( ... )\" OR A LINEAR DOWNLOAD URL $(echo -e '\n : ')" DOWNLOADURL
+	case "$DOWNLOADURL" in
+	*)
+		mv ./am-scripts/"$arch"/"$arg" ./am-scripts/"$arch"/"$arg".old
+		sed -n '1,15p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
+		echo 'wget "'$DOWNLOADURL'" || exit 1' >> ./am-scripts/"$arch"/"$arg"
+		sed -n '17,40p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
+		if grep -q "appimage" ./am-scripts/"$arch"/"$arg".old; then
+			echo '	[ -e ../*.zsync ] && wget "$version.zsync" 2>/dev/null || { wget "'$DOWNLOADURL'" || exit 1; }' >> ./am-scripts/"$arch"/"$arg"
+		else
+			echo '	wget "'$DOWNLOADURL'" || exit 1' >> ./am-scripts/"$arch"/"$arg"
+		fi
+		sed -n '42,150p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
+		rm -f ./am-scripts/"$arch"/"$arg".old
+		echo "-----------------------------------------------------------------------"
 		;;
 	esac
 }
@@ -174,7 +196,7 @@ function _template_help_by_repology() {
 		if [ -z "$repology" ]; then
 			repology=$(wget -q https://repology.org/project/$arg/versions -O - | grep -i "uniq.*version" | head -1 | tr '><' '\n' | grep "^[0-9]")
 			repology_command="wget -q https://repology.org/project/$arg/versions -O - | grep -i \"uniq.*version\" | head -1 | tr '><' '\\n' | grep \"^[0-9]\""
-			echo ""; echo "$repology"; echo ""
+			echo ""; echo " $repology"; echo ""
 			mv ./am-scripts/"$arch"/"$arg" ./am-scripts/"$arch"/"$arg".old
 			sed -n '1,14p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
 			echo 'version=$('$repology_command')' >> ./am-scripts/"$arch"/"$arg"
@@ -183,7 +205,7 @@ function _template_help_by_repology() {
 			sed -n '37,132p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
 			rm -f ./am-scripts/"$arch"/"$arg".old
 		else
-			echo ""; echo "$repology"; echo ""
+			echo ""; echo " $repology"; echo ""
 			mv ./am-scripts/"$arch"/"$arg" ./am-scripts/"$arch"/"$arg".old
 			sed -n '1,14p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
 			echo 'version=$('$repology_command')' >> ./am-scripts/"$arch"/"$arg"
@@ -192,26 +214,13 @@ function _template_help_by_repology() {
 			sed -n '37,132p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
 			rm -f ./am-scripts/"$arch"/"$arg".old
 		fi
-		# ADD A LINEAR DOWNLOAD URL
-		read -r -ep " ◆ ADD A LINEAR DOWNLOAD URL OR CHECK THE URL USING THE \"\$( ... )\" SYNTAX $(echo -e '\n : ')" DOWNLOADURL
-		case "$DOWNLOADURL" in
-		*)
-			mv ./am-scripts/"$arch"/"$arg" ./am-scripts/"$arch"/"$arg".old
-			sed -n '1,15p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
-			echo 'wget "'$DOWNLOADURL'" || exit 1' >> ./am-scripts/"$arch"/"$arg"
-			sed -n '17,40p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
-			if grep -q "appimage" ./am-scripts/"$arch"/"$arg".old; then
-				echo '	[ -e ../*.zsync ] && wget "$version.zsync" 2>/dev/null || { wget "'$DOWNLOADURL'" || exit 1; }' >> ./am-scripts/"$arch"/"$arg"
-			else
-				echo '	wget "'$DOWNLOADURL'" || exit 1' >> ./am-scripts/"$arch"/"$arg"
-			fi
-			sed -n '42,150p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
-			rm -f ./am-scripts/"$arch"/"$arg".old
-			;;
-		esac
+		if [ "$templatetype" != 1 ]; then
+			_template_use_wget_to_download_a_linear_url_or_a_command
+		fi
 		;;
 	'N'|'n'|*)
-		_template_custom_download_url
+		echo "-----------------------------------------------------------------------"
+		_template_custom_download_url_as_version_variable
 		;;
 	esac
 }
@@ -257,12 +266,12 @@ function _template_if_sourceforge() {
 		curl -Ls $SOURCEFORGE | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep -i "$filetype" | grep -v '%' | head -1
 		echo -e "\n The URL above is an example of what both\n the install and update scripts will point to.\n"
 	else
-		_template_custom_download_url
+		_template_custom_download_url_as_version_variable
 	fi
 	sed -i 's/*mage/*/g' ./am-scripts/"$arch"/"$arg"
 }
 
-function _template_if_hosted_elsewhere() {
+function _template_description_if_hosted_elsewhere() {
 	sed -i "s#REPLACETHIS#$RESPONSE#g" ./am-scripts/"$arch"/"$arg"
 	# ADD A DESCRIPTION FOR THIS APPLICATION
 	read -r -ep " ◆ ADD A BRIEF DESCRIPTION FOR THIS APPLICATION $(echo -e '\n : ')" COMMENT
@@ -276,7 +285,6 @@ function _template_if_hosted_elsewhere() {
 		;;
 	esac
 	echo "-----------------------------------------------------------------------"
-	_template_help_by_repology
 }
 
 # Function to add a generic .desktop file and an icon to the installation script (option 2)
@@ -376,11 +384,12 @@ while [ -n "$1" ]; do
 						elif ! echo "$RESPONSE" | grep -q "://"; then
 							_template_then_github_source
 						else
-							_template_if_hosted_elsewhere
+							_template_description_if_hosted_elsewhere
+							_template_help_by_repology
 						fi
 					esac
-					echo "-----------------------------------------------------------------------"
 					# END OF THIS FUNCTION
+					echo "-----------------------------------------------------------------------"
 					echo -e "\n All files are saved in $SCRIPTDIR/am-scripts\n"
 					;;
 
@@ -390,7 +399,8 @@ while [ -n "$1" ]; do
 					wget -q "$AMREPO"/templates/AM-SAMPLE-AppImage -O ./am-scripts/"$arch"/"$arg"
 					sed -i "s/SAMPLE/$arg/g" ./am-scripts/"$arch"/"$arg"
 
-					_template_if_hosted_elsewhere
+					_template_description_if_hosted_elsewhere
+					_template_help_by_repology
 
 					# ADD A LINEAR DOWNLOAD URL
 					read -r -ep " ◆ ADD A LINEAR DOWNLOAD URL FOR THE SCRIPT OR LEAVE BLANK $(echo -e '\n : ')" dlurl
@@ -403,6 +413,7 @@ while [ -n "$1" ]; do
 					;;
 					esac
 					# END OF THIS FUNCTION
+					echo "-----------------------------------------------------------------------"
 					echo -e "\n All files are saved in $SCRIPTDIR/am-scripts\n"
 					;;
 
@@ -421,10 +432,10 @@ while [ -n "$1" ]; do
 						elif ! echo "$RESPONSE" | grep -q "://"; then
 							_template_then_github_source
 						else
-							_template_if_hosted_elsewhere
+							_template_description_if_hosted_elsewhere
+							_template_help_by_repology
 						fi
 					esac
-					echo "-----------------------------------------------------------------------"
 					# LAUNCHER AND ICON (OPTIONAL)
 					read -r -p " ◆ Do you wish to add a launcher and a icon (y,N)? " yn
 					case $yn in
