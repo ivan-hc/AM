@@ -321,59 +321,53 @@ while [ -n "$1" ]; do
 		echo "############################################################################"
 		_clean_amcachedir 2> /dev/null
 		echo "$@" | tr ' ' '\n' >> "$AMCACHEDIR"/install-args 
-		echo STOP >> "$AMCACHEDIR"/install-args
 		ARGS=$(tail -n +2 "$AMCACHEDIR"/install-args)
 		METAPACKAGES="kdegames kdeutils libreoffice nodejs platform-tools"
 
 		for arg in $ARGS; do
-			if [ "$arg" == STOP ]; then
-				if test -f "$AMCACHEDIR"/installed; then
-					echo "############################################################################"
-					echo -e "\n                  END OF ALL INSTALLATION PROCESSES\n"
-					echo -e "             The following new programs have been installed:\n"
-					grep -w -v "◆ am" 0<"$AMCACHEDIR"/installed
-					echo -e "\n############################################################################"
-					exit
-				else
-					exit
+			echo ""
+			case $arg in
+			'--debug')
+				echo " You have decided to read the complete messages to debug the installation"
+				echo "____________________________________________________________________________"
+				;;
+			'--force-latest')
+				echo " You have decided to force downloads for the latest version (if it exists)"
+				echo "____________________________________________________________________________"
+				;;
+			*)
+				# If the "tmp" directory is not removed, the installation failed, so remove the app
+				if test -d "$APPSPATH"/"$arg"/tmp; then
+					$SUDOCOMMAND "$APPSPATH"/"$arg"/remove 2> /dev/null
 				fi
-			else
-				echo ""
-				case $arg in
-
-				'--debug')
-					echo " You have decided to read the complete messages to debug the installation"
-					echo "____________________________________________________________________________"
-					;;
-				'--force-latest')
-					echo " You have decided to force downloads for the latest version (if it exists)"
-					echo "____________________________________________________________________________"
-					;;
-				*)
-					# If the "tmp" directory is not removed, the installation failed, so remove the app
-					if test -d "$APPSPATH"/"$arg"/tmp; then
-						$SUDOCOMMAND "$APPSPATH"/"$arg"/remove 2> /dev/null
-					fi
-
-					# Various cases that may occur during installation (for example if you use a third-party repository)
-					if test -f "$APPSPATH"/"$arg"/remove; then
-						echo " ◆ \"$arg\" is already installed!" | tr '[:lower:]' '[:upper:]'
+				# Various cases that may occur during installation (for example if you use a third-party repository)
+				if test -f "$APPSPATH"/"$arg"/remove; then
+				echo " ◆ \"$arg\" is already installed!" | tr '[:lower:]' '[:upper:]'
+				else
+					if test -f "$arg" 2> /dev/null; then
+						_install_local_script
+					elif test -f "$AMPATH/neodb"; then
+						_install_from_third_party_repo
+					elif curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg"  1>/dev/null; then
+						_install_normally
 					else
-						if test -f "$arg" 2> /dev/null; then
-							_install_local_script
-						elif test -f "$AMPATH/neodb"; then
-							_install_from_third_party_repo
-						elif curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg"  1>/dev/null; then
-							_install_normally
-						else
-							echo " 💀 ERROR: \"$arg\" does NOT exist in the database, see \"$AMCLI -l\""
-						fi
+						echo " 💀 ERROR: \"$arg\" does NOT exist in the database, see \"$AMCLI -l\""
 					fi
-					echo "____________________________________________________________________________"
-					;;
-				esac
-			fi
+				fi
+				echo "____________________________________________________________________________"
+				;;
+			esac
 		done
+		if test -f "$AMCACHEDIR"/installed; then
+			echo "############################################################################"
+			echo -e "\n                  END OF ALL INSTALLATION PROCESSES\n"
+			echo -e "             The following new programs have been installed:\n"
+			grep -w -v "◆ am" 0<"$AMCACHEDIR"/installed
+			echo -e "\n############################################################################"
+			exit
+		else
+			exit
+		fi
 		;;
 
 	'-e'|'extra')
