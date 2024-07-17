@@ -118,6 +118,7 @@ function _ending_the_installation() {
 # INSTALLATION PROCESS
 ######################
 
+# This function is needed to parse the installation script and then execute it
 function _install_arg() {
 	chmod a+x ./"$arg"
 	# Check if the installation script is a metapackage (example one of the 40+ kdegames scripts)
@@ -195,7 +196,7 @@ function _install_arg() {
 		echo -e '\n ⚠️ This script installs a system library in /usr/local/lib, cancel it if:\n'
 		echo ' - it is already installed in the system;'
 		echo -e ' - its already present in your repositories (so install it from there).\n'
-		read -p " Do you wish to continue (N,y)?" yn
+		read -r -p " Do you wish to continue (N,y)?" yn
 		case "$yn" in
 		'y'|'Y')	;;
 		'n'|'N'|*)	echo -e "\n INSTALLATION ABORTED!"; return 0;;
@@ -209,6 +210,83 @@ function _install_arg() {
 	_post_installation_processes
 	_ending_the_installation
 }
+
+####################
+# INSTALLATION CASES
+####################
+
+# This function is for installation scripts run in place, using dot
+function _install_local_script() {
+	cp ./"$arg" "$AMCACHEDIR"/tmp/"$arg"
+	cd "$AMCACHEDIR" && mv ./tmp/"$arg" ./"$arg" && rmdir ./tmp || return
+	_install_arg
+}
+
+# This function is always for local install scripts, but with the entire path as argument
+function _install_local_script_by_following_a_path() {
+	path2arg=$(echo "$arg")
+	arg=$(echo "$path2arg" | sed 's:.*/::')
+	cp "$path2arg" "$AMCACHEDIR"/tmp/"$arg"
+	cd "$AMCACHEDIR" && mv ./tmp/"$arg" ./"$arg" && rmdir ./tmp || return
+	_install_arg
+}
+
+# # This function is for scripts hosted on the official online database or a third-party one
+function _install_normally() {
+	wget -q "$APPSDB"/"$arg" -O "$AMCACHEDIR"/tmp/"$arg"
+	cd "$AMCACHEDIR" && mkdir -p tmp && cd tmp || return
+	cd "$AMCACHEDIR" && mv ./tmp/"$arg" ./"$arg" && rmdir ./tmp || return
+	_install_arg
+}
+
+# This function is entirely dedicated to third-party databases
+function _install_from_third_party_repo() {
+	rm -R -f "$AMCACHEDIR/multirepo-args"
+	MULTIREPO=$(cat "$AMPATH/neodb" | grep "Source=" | sed 's/Source=//g')
+	for anyrepo in $MULTIREPO; do
+		if curl --output /dev/null --silent --head --fail "$anyrepo"/"$arg"  1>/dev/null; then
+			echo "$anyrepo" >> "$AMCACHEDIR/multirepo-args"
+		fi
+	done
+	if test -f "$AMCACHEDIR/multirepo-args"; then
+		anyrepoargs=$(cat "$AMCACHEDIR/multirepo-args" 2>/dev/null | wc -l)
+		if [ "$anyrepoargs" -gt 0 ]; then
+			if curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg"  1>/dev/null; then
+				echo "$APPSDB" >> "$AMCACHEDIR/multirepo-args"
+			fi
+			anyrepoargall=$(cat "$AMCACHEDIR/multirepo-args" 2>/dev/null | wc -l)
+			if [ "$anyrepoargall" == 1 ]; then
+				wget -q "$(cat "$AMCACHEDIR/multirepo-args" | head -1)/$arg" -O "$AMCACHEDIR"/tmp/"$arg"
+				cd "$AMCACHEDIR" && mv ./tmp/"$arg" ./"$arg" && rmdir ./tmp || return
+				rm -R -f "$AMCACHEDIR/multirepo-args"
+				_install_arg
+			else
+				printf '\n%s\n' " ◆ FOUND $(echo "\"$arg\"" | tr '[:lower:]' '[:upper:]') FROM MULTIPLE SOURCES:"
+				printf '%s\n\n' " Select a URL from this menu (read carefully) or press CTRL+C to abort:"; sleep 1
+				select d in $(cat "$AMCACHEDIR/multirepo-args"); do test -n "$d" && break; echo ">>> Invalid Selection"; done
+				wget -q "$d/$arg" -O "$AMCACHEDIR"/tmp/"$arg"
+				cd "$AMCACHEDIR" && mv ./tmp/"$arg" ./"$arg" && rmdir ./tmp || return
+				rm -R -f "$AMCACHEDIR/multirepo-args"
+				_install_arg
+			fi
+		elif curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg"  1>/dev/null; then
+			wget -q "$APPSDB"/"$arg" -O "$AMCACHEDIR"/tmp/"$arg"
+			cd "$AMCACHEDIR" && mv ./tmp/"$arg" ./"$arg" && rmdir ./tmp || return
+			rm -R -f "$AMCACHEDIR/multirepo-args"
+			_install_arg
+		else
+			echo " 💀 ERROR: \"$arg\" does NOT exist in the database, see \"$AMCLI -l\""
+		fi
+	elif curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg"  1>/dev/null; then
+		_install_normally
+	else
+		echo " 💀 ERROR: \"$arg\" does NOT exist in the database, see \"$AMCLI -l\""
+	fi
+}
+
+##################################
+# OPTIONS AVAILABLE IN THIS MODULE
+##################################
 
 while [ -n "$1" ]; do
 
@@ -239,14 +317,15 @@ while [ -n "$1" ]; do
 		echo "##                  START OF ALL INSTALLATION PROCESSES                   ##"
 		echo "##                                                                        ##"
 		echo "############################################################################"
-		_clean_amcachedir
+		_clean_amcachedir 2> /dev/null
 		echo "$@" | tr ' ' '\n' >> "$AMCACHEDIR"/install-args 
 		echo STOP >> "$AMCACHEDIR"/install-args
 		ARGS=$(tail -n +2 "$AMCACHEDIR"/install-args)
 		METAPACKAGES="kdegames kdeutils libreoffice nodejs platform-tools"
 
 		for arg in $ARGS; do
-
+			mkdir -p "$AMCACHEDIR"/tmp
+			rm -f "$AMCACHEDIR"/tmp/*
 			if [ "$arg" == STOP ]; then
 				if test -f "$AMCACHEDIR"/installed; then
 					echo "############################################################################"
@@ -278,59 +357,16 @@ while [ -n "$1" ]; do
 
 					# Various cases that may occur during installation (for example if you use a third-party repository)
 					if test -f "$APPSPATH"/"$arg"/remove; then
-						echo " ◆ $(echo "\"$arg\"" | tr '[:lower:]' '[:upper:]'): app already installed previously! Try removing it."
+						echo " ◆ \"$arg\" is already installed!"
 					else
 						if test -f ./"$arg" 2> /dev/null; then
-							mkdir -p "$AMCACHEDIR"/tmp; cp ./"$arg" "$AMCACHEDIR"/tmp/"$arg"; cd "$AMCACHEDIR" || return; mv ./tmp/"$arg" ./"$arg"; rmdir ./tmp
-							_install_arg
+							_install_local_script
 						elif test -f "$arg" 2> /dev/null; then
-							path2arg=$(echo "$arg")
-							arg=$(echo "$path2arg" | sed 's:.*/::')
-							cd "$AMCACHEDIR" || return; mkdir -p tmp; cd tmp || return; cp "$path2arg" ./"$arg"; cd ..; mv ./tmp/"$arg" ./"$arg"; rmdir ./tmp
-							_install_arg
+							_install_local_script_by_following_a_path
 						elif test -f "$AMPATH/neodb"; then
-							rm -R -f "$AMCACHEDIR/multirepo-args"
-							MULTIREPO=$(cat "$AMPATH/neodb" | grep "Source=" | sed 's/Source=//g')
-							for anyrepo in $MULTIREPO; do
-								if curl --output /dev/null --silent --head --fail "$anyrepo"/"$arg"  1>/dev/null; then
-									echo "$anyrepo" >> "$AMCACHEDIR/multirepo-args"
-								fi
-							done
-							if test -f "$AMCACHEDIR/multirepo-args"; then
-								anyrepoargs=$(cat "$AMCACHEDIR/multirepo-args" 2>/dev/null | wc -l)
-								if [ "$anyrepoargs" -gt 0 ]; then
-									if curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg"  1>/dev/null; then
-										echo "$APPSDB" >> "$AMCACHEDIR/multirepo-args"
-									fi
-									anyrepoargall=$(cat "$AMCACHEDIR/multirepo-args" 2>/dev/null | wc -l)
-									if [ "$anyrepoargall" == 1 ]; then
-										cd "$AMCACHEDIR" || return; mkdir -p tmp; cd tmp || return; wget -q "$(cat "$AMCACHEDIR/multirepo-args" | head -1)/$arg"; cd ..; mv ./tmp/"$arg" ./"$arg"; rmdir ./tmp
-										rm -R -f "$AMCACHEDIR/multirepo-args"
-										_install_arg
-									else
-										printf '\n%s\n' " ◆ FOUND $(echo "\"$arg\"" | tr '[:lower:]' '[:upper:]') FROM MULTIPLE SOURCES:"
-										printf '%s\n\n' " Select a URL from this menu (read carefully) or press CTRL+C to abort:"; sleep 1
-										select d in $(cat "$AMCACHEDIR/multirepo-args"); do test -n "$d" && break; echo ">>> Invalid Selection"; done
-										cd "$AMCACHEDIR" || return; mkdir -p tmp; cd tmp || return; wget -q "$d/$arg"; cd ..; mv ./tmp/"$arg" ./"$arg"; rmdir ./tmp
-										rm -R -f "$AMCACHEDIR/multirepo-args"
-										_install_arg
-									fi
-								elif curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg"  1>/dev/null; then
-									cd "$AMCACHEDIR" || return; mkdir -p tmp; cd tmp || return; wget -q "$APPSDB"/"$arg"; cd ..; mv ./tmp/"$arg" ./"$arg"; rmdir ./tmp
-									rm -R -f "$AMCACHEDIR/multirepo-args"
-									_install_arg
-								else
-									echo " 💀 ERROR: \"$arg\" does NOT exist in the database, see \"$AMCLI -l\""
-								fi
-							elif curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg"  1>/dev/null; then
-								cd "$AMCACHEDIR" || return; mkdir -p tmp; cd tmp || return; wget -q "$APPSDB"/"$arg"; cd ..; mv ./tmp/"$arg" ./"$arg"; rmdir ./tmp
-								_install_arg
-							else
-								echo " 💀 ERROR: \"$arg\" does NOT exist in the database, see \"$AMCLI -l\""
-							fi
+							_install_from_third_party_repo
 						elif curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg"  1>/dev/null; then
-							cd "$AMCACHEDIR" || return; mkdir -p tmp; cd tmp || return; wget -q "$APPSDB"/"$arg"; cd ..; mv ./tmp/"$arg" ./"$arg"; rmdir ./tmp
-							_install_arg
+							_install_normally
 						else
 							echo " 💀 ERROR: \"$arg\" does NOT exist in the database, see \"$AMCLI -l\""
 						fi
