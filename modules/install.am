@@ -219,14 +219,20 @@ function _install_arg() {
 function _install_local_script() {
 	path2arg=$(echo "$arg")
 	arg=$(echo "$path2arg" | sed 's:.*/::')
-	cp "$path2arg" "$AMCACHEDIR"/tmp/"$arg"
+	mkdir -p "$AMCACHEDIR"/tmp && rm -f "$AMCACHEDIR"/tmp/* &&
+	cp "$path2arg" "$AMCACHEDIR"/tmp/"$arg" &&
 	cd "$AMCACHEDIR" && mv ./tmp/"$arg" ./"$arg" && rmdir ./tmp || return
-	_install_arg
+	if ! test -d "$APPSPATH"/"$arg"; then
+		_install_arg
+	else
+		echo " ◆ \"$arg\" is already installed!"
+	fi
 }
 
 # # This function is for scripts hosted on the official online database or a third-party one
 function _install_normally() {
-	wget -q "$APPSDB"/"$arg" -O "$AMCACHEDIR"/tmp/"$arg"
+	mkdir -p "$AMCACHEDIR"/tmp && rm -f "$AMCACHEDIR"/tmp/* &&
+	wget -q "$APPSDB"/"$arg" -O "$AMCACHEDIR"/tmp/"$arg" &&
 	cd "$AMCACHEDIR" && mkdir -p tmp && cd tmp || return
 	cd "$AMCACHEDIR" && mv ./tmp/"$arg" ./"$arg" && rmdir ./tmp || return
 	_install_arg
@@ -249,7 +255,8 @@ function _install_from_third_party_repo() {
 			fi
 			anyrepoargall=$(cat "$AMCACHEDIR/multirepo-args" 2>/dev/null | wc -l)
 			if [ "$anyrepoargall" == 1 ]; then
-				wget -q "$(cat "$AMCACHEDIR/multirepo-args" | head -1)/$arg" -O "$AMCACHEDIR"/tmp/"$arg"
+				mkdir -p "$AMCACHEDIR"/tmp && rm -f "$AMCACHEDIR"/tmp/* &&
+				wget -q "$(cat "$AMCACHEDIR/multirepo-args" | head -1)/$arg" -O "$AMCACHEDIR"/tmp/"$arg" &&
 				cd "$AMCACHEDIR" && mv ./tmp/"$arg" ./"$arg" && rmdir ./tmp || return
 				rm -R -f "$AMCACHEDIR/multirepo-args"
 				_install_arg
@@ -257,13 +264,15 @@ function _install_from_third_party_repo() {
 				printf '\n%s\n' " ◆ FOUND $(echo "\"$arg\"" | tr '[:lower:]' '[:upper:]') FROM MULTIPLE SOURCES:"
 				printf '%s\n\n' " Select a URL from this menu (read carefully) or press CTRL+C to abort:"; sleep 1
 				select d in $(cat "$AMCACHEDIR/multirepo-args"); do test -n "$d" && break; echo ">>> Invalid Selection"; done
-				wget -q "$d/$arg" -O "$AMCACHEDIR"/tmp/"$arg"
+				mkdir -p "$AMCACHEDIR"/tmp && rm -f "$AMCACHEDIR"/tmp/* &&
+				wget -q "$d/$arg" -O "$AMCACHEDIR"/tmp/"$arg" &&
 				cd "$AMCACHEDIR" && mv ./tmp/"$arg" ./"$arg" && rmdir ./tmp || return
 				rm -R -f "$AMCACHEDIR/multirepo-args"
 				_install_arg
 			fi
 		elif curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg"  1>/dev/null; then
-			wget -q "$APPSDB"/"$arg" -O "$AMCACHEDIR"/tmp/"$arg"
+			mkdir -p "$AMCACHEDIR"/tmp && rm -f "$AMCACHEDIR"/tmp/* &&
+			wget -q "$APPSDB"/"$arg" -O "$AMCACHEDIR"/tmp/"$arg" &&
 			cd "$AMCACHEDIR" && mv ./tmp/"$arg" ./"$arg" && rmdir ./tmp || return
 			rm -R -f "$AMCACHEDIR/multirepo-args"
 			_install_arg
@@ -317,8 +326,6 @@ while [ -n "$1" ]; do
 		METAPACKAGES="kdegames kdeutils libreoffice nodejs platform-tools"
 
 		for arg in $ARGS; do
-			mkdir -p "$AMCACHEDIR"/tmp
-			rm -f "$AMCACHEDIR"/tmp/*
 			if [ "$arg" == STOP ]; then
 				if test -f "$AMCACHEDIR"/installed; then
 					echo "############################################################################"
