@@ -93,7 +93,7 @@ function _ending_the_installation() {
 			$AMCLIPATH -R "$LATESTDIR" 1> /dev/null
 		else
 			chown -R $currentuser "$AMCACHEDIR"/about 2> /dev/null
-			for metapackage in $(echo "$METAPACKAGES"); do
+			for metapackage in $METAPACKAGES; do
 				if grep -q "$metapackage" ./"$arg" 2> /dev/null; then
 					metascript=$(ls -td "$APPSPATH"/* | head -1 | sed 's:.*/::')
 				fi
@@ -106,7 +106,7 @@ function _ending_the_installation() {
 			fi
 			$SUDOCOMMAND rm "$AMCACHEDIR"/"$arg"
 			_check_version
-			app_version=$(cat "$AMCACHEDIR"/version-args | grep -w " ◆ $LATESTDIR	|" | sed 's:.*|	::')
+			app_version=$(grep -w " ◆ $LATESTDIR	|" 0<"$AMCACHEDIR"/version-args | sed 's:.*|	::')
 			echo " ◆ $LATESTDIR $app_version" >> "$AMCACHEDIR"/installed
 		fi
 	else
@@ -217,7 +217,7 @@ function _install_arg() {
 
 # This function is for local installation scripts
 function _install_local_script() {
-	path2arg=$(echo "$arg")
+	path2arg="$arg"
 	arg=$(echo "$path2arg" | sed 's:.*/::')
 	mkdir -p "$AMCACHEDIR"/tmp && rm -f "$AMCACHEDIR"/tmp/* &&
 	cp "$path2arg" "$AMCACHEDIR"/tmp/"$arg" &&
@@ -336,6 +336,7 @@ while [ -n "$1" ]; do
 				echo "____________________________________________________________________________"
 				;;
 			*)
+				cd "$REALDIR" || return
 				# If the "tmp" directory is not removed, the installation failed, so remove the app
 				if test -d "$APPSPATH"/"$arg"/tmp; then
 					$SUDOCOMMAND "$APPSPATH"/"$arg"/remove 2> /dev/null
@@ -344,8 +345,12 @@ while [ -n "$1" ]; do
 				if test -f "$APPSPATH"/"$arg"/remove; then
 					echo " ◆ \"$arg\" is already installed!" | tr '[:lower:]' '[:upper:]'
 				else
-					if test -f "$arg" 2> /dev/null; then
-						_install_local_script
+					if echo "$arg" | grep -q "/"; then
+						if test -f "$arg" 2> /dev/null; then
+							_install_local_script
+						else
+							echo " 💀 ERROR: the file \"$arg\" does NOT exist"
+						fi
 					elif test -f "$AMPATH/neodb"; then
 						_install_from_third_party_repo
 					elif curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg"  1>/dev/null; then
