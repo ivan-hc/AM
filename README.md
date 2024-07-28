@@ -415,7 +415,16 @@ See also "[How to update or remove apps manually](#how-to-update-or-remove-apps-
  `-c`
 
  DESCRIPTION:	Removes all the unnecessary files and folders.
- ___________________________________________________________________________
+ __________________________________________________________________________
+
+ `-C`, `--config`
+
+ SYNOPSIS:
+ 
+ `-C {PROGRAM}`
+
+ DESCRIPTION:	Set a dedicated $XDD_CONFIG_HOME for one or more AppImages.
+ __________________________________________________________________________
 
  `-d`, `download`
 
