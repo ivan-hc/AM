@@ -6,20 +6,28 @@
 
 # Set a dedicated .home directory for a selected AppImage
 _home() {
-	cd "$APPSPATH" || return
-	if ! test -d ./"$arg"; then
-		echo " ERROR: \"$arg\" is not installed"
+	if [ ! -d "$APPSPATH"/"$arg" ]; then
+		echo " ERROR: \"$arg\" is not installed" || return
+	elif [ -d "$APPSPATH/$arg/$arg.home" ]; then
+		echo " ERROR: \"$arg\" already contains a home dir"
+	elif ! strings -d "$APPSPATH/$arg/$arg" | grep -- '--appimage-extract' 1>/dev/null; then
+		echo " ERROR: \"$arg\" is NOT an AppImage"
 	else
-		case "$arg" in
-		*)
-			if [ -z "$(strings -d "./$arg/$arg" 2>/dev/null | grep -F "if you run it with the --appimage-extract option")" ] 2>/dev/null; then
-				echo " ERROR: \"$arg\" is NOT an AppImage"
-			else
-				cd ./"$arg" || return
-				mkdir -p ./"$arg.home"
-				echo ' Setting $HOME to '"$APPSPATH/$arg/$arg"'.home for this AppImage'
-			fi
-		esac
+		mkdir "$APPSPATH/$arg/$arg.home" || return
+		echo ' $HOME set to '"$APPSPATH/$arg/$arg.home for $arg"''
+	fi
+}
+
+_config() {
+	if [ ! -d "$APPSPATH"/"$arg" ]; then
+		echo " ERROR: \"$arg\" is not installed" || return
+	elif [ -d "$APPSPATH/$arg/$arg.config" ]; then
+		echo " ERROR: \"$arg\" already contains a config dir"
+	elif ! strings -d "$APPSPATH/$arg/$arg" | grep -- '--appimage-extract' 1>/dev/null; then
+		echo " ERROR: \"$arg\" is NOT an AppImage"
+	else
+		mkdir "$APPSPATH/$arg/$arg.config" || return
+		echo ' $XDG_CONFIG_HOME set to '"$APPSPATH/$arg/$arg.config for $arg"''
 	fi
 }
 
@@ -33,16 +41,12 @@ fi
 case "$1" in
   '--sandbox')
 
-	case $2 in
-	'') 
-		echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
-	esac
-
 	# This script makes it easy to sandbox AppImages installed with AppMan or AM
 	# The default location for the sandboxed homes is at $HOME/.local/am-sandboxes
 	# But that location can be changed by setting the $SANDBOXDIR env variable
 	# aisap: https://github.com/mgord9518/aisap
 
+	[ -z "$2" ] && echo " USAGE: $AMCLI $1 [ARGUMENT]" && exit 1
 	while [ -n "$1" ]; do
 		# Safety checks
 		if ! test -f "$APPSPATH/$2/remove"; then
@@ -270,19 +274,32 @@ case "$1" in
 	;;
 
   '-H'|'--home')
-	case $2 in
-	'') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
-	esac
-
+	[ -z "$2" ] && echo " USAGE: $AMCLI $1 [ARGUMENT]" && exit 1
 	while [ -n "$1" ]; do
 		rm -f "$AMCACHEDIR/home-args"
 		echo "$@" | tr ' ' '\n' >> "$AMCACHEDIR/home-args" && echo STOP >> "$AMCACHEDIR/home-args"
 		ARGS=$(tail -n +2 "$AMCACHEDIR"/home-args)
 		for arg in $ARGS; do
 			if [ "$arg" = STOP ]; then
-				exit
+				exit 0
 			else
 				_home
+			fi
+		done
+	done
+	;;
+
+  '-C'|'--config')
+	[ -z "$2" ] && echo " USAGE: $AMCLI $1 [ARGUMENT]" && exit 1
+	while [ -n "$1" ]; do
+		rm -f "$AMCACHEDIR/config-args"
+		echo "$@" | tr ' ' '\n' >> "$AMCACHEDIR/config-args" && echo STOP >> "$AMCACHEDIR/config-args"
+		ARGS=$(tail -n +2 "$AMCACHEDIR"/config-args)
+		for arg in $ARGS; do
+			if [ "$arg" = STOP ]; then
+				exit 0
+			else
+				_config
 			fi
 		done
 	done
