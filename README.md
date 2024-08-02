@@ -321,12 +321,12 @@ However, to be easily used its recommended to place it in your local "$PATH", in
 
 #### Use "AppMan" in "$PATH"
 To do so, you must first enable that "$PATH":
-- add `export PATH=$PATH:$(xdg-user-dir USER)/.local/bin` in the ` ~/.bashrc`
+- add `export PATH="$PATH:$HOME/.local/bin"` in the ` ~/.bashrc`
 - create the directory `~/.local/bin` if it is not available
 
 To do all this quickly, simply copy/paste the following command:
 ```
-mkdir -p ~/.local/bin && echo 'export PATH=$PATH:$(xdg-user-dir USER)/.local/bin' >> ~/.bashrc && wget https://raw.githubusercontent.com/ivan-hc/AM/main/APP-MANAGER -O appman && chmod a+x ./appman && mv ./appman ~/.local/bin/appman
+mkdir -p ~/.local/bin && echo 'export PATH="$PATH:$HOME/.local/bin"' >> ~/.bashrc && wget https://raw.githubusercontent.com/ivan-hc/AM/main/APP-MANAGER -O ~/.local/bin/appman && chmod a+x ~/.local/bin/appman
 ```
 #### Use "AppMan" in "Portable Mode"
 "AppMan" can run in any directory you download it, copy/paste the following command to download "APP-MANAGER", rename it to `appman` and make it executable:
