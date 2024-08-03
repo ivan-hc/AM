@@ -1,5 +1,7 @@
 #!/bin/sh
 
+set -eu
+
 _away_error() {
 	${1} >/dev/null 2>&1
 }
@@ -13,11 +15,11 @@ RED='\033[0;31m'; LightBlue='\033[1;34m'; Green='\033[0;32m'
 
 # DETERMINE SYSTEM ARCHITECTURE AND CURRENT USER
 arch=$(uname -m)
-currentuser=$(who | awk '{print $1}')
+currentuser="${LOGNAME:-${USERNAME:-${USER}}}"
 
 _check_dependency() {
     program="$1"
-    _away_all command -v "$program" && return 0 || echo "For Installation to work, install \"$program\" first!" && exit 1
+    _away_all command -v "$program" || { echo "For Installation to work, install \"$program\" first!" && exit 1; }
 }
 
 _check_dependency 'wget'
@@ -26,40 +28,32 @@ _check_dependency 'curl'
 # INSTALL "AM" SYSTEM-WIDE
 _install_am() {
 	# CREATING THE MAIN DIRECTORY FOR "AM"
-	mkdir -p /opt/am/.cache /opt/am/modules || exit 1
-	cd /opt/am || exit 1
+	mkdir -p /opt/am/.cache /opt/am/modules /usr/local/bin
+	cd /opt/am
 
 	# CREATE THE SCRIPT NEEDED TO UNINSTALL "AM"
 	printf '#!/bin/sh\n\nset -e\n' > /opt/am/remove
 	printf '\n%s\n' 'if [ "$(id -u)" -ne 0 ]; then echo "Permission denied"; exit 1; fi' >> /opt/am/remove
 	printf '%s\n' 'rm -f /usr/local/bin/am /etc/bash_completion.d/am-completion.sh' >> /opt/am/remove
 	printf '%s\n' 'rm -R -f /opt/am' >> /opt/am/remove
-	chmod a+x /opt/am/remove || exit 1
+	chmod a+x /opt/am/remove
 
-	# DOWNLOAD THE MAIN SCRIPT
+	# DOWNLOAD AND LINK THE MAIN SCRIPT
 	wget -q https://raw.githubusercontent.com/ivan-hc/AM/main/APP-MANAGER
-	chmod a+x /opt/am/APP-MANAGER || exit 1
-
-	# LINK THE MAIN SCRIPT TO A KNOWN PATH
-	ln -s /opt/am/APP-MANAGER /usr/local/bin/am || echo "WARNING: Something went wrong!"
+	chmod a+x /opt/am/APP-MANAGER
+	ln -s /opt/am/APP-MANAGER /usr/local/bin/am || echo "WARNING: Couldn't link am to \"/usr/local/bin/am\"!"
 
 	# DOWNLOAD THE LIST OF THE AVAILABLE PROGRAMS
 	wget -q "https://raw.githubusercontent.com/ivan-hc/AM/main/programs/$arch-apps" || exit 1
 
 	# DOWNLOAD MODULES
-	MODULES=$(curl -Ls https://api.github.com/repos/ivan-hc/AM/contents/modules | sed 's/[()",{}]/ /g; s/ /\n/g' | grep -o 'https.*raw.*modules.*am$' | grep -v "sync\|update")
-	for module in $MODULES; do
-		for v in $module; do
-			cd /opt/am/modules || exit
-			mkdir -p tmp
-			cd tmp || exit
-			wget -q "$v"
-			cd ..
-			mv tmp/*.am ./
-			chmod a+x ./*.am
-			rmdir tmp
-		done
-	done
+	MODULES=$(curl -Ls https://api.github.com/repos/ivan-hc/AM/contents/modules | sed 's/[()",{}]/ /g; s/ /\n/g' \
+		| grep -o 'https.*raw.*modules.*am$' | grep -v "sync\|update" | tr '\n' ' ' )
+	cd /opt/am/modules
+	echo "$MODULES" > modules.urls
+	wget -qi modules.urls
+	chmod a+x ./*.am
+	rm -f modules.urls
 
 	# ENABLE NON-ROOT PERMISSIONS TO THE MAIN DIRECTORY FOR THE CURRENT USER
 	chown -R $currentuser /opt/am 2> /dev/null
@@ -79,9 +73,18 @@ _install_am() {
 
 # INSTALL "AM" LOCALLY, AS "APPMAN"
 _install_appman() {
-	mkdir -p ~/.local/bin
-	echo 'export PATH="$PATH:$HOME/.local/bin"' >> ~/.bashrc
-	wget https://raw.githubusercontent.com/ivan-hc/AM/main/APP-MANAGER -O ~/.local/bin/appman && chmod a+x ~/.local/bin/appman
+	ZPROFILE="${ZDOTDIR:-$HOME}/.zprofile"
+	BINDIR="${XDG_BIN_HOME:-$HOME/.local/bin}"
+	mkdir -p "$BINDIR"
+	if [ -e ~/.bash_profile ] && ! grep "$BINDIR" ~/.bash_profile; then
+		printf '\n%s\n' 'export PATH="$PATH:"$BINDIR""' >> ~/.bash_profile
+	elif [ -e ~/.profile ] && ! grep "$BINDIR" ~/.profile; then
+		printf '\n%s\n' 'export PATH="$PATH:"$BINDIR""' >> ~/.profile
+	fi
+	if [ -e "$ZPROFILE" ] && ! grep "$BINDIR" "$ZPROFILE"; then
+		printf '\n%s\n' "export PATH=\""'$PATH'":$BINDIR\"" >> "$ZPROFILE"
+	fi	
+	wget https://raw.githubusercontent.com/ivan-hc/AM/main/APP-MANAGER -O "$BINDIR"/appman && chmod a+x "$BINDIR"/appman
 }
 
 # CHOOSE BETWEEN "AM" AND "APPMAN"
@@ -160,4 +163,3 @@ echo '
              Run "'"$AMCLI"' -h" to see the list of the options
  ##########################################################################
 '
-
