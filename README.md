@@ -253,6 +253,20 @@ This section explains how to install "AM" or "AppMan".
 
 If you don't know the difference, please read "[Differences between "AM" and "AppMan"](#differences-between-am-and-appman)" first.
 
+You can choose to continue reading and see the installation methods in detail (jump to "[Core dependences](#core-dependences)"), or you can choose to use the common installer for "AM" and "AppMan", named "[AM-INSTALLER](https://github.com/ivan-hc/AM/blob/main/AM-INSTALLER)", by downloading the script and making it executable, like this:
+```
+wget -q https://raw.githubusercontent.com/ivan-hc/AM/main/AM-INSTALLER
+chmod a+x ./AM-INSTALLER
+./AM-INSTALLER
+```
+Type "1" to install "AM" (requires "sudo" password), "2" to install "AppMan". Any other key will abort the installation.
+
+| ![AM-INSTALLER](https://github.com/user-attachments/assets/82b21979-e99d-4bee-b466-716bac1e7e45) |
+| - |
+
+This "[AM-INSTALLER](https://github.com/ivan-hc/AM/blob/main/AM-INSTALLER)" script acts as a "launcher" to speed up the processes available in the guides "[How to install "AM"](#how-to-install-am)" and "[How to install "AppMan"](#how-to-install-appman)". "AppMan" will be installed in ~/.local/bin and the script will take care of enabling it in "$PATH".
+
+------------------------------------------------------------------------
 #### Core dependences
 Below are the **essential system dependencies** that you must install before proceeding:
 - "`coreutils`" (contains "`cat`", "`chmod`", "`chown`"...);
@@ -283,6 +297,8 @@ The following are optional dependencies that some programs may require:
 "**AM**" is ment to be installed at system level to manage apps.
 
 The script "[INSTALL](https://github.com/ivan-hc/AM/blob/main/INSTALL)" is the one that take care of this.
+
+https://github.com/user-attachments/assets/857d28d4-d2ae-42a0-9fe2-95fd62d48d65
 
 #### Using "Wget"
 ```
