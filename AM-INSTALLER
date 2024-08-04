@@ -1,6 +1,6 @@
 #!/bin/sh
 
-set -eu
+set -e
 
 _away_error() {
 	${1} >/dev/null 2>&1
@@ -74,22 +74,23 @@ _install_am() {
 
 # INSTALL "AM" LOCALLY, AS "APPMAN"
 _install_appman() {
-	ZPROFILE="${ZDOTDIR:-$HOME}/.zprofile"
+	ZSHRC="${ZDOTDIR:-$HOME}/.zshrc"
 	BINDIR="${XDG_BIN_HOME:-$HOME/.local/bin}"
 	mkdir -p "$BINDIR"
-	if [ -e ~/.bash_profile ] && ! grep "$BINDIR" ~/.bash_profile; then
-		printf '\n%s\n' "export PATH=\""'$PATH'":$BINDIR\"" >> ~/.bash_profile
-		. ~/.bash_profile
-	elif [ -e ~/.profile ] && ! grep "$BINDIR" ~/.profile; then
-		printf '\n%s\n' "export PATH=\""'$PATH'":$BINDIR\"" >> ~/.profile
-		. ~/.profile
-	elif echo "$SHELL" | grep bash; then
-		printf '\n%s\n' "export PATH=\""'$PATH'":$BINDIR\"" >> ~/.bash_profile
-		. ~/.bash_profile
-	fi
-	if [ -e "$ZPROFILE" ] && ! grep "$BINDIR" "$ZPROFILE"; then
-		printf '\n%s\n' "export PATH=\""'$PATH'":$BINDIR\"" >> "$ZPROFILE"
-		. "$ZPROFILE"
+	if ! echo $PATH | grep "$BINDIR" >/dev/null 2>&1; then 
+		echo "Adding $BINDIR to PATH"
+		if [ -e ~/.bashrc ]; then
+			printf '\n%s\n' 'export BINDIR="${XDG_BIN_HOME:-$HOME/.local/bin}"' >> ~/.bashrc
+			printf '\n%s\n' 'if ! echo $PATH | grep "$BINDIR" >/dev/null 2>&1; then' >> ~/.bashrc
+			printf '	export PATH="$PATH:$BINDIR"\nfi\n' >> ~/.bashrc
+			. ~/.bashrc || true
+		fi
+		if [ -e "$ZPROFILE" ]; then
+			printf '\n%s\n' 'export BINDIR="${XDG_BIN_HOME:-$HOME/.local/bin}"' >> "$ZSHRC"
+			printf '\n%s\n' 'if ! echo $PATH | grep "$BINDIR" >/dev/null 2>&1; then' >> "$ZSHRC"
+			printf '	export PATH="$PATH:$BINDIR"\nfi\n' >> "$ZSHRC"
+			. "$ZSHRC" || true
+		fi
 	fi
 	wget -q https://raw.githubusercontent.com/ivan-hc/AM/main/APP-MANAGER -O "$BINDIR"/appman && chmod a+x "$BINDIR"/appman
 }
