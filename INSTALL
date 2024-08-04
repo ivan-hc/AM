@@ -14,98 +14,78 @@ currentuser=$(who | awk '{print $1}')
 
 _check_dependency() {
     program="$1"
-    _away_all command -v "$program" && return 0 || echo "For Installation to work, install \"$program\" first!" && exit 1
+    _away_all command -v "$program" && return 0 || printf "${RED}WARNING: For Installation to work, install \"$program\" first!\033[0m\n" && exit 1
 }
 
 _check_dependency 'wget'
 _check_dependency 'curl'
 
-# CREATING THE MAIN DIRECTORY FOR "AM"
-mkdir -p /opt/am/.cache /opt/am/modules /usr/local/bin || exit 1
-cd /opt/am || exit 1
+# Colors
+RED='\033[0;31m'; LightBlue='\033[1;34m'; Green='\033[0;32m'
 
-# CREATE THE SCRIPT NEEDED TO UNINSTALL "AM"
-printf '#!/bin/sh\n\nset -e\n' > /opt/am/remove
-printf '\n%s\n' 'if [ "$(id -u)" -ne 0 ]; then echo "Permission denied"; exit 1; fi' >> /opt/am/remove
-printf '%s\n' 'rm -f /usr/local/bin/am /etc/bash_completion.d/am-completion.sh' >> /opt/am/remove
-printf '%s\n' 'rm -R -f /opt/am' >> /opt/am/remove
-chmod a+x /opt/am/remove || exit 1
+# INSTALL "AM"
+_prepare_am_directory() {
+	# CREATE AND ENTER THE MAIN DIRECTORY FOR "AM"
+	mkdir -p /opt/am/.cache /opt/am/modules /usr/local/bin && cd /opt/am || exit 1
 
-# DOWNLOAD AND LINK THE MAIN SCRIPT
-wget -q https://raw.githubusercontent.com/ivan-hc/AM/main/APP-MANAGER
-chmod a+x /opt/am/APP-MANAGER
-ln -s /opt/am/APP-MANAGER /usr/local/bin/am || echo "WARNING: Couldn't link am to \"/usr/local/bin/am\"!"
+	# CREATE THE SCRIPT NEEDED TO UNINSTALL "AM"
+	printf '#!/bin/sh\n\nset -e\n' > /opt/am/remove
+	printf '\n%s\n' 'if [ "$(id -u)" -ne 0 ]; then echo "Permission denied"; exit 1; fi' >> /opt/am/remove
+	printf '%s\n' 'rm -f /usr/local/bin/am /etc/bash_completion.d/am-completion.sh' >> /opt/am/remove
+	printf '%s\n' 'rm -R -f /opt/am' >> /opt/am/remove
+	chmod a+x /opt/am/remove || exit 1
 
-# DOWNLOAD THE LIST OF THE AVAILABLE PROGRAMS
-wget -q "https://raw.githubusercontent.com/ivan-hc/AM/main/programs/$arch-apps" || exit 1
+	# DOWNLOAD AND LINK THE MAIN SCRIPT
+	wget -q https://raw.githubusercontent.com/ivan-hc/AM/main/APP-MANAGER
+	chmod a+x /opt/am/APP-MANAGER
+	ln -s /opt/am/APP-MANAGER /usr/local/bin/am || printf "${RED}WARNING: Couldn't link am to \"/usr/local/bin/am\"!\033[0m\n"
 
-# DOWNLOAD MODULES
-MODULES=$(curl -Ls https://api.github.com/repos/ivan-hc/AM/contents/modules | sed 's/[()",{}]/ /g; s/ /\n/g' | grep -o 'https.*raw.*modules.*am$' | grep -v "sync\|update")
-for module in $MODULES; do
-	for v in $module; do
-		cd /opt/am/modules || exit
-		mkdir -p tmp
-		cd tmp || exit
-		wget -q "$v"
-		cd ..
-		mv tmp/*.am ./
-		chmod a+x ./*.am
-		rmdir tmp
+	# DOWNLOAD THE LIST OF THE AVAILABLE PROGRAMS
+	wget -q "https://raw.githubusercontent.com/ivan-hc/AM/main/programs/$arch-apps" || exit 1
+}
+
+_download_am_modules() {
+	# DOWNLOAD MODULES
+	cd /opt/am/modules || exit
+	MODULES=$(curl -Ls https://api.github.com/repos/ivan-hc/AM/contents/modules | sed 's/[()",{}]/ /g; s/ /\n/g' | grep -o 'https.*raw.*modules.*am$' | grep -v "sync\|update")
+	for v in $MODULES; do
+		MODULENAME=$(echo "$v" | sed 's:.*/::')
+		if ! test -f ./"$MODULENAME"; then
+			echo " ◆ Downloading $MODULENAME..."
+			wget -q "$v"
+			chmod a+x ./"$MODULENAME"
+		fi
 	done
-done
+	cd ..
 
-# ENABLE NON-ROOT PERMISSIONS TO THE MAIN DIRECTORY FOR THE CURRENT USER
-chown -R $currentuser /opt/am 2> /dev/null
+	# ENABLE NON-ROOT PERMISSIONS TO THE MAIN DIRECTORY FOR THE CURRENT USER
+	chown -R $currentuser /opt/am 2> /dev/null
+}
 
-# ADD THE BASH COMPLETION SCRIPT
-echo '#!/usr/bin/env bash
-complete -W "$(cat /opt/am/list 2>/dev/null)" am' >> /opt/am/am-completion.sh
-chmod a+x /opt/am/am-completion.sh
+_enable_bash_completion() {
+	# ADD THE BASH COMPLETION SCRIPT
+	echo '#!/usr/bin/env bash' > /opt/am/am-completion.sh
+	echo 'complete -W "$(cat /opt/am/list 2>/dev/null)" am' >> /opt/am/am-completion.sh
+	chmod a+x /opt/am/am-completion.sh
 
-if test -f /etc/bash_completion.d; then
-	mv /opt/am/am-completion.sh /etc/bash_completion.d/
-else
-	mkdir -p /etc/bash_completion.d
-	sudo mv /opt/am/am-completion.sh /etc/bash_completion.d/
-fi
+	if test -f /etc/bash_completion.d; then
+		mv /opt/am/am-completion.sh /etc/bash_completion.d/
+	else
+		mkdir -p /etc/bash_completion.d
+		sudo mv /opt/am/am-completion.sh /etc/bash_completion.d/
+	fi
+}
 
-# SHOW THE MESSAGE
-echo '
-               _____                    _____
-              /\    \                  /\    \		   A	   A
-             /::\    \                /::\____\		    P	    M
-            /::::\    \              /::::|   |		     P
-           /::::::\    \            /:::::|   |		      M	      &
-          /:::/\:::\    \          /::::::|   |		       A
-         /:::/__\:::\    \        /:::/|::|   |		        N
-        /::::\   \:::\    \      /:::/ |::|   |
-       /::::::\   \:::\    \    /:::/  |::|___|______
-      /:::/\:::\   \:::\    \  /:::/   |::::::::\    \
-     /:::/  \:::\   \:::\____\/:::/    |:::::::::\____\
-     \::/    \:::\  /:::/    /\::/    / ~~~~~/:::/    /
-      \/____/ \:::\/:::/    /  \/____/      /:::/    /
-               \::::::/    /               /:::/    /
-                \::::/    /               /:::/    /
-                /:::/    /               /:::/    /╔═╗╔╗╔┌─┐┌─┐┌─┐┬─┐
-               /:::/    /               /:::/    / ╠═╣║║║├─┤│ ┬├┤ ├┬┘
-              /:::/    /               /:::/    /  ╩ ╩╝╚╝┴ ┴└─┘└─┘┴└─
-             /:::/    /╔═╗╔═╗┬  ┬┌─┐┌─┐┌┬┐┬┌─┐┌┐┌
-             \::/    / ╠═╝╠═╝│  ││  ├─┤ │ ││ ││││
-              \/____/  ╩  ╩  ┴─┘┴└─┘┴ ┴ ┴ ┴└─┘┘└┘	by Ivan Alex HC
-
-  >> 𝘋𝘢𝘵𝘢𝘣𝘢𝘴𝘦 & 𝘴𝘰𝘭𝘶𝘵𝘪𝘰𝘯𝘴 𝘧𝘰𝘳 𝘢𝘭𝘭 𝘈𝘱𝘱𝘐𝘮𝘢𝘨𝘦𝘴 𝘢𝘯𝘥 𝘱𝘰𝘳𝘵𝘢𝘣𝘭𝘦 𝘢𝘱𝘱𝘴 𝘧𝘰𝘳 𝘎𝘕𝘜/𝘓𝘪𝘯𝘶𝘹 <<
-
- ##########################################################################
- __________________________________________________________________________
-
- SITE: https://portable-linux-apps.github.io
-
- REPOSITORY: https://github.com/ivan-hc/AM
- __________________________________________________________________________
-
- ##########################################################################
-
-             Run "am -h" to see the list of the options
- ##########################################################################
-'
-
+echo '--------------------------------------------------------------------------'
+printf " ${Green}Installing \"AM\" in /opt/am\033[0m\n"
+_prepare_am_directory
+echo '--------------------------------------------------------------------------'
+printf " ${Green}Downloading modules:\033[0m\n"
+_download_am_modules
+echo '--------------------------------------------------------------------------'
+printf " ${Green}Enable bash completion\033[0m\n"
+_enable_bash_completion
+echo '--------------------------------------------------------------------------'
+printf " ${Green}\"AM\" has been successfully installed!\033[0m\n"
+printf " Please, run \"${LightBlue}am -h\033[0m\" to see the list of the options.\n"
+echo '--------------------------------------------------------------------------'
