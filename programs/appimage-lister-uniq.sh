@@ -2,6 +2,7 @@
 
 DIRS=$(find . -type d | grep "/" | sed 's:.*/::')
 for arch in $DIRS; do
+	rm -f "$arch-appimages"
 	ARGS=$(awk -v FS="(◆ | : )" '{print $2}' <"$arch-apps")
 	for arg in $ARGS; do
 		if grep -qe "appimage\|mage\$" "./$arch/$arg" 1> /dev/null; then
