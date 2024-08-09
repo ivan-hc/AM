@@ -897,7 +897,7 @@ Option `-q` or `query` shows search results from the list above.
 
 https://github.com/ivan-hc/AM/assets/88724353/2ac875df-5210-4d77-91d7-24c45eceaa2b
 
-From version 7.5 it is possibler to add the `--appimages` option to list only the AppImages.
+From version 7.5 it is possible to add the `--appimages` option to list only the AppImages.
 
 https://github.com/user-attachments/assets/864e95dd-0f69-4b8b-b6b3-289af3610aac
 
