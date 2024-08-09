@@ -514,7 +514,9 @@ See also "[How to update or remove apps manually](#how-to-update-or-remove-apps-
 
  `-l`
 
- DESCRIPTION:	Shows the list of all the apps available in the repository.
+ `-l --appimages`
+
+ DESCRIPTION:	Shows the list of all the apps available in the repository. Add the "--appimages" option to list only the AppImages.
  ___________________________________________________________________________
 
  `-o`, `overwrite`
@@ -532,9 +534,11 @@ See also "[How to update or remove apps manually](#how-to-update-or-remove-apps-
 
  `-q {KEYWORD}`
 
+ `-q --appimages {KEYWORD}`
+
  `-q --pkg {PROGRAM1} {PROGRAM2}`
 
- DESCRIPTION:	Can be used to search for keywords and terms in the list of available applications packages to display matches. This can be useful if you are looking for applications having a specific feature. Add the suboption "--pkg" to search only the names of one or more apps.
+ DESCRIPTION:	Can be used to search for keywords and terms in the list of available applications packages to display matches. This can be useful if you are looking for applications having a specific feature. Add the "--appimages" option to list only the AppImages. Add the suboption "--pkg" to search only the names of one or more apps.
  ___________________________________________________________________________
 
  `-r`, `remove`
@@ -892,6 +896,10 @@ Options `-l` or `list` shows the whole list of apps available in this repository
 Option `-q` or `query` shows search results from the list above.
 
 https://github.com/ivan-hc/AM/assets/88724353/2ac875df-5210-4d77-91d7-24c45eceaa2b
+
+From version 7.5 it is possible to add the `--appimages` option to list only the AppImages.
+
+https://github.com/user-attachments/assets/864e95dd-0f69-4b8b-b6b3-289af3610aac
 
 ------------------------------------------------------------------------
 
