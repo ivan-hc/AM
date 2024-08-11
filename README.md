@@ -77,7 +77,7 @@ You can consult the entire **list of managed apps** at [**portable-linux-apps.gi
 ------------------------------------------------------------------------
 # Differences between "AM" and "AppMan"
 "AM" and "AppMan" differ in how they are installed, placed and renamed in the system and how/where they install apps:
-- "**AM**" is installed system-wide (requires `sudo`) in `/opt/am/` as "**APP-MANAGER**", with a symlink named "`am`" in `/usr/local/bin`.
+- "**AM**" is installed system-wide (requires `sudo` or `doas`) in `/opt/am/` as "**APP-MANAGER**", with a symlink named "`am`" in `/usr/local/bin`.
 - "**AppMan**" is portable, you need just to rename the "APP-MANAGER" script as "`appman`" and put it wherewer you want. I recommend to place it in `$HOME/.local/bin` to be used in $PATH, to be managed from other tools (see below).
 
 Both can be updated using "[Topgrade](https://github.com/topgrade-rs/topgrade)".
@@ -94,7 +94,7 @@ Both can be updated using "[Topgrade](https://github.com/topgrade-rs/topgrade)".
 - "AppMan" can request the root password only in the very rare case in which you want to install a library;
 - "AM" requires the root password only to install, remove apps, enable a sandbox for an AppImage, or enable/disable bash completion.
 
-All options cannot be executed with "`sudo`".
+All options cannot be executed with "`sudo`"/"`doas`".
 
 ------------------------------------------------------------------------
 
@@ -259,7 +259,7 @@ wget -q https://raw.githubusercontent.com/ivan-hc/AM/main/AM-INSTALLER
 chmod a+x ./AM-INSTALLER
 ./AM-INSTALLER
 ```
-Type "1" to install "AM" (requires "sudo" password), "2" to install "AppMan". Any other key will abort the installation.
+Type "1" to install "AM" (requires "sudo"/"doas" password), "2" to install "AppMan". Any other key will abort the installation.
 
 | ![AM-INSTALLER](https://github.com/user-attachments/assets/82b21979-e99d-4bee-b466-716bac1e7e45) |
 | - |
@@ -276,9 +276,7 @@ Below are the **essential system dependencies** that you must install before pro
 - "`wget`" to download all programs and update "AM"/"AppMan" itself.
 
 #### Dependency only for "AM"
-- "`sudo`", required by "AM" to install/remove programs, sandbox AppImages and enable/disable bash-completion.
-
-NOTE: use "AppMan" for non privileged use or if you prefer to gain administration privileges using alternative commands such as `doas` or similar.
+- "`sudo`" or "`doas`", required by "AM" to install/remove programs, sandbox AppImages and enable/disable bash-completion.
 
 #### Extra dependences (recommended)
 The following are optional dependencies that some programs may require:
@@ -1119,7 +1117,7 @@ __________________________________________________________________________
 ### How to update or remove apps manually
 Inside each installed applications directory, there are two scripts called "AM-updater" and "remove", and their purpose is indicated in their name:
 - To update an app manually, run the AM-updater script.
-- To remove an application instead, run the "remove" script (with "`sudo`" if you are an "AM" user).
+- To remove an application instead, run the "remove" script (with "`sudo`" or "`doas`" if you are an "AM" user).
 
 __________________________________________________________________________
 ### Downgrade an installed app to a previous version
@@ -1299,7 +1297,7 @@ or
 ```
 appman -i libfuse2
 ```
-NOTE, in AppMan you still need to use your password (`sudo`) to install the library at system level, in /usr/local/lib
+NOTE, in AppMan you still need to use your password (`sudo` or `doas`) to install the library at system level, in /usr/local/lib
 
 Alternatively you can use the "`nolibfuse`" option to "try" to convert old Type2 AppImages to Type3, so as not to depend on `libfuse2`. In most cases it works, but sometimes it can give errors, depending on how the package was manufactured.
 
