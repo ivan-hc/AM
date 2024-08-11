@@ -5,26 +5,26 @@
 ############################################################################################
 
 _clean_lists_and_queries() {
-	# Remove references to URLs, "-a" elements and limit message length to a maximum of 80 characters in "-l" and "-q"
+	# Remove references to URLs, "-a" elements in "-l" and "-q"
 	sed -E 's#(http|https|ftp)://[^ ]*##g; s#(SITE|SOURCE):##g'
 }
 
 _download_markdown() {
-	local disk_usage=""
-	local app_version=""
-	local markdown_url="$AMCATALOGUEMARKDOWNS/${1}.md"
-	local cache_dir="$AMCACHEDIR/about"
-	local app_status=" STATUS: NOT INSTALLED"
-	local package_name=${1^^}
+	disk_usage=""
+	app_version=""
+	markdown_url="$AMCATALOGUEMARKDOWNS/${1}.md"
+	cache_dir="$AMCACHEDIR/about"
+	app_status=" STATUS: NOT INSTALLED"
+	package_name="$1"
 	if curl -o /dev/null -sIf "$markdown_url"; then
 		mkdir -p "$cache_dir" && wget -q "$markdown_url" -P "$cache_dir"
 		sed -i '1,${ /^\s*#/ d; /^\s*!/ d; /\[Applications]/d; /\ --- /d; /\ | - | /d; /\!\[/d; }' "$cache_dir/$1.md"
 		sed -i '$!N;s/^\s*\n\s*$//;P;D' "$cache_dir/$1.md"
-		printf ' PACKAGE: %s\n' "$package_name"
+		printf ' PACKAGE: %s\n' "$package_name" | tr '[:lower:]' '[:upper:]'
 		if [ -f "$APPSPATH/$1/remove" ]; then
 			disk_usage=$(du -sm "$APPSPATH/$1" | cut -f1)
 			app_version=$(cat "$AMCACHEDIR"/version-args 2>/dev/null | grep -w " ◆ $1	|" | sed 's:.*|	::')
-			app_status=$(echo -e " STATUS: INSTALLED, ABOUT $disk_usage MB OF DISK SPACE IN USE\n VERSION: $app_version")
+			app_status=$(printf " STATUS: INSTALLED, ABOUT $disk_usage MB OF DISK SPACE IN USE\n VERSION: $app_version")
 		fi
 		printf '%s\n' "$app_status"
 		cat -s "$cache_dir/$1.md"
@@ -39,16 +39,16 @@ _download_markdown() {
 }
 
 _generate_3rd_party() {
-	local disk_usage=""
-	local app_version=""
-	local app_status=" STATUS: NOT INSTALLED"
-	local package_name=${1^^}
+	disk_usage=""
+	app_version=""
+	app_status=" STATUS: NOT INSTALLED"
+	package_name="$1"
 	if grep -q "◆ $arg : " "$AMPATH/$arch-apps"; then
-		printf ' PACKAGE: %s\n' "$arg" | tr a-z A-Z
+		printf ' PACKAGE: %s\n' "$arg" | tr '[:lower:]' '[:upper:]'
 		if [ -f "$APPSPATH/$1/remove" ]; then
 			disk_usage=$(du -sm "$APPSPATH/$1" | cut -f1)
 			app_version=$(cat "$AMCACHEDIR"/version-args 2>/dev/null | grep -w " ◆ $1	|" | sed 's:.*|	::')
-			app_status=$(echo -e " STATUS: INSTALLED, ABOUT $disk_usage MB OF DISK SPACE IN USE\n VERSION: $app_version")
+			app_status=$(printf " STATUS: INSTALLED, ABOUT $disk_usage MB OF DISK SPACE IN USE\n VERSION: $app_version")
 		fi
 		printf '%s\n' "$app_status"
 		grep "◆ $arg : " < "$AMPATH/$arch-apps" | cut -d':' -f2- | sed 's/^./\n /' | sed 's# SOURCE:#\n\n SOURCE:#g'
@@ -58,32 +58,25 @@ _generate_3rd_party() {
 }
 
 _download_lib() {
-	local lib_name_upper=${1^^}
-	printf "%s\n" " LIBRARY: $lib_name_upper"
-	if [[ -f "$APPSPATH/$1/remove" ]]; then 
-		local lib_path=$(grep "usr/local/lib" "$APPSPATH/$1/remove" | head -1)
-		local disk_usage=$(du -sm "$lib_path" | cut -f1)
-
-		if [[ "$disk_usage" -eq 0 ]]; then
-			printf "%s\n" " STATUS: INSTALLED, LESS THAN 1 MB OF DISK SPACE IN USE"
-		else
-			printf "%s\n" " STATUS: INSTALLED, ABOUT $disk_usage MB OF DISK SPACE IN USE"
-		fi
+	printf "%s\n" " LIBRARY: $1" | tr '[:lower:]' '[:upper:]'
+	if [ -f "$APPSPATH/$1/remove" ]; then 
+		disk_usage=$(find /usr/local/lib -type f -name "$(echo "$1" | sed -e "s/[0-9]//")*" -exec du -sm {} + | tr '	' '\n' | head -1)
+		printf "%s\n" " STATUS: INSTALLED, ABOUT $disk_usage MB OF DISK SPACE IN USE"
 	else 
 		printf "%s\n" " STATUS: NOT INSTALLED"
 	fi
 	echo ""
 	grep "◆ $1 : " "$AMPATH/libs-list" | sed 's#.*:##' | sed 's/(/\n (/g'
 	echo "" && echo " SITE/SOURCES:" && echo ""
-	local site_source=$(wget -qO- "$APPSDB/$1" | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | head -1)
+	site_source=$(wget -qO- "$APPSDB/$1" | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | head -1)
 	echo " $site_source"
 	echo ""
 }
 
 _list() {
-	LIBNUMBER=$(cat $APPSPATH/*/remove 2> /dev/null | grep "usr/local/lib" | wc -l)
-	ITEMSNUMBER=$(cd $APPSPATH && find -name 'remove' -printf "%h\n" 2>/dev/null | sort -u | wc -l)
-	if [ "$AMCLI" == am ]; then
+	LIBNUMBER=$(cat "$APPSPATH/*/remove" 2> /dev/null | grep "usr/local/lib" | wc -l)
+	ITEMSNUMBER=$(cd "$APPSPATH" && find -name 'remove' -printf "%h\n" 2>/dev/null | sort -u | wc -l)
+	if [ "$AMCLI" = am ]; then
 		ITEMSNUMBER=$(("$ITEMSNUMBER"-1))
 	fi
 	APPSNUMBER=$(echo "$(("$ITEMSNUMBER" - "$LIBNUMBER"))")
@@ -97,8 +90,8 @@ _list() {
 	fi
 
 	wget -q --tries=10 --timeout=20 --spider https://github.com && _completion_lists
-	if cat $APPSPATH/*/remove 2> /dev/null | grep -q "usr/local/lib"; then
-		if [ "$LIBNUMBER" == 1 ]; then
+	if cat "$APPSPATH/*/remove" 2> /dev/null | grep -q "usr/local/lib"; then
+		if [ "$LIBNUMBER" = 1 ]; then
 			MESSAGE=$(echo " YOU HAVE INSTALLED $APPSNUMBER APPLICATIONS OUT OF $(grep -e "$" -c $AMPATH/$arch-apps) AVAILABLE, AND $LIBNUMBER LIBRARY")
 		else
 			MESSAGE=$(echo " YOU HAVE INSTALLED $APPSNUMBER APPLICATIONS OUT OF $(grep -e "$" -c $AMPATH/$arch-apps) AVAILABLE, AND $LIBNUMBER LIBRARIES")
@@ -140,7 +133,7 @@ case "$1" in
 			elif grep -q "◆ $arg : " "$AMPATH/libs-list"; then
 				_download_lib "$arg"
 			else
-				printf '%s is not a valid argument\n' " $arg" | tr a-z A-Z
+				printf '%s is not a valid argument\n' " $arg" | tr '[:lower:]' '[:upper:]'
 			fi
 			printf "%s\n" "-----------------------------------------------------------------------"
 		done
@@ -150,17 +143,17 @@ case "$1" in
 		_list
 		if [ "$2" = --appimages ]; then
 			if test -f "$AMCACHEDIR/$arch-appimages"; then
-				echo -e "\n$MESSAGE\n$MESSAGE2\n LIST OF THE $(grep -e "$" -c "$AMCACHEDIR/$arch-appimages") APPIMAGES AVAILABLE IN THE 'AM' REPOSITORY:\n\n$(cat "$AMCACHEDIR/$arch-appimages" | _clean_lists_and_queries)\n" | less -I
-				echo -e "\n$MESSAGE\n$MESSAGE2"
+				printf "\n$MESSAGE\n$MESSAGE2\n LIST OF THE $(grep -e "$" -c "$AMCACHEDIR/$arch-appimages") APPIMAGES AVAILABLE IN THE 'AM' REPOSITORY:\n\n$(fold -s "$AMCACHEDIR/$arch-appimages" | _clean_lists_and_queries)\n" | less -I
+				printf "\n$MESSAGE\n$MESSAGE2\n"
 			else
 				_online_check
 				curl -Ls "$AMREPO/programs/$arch-appimages" > "$AMCACHEDIR/$arch-appimages"
-				echo -e "\n$MESSAGE\n$MESSAGE2\n LIST OF THE $(grep -e "$" -c "$AMCACHEDIR/$arch-appimages") APPIMAGES AVAILABLE IN THE 'AM' REPOSITORY:\n\n$(cat "$AMCACHEDIR/$arch-appimages" | _clean_lists_and_queries)\n" | less -I
-				echo -e "\n$MESSAGE\n$MESSAGE2"
+				printf "\n$MESSAGE\n$MESSAGE2\n LIST OF THE $(grep -e "$" -c "$AMCACHEDIR/$arch-appimages") APPIMAGES AVAILABLE IN THE 'AM' REPOSITORY:\n\n$(fold -s "$AMCACHEDIR/$arch-appimages" | _clean_lists_and_queries)\n" | less -I
+				printf "\n$MESSAGE\n$MESSAGE2\n"
 			fi
 		else
-			echo -e "\n$MESSAGE\n$MESSAGE2\n LIST OF THE $(grep -e "$" -c "$AMPATH/$arch-apps") APPLICATIONS AVAILABLE IN THE 'AM' REPOSITORY:\n\n$(cat "$AMPATH/$arch-apps" | _clean_lists_and_queries)\n" | less -I
-			echo -e "\n$MESSAGE\n$MESSAGE2"
+			printf "\n$MESSAGE\n$MESSAGE2\n LIST OF THE $(grep -e "$" -c "$AMPATH/$arch-apps") APPLICATIONS AVAILABLE IN THE 'AM' REPOSITORY:\n\n$(fold -s "$AMPATH/$arch-apps" | _clean_lists_and_queries)\n" | less -I
+			printf "\n$MESSAGE\n$MESSAGE2\n"
 		fi
 		;;
 
@@ -174,7 +167,7 @@ case "$1" in
 		wget -q --tries=10 --timeout=20 --spider https://github.com && _completion_lists
 		if [ "$2" = --pkg ]; then
 			ARGS=$(echo "$@" | cut -f3- -d ' ' | sed 's/ /, /g')
-			echo -e "\n Search results for packages: $ARGS\n" | tr a-z A-Z
+			printf "\n Search results for packages: $ARGS\n\n" | tr '[:lower:]' '[:upper:]'
 			grep -i -E "$(echo "$@" | cut -f3- -d ' ' | tr -s ' ' '|')" "$AMPATH/$arch-apps" --color=always | _clean_lists_and_queries
 			grep -i -E "$(echo "$@" | cut -f3- -d ' ' | tr -s ' ' '|')" "$AMPATH/libs-list" --color=always | _clean_lists_and_queries
 			echo ""
@@ -182,7 +175,7 @@ case "$1" in
 		fi
 		if [ "$2" = --appimages ]; then
 			ARGS=$(echo "$@" | cut -f3- -d ' ')
-			echo -e "\n Search results for \"$ARGS\":\n" | tr a-z A-Z
+			printf "\n Search results for \"$ARGS\":\n\n" | tr '[:lower:]' '[:upper:]'
 			PATTERN="$(echo "$@" | cut -f3- -d ' ' | sed 's/ /(?=.*/g; s/$/)/g; s/(/)(/g; s/^/(?=.*/g;')"
 			if ! test -f "$AMCACHEDIR/$arch-appimages"; then
 				_online_check
@@ -191,7 +184,7 @@ case "$1" in
 			grep -P -i "$PATTERN" "$AMCACHEDIR/$arch-appimages" | _clean_lists_and_queries
 		else
 			ARGS=$(echo "$@" | cut -f2- -d ' ')
-			echo -e "\n Search results for \"$ARGS\":\n" | tr a-z A-Z
+			printf "\n Search results for \"$ARGS\":\n\n" | tr '[:lower:]' '[:upper:]'
 			PATTERN="$(echo "$@" | cut -f2- -d ' ' | sed 's/ /(?=.*/g; s/$/)/g; s/(/)(/g; s/^/(?=.*/g;')"
 			grep -P -i "$PATTERN" "$AMPATH/$arch-apps" | _clean_lists_and_queries
 			grep -P -i "$PATTERN" "$AMPATH/libs-list" | _clean_lists_and_queries
