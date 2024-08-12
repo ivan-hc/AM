@@ -10,6 +10,11 @@ _pretty_list() {
 	sed -E 's#(http|https|ftp)://[^ ]*##g; s#(SITE|SOURCE):##g; s/$/\n/g' | fold -sw 75 | sed 's/^/   /g; s/  ◆ /◆ /g'
 }
 
+_pretty_list_compat() {
+	# Removes references to URLs, "-a" elements in "-l" and "-q"
+	sed -E 's#(http|https|ftp)://[^ ]*##g; s#(SITE|SOURCE):##g' | fold -sw 75 | sed 's/^/   /g; s/  ◆ /◆ /g' && printf '\n'
+}
+
 _download_markdown() {
 	disk_usage=""
 	app_version=""
@@ -149,8 +154,8 @@ case "$1" in
 		if [ "$2" = --pkg ]; then
 			ARGS="$(echo "$@" | cut -f3- -d ' ' | tr -s ' ' '|')"
 			printf "\n Search results for packages: $ARGS\n\n" | tr '[:lower:]' '[:upper:]'
-			grep -iE "$ARGS" "$AMPATH/$arch-apps" --color=always | _pretty_list
-			grep -iE "$ARGS" "$AMPATH/libs-list" --color=always | _pretty_list
+			grep -iE "$ARGS" "$AMPATH/$arch-apps" --color=always | _pretty_list_compat
+			grep -iE "$ARGS" "$AMPATH/libs-list" --color=always | _pretty_list_compat
 		elif [ "$2" = --appimages ]; then
 			ARGS="$(echo "$@" | cut -f3- -d ' ')"
 			printf "\n Search results for \"$ARGS\":\n\n" | tr '[:lower:]' '[:upper:]'
@@ -159,13 +164,13 @@ case "$1" in
 				_online_check
 				curl -Ls "$AMREPO/programs/$arch-appimages" > "$AMCACHEDIR/$arch-appimages"
 			fi
-			grep -Pi "$PATTERN" "$AMCACHEDIR/$arch-appimages" | _pretty_list
+			grep -Pi "$PATTERN" "$AMCACHEDIR/$arch-appimages" | _pretty_list_compat
 		else
 			ARGS="$(echo "$@" | cut -f2- -d ' ')"
 			printf "\n Search results for \"$ARGS\":\n\n" | tr '[:lower:]' '[:upper:]'
 			PATTERN="$(echo "$ARGS" | sed 's/ /(?=.*/g; s/$/)/g; s/(/)(/g; s/^/(?=.*/g;')"
-			grep -Pi "$PATTERN" "$AMPATH/$arch-apps" | _pretty_list
-			grep -Pi "$PATTERN" "$AMPATH/libs-list" | _pretty_list
+			grep -Pi "$PATTERN" "$AMPATH/$arch-apps" | _pretty_list_compat
+			grep -Pi "$PATTERN" "$AMPATH/libs-list" | _pretty_list_compat
 		fi
 		;;
 esac
