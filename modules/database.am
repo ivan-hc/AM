@@ -25,11 +25,7 @@ _about_download_markdown() {
 		fi
 		printf '%s\n' "$app_status"
 		cat -s "$cache_dir/$1.md"
-		if [ -z "$cache_dir" ]; then
-			exit 1
-		fi
-		rm -R -f "$cache_dir"
-		
+		[ -n "$cache_dir" ] && rm -R -f "$cache_dir"	
 	else
 		printf ' "%s" IS NOT A VALID ARGUMENT\n' "$package_name"
 	fi
@@ -63,8 +59,8 @@ _about_download_lib() {
 		printf "%s\n" " STATUS: NOT INSTALLED"
 	fi
 	echo ""
-	grep "◆ $1 : " "$AMPATH/libs-list" | sed 's#.*:##' | sed 's/(/\n (/g'
-	echo "" && echo " SITE/SOURCES:" && echo ""
+	grep "◆ $1 : " "$AMPATH/libs-list" | sed 's#.*:##; s/(/\n (/g'
+	printf '\n%s\n\n' " SITE/SOURCES:"
 	site_source=$(wget -qO- "$APPSDB/$1" | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | head -1)
 	echo " $site_source"
 	echo ""
@@ -75,7 +71,7 @@ _about_download_lib() {
 
 _pretty_list() {
 	# Remove references to URLs, "-a" elements in "-l" and "-q"
-	sed -E 's#(http|https|ftp)://[^ ]*##g; s#(SITE|SOURCE):##g' | fold -sw 75 | sed 's/^/   /g; s/  ◆ /◆ /g'
+	sed -E 's#(http|https|ftp)://[^ ]*##g; s#(SITE|SOURCE):##g; s/^/\n/g' | fold -sw 75 | sed 's/^/   /g; s/  ◆ /◆ /g'
 }
 
 _pretty_list_compat() {
@@ -132,19 +128,11 @@ _list_appimages() {
 
 case "$1" in
 	'-a'|'about')
+		[ -z "$2" ] && echo " USAGE: $AMCLI $1 [ARGUMENT]" && exit 1
 		_online_check
-		if [ -z "$2" ]; then
-			echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit 1
-		fi
-		if ! test -f "$AMCACHEDIR"/version-args; then
-			_check_version
-		fi
-
-		# Main logic
-		if [ ! -f "$AMPATH/libs-list" ]; then
-			wget -q "$LIBSLISTDB" -P "$AMPATH"
-		fi
-		ARGS="$(echo "$@" | cut -f2- -d ' ')"
+		[ ! -f "$AMCACHEDIR"/version-args ] && _check_version
+		[ ! -f "$AMPATH/libs-list" ] && wget -q "$LIBSLISTDB" -P "$AMPATH"
+		ARGS="$(echo "$@" | cut -f2- -d ' ')" # Removes first argument
 		for arg in $ARGS; do
 			if curl -o /dev/null -sIf "$AMCATALOGUEMARKDOWNS/${arg}.md" 1>/dev/null; then
 				_about_download_markdown "$arg"
@@ -164,10 +152,10 @@ case "$1" in
 		if [ "$2" = --appimages ]; then
 			_list_appimages
 			LIST=$(sort "$AMCACHEDIR/$arch-appimages" | _pretty_list)
-			printf "\n$MESSAGE\n$MESSAGE2\n LIST OF THE $AVAILABLE_APPIMAGES_NUMBER APPIMAGES AVAILABLE IN THE 'AM' REPOSITORY:\n\n$LIST\n" | less -I
+			printf "\n$MESSAGE\n$MESSAGE2\n LIST OF THE $AVAILABLE_APPIMAGES_NUMBER APPIMAGES AVAILABLE IN THE 'AM' REPOSITORY:\n$LIST\n" | less -I
 		else
 			LIST=$(sort "$AMPATH/$arch-apps" | _pretty_list)
-			printf "\n$MESSAGE\n$MESSAGE2\n LIST OF THE $AVAILABLE_APPS_NUMBER APPLICATIONS AVAILABLE IN THE 'AM' REPOSITORY:\n\n$LIST\n" | less -I
+			printf "\n$MESSAGE\n$MESSAGE2\n LIST OF THE $AVAILABLE_APPS_NUMBER APPLICATIONS AVAILABLE IN THE 'AM' REPOSITORY:\n$LIST\n" | less -I
 		fi
 		#printf "\n$MESSAGE\n$MESSAGE2\n"
 		;;
@@ -180,30 +168,26 @@ case "$1" in
 		fi
 		wget -q --tries=10 --timeout=20 --spider https://github.com && _completion_lists
 		if [ "$2" = --pkg ]; then
-			ARGS=$(echo "$@" | cut -f3- -d ' ' | sed 's/ /, /g')
+			ARGS="$(echo "$@" | cut -f3- -d ' ' | tr -s ' ' '|')"
 			printf "\n Search results for packages: $ARGS\n\n" | tr '[:lower:]' '[:upper:]'
-			grep -i -E "$(echo "$@" | cut -f3- -d ' ' | tr -s ' ' '|')" "$AMPATH/$arch-apps" --color=always | _pretty_list_compat
-			grep -i -E "$(echo "$@" | cut -f3- -d ' ' | tr -s ' ' '|')" "$AMPATH/libs-list" --color=always | _pretty_list_compat
-			echo ""
-			exit 0
-		fi
-		if [ "$2" = --appimages ]; then
-			ARGS=$(echo "$@" | cut -f3- -d ' ')
+			grep -iE "$ARGS" "$AMPATH/$arch-apps" --color=always | _pretty_list_compat
+			grep -iE "$ARGS" "$AMPATH/libs-list" --color=always | _pretty_list_compat
+		elif [ "$2" = --appimages ]; then
+			ARGS="$(echo "$@" | cut -f3- -d ' ')"
 			printf "\n Search results for \"$ARGS\":\n\n" | tr '[:lower:]' '[:upper:]'
-			PATTERN="$(echo "$@" | cut -f3- -d ' ' | sed 's/ /(?=.*/g; s/$/)/g; s/(/)(/g; s/^/(?=.*/g;')"
+			PATTERN="$(echo "$ARGS" | sed 's/ /(?=.*/g; s/$/)/g; s/(/)(/g; s/^/(?=.*/g;')"
 			if ! test -f "$AMCACHEDIR/$arch-appimages"; then
 				_online_check
 				curl -Ls "$AMREPO/programs/$arch-appimages" > "$AMCACHEDIR/$arch-appimages"
 			fi
-			grep -P -i "$PATTERN" "$AMCACHEDIR/$arch-appimages" | _pretty_list_compat
+			grep -Pi "$PATTERN" "$AMCACHEDIR/$arch-appimages" | _pretty_list_compat
 		else
-			ARGS=$(echo "$@" | cut -f2- -d ' ')
+			ARGS="$(echo "$@" | cut -f2- -d ' ')"
 			printf "\n Search results for \"$ARGS\":\n\n" | tr '[:lower:]' '[:upper:]'
-			PATTERN="$(echo "$@" | cut -f2- -d ' ' | sed 's/ /(?=.*/g; s/$/)/g; s/(/)(/g; s/^/(?=.*/g;')"
-			grep -P -i "$PATTERN" "$AMPATH/$arch-apps" | _pretty_list_compat
-			grep -P -i "$PATTERN" "$AMPATH/libs-list" | _pretty_list_compat
+			PATTERN="$(echo "$ARGS" | sed 's/ /(?=.*/g; s/$/)/g; s/(/)(/g; s/^/(?=.*/g;')"
+			grep -Pi "$PATTERN" "$AMPATH/$arch-apps" | _pretty_list_compat
+			grep -Pi "$PATTERN" "$AMPATH/libs-list" | _pretty_list_compat
 		fi
-		echo ""
-		exit 0
+		printf '\n'
 		;;
 esac
