@@ -20,7 +20,7 @@ _about_download_markdown() {
 		printf ' PACKAGE: %s\n' "$package_name" | tr '[:lower:]' '[:upper:]'
 		if [ -f "$APPSPATH/$1/remove" ]; then
 			disk_usage=$(du -sm "$APPSPATH/$1" | cut -f1)
-			app_version=$(cat "$AMCACHEDIR"/version-args 2>/dev/null | grep -w " ◆ $1	|" | sed 's:.*|	::')
+			app_version=$(grep -w " ◆ $1	|" "$AMCACHEDIR"/version-args 2>/dev/null | sed 's:.*|	::')
 			app_status=$(printf " STATUS: INSTALLED, ABOUT $disk_usage MB OF DISK SPACE IN USE\n VERSION: $app_version")
 		fi
 		printf '%s\n' "$app_status"
@@ -44,7 +44,7 @@ _about_generate_3rd_party() {
 		printf ' PACKAGE: %s\n' "$arg" | tr '[:lower:]' '[:upper:]'
 		if [ -f "$APPSPATH/$1/remove" ]; then
 			disk_usage=$(du -sm "$APPSPATH/$1" | cut -f1)
-			app_version=$(cat "$AMCACHEDIR"/version-args 2>/dev/null | grep -w " ◆ $1	|" | sed 's:.*|	::')
+			app_version=$(grep -w " ◆ $1	|" "$AMCACHEDIR"/version-args 2>/dev/null | sed 's:.*|	::')
 			app_status=$(printf " STATUS: INSTALLED, ABOUT $disk_usage MB OF DISK SPACE IN USE\n VERSION: $app_version")
 		fi
 		printf '%s\n' "$app_status"
@@ -105,12 +105,12 @@ _list() {
 	if [ "$LIBNUMBER" != 0 ]; then
 		# Check if the installed libraries are more than one
 		if [ "$LIBNUMBER" = 1 ]; then
-			MESSAGE=$(echo " YOU HAVE INSTALLED $APPSNUMBER APPLICATIONS OUT OF $AVAILABLE_APPS_NUMBER AVAILABLE, AND $LIBNUMBER LIBRARY")
+			MESSAGE=" YOU HAVE INSTALLED $APPSNUMBER APPLICATIONS OUT OF $AVAILABLE_APPS_NUMBER AVAILABLE, AND $LIBNUMBER LIBRARY"
 		else
-			MESSAGE=$(echo " YOU HAVE INSTALLED $APPSNUMBER APPLICATIONS OUT OF $AVAILABLE_APPS_NUMBER AVAILABLE, AND $LIBNUMBER LIBRARIES")
+			MESSAGE=" YOU HAVE INSTALLED $APPSNUMBER APPLICATIONS OUT OF $AVAILABLE_APPS_NUMBER AVAILABLE, AND $LIBNUMBER LIBRARIES"
 		fi
 	else
-		MESSAGE=$(echo " YOU HAVE INSTALLED $APPSNUMBER APPLICATIONS OUT OF $AVAILABLE_APPS_NUMBER AVAILABLE")
+		MESSAGE=" YOU HAVE INSTALLED $APPSNUMBER APPLICATIONS OUT OF $AVAILABLE_APPS_NUMBER AVAILABLE"
 	fi
 }
 
@@ -139,19 +139,18 @@ case "$1" in
 		if [ ! -f "$AMPATH/libs-list" ]; then
 			wget -q "$LIBSLISTDB" -P "$AMPATH"
 		fi
-
-		# Skip the first argument which is not part of ARGS
-		for arg in "${@:2}"; do
+		ARGS="$(echo "$@" | cut -f2- -d ' ')"
+		for arg in $ARGS; do
 			if curl -o /dev/null -sIf "$AMCATALOGUEMARKDOWNS/${arg}.md" 1>/dev/null; then
 				_about_download_markdown "$arg"
 			elif grep -q "◆ $arg : " "$AMPATH/$arch-apps"; then
-				_about_generate_3rd_party
+				_about_generate_3rd_party "$arg"
 			elif grep -q "◆ $arg : " "$AMPATH/libs-list"; then
 				_about_download_lib "$arg"
 			else
 				printf '%s is not a valid argument\n' " $arg" | tr '[:lower:]' '[:upper:]'
 			fi
-			printf "%s\n" "-----------------------------------------------------------------------"
+			printf "%s\n\n" "-----------------------------------------------------------------------"
 		done
 		;;
 
