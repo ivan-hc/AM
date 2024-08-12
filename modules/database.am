@@ -4,12 +4,11 @@
 # THIS MODULE INCLUDES ALL THE ACTIONS INTENDED FOR THE MANAGEMENT OF LISTS AND SINGLE PAGES
 ############################################################################################
 
-_clean_lists_and_queries() {
-	# Remove references to URLs, "-a" elements in "-l" and "-q"
-	sed -E 's#(http|https|ftp)://[^ ]*##g; s#(SITE|SOURCE):##g' | sed 's/$/\n/g' | fold -sw 75 | sed 's/^/   /g; s/  ◆ /◆ /g'
-}
+##############################
+# FUNCTIONS RELATED TO "ABOUT"
+##############################
 
-_download_markdown() {
+_about_download_markdown() {
 	disk_usage=""
 	app_version=""
 	markdown_url="$AMCATALOGUEMARKDOWNS/${1}.md"
@@ -38,7 +37,7 @@ _download_markdown() {
 	fi
 }
 
-_generate_3rd_party() {
+_about_generate_3rd_party() {
 	disk_usage=""
 	app_version=""
 	app_status=" STATUS: NOT INSTALLED"
@@ -57,7 +56,7 @@ _generate_3rd_party() {
 	fi
 }
 
-_download_lib() {
+_about_download_lib() {
 	printf "%s\n" " LIBRARY: $1" | tr '[:lower:]' '[:upper:]'
 	if [ -f "$APPSPATH/$1/remove" ]; then 
 		disk_usage=$(find /usr/local/lib -type f -name "$(echo "$1" | sed -e "s/[0-9]//")*" -exec du -sm {} + | tr '	' '\n' | head -1)
@@ -71,6 +70,15 @@ _download_lib() {
 	site_source=$(wget -qO- "$APPSDB/$1" | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | head -1)
 	echo " $site_source"
 	echo ""
+}
+
+#########################################
+# FUNCTIONS RELATED TO "LIST" AND "QUERY"
+#########################################
+
+_clean_lists_and_queries() {
+	# Remove references to URLs, "-a" elements in "-l" and "-q"
+	sed -E 's#(http|https|ftp)://[^ ]*##g; s#(SITE|SOURCE):##g; s/$/\n/g' | fold -sw 75 | sed 's/^/   /g; s/  ◆ /◆ /g'
 }
 
 _list() {
@@ -127,11 +135,11 @@ case "$1" in
 		# Skip the first argument which is not part of ARGS
 		for arg in "${@:2}"; do
 			if curl -o /dev/null -sIf "$AMCATALOGUEMARKDOWNS/${arg}.md" 1>/dev/null; then
-				_download_markdown "$arg"
+				_about_download_markdown "$arg"
 			elif grep -q "◆ $arg : " "$AMPATH/$arch-apps"; then
-				_generate_3rd_party
+				_about_generate_3rd_party
 			elif grep -q "◆ $arg : " "$AMPATH/libs-list"; then
-				_download_lib "$arg"
+				_about_download_lib "$arg"
 			else
 				printf '%s is not a valid argument\n' " $arg" | tr '[:lower:]' '[:upper:]'
 			fi
