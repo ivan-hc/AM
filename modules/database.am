@@ -4,9 +4,7 @@
 # THIS MODULE INCLUDES ALL THE ACTIONS INTENDED FOR THE MANAGEMENT OF LISTS AND SINGLE PAGES
 ############################################################################################
 
-##############################
 # FUNCTIONS RELATED TO "ABOUT"
-##############################
 
 _about_download_markdown() {
 	disk_usage=""
@@ -72,9 +70,8 @@ _about_download_lib() {
 	echo ""
 }
 
-#########################################
+#--------------------------------------------------------------------------
 # FUNCTIONS RELATED TO "LIST" AND "QUERY"
-#########################################
 
 _clean_lists_and_queries() {
 	# Remove references to URLs, "-a" elements in "-l" and "-q"
@@ -82,12 +79,18 @@ _clean_lists_and_queries() {
 }
 
 _list() {
+	# Check the number of installed apps and libraries
 	LIBNUMBER=$(cat "$APPSPATH/*/remove" 2> /dev/null | grep "usr/local/lib" | wc -l)
 	ITEMSNUMBER=$(cd "$APPSPATH" && find -name 'remove' -printf "%h\n" 2>/dev/null | sort -u | wc -l)
 	if [ "$AMCLI" = am ]; then
-		ITEMSNUMBER=$(("$ITEMSNUMBER"-1))
+		if test -f /opt/am/remove; then
+			ITEMSNUMBER=$(("$ITEMSNUMBER"-1))
+		fi
 	fi
 	APPSNUMBER=$(echo "$(("$ITEMSNUMBER" - "$LIBNUMBER"))")
+	# Determine the number of available apps from the list
+	AVAILABLE_APPS_NUMBER=$(grep -e "$" -c "$AMPATH/$arch-apps")
+	# Generate a list of the installed apps with version
 	if test -f "$AMCACHEDIR"/version-args; then
 		INSTALLED=$(cat "$AMCACHEDIR"/version-args 2>/dev/null | sort | sed 's/	|	/ /g' | grep -v "◆ am ")
 		MESSAGE2="\n$INSTALLED\n"
@@ -96,22 +99,32 @@ _list() {
 		INSTALLED=$(cat "$AMCACHEDIR"/version-args 2>/dev/null | sort | sed 's/	|	/ /g' | grep -v "◆ am ")
 		MESSAGE2="\n$INSTALLED\n"
 	fi
-
+	# Check if github.com is online, if not, the function will read the offline list
 	wget -q --tries=10 --timeout=20 --spider https://github.com && _completion_lists
+	# Check if among the installed apps are available libraries
 	if cat "$APPSPATH/*/remove" 2> /dev/null | grep -q "usr/local/lib"; then
+		# Check if the installed libraries are more than one
 		if [ "$LIBNUMBER" = 1 ]; then
-			MESSAGE=$(echo " YOU HAVE INSTALLED $APPSNUMBER APPLICATIONS OUT OF $(grep -e "$" -c $AMPATH/$arch-apps) AVAILABLE, AND $LIBNUMBER LIBRARY")
+			MESSAGE=$(echo " YOU HAVE INSTALLED $APPSNUMBER APPLICATIONS OUT OF $AVAILABLE_APPS_NUMBER AVAILABLE, AND $LIBNUMBER LIBRARY")
 		else
-			MESSAGE=$(echo " YOU HAVE INSTALLED $APPSNUMBER APPLICATIONS OUT OF $(grep -e "$" -c $AMPATH/$arch-apps) AVAILABLE, AND $LIBNUMBER LIBRARIES")
+			MESSAGE=$(echo " YOU HAVE INSTALLED $APPSNUMBER APPLICATIONS OUT OF $AVAILABLE_APPS_NUMBER AVAILABLE, AND $LIBNUMBER LIBRARIES")
 		fi
 	else
-		MESSAGE=$(echo " YOU HAVE INSTALLED $APPSNUMBER APPLICATIONS OUT OF $(grep -e "$" -c $AMPATH/$arch-apps) AVAILABLE")
+		MESSAGE=$(echo " YOU HAVE INSTALLED $APPSNUMBER APPLICATIONS OUT OF $AVAILABLE_APPS_NUMBER AVAILABLE")
 	fi
 }
 
-#########
+_list_appimages() {
+	# Determine the number of available apps
+	if ! test -f "$AMCACHEDIR/$arch-appimages"; then
+		_online_check && curl -Ls "$AMREPO/programs/$arch-appimages" > "$AMCACHEDIR/$arch-appimages"
+	fi
+	AVAILABLE_APPIMAGES_NUMBER=$(grep -e "$" -c "$AMCACHEDIR/$arch-appimages")
+}
+
+#--------------------------------------------------------------------------
 # OPTIONS
-#########
+
 case "$1" in
 	'-a'|'about')
 		_online_check
@@ -146,18 +159,15 @@ case "$1" in
 		_list
 		if [ "$2" = --appimages ]; then
 			if test -f "$AMCACHEDIR/$arch-appimages"; then
-				printf "\n$MESSAGE\n$MESSAGE2\n LIST OF THE $(grep -e "$" -c "$AMCACHEDIR/$arch-appimages") APPIMAGES AVAILABLE IN THE 'AM' REPOSITORY:\n\n$(cat "$AMCACHEDIR/$arch-appimages" | _clean_lists_and_queries)\n" | less -I
-				#printf "\n$MESSAGE\n$MESSAGE2\n"
-			else
-				_online_check
-				curl -Ls "$AMREPO/programs/$arch-appimages" > "$AMCACHEDIR/$arch-appimages"
-				printf "\n$MESSAGE\n$MESSAGE2\n LIST OF THE $(grep -e "$" -c "$AMCACHEDIR/$arch-appimages") APPIMAGES AVAILABLE IN THE 'AM' REPOSITORY:\n\n$(cat "$AMCACHEDIR/$arch-appimages" | _clean_lists_and_queries)\n" | less -I
-				#printf "\n$MESSAGE\n$MESSAGE2\n"
+				_list_appimages
+				LIST=$(cat "$AMCACHEDIR/$arch-appimages" | _clean_lists_and_queries)
+				printf "\n$MESSAGE\n$MESSAGE2\n LIST OF THE $AVAILABLE_APPIMAGES_NUMBER APPIMAGES AVAILABLE IN THE 'AM' REPOSITORY:\n\n$LIST\n" | less -I
 			fi
 		else
-			printf "\n$MESSAGE\n$MESSAGE2\n LIST OF THE $(grep -e "$" -c "$AMPATH/$arch-apps") APPLICATIONS AVAILABLE IN THE 'AM' REPOSITORY:\n\n$(cat "$AMPATH/$arch-apps" | _clean_lists_and_queries)\n" | less -I
-			#printf "\n$MESSAGE\n$MESSAGE2\n"
+			LIST=$(cat "$AMPATH/$arch-apps" | _clean_lists_and_queries)
+			printf "\n$MESSAGE\n$MESSAGE2\n LIST OF THE $AVAILABLE_APPS_NUMBER APPLICATIONS AVAILABLE IN THE 'AM' REPOSITORY:\n\n$LIST\n" | less -I
 		fi
+		#printf "\n$MESSAGE\n$MESSAGE2\n"
 		;;
 
 	'-q'|'query')
