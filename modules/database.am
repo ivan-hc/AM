@@ -73,9 +73,14 @@ _about_download_lib() {
 #--------------------------------------------------------------------------
 # FUNCTIONS RELATED TO "LIST" AND "QUERY"
 
-_clean_lists_and_queries() {
+_pretty_list() {
 	# Remove references to URLs, "-a" elements in "-l" and "-q"
-	sed -E 's#(http|https|ftp)://[^ ]*##g; s#(SITE|SOURCE):##g; s/$/\n/g' | fold -sw 75 | sed 's/^/   /g; s/  ◆ /◆ /g'
+	sed -E 's#(http|https|ftp)://[^ ]*##g; s#(SITE|SOURCE):##g' | fold -sw 75 | sed 's/^/   /g; s/  ◆ /◆ /g'
+}
+
+_pretty_list_compat() {
+	# Remove references to URLs, "-a" elements in "-l" and "-q"
+	sed -E 's#(http|https|ftp)://[^ ]*##g; s#(SITE|SOURCE):##g' | fold -sw 75 | sed 's/^/   /g; s/  ◆ /◆ /g'
 }
 
 _list() {
@@ -158,10 +163,10 @@ case "$1" in
 		_list
 		if [ "$2" = --appimages ]; then
 			_list_appimages
-			LIST=$(sort "$AMCACHEDIR/$arch-appimages" | _clean_lists_and_queries)
+			LIST=$(sort "$AMCACHEDIR/$arch-appimages" | _pretty_list)
 			printf "\n$MESSAGE\n$MESSAGE2\n LIST OF THE $AVAILABLE_APPIMAGES_NUMBER APPIMAGES AVAILABLE IN THE 'AM' REPOSITORY:\n\n$LIST\n" | less -I
 		else
-			LIST=$(sort "$AMPATH/$arch-apps" | _clean_lists_and_queries)
+			LIST=$(sort "$AMPATH/$arch-apps" | _pretty_list)
 			printf "\n$MESSAGE\n$MESSAGE2\n LIST OF THE $AVAILABLE_APPS_NUMBER APPLICATIONS AVAILABLE IN THE 'AM' REPOSITORY:\n\n$LIST\n" | less -I
 		fi
 		#printf "\n$MESSAGE\n$MESSAGE2\n"
@@ -177,8 +182,8 @@ case "$1" in
 		if [ "$2" = --pkg ]; then
 			ARGS=$(echo "$@" | cut -f3- -d ' ' | sed 's/ /, /g')
 			printf "\n Search results for packages: $ARGS\n\n" | tr '[:lower:]' '[:upper:]'
-			grep -i -E "$(echo "$@" | cut -f3- -d ' ' | tr -s ' ' '|')" "$AMPATH/$arch-apps" --color=always | _clean_lists_and_queries
-			grep -i -E "$(echo "$@" | cut -f3- -d ' ' | tr -s ' ' '|')" "$AMPATH/libs-list" --color=always | _clean_lists_and_queries
+			grep -i -E "$(echo "$@" | cut -f3- -d ' ' | tr -s ' ' '|')" "$AMPATH/$arch-apps" --color=always | _pretty_list_compat
+			grep -i -E "$(echo "$@" | cut -f3- -d ' ' | tr -s ' ' '|')" "$AMPATH/libs-list" --color=always | _pretty_list_compat
 			echo ""
 			exit 0
 		fi
@@ -190,13 +195,13 @@ case "$1" in
 				_online_check
 				curl -Ls "$AMREPO/programs/$arch-appimages" > "$AMCACHEDIR/$arch-appimages"
 			fi
-			grep -P -i "$PATTERN" "$AMCACHEDIR/$arch-appimages" | _clean_lists_and_queries
+			grep -P -i "$PATTERN" "$AMCACHEDIR/$arch-appimages" | _pretty_list_compat
 		else
 			ARGS=$(echo "$@" | cut -f2- -d ' ')
 			printf "\n Search results for \"$ARGS\":\n\n" | tr '[:lower:]' '[:upper:]'
 			PATTERN="$(echo "$@" | cut -f2- -d ' ' | sed 's/ /(?=.*/g; s/$/)/g; s/(/)(/g; s/^/(?=.*/g;')"
-			grep -P -i "$PATTERN" "$AMPATH/$arch-apps" | _clean_lists_and_queries
-			grep -P -i "$PATTERN" "$AMPATH/libs-list" | _clean_lists_and_queries
+			grep -P -i "$PATTERN" "$AMPATH/$arch-apps" | _pretty_list_compat
+			grep -P -i "$PATTERN" "$AMPATH/libs-list" | _pretty_list_compat
 		fi
 		echo ""
 		exit 0
