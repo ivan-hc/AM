@@ -889,15 +889,21 @@ appman -f --less
 
 __________________________________________________________________________
 ### List and query all the applications available on the database
-Options `-l` or `list` shows the whole list of apps available in this repository.
+Option `-l` or `list` shows the whole list of apps available in this repository.
+
+This option uses `less` to show the list, so to exit its enough to press "**Q**".
+
+If the option `-l` is followed by `--appimages`, you will be able to see only the available AppImages.
+
+https://github.com/user-attachments/assets/fddc1a95-88ea-4b03-9fe8-1a69ed11e6eb
 
 Option `-q` or `query` shows search results from the list above.
 
-https://github.com/ivan-hc/AM/assets/88724353/2ac875df-5210-4d77-91d7-24c45eceaa2b
+If followed by `--appimages`, the search results will be only for the available AppImages.
 
-From version 7.5 it is possible to add the `--appimages` option to list only the AppImages.
+If followed by `--pkg`, all keywords will be listed also if not on the same line. This is good if you are looking for multiple packages.
 
-https://github.com/user-attachments/assets/864e95dd-0f69-4b8b-b6b3-289af3610aac
+https://github.com/user-attachments/assets/2586fbae-4b40-4882-b15b-cf5f29a7b0d7
 
 ------------------------------------------------------------------------
 
