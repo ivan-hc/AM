@@ -44,25 +44,26 @@ function _apply_patches() {
 
 # Post-installation processes
 function _post_installation_processes() {
+	LATESTDIR=$(ls -td "$APPSPATH"/* | head -1 | sed 's:.*/::')
 	echo -ne " Configuring $(echo "\"$arg\"" | tr '[:lower:]' '[:upper:]')...\r" && echo -ne "                                                                          \r"
 
 	# Add a command to line 2 of the "remove" script to prevent use without root privileges
 	# and take control of the directory to be able to manage and update the app without root privileges
 	if [ "$AMCLI" == am ] 2>/dev/null; then
-		$SUDOCOMMAND sed -i '1 a if [ "$(id -u)" -ne 0 ]; then echo "Permission denied"; exit 1; fi' "$APPSPATH"/"$(ls -td "$APPSPATH"/* | head -1 | sed 's:.*/::')"/remove 2> /dev/null
-		$SUDOCOMMAND chown -R $currentuser "$APPSPATH"/"$(ls -td "$APPSPATH"/* | head -1 | sed 's:.*/::')" 2> /dev/null
+		$SUDOCOMMAND sed -i '1 a if [ "$(id -u)" -ne 0 ]; then echo "Permission denied"; exit 1; fi' "$APPSPATH"/"$LATESTDIR"/remove 2> /dev/null
+		$SUDOCOMMAND chown -R $currentuser "$APPSPATH"/"$LATESTDIR" 2> /dev/null
 	fi
 	# Check if an AM-updater script exists, so the CLI can manage updates for the installed app
 	# by comparing the hosted script with a downloaded one
-	if test -f "$APPSPATH"/"$(ls -td "$APPSPATH"/* | head -1 | sed 's:.*/::')"/AM-updater; then
-		mkdir "$APPSPATH"/"$(ls -td "$APPSPATH"/* | head -1 | sed 's:.*/::')"/.am-installer 2> /dev/null &&
-		wget -q "$APPSDB"/"$arg" -O "$APPSPATH"/"$(ls -td "$APPSPATH"/* | head -1 | sed 's:.*/::')"/.am-installer/"$arg"
+	if test -f "$APPSPATH"/"$LATESTDIR"/AM-updater; then
+		mkdir "$APPSPATH"/"$LATESTDIR"/.am-installer 2> /dev/null &&
+		wget -q "$APPSDB"/"$arg" -O "$APPSPATH"/"$LATESTDIR"/.am-installer/"$arg"
 	fi
 	# If you have a broken or missing icon in your "icons" directory, download one from the catalog
-	if test -d "$APPSPATH"/"$(ls -td "$APPSPATH"/* | head -1 | sed 's:.*/::')"/icons; then
-		find "$APPSPATH"/"$(ls -td "$APPSPATH"/* | head -1 | sed 's:.*/::')"/icons/* -xtype l -delete 2> /dev/null
-		if [ -z "$(ls -A "$APPSPATH"/"$(ls -td "$APPSPATH"/* | head -1 | sed 's:.*/::')"/icons)" ]; then
-			wget -q "$AMCATALOGUEICONS"/"$arg".png -O "$APPSPATH"/"$(ls -td "$APPSPATH"/* | head -1 | sed 's:.*/::')"/icons/"$arg"
+	if test -d "$APPSPATH"/"$LATESTDIR"/icons; then
+		find "$APPSPATH"/"$LATESTDIR"/icons/* -xtype l -delete 2> /dev/null
+		if [ -z "$(ls -A "$APPSPATH"/"$LATESTDIR"/icons)" ]; then
+			wget -q "$AMCATALOGUEICONS"/"$arg".png -O "$APPSPATH"/"$LATESTDIR"/icons/"$arg"
 		fi 
 	fi
 	# Patch .desktop to change paths if the app is installed locally
@@ -95,14 +96,14 @@ function _ending_the_installation() {
 			chown -R $currentuser "$AMCACHEDIR"/about 2> /dev/null
 			for metapackage in $METAPACKAGES; do
 				if grep -q "$metapackage" ./"$arg" 2> /dev/null; then
-					metascript=$(ls -td "$APPSPATH"/* | head -1 | sed 's:.*/::')
+					metascript="$LATESTDIR"
 				fi
 			done
 			if [ -n "$metascript" ]; then
-				echo -ne " $(echo '"'"$metascript"'"' | tr '[:lower:]' '[:upper:]') INSTALLED ($(du -sm "$APPSPATH"/"$(ls -td "$APPSPATH"/* | head -1 | sed 's:.*/::')" | awk '{print $1}' ) MB OF DISK SPACE)\n"
+				echo -ne " $(echo '"'"$metascript"'"' | tr '[:lower:]' '[:upper:]') INSTALLED ($(du -sm "$APPSPATH"/"$LATESTDIR" | awk '{print $1}' ) MB OF DISK SPACE)\n"
 				unset metascript
 			else
-				echo -ne " $(echo "\"$arg\"" | tr '[:lower:]' '[:upper:]') INSTALLED ($(du -sm "$APPSPATH"/"$(ls -td "$APPSPATH"/* | head -1 | sed 's:.*/::')" | awk '{print $1}' ) MB OF DISK SPACE)\n"
+				echo -ne " $(echo "\"$arg\"" | tr '[:lower:]' '[:upper:]') INSTALLED ($(du -sm "$APPSPATH"/"$LATESTDIR" | awk '{print $1}' ) MB OF DISK SPACE)\n"
 			fi
 			$SUDOCOMMAND rm "$AMCACHEDIR"/"$arg"
 			_check_version
