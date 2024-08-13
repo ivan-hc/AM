@@ -895,7 +895,7 @@ This option uses `less` to show the list, so to exit its enough to press "**Q**"
 
 If the option `-l` is followed by `--appimages`, you will be able to see only the available AppImages.
 
-https://github.com/user-attachments/assets/fddc1a95-88ea-4b03-9fe8-1a69ed11e6eb
+https://github.com/user-attachments/assets/eae9ea83-d1f7-4f15-8acf-0cfb7a75a1af
 
 Option `-q` or `query` shows search results from the list above.
 
@@ -903,7 +903,7 @@ If followed by `--appimages`, the search results will be only for the available 
 
 If followed by `--pkg`, all keywords will be listed also if not on the same line. This is good if you are looking for multiple packages.
 
-https://github.com/user-attachments/assets/2586fbae-4b40-4882-b15b-cf5f29a7b0d7
+https://github.com/user-attachments/assets/1b2f3f3b-fe22-416f-94d8-d5e0465b3f6d
 
 ------------------------------------------------------------------------
 
