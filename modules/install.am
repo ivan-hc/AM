@@ -316,47 +316,42 @@ while [ -n "$1" ]; do
 		echo "############################################################################"
 		_clean_amcachedir 2> /dev/null
 		echo "$@" | tr ' ' '\n' >> "$AMCACHEDIR"/install-args 
-		ARGS=$(tail -n +2 "$AMCACHEDIR"/install-args)
+		ARGS=$(tail -n +2 "$AMCACHEDIR"/install-args | grep -v -- "--")
+		if [ "$2" = "--debug" ]; then
+			printf "\n You have decided to read the complete messages to debug the installation\n"
+			printf "____________________________________________________________________________\n"
+		elif [ "$2" = "--force-latest" ]; then
+			printf "\n You have decided to force downloads for the latest version (if it exists)\n"
+			printf "____________________________________________________________________________\n"
+		fi
 		METAPACKAGES="kdegames kdeutils"
 
 		for arg in $ARGS; do
 			echo ""
-			case $arg in
-			'--debug')
-				echo " You have decided to read the complete messages to debug the installation"
-				echo "____________________________________________________________________________"
-				;;
-			'--force-latest')
-				echo " You have decided to force downloads for the latest version (if it exists)"
-				echo "____________________________________________________________________________"
-				;;
-			*)
-				cd "$REALDIR" || return
-				# If the "tmp" directory is not removed, the installation failed, so remove the app
-				if test -d "$APPSPATH"/"$arg"/tmp; then
-					$SUDOCOMMAND "$APPSPATH"/"$arg"/remove 2> /dev/null
-				fi
-				# Various cases that may occur during installation (for example if you use a third-party repository)
-				if test -f "$APPSPATH"/"$arg"/remove; then
-					echo " ◆ \"$arg\" is already installed!" | tr '[:lower:]' '[:upper:]'
-				else
-					if echo "$arg" | grep -q "/"; then
-						if test -f "$arg" 2> /dev/null; then
-							_install_local_script
-						else
-							echo " 💀 ERROR: the file \"$arg\" does NOT exist"
-						fi
-					elif test -f "$AMPATH/neodb"; then
-						_install_from_third_party_repo
-					elif curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg"  1>/dev/null; then
-						_install_normally
+			cd "$REALDIR" || return
+			# If the "tmp" directory is not removed, the installation failed, so remove the app
+			if test -d "$APPSPATH"/"$arg"/tmp; then
+				$SUDOCOMMAND "$APPSPATH"/"$arg"/remove 2> /dev/null
+			fi
+			# Various cases that may occur during installation (for example if you use a third-party repository)
+			if test -f "$APPSPATH"/"$arg"/remove; then
+				echo " ◆ \"$arg\" is already installed!" | tr '[:lower:]' '[:upper:]'
+			else
+				if echo "$arg" | grep -q "/"; then
+					if test -f "$arg" 2> /dev/null; then
+						_install_local_script
 					else
-						echo " 💀 ERROR: \"$arg\" does NOT exist in the database, see \"$AMCLI -l\""
+						echo " 💀 ERROR: the file \"$arg\" does NOT exist"
 					fi
+				elif test -f "$AMPATH/neodb"; then
+					_install_from_third_party_repo
+				elif curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg"  1>/dev/null; then
+					_install_normally
+				else
+					echo " 💀 ERROR: \"$arg\" does NOT exist in the database, see \"$AMCLI -l\""
 				fi
-				echo "____________________________________________________________________________"
-				;;
-			esac
+			fi
+			echo "____________________________________________________________________________"
 		done
 		if test -f "$AMCACHEDIR"/installed; then
 			echo "############################################################################"
