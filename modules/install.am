@@ -118,16 +118,6 @@ function _ending_the_installation() {
 # INSTALLATION PROCESS
 ######################
 
-function _install_check_dependences() {
-	if ! command -v "$name" &>/dev/null; then
-		if [ "$name" = "ar" ]; then
-			echo " 💀 ERROR: cannot install \"$arg\" without \"binutils\""
-		else
-			echo " 💀 ERROR: cannot install \"$arg\" without \"$name\""
-		fi
-	fi
-}
-
 # This function is needed to parse the installation script and then execute it
 function _install_arg() {
 	APPNAME=$(echo "\"$arg\"" | tr '[:lower:]' '[:upper:]')
@@ -147,7 +137,13 @@ function _install_arg() {
 	app_deps="ar gcc glib-compile-schemas make tar unzip"
 	for name in $app_deps; do
 		if grep "^$name" ./"$arg" 1> /dev/null; then
-			_install_check_dependences; return 0
+			if ! command -v "$name" &>/dev/null; then
+				if [ "$name" = "ar" ]; then
+					echo " 💀 ERROR: cannot install \"$arg\" without \"binutils\"" && return 0
+				else
+					echo " 💀 ERROR: cannot install \"$arg\" without \"$name\"" && return 0
+				fi
+			fi
 		fi
 	done
 	if grep -q 'ffwa-' ./"$arg"; then
@@ -162,7 +158,13 @@ function _install_arg() {
 		if curl --output /dev/null --silent --head --fail "$appimage_bulder_script" 1> /dev/null; then
 			for name in $app_deps; do
 				if curl -Ls "$appimage_bulder_script" | grep "^$name" 1> /dev/null; then
-					_install_check_dependences; return 0
+					if ! command -v "$name" &>/dev/null; then
+						if [ "$name" = "ar" ]; then
+							echo " 💀 ERROR: cannot install \"$arg\" without \"binutils\"" && return 0
+						else
+							echo " 💀 ERROR: cannot install \"$arg\" without \"$name\"" && return 0
+						fi
+					fi
 				fi
 			done
 			if curl -Ls "$appimage_bulder_script" | grep -ie "appimagetool\|pkg2appimage" 1> /dev/null; then
