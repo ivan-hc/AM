@@ -36,7 +36,7 @@ function _install_appman_local_patch() {
 }
 
 function _apply_patches() {
-	if [ "$AMCLI" = appman ] 2>/dev/null; then
+	if [ "$AMCLI" = appman ] 2> /dev/null; then
 		_install_common_patch
 		_install_appman_local_patch
 	else
@@ -51,7 +51,7 @@ function _post_installation_processes() {
 	LATESTDIR=$(ls -td "$APPSPATH"/* | head -1 | sed 's:.*/::')
 	# Add a command to line 2 of the "remove" script to prevent use without root privileges
 	# and take control of the directory to be able to manage and update the app without root privileges
-	if [ "$AMCLI" = am ] 2>/dev/null; then
+	if [ "$AMCLI" = am ] 2> /dev/null; then
 		$SUDOCOMMAND sed -i '1 a if [ "$(id -u)" -ne 0 ]; then echo "Permission denied"; exit 1; fi' "$APPSPATH"/"$LATESTDIR"/remove 2> /dev/null
 		$SUDOCOMMAND chown -R $currentuser "$APPSPATH"/"$LATESTDIR" 2> /dev/null
 	fi
@@ -69,7 +69,7 @@ function _post_installation_processes() {
 		fi
 	fi
 	# Patch .desktop to change paths if the app is installed locally
-	if [ "$AMCLI" = appman ] 2>/dev/null; then
+	if [ "$AMCLI" = appman ] 2> /dev/null; then
 		sed -i "s#Icon=/opt#Icon=$HOME/$APPSDIR#g" "$DATADIR"/applications/*-AM.desktop 2> /dev/null
 		sed -i "s#Exec=$arg#Exec=$BINDIR/$arg#g" "$DATADIR"/applications/*-AM.desktop 2> /dev/null
 		sed -i 's#Exec=$APP#Exec='"$BINDIR"'/$APP#g' "$DATADIR"/applications/-AM.desktop 2> /dev/null
@@ -134,31 +134,31 @@ function _install_arg() {
 		fi
 	done
 	# Check if the installation script contain a keyword related to a missing dependence
-	if grep -q 'ar.*x .*\.deb' ./"$arg"; then
-		if ! command -v ar 1>/dev/null; then
-			echo " 💀 ERROR: you cannot install \"$arg\" without installing \"binutils\""; return 0
+	app_deps="ar tar unzip"
+	for name in $app_deps; do
+		if grep "^$name" ./"$arg" 1> /dev/null; then
+			if ! command -v "$name" &>/dev/null; then
+				if [ "$name" = "ar" ]; then
+					echo " 💀 ERROR: cannot create \"$arg\" without \"binutils\""; return 0
+				else
+					echo " 💀 ERROR: cannot create \"$arg\" without \"$name\""; return 0
+				fi
+			fi
 		fi
-	elif grep -q 'ffwa-' ./"$arg"; then
+	done
+	if grep -q 'ffwa-' ./"$arg"; then
 		ffbrowser=$(find ${PATH//:/ } -maxdepth 1 -name "firefox*" | sort | head -1)
 		if [ -z "$ffbrowser" ]; then
 			echo " 💀 ERROR: you cannot install \"$arg\" without installing \"firefox\""; return 0
 		else
 			sed -i 's#firefox --class#'"$(echo "$ffbrowser" | xargs -L 1 basename)"' --class#g' ./"$arg"
 		fi
-	elif grep -q 'http.*\.tar' ./"$arg"; then
-		if ! command -v tar 1>/dev/null; then
-			echo " 💀 ERROR: you cannot install \"$arg\" without installing \"tar\""; return 0
-		fi
-	elif grep -q 'http.*\.zip' ./"$arg"; then
-		if ! command -v unzip 1>/dev/null; then
-			echo " 💀 ERROR: you cannot install \"$arg\" without installing \"unzip\""; return 0
-		fi
 	elif grep -qi "^wget.*.sh.*chmod.*&&" ./"$arg"; then
 		appimage_bulder_script=$(grep "^wget " ./"$arg" | tr '"' '\n' | grep -i "^http" | sed 's/$APP/'"$arg"'/g')
-		if curl --output /dev/null --silent --head --fail "$appimage_bulder_script" 1>/dev/null; then
+		if curl --output /dev/null --silent --head --fail "$appimage_bulder_script" 1> /dev/null; then
 			appimage_build_deps="ar gcc glib-compile-schemas make tar unzip"
 			for name in $appimage_build_deps; do
-				if curl -Ls "$appimage_bulder_script" | grep "^$name" 1>/dev/null; then
+				if curl -Ls "$appimage_bulder_script" | grep "^$name" 1> /dev/null; then
 					if ! command -v "$name" &>/dev/null; then
 						if [ "$name" = "ar" ]; then
 							echo " 💀 ERROR: cannot create \"$arg\" without \"binutils\""; return 0
@@ -168,11 +168,11 @@ function _install_arg() {
 					fi
 				fi
 			done
-			if curl -Ls "$appimage_bulder_script" | grep -i "appimagetool" 1>/dev/null; then
+			if curl -Ls "$appimage_bulder_script" | grep -i "appimagetool" 1> /dev/null; then
 				if ! command -v convert &>/dev/null; then
 					echo " 💀 ERROR: cannot create \"$arg\" without \"convert\" (from \"imagemagick\")"; return 0
 				fi
-			elif curl -Ls "$appimage_bulder_script" | grep -i "pkg2appimage" 1>/dev/null; then
+			elif curl -Ls "$appimage_bulder_script" | grep -i "pkg2appimage" 1> /dev/null; then
 				if ! command -v convert &>/dev/null; then
 					echo " 💀 ERROR: cannot create \"$arg\" without \"convert\" (from \"imagemagick\")"; return 0
 				fi
@@ -236,17 +236,17 @@ function _install_from_third_party_repo() {
 	rm -R -f "$AMCACHEDIR/multirepo-args"
 	MULTIREPO=$(grep "Source=" "$AMPATH/neodb" | sed 's/Source=//g')
 	for anyrepo in $MULTIREPO; do
-		if curl --output /dev/null --silent --head --fail "$anyrepo"/"$arg"  1>/dev/null; then
+		if curl --output /dev/null --silent --head --fail "$anyrepo"/"$arg"  1> /dev/null; then
 			echo "$anyrepo" >> "$AMCACHEDIR/multirepo-args"
 		fi
 	done
 	if test -f "$AMCACHEDIR/multirepo-args"; then
-		anyrepoargs=$(sort "$AMCACHEDIR/multirepo-args" 2>/dev/null | wc -l)
+		anyrepoargs=$(sort "$AMCACHEDIR/multirepo-args" 2> /dev/null | wc -l)
 		if [ "$anyrepoargs" -gt 0 ]; then
-			if curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg"  1>/dev/null; then
+			if curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg"  1> /dev/null; then
 				echo "$APPSDB" >> "$AMCACHEDIR/multirepo-args"
 			fi
-			anyrepoargall=$(sort "$AMCACHEDIR/multirepo-args" 2>/dev/null | wc -l)
+			anyrepoargall=$(sort "$AMCACHEDIR/multirepo-args" 2> /dev/null | wc -l)
 			if [ "$anyrepoargall" = 1 ]; then
 				mkdir -p "$AMCACHEDIR"/tmp && rm -f "$AMCACHEDIR"/tmp/* &&
 				wget -q "$(head -1 "$AMCACHEDIR/multirepo-args")/$arg" -O "$AMCACHEDIR"/tmp/"$arg" &&
@@ -263,7 +263,7 @@ function _install_from_third_party_repo() {
 				rm -R -f "$AMCACHEDIR/multirepo-args"
 				_install_arg
 			fi
-		elif curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg"  1>/dev/null; then
+		elif curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg"  1> /dev/null; then
 			mkdir -p "$AMCACHEDIR"/tmp && rm -f "$AMCACHEDIR"/tmp/* &&
 			wget -q "$APPSDB"/"$arg" -O "$AMCACHEDIR"/tmp/"$arg" &&
 			cd "$AMCACHEDIR" && mv ./tmp/"$arg" ./"$arg" && rmdir ./tmp || return
@@ -272,7 +272,7 @@ function _install_from_third_party_repo() {
 		else
 			echo " 💀 ERROR: \"$arg\" does NOT exist in the database, see \"$AMCLI -l\""
 		fi
-	elif curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg"  1>/dev/null; then
+	elif curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg"  1> /dev/null; then
 		_install_normally
 	else
 		echo " 💀 ERROR: \"$arg\" does NOT exist in the database, see \"$AMCLI -l\""
@@ -292,9 +292,9 @@ while [ -n "$1" ]; do
 			echo "        $AMCLI $1 --debug [ARGUMENT]"
 			echo "        $AMCLI $1 --force-latest [ARGUMENT]"; exit
 		fi
-		if [ "$AMCLI" = am ] 2>/dev/null; then
+		if [ "$AMCLI" = am ] 2> /dev/null; then
 	  		$SUDOCOMMAND echo -ne "\r"
-	  		if ! $SUDOCOMMAND -n true 2>/dev/null; then
+	  		if ! $SUDOCOMMAND -n true 2> /dev/null; then
 				exit
 	  		fi
 	  	fi
@@ -334,7 +334,7 @@ while [ -n "$1" ]; do
 					fi
 				elif test -f "$AMPATH/neodb"; then
 					_install_from_third_party_repo
-				elif curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg"  1>/dev/null; then
+				elif curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg"  1> /dev/null; then
 					_install_normally
 				else
 					echo " 💀 ERROR: \"$arg\" does NOT exist in the database, see \"$AMCLI -l\""
