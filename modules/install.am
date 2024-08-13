@@ -45,7 +45,7 @@ function _apply_patches() {
 # Post-installation processes
 function _post_installation_processes() {
 	LATESTDIR=$(ls -td "$APPSPATH"/* | head -1 | sed 's:.*/::')
-	echo -ne " Configuring $(echo "\"$arg\"" | tr '[:lower:]' '[:upper:]')...\r" && echo -ne "                                                                          \r"
+	echo -ne " Configuring $APPNAME...\r" && echo -ne "                                                                          \r"
 
 	# Add a command to line 2 of the "remove" script to prevent use without root privileges
 	# and take control of the directory to be able to manage and update the app without root privileges
@@ -87,10 +87,10 @@ function _ending_the_installation() {
 	LATESTDIR=$(ls -td "$APPSPATH"/* | head -1 | sed 's:.*/::')
 	if test -f "$APPSPATH"/"$LATESTDIR"/remove; then
 		if test -d "$APPSPATH"/"$LATESTDIR"/tmp; then
-			echo -e " 💀 ERROR DURING INSTALLATION, REMOVED $(echo "\"$arg\"" | tr '[:lower:]' '[:upper:]')!"
+			echo -e " 💀 ERROR DURING INSTALLATION, REMOVED $APPNAME!"
 			$AMCLIPATH -R "$LATESTDIR" 1> /dev/null
 		elif test -f "$APPSPATH/$LATESTDIR/version" && [ -z "$(cat "$APPSPATH/$LATESTDIR/version")" ]; then
-			echo -e " 💀 ERROR DURING INSTALLATION, REMOVED $(echo "\"$arg\"" | tr '[:lower:]' '[:upper:]')!"
+			echo -e " 💀 ERROR DURING INSTALLATION, REMOVED $APPNAME!"
 			$AMCLIPATH -R "$LATESTDIR" 1> /dev/null
 		else
 			chown -R $currentuser "$AMCACHEDIR"/about 2> /dev/null
@@ -99,11 +99,12 @@ function _ending_the_installation() {
 					metascript="$LATESTDIR"
 				fi
 			done
+			APPSIZE=$(du -sm "$APPSPATH"/"$LATESTDIR" | awk '{print $1}' )
 			if [ -n "$metascript" ]; then
-				echo -ne " $(echo '"'"$metascript"'"' | tr '[:lower:]' '[:upper:]') INSTALLED ($(du -sm "$APPSPATH"/"$LATESTDIR" | awk '{print $1}' ) MB OF DISK SPACE)\n"
+				echo -ne " $(echo '"'"$metascript"'"' | tr '[:lower:]' '[:upper:]') INSTALLED ($APPSIZE MB OF DISK SPACE)\n"
 				unset metascript
 			else
-				echo -ne " $(echo "\"$arg\"" | tr '[:lower:]' '[:upper:]') INSTALLED ($(du -sm "$APPSPATH"/"$LATESTDIR" | awk '{print $1}' ) MB OF DISK SPACE)\n"
+				echo -ne " $APPNAME INSTALLED ($APPSIZE MB OF DISK SPACE)\n"
 			fi
 			$SUDOCOMMAND rm "$AMCACHEDIR"/"$arg"
 			_check_version
@@ -121,6 +122,7 @@ function _ending_the_installation() {
 
 # This function is needed to parse the installation script and then execute it
 function _install_arg() {
+	APPNAME=$(echo "\"$arg\"" | tr '[:lower:]' '[:upper:]')
 	chmod a+x ./"$arg"
 	# Check if the installation script is a metapackage (example one of the 40+ kdegames scripts)
 	for metapackage in $METAPACKAGES; do
@@ -128,7 +130,8 @@ function _install_arg() {
 			if test -d "$APPSPATH"/"$metapackage"/tmp; then
 				$SUDOCOMMAND "$APPSPATH"/"$metapackage"/remove 2> /dev/null
 			elif test -d "$APPSPATH"/"$metapackage"; then
-				echo ' ◆ '"$(echo "\"$arg\"" | tr '[:lower:]' '[:upper:]')"' IS PART OF "'"$(echo "$metapackage" | tr '[:lower:]' '[:upper:]')"'", ALREADY INSTALLED'; return 0
+				METAPACKAGE_NAME=$(echo "$metapackage" | tr '[:lower:]' '[:upper:]')
+				echo ' ◆ '"$APPNAME"' IS PART OF "'"$METAPACKAGE_NAME"'", ALREADY INSTALLED'; return 0
 			fi
 		fi
 	done
@@ -190,7 +193,7 @@ function _install_arg() {
 		fi
 	fi
 	# Check if you are installing an app or a library
-	echo -e "◆ $(echo "\"$arg\"" | tr '[:lower:]' '[:upper:]'): starting installation script"
+	echo -e "◆ $APPNAME: starting installation script"
 	if grep -qi "^wget.*.sh.*chmod.*&&" ./"$arg"; then
 		echo -e "\n This script will create an AppImage on the fly, please wait..."
 	elif grep -q "/usr/local/lib" ./"$arg"; then
@@ -262,7 +265,7 @@ function _install_from_third_party_repo() {
 				rm -R -f "$AMCACHEDIR/multirepo-args"
 				_install_arg
 			else
-				printf '\n%s\n' " ◆ FOUND $(echo "\"$arg\"" | tr '[:lower:]' '[:upper:]') FROM MULTIPLE SOURCES:"
+				printf '\n%s\n' " ◆ FOUND $APPNAME FROM MULTIPLE SOURCES:"
 				printf '%s\n\n' " Select a URL from this menu (read carefully) or press CTRL+C to abort:"; sleep 1
 				select d in $(cat "$AMCACHEDIR/multirepo-args"); do test -n "$d" && break; echo ">>> Invalid Selection"; done
 				mkdir -p "$AMCACHEDIR"/tmp && rm -f "$AMCACHEDIR"/tmp/* &&
@@ -323,7 +326,7 @@ while [ -n "$1" ]; do
 		_clean_amcachedir 2> /dev/null
 		echo "$@" | tr ' ' '\n' >> "$AMCACHEDIR"/install-args 
 		ARGS=$(tail -n +2 "$AMCACHEDIR"/install-args)
-		METAPACKAGES="kdegames kdeutils libreoffice nodejs platform-tools"
+		METAPACKAGES="kdegames kdeutils"
 
 		for arg in $ARGS; do
 			echo ""
