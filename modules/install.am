@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# shellcheck disable=SC2016
+# shellcheck disable=SC2154
+
 #############################################################################
 # THIS MODULE IS USED TO INSTALL APPS FROM THE DATABASE OR FROM LOCAL SCRIPTS
 #############################################################################
@@ -33,7 +36,7 @@ function _install_appman_local_patch() {
 }
 
 function _apply_patches() {
-	if [ "$AMCLI" == appman ] 2>/dev/null; then
+	if [ "$AMCLI" = appman ] 2>/dev/null; then
 		_install_common_patch
 		_install_appman_local_patch
 	else
@@ -48,7 +51,7 @@ function _post_installation_processes() {
 	LATESTDIR=$(ls -td "$APPSPATH"/* | head -1 | sed 's:.*/::')
 	# Add a command to line 2 of the "remove" script to prevent use without root privileges
 	# and take control of the directory to be able to manage and update the app without root privileges
-	if [ "$AMCLI" == am ] 2>/dev/null; then
+	if [ "$AMCLI" = am ] 2>/dev/null; then
 		$SUDOCOMMAND sed -i '1 a if [ "$(id -u)" -ne 0 ]; then echo "Permission denied"; exit 1; fi' "$APPSPATH"/"$LATESTDIR"/remove 2> /dev/null
 		$SUDOCOMMAND chown -R $currentuser "$APPSPATH"/"$LATESTDIR" 2> /dev/null
 	fi
@@ -66,7 +69,7 @@ function _post_installation_processes() {
 		fi 
 	fi
 	# Patch .desktop to change paths if the app is installed locally
-	if [ "$AMCLI" == appman ] 2>/dev/null; then
+	if [ "$AMCLI" = appman ] 2>/dev/null; then
 		sed -i "s#Icon=/opt#Icon=$HOME/$APPSDIR#g" "$DATADIR"/applications/AM*.desktop 2> /dev/null
 		sed -i "s#Exec=$arg#Exec=$BINDIR/$arg#g" "$DATADIR"/applications/AM*.desktop 2> /dev/null
 		sed -i 's#Exec=$APP#Exec='"$BINDIR"'/$APP#g' "$DATADIR"/applications/AM*.desktop 2> /dev/null
@@ -142,7 +145,7 @@ function _install_arg() {
 		fi
 	elif grep -q 'ffwa-' ./"$arg"; then
 		ffbrowser=$(find ${PATH//:/ } -maxdepth 1 -name "firefox*" | sort | head -1)
-		if [[ -z "$ffbrowser" ]]; then
+		if [ -z "$ffbrowser" ]; then
 			echo " 💀 ERROR: you cannot install \"$arg\" without installing \"firefox\""; return 0
 		else
 			sed -i 's#firefox --class#'"$(echo "$ffbrowser" | xargs -L 1 basename)"' --class#g' ./"$arg"
@@ -158,7 +161,7 @@ function _install_arg() {
 	elif grep -q '^wget "$version.zsync"' ./"$arg"; then
 		if ! command -v zsync 1>/dev/null; then
 			optzsync=$(grep -F 'if test -f /opt/$APP/*.zsync' ./"$arg" | wc -l)
-			if [ "$optzsync" == 0 ]; then
+			if [ "$optzsync" = 0 ]; then
 				echo " 💀 ERROR: you cannot install \"$arg\" without installing \"zsync\""; return 0
 			else
 				echo -e " ⚠️ WARNING: \"$arg\" may not be updatable without \"zsync\".\n\n The app will still be installed, but installing \"zsync\" is recommended! \n"
@@ -171,7 +174,7 @@ function _install_arg() {
 			for name in $appimage_build_deps; do
 				if curl -Ls "$appimage_bulder_script" | grep "^$name" 1>/dev/null; then
 					if ! command -v "$name" &>/dev/null; then
-						if [ "$name" == "ar" ]; then
+						if [ "$name" = "ar" ]; then
 							echo " 💀 ERROR: cannot create \"$arg\" without \"binutils\""; return 0
 						else
 							echo " 💀 ERROR: cannot create \"$arg\" without \"$name\""; return 0
@@ -258,7 +261,7 @@ function _install_from_third_party_repo() {
 				echo "$APPSDB" >> "$AMCACHEDIR/multirepo-args"
 			fi
 			anyrepoargall=$(sort "$AMCACHEDIR/multirepo-args" 2>/dev/null | wc -l)
-			if [ "$anyrepoargall" == 1 ]; then
+			if [ "$anyrepoargall" = 1 ]; then
 				mkdir -p "$AMCACHEDIR"/tmp && rm -f "$AMCACHEDIR"/tmp/* &&
 				wget -q "$(head -1 "$AMCACHEDIR/multirepo-args")/$arg" -O "$AMCACHEDIR"/tmp/"$arg" &&
 				cd "$AMCACHEDIR" && mv ./tmp/"$arg" ./"$arg" && rmdir ./tmp || return
@@ -303,7 +306,7 @@ while [ -n "$1" ]; do
 			echo "        $AMCLI $1 --debug [ARGUMENT]"
 			echo "        $AMCLI $1 --force-latest [ARGUMENT]"; exit
 		fi
-		if [ "$AMCLI" == am ] 2>/dev/null; then
+		if [ "$AMCLI" = am ] 2>/dev/null; then
 	  		$SUDOCOMMAND echo -ne "\r"
 	  		if ! $SUDOCOMMAND -n true 2>/dev/null; then
 				exit
@@ -381,11 +384,11 @@ while [ -n "$1" ]; do
 		API_GITHUB_REPO="https://api.github.com/repos/$USER_PROJECT/releases"
 		sed -i "s#REPLACETHIS#$USER_PROJECT#g" "$CACHEDIR/extra/$3"
 		q="'"
-		if [ "$arch" == "x86_64" ]; then
+		if [ "$arch" = "x86_64" ]; then
 			FILTER=' | grep -vi "i386\\|i686\\|i586\\|i486\\|aarch64\\|arm64\\|armv7l"'
-		elif [ "$arch" == "i686" ]; then
+		elif [ "$arch" = "i686" ]; then
 			FILTER=' | grep -ie "i386\\|i686\\|i586\\|i486" '
-		elif [ "$arch" == "aarch64" ]; then
+		elif [ "$arch" = "aarch64" ]; then
 			FILTER=' | grep -ie "aarch64\\|arm64" '
 		fi
 		FUNCTION='curl -Ls '"$API_GITHUB_REPO"' | sed '"$q"'s/[()",{} ]/\\n/g'"$q"' | grep -oi "https.*mage$"'"$FILTER"' | head -1'
