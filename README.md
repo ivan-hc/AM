@@ -40,7 +40,7 @@ You can consult the entire **list of managed apps** at [**portable-linux-apps.gi
 - [Update all](#update-all)
 - [Backup and restore installed apps using snapshots](#backup-and-restore-installed-apps-using-snapshots)
 - [Remove one or more applications](#remove-one-or-more-applications)
-- [Convert Type2 AppImages requiring libfuse2 to Type3 AppImages](#convert-type2-appimages-requiring-libfuse2-to-type3-appimages)
+- [Convert Type2 AppImages requiring libfuse2 to New Generation AppImages](#convert-type2-appimages-requiring-libfuse2-to-new-generation-appimages)
 - [Integrate local AppImages into the menu by dragging and dropping them](#integrate-local-appimages-into-the-menu-by-dragging-and-dropping-them)
   - [How to create a launcher for a local AppImage](#how-to-create-a-launcher-for-a-local-appimage)
   - [How to remove the orphan launchers](#how-to-remove-the-orphan-launchers)
@@ -723,7 +723,7 @@ See also "[How to update or remove apps manually](#how-to-update-or-remove-apps-
 
  `nolibfuse {PROGRAM}`
 
- DESCRIPTION:   Convert an installed Type2 AppImage to a Type3 AppImage. Type3 AppImages does not require libfuse2 installed.
+ DESCRIPTION:   Convert an installed Type2 AppImage to get rid of libfuse2. New generation AppImages does not require libfuse2 installed.
  __________________________________________________________________________
 
  `unlock`
@@ -776,7 +776,7 @@ This section is committed to giving small demonstrations of each available optio
   - [Update all](#update-all)
   - [Backup and restore installed apps using snapshots](#backup-and-restore-installed-apps-using-snapshots)
   - [Remove one or more applications](#remove-one-or-more-applications)
-  - [Convert Type2 AppImages requiring libfuse2 to Type3 AppImages](#convert-type2-appimages-requiring-libfuse2-to-type3-appimages)
+  - [Convert Type2 AppImages requiring libfuse2 to New Generation AppImages](#convert-type2-appimages-requiring-libfuse2-to-new-generation-appimages)
   - [Integrate local AppImages into the menu by dragging and dropping them](#integrate-local-appimages-into-the-menu-by-dragging-and-dropping-them)
     - [How to create a launcher for a local AppImage](#how-to-create-a-launcher-for-a-local-appimage)
     - [How to remove the orphan launchers](#how-to-remove-the-orphan-launchers)
@@ -963,8 +963,8 @@ https://github.com/ivan-hc/AM/assets/88724353/4d26d2d7-4476-4322-a0ab-a0a1ec14f7
 ------------------------------------------------------------------------
 
 __________________________________________________________________________
-### Convert Type2 AppImages requiring libfuse2 to Type3 AppImages
-Option `nolibfuse` "just tries" to convert old Type2 AppImages asking for "libfuse2" into new Type3 AppImages:
+### Convert Type2 AppImages requiring libfuse2 to New Generation AppImages
+Option `nolibfuse` "just tries" to convert old Type2 AppImages asking for "libfuse2" into new generation AppImages:
 
 https://github.com/ivan-hc/AM/assets/88724353/06b8e946-ef02-4678-a5a0-d8c2c24c22f9
 
@@ -975,7 +975,7 @@ First the selected program type is checked, if it is a Type2 AppImage, it will b
 **I suggest anyone to contact the developers to update the packaging method of their AppImage!**
 
 NOTE, the conversion is not always successful, a lot depends on how the program is packaged. The conversion occurs in two steps:
-1. if in the first case it succeeds without problems, the package will be repackaged as it was, but of Type 3;
+1. if in the first case it succeeds without problems, the package will be repackaged as a new generation one;
 2. if the script encounters problems (due to Appstream validation), it will attempt to delete the contents of the /usr/share/metainfo directory inside the AppImage, as a workaround.
 
 If also the second step does not succeed either, the process will end with an error and the AppImage will remain Type2.
@@ -1305,9 +1305,9 @@ appman -i libfuse2
 ```
 NOTE, in AppMan you still need to use your password (`sudo` or `doas`) to install the library at system level, in /usr/local/lib
 
-Alternatively you can use the "`nolibfuse`" option to "try" to convert old Type2 AppImages to Type3, so as not to depend on `libfuse2`. In most cases it works, but sometimes it can give errors, depending on how the package was manufactured.
+Alternatively you can use the "`nolibfuse`" option to "try" to convert old Type2 AppImages to a new generation one, so as not to depend on `libfuse2`. In most cases it works, but sometimes it can give errors, depending on how the package was manufactured.
 
-However, I suggest contacting the upstream developers to convince them to upgrade their packages to Type3.
+However, I suggest contacting the upstream developers to convince them to upgrade their packages.
 
 * **If you cannot run some AppImages on Ubuntu 23.10+ or its derivatives, then refer to [Restricted unprivileged user namespaces are coming to Ubuntu 23.10 | Ubuntu](https://ubuntu.com/blog/ubuntu-23-10-restricted-unprivileged-user-namespaces) for possible causes and remedies.**
 * **If you cannot run chrome/chromium/electron-based AppImages, then refer to [Troubleshooting/Electron-sandboxing](https://docs.appimage.org/user-guide/troubleshooting/electron-sandboxing.html) for possible causes and remedies.**
