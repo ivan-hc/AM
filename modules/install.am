@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# shellcheck disable=SC2016
+# shellcheck disable=SC2154
+
 #############################################################################
 # THIS MODULE IS USED TO INSTALL APPS FROM THE DATABASE OR FROM LOCAL SCRIPTS
 #############################################################################
@@ -33,10 +36,11 @@ function _install_appman_local_patch() {
 }
 
 function _apply_patches() {
-	if [ "$AMCLI" == appman ] 2>/dev/null; then
+	if [ "$AMCLI" = appman ] 2> /dev/null; then
 		_install_common_patch
 		_install_appman_local_patch
 	else
+		$SUDOCOMMAND mkdir -p /usr/local/bin
 		$SUDOCOMMAND mkdir -p /usr/local/share/applications
 		_install_common_patch
 	fi
@@ -44,34 +48,28 @@ function _apply_patches() {
 
 # Post-installation processes
 function _post_installation_processes() {
-	echo -ne " Configuring $(echo "\"$arg\"" | tr '[:lower:]' '[:upper:]')...\r" && echo -ne "                                                                          \r"
-
+	LATESTDIR=$(ls -td "$APPSPATH"/* | head -1 | sed 's:.*/::')
 	# Add a command to line 2 of the "remove" script to prevent use without root privileges
 	# and take control of the directory to be able to manage and update the app without root privileges
-	if [ "$AMCLI" == am ] 2>/dev/null; then
-		$SUDOCOMMAND sed -i '1 a if [ "$(id -u)" -ne 0 ]; then echo "Permission denied"; exit 1; fi' "$APPSPATH"/"$(ls -td "$APPSPATH"/* | head -1 | sed 's:.*/::')"/remove 2> /dev/null
-		$SUDOCOMMAND chown -R $currentuser "$APPSPATH"/"$(ls -td "$APPSPATH"/* | head -1 | sed 's:.*/::')" 2> /dev/null
+	if [ "$AMCLI" = am ] 2> /dev/null; then
+		$SUDOCOMMAND sed -i '1 a if [ "$(id -u)" -ne 0 ]; then echo "Permission denied"; exit 1; fi' "$APPSPATH"/"$LATESTDIR"/remove 2> /dev/null
+		$SUDOCOMMAND chown -R $currentuser "$APPSPATH"/"$LATESTDIR" 2> /dev/null
 	fi
 	# Check if an AM-updater script exists, so the CLI can manage updates for the installed app
 	# by comparing the hosted script with a downloaded one
-	if test -f "$APPSPATH"/"$(ls -td "$APPSPATH"/* | head -1 | sed 's:.*/::')"/AM-updater; then
-		mkdir "$APPSPATH"/"$(ls -td "$APPSPATH"/* | head -1 | sed 's:.*/::')"/.am-installer 2> /dev/null &&
-		wget -q "$APPSDB"/"$arg" -O "$APPSPATH"/"$(ls -td "$APPSPATH"/* | head -1 | sed 's:.*/::')"/.am-installer/"$arg"
+	if test -f "$APPSPATH"/"$LATESTDIR"/AM-updater; then
+		mkdir "$APPSPATH"/"$LATESTDIR"/.am-installer 2> /dev/null
+		wget -q "$APPSDB"/"$arg" -O "$APPSPATH"/"$LATESTDIR"/.am-installer/"$arg"
 	fi
 	# If you have a broken or missing icon in your "icons" directory, download one from the catalog
-	if test -d "$APPSPATH"/"$(ls -td "$APPSPATH"/* | head -1 | sed 's:.*/::')"/icons; then
-		find "$APPSPATH"/"$(ls -td "$APPSPATH"/* | head -1 | sed 's:.*/::')"/icons/* -xtype l -delete 2> /dev/null
-		if [ -z "$(ls -A "$APPSPATH"/"$(ls -td "$APPSPATH"/* | head -1 | sed 's:.*/::')"/icons)" ]; then
-			wget -q "$AMCATALOGUEICONS"/"$arg".png -O "$APPSPATH"/"$(ls -td "$APPSPATH"/* | head -1 | sed 's:.*/::')"/icons/"$arg"
-		fi 
+	if test -d "$APPSPATH"/"$LATESTDIR"/icons; then
+		find "$APPSPATH"/"$LATESTDIR"/icons/* -xtype l -delete 2> /dev/null
+		if [ -z "$(ls -A "$APPSPATH"/"$LATESTDIR"/icons)" ]; then
+			wget -q "$AMCATALOGUEICONS"/"$arg".png -O "$APPSPATH"/"$LATESTDIR"/icons/"$arg"
+		fi
 	fi
 	# Patch .desktop to change paths if the app is installed locally
-	if [ "$AMCLI" == appman ] 2>/dev/null; then
-		sed -i "s#Icon=/opt#Icon=$HOME/$APPSDIR#g" "$DATADIR"/applications/AM*.desktop 2> /dev/null
-		sed -i "s#Exec=$arg#Exec=$BINDIR/$arg#g" "$DATADIR"/applications/AM*.desktop 2> /dev/null
-		sed -i 's#Exec=$APP#Exec='"$BINDIR"'/$APP#g' "$DATADIR"/applications/AM*.desktop 2> /dev/null
-		sed -i "s#Exec=/usr/bin/#Exec=$BINDIR/#g" "$DATADIR"/applications/AM*.desktop 2> /dev/null
-		sed -i "s#Exec=/opt/#Exec=$BINDIR/#g" "$DATADIR"/applications/AM*.desktop 2> /dev/null
+	if [ "$AMCLI" = appman ] 2> /dev/null; then
 		sed -i "s#Icon=/opt#Icon=$HOME/$APPSDIR#g" "$DATADIR"/applications/*-AM.desktop 2> /dev/null
 		sed -i "s#Exec=$arg#Exec=$BINDIR/$arg#g" "$DATADIR"/applications/*-AM.desktop 2> /dev/null
 		sed -i 's#Exec=$APP#Exec='"$BINDIR"'/$APP#g' "$DATADIR"/applications/-AM.desktop 2> /dev/null
@@ -86,23 +84,25 @@ function _ending_the_installation() {
 	LATESTDIR=$(ls -td "$APPSPATH"/* | head -1 | sed 's:.*/::')
 	if test -f "$APPSPATH"/"$LATESTDIR"/remove; then
 		if test -d "$APPSPATH"/"$LATESTDIR"/tmp; then
-			echo -e " 💀 ERROR DURING INSTALLATION, REMOVED $(echo "\"$arg\"" | tr '[:lower:]' '[:upper:]')!"
+			echo " 💀 ERROR DURING INSTALLATION, REMOVED $APPNAME!"
 			$AMCLIPATH -R "$LATESTDIR" 1> /dev/null
 		elif test -f "$APPSPATH/$LATESTDIR/version" && [ -z "$(cat "$APPSPATH/$LATESTDIR/version")" ]; then
-			echo -e " 💀 ERROR DURING INSTALLATION, REMOVED $(echo "\"$arg\"" | tr '[:lower:]' '[:upper:]')!"
+			echo " 💀 ERROR DURING INSTALLATION, REMOVED $APPNAME!"
 			$AMCLIPATH -R "$LATESTDIR" 1> /dev/null
 		else
 			chown -R $currentuser "$AMCACHEDIR"/about 2> /dev/null
 			for metapackage in $METAPACKAGES; do
 				if grep -q "$metapackage" ./"$arg" 2> /dev/null; then
-					metascript=$(ls -td "$APPSPATH"/* | head -1 | sed 's:.*/::')
+					metascript="$LATESTDIR"
 				fi
 			done
+			APPSIZE=$(du -sm "$APPSPATH"/"$LATESTDIR" | awk '{print $1}' )
 			if [ -n "$metascript" ]; then
-				echo -ne " $(echo '"'"$metascript"'"' | tr '[:lower:]' '[:upper:]') INSTALLED ($(du -sm "$APPSPATH"/"$(ls -td "$APPSPATH"/* | head -1 | sed 's:.*/::')" | awk '{print $1}' ) MB OF DISK SPACE)\n"
+				METASCRIPT_NAME=$(echo "\"$metascript\"" | tr '[:lower:]' '[:upper:]')
+				echo -ne " $METASCRIPT_NAME INSTALLED ($APPSIZE MB OF DISK SPACE)\n"
 				unset metascript
 			else
-				echo -ne " $(echo "\"$arg\"" | tr '[:lower:]' '[:upper:]') INSTALLED ($(du -sm "$APPSPATH"/"$(ls -td "$APPSPATH"/* | head -1 | sed 's:.*/::')" | awk '{print $1}' ) MB OF DISK SPACE)\n"
+				echo -ne " $APPNAME INSTALLED ($APPSIZE MB OF DISK SPACE)\n"
 			fi
 			$SUDOCOMMAND rm "$AMCACHEDIR"/"$arg"
 			_check_version
@@ -120,6 +120,7 @@ function _ending_the_installation() {
 
 # This function is needed to parse the installation script and then execute it
 function _install_arg() {
+	APPNAME=$(echo "\"$arg\"" | tr '[:lower:]' '[:upper:]')
 	chmod a+x ./"$arg"
 	# Check if the installation script is a metapackage (example one of the 40+ kdegames scripts)
 	for metapackage in $METAPACKAGES; do
@@ -127,59 +128,46 @@ function _install_arg() {
 			if test -d "$APPSPATH"/"$metapackage"/tmp; then
 				$SUDOCOMMAND "$APPSPATH"/"$metapackage"/remove 2> /dev/null
 			elif test -d "$APPSPATH"/"$metapackage"; then
-				echo ' ◆ '"$(echo "\"$arg\"" | tr '[:lower:]' '[:upper:]')"' IS PART OF "'"$(echo "$metapackage" | tr '[:lower:]' '[:upper:]')"'", ALREADY INSTALLED'; return 0
+				METAPACKAGE_NAME=$(echo "$metapackage" | tr '[:lower:]' '[:upper:]')
+				echo " ◆ \"$APPNAME\" IS PART OF \"$METAPACKAGE_NAME\", ALREADY INSTALLED"; return 0
 			fi
 		fi
 	done
 	# Check if the installation script contain a keyword related to a missing dependence
-	if grep -q 'ar.*x .*\.deb' ./"$arg"; then
-		if ! command -v ar 1>/dev/null; then
-			echo " 💀 ERROR: you cannot install \"$arg\" without installing \"binutils\""; return 0
+	app_deps="ar gcc glib-compile-schemas make tar unzip"
+	for name in $app_deps; do
+		if grep "^$name" ./"$arg" 1> /dev/null; then
+			if ! command -v "$name" &>/dev/null; then
+				if [ "$name" = "ar" ]; then
+					echo " 💀 ERROR: cannot install \"$arg\" without \"binutils\"" && return 0
+				else
+					echo " 💀 ERROR: cannot install \"$arg\" without \"$name\"" && return 0
+				fi
+			fi
 		fi
-	elif grep -q 'ffwa-' ./"$arg"; then
+	done
+	if grep -q 'ffwa-' ./"$arg"; then
 		ffbrowser=$(find ${PATH//:/ } -maxdepth 1 -name "firefox*" | sort | head -1)
-		if [[ -z "$ffbrowser" ]]; then
+		if [ -z "$ffbrowser" ]; then
 			echo " 💀 ERROR: you cannot install \"$arg\" without installing \"firefox\""; return 0
 		else
 			sed -i 's#firefox --class#'"$(echo "$ffbrowser" | xargs -L 1 basename)"' --class#g' ./"$arg"
 		fi
-	elif grep -q 'http.*\.tar' ./"$arg"; then
-		if ! command -v tar 1>/dev/null; then
-			echo " 💀 ERROR: you cannot install \"$arg\" without installing \"tar\""; return 0
-		fi
-	elif grep -q 'http.*\.zip' ./"$arg"; then
-		if ! command -v unzip 1>/dev/null; then
-			echo " 💀 ERROR: you cannot install \"$arg\" without installing \"unzip\""; return 0
-		fi
-	elif grep -q '^wget "$version.zsync"' ./"$arg"; then
-		if ! command -v zsync 1>/dev/null; then
-			optzsync=$(grep -F 'if test -f /opt/$APP/*.zsync' ./"$arg" | wc -l)
-			if [ "$optzsync" == 0 ]; then
-				echo " 💀 ERROR: you cannot install \"$arg\" without installing \"zsync\""; return 0
-			else
-				echo -e " ⚠️ WARNING: \"$arg\" may not be updatable without \"zsync\".\n\n The app will still be installed, but installing \"zsync\" is recommended! \n"
-			fi
-		fi
 	elif grep -qi "^wget.*.sh.*chmod.*&&" ./"$arg"; then
 		appimage_bulder_script=$(grep "^wget " ./"$arg" | tr '"' '\n' | grep -i "^http" | sed 's/$APP/'"$arg"'/g')
-		if curl --output /dev/null --silent --head --fail "$appimage_bulder_script" 1>/dev/null; then
-			appimage_build_deps="ar gcc glib-compile-schemas make tar unzip"
-			for name in $appimage_build_deps; do
-				if curl -Ls "$appimage_bulder_script" | grep "^$name" 1>/dev/null; then
+		if curl --output /dev/null --silent --head --fail "$appimage_bulder_script" 1> /dev/null; then
+			for name in $app_deps; do
+				if curl -Ls "$appimage_bulder_script" | grep "^$name" 1> /dev/null; then
 					if ! command -v "$name" &>/dev/null; then
-						if [ "$name" == "ar" ]; then
-							echo " 💀 ERROR: cannot create \"$arg\" without \"binutils\""; return 0
+						if [ "$name" = "ar" ]; then
+							echo " 💀 ERROR: cannot install \"$arg\" without \"binutils\"" && return 0
 						else
-							echo " 💀 ERROR: cannot create \"$arg\" without \"$name\""; return 0
+							echo " 💀 ERROR: cannot install \"$arg\" without \"$name\"" && return 0
 						fi
 					fi
 				fi
 			done
-			if curl -Ls "$appimage_bulder_script" | grep -i "appimagetool" 1>/dev/null; then
-				if ! command -v convert &>/dev/null; then
-					echo " 💀 ERROR: cannot create \"$arg\" without \"convert\" (from \"imagemagick\")"; return 0
-				fi
-			elif curl -Ls "$appimage_bulder_script" | grep -i "pkg2appimage" 1>/dev/null; then
+			if curl -Ls "$appimage_bulder_script" | grep -ie "appimagetool\|pkg2appimage" 1> /dev/null; then
 				if ! command -v convert &>/dev/null; then
 					echo " 💀 ERROR: cannot create \"$arg\" without \"convert\" (from \"imagemagick\")"; return 0
 				fi
@@ -189,18 +177,13 @@ function _install_arg() {
 		fi
 	fi
 	# Check if you are installing an app or a library
-	echo -e "◆ $(echo "\"$arg\"" | tr '[:lower:]' '[:upper:]'): starting installation script"
+	echo "◆ $APPNAME: starting installation script"
 	if grep -qi "^wget.*.sh.*chmod.*&&" ./"$arg"; then
-		echo -e "\n This script will create an AppImage on the fly, please wait..."
+		printf "\n This script will create an AppImage on the fly, please wait...\n"
 	elif grep -q "/usr/local/lib" ./"$arg"; then
-		echo -e '\n ⚠️ This script installs a system library in /usr/local/lib, cancel it if:\n'
-		echo ' - it is already installed in the system;'
-		echo -e ' - its already present in your repositories (so install it from there).\n'
+		printf "\n ⚠️ This script will install a system library in /usr/local/lib\n\n"
 		read -r -p " Do you wish to continue (N,y)?" yn
-		case "$yn" in
-		'y'|'Y')	;;
-		'n'|'N'|*)	echo -e "\n INSTALLATION ABORTED!"; return 0;;
-		esac	
+		case "$yn" in 'y'|'Y')	;; 'n'|'N'|*) printf "\n INSTALLATION ABORTED!\n"; return 0;; esac	
 	fi
 	_if_latest
 	_apply_patches
@@ -241,27 +224,27 @@ function _install_normally() {
 # This function is entirely dedicated to third-party databases
 function _install_from_third_party_repo() {
 	rm -R -f "$AMCACHEDIR/multirepo-args"
-	MULTIREPO=$(cat "$AMPATH/neodb" | grep "Source=" | sed 's/Source=//g')
+	MULTIREPO=$(grep "Source=" "$AMPATH/neodb" | sed 's/Source=//g')
 	for anyrepo in $MULTIREPO; do
-		if curl --output /dev/null --silent --head --fail "$anyrepo"/"$arg"  1>/dev/null; then
+		if curl --output /dev/null --silent --head --fail "$anyrepo"/"$arg"  1> /dev/null; then
 			echo "$anyrepo" >> "$AMCACHEDIR/multirepo-args"
 		fi
 	done
 	if test -f "$AMCACHEDIR/multirepo-args"; then
-		anyrepoargs=$(cat "$AMCACHEDIR/multirepo-args" 2>/dev/null | wc -l)
+		anyrepoargs=$(sort "$AMCACHEDIR/multirepo-args" 2> /dev/null | wc -l)
 		if [ "$anyrepoargs" -gt 0 ]; then
-			if curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg"  1>/dev/null; then
+			if curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg"  1> /dev/null; then
 				echo "$APPSDB" >> "$AMCACHEDIR/multirepo-args"
 			fi
-			anyrepoargall=$(cat "$AMCACHEDIR/multirepo-args" 2>/dev/null | wc -l)
-			if [ "$anyrepoargall" == 1 ]; then
+			anyrepoargall=$(sort "$AMCACHEDIR/multirepo-args" 2> /dev/null | wc -l)
+			if [ "$anyrepoargall" = 1 ]; then
 				mkdir -p "$AMCACHEDIR"/tmp && rm -f "$AMCACHEDIR"/tmp/* &&
-				wget -q "$(cat "$AMCACHEDIR/multirepo-args" | head -1)/$arg" -O "$AMCACHEDIR"/tmp/"$arg" &&
+				wget -q "$(head -1 "$AMCACHEDIR/multirepo-args")/$arg" -O "$AMCACHEDIR"/tmp/"$arg" &&
 				cd "$AMCACHEDIR" && mv ./tmp/"$arg" ./"$arg" && rmdir ./tmp || return
 				rm -R -f "$AMCACHEDIR/multirepo-args"
 				_install_arg
 			else
-				printf '\n%s\n' " ◆ FOUND $(echo "\"$arg\"" | tr '[:lower:]' '[:upper:]') FROM MULTIPLE SOURCES:"
+				printf '\n%s\n' " ◆ FOUND $APPNAME FROM MULTIPLE SOURCES:"
 				printf '%s\n\n' " Select a URL from this menu (read carefully) or press CTRL+C to abort:"; sleep 1
 				select d in $(cat "$AMCACHEDIR/multirepo-args"); do test -n "$d" && break; echo ">>> Invalid Selection"; done
 				mkdir -p "$AMCACHEDIR"/tmp && rm -f "$AMCACHEDIR"/tmp/* &&
@@ -270,7 +253,7 @@ function _install_from_third_party_repo() {
 				rm -R -f "$AMCACHEDIR/multirepo-args"
 				_install_arg
 			fi
-		elif curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg"  1>/dev/null; then
+		elif curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg"  1> /dev/null; then
 			mkdir -p "$AMCACHEDIR"/tmp && rm -f "$AMCACHEDIR"/tmp/* &&
 			wget -q "$APPSDB"/"$arg" -O "$AMCACHEDIR"/tmp/"$arg" &&
 			cd "$AMCACHEDIR" && mv ./tmp/"$arg" ./"$arg" && rmdir ./tmp || return
@@ -279,7 +262,7 @@ function _install_from_third_party_repo() {
 		else
 			echo " 💀 ERROR: \"$arg\" does NOT exist in the database, see \"$AMCLI -l\""
 		fi
-	elif curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg"  1>/dev/null; then
+	elif curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg"  1> /dev/null; then
 		_install_normally
 	else
 		echo " 💀 ERROR: \"$arg\" does NOT exist in the database, see \"$AMCLI -l\""
@@ -294,81 +277,67 @@ while [ -n "$1" ]; do
 
 	case "$1" in
 	'-i'|'install')
-		case $2 in
-		'')
+		if [ -z "$2" ]; then
 			echo " USAGE: $AMCLI $1 [ARGUMENT]"
-			echo " USAGE: $AMCLI $1 --debug [ARGUMENT]"
-			echo " USAGE: $AMCLI $1 --force-latest [ARGUMENT]"; exit
-			;;
-		'--debug'|'--force-latest')
-			case $3 in
-				'')	echo " USAGE: $AMCLI $1 --debug [ARGUMENT]"
-					echo " USAGE: $AMCLI $1 --force-latest [ARGUMENT]"; exit;;
-			esac
-		esac
-
-		if [ "$AMCLI" == am ] 2>/dev/null; then
+			echo "        $AMCLI $1 --debug [ARGUMENT]"
+			echo "        $AMCLI $1 --force-latest [ARGUMENT]"; exit
+		fi
+		if [ "$AMCLI" = am ] 2> /dev/null; then
 	  		$SUDOCOMMAND echo -ne "\r"
-	  		if ! $SUDOCOMMAND -n true 2>/dev/null; then
+	  		if ! $SUDOCOMMAND -n true 2> /dev/null; then
 				exit
 	  		fi
 	  	fi
-
 		echo "############################################################################"
 		echo "##                                                                        ##"
 		echo "##                  START OF ALL INSTALLATION PROCESSES                   ##"
 		echo "##                                                                        ##"
 		echo "############################################################################"
 		_clean_amcachedir 2> /dev/null
-		echo "$@" | tr ' ' '\n' >> "$AMCACHEDIR"/install-args 
-		ARGS=$(tail -n +2 "$AMCACHEDIR"/install-args)
-		METAPACKAGES="kdegames kdeutils libreoffice nodejs platform-tools"
+		echo "$@" | tr ' ' '\n' >> "$AMCACHEDIR"/install-args
+		ARGS=$(tail -n +2 "$AMCACHEDIR"/install-args | grep -v -- "--")
+		if [ "$2" = "--debug" ]; then
+			printf "\n You have decided to read the complete messages to debug the installation\n"
+			printf "____________________________________________________________________________\n"
+		elif [ "$2" = "--force-latest" ]; then
+			printf "\n You have decided to force downloads for the latest version (if it exists)\n"
+			printf "____________________________________________________________________________\n"
+		fi
+		METAPACKAGES="kdegames kdeutils node platform-tools"
 
 		for arg in $ARGS; do
 			echo ""
-			case $arg in
-			'--debug')
-				echo " You have decided to read the complete messages to debug the installation"
-				echo "____________________________________________________________________________"
-				;;
-			'--force-latest')
-				echo " You have decided to force downloads for the latest version (if it exists)"
-				echo "____________________________________________________________________________"
-				;;
-			*)
-				cd "$REALDIR" || return
-				# If the "tmp" directory is not removed, the installation failed, so remove the app
-				if test -d "$APPSPATH"/"$arg"/tmp; then
-					$SUDOCOMMAND "$APPSPATH"/"$arg"/remove 2> /dev/null
-				fi
-				# Various cases that may occur during installation (for example if you use a third-party repository)
-				if test -f "$APPSPATH"/"$arg"/remove; then
-					echo " ◆ \"$arg\" is already installed!" | tr '[:lower:]' '[:upper:]'
-				else
-					if echo "$arg" | grep -q "/"; then
-						if test -f "$arg" 2> /dev/null; then
-							_install_local_script
-						else
-							echo " 💀 ERROR: the file \"$arg\" does NOT exist"
-						fi
-					elif test -f "$AMPATH/neodb"; then
-						_install_from_third_party_repo
-					elif curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg"  1>/dev/null; then
-						_install_normally
+			cd "$REALDIR" || return
+			# If the "tmp" directory is not removed, the installation failed, so remove the app
+			if test -d "$APPSPATH"/"$arg"/tmp; then
+				$SUDOCOMMAND "$APPSPATH"/"$arg"/remove 2> /dev/null
+			fi
+			# Various cases that may occur during installation (for example if you use a third-party repository)
+			if test -f "$APPSPATH"/"$arg"/remove; then
+				echo " ◆ \"$arg\" is already installed!" | tr '[:lower:]' '[:upper:]'
+			else
+				if echo "$arg" | grep -q "/"; then
+					if test -f "$arg" 2> /dev/null; then
+						_install_local_script
 					else
-						echo " 💀 ERROR: \"$arg\" does NOT exist in the database, see \"$AMCLI -l\""
+						echo " 💀 ERROR: the file \"$arg\" does NOT exist"
 					fi
+				elif test -f "$AMPATH/neodb"; then
+					_install_from_third_party_repo
+				elif curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg"  1> /dev/null; then
+					_install_normally
+				else
+					echo " 💀 ERROR: \"$arg\" does NOT exist in the database, see \"$AMCLI -l\""
 				fi
-				echo "____________________________________________________________________________"
-				;;
-			esac
+			fi
+			echo "____________________________________________________________________________"
 		done
 		if test -f "$AMCACHEDIR"/installed; then
 			echo "############################################################################"
-			echo -e "\n                  END OF ALL INSTALLATION PROCESSES\n"
-			echo -e "             The following new programs have been installed:\n"
+			printf "\n                  END OF ALL INSTALLATION PROCESSES\n"
+			printf "             The following new programs have been installed:\n\n"
 			grep -w -v "◆ am" 0<"$AMCACHEDIR"/installed
-			echo -e "\n############################################################################"
+			printf "\n############################################################################\n"
 			exit
 		else
 			exit
@@ -376,34 +345,26 @@ while [ -n "$1" ]; do
 		;;
 
 	'-e'|'extra')
-		case $2 in
-		'')
+		if [ -z "$2" ]; then
 			echo " USAGE: $AMCLI $1 user/project [ARGUMENT]"
 			echo " USAGE: $AMCLI $1 user/project [ARGUMENT] [KEYWORD]"; exit
-			;;
-		esac
-		case $3 in
-		'')
+		elif [ -z "$3" ]; then
 			echo " USAGE: $AMCLI $1 user/project [ARGUMENT]"
 			echo " USAGE: $AMCLI $1 user/project [ARGUMENT] [KEYWORD]"; exit
-			;;
-		esac
-
-		mkdir -p "$CACHEDIR/extra"
-		if test -f "$CACHEDIR/extra/$3"; then
-			rm -f "$CACHEDIR/extra/$3"
 		fi
+		mkdir -p "$CACHEDIR/extra"
+		rm -f "$CACHEDIR/extra/$3"
 		wget -q "$AMREPO"/templates/AM-SAMPLE-AppImage -O "$CACHEDIR/extra/$3" || exit 1
 		sed -i "s#APP=SAMPLE#APP=$3#g" "$CACHEDIR/extra/$3"
 		USER_PROJECT=$(echo "$2" | sed 's#https://github.com/##g' | cut -f1,2 -d'/')
 		API_GITHUB_REPO="https://api.github.com/repos/$USER_PROJECT/releases"
 		sed -i "s#REPLACETHIS#$USER_PROJECT#g" "$CACHEDIR/extra/$3"
 		q="'"
-		if [ "$arch" == "x86_64" ]; then
+		if [ "$arch" = "x86_64" ]; then
 			FILTER=' | grep -vi "i386\\|i686\\|i586\\|i486\\|aarch64\\|arm64\\|armv7l"'
-		elif [ "$arch" == "i686" ]; then
+		elif [ "$arch" = "i686" ]; then
 			FILTER=' | grep -ie "i386\\|i686\\|i586\\|i486" '
-		elif [ "$arch" == "aarch64" ]; then
+		elif [ "$arch" = "aarch64" ]; then
 			FILTER=' | grep -ie "aarch64\\|arm64" '
 		fi
 		FUNCTION='curl -Ls '"$API_GITHUB_REPO"' | sed '"$q"'s/[()",{} ]/\\n/g'"$q"' | grep -oi "https.*mage$"'"$FILTER"' | head -1'
