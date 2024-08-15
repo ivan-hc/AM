@@ -22,7 +22,7 @@ _spooky_check() {
 		read -p " Do you wish to continue? (N/y): " yn
 		if ! echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
 			printf "\n INSTALLATION ABORTED!\n"
-			exit 1
+			return 1
 		fi
 	fi
 }
@@ -118,7 +118,8 @@ _dependency_check_utils() {
 	for name in $app_deps; do
 		if grep "^$name" ./"$arg" 1>/dev/null && ! command -v "$name" >/dev/null 2>&1; then
 			[ "$name" = "ar" ] && name="binutils"
-			echo " 💀 ERROR: cannot install \"$arg\" without \"$name\"" && return 0
+			echo " 💀 ERROR: cannot install \"$arg\" without \"$name\"" 
+			return 1
 		fi
 	done
 }
@@ -132,7 +133,7 @@ for metapackage in $METAPACKAGES; do
 		elif [ -d "$APPSPATH"/"$metapackage" ]; then
 			METAPACKAGE_NAME=$(echo "$metapackage" | tr '[:lower:]' '[:upper:]')
 			echo " ◆ \"$APPNAME\" IS PART OF \"$METAPACKAGE_NAME\", ALREADY INSTALLED" 
-			return 0
+			return 1
 		fi
 	fi
 done	
@@ -147,8 +148,8 @@ done
 _install_arg() {
 	APPNAME=$(echo "\"$arg\"" | tr '[:lower:]' '[:upper:]')
 	chmod a+x ./"$arg"
-	_metapackage_check
-	_dependency_check_utils
+	_metapackage_check || return 1
+	_dependency_check_utils || return 1
 	if grep -q 'ffwa-' ./"$arg"; then
 		ffbrowser=$(find ${PATH//:/ } -maxdepth 1 -name "firefox*" | sort | head -1)
 		if [ -z "$ffbrowser" ]; then
@@ -191,7 +192,7 @@ _install_arg() {
 			return 0
 		fi
 	fi
-	_spooky_check
+	_spooky_check || return 1
 	_if_latest
 	_apply_patches
 	echo ""
