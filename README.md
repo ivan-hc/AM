@@ -5,7 +5,8 @@
 
 | [<img src="https://github.com/user-attachments/assets/8f98fd3e-d94e-4b58-925d-e2ae8ff3a50c">](https://github.com/ivan-hc/AM) | [<img src="https://github.com/user-attachments/assets/2c3affbd-5f0d-4092-b12f-a12c2d9566bc">](https://github.com/ivan-hc/AM) | [<img src="https://github.com/user-attachments/assets/ebff562a-7692-4bbd-a5c5-68967a98a60b">](https://github.com/ivan-hc/AM) |
 | - | - | - |
-| [<img src="https://github.com/user-attachments/assets/d0f15dd8-1175-4454-87b0-bf1b3e348e30">](https://github.com/ivan-hc/AM) | [<img src="https://github.com/user-attachments/assets/ca558c39-6354-4933-8c99-85f8fd1c3730">](https://github.com/ivan-hc/AM) | [<img src="https://github.com/user-attachments/assets/40d90713-316e-4df1-be9a-edd15827bc60">](https://github.com/ivan-hc/AM) |
+| [<img src="https://github.com/user-attachments/assets/deff2450-cb70-4d36-a8c8-6d80d16987ed">](https://github.com/ivan-hc/AM) | [<img src="https://github.com/user-attachments/assets/ca558c39-6354-4933-8c99-85f8fd1c3730">](https://github.com/ivan-hc/AM) | [<img src="https://github.com/user-attachments/assets/40d90713-316e-4df1-be9a-edd15827bc60">](https://github.com/ivan-hc/AM) |
+| [<img src="https://github.com/user-attachments/assets/ff38a91f-7698-4498-bd46-40f0a69e32f9">](https://github.com/ivan-hc/AM) | [<img src="https://github.com/user-attachments/assets/5886ba67-a337-435d-ac50-b280bc2cf7f8">](https://github.com/ivan-hc/AM) | [<img src="https://github.com/user-attachments/assets/dfbcf06a-17e2-4fef-b28c-777f4b55565e">](https://github.com/ivan-hc/AM) |
 
 </div>
 
@@ -806,8 +807,11 @@ This section is committed to giving small demonstrations of each available optio
   - [Third-party databases for applications (NeoDB)](#third-party-databases-for-applications-neodb)
 
 __________________________________________________________________________
-### Install applications
-Option `-i` or `install`, usage:
+## Install applications
+The option `-i` or `install` is the one responsible of the installation of apps or libraries.
+
+### Install, normal behaviour
+This is the normal syntax:
 ```
 am -i $PROGRAM
 ```
@@ -815,9 +819,39 @@ or
 ```
 appman -i $PROGRAM
 ```
-in this video I'll install AnyDesk and LXtask:
+in this video I'll install AnyDesk:
 
-https://github.com/ivan-hc/AM/assets/88724353/c2e8b654-29d3-4ded-8877-f77ef11d58fc
+https://github.com/user-attachments/assets/62bc7444-8b1f-4db2-b23b-db7219eec15d
+
+### Install, debug an installation script
+The "install.am" module contains some patches to disable long messages. You can see them with the suboption `--debug`:
+```
+am -i --debug $PROGRAM
+```
+or
+```
+appman -i --debug $PROGRAM
+```
+let test again the installation of AnyDesk using the `--debug` flag:
+
+https://github.com/user-attachments/assets/9dd73186-37e2-4742-887e-4f98192bd764
+
+### Install the "latest" stable release instead of the latest "unstable"
+By default, many installation scripts for apps hosted on github will point to the more recent generic release instead of "latest", which is normally used to indicate that the build is "stable". This is because upstream developers do not always guarantee a certain packaging format in "latest", sometimes they may only publish packages for Windows or macOS, so pointing to "latest" would not guarantee that any package for Linux will be installed.
+
+On the other hand, if you know that the upstream developer will always guarantee a Linux package in "latest" and "AM" instead points to a potentially unstable development version (Alpha, Beta, RC...), this is the syntax to adopt:
+```
+am -i --force-latest $PROGRAM
+```
+or
+```
+appman -i --force-latest $PROGRAM
+```
+in this video I'll install "SqliteBrowser" using the `--force-latest` flag:
+
+https://github.com/user-attachments/assets/ee29adfd-90e1-46f7-aed9-b9c410f68776
+
+See also "[The script points to "releases" instead of downloading the latest stable](#the-script-points-to-releases-instead-of-downloading-the-latest-stable)".
 
 ------------------------------------------------------------------------
 
@@ -1398,6 +1432,8 @@ or do it manually:
 sed -i 's#releases -O -#releases/latest -O -#g' /opt/$PROGRAM/AM-updater
 am -u $PROGRAM
 ```
+
+See also "[Install the "latest" stable release instead of the latest "unstable"](#install-the-latest-stable-release-instead-of-the-latest-unstable)".
 
 ------------------------------------------------------------------------
 ### Wrong download link
