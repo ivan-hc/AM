@@ -2,180 +2,16 @@
 
 ##############################################################################################
 # THIS MODULE INCLUDES ALL THE ACTIONS INTENDED TO MANAGE THE APPS INSTALLED FROM THE DATABASE
+#
+# OPTIONS: BACKUP/RESTORE, DOWNGRADE, LOCK/UNLOCK, NOLIBFUSE, REMOVE
+#
 ##############################################################################################
 
 SUDOCMD="$SUDOCOMMAND"
 
-case $2 in
-  '') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
-esac
-
-########################################
-# FUNCTIONS RELATED TO THE APP'S REMOVAL
-########################################
-
-function _remove_check_removals() {
-	if test -f "$AMCACHEDIR"/unavailable-args; then
-		echo -e "-----------------------------------------------------------------------\n"
-		if [ "$AMCLI" == am ] 2>/dev/null; then
-			echo -e " 💀 ERROR, the following programs you want to remove are NOT in $APPSPATH :\n\n$(sort "$AMCACHEDIR"/unavailable-args)"
-		else
-			echo -e " 💀 ERROR, the following programs you want to remove are NOT in\n    $APPSPATH :\n\n$(sort "$AMCACHEDIR"/unavailable-args)"
-		fi
-		echo -e '\n INVALID "APPNAME"!'
-		echo -e "\n-----------------------------------------------------------------------\n"
-		echo ' ◆ INSTALLED PROGRAMS/VALID ARGUMENTS (SEE THE "APPNAME" COLUMN):'
-		$AMCLIPATH -f | grep -v "STANDALONE PROGRAMS MANAGED"; rm "$AMCACHEDIR"/unavailable-args
-		echo -e "-----------------------------------------------------------------------"
-		exit
-	else
-		exit
-	fi
-}
-
-function _REMOVE() {
-	if ls "$APPSPATH"/"$arg" > /dev/null 2>&1; then
-		$SUDOCMD "$APPSPATH"/"$arg"/remove && sleep 0.5 && echo " ◆ \"$(echo "$arg" | tr '[:lower:]' '[:upper:]')\" HAS BEEN SUCCESSFULLY REMOVED!"
-	else
-		echo " - $arg" >> "$AMCACHEDIR"/unavailable-args
-	fi
-}
-
-function _remove() {
-	if ls "$APPSPATH"/"$arg" > /dev/null 2>&1; then
-		case $arg in
-		*) 
-			$SUDOCMD echo "" > /dev/null; read -r -p ' ◆ DO YOU WISH TO REMOVE "'"$(echo "$arg" | tr '[:lower:]' '[:upper:]')"'" (Y,n)?' yn
-			case $yn in
-			[Nn]* ) 
-				echo ' - "'"$(echo "$arg" | tr '[:lower:]' '[:upper:]')"'" HAS NOT BEEN REMOVED!'; echo "";;
-			[Yy]*|* ) 
-				$SUDOCMD "$APPSPATH"/"$arg"/remove && sleep 0.5 && echo " ◆ \"$(echo "$arg" | tr '[:lower:]' '[:upper:]')\" HAS BEEN SUCCESSFULLY REMOVED!";;
-			esac
-		esac
-	else
-		echo " - $arg" >> "$AMCACHEDIR"/unavailable-args
-	fi
-}
-
-######################################
-# FUNCTION TO DOWNGRADE INSTALLED APPS
-######################################
-
-function _do_rollback() {
-	if test -f "$APPSPATH"/"$2"/AM-updater; then
-		if test -f "$APPSPATH"/"$2"/"$2"-rollback; then
-			cd "$APPSPATH"/"$2" || return
-			./"$2"-rollback
-			exit
-		elif grep -q "api.github.com" "$APPSPATH"/"$2"/AM-updater; then
-			cd "$APPSPATH"/"$2" || return
-			rm -f "$AMCACHEDIR/rollback-args";
-			extension=$(sort ./version | tr '.' '\n' | tail -1)
-			if grep -q "^REPO=" ./AM-updater; then
-				REPO=$(grep -i "REPO=" ./AM-updater | grep -o -P '(?<=").*(?=")')
-			elif grep -q "^SITE=" ./AM-updater; then
-				REPO=$(grep -i "SITE=" ./AM-updater | grep -o -P '(?<=").*(?=")')
-			fi
-			entries_list=$(grep "^version=" ./AM-updater | sed '1,${ s/version=$(//g; s/head -1)/head -100/g; s#$REPO#'"$REPO"'#g; s#releases/latest#releases#g; s#releases #releases?per_page=100 #g; }')
-			printf "%s\n" "$(eval "$entries_list")" | tr ' ' '\n' | grep -i "$extension$" >> "$AMCACHEDIR/rollback-args"
-			if ! grep -q "[0-9]" "$AMCACHEDIR"/rollback-args; then
-				echo " ERROR: No valid links found, sorry!"
-				exit
-			else
-				echo "-----------------------------------------------------------------------"
-				echo "You have chosen to roll back $2."
-				echo "Rollback will be done from https://github.com/$REPO"
-				echo "-----------------------------------------------------------------------"
-				printf "Select a URL from this menu (read carefully) or press CTRL+C to abort:\n-----------------------------------------------------------------------\n"; sleep 1;
-				select d in $(cat "$AMCACHEDIR/rollback-args"); do test -n "$d" && break; echo ">>> Invalid Selection"; done
-
-				cp ./AM-updater ./AM-rollback
-				sed -i 's/version0/#version0/g' ./AM-rollback
-
-				if test -f ./"$2".zsync; then mv ./"$2".zsync ./"$2".zsync.old;	fi
-
-				if wget --version | head -1 | grep -q ' 1.'; then
-					sed -i '/wget/c\wget -q --show-progress '"$d"'' ./AM-rollback
-				else
-					sed -i '/wget/c\wget '"$d"'' ./AM-rollback
-				fi
-				./AM-rollback
-				rm -f ./AM-rollback
-
-				if test -f ./"$2".zsync.old; then mv ./"$2".zsync.old ./"$2".zsync; fi
-
-				echo "$d" > ./version
-				_clean_amcachedir
-				_list_updatable_apps
-				echo -e "\nROLLBACK SUCCESSFUL!"
-				exit
-			fi
-		else
-			echo " The option \"$1\" only works for https://github.com"; exit
-		fi
-	else
-		echo " No AM-updater available for \"$2\", cannot detect any URL!"; exit
-	fi
-}
-
-#############################################
-# FUNCTIONS TO PREVENT THE APPS TO BE UPDATED
-#############################################
-
-function _do_lock() {
-	while [ -n "$1" ]; do
-		if test -f "$APPSPATH"/"$2"/AM-updater; then
-			case $2 in
-				*)
-					read -r -p " Do you wish to keep $2  at the current version (y,N)?" yn
-					case $yn in
-						[Yy]* )
-							mv "$APPSPATH"/"$2"/AM-updater "$APPSPATH"/"$2"/AM-LOCK 1>/dev/null &&
-							echo " $2 has been locked at current version!"
-							;;
-						[Nn]*|* )
-							echo " Operation aborted!"
-							exit
-							;;
-					esac
-					;;
-			esac
-		else
-			echo -e "\n \"$(echo "$AMCLI" | tr '[:lower:]' '[:upper:]')\" cannot manage updates for $2, \"AM-updater\" file not found!\n"
-			exit
-		fi
-	done
-}
-
-function _do_unlock() {
-	while [ -n "$1" ]; do
-		if test -f "$APPSPATH"/"$2"/AM-LOCK; then
-			case $2 in
-				*)
-					read -r -p " Do you wish to unlock updates for $2 (Y,n)?" yn
-					case $yn in
-						[Nn]* )
-							echo " $2 is still locked at current version!"
-							exit
-							;;
-						[Yy]*|* )
-							mv "$APPSPATH"/"$2"/AM-LOCK "$APPSPATH"/"$2"/AM-updater 1>/dev/null
-							echo " \"$2\" can now receive updates!"
-							exit
-							;;
-					esac
-					;;
-			esac
-		else
-			echo " \"$2\" cannot be unlocked, \"AM-LOCK\" file not found!"; exit
-		fi
-	done
-}
-
-################################################################
-# FUNCTIONS TO BACKUP/RESTORE THE INSTALLED APPS USING SNAPSHOTS
-################################################################
+###########################################################################
+# BACKUP/RESTORE
+###########################################################################
 
 function _backup() {
 	case $arg in
@@ -252,9 +88,124 @@ function _do_overwrite() {
 	done
 }
 
-############################################################
-# FUNCTION TO CONVERT TYPE2 APPIMAGES TO NEW GENERATION ONES
-############################################################
+###########################################################################
+# DOWNGRADE
+###########################################################################
+
+function _do_rollback() {
+	if test -f "$APPSPATH"/"$2"/AM-updater; then
+		if test -f "$APPSPATH"/"$2"/"$2"-rollback; then
+			cd "$APPSPATH"/"$2" || return
+			./"$2"-rollback
+			exit
+		elif grep -q "api.github.com" "$APPSPATH"/"$2"/AM-updater; then
+			cd "$APPSPATH"/"$2" || return
+			rm -f "$AMCACHEDIR/rollback-args";
+			extension=$(sort ./version | tr '.' '\n' | tail -1)
+			if grep -q "^REPO=" ./AM-updater; then
+				REPO=$(grep -i "REPO=" ./AM-updater | grep -o -P '(?<=").*(?=")')
+			elif grep -q "^SITE=" ./AM-updater; then
+				REPO=$(grep -i "SITE=" ./AM-updater | grep -o -P '(?<=").*(?=")')
+			fi
+			entries_list=$(grep "^version=" ./AM-updater | sed '1,${ s/version=$(//g; s/head -1)/head -100/g; s#$REPO#'"$REPO"'#g; s#releases/latest#releases#g; s#releases #releases?per_page=100 #g; }')
+			printf "%s\n" "$(eval "$entries_list")" | tr ' ' '\n' | grep -i "$extension$" >> "$AMCACHEDIR/rollback-args"
+			if ! grep -q "[0-9]" "$AMCACHEDIR"/rollback-args; then
+				echo " ERROR: No valid links found, sorry!"
+				exit
+			else
+				echo "-----------------------------------------------------------------------"
+				echo "You have chosen to roll back $2."
+				echo "Rollback will be done from https://github.com/$REPO"
+				echo "-----------------------------------------------------------------------"
+				printf "Select a URL from this menu (read carefully) or press CTRL+C to abort:\n-----------------------------------------------------------------------\n"; sleep 1;
+				select d in $(cat "$AMCACHEDIR/rollback-args"); do test -n "$d" && break; echo ">>> Invalid Selection"; done
+
+				cp ./AM-updater ./AM-rollback
+				sed -i 's/version0/#version0/g' ./AM-rollback
+
+				if test -f ./"$2".zsync; then mv ./"$2".zsync ./"$2".zsync.old;	fi
+
+				if wget --version | head -1 | grep -q ' 1.'; then
+					sed -i '/wget/c\wget -q --show-progress '"$d"'' ./AM-rollback
+				else
+					sed -i '/wget/c\wget '"$d"'' ./AM-rollback
+				fi
+				./AM-rollback
+				rm -f ./AM-rollback
+
+				if test -f ./"$2".zsync.old; then mv ./"$2".zsync.old ./"$2".zsync; fi
+
+				echo "$d" > ./version
+				_clean_amcachedir
+				_list_updatable_apps
+				echo -e "\nROLLBACK SUCCESSFUL!"
+				exit
+			fi
+		else
+			echo " The option \"$1\" only works for https://github.com"; exit
+		fi
+	else
+		echo " No AM-updater available for \"$2\", cannot detect any URL!"; exit
+	fi
+}
+
+###########################################################################
+# LOCK/UNLOCK
+###########################################################################
+
+function _do_lock() {
+	while [ -n "$1" ]; do
+		if test -f "$APPSPATH"/"$2"/AM-updater; then
+			case $2 in
+				*)
+					read -r -p " Do you wish to keep $2  at the current version (y,N)?" yn
+					case $yn in
+						[Yy]* )
+							mv "$APPSPATH"/"$2"/AM-updater "$APPSPATH"/"$2"/AM-LOCK 1>/dev/null &&
+							echo " $2 has been locked at current version!"
+							;;
+						[Nn]*|* )
+							echo " Operation aborted!"
+							exit
+							;;
+					esac
+					;;
+			esac
+		else
+			echo -e "\n \"$(echo "$AMCLI" | tr '[:lower:]' '[:upper:]')\" cannot manage updates for $2, \"AM-updater\" file not found!\n"
+			exit
+		fi
+	done
+}
+
+function _do_unlock() {
+	while [ -n "$1" ]; do
+		if test -f "$APPSPATH"/"$2"/AM-LOCK; then
+			case $2 in
+				*)
+					read -r -p " Do you wish to unlock updates for $2 (Y,n)?" yn
+					case $yn in
+						[Nn]* )
+							echo " $2 is still locked at current version!"
+							exit
+							;;
+						[Yy]*|* )
+							mv "$APPSPATH"/"$2"/AM-LOCK "$APPSPATH"/"$2"/AM-updater 1>/dev/null
+							echo " \"$2\" can now receive updates!"
+							exit
+							;;
+					esac
+					;;
+			esac
+		else
+			echo " \"$2\" cannot be unlocked, \"AM-LOCK\" file not found!"; exit
+		fi
+	done
+}
+
+###########################################################################
+# NOLIBFUSE
+###########################################################################
 
 function _nolibfuse_if_zsync_file_exists() {
 	if test -f ./*.zsync; then
@@ -365,10 +316,61 @@ function _do_nolibfuse() {
 		exit
 	fi
 }
+###########################################################################
+# REMOVE
+###########################################################################
 
-##################################
+function _remove_check_removals() {
+	if test -f "$AMCACHEDIR"/unavailable-args; then
+		echo -e "-----------------------------------------------------------------------\n"
+		if [ "$AMCLI" == am ] 2>/dev/null; then
+			echo -e " 💀 ERROR, the following programs you want to remove are NOT in $APPSPATH :\n\n$(sort "$AMCACHEDIR"/unavailable-args)"
+		else
+			echo -e " 💀 ERROR, the following programs you want to remove are NOT in\n    $APPSPATH :\n\n$(sort "$AMCACHEDIR"/unavailable-args)"
+		fi
+		echo -e '\n INVALID "APPNAME"!'
+		echo -e "\n-----------------------------------------------------------------------\n"
+		echo ' ◆ INSTALLED PROGRAMS/VALID ARGUMENTS (SEE THE "APPNAME" COLUMN):'
+		$AMCLIPATH -f | grep -v "STANDALONE PROGRAMS MANAGED"; rm "$AMCACHEDIR"/unavailable-args
+		echo -e "-----------------------------------------------------------------------"
+		exit
+	else
+		exit
+	fi
+}
+
+function _REMOVE() {
+	if ls "$APPSPATH"/"$arg" > /dev/null 2>&1; then
+		$SUDOCMD "$APPSPATH"/"$arg"/remove && sleep 0.5 && echo " ◆ \"$(echo "$arg" | tr '[:lower:]' '[:upper:]')\" HAS BEEN SUCCESSFULLY REMOVED!"
+	else
+		echo " - $arg" >> "$AMCACHEDIR"/unavailable-args
+	fi
+}
+
+function _remove() {
+	if ls "$APPSPATH"/"$arg" > /dev/null 2>&1; then
+		case $arg in
+		*) 
+			$SUDOCMD echo "" > /dev/null; read -r -p ' ◆ DO YOU WISH TO REMOVE "'"$(echo "$arg" | tr '[:lower:]' '[:upper:]')"'" (Y,n)?' yn
+			case $yn in
+			[Nn]* ) 
+				echo ' - "'"$(echo "$arg" | tr '[:lower:]' '[:upper:]')"'" HAS NOT BEEN REMOVED!'; echo "";;
+			[Yy]*|* ) 
+				$SUDOCMD "$APPSPATH"/"$arg"/remove && sleep 0.5 && echo " ◆ \"$(echo "$arg" | tr '[:lower:]' '[:upper:]')\" HAS BEEN SUCCESSFULLY REMOVED!";;
+			esac
+		esac
+	else
+		echo " - $arg" >> "$AMCACHEDIR"/unavailable-args
+	fi
+}
+
+###########################################################################
 # OPTIONS AVAILABLE IN THIS MODULE
-##################################
+###########################################################################
+
+case $2 in
+  '') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
+esac
 
 case "$1" in
 	'-b'|'backup') # DO A BACKUP OF AN INSTALLED APPLICATION
