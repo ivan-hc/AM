@@ -1475,7 +1475,7 @@ The reasons may be two:
 # Related projects
 #### External tools and forks used in this project
 - [aisap](https://github.com/mgord9518/aisap), sandboxing solutions for AppImages
-- [appimagetool/go-appimage](https://github.com/probonopd/go-appimage), get rid of libfuse2 from your AppImages
+- [appimagetool](https://github.com/AppImage/appimagetool), get rid of libfuse2 from your AppImages
 - [pkg2appimage](https://github.com/AppImage/pkg2appimage), create AppImages on the fly from existing .deb packages
 - [repology](https://github.com/repology), the encyclopedia of all software versions
 
