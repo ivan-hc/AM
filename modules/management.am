@@ -12,27 +12,6 @@ SUDOCMD="$SUDOCOMMAND"
 ###########################################################################
 
 function _backup() {
-	case $arg in
-	'')
-		echo " Specify the name of a program to back up"; echo ""; exit;;
-	*)
-		if test -f "$APPSPATH"/"$arg"/remove; then
-			echo ""; read -r -p " Do you wish to backup the current version of $arg (y,N)?" yn
-			case $yn in
-			[Yy]* )
-				mkdir -p "$HOME/.am-snapshots/$arg"
-				cp -r "$APPSPATH"/"$arg" "$HOME/.am-snapshots/$arg/$(date +%F-%X | sed 's/://g' | sed 's/-//g')"
-				echo -e "\n SAVED in $HOME/.am-snapshots/$arg\n";;
-			[Nn]*|* )
-				echo ""; echo " OPERATION ABORTED!"; echo "";;
-			esac
-		else
-			echo -e "\n \"$arg\" is not a valid argument or is not installed.\n"
-		fi
-	esac
-}
-
-function _do_backup() {
 	while [ -n "$1" ]; do
 		rm -f "$AMCACHEDIR"/backup-args;
 		echo "$@" | tr ' ' '\n' >> "$AMCACHEDIR"/backup-args && echo STOP >> "$AMCACHEDIR"/backup-args;
@@ -41,36 +20,30 @@ function _do_backup() {
 			if [ "$arg" = STOP ]; then
 				exit
 			else
-				_backup
+				case $arg in
+				'')
+					echo " Specify the name of a program to back up"; echo ""; exit;;
+				*)
+					if test -f "$APPSPATH"/"$arg"/remove; then
+						echo ""; read -r -p " Do you wish to backup the current version of $arg (y,N)?" yn
+						case $yn in
+						[Yy]* )
+							mkdir -p "$HOME/.am-snapshots/$arg"
+							cp -r "$APPSPATH"/"$arg" "$HOME/.am-snapshots/$arg/$(date +%F-%X | sed 's/://g' | sed 's/-//g')"
+							echo -e "\n SAVED in $HOME/.am-snapshots/$arg\n";;
+						[Nn]*|* )
+							echo ""; echo " OPERATION ABORTED!"; echo "";;
+						esac
+					else
+						echo -e "\n \"$arg\" is not a valid argument or is not installed.\n"
+					fi
+				esac
 			fi
 		done
 	done
 }
 
 function _overwrite() {
-	case $arg in
-	'')
-		echo " Specify the name of a program to overwrite"; echo "";;
-	*)
-		if test -f "$APPSPATH"/"$arg"/remove; then
-			echo ""; read -r -p " Do you wish to overwrite this version of $arg with an old one (y,N)?" yn
-			case $yn in
-			[Yy]* )
-				printf "\n Please, select a snapshot or press CTRL+C to abort:\n\n"; sleep 1;
-				select d in $HOME/.am-snapshots/$arg/*; do test -n "$d" && break; echo ">>> Invalid Selection"; done
-				cp -r --backup=t "$d"/* "$APPSPATH"/"$arg"/
-				rm -R -f ./tmp "$APPSPATH"/"$arg"/*~
-				echo -e "\n RESTORE COMPLETED SUCCESSFULLY!\n";;
-			[Nn]*|* )
-				echo ""; echo " OPERATION ABORTED!"; echo "";;
-			esac
-		else
-			echo ""; echo " '$arg' is not a valid argument or is not installed."; echo ""
-		fi
-	esac
-}
-
-function _do_overwrite() {
 	while [ -n "$1" ]; do
 		rm -f "$AMCACHEDIR"/overwrite-args
 		echo "$@" | tr ' ' '\n' >> "$AMCACHEDIR"/overwrite-args && echo STOP >> "$AMCACHEDIR"/overwrite-args
@@ -79,7 +52,26 @@ function _do_overwrite() {
 			if [ "$arg" = STOP ]; then
 				exit
 			else
-				_overwrite
+				case $arg in
+				'')
+					echo " Specify the name of a program to overwrite"; echo "";;
+				*)
+					if test -f "$APPSPATH"/"$arg"/remove; then
+						echo ""; read -r -p " Do you wish to overwrite this version of $arg with an old one (y,N)?" yn
+						case $yn in
+						[Yy]* )
+							printf "\n Please, select a snapshot or press CTRL+C to abort:\n\n"; sleep 1;
+							select d in $HOME/.am-snapshots/$arg/*; do test -n "$d" && break; echo ">>> Invalid Selection"; done
+							cp -r --backup=t "$d"/* "$APPSPATH"/"$arg"/
+							rm -R -f ./tmp "$APPSPATH"/"$arg"/*~
+							echo -e "\n RESTORE COMPLETED SUCCESSFULLY!\n";;
+						[Nn]*|* )
+							echo ""; echo " OPERATION ABORTED!"; echo "";;
+						esac
+					else
+						echo ""; echo " '$arg' is not a valid argument or is not installed."; echo ""
+					fi
+				esac
 				_remove_info_files
 			fi
 		done
@@ -90,7 +82,7 @@ function _do_overwrite() {
 # DOWNGRADE
 ###########################################################################
 
-function _do_rollback() {
+function _downgrade() {
 	if test -f "$APPSPATH"/"$2"/AM-updater; then
 		if test -f "$APPSPATH"/"$2"/"$2"-rollback; then
 			cd "$APPSPATH"/"$2" || return
@@ -372,12 +364,12 @@ esac
 
 case "$1" in
 	'-b'|'backup') # DO A BACKUP OF AN INSTALLED APPLICATION
-		_do_backup "${@}"
+		_backup "${@}"
 		shift
 		;;
 
 	'-o'|'overwrite') # OVERWRITE A NEW VERSION WITH THE PREVIOUS ONE FROM A BACKUP DONE WITH THE PREVIOUS OPTION
-		_do_overwrite "${@}"
+		_overwrite "${@}"
 		shift
 		;;
 
@@ -418,7 +410,7 @@ case "$1" in
 	'--rollback'|'downgrade') # THIS OPTION ALLOWS YOU TO DOWNGRADE THE INSTALLED APP TO A PREVIOUS VERSION, IF EXISTS
 		_online_check
 		while [ -n "$1" ]; do
-			_do_rollback "${@}"
+			_downgrade "${@}"
 		done
 		shift
 		;;
