@@ -191,7 +191,6 @@ function _lock_unlock() {
 	esac
 }
 
-
 ###########################################################################
 # NOLIBFUSE
 ###########################################################################
@@ -210,15 +209,13 @@ function _nolibfuse_if_zsync_file_exists() {
 }
 
 function _nolibfuse_download_appimagetool() {
-	wget -q "$(curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/probonopd/go-appimage/releases \
-		| grep -v zsync | grep -i continuous | grep -i appimagetool | grep -i "$(uname -m)" | grep browser_download_url \
-		| cut -d '"' -f 4 | head -1)" -O appimagetool
+	wget -q "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-$arch.AppImage" -O appimagetool
 	chmod a+x ./appimagetool
 }
 
 function _nolibfuse_command_to_convert_to_new_gen_appimages() {
 	chmod 0755 ./squashfs-root
-	ARCH="$(uname -m)" VERSION=$(./appimagetool -v | grep -o '[[:digit:]]*') ./appimagetool -s ./squashfs-root > /dev/null 2> /dev/null
+	ARCH=x86_64 ./appimagetool --comp zstd --mksquashfs-opt -Xcompression-level --mksquashfs-opt 20 ./squashfs-root > /dev/null 2> /dev/null
 }
 
 function _nolibfuse_if_appimage_has_been_converted() {
@@ -248,6 +245,19 @@ function _nolibfuse_if_appimage_has_been_converted() {
 	esac
 }
 
+function _fake_desktop-file-validate() {
+	if ! command -v desktop-file-validate >/dev/null 2>&1; then
+		echo -e '#!/bin/sh\nexit 0' > ./desktop-file-utils && chmod a+x ./desktop-file-utils
+		export PATH=./:"${PATH}"
+	fi
+}
+
+function _fake_desktop-file-validate_remove() {
+	if test -f desktop-file-validate; then
+		rm -f ./desktop-file-validate
+	fi
+}
+
 function _do_nolibfuse() {
 	cd "$APPSPATH" || exit 1
 	if test -f "./$2/$2" 2>/dev/null; then
@@ -264,10 +274,12 @@ function _do_nolibfuse() {
 			else
 				_nolibfuse_if_zsync_file_exists
 				_nolibfuse_download_appimagetool
+				_fake_desktop-file-validate
 				echo -ne " ...extracting the AppImage\r"
 				./"$2" --appimage-extract 2> /dev/null | grep -v "squashfs-root"
 				echo -ne " ...trying to convert in new generation AppImage\r"
 				_nolibfuse_command_to_convert_to_new_gen_appimages
+				_fake_desktop-file-validate_remove
 				if test -f ./*.AppImage; then
 					_remove_info_files
 					mv ./"$2" ./"$2".old
@@ -275,28 +287,8 @@ function _do_nolibfuse() {
 					echo " ◆ $(echo "$2" | tr '[:lower:]' '[:upper:]') has been converted to a new generation AppImage."
 					_nolibfuse_if_appimage_has_been_converted
 				else
-					metainfodir=$(find ./squashfs-root -type d -name metainfo | grep "share/metainfo" | head -1)
-					if [ -z "$metainfodir" ]; then
-						echo " 💀Errors while trying to export $(echo "${2}" | tr '[:lower:]' '[:upper:]') from Type2 AppImage. Aborted."
-						rm -R -f ./appimagetool ./squashfs-root
-						exit
-					else
-						cd "$metainfodir" || return
-						rm -R -f ./*.xml
-						cd - > /dev/null || return
-					fi
-					echo -ne " ...found Appstream errors, I'm trying to fix them...\r"
-					_nolibfuse_command_to_convert_to_new_gen_appimages
-					if test -f ./*.AppImage; then
-						_remove_info_files
-						mv ./"$2" ./"$2".old
-						mv ./*.AppImage ./"$2"
-						echo " ◆ $(echo "$2" | tr '[:lower:]' '[:upper:]') has been converted to a new generation AppImage."
-						_nolibfuse_if_appimage_has_been_converted
-					else
-						echo " 💀Errors while trying to export $(echo "$2" | tr '[:lower:]' '[:upper:]') from Type2 AppImage. Aborted."
-						rm -R -f ./appimagetool ./squashfs-root; exit
-					fi
+					echo " 💀Errors while trying to export $(echo "$2" | tr '[:lower:]' '[:upper:]') from Type2 AppImage. Aborted."
+					rm -R -f ./appimagetool ./squashfs-root; exit
 				fi
 			fi
 		fi
@@ -305,11 +297,13 @@ function _do_nolibfuse() {
 		exit
 	fi
 }
+
 ###########################################################################
 # REMOVE
 ###########################################################################
 
 function _remove() {
+	$SUDOCMD echo "" > /dev/null
 	echo "------------------------------------------------------------------------------"
 	case "$1" in
 	'-R')
@@ -323,7 +317,7 @@ function _remove() {
 		if ls "$APPSPATH"/"$arg" > /dev/null 2>&1; then
 			case $arg in
 			*) 
-				$SUDOCMD echo "" > /dev/null; read -r -p " ◆ Do you wish to remove \"$arg\" (Y,n)?" yn
+				read -r -p " ◆ Do you wish to remove \"$arg\" (Y,n)?" yn
 				case $yn in
 				[Nn]* ) 
 					echo -e " \"${LightBlue}$arg\033[0m\" has not been removed!";;
