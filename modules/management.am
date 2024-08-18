@@ -18,9 +18,9 @@ function _remove_check_removals() {
 	if test -f "$AMCACHEDIR"/unavailable-args; then
 		echo -e "-----------------------------------------------------------------------\n"
 		if [ "$AMCLI" == am ] 2>/dev/null; then
-			echo -e " 💀 ERROR, the following programs you want to remove are NOT in $APPSPATH :\n\n$(cat "$AMCACHEDIR"/unavailable-args | sort)"
+			echo -e " 💀 ERROR, the following programs you want to remove are NOT in $APPSPATH :\n\n$(sort "$AMCACHEDIR"/unavailable-args)"
 		else
-			echo -e " 💀 ERROR, the following programs you want to remove are NOT in\n    $APPSPATH :\n\n$(cat "$AMCACHEDIR"/unavailable-args | sort)"
+			echo -e " 💀 ERROR, the following programs you want to remove are NOT in\n    $APPSPATH :\n\n$(sort "$AMCACHEDIR"/unavailable-args)"
 		fi
 		echo -e '\n INVALID "APPNAME"!'
 		echo -e "\n-----------------------------------------------------------------------\n"
@@ -34,23 +34,23 @@ function _remove_check_removals() {
 }
 
 function _REMOVE() {
-	if ls "$APPSPATH"/$arg > /dev/null 2>&1; then
-		$SUDOCMD "$APPSPATH"/$arg/remove && sleep 0.5 && echo ' ◆ "'"$(echo $arg | tr a-z A-Z)"'" HAS BEEN SUCCESSFULLY REMOVED!'
+	if ls "$APPSPATH"/"$arg" > /dev/null 2>&1; then
+		$SUDOCMD "$APPSPATH"/"$arg"/remove && sleep 0.5 && echo " ◆ \"$(echo "$arg" | tr '[:lower:]' '[:upper:]')\" HAS BEEN SUCCESSFULLY REMOVED!"
 	else
 		echo " - $arg" >> "$AMCACHEDIR"/unavailable-args
 	fi
 }
 
 function _remove() {
-	if ls "$APPSPATH"/$arg > /dev/null 2>&1; then
+	if ls "$APPSPATH"/"$arg" > /dev/null 2>&1; then
 		case $arg in
 		*) 
-			$SUDOCMD echo "" > /dev/null; read -p ' ◆ DO YOU WISH TO REMOVE "'"$(echo $arg | tr a-z A-Z)"'" (Y,n)?' yn
+			$SUDOCMD echo "" > /dev/null; read -r -p ' ◆ DO YOU WISH TO REMOVE "'"$(echo "$arg" | tr '[:lower:]' '[:upper:]')"'" (Y,n)?' yn
 			case $yn in
 			[Nn]* ) 
-				echo ' - "'"$(echo $arg | tr a-z A-Z)"'" HAS NOT BEEN REMOVED!'; echo "";;
+				echo ' - "'"$(echo "$arg" | tr '[:lower:]' '[:upper:]')"'" HAS NOT BEEN REMOVED!'; echo "";;
 			[Yy]*|* ) 
-				$SUDOCMD "$APPSPATH"/$arg/remove && sleep 0.5 && echo ' ◆ "'"$(echo $arg | tr a-z A-Z)"'" HAS BEEN SUCCESSFULLY REMOVED!';;
+				$SUDOCMD "$APPSPATH"/"$arg"/remove && sleep 0.5 && echo " ◆ \"$(echo "$arg" | tr '[:lower:]' '[:upper:]')\" HAS BEEN SUCCESSFULLY REMOVED!";;
 			esac
 		esac
 	else
@@ -71,7 +71,7 @@ function _do_rollback() {
 		elif grep -q "api.github.com" "$APPSPATH"/"$2"/AM-updater; then
 			cd "$APPSPATH"/"$2" || return
 			rm -f "$AMCACHEDIR/rollback-args";
-			extension=$(cat ./version | tr '.' '\n' | tail -1)
+			extension=$(sort ./version | tr '.' '\n' | tail -1)
 			if grep -q "^REPO=" ./AM-updater; then
 				REPO=$(grep -i "REPO=" ./AM-updater | grep -o -P '(?<=").*(?=")')
 			elif grep -q "^SITE=" ./AM-updater; then
@@ -125,15 +125,14 @@ function _do_rollback() {
 
 function _do_lock() {
 	while [ -n "$1" ]; do
-		if test -f "$APPSPATH"/$2/AM-updater; then
+		if test -f "$APPSPATH"/"$2"/AM-updater; then
 			case $2 in
 				*)
-					read -p " Do you wish to keep $2  at the current version (y,N)?" yn
+					read -r -p " Do you wish to keep $2  at the current version (y,N)?" yn
 					case $yn in
 						[Yy]* )
-							mv "$APPSPATH"/$2/AM-updater "$APPSPATH"/$2/AM-LOCK 1>/dev/null &&
+							mv "$APPSPATH"/"$2"/AM-updater "$APPSPATH"/"$2"/AM-LOCK 1>/dev/null &&
 							echo " $2 has been locked at current version!"
-							exit
 							;;
 						[Nn]*|* )
 							echo " Operation aborted!"
@@ -143,7 +142,7 @@ function _do_lock() {
 					;;
 			esac
 		else
-			echo -e '\n '"$(echo $AMCLI | tr a-z A-Z)"' cannot manage updates for '$2', "AM-updater" file not found!\n'; exit
+			echo -e "\n \"$(echo "$AMCLI" | tr '[:lower:]' '[:upper:]')\" cannot manage updates for $2, \"AM-updater\" file not found!\n"
 			exit
 		fi
 	done
@@ -151,25 +150,25 @@ function _do_lock() {
 
 function _do_unlock() {
 	while [ -n "$1" ]; do
-		if test -f "$APPSPATH"/$2/AM-LOCK; then
+		if test -f "$APPSPATH"/"$2"/AM-LOCK; then
 			case $2 in
 				*)
-					read -p " Do you wish to unlock updates for $2 (Y,n)?" yn
+					read -r -p " Do you wish to unlock updates for $2 (Y,n)?" yn
 					case $yn in
 						[Nn]* )
 							echo " $2 is still locked at current version!"
 							exit
 							;;
 						[Yy]*|* )
-							mv "$APPSPATH"/$2/AM-LOCK "$APPSPATH"/$2/AM-updater 1>/dev/null
-							echo ' '$2' can now receive updates!'
+							mv "$APPSPATH"/"$2"/AM-LOCK "$APPSPATH"/"$2"/AM-updater 1>/dev/null
+							echo " \"$2\" can now receive updates!"
 							exit
 							;;
 					esac
 					;;
 			esac
 		else
-			echo ' '$2' cannot be unlocked, "AM-LOCK" file not found!'; exit
+			echo " \"$2\" cannot be unlocked, \"AM-LOCK\" file not found!"; exit
 		fi
 	done
 }
@@ -183,18 +182,18 @@ function _backup() {
 	'')
 		echo " Specify the name of a program to back up"; echo ""; exit;;
 	*)
-		if test -f "$APPSPATH"/$arg/remove; then
-			echo ""; read -p " Do you wish to backup the current version of $arg (y,N)?" yn
+		if test -f "$APPSPATH"/"$arg"/remove; then
+			echo ""; read -r -p " Do you wish to backup the current version of $arg (y,N)?" yn
 			case $yn in
 			[Yy]* )
 				mkdir -p "$HOME/.am-snapshots/$arg"
-				cp -r "$APPSPATH"/$arg "$HOME/.am-snapshots/$arg/$(date +%F-%X | sed 's/://g' | sed 's/-//g')"
+				cp -r "$APPSPATH"/"$arg" "$HOME/.am-snapshots/$arg/$(date +%F-%X | sed 's/://g' | sed 's/-//g')"
 				echo -e "\n SAVED in $HOME/.am-snapshots/$arg\n";;
 			[Nn]*|* )
 				echo ""; echo " OPERATION ABORTED!"; echo "";;
 			esac
 		else
-			echo -e "\n '$arg' is not a valid argument or is not installed.\n"
+			echo -e "\n \"$arg\" is not a valid argument or is not installed.\n"
 		fi
 	esac
 }
@@ -205,7 +204,7 @@ function _do_backup() {
 		echo "$@" | tr ' ' '\n' >> "$AMCACHEDIR"/backup-args && echo STOP >> "$AMCACHEDIR"/backup-args;
 		ARGS=$(tail -n +2 "$AMCACHEDIR"/backup-args)
 		for arg in $ARGS; do
-			if [ $arg == STOP ]; then
+			if [ "$arg" = STOP ]; then
 				exit
 			else
 				_backup
@@ -219,14 +218,14 @@ function _overwrite() {
 	'')
 		echo " Specify the name of a program to overwrite"; echo "";;
 	*)
-		if test -f "$APPSPATH"/$arg/remove; then
-			echo ""; read -p " Do you wish to overwrite this version of $arg with an old one (y,N)?" yn
+		if test -f "$APPSPATH"/"$arg"/remove; then
+			echo ""; read -r -p " Do you wish to overwrite this version of $arg with an old one (y,N)?" yn
 			case $yn in
 			[Yy]* )
 				printf "\n Please, select a snapshot or press CTRL+C to abort:\n\n"; sleep 1;
 				select d in $HOME/.am-snapshots/$arg/*; do test -n "$d" && break; echo ">>> Invalid Selection"; done
-				cp -r --backup=t $d/* "$APPSPATH"/$arg/
-				rm -R -f ./tmp "$APPSPATH"/$arg/*~
+				cp -r --backup=t "$d"/* "$APPSPATH"/"$arg"/
+				rm -R -f ./tmp "$APPSPATH"/"$arg"/*~
 				echo -e "\n RESTORE COMPLETED SUCCESSFULLY!\n";;
 			[Nn]*|* )
 				echo ""; echo " OPERATION ABORTED!"; echo "";;
@@ -243,7 +242,7 @@ function _do_overwrite() {
 		echo "$@" | tr ' ' '\n' >> "$AMCACHEDIR"/overwrite-args && echo STOP >> "$AMCACHEDIR"/overwrite-args
 		ARGS=$(tail -n +2 "$AMCACHEDIR"/overwrite-args)
 		for arg in $ARGS; do
-			if [ $arg == STOP ]; then
+			if [ "$arg" = STOP ]; then
 				exit
 			else
 				_overwrite
@@ -262,7 +261,7 @@ function _nolibfuse_if_zsync_file_exists() {
 		echo "-----------------------------------------------------------------------"
 		echo -e " Warning! Your AppImage uses \"zsync\" to update. The .zsync file will\n no longer work and will be removed.\n"
 		echo -e " If your \"AM-updater\" script can compare versions, the update method\n will be changed, by downloading the new AppImage version in full,\n from the source.\n"
-		read -p " Do you want to proceede anyway (N,y)?" yn
+		read -r -p " Do you want to proceede anyway (N,y)?" yn
 		case "$yn" in
 		'y'|'Y') echo "-----------------------------------------------------------------------";;
 		'n'|'N'|*) echo "-----------------------------------------------------------------------"; exit;;
@@ -289,12 +288,12 @@ function _nolibfuse_if_appimage_has_been_converted() {
 			rm -f ./*.zsync
 		fi
 		if ! grep -q 'nolibfuse' ./AM-updater; then
-			echo -e '\necho y | '$AMCLIPATH' nolibfuse $APP' >> ./AM-updater
+			echo -e "\necho y | $AMCLIPATH nolibfuse \$APP" >> ./AM-updater
 			echo -e "\n The next update may replace this AppImage with a Type2 one\n so I added this command to the bottom of the \"AM-updater\" script!"
 		fi
 	fi
 	echo -e "\n Contact the upstream developers to make them officially upgrade! \n"
-	read -p " Do you wish to remove the old Type2 AppImage (Y,n)?" yn
+	read -r -p " Do you wish to remove the old Type2 AppImage (Y,n)?" yn
 	case $yn in
 	[Nn]* )
 		exit
@@ -313,12 +312,14 @@ function _do_nolibfuse() {
 	cd "$APPSPATH" || exit 1
 	if test -f "./$2/$2" 2>/dev/null; then
 		cd ./"$2" || return
-		if [ -z "$(strings -d "./$2" 2>/dev/null | grep -F 'if you run it with the --appimage-extract option')" ] 2>/dev/null; then
-			echo " ⚠️ Error: $(echo "${2}" | tr a-z A-Z) is NOT an AppImage."
+		appimage_new_message=$(strings -d "./$2" 2>/dev/null | grep -F 'if you run it with the --appimage-extract option')
+		appimage_old_message=$(strings -d "./$2" 2>/dev/null | grep -F 'AppImages require FUSE to run')
+		if [ -z "$appimage_new_message" ]; then
+			echo " ⚠️ Error: $(echo "${2}" | tr '[:lower:]' '[:upper:]') is NOT an AppImage."
 			exit
 		else
-			if [ -z "$(strings -d "./$2" 2>/dev/null | grep -F 'AppImages require FUSE to run')" ] 2>/dev/null; then
-				echo " ◆ $(echo "${2}" | tr a-z A-Z) is already a new generation AppImage."
+			if [ -z "$appimage_old_message" ]; then
+				echo " ◆ $(echo "${2}" | tr '[:lower:]' '[:upper:]') is already a new generation AppImage."
 				exit
 			else
 				_nolibfuse_if_zsync_file_exists
@@ -331,12 +332,12 @@ function _do_nolibfuse() {
 					_remove_info_files
 					mv ./"$2" ./"$2".old
 					mv ./*.AppImage ./"$2"
-					echo " ◆ $(echo "$2" | tr a-z A-Z) has been converted to a new generation AppImage."
+					echo " ◆ $(echo "$2" | tr '[:lower:]' '[:upper:]') has been converted to a new generation AppImage."
 					_nolibfuse_if_appimage_has_been_converted
 				else
 					metainfodir=$(find ./squashfs-root -type d -name metainfo | grep "share/metainfo" | head -1)
 					if [ -z "$metainfodir" ]; then
-						echo " 💀Errors while trying to export $(echo "${2}" | tr a-z A-Z) from Type2 AppImage. Aborted."
+						echo " 💀Errors while trying to export $(echo "${2}" | tr '[:lower:]' '[:upper:]') from Type2 AppImage. Aborted."
 						rm -R -f ./appimagetool ./squashfs-root
 						exit
 					else
@@ -350,17 +351,17 @@ function _do_nolibfuse() {
 						_remove_info_files
 						mv ./"$2" ./"$2".old
 						mv ./*.AppImage ./"$2"
-						echo " ◆ $(echo "$2" | tr a-z A-Z) has been converted to a new generation AppImage."
+						echo " ◆ $(echo "$2" | tr '[:lower:]' '[:upper:]') has been converted to a new generation AppImage."
 						_nolibfuse_if_appimage_has_been_converted
 					else
-						echo " 💀Errors while trying to export $(echo "$2" | tr a-z A-Z) from Type2 AppImage. Aborted."
+						echo " 💀Errors while trying to export $(echo "$2" | tr '[:lower:]' '[:upper:]') from Type2 AppImage. Aborted."
 						rm -R -f ./appimagetool ./squashfs-root; exit
 					fi
 				fi
 			fi
 		fi
 	else
-		echo " ⚠️ Error: \"$(echo "${2}" | tr a-z A-Z)\" is NOT installed."
+		echo " ⚠️ Error: \"$(echo "${2}" | tr '[:lower:]' '[:upper:]')\" is NOT installed."
 		exit
 	fi
 }
@@ -386,7 +387,7 @@ case "$1" in
 			echo "$@" | tr ' ' '\n' >> "$AMCACHEDIR"/remove-args && echo STOP >> "$AMCACHEDIR"/remove-args
 			ARGS=$(tail -n +2 "$AMCACHEDIR"/remove-args)
 			for arg in $ARGS; do
-				if [ $arg == STOP ]; then
+				if [ "$arg" = STOP ]; then
 					_remove_check_removals
 				else
 					_REMOVE
@@ -403,7 +404,7 @@ case "$1" in
 			echo "$@" | tr ' ' '\n' >> "$AMCACHEDIR"/remove-args && echo STOP >> "$AMCACHEDIR"/remove-args
 			ARGS=$(tail -n +2 "$AMCACHEDIR"/remove-args)
 			for arg in $ARGS; do
-				if [ $arg == STOP ]; then
+				if [ "$arg" = STOP ]; then
 					_remove_check_removals
 				else
 					_remove
