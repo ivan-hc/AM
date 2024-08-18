@@ -309,32 +309,14 @@ function _do_nolibfuse() {
 # REMOVE
 ###########################################################################
 
-function _remove_check_removals() {
-	if test -f "$AMCACHEDIR"/unavailable-args; then
-		printf '%s\n' "-----------------------------------------------------------------------"
-		if [ "$AMCLI" == am ] 2>/dev/null; then
-			printf '%s\n\n' " 💀 ERROR, the following programs you want to remove are NOT in $APPSPATH:"
-			sort "$AMCACHEDIR"/unavailable-args
-		else
-			printf '\n%s\n\n' " 💀 ERROR, the following programs you want to remove are NOT in\n    $APPSPATH:"
-			sort "$AMCACHEDIR"/unavailable-args
-		fi
-		printf '\n%s\n' " Invalid \"APPNAME\", run \"$AMCLI -f\" to see the installed apps."
-		echo "-----------------------------------------------------------------------"
-		rm -f "$AMCACHEDIR"/unavailable-args
-		exit
-	else
-		exit
-	fi
-}
-
 function _remove() {
+	echo "------------------------------------------------------------------------------"
 	case "$1" in
 	'-R')
 		if ls "$APPSPATH"/"$arg" > /dev/null 2>&1; then
-			$SUDOCMD "$APPSPATH"/"$arg"/remove && sleep 0.5 && printf '%s\n' " ◆ \"$arg\" has been successfully removed!"
+			$SUDOCMD "$APPSPATH"/"$arg"/remove && sleep 0.5 && echo -e " \"${Green}$arg\033[0m\" has been removed!"
 		else
-			echo " - $arg" >> "$AMCACHEDIR"/unavailable-args
+			echo -e " \"${RED}$arg\033[0m\" is not a valid \"APPNAME\", see \"$AMCLI -f\" for more."
 		fi
 		;;
 	'remove'|'-r')
@@ -344,13 +326,13 @@ function _remove() {
 				$SUDOCMD echo "" > /dev/null; read -r -p " ◆ Do you wish to remove \"$arg\" (Y,n)?" yn
 				case $yn in
 				[Nn]* ) 
-					printf '%s\n\n' " - \"$arg\" has not been removed!";;
+					echo -e " \"${LightBlue}$arg\033[0m\" has not been removed!";;
 				[Yy]*|* ) 
-					$SUDOCMD "$APPSPATH"/"$arg"/remove && sleep 0.5 && printf '%s\n\n' " ◆ \"$arg\" has been successfully removed!";;
+					$SUDOCMD "$APPSPATH"/"$arg"/remove && sleep 0.5 && echo -e " \"${Green}$arg\033[0m\" has been removed!";;
 				esac
 			esac
 		else
-			echo " - $arg" >> "$AMCACHEDIR"/unavailable-args
+			echo -e " \"${RED}$arg\033[0m\" is not a valid \"APPNAME\", see \"$AMCLI -f\" for more."
 		fi
 	esac
 }
@@ -401,19 +383,11 @@ case "$1" in
 
 	'remove'|'-r'|'-R')
 		# Remove programs
-		while [ -n "$1" ]; do
-			rm -f "$AMCACHEDIR"/remove-args
-			echo "$@" | tr ' ' '\n' >> "$AMCACHEDIR"/remove-args && echo STOP >> "$AMCACHEDIR"/remove-args
-			ARGS=$(tail -n +2 "$AMCACHEDIR"/remove-args)
-			for arg in $ARGS; do
-				if [ "$arg" = STOP ]; then
-					_remove_check_removals
-				else
-					_remove "$@"
-					_remove_info_files
-				fi
-			done
+		ARGS=$(echo "$@" | cut -f2- -d ' ')
+		for arg in $ARGS; do
+			_remove "$@"
+			_remove_info_files
 		done
-		shift
+		echo "------------------------------------------------------------------------------"
 		;;
 esac
