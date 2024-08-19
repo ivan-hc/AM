@@ -12,69 +12,48 @@ SUDOCMD="$SUDOCOMMAND"
 ###########################################################################
 
 function _backup() {
-	while [ -n "$1" ]; do
-		rm -f "$AMCACHEDIR"/backup-args;
-		echo "$@" | tr ' ' '\n' >> "$AMCACHEDIR"/backup-args && echo STOP >> "$AMCACHEDIR"/backup-args;
-		ARGS=$(tail -n +2 "$AMCACHEDIR"/backup-args)
-		for arg in $ARGS; do
-			if [ "$arg" = STOP ]; then
-				exit
+	ARGS="$(echo "$@" | cut -f2- -d ' ')"
+	for arg in $ARGS; do
+		if [ ! -f "$APPSPATH"/"$arg"/remove ]; then
+			printf "\n \"$arg\" is not a valid argument or is not installed.\n\n"
+		else
+			read -p " Do you wish to backup the current version of $arg? (y/N): " yn
+			if ! echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
+				printf "\n OPERATION ABORTED!\n\n"
 			else
-				case $arg in
-				'')
-					echo " Specify the name of a program to back up"; echo ""; exit;;
-				*)
-					if test -f "$APPSPATH"/"$arg"/remove; then
-						echo ""; read -r -p " Do you wish to backup the current version of $arg (y,N)?" yn
-						case $yn in
-						[Yy]* )
-							mkdir -p "$HOME/.am-snapshots/$arg"
-							cp -r "$APPSPATH"/"$arg" "$HOME/.am-snapshots/$arg/$(date +%F-%X | sed 's/://g' | sed 's/-//g')"
-							echo -e "\n SAVED in $HOME/.am-snapshots/$arg\n";;
-						[Nn]*|* )
-							echo ""; echo " OPERATION ABORTED!"; echo "";;
-						esac
-					else
-						echo -e "\n \"$arg\" is not a valid argument or is not installed.\n"
-					fi
-				esac
+				mkdir -p "$HOME/.am-snapshots/$arg"
+				date="$(date +%F-%X | sed 's/://g' | sed 's/-//g')"
+				cp -r "$APPSPATH"/"$arg" "$HOME/.am-snapshots/$arg/$date"
+				echo " SAVED in $HOME/.am-snapshots/$arg"
 			fi
-		done
+		fi
 	done
 }
 
 function _overwrite() {
-	while [ -n "$1" ]; do
-		rm -f "$AMCACHEDIR"/overwrite-args
-		echo "$@" | tr ' ' '\n' >> "$AMCACHEDIR"/overwrite-args && echo STOP >> "$AMCACHEDIR"/overwrite-args
-		ARGS=$(tail -n +2 "$AMCACHEDIR"/overwrite-args)
-		for arg in $ARGS; do
-			if [ "$arg" = STOP ]; then
-				exit
+	ARGS="$(echo "$@" | cut -f2- -d ' ')"
+	for arg in $ARGS; do
+		if [ ! -d $HOME/.am-snapshots/$arg ]; then
+			printf "\n ERROR: No snapshot for \"$arg\" found.\n\n"
+		elif [ ! -f "$APPSPATH"/"$arg"/remove ]; then
+			printf "\n \"$arg\" is not a valid argument or is not installed.\n\n"
+		else
+			read -p " Do you wish to overwrite this version of $arg with an old one (y,N)?" yn
+			if ! echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
+				printf "\n OPERATION ABORTED!\n\n"
 			else
-				case $arg in
-				'')
-					echo " Specify the name of a program to overwrite"; echo "";;
-				*)
-					if test -f "$APPSPATH"/"$arg"/remove; then
-						echo ""; read -r -p " Do you wish to overwrite this version of $arg with an old one (y,N)?" yn
-						case $yn in
-						[Yy]* )
-							printf "\n Please, select a snapshot or press CTRL+C to abort:\n\n"; sleep 1;
-							select d in $HOME/.am-snapshots/$arg/*; do test -n "$d" && break; echo ">>> Invalid Selection"; done
-							cp -r --backup=t "$d"/* "$APPSPATH"/"$arg"/
-							rm -R -f ./tmp "$APPSPATH"/"$arg"/*~
-							echo -e "\n RESTORE COMPLETED SUCCESSFULLY!\n";;
-						[Nn]*|* )
-							echo ""; echo " OPERATION ABORTED!"; echo "";;
-						esac
-					else
-						echo ""; echo " '$arg' is not a valid argument or is not installed."; echo ""
-					fi
-				esac
-				_remove_info_files
+				printf "\n Please, select a snapshot or press CTRL+C to abort:\n\n"
+				sleep 1
+				select d in $HOME/.am-snapshots/$arg/*; do 
+					test -n "$d" && break 
+					echo ">>> Invalid Selection" 
+				done
+				cp -r --backup=t "$d"/* "$APPSPATH"/"$arg"/
+				rm -R -f ./tmp "$APPSPATH"/"$arg"/*~
+				echo " RESTORE COMPLETED SUCCESSFULLY!"
 			fi
-		done
+		fi
+		_remove_info_files
 	done
 }
 
