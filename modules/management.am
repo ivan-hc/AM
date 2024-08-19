@@ -103,8 +103,6 @@ function _downgrade() {
 	./AM-rollback && rm -f ./AM-rollback || return 1
 	mv ./"$2".zsync.old ./"$2".zsync 2>/dev/null
 	echo "$d" > ./version
-	_clean_amcachedir
-	_list_updatable_apps
 	echo "ROLLBACK SUCCESSFUL!"
 }
 
@@ -130,7 +128,7 @@ function _unlock() {
 		echo " \"$2\" cannot be unlocked, \"AM-LOCK\" file not found!"
 		return 1
 	fi
-	read -r -p " Do you wish to unlock updates for $2 (Y,n)?" yn
+	read -r -p " Do you wish to unlock updates for $2? (Y/n):" yn
 	if echo "$yn" | grep -i '^n' >/dev/null 2>&1; then
 		echo " $2 is still locked at current version!"
 		return 1
@@ -182,8 +180,7 @@ function _nolibfuse() {
 		rm -R -f ./appimagetool ./squashfs-root ./desktop-file-validate
 		return 1
 	fi
-	
-	_remove_info_files
+
 	mv ./"$2" ./"$2".old && mv ./*.AppImage ./"$2" || return 1
 	echo " ◆ $target has been converted to a new generation AppImage."
 	rm -rf ./appimagetool ./squashfs-root ./desktop-file-validate ./*.zsync
@@ -251,6 +248,8 @@ case "$1" in
 		ARGS="$(echo "$@" | cut -f2- -d ' ')"
 		for arg in $ARGS; do
 			_downgrade "${@}"
+			_clean_amcachedir
+			_list_updatable_apps
 			shift
 		done
 		;;
@@ -279,6 +278,7 @@ case "$1" in
 		ARGS="$(echo "$@" | cut -f2- -d ' ')"
 		for arg in $ARGS; do
 			_nolibfuse "${@}"
+			_remove_info_files
 			shift
 		done
 		;;
