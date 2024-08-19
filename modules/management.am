@@ -53,13 +53,13 @@ function _downgrade() {
 	# Safety checks
 	if [ ! -f "$APPSPATH"/"$2"/AM-updater ]; then
 		echo " No AM-updater available for \"$2\", cannot detect any URL!" 
-		exit 1
+		return 1
 	elif [ -f "$APPSPATH"/"$2"/"$2"-rollback ]; then
-		./"$APPSPATH"/"$2"-rollback || return 1
-		exit 0
+		./"$APPSPATH"/"$2"/"$2"-rollback || return 1
+		return 0
 	elif ! grep -q "api.github.com" "$APPSPATH"/"$2"/AM-updater; then
 		echo " The option \"$1\" only works for https://github.com"
-		exit 1
+		return 1
 	fi
 	cd "$APPSPATH"/"$2" || return 1
 	extension=$(sort ./version | tr '.' '\n' | tail -1)
@@ -100,9 +100,8 @@ function _downgrade() {
 	else
 		sed -i '/wget/c\wget '"$d"'' ./AM-rollback
 	fi
-	./AM-rollback
-	rm -f ./AM-rollback
-	[ -f ./"$2".zsync.old ] && mv ./"$2".zsync.old ./"$2".zsync
+	./AM-rollback && rm -f ./AM-rollback || return 1
+	mv ./"$2".zsync.old ./"$2".zsync 2>/dev/null
 	echo "$d" > ./version
 	_clean_amcachedir
 	_list_updatable_apps
@@ -110,61 +109,39 @@ function _downgrade() {
 }
 
 # LOCK/UNLOCK
-function _lock_unlock() {
-	case "$1" in
-	'lock')
-		if ! test -f "$APPSPATH"/"$2"/AM-updater; then
-			printf " \"$(echo "$AMCLI" | tr '[:lower:]' '[:upper:]')\"" 
-			printf "cannot manage updates for $2, \"AM-updater\" file not found!"
-			exit
-		fi
-		
-		case $2 in
-		*)
-			read -r -p " Do you wish to keep $2  at the current version (y,N)?" yn
-			case $yn in
-			[Yy]* )
-				mv "$APPSPATH"/"$2"/AM-updater "$APPSPATH"/"$2"/AM-LOCK 1>/dev/null
-				echo " $2 has been locked at current version!"
-				;;
-			[Nn]*|* )
-				echo " Operation aborted!"
-				exit
-				;;
-			esac
-			;;
-		esac
-		;;
-	'unlock')
-		if ! test -f "$APPSPATH"/"$2"/AM-LOCK; then
-			echo " \"$2\" cannot be unlocked, \"AM-LOCK\" file not found!"; exit
-		fi
-		case $2 in
-		*)
-			read -r -p " Do you wish to unlock updates for $2 (Y,n)?" yn
-			case $yn in
-			[Nn]* )
-				echo " $2 is still locked at current version!"
-				exit
-				;;
-			[Yy]*|* )
-				mv "$APPSPATH"/"$2"/AM-LOCK "$APPSPATH"/"$2"/AM-updater 1>/dev/null
-				echo " \"$2\" can now receive updates!"
-				exit
-				;;
-			esac
-			;;
-		esac
-		;;
-	esac
+function _lock() {
+	if [ ! -f "$APPSPATH"/"$2"/AM-updater ]; then
+		printf " \"$(echo "$AMCLI" | tr '[:lower:]' '[:upper:]')\"" 
+		printf " cannot manage updates for $2, \"AM-updater\" file not found!\n"
+		return 1
+	fi
+	read -r -p " Do you wish to keep $2 at its current version? (y/N):" yn
+	if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
+		mv "$APPSPATH"/"$2"/AM-updater "$APPSPATH"/"$2"/AM-LOCK 1>/dev/null
+		echo " $2 has been locked at current version!"
+	else
+		echo " Operation aborted!"
+		return 1
+	fi
 }
 
-###########################################################################
-# NOLIBFUSE
-###########################################################################
+function _unlock() {
+	if ! test -f "$APPSPATH"/"$2"/AM-LOCK; then
+		echo " \"$2\" cannot be unlocked, \"AM-LOCK\" file not found!"
+		return 1
+	fi
+	read -r -p " Do you wish to unlock updates for $2 (Y,n)?" yn
+	if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
+			mv "$APPSPATH"/"$2"/AM-LOCK "$APPSPATH"/"$2"/AM-updater 1>/dev/null
+			echo " \"$2\" can now receive updates!"
+	else
+		echo " $2 is still locked at current version!"
+		return 1
+	fi
+}
 
 # NO LIBFUSE
-function _do_nolibfuse() {
+function _nolibfuse() {
 	target="$(echo "${2}" | tr '[:lower:]' '[:upper:]')"
 	# safety checks
 	if ! cd "$APPSPATH"/"$2" 2>/dev/null; then
@@ -224,38 +201,39 @@ function _do_nolibfuse() {
 
 # REMOVE
 function _remove() {
-	$SUDOCMD echo "" > /dev/null
+	$SUDOCMD echo "" >/dev/null
 	echo "------------------------------------------------------------------------------"
-	case "$1" in
-	'-R')
-		if ls "$APPSPATH"/"$arg" > /dev/null 2>&1; then
-			$SUDOCMD "$APPSPATH"/"$arg"/remove && sleep 0.5 && echo -e " \"${Green}$arg\033[0m\" has been removed!"
-		else
-			echo -e " \"${RED}$arg\033[0m\" is not a valid \"APPNAME\", see \"$AMCLI -f\" for more."
-		fi
-		;;
-	'remove'|'-r')
-		if ls "$APPSPATH"/"$arg" > /dev/null 2>&1; then
-			case $arg in
-			*) 
-				read -r -p " ◆ Do you wish to remove \"$arg\" (Y,n)?" yn
-				case $yn in
-				[Nn]* ) 
-					echo -e " \"${LightBlue}$arg\033[0m\" has not been removed!";;
-				[Yy]*|* ) 
-					$SUDOCMD "$APPSPATH"/"$arg"/remove && sleep 0.5 && echo -e " \"${Green}$arg\033[0m\" has been removed!";;
-				esac
-			esac
-		else
-			echo -e " \"${RED}$arg\033[0m\" is not a valid \"APPNAME\", see \"$AMCLI -f\" for more."
-		fi
-	esac
+	if [ ! -d "$APPSPATH"/"$2" ]; then
+		echo -e " \"${RED}$arg\033[0m\" is not a valid \"APPNAME\", see \"$AMCLI -f\" for more."
+		return 1
+	fi
+	read -p " ◆ Do you wish to remove \"$2\"? (Y/n):" yn
+	if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
+		$SUDOCMD "$APPSPATH"/"$2"/remove || return 1
+		sleep 0.1
+		echo -e " \"${Green}$2\033[0m\" has been removed!"
+	else
+		echo -e " \"${LightBlue}$2\033[0m\" has not been removed!"
+	fi
+}
+
+function _hard_remove() {
+	$SUDOCMD echo "" >/dev/null
+	echo "------------------------------------------------------------------------------"
+	if [ ! -d "$APPSPATH"/"$2" ]; then
+		echo -e " \"${RED}$2\033[0m\" is not a valid \"APPNAME\", see \"$AMCLI -f\" for more."
+		return 1
+	fi
+	$SUDOCMD "$APPSPATH"/"$arg"/remove || return 1
+	sleep 0.1
+	echo -e " \"${Green}$2\033[0m\" has been removed!"
 }
 
 ###########################################################################
 # OPTIONS AVAILABLE IN THIS MODULE
 ###########################################################################
 
+# Main logic
 [ -z "$2" ] && echo " USAGE: $AMCLI $1 [ARGUMENT]" && exit 1
 case "$1" in
 	'backup'|'-b')
@@ -268,7 +246,7 @@ case "$1" in
 		;;
 
 	'downgrade'|'--rollback')
-		# Downgrade the installed app to a previous version, from the online source
+		# Downgrade the installed app to a previous version, from its online source
 		_online_check
 		ARGS="$(echo "$@" | cut -f2- -d ' ')"
 		for arg in $ARGS; do
@@ -277,9 +255,22 @@ case "$1" in
 		done
 		;;
 
-	'lock'|'unlock')
-		# Lock or unlock the version of an installed app
-		_lock_unlock "${@}"
+	'lock')
+		# Lock the version of an installed app
+		ARGS="$(echo "$@" | cut -f2- -d ' ')"
+		for arg in $ARGS; do
+			_lock "${@}"
+			shift
+		done
+		;;
+
+	'unlock')
+		# Unlock the version of an installed app
+		ARGS="$(echo "$@" | cut -f2- -d ' ')"
+		for arg in $ARGS; do
+			_unlock "${@}"
+			shift
+		done
 		;;
 
 	'nolibfuse')
@@ -287,7 +278,7 @@ case "$1" in
 		_online_check
 		ARGS="$(echo "$@" | cut -f2- -d ' ')"
 		for arg in $ARGS; do
-			_do_nolibfuse "${@}"
+			_nolibfuse "${@}"
 			shift
 		done
 		;;
@@ -302,12 +293,24 @@ case "$1" in
 		done
 		;;
 
-	'remove'|'-r'|'-R')
-		# Remove programs
+	'remove'|'-r')
+		# Remove apps
 		ARGS="$(echo "$@" | cut -f2- -d ' ')"
 		for arg in $ARGS; do
-			_remove "$@"
+			_remove "${@}"
 			_remove_info_files
+			shift
+		done
+		echo "------------------------------------------------------------------------------"
+		;;
+
+	'-R')
+		# Remove apps without confirmation
+		ARGS="$(echo "$@" | cut -f2- -d ' ')"
+		for arg in $ARGS; do
+			_hard_remove "${@}"
+			_remove_info_files
+			shift
 		done
 		echo "------------------------------------------------------------------------------"
 		;;
