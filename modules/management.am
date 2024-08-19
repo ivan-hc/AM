@@ -7,126 +7,115 @@
 
 SUDOCMD="$SUDOCOMMAND"
 
-###########################################################################
-# BACKUP/RESTORE
-###########################################################################
-
+# BACKUP
 function _backup() {
-	ARGS="$(echo "$@" | cut -f2- -d ' ')"
-	for arg in $ARGS; do
-		if [ ! -f "$APPSPATH"/"$arg"/remove ]; then
-			printf "\n \"$arg\" is not a valid argument or is not installed.\n\n"
-		else
-			read -p " Do you wish to backup the current version of $arg? (y/N): " yn
-			if ! echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
-				printf "\n OPERATION ABORTED!\n\n"
-			else
-				mkdir -p "$HOME/.am-snapshots/$arg"
-				date="$(date +%F-%X | sed 's/://g' | sed 's/-//g')"
-				cp -r "$APPSPATH"/"$arg" "$HOME/.am-snapshots/$arg/$date"
-				echo " SAVED in $HOME/.am-snapshots/$arg"
-			fi
-		fi
-	done
-}
-
-function _overwrite() {
-	ARGS="$(echo "$@" | cut -f2- -d ' ')"
-	for arg in $ARGS; do
-		if [ ! -d $HOME/.am-snapshots/$arg ]; then
-			printf "\n ERROR: No snapshot for \"$arg\" found.\n\n"
-		elif [ ! -f "$APPSPATH"/"$arg"/remove ]; then
-			printf "\n \"$arg\" is not a valid argument or is not installed.\n\n"
-		else
-			read -p " Do you wish to overwrite this version of $arg with an old one (y,N)?" yn
-			if ! echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
-				printf "\n OPERATION ABORTED!\n\n"
-			else
-				printf "\n Please, select a snapshot or press CTRL+C to abort:\n\n"
-				sleep 1
-				select d in $HOME/.am-snapshots/$arg/*; do 
-					test -n "$d" && break 
-					echo ">>> Invalid Selection" 
-				done
-				cp -r --backup=t "$d"/* "$APPSPATH"/"$arg"/
-				rm -R -f ./tmp "$APPSPATH"/"$arg"/*~
-				echo " RESTORE COMPLETED SUCCESSFULLY!"
-			fi
-		fi
-		_remove_info_files
-	done
-}
-
-###########################################################################
-# DOWNGRADE
-###########################################################################
-
-function _downgrade() {
-	if test -f "$APPSPATH"/"$2"/AM-updater; then
-		if test -f "$APPSPATH"/"$2"/"$2"-rollback; then
-			cd "$APPSPATH"/"$2" || return
-			./"$2"-rollback
-			exit
-		elif grep -q "api.github.com" "$APPSPATH"/"$2"/AM-updater; then
-			cd "$APPSPATH"/"$2" || return
-			rm -f "$AMCACHEDIR/rollback-args";
-			extension=$(sort ./version | tr '.' '\n' | tail -1)
-			if grep -q "^REPO=" ./AM-updater; then
-				REPO=$(grep -i "REPO=" ./AM-updater | grep -o -P '(?<=").*(?=")')
-			elif grep -q "^SITE=" ./AM-updater; then
-				REPO=$(grep -i "SITE=" ./AM-updater | grep -o -P '(?<=").*(?=")')
-			fi
-			entries_list=$(grep "^version=" ./AM-updater | sed '1,${ s/version=$(//g; s/head -1)/head -100/g; s#$REPO#'"$REPO"'#g; s#releases/latest#releases#g; s#releases #releases?per_page=100 #g; }')
-			printf "%s\n" "$(eval "$entries_list")" | tr ' ' '\n' | grep -i "$extension$" >> "$AMCACHEDIR/rollback-args"
-			if ! grep -q "[0-9]" "$AMCACHEDIR"/rollback-args; then
-				echo " ERROR: No valid links found, sorry!"
-				exit
-			else
-				echo "-----------------------------------------------------------------------"
-				echo "You have chosen to roll back $2."
-				echo "Rollback will be done from https://github.com/$REPO"
-				echo "-----------------------------------------------------------------------"
-				printf "Select a URL from this menu (read carefully) or press CTRL+C to abort:\n-----------------------------------------------------------------------\n"; sleep 1;
-				select d in $(cat "$AMCACHEDIR/rollback-args"); do test -n "$d" && break; echo ">>> Invalid Selection"; done
-
-				cp ./AM-updater ./AM-rollback
-				sed -i 's/version0/#version0/g' ./AM-rollback
-
-				if test -f ./"$2".zsync; then mv ./"$2".zsync ./"$2".zsync.old;	fi
-
-				if wget --version | head -1 | grep -q ' 1.'; then
-					sed -i '/wget/c\wget -q --show-progress '"$d"'' ./AM-rollback
-				else
-					sed -i '/wget/c\wget '"$d"'' ./AM-rollback
-				fi
-				./AM-rollback
-				rm -f ./AM-rollback
-
-				if test -f ./"$2".zsync.old; then mv ./"$2".zsync.old ./"$2".zsync; fi
-
-				echo "$d" > ./version
-				_clean_amcachedir
-				_list_updatable_apps
-				echo -e "\nROLLBACK SUCCESSFUL!"
-				exit
-			fi
-		else
-			echo " The option \"$1\" only works for https://github.com"; exit
-		fi
+	if [ ! -f "$APPSPATH"/"$2"/remove ]; then
+		printf "\n \"$2\" is not a valid argument or is not installed.\n\n"
 	else
-		echo " No AM-updater available for \"$2\", cannot detect any URL!"; exit
+		read -p " Do you wish to backup the current version of $2? (y/N): " yn
+		if ! echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
+			printf "\n OPERATION ABORTED!\n\n"
+		else
+			mkdir -p "$HOME/.am-snapshots/$2"
+			date="$(date +%F-%X | sed 's/://g' | sed 's/-//g')"
+			cp -r "$APPSPATH"/"$2" "$HOME/.am-snapshots/$2/$date"
+			echo " SAVED in $HOME/.am-snapshots/$2"
+		fi
 	fi
 }
 
-###########################################################################
-# LOCK/UNLOCK
-###########################################################################
+# RESTORE
+function _overwrite() {
+	if [ ! -d "$HOME/.am-snapshots/$2" ]; then
+		printf "\n ERROR: No snapshot for \"$2\" found.\n\n"
+	elif [ ! -f "$APPSPATH"/"$arg"/remove ]; then
+		printf "\n \"$2\" is not a valid argument or is not installed.\n\n"
+	else
+		read -p " Do you wish to overwrite $2 with an older version (y,N)?" yn
+		if ! echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
+			printf "\n OPERATION ABORTED!\n\n"
+		else
+			printf "\n Please, select a snapshot or press CTRL+C to abort:\n\n"
+			sleep 1
+			select d in "$HOME/.am-snapshots/$2"/*; do 
+				test -n "$d" && break 
+				echo ">>> Invalid Selection" 
+			done
+			cp -r --backup=t "$d"/* "$APPSPATH"/"$2"/
+			rm -R -f ./tmp "$APPSPATH"/"$2"/*~
+			echo " RESTORE COMPLETED SUCCESSFULLY!"
+		fi
+	fi
+}
 
+# DOWNGRADE
+function _downgrade() {
+	# Safety checks
+	if [ ! -f "$APPSPATH"/"$2"/AM-updater ]; then
+		echo " No AM-updater available for \"$2\", cannot detect any URL!" 
+		exit 1
+	elif [ -f "$APPSPATH"/"$2"/"$2"-rollback ]; then
+		./"$APPSPATH"/"$2"-rollback || return 1
+		exit 0
+	elif ! grep -q "api.github.com" "$APPSPATH"/"$2"/AM-updater; then
+		echo " The option \"$1\" only works for https://github.com"
+		exit 1
+	fi
+	cd "$APPSPATH"/"$2" || return 1
+	extension=$(sort ./version | tr '.' '\n' | tail -1)
+	if grep -q "^REPO=" ./AM-updater; then
+		REPO=$(grep -i "REPO=" ./AM-updater | grep -o -P '(?<=").*(?=")')
+	elif grep -q "^SITE=" ./AM-updater; then
+		REPO=$(grep -i "SITE=" ./AM-updater | grep -o -P '(?<=").*(?=")')
+	fi
+	entries_list=$( grep "^version=" ./AM-updater \
+								| sed '1,${ 
+									s/version=$(//g
+									s/head -1)/head -100/g 
+									s#$REPO#'"$REPO"'#g 
+									s#releases/latest#releases#g
+									s#releases #releases?per_page=100 #g 
+									}' )
+	urls="$(eval "$entries_list" | grep -i "$extension$" )"
+	if ! echo "$urls" | grep -q "[0-9]"; then
+		echo " ERROR: No valid links found, sorry!"
+		exit 1
+	fi
+	echo "-----------------------------------------------------------------------"
+	echo "You have chosen to roll back $2."
+	echo "Rollback will be done from https://github.com/$REPO"
+	echo "-----------------------------------------------------------------------"
+	echo "Select a URL from this menu (read carefully) or press CTRL+C to abort:"
+	echo "-----------------------------------------------------------------------" 
+	sleep 1
+	select d in $urls; do 
+		test -n "$d" && break 
+		echo ">>> Invalid Selection"
+	done
+	cp ./AM-updater ./AM-rollback
+	sed -i 's/version0/#version0/g' ./AM-rollback
+	[ -f ./"$2".zsync ] && mv ./"$2".zsync ./"$2".zsync.old
+	if wget --version | head -1 | grep -q ' 1.'; then
+		sed -i '/wget/c\wget -q --show-progress '"$d"'' ./AM-rollback
+	else
+		sed -i '/wget/c\wget '"$d"'' ./AM-rollback
+	fi
+	./AM-rollback
+	rm -f ./AM-rollback
+	[ -f ./"$2".zsync.old ] && mv ./"$2".zsync.old ./"$2".zsync
+	echo "$d" > ./version
+	_clean_amcachedir
+	_list_updatable_apps
+	echo "ROLLBACK SUCCESSFUL!"
+}
+
+# LOCK/UNLOCK
 function _lock_unlock() {
 	case "$1" in
 	'lock')
 		if ! test -f "$APPSPATH"/"$2"/AM-updater; then
-			echo -e "\n \"$(echo "$AMCLI" | tr '[:lower:]' '[:upper:]')\" cannot manage updates for $2, \"AM-updater\" file not found!\n"
+			printf " \"$(echo "$AMCLI" | tr '[:lower:]' '[:upper:]')\"" 
+			printf "cannot manage updates for $2, \"AM-updater\" file not found!"
 			exit
 		fi
 		
@@ -174,108 +163,66 @@ function _lock_unlock() {
 # NOLIBFUSE
 ###########################################################################
 
-function _nolibfuse_if_zsync_file_exists() {
-	if test -f ./*.zsync; then
-		echo "-----------------------------------------------------------------------"
-		echo -e " Warning! Your AppImage uses \"zsync\" to update. The .zsync file will\n no longer work and will be removed.\n"
-		echo -e " If your \"AM-updater\" script can compare versions, the update method\n will be changed, by downloading the new AppImage version in full,\n from the source.\n"
-		read -r -p " Do you want to proceede anyway (N,y)?" yn
-		case "$yn" in
-		'y'|'Y') echo "-----------------------------------------------------------------------";;
-		'n'|'N'|*) echo "-----------------------------------------------------------------------"; exit;;
-		esac
-	fi
-}
-
-function _nolibfuse_download_appimagetool() {
-	wget -q "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-$arch.AppImage" -O appimagetool
-	chmod a+x ./appimagetool
-}
-
-function _nolibfuse_command_to_convert_to_new_gen_appimages() {
-	chmod 0755 ./squashfs-root
-	export ARCH="$(uname -m)"
-	PATH="$PATH:$PWD" ./appimagetool --comp zstd ./squashfs-root >/dev/null 2>&1
-}
-
-function _nolibfuse_if_appimage_has_been_converted() {
-	rm -R -f ./appimagetool ./squashfs-root ./desktop-file-validate
-	if test -f ./AM-updater; then
-		if test -f ./*.zsync; then
-			rm -f ./*.zsync
-		fi
-		if ! grep -q 'nolibfuse' ./AM-updater; then
-			sed -i "s/^else/	echo y | $AMCLIPATH nolibfuse \"\$APP\"\n	notify-send \"\$APP has been converted too\!\"\nelse/g" ./AM-updater 2>/dev/null
-			printf '\n%s\n' " The next update may replace this AppImage with a Type2 one"
-			echo " so I added this command to the bottom of the \"AM-updater\" script!"
-		fi
-	fi
-	echo -e "\n Contact the upstream developers to make them officially upgrade! \n"
-	read -r -p " Do you wish to remove the old Type2 AppImage (Y,n)?" yn
-	case $yn in
-	[Nn]* )
-		exit
-		;;
-	[Yy]*|* )
-		rm -R -f ./*.old
-		if test -f ./*.zsync; then
-			rm -f ./*.zsync
-		fi
-		exit
-		;;
-	esac
-}
-
-function _fake_desktop-file-validate() {
-	if ! command -v desktop-file-validate >/dev/null 2>&1; then
-		printf '#!/bin/sh\nexit 0' > ./desktop-file-validate 
-		chmod a+x ./desktop-file-validate
-	fi
-}
-
+# NO LIBFUSE
 function _do_nolibfuse() {
-	cd "$APPSPATH" || exit 1
-	if test -f "./$2/$2" 2>/dev/null; then
-		cd ./"$2" || return
-		appimage_new_message=$(strings -d "./$2" 2>/dev/null | grep -F 'if you run it with the --appimage-extract option')
-		appimage_old_message=$(strings -d "./$2" 2>/dev/null | grep -F 'AppImages require FUSE to run')
-		if [ -z "$appimage_new_message" ]; then
-			echo " ⚠️ Error: $(echo "${2}" | tr '[:lower:]' '[:upper:]') is NOT an AppImage."
-			exit
-		else
-			if [ -z "$appimage_old_message" ]; then
-				echo " ◆ $(echo "${2}" | tr '[:lower:]' '[:upper:]') is already a new generation AppImage."
-				exit
-			else
-				_nolibfuse_if_zsync_file_exists
-				_nolibfuse_download_appimagetool
-				_fake_desktop-file-validate
-				echo -ne " ...extracting the AppImage\r"
-				./"$2" --appimage-extract 2> /dev/null | grep -v "squashfs-root"
-				echo -ne " ...trying to convert in new generation AppImage\r"
-				_nolibfuse_command_to_convert_to_new_gen_appimages
-				if test -f ./*.AppImage; then
-					_remove_info_files
-					mv ./"$2" ./"$2".old
-					mv ./*.AppImage ./"$2"
-					echo " ◆ $(echo "$2" | tr '[:lower:]' '[:upper:]') has been converted to a new generation AppImage."
-					_nolibfuse_if_appimage_has_been_converted
-				else
-					echo " 💀Errors while trying to export $(echo "$2" | tr '[:lower:]' '[:upper:]') from Type2 AppImage. Aborted."
-					rm -R -f ./appimagetool ./squashfs-root ./desktop-file-validate; exit
-				fi
-			fi
+	target="$(echo "${2}" | tr '[:lower:]' '[:upper:]')"
+	# safety checks
+	if ! cd "$APPSPATH"/"$2" 2>/dev/null; then
+		echo " ⚠️ Error: \"$target\" is NOT installed." 
+		return 1
+	fi
+	string="$(strings -d "./$2" 2>/dev/null)"
+	if ! echo "$string" | grep -q -- 'run it with the --appimage-extract'; then
+		echo " ⚠️ Error: $target is NOT an AppImage."
+		return 1
+	elif ! echo "$string" | grep -q -- 'AppImages require FUSE to run'; then
+		echo " ◆ $target is already a new generation AppImage."
+		return 1
+	elif [ -f ./*.zsync ]; then
+		echo "-----------------------------------------------------------------------"
+		echo " Warning! Your AppImage uses \"zsync\" to update."
+		echo " The .zsync file will be removed and will no longer work"
+		echo " your \"AM-updater\" will likely still be able to update the AppImage"
+		echo " by comparing the old vs new version url, but it is not guaranteed"
+		read -p " Do you want to proceede anyway? (N/y): " yn
+		if ! echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
+				return 1
 		fi
-	else
-		echo " ⚠️ Error: \"$(echo "${2}" | tr '[:lower:]' '[:upper:]')\" is NOT installed."
-		exit
+	fi
+
+	export ARCH="$(uname -m)"
+	appimagetool="https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-$ARCH.AppImage"
+	printf " ...downloading appimagetool\r"
+	wget -q "$appimagetool" -O ./appimagetool || return 1
+	printf '#!/bin/sh\nexit 0' > ./desktop-file-validate # hack due to https://github.com/AppImage/appimagetool/pull/47
+	chmod a+x ./appimagetool ./desktop-file-validate
+	printf " ...extracting the AppImage\r"
+	./"$2" --appimage-extract >/dev/null 2>&1 && chmod 0755 ./squashfs-root
+	printf " ...trying to convert in new generation AppImage\r"
+	PATH="$PATH:$PWD" ./appimagetool -n ./squashfs-root >/dev/null 2>&1
+	if [ ! -f ./*.AppImage ]; then
+		echo " 💀Error when trying to convert $target. Operation Aborted."
+		rm -R -f ./appimagetool ./squashfs-root ./desktop-file-validate
+		return 1
+	fi
+	
+	_remove_info_files
+	mv ./"$2" ./"$2".old && mv ./*.AppImage ./"$2" || return 1
+	echo " ◆ $target has been converted to a new generation AppImage."
+	rm -rf ./appimagetool ./squashfs-root ./desktop-file-validate ./*.zsync
+	if [ -f ./AM-updater ] && ! grep -q 'nolibfuse' ./AM-updater; then
+		sed -i "s/^else/	echo y | $AMCLIPATH nolibfuse \"\$APP\"\n	notify-send \"\$APP has been converted too\!\"\nelse/g" ./AM-updater 2>/dev/null
+		echo " The next update may replace this AppImage with a Type2 one"
+		echo " so I added this command to the bottom of the \"AM-updater\" script!"
+	fi
+	echo " Contact the upstream developers to make them officially upgrade!"
+	read -p " Do you wish to remove the old libfuse2 AppImage? (Y/n):" yn
+	if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
+			rm -f ./*.old
 	fi
 }
 
-###########################################################################
 # REMOVE
-###########################################################################
-
 function _remove() {
 	$SUDOCMD echo "" > /dev/null
 	echo "------------------------------------------------------------------------------"
@@ -309,24 +256,25 @@ function _remove() {
 # OPTIONS AVAILABLE IN THIS MODULE
 ###########################################################################
 
-case $2 in
-  '') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
-esac
-
+[ -z "$2" ] && echo " USAGE: $AMCLI $1 [ARGUMENT]" && exit 1
 case "$1" in
 	'backup'|'-b')
 		# Do a snapshot of an installed app
-		_backup "${@}"
-		shift
+		ARGS="$(echo "$@" | cut -f2- -d ' ')"
+		for arg in $ARGS; do
+			_backup "${@}"
+			shift
+		done
 		;;
 
 	'downgrade'|'--rollback')
 		# Downgrade the installed app to a previous version, from the online source
 		_online_check
-		while [ -n "$1" ]; do
+		ARGS="$(echo "$@" | cut -f2- -d ' ')"
+		for arg in $ARGS; do
 			_downgrade "${@}"
+			shift
 		done
-		shift
 		;;
 
 	'lock'|'unlock')
@@ -337,21 +285,26 @@ case "$1" in
 	'nolibfuse')
 		# Convert old AppImages to a new standard and get rid of libfuse2 dependency
 		_online_check
-		while [ -n "$1" ]; do
+		ARGS="$(echo "$@" | cut -f2- -d ' ')"
+		for arg in $ARGS; do
 			_do_nolibfuse "${@}"
+			shift
 		done
-		shift
 		;;
 
 	'overwrite'|'-o')
 		# Restore an app to a previous version using a snapshot (see "backup" or "-b", above)
-		_overwrite "${@}"
-		shift
+		ARGS="$(echo "$@" | cut -f2- -d ' ')"
+		for arg in $ARGS; do
+			_overwrite "${@}"
+			_remove_info_files
+			shift
+		done
 		;;
 
 	'remove'|'-r'|'-R')
 		# Remove programs
-		ARGS=$(echo "$@" | cut -f2- -d ' ')
+		ARGS="$(echo "$@" | cut -f2- -d ' ')"
 		for arg in $ARGS; do
 			_remove "$@"
 			_remove_info_files
