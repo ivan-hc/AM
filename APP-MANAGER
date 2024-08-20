@@ -304,21 +304,27 @@ function _check_version_if_zsync_file_exists() {
 	fi
 }
 
+function _check_version_filters() {
+	sed "s/$arch//g; s/amd64//g; s/x86-64//g; s/x64//g; s/basic//g; s/standard//g; s/full//g; s/help//g;" \
+		| tr '-' '\n' | tr '_' '\n' | grep -vi "appimage\|$arg\|?\|tar." | grep "[0-9]" | head -1 | sed 's/^v//g; s/^\.//g; s/\.$//g;'
+}
+
 function _check_version_if_version_file_exists() {
-	APPVERSION=$(sort "$APPSPATH"/"$arg"/version | head -1 | sed 's:.*/::' \
-		| sed "s/$arch//g; s/amd64//g; s/x86-64//g; s/x64//g; s/basic//g; s/standard//g; s/full//g; s/help//g;" \
-		| tr '-' '\n' | tr '_' '\n' | grep -vi "appimage\|$arg\|?\|tar." | grep "[0-9]" | head -1 | sed 's/^v//g; s/^\.//g; s/\.$//g;')
+	APPVERSION=$(sort "$APPSPATH"/"$arg"/version | head -1 | sed 's:.*/::' | _check_version_filters)
 	if [ -z "$APPVERSION" ]; then
 		if grep -q "download$" ./"$arg"/version; then
-			APPVERSION=$(sort "$APPSPATH"/"$arg"/version | tr '/' '\n' \
-				| sed "s/$arch//g; s/amd64//g; s/x86-64//g; s/x64//g; s/basic//g; s/standard//g; s/full//g; s/help//g;" \
-				| tr '_' '\n' | grep -vi "appimage\|$arg\|?\|tar." | grep "[0-9]" | tail -1 | sed 's/^v//g; s/^\.//g; s/\.$//g;')
+			APPVERSION=$(sort "$APPSPATH"/"$arg"/version | tr '/' '\n' | _check_version_filters)
 		elif grep -q "://" ./"$arg"/version; then
 			APPVERSION=$(sort ./"$arg"/version | tr '/' '\n' | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
 		elif grep -q "/v[0-9]*" ./"$arg"/version; then
 			APPVERSION=$(sort "$APPSPATH"/"$arg"/version | tr '/' '\n' | grep "^v[0-9]" | head -1 | sed 's/^v//g')
 		elif [ "$(sort ./"$arg"/version | wc -w)" = 1 ]; then
 			APPVERSION=$(sort ./"$arg"/version | head -1)
+		fi
+	fi
+	if [ -z "$APPVERSION" ]; then
+		if grep -q "http.*download/.*[0-9].*/" ./"$arg"/version; then
+			APPVERSION=$(sort ./"$arg"/version | tr '/-' '\n' | grep "[0-9]" | _check_version_filters | tail -1)
 		fi
 	fi
 }
