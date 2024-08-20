@@ -49,41 +49,40 @@ function _overwrite() {
 }
 
 # DOWNGRADE
+function _downgrade_entries_filter() {
+	grep -vi "^#\|version0=" ./AM-updater | grep "api.github.com" \
+		| tr '=' '\n' | sed 's/^\$(//g' \
+		| tail -1 | sed '1,${ 
+		s/version=$(//g
+		s/head -1)/head -100/g 
+		s#$REPO#'"$REPO"'#g 
+		s#releases/latest#releases#g
+		s#releases #releases?per_page=100 #g 
+		}'
+}
+
 function _downgrade() {
 	# Safety checks
 	if [ ! -f "$APPSPATH"/"$2"/AM-updater ]; then
 		echo " No AM-updater available for \"$2\", cannot detect any URL!" 
 		return 1
 	elif [ -f "$APPSPATH"/"$2"/"$2"-rollback ]; then
-		"$APPSPATH"/"$2"/"$2"-rollback || return 1
+		cd "$APPSPATH"/"$2" || return 1
+		./"$2"-rollback || return 1
 		return 0
 	elif ! grep -q "api.github.com" "$APPSPATH"/"$2"/AM-updater; then
 		echo " The option \"$1\" only works for https://github.com"
 		return 1
 	fi
 	cd "$APPSPATH"/"$2" || return 1
-	extension=$(sort ./version | tr '.' '\n' | tail -1)
-	if grep -q "^REPO=" ./AM-updater; then
-		REPO=$(grep -i "REPO=" ./AM-updater | grep -o -P '(?<=").*(?=")')
-	elif grep -q "^SITE=" ./AM-updater; then
-		REPO=$(grep -i "SITE=" ./AM-updater | grep -o -P '(?<=").*(?=")')
-	fi
-	entries_list=$( grep "^version=" ./AM-updater \
-								| sed '1,${ 
-									s/version=$(//g
-									s/head -1)/head -100/g 
-									s#$REPO#'"$REPO"'#g 
-									s#releases/latest#releases#g
-									s#releases #releases?per_page=100 #g 
-									}' )
-	urls="$(eval "$entries_list" | grep -i "$extension$" )"
+	entries_list=$(_downgrade_entries_filter)
+	urls="$(eval "$entries_list")"
 	if ! echo "$urls" | grep -q "[0-9]"; then
 		echo " ERROR: No valid links found, sorry!"
 		exit 1
 	fi
 	echo "-----------------------------------------------------------------------"
-	echo "You have chosen to roll back $2."
-	echo "Rollback will be done from https://github.com/$REPO"
+	echo "You have chosen to roll back \"$2\"."
 	echo "-----------------------------------------------------------------------"
 	echo "Select a URL from this menu (read carefully) or press CTRL+C to abort:"
 	echo "-----------------------------------------------------------------------" 
