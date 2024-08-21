@@ -3,8 +3,7 @@
 # AM INSTALL SCRIPT VERSION 3.5
 set -u
 APP=brave
-SITE1=$(curl -Ls https://api.github.com/repos/brave/brave-browser/releases/latest | sed 's/[()",{} ]/\n/g' | grep -oi "https.*linux-amd64.zip$" | head -1)
-SITE2=$(curl -Ls https://api.github.com/repos/srevinsaju/Brave-AppImage/releases/latest | sed 's/[()",{} ]/\n/g' | grep -oi "https.*stable.*appimage$" | head -1)
+SITE="brave/brave-browser"
 
 # CREATE DIRECTORIES AND ADD REMOVER
 [ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
@@ -12,103 +11,52 @@ printf "#!/bin/sh\nset -e\nrm -f /usr/local/bin/$APP\nrm -R -f /opt/$APP" > ../r
 printf '\n%s' "rm -f /usr/local/share/applications/$APP-AM.desktop" >> ../remove
 chmod a+x ../remove || exit 1
 
-# CHOOSE A VERSION
-read -r -p "
- Choose which version of Brave to use:
- 
- 1. Brave
-    Official portable build of Brave, stable version
-    Source: https://github.com/brave/brave-browser
-
- 2. Brave AppImage
-    Unofficial AppImage made by turning the portable build into an AppImage
-    It can be sandboxed with 'am --sandbox brave' or 'appman --sandbox brave'
-    Source: https://github.com/srevinsaju/Brave-AppImage
-
- Which version you choose (type a number and press ENTER)?: " RESPONSE
-case "$RESPONSE" in
-	1)
-	UPDATER=1
-	version="$SITE1"
-	wget "$version" || exit 1;;
-
-	2)
-	UPDATER=2
-	version="$SITE2"
-	wget "$version" || exit 1;;
-
-	*) ../remove && echo "Not a valid number, aborting" && exit 1;;
-esac
-
-# PREPARE THE APP, $version is also used for updates
-if [ -e ./*zip ]; then
-	unzip -qq ./*zip 1>/dev/null && rm -f ./*zip
-	chmod a+x ./brave || exit 1
-	ln -s "/opt/$APP/brave" "/usr/local/bin/$APP" # LINK TO PATH
-else
-	mv ./*mage ./"$APP"
-	chmod a+x ./"$APP" || exit 1
-	ln -s "/opt/$APP/$APP" "/usr/local/bin/$APP" # LINK TO PATH
-fi
+# DOWNLOAD AND PREPARE THE APP, $version is also used for updates
+version=$(curl -Ls https://api.github.com/repos/brave/brave-browser/releases/latest | sed 's/[()",{} ]/\n/g' | grep -oi "https.*" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | grep -i "https.*linux-amd64.zip$" | head -1)
+wget "$version" || exit 1
+[ -e ./*7z ] && 7z x ./*7z && rm -f ./*7z
+[ -e ./*tar.* ] && tar fx ./*tar.* && rm -f ./*tar.*
+[ -e ./*zip ] && unzip -qq ./*zip 1>/dev/null && rm -f ./*zip
 cd ..
-mv ./tmp/* ./ && rm -R -f ./tmp || exit 1
+if [ -d ./tmp/* 2>/dev/null ]; then mv ./tmp/*/* ./; else mv ./tmp/* ./"$APP" 2>/dev/null || mv ./tmp/* ./; fi
+rm -R -f ./tmp || exit 1
 echo "$version" > ./version
+chmod a+x ./$APP || exit 1
+
+# LINK TO PATH
+ln -s "/opt/$APP/$APP" "/usr/local/bin/$APP"
 
 # SCRIPT TO UPDATE THE PROGRAM
 cat >> ./AM-updater << 'EOF'
 #!/bin/sh
 set -u
 APP=brave
-#SITE1=$(curl -Ls https://api.github.com/repos/brave/brave-browser/releases/latest | sed 's/[()",{} ]/\n/g' | grep -oi "https.*linux-amd64.zip$" | head -1)
-#SITE2=$(curl -Ls https://api.github.com/repos/srevinsaju/Brave-AppImage/releases/latest | sed 's/[()",{} ]/\n/g' | grep -oi "https.*stable.*appimage$" | head -1)
+SITE="brave/brave-browser"
 version0=$(cat "/opt/$APP/version")
-version="REPLACETHIS"
+version=$(curl -Ls https://api.github.com/repos/brave/brave-browser/releases/latest | sed 's/[()",{} ]/\n/g' | grep -oi "https.*" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | grep -i "https.*linux-amd64.zip$" | head -1)
 [ -n "$version" ] || { echo "Error getting link"; exit 1; }
 if [ "$version" != "$version0" ]; then
 	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
 	notify-send "A new version of $APP is available, please wait"
 	wget "$version" || exit 1
-	if [ -e ./*zip ]; then
-		unzip -qq ./*zip 1>/dev/null && rm -f ./*zip
-		chmod a+x ./brave || exit 1
-	else
-		mv ./*mage ./"$APP"
-		chmod a+x ./"$APP" || exit 1
-	fi
+	[ -e ./*7z ] && 7z x ./*7z && rm -f ./*7z
+	[ -e ./*tar.* ] && tar fx ./*tar.* && rm -f ./*tar.*
+	[ -e ./*zip ] && unzip -qq ./*zip 1>/dev/null && rm -f ./*zip
 	cd ..
-	mv --backup=t ./tmp/* ./ && rm -R -f ./tmp ./*~ || exit 1
+	if [ -d ./tmp/* 2>/dev/null ]; then mv --backup=t ./tmp/*/* ./; else mv --backup=t ./tmp/* ./"$APP" 2>/dev/null || mv --backup=t ./tmp/* ./; fi
+	chmod a+x ./"$APP" || exit 1
 	echo "$version" > ./version
+	rm -R -f ./tmp ./*~
 	notify-send "$APP is updated!"
 else
 	echo "Update not needed!"
 fi
 EOF
-[ "$UPDATER" = 1 ] && { sed -i 's|REPLACETHIS|$SITE1|g; s|#SITE1|SITE1|g' ./AM-updater || exit 1; }
-[ "$UPDATER" = 2 ] && { sed -i 's|REPLACETHIS|$SITE2|g; s|#SITE2|SITE2|g' ./AM-updater || exit 1; }
 chmod a+x ./AM-updater || exit 1
 
-# LAUNCHER & ICON
-if [ "$UPDATER" = "1" ]; then
-	DESKTOP="https://raw.githubusercontent.com/srevinsaju/Brave-AppImage/master/AppDir/brave-browser.desktop"
-	wget "$DESKTOP" -O ./"$APP".desktop 2>/dev/null || exit 1
-	mv ./product*logo*128*.png ./DirIcon
-else
-	./"$APP" --appimage-extract *.desktop 1>/dev/null && mv ./squashfs-root/*.desktop ./"$APP".desktop
-	./"$APP" --appimage-extract .DirIcon 1>/dev/null && mv ./squashfs-root/.DirIcon ./DirIcon
-	COUNT=0
-	while [ "$COUNT" -lt 10 ]; do # Tries to get the actual icon/desktop if it is a symlink to another symlink
-		if [ -L ./"$APP".desktop ]; then
-			LINKPATH=$(readlink ./"$APP".desktop)
-			./"$APP" --appimage-extract "$LINKPATH" 1>/dev/null && mv ./squashfs-root/"$LINKPATH" ./"$APP".desktop
-		fi
-		if [ -L ./DirIcon ]; then
-			LINKPATH=$(readlink ./DirIcon)
-			./"$APP" --appimage-extract "$LINKPATH" 1>/dev/null && mv ./squashfs-root/"$LINKPATH" ./DirIcon
-		fi
-		[ ! -L ./"$APP".desktop ] && [ ! -L ./DirIcon ] && break
-		COUNT=$((COUNT + 1))
-	done
-	rm -R -f ./squashfs-root
-fi
+# ICON AND LAUNCHER
+DESKTOP="https://raw.githubusercontent.com/srevinsaju/Brave-AppImage/master/AppDir/brave-browser.desktop"
+wget "$DESKTOP" -O ./"$APP".desktop 2>/dev/null || exit 1
+mv ./product*logo*128*.png ./DirIcon
 sed -i "s#Exec=[^ ]*#Exec=$APP#g; s#Icon=.*#Icon=/opt/$APP/icons/$APP#g" ./"$APP".desktop
 mv ./"$APP".desktop /usr/local/share/applications/"$APP"-AM.desktop && mv ./DirIcon ./icons/"$APP" 1>/dev/null
