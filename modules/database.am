@@ -6,39 +6,45 @@
 
 # FUNCTIONS RELATED TO "ABOUT"
 
-_about_download_markdown() {
-	disk_usage=""
-	app_version=""
-	markdown_url="$AMCATALOGUEMARKDOWNS/${1}.md"
-	cache_dir="$AMCACHEDIR/about"
-	app_status=" STATUS: NOT INSTALLED"
-	package_name="$1"
-	fake_name=$(echo "$1" | sed 's/-appimage//g; s/debian-testing-//g')
+_about_show_markdown() {
 	if curl -o /dev/null -sIf "$markdown_url"; then
-		mkdir -p "$cache_dir" && wget -q "$markdown_url" -P "$cache_dir"
-		sed -i '1,${ /^\s*#/ d; /^\s*!/ d; /\[Applications]/d; /\ --- /d; /\ | - | /d; /\!\[/d; }' "$cache_dir/$1.md"
-		sed -i '$!N;s/^\s*\n\s*$//;P;D' "$cache_dir/$1.md"
-		printf ' PACKAGE: %s\n' "$package_name" | tr '[:lower:]' '[:upper:]'
-		if test -f "$APPSPATH/$fake_name/.am-installer/$1"; then
-			APPNAME=$(echo "$fake_name" | tr '[:lower:]' '[:upper:]')
-			disk_usage=$(du -sm "$APPSPATH/$fake_name" | cut -f1)
-			app_version=$(grep -w " ◆ $fake_name	|" "$AMCACHEDIR"/version-args 2>/dev/null | sed 's:.*|	::')
-			if [ "$fake_name" = "$1" ]; then
-				app_status=$(printf " STATUS: INSTALLED\n SIZE: ABOUT $disk_usage MB OF DISK SPACE IN USE\n VERSION: $app_version")
-			else
-				app_status=$(printf " STATUS: INSTALLED AS \"$APPNAME\"\n SIZE: ABOUT $disk_usage MB OF DISK SPACE IN USE\n VERSION: $app_version")
-			fi
-		elif [ -f "$APPSPATH/$1/remove" ]; then
-			disk_usage=$(du -sm "$APPSPATH/$1" | cut -f1)
-			app_version=$(grep -w " ◆ $1	|" "$AMCACHEDIR"/version-args 2>/dev/null | sed 's:.*|	::')
-			app_status=$(printf " STATUS: INSTALLED\n SIZE: ABOUT $disk_usage MB OF DISK SPACE IN USE\n VERSION: $app_version")
-		fi
-		printf '%s\n' "$app_status"
-		cat -s "$cache_dir/$1.md"
-		[ -n "$cache_dir" ] && rm -R -f "$cache_dir"	
+		markdown_page=$(curl -Ls "$markdown_url" \
+		| sed '1,${ /^\s*#/ d; /^\s*!/ d; /\[Applications]/d; /\ --- /d; /\ | - | /d; /\!\[/d; }' \
+		| sed '$!N;s/^\s*\n\s*$//;P;D')
+		echo "$markdown_page"
 	else
 		printf ' "%s" IS NOT A VALID ARGUMENT\n' "$package_name"
 	fi
+}
+
+_about_page() {
+	package_name="$1"
+	markdown_url="$AMCATALOGUEMARKDOWNS/${1}.md"
+	echo " PACKAGE: $package_name"
+	app_name=$(echo "$1" | sed 's/-appimage//g; s/debian-testing-//g')
+	if test -f "$APPSPATH/$app_name/remove"; then
+		app_status="installed"
+		if test -f "$APPSPATH/$app_name/.am-installer/$app_name"; then
+			app_status="installed"
+		elif [ "$app_name" != "$1" ]; then
+			if test -f "$APPSPATH/$app_name/.am-installer/$1"; then
+				app_status="installed as \"$app_name\"" || app_status="installed but replaced by \"$1\""
+			fi
+		fi
+	elif test -f "$APPSPATH/$app_name-appimage/remove"; then
+		app_status="installed"
+		app_name="$app_name-appimage"
+	else
+		app_status="not installed"
+	fi
+	echo " STATUS: $app_status"
+	if echo "$app_status" | grep -q "^installed"; then
+		disk_usage=$(du -sm "$APPSPATH/$app_name" | cut -f1)
+		echo " SIZE: $disk_usage MB"
+		app_version=$(grep -w " ◆ $app_name	|" "$AMCACHEDIR"/version-args 2>/dev/null | sed 's:.*|	::')
+		echo " VERSION: $app_version"
+	fi
+	_about_show_markdown
 }
 
 _about_generate_3rd_party() {
@@ -153,7 +159,7 @@ case "$1" in
 		ARGS="$(echo "$@" | cut -f2- -d ' ')" # Removes first argument
 		for arg in $ARGS; do
 			if curl -o /dev/null -sIf "$AMCATALOGUEMARKDOWNS/${arg}.md" 1>/dev/null; then
-				_about_download_markdown "$arg"
+				_about_page "$arg"
 			elif grep -q "◆ $arg : " "$AMPATH/$arch-apps"; then
 				_about_generate_3rd_party "$arg"
 			elif grep -q "◆ $arg : " "$AMPATH/libs-list"; then
