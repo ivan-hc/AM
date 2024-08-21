@@ -225,8 +225,7 @@ function _am_dependences_check() {
 	# Exit if any essential command is missing
 	if [ -n "$missing_deps" ]; then
 		echo '--------------------------------------------------------------------------'
-		printf " ${RED}💀 ERROR! MISSING ESSENTIAL COMMANDS\033[0m: %s\n\n Install the above and try again! \n" \
-			"${missing_deps[*]}"
+		printf " ${RED}💀 ERROR! MISSING ESSENTIAL COMMANDS\033[0m: %s\n\n Install the above and try again! \n" "${missing_deps[*]}"
 		echo '--------------------------------------------------------------------------'
 		echo -e "\n ${Green}List of the $AMCLIUPPER $AMVERSION core dependences\033[0m:\n"
 		echo "$AMDEPENDENCES" | tr ' ' ',' | sed 's/,/, /g' | sed 's/^/ /g'
@@ -306,53 +305,42 @@ function _am_databases_check() {
 #####################################
 
 function _check_version_filters() {
-	sed "s/$arch//g; s/amd64//g; s/x86-64//g; s/x64//g; s/basic//g; s/standard//g; s/full//g; s/help//g;" \
-		| tr '-' '\n' | tr '_' '\n' | grep -vi "appimage\|$arg\|?\|tar." | grep "[0-9]" | head -1 \
-		| sed 's/^v//g; s/^\.//g; s/\.$//g;'
+	sed "s/$arch//g; s/amd64//g; s/x86-64//g; s/x64//g; s/basic//g; s/standard//g; s/full//g; s/help//g;" | tr '-' '\n' | tr '_' '\n' | grep -vi "appimage\|$arg\|?\|tar." | grep "[0-9]" | head -1 | sed 's/^v//g; s/^\.//g; s/\.$//g;'
 }
 
 function _check_version_if_any_version_reference_is_somewhere() {
-	APPVERSION=$(grep -i "version=" "$APPSPATH"/"$arg"/* 2>/dev/null \
-	| grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
+	APPVERSION=$(grep -i "version=" "$APPSPATH"/"$arg"/* 2>/dev/null | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
 }
 
 function _check_version_if_zsync_file_exists() {
-	APPVERSION=$(strings -d ./"$arg"/*.zsync | grep -i "$(echo "$arg" \
-	| sed 's/-appimage//g')" | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" \
-	| head -1)
+	APPVERSION=$(strings -d ./"$arg"/*.zsync | grep -i "$(echo "$arg" | sed 's/-appimage//g')" | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
 	if [ -z "$APPVERSION" ]; then
 		APPVERSION=$(date -r ./"$arg"/*.zsync "+%Y.%m.%d")
 	fi
 }
 
 function _check_version_if_version_file_exists() {
-	APPVERSION=$(sort "$APPSPATH"/"$arg"/version | head -1 | sed 's:.*/::' \
-	| _check_version_filters)
+	APPVERSION=$(sort "$APPSPATH"/"$arg"/version | head -1 | sed 's:.*/::' | _check_version_filters)
 	if [ -z "$APPVERSION" ]; then
 		if grep -q "download$" ./"$arg"/version; then
-			APPVERSION=$(sort "$APPSPATH"/"$arg"/version | tr '/' '\n' \
-			| _check_version_filters)
+			APPVERSION=$(sort "$APPSPATH"/"$arg"/version | tr '/' '\n' | _check_version_filters)
 		elif grep -q "://" ./"$arg"/version; then
-			APPVERSION=$(sort ./"$arg"/version | tr '/' '\n' \
-			| grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
+			APPVERSION=$(sort ./"$arg"/version | tr '/' '\n' | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
 		elif grep -q "/v[0-9]*" ./"$arg"/version; then
-			APPVERSION=$(sort "$APPSPATH"/"$arg"/version | tr '/' '\n' \
-			| grep "^v[0-9]" | head -1 | sed 's/^v//g')
+			APPVERSION=$(sort "$APPSPATH"/"$arg"/version | tr '/' '\n' | grep "^v[0-9]" | head -1 | sed 's/^v//g')
 		elif [ "$(sort ./"$arg"/version | wc -w)" = 1 ]; then
 			APPVERSION=$(sort ./"$arg"/version | head -1)
 		fi
 	fi
 	if [ -z "$APPVERSION" ]; then
 		if grep -q "http.*download/.*[0-9].*/" ./"$arg"/version; then
-			APPVERSION=$(sort ./"$arg"/version | tr '/-' '\n' | grep "[0-9]" \
-			| _check_version_filters | tail -1)
+			APPVERSION=$(sort ./"$arg"/version | tr '/-' '\n' | grep "[0-9]" | _check_version_filters | tail -1)
 		fi
 	fi
 }
 
 function _check_version_if_an_updater_exists() {
-	APPVERSION=$("$APPSPATH"/"$arg"/updater -d "$APPSPATH"/"$arg"/"$arg" 2>/dev/null \
-	| grep -i "$arg" | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
+	APPVERSION=$("$APPSPATH"/"$arg"/updater -d "$APPSPATH"/"$arg"/"$arg" 2>/dev/null | grep -i "$arg" | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
 	if [ -z "$APPVERSION" ]; then
 		_check_version_if_any_version_reference_is_somewhere
 	fi
@@ -367,10 +355,8 @@ function _check_version_if_firefox_webapp() {
 }
 
 function _check_version_if_library() {
-	LIBNAME=$(sort "$APPSPATH"/"$arg"/remove | tr ' ' '\n' | grep "usr/local/lib" \
-	| head -1 | sed 's:.*/::')
-	APPVERSION=$(find /usr/local/lib -type f -name "$LIBNAME" -type f \
-	| sed 's:.*.so.::' | tail -1)
+	LIBNAME=$(sort "$APPSPATH"/"$arg"/remove | tr ' ' '\n' | grep "usr/local/lib" | head -1 | sed 's:.*/::')
+	APPVERSION=$(find /usr/local/lib -type f -name "$LIBNAME" -type f | sed 's:.*.so.::' | tail -1)
 }
 
 function _check_version_if_binary_in_place() {
@@ -384,8 +370,7 @@ function _check_version_if_no_version_found() {
 function _check_version() {
 	rm -f "$AMCACHEDIR"/version-args
 	cd "$APPSPATH" &&
-	INSTALLED_APPS=$(find . -name 'remove' -printf "%h\n" 2>/dev/null \
-	| du -sh -- * 2> /dev/null | sort -rh | sed 's@.*	@@')
+	INSTALLED_APPS=$(find . -name 'remove' -printf "%h\n" 2>/dev/null | du -sh -- * 2> /dev/null | sort -rh | sed 's@.*	@@')
 	for arg in $INSTALLED_APPS; do
 		if test -f ./"$arg"/remove 2>/dev/null; then
 			if test -f ./"$arg"/*.zsync 2>/dev/null; then
@@ -419,13 +404,11 @@ function _check_version() {
 
 function _check_version_for_auto_updatable_apps() {
 	cd "$APPSPATH" &&
-	INSTALLED_APPS=$(find . -name 'remove' -printf "%h\n" 2>/dev/null | du -sh -- * 2> /dev/null \
-	| sort -rh | sed 's@.*	@@')
+	INSTALLED_APPS=$(find . -name 'remove' -printf "%h\n" 2>/dev/null | du -sh -- * 2> /dev/null | sort -rh | sed 's@.*	@@')
 	for arg in $INSTALLED_APPS; do
 		if test -f ./"$arg"/updater 2>/dev/null; then
 			_check_version_if_an_updater_exists
-			OLDAPPVERSION=$(grep " ◆ $arg	|" "$AMCACHEDIR"/version-args | tr '|' '\n' \
-			| sed 's/	//g' | head -2 | tail -1)
+			OLDAPPVERSION=$(grep " ◆ $arg	|" "$AMCACHEDIR"/version-args | tr '|' '\n' | sed 's/	//g' | head -2 | tail -1)
 			sed -i "/ ◆ $arg	|/s#$OLDAPPVERSION#$APPVERSION#" "$AMCACHEDIR"/*
 		fi
 	done
@@ -446,8 +429,7 @@ function _remove_info_files() {
 
 function _use_disable-completion() {
 	if [ "$(grep -o "$AMCLI" 0<"$COMPLETIONPATH/$COMPLETIONFILE" | head -1)" = "$AMCLI" ]; then
-		grep -v 'complete -W "$(cat '"$AMPATH"'/list 2>/dev/null)" '"$AMCLI"'' "$COMPLETIONPATH/$COMPLETIONFILE" \
-		> "$AMPATH"/$COMPLETIONFILE.backup &&
+		grep -v 'complete -W "$(cat '"$AMPATH"'/list 2>/dev/null)" '"$AMCLI"'' "$COMPLETIONPATH/$COMPLETIONFILE" > "$AMPATH"/$COMPLETIONFILE.backup &&
 		$SUDOCOMMAND mv "$AMPATH"/$COMPLETIONFILE.backup "$COMPLETIONPATH/$COMPLETIONFILE"
 		echo " Completion disabled! "
 	else
@@ -482,11 +464,9 @@ function _use_enable_completion() {
 			echo "Zsh completion already enabled!"
 		else
 			echo '#!/usr/bin/env bash' >> "$ZSHDIR/$COMPLETIONFILE"
-			echo 'complete -W "$(cat '"$AMPATH"'/list 2>/dev/null)" '"$AMCLI"'' \
-			>> "$ZSHDIR/$COMPLETIONFILE"
+			echo 'complete -W "$(cat '"$AMPATH"'/list 2>/dev/null)" '"$AMCLI"'' >> "$ZSHDIR/$COMPLETIONFILE"
 			chmod a+x "$ZSHDIR/$COMPLETIONFILE"
-			echo -e "\nautoload bashcompinit\nbashcompinit\nsource $ZSHDIR/$COMPLETIONFILE" \
-			>> "$ZSHDIR/.zshrc"
+			echo -e "\nautoload bashcompinit\nbashcompinit\nsource $ZSHDIR/$COMPLETIONFILE" >> "$ZSHDIR/.zshrc"
 		fi
 	fi
 }
@@ -703,11 +683,9 @@ function _clean_launchers() {
 
 function _clean_old_modules() {
 	if [ "$AMCLI" = am ] 2>/dev/null; then
-		MODULES=$(grep -Eo '\S*.am\S*' /opt/am/APP-MANAGER \
-		| sed 's@.*/@@' | grep -v ";" | grep ".am" | uniq | sort)
+		MODULES=$(grep -Eo '\S*.am\S*' /opt/am/APP-MANAGER | sed 's@.*/@@' | grep -v ";" | grep ".am" | uniq | sort)
 	else
-		MODULES=$(grep -Eo '\S*.am\S*' "$AMCLIPATH" 2>/dev/null \
-		| sed 's@.*/@@' | grep -v ";" | grep ".am" | uniq | sort)
+		MODULES=$(grep -Eo '\S*.am\S*' "$AMCLIPATH" 2>/dev/null | sed 's@.*/@@' | grep -v ";" | grep ".am" | uniq | sort)
 	fi
 	for m in "$APPSPATH"/"$AMCLI"/modules/*; do
 		if [[ "${MODULES}" != *"$(basename -- "$m")"* ]];then
@@ -770,8 +748,7 @@ function _sync_installation_scripts() {
 	echo -e " Checking for changes of the installation scripts in the online database..."
 	rm -R -f "$AMCACHEDIR"/sync-args && echo "" >> "$AMCACHEDIR"/sync-args
 	cd "$APPSPATH" &&
-	find . -name 'AM-updater' -printf "%h\n" 2>/dev/null \
-	| sort -u | cut -c 3- > "$AMCACHEDIR"/sync-args
+	find . -name 'AM-updater' -printf "%h\n" 2>/dev/null | sort -u | cut -c 3- > "$AMCACHEDIR"/sync-args
 	ARGS=$(cat "$AMCACHEDIR"/sync-args)
 	for arg in $ARGS; do
 		mkdir -p "$APPSPATH/$arg/.am-installer"
@@ -797,8 +774,7 @@ function _sync_installation_scripts() {
 function _sync_modules() {
 	echo "-----------------------------------------------------------------------------"
 	echo -e " Check for updates in modules..."
-	MODULES=$(curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/ivan-hc/AM/contents/modules?ref="$AMBRANCH" \
-	| sed 's/[()",{}]/ /g; s/ /\n/g' | grep -o 'https.*raw.*modules.*am$' | grep -v "sync\|update")
+	MODULES=$(curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/ivan-hc/AM/contents/modules?ref="$AMBRANCH" | sed 's/[()",{}]/ /g; s/ /\n/g' | grep -o 'https.*raw.*modules.*am$' | grep -v "sync\|update")
 	for v in $MODULES; do
 		cd "$AMPATH"/modules || return
 		MODULENAME=$(echo "$v" | sed 's:.*/::')
@@ -875,8 +851,7 @@ function _update_all_apps() {
 		if test -f ./AM-updater; then
 			if [ -w ./AM-updater ]; then
 				APPNAME=$(printf '%s\n' "${PWD##*/}")
-				start=$(date +%s) && sh -x ./AM-updater > /dev/null 2>&1 \
-				| echo -ne ' Updating "'"$APPNAME"'"...\r' && end=$(date +%s) &&
+				start=$(date +%s) && sh -x ./AM-updater > /dev/null 2>&1 | echo -ne ' Updating "'"$APPNAME"'"...\r' && end=$(date +%s) &&
 				echo " ◆ $(echo "$APPNAME" | tr '[:lower:]' '[:upper:]') is updated, $((end - start)) seconds elapsed!" &
 			else
 				APPNAME=$(printf '%s\n' "${PWD##*/}")
@@ -941,8 +916,7 @@ function _use_update() {
 		*)
 			if test -f "$APPSPATH"/"$2"/AM-updater; then
 				if [ -w "$APPSPATH"/"$2"/AM-updater ]; then
-					start=$(date +%s); "$APPSPATH"/"$2"/AM-updater > /dev/null 2>&1 \
-					| echo -ne " UPDATING $(echo "$2" | tr '[:lower:]' '[:upper:]')\r"; end=$(date +%s)
+					start=$(date +%s); "$APPSPATH"/"$2"/AM-updater > /dev/null 2>&1 | echo -ne " UPDATING $(echo "$2" | tr '[:lower:]' '[:upper:]')\r"; end=$(date +%s)
 					echo -e " ◆ $(echo "$2" | tr '[:lower:]' '[:upper:]') is updated, $((end - start)) seconds elapsed!"
 					_clean_amcachedir
 					_list_updatable_apps
