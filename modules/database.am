@@ -13,12 +13,22 @@ _about_download_markdown() {
 	cache_dir="$AMCACHEDIR/about"
 	app_status=" STATUS: NOT INSTALLED"
 	package_name="$1"
+	fake_name=$(echo "$1" | sed 's/-appimage//g; s/debian-testing-//g')
 	if curl -o /dev/null -sIf "$markdown_url"; then
 		mkdir -p "$cache_dir" && wget -q "$markdown_url" -P "$cache_dir"
 		sed -i '1,${ /^\s*#/ d; /^\s*!/ d; /\[Applications]/d; /\ --- /d; /\ | - | /d; /\!\[/d; }' "$cache_dir/$1.md"
 		sed -i '$!N;s/^\s*\n\s*$//;P;D' "$cache_dir/$1.md"
 		printf ' PACKAGE: %s\n' "$package_name" | tr '[:lower:]' '[:upper:]'
-		if [ -f "$APPSPATH/$1/remove" ]; then
+		if test -f "$APPSPATH/$fake_name/.am-installer/$1"; then
+			APPNAME=$(echo "$fake_name" | tr '[:lower:]' '[:upper:]')
+			disk_usage=$(du -sm "$APPSPATH/$fake_name" | cut -f1)
+			app_version=$(grep -w " ◆ $fake_name	|" "$AMCACHEDIR"/version-args 2>/dev/null | sed 's:.*|	::')
+			if [ "$fake_name" = "$1" ]; then
+				app_status=$(printf " STATUS: INSTALLED, ABOUT $disk_usage MB OF DISK SPACE IN USE\n VERSION: $app_version")
+			else
+				app_status=$(printf " STATUS: INSTALLED AS \"$APPNAME\", ABOUT $disk_usage MB OF DISK SPACE IN USE\n VERSION: $app_version")
+			fi
+		elif [ -f "$APPSPATH/$1/remove" ]; then
 			disk_usage=$(du -sm "$APPSPATH/$1" | cut -f1)
 			app_version=$(grep -w " ◆ $1	|" "$AMCACHEDIR"/version-args 2>/dev/null | sed 's:.*|	::')
 			app_status=$(printf " STATUS: INSTALLED, ABOUT $disk_usage MB OF DISK SPACE IN USE\n VERSION: $app_version")
@@ -137,6 +147,7 @@ case "$1" in
 	'-a'|'about')
 		[ -z "$2" ] && echo " USAGE: $AMCLI $1 [ARGUMENT]" && exit 1
 		_online_check
+		printf "%s\n" "-----------------------------------------------------------------------"
 		[ ! -f "$AMCACHEDIR"/version-args ] && _check_version
 		[ ! -f "$AMPATH/libs-list" ] && wget -q "$LIBSLISTDB" -P "$AMPATH"
 		ARGS="$(echo "$@" | cut -f2- -d ' ')" # Removes first argument
@@ -150,7 +161,7 @@ case "$1" in
 			else
 				printf '%s is not a valid argument\n' " $arg" | tr '[:lower:]' '[:upper:]'
 			fi
-			printf "%s\n\n" "-----------------------------------------------------------------------"
+			printf "%s\n" "-----------------------------------------------------------------------"
 		done
 		;;
 
