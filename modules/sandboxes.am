@@ -6,25 +6,12 @@
 
 SUDOCMD="$SUDOCOMMAND"
 
-# Get xdg variables
-DESKTOP="$(xdg-user-dir DESKTOP 2>/dev/null)"
-DOCUMENTS="$(xdg-user-dir DOCUMENTS 2>/dev/null)"
-DOWNLOAD="$(xdg-user-dir DOWNLOAD 2>/dev/null)"
-GAMES="$(xdg-user-dir GAMES 2>/dev/null)"
-MUSIC="$(xdg-user-dir MUSIC 2>/dev/null)"
-PICTURES="$(xdg-user-dir PICTURES 2>/dev/null)"
-VIDEOS="$(xdg-user-dir VIDEOS 2>/dev/null)"
-
-# Unset the xdg variable if it equals to $HOME
-[ "$DESKTOP" = "$HOME" ]   || [ "$DESKTOP" = "$HOME/" ]   &&  DESKTOP=""
-[ "$DOCUMENTS" = "$HOME" ] || [ "$DOCUMENTS" = "$HOME/" ] &&  DOCUMENTS=""
-[ "$DOWNLOAD" = "$HOME" ]  || [ "$DOWNLOAD" = "$HOME/" ]  &&  DOWNLOAD=""
-[ "$GAMES" = "$HOME" ]     || [ "$GAMES" = "$HOME/" ]     &&  GAMES=""
-[ "$MUSIC" = "$HOME" ]     || [ "$MUSIC" = "$HOME/" ]     &&  MUSIC=""
-[ "$PICTURES" = "$HOME" ]  || [ "$PICTURES" = "$HOME/" ]  &&  PICTURES=""
-[ "$VIDEOS" = "$HOME" ]    || [ "$VIDEOS" = "$HOME/" ]    &&  VIDEOS=""
-
-# This is only done for it to display nicely in _configure_dirs_access
+# Get xdg variables for _configure_dirs_access
+for DIR in DESKTOP DOCUMENTS DOWNLOAD GAMES MUSIC PICTURES VIDEOS; do
+	eval XDG_DIR="$(xdg-user-dir $DIR 2>/dev/null)"
+	[ "$XDG_DIR" = "$HOME" ] || [ "$XDG_DIR" = "$HOME/" ] && XDG_DIR=""
+	eval $DIR="$XDG_DIR"
+done
 DESKTOP="$(echo "${DESKTOP:-~/Desktop}" | sed "s|$HOME|~|g")"
 DOCUMENTS="$(echo "${DOCUMENTS:-~/Documents}" | sed "s|$HOME|~|g")"
 DOWNLOAD="$(echo "${DOWNLOAD:-~/Downloads}" | sed "s|$HOME|~|g")"
@@ -34,31 +21,34 @@ PICTURES="$(echo "${PICTURES:-~/Pictures}" | sed "s|$HOME|~|g")"
 VIDEOS="$(echo "${VIDEOS:-~/Videos}" | sed "s|$HOME|~|g")"
 
 _check_appimage() {
-	if [ ! -d "$APPSPATH/$2" ]; then
+	TARGET="$(command -v "$2")"
+	APPIMAGEDIR="$APPSPATH/$2"
+	APPIMAGE="$APPIMAGEDIR/$2"
+	if [ ! -d "$APPIMAGEDIR" ]; then
 		echo " ERROR: \"$2\" is not installed"
 		return 1
-	elif ! strings -d "$APPSPATH/$2/$2" | grep -- '--appimage-extract' 1>/dev/null; then
+	elif ! strings -d "$APPIMAGE" | grep -- '--appimage-extract' 1>/dev/null; then
 		echo " ERROR: \"$2\" is NOT an AppImage"
 		return 1
 	fi
 }
 
 _home() {
-	if [ -d "$APPSPATH/$2/$2.home" ]; then
+	if [ -d "$APPIMAGE.home" ]; then
 		echo " ERROR: \"$2\" already contains a home dir"
 		return 1
 	fi
-	mkdir "$APPSPATH/$2/$2.home" || return 1
-	echo " \$HOME set to \"$APPSPATH/$2/$2.home\" for \"$2\""
+	mkdir "$APPIMAGE.home" || return 1
+	echo " \$HOME set to \"$APPIMAGE.home\" for \"$2\""
 }
 
 _config() {
-	if [ -d "$APPSPATH/$2/$2.config" ]; then
+	if [ -d "$APPIMAGE.config" ]; then
 		echo " ERROR: \"$2\" already contains a config dir"
 		return 1
 	fi
-	mkdir "$APPSPATH/$2/$2.config" || return 1
-	echo " \$XDG_CONFIG_HOME set to \"$APPSPATH/$2/$2.config\" for \"$2\""
+	mkdir "$APPIMAGE.config" || return 1
+	echo " \$XDG_CONFIG_HOME set to \"$APPIMAGE.config\" for \"$2\""
 }
 
 _disable_sandbox() {
@@ -68,25 +58,22 @@ _disable_sandbox() {
 		return 1
 	fi
 	"$2" --disable-sandbox
-	_remove_info_files
 }
 
 _check_aisap() {
-	TARGET="$(command -v "$2")"
-	APPIMAGEPATH="$APPSPATH/$2"
-	APPIMAGE="$APPIMAGEPATH/$2"
 	if [ "$2" = "aisap" ]; then
 		echo " Error: You can't sandbox aisap"
 		return 1
 	elif ! command -v aisap 1>/dev/null; then
 		printf '\n%s\n\n' " Error: You need aisap for this script work"
-		read -p " ◆ DO YOU WISH TO INSTALL AISAP? Install size <5 MIB, (Y/n)?: " yn
+		read -p " ◆ DO YOU WISH TO INSTALL AISAP? Install size <5 MiB? (Y/n) " yn
 		if echo "$yn" | grep -i '^n' >/dev/null 2>&1; then
-			printf '\n%s\n\n' "Installation aborted"
+			echo " OPERATION ABORTED!"
 			return 1
 		fi
 		$AMCLIPATH -i aisap >/dev/null 2>&1
-		command -v aisap 1>/dev/null && echo " aisap installed successfully!" || exit 1
+		command -v aisap 1>/dev/null || return 1 
+		echo " aisap installed successfully!"
 	fi	
 	if grep "aisap-am" "$TARGET" >/dev/null 2>&1; then
 		echo " $2 is already sandboxed!"
@@ -95,16 +82,15 @@ _check_aisap() {
 }
 
 _generate_sandbox_script() {
-	[ -z "$AMCACHEDIR" ] && exit 1
-	rm -Rf "$AMCACHEDIR/sandbox-scripts" 2>/dev/null
-	mkdir -p "$AMCACHEDIR/sandbox-scripts"
+	TMPFILE="$AMCACHEDIR/$2.tmp"
+	rm -f "$TMPFILE" 2>/dev/null
 	printf '\n%s\n' " Making aisap sandbox script for \"$2\"..."
-	cat <<-"HEREDOC" >> "$AMCACHEDIR/sandbox-scripts/$2"
+	cat <<-"HEREDOC" >> "$TMPFILE"
 	#!/bin/sh
 	# aisap-am sandboxing script, aisap: https://github.com/mgord9518/aisap
 	# Thanks a lot to mgord9518 for making aisap!
 	# Run this script with --disable-sandbox to do what the flag name implies
-	# The default location for the sandboxed homes is at $HOME/.local/am-sandboxes
+	# The default location for the sandboxed home is in $HOME/.local/am-sandboxes
 	# But that location can be changed by setting the $SANDBOXDIR env variable
 
 	# Dependency check
@@ -113,33 +99,21 @@ _generate_sandbox_script() {
 	  notify-send -u critical "Sandbox error: Missing aisap dependency!"
 	  exit 1
 	fi
-
 	# Set variables and create sandboxed dir.
 	APPEXEC=DUMMY
-	chmod a-x "$APPEXEC" # Prevents accidental launch of the app outside the sandbox
+	chmod a-x "$APPEXEC" # Prevents accidental launch of app outside the sandbox
 	APPNAME="$(echo "$APPEXEC" | awk -F "/" '{print $NF}')"
 	SANDBOXDIR="${SANDBOXDIR:-$HOME/.local/am-sandboxes}"
 	DATADIR="${XDG_DATA_HOME:-$HOME/.local/share}"
 	CONFIGDIR="${XDG_CONFIG_HOME:-$HOME/.config}"
 	CACHEDIR="${XDG_CACHE_HOME:-$HOME/.cache}"
-	DBUS="$(ls /tmp/dbus* 2>/dev/null | head -1)" # Prevents crash if there is multiple dbus
-	DESKTOP="$(xdg-user-dir DESKTOP 2>/dev/null)"
-	DOCUMENTS="$(xdg-user-dir DOCUMENTS 2>/dev/null)"
-	DOWNLOAD="$(xdg-user-dir DOWNLOAD 2>/dev/null)"
-	GAMES="$(xdg-user-dir GAMES 2>/dev/null)"
-	MUSIC="$(xdg-user-dir MUSIC 2>/dev/null)"
-	PICTURES="$(xdg-user-dir PICTURES 2>/dev/null)"
-	VIDEOS="$(xdg-user-dir VIDEOS 2>/dev/null)"
-
-	# Unset XDG var if it is equal to $HOME
-	[ "$DESKTOP" = "$HOME" ]   || [ "$DESKTOP" = "$HOME/" ]   &&  DESKTOP=""
-	[ "$DOCUMENTS" = "$HOME" ] || [ "$DOCUMENTS" = "$HOME/" ] &&  DOCUMENTS=""
-	[ "$DOWNLOAD" = "$HOME" ]  || [ "$DOWNLOAD" = "$HOME/" ]  &&  DOWNLOAD=""
-	[ "$GAMES" = "$HOME" ]     || [ "$GAMES" = "$HOME/" ]     &&  GAMES=""
-	[ "$MUSIC" = "$HOME" ]     || [ "$MUSIC" = "$HOME/" ]     &&  MUSIC=""
-	[ "$PICTURES" = "$HOME" ]  || [ "$PICTURES" = "$HOME/" ]  &&  PICTURES=""
-	[ "$VIDEOS" = "$HOME" ]    || [ "$VIDEOS" = "$HOME/" ]    &&  VIDEOS=""
-	
+	DBUS="$(ls /tmp/dbus* 2>/dev/null | head -1)"
+	# get xdg user dirs, unset if var = $HOME
+	for DIR in DESKTOP DOCUMENTS DOWNLOAD GAMES MUSIC PICTURES VIDEOS; do
+		eval XDG_DIR="$(xdg-user-dir $DIR 2>/dev/null)"
+		[ "$XDG_DIR" = "$HOME" ] || [ "$XDG_DIR" = "$HOME/" ] && XDG_DIR=""
+		eval $DIR="$XDG_DIR"
+	done	
 	# Use default location if var is not set
 	DESKTOP="${DESKTOP:-~/Desktop}"
 	DOCUMENTS="${DOCUMENTS:-~/Documents}"
@@ -148,26 +122,24 @@ _generate_sandbox_script() {
 	MUSIC="${MUSIC:-~/Music}"
 	PICTURES="${PICTURES:-~/Pictures}"
 	VIDEOS="${VIDEOS:-~/Videos}"
-
-	# Try to find the right name of the app xdg dir, sometimes it is not the same as $APPNAME
+	# Try find the right name of the app conf/data dir
 	APPDATA=$( ls "$DATADIR" | grep -i "$APPNAME" | head -1 )
 	APPCONF=$( ls "$CONFIGDIR" | grep -i "$APPNAME" | head -1 ) 
-
-	mkdir -p "$SANDBOXDIR/$APPNAME"
+	# Disable sandbox
 	if [ "$1" = "--disable-sandbox" ]; then
-	  APPIMAGEPATH="$(echo ${APPEXEC%/*})"
-	  printf '\n%s' " Giving exec permissions back to $APPEXEC..."
+	  APPIMAGEDIR="$(echo ${APPEXEC%/*})"
+	  echo " Giving exec permissions back to $APPEXEC..."
 	  chmod a+x "$APPEXEC" || exit 1
-	  printf '\n%s' " Patching $APPIMAGEPATH/AM-updater to give permissions back..."
-	  sed -i 's|chmod a-x|chmod a+x|g' "$APPIMAGEPATH/AM-updater" || exit 1
+	  echo " Patching $APPIMAGEDIR/AM-updater to give permissions back..."
+	  sed -i 's|chmod a-x|chmod a+x|g' "$APPIMAGEDIR/AM-updater" || exit 1
 	  THISFILE="$(realpath "$0")"
-	  printf '\n%s\n' " Replacing $THISFILE with a link to the AppImage..."
+	  echo " Replacing $THISFILE with a link to the AppImage..."
 	  SUDO ln -sf "$APPEXEC" "$THISFILE" || exit 1
-	  printf '\033[32m\n%s\n\033[0m\n\n' " $APPEXEC successfully unsandboxed!"
+	  printf '\033[32m\n%s\n\033[0m\n' " $APPEXEC successfully unsandboxed!"
 	  exit 0
 	fi
+	mkdir -p "$SANDBOXDIR/$APPNAME"
 	[ -z "$APPNAME" ] && exit 1
-
 	# Start at sandboxed home
 	# Edit below this to add or remove access to parts of the system
 	exec aisap --trust-once --level 2 \
@@ -185,7 +157,7 @@ _generate_sandbox_script() {
 	--add-file "$CONFIGDIR"/Kvantum \
 	--add-file "$HOME"/.local/lib \
 	--add-file /usr/share \
-	--rm-file /path/to/nothing \
+	--rm-file /NOPATH \
 	--rm-file "$DESKTOP" \
 	--rm-file "$DOCUMENTS" \
 	--rm-file "$DOWNLOAD" \
@@ -212,90 +184,57 @@ _configure_dirs_access() {
 		return 0
 	fi
 	printf '\033[36m'
-	read -p " Allow $2 access to \"$DESKTOP\"? (y/N) " yn
-	if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
-		sed -i 's|--rm-file "$DESKTOP"|--add-file "$DESKTOP":rw|g' \
-			"$AMCACHEDIR/sandbox-scripts/$2" || exit 1
-	fi
-	read -p " Allow $2 access to \"$DOCUMENTS\"? (y/N) " yn
-	if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
-		sed -i 's|--rm-file "$DOCUMENTS"|--add-file "$DOCUMENTS":rw|g' \
-			"$AMCACHEDIR/sandbox-scripts/$2" || exit 1
-	fi
-	read -p " Allow $2 access to \"$DOWNLOAD\"? (y/N) " yn
-	if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
-		sed -i 's|--rm-file "$DOWNLOAD"|--add-file "$DOWNLOAD":rw|g' \
-			"$AMCACHEDIR/sandbox-scripts/$2" || exit 1
-	fi
-	read -p " Allow $2 access to \"$GAMES\"? (y/N) " yn
-	if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
-		sed -i 's|--rm-file "$GAMES"|--add-file "$GAMES":rw|g' \
-			"$AMCACHEDIR/sandbox-scripts/$2" || exit 1
-	fi
-	read -p " Allow $2 access to \"$MUSIC\"? (y/N) " yn
-	if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
-		sed -i 's|--rm-file "$MUSIC"|--add-file "$MUSIC":rw|g' \
-			"$AMCACHEDIR/sandbox-scripts/$2" || exit 1
-	fi
-	read -p " Allow $2 access to \"$PICTURES\"? (y/N) " yn
-	if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
-		sed -i 's|--rm-file "$PICTURES"|--add-file "$PICTURES":rw|g' \
-			"$AMCACHEDIR/sandbox-scripts/$2" || exit 1
-	fi
-	read -p " Allow $2 access to \"$VIDEOS\"? (y/N) " yn
-	if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
-		sed -i 's|--rm-file "$VIDEOS"|--add-file "$VIDEOS":rw|g' \
-			"$AMCACHEDIR/sandbox-scripts/$2" || exit 1
-	fi
+	for DIR in DESKTOP DOCUMENTS DOWNLOAD GAMES MUSIC PICTURES VIDEOS; do
+		eval VAR=\$$DIR
+		read -p " Allow $2 access to \"$VAR\"? (y/N) " yn
+		if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
+			sed -i "s|--rm-file \"\$$DIR\"|--add-file \"\$$DIR\":rw|g" \
+				"$AMCACHEDIR/$2.tmp" || exit 1
+		fi
+	done
 	sleep 0.5
 	printf '\033[31m'
-	read -p " Allow $2 access to a specific directory? (y/N): " yn
+	read -p " Allow $2 access to a specific directory? (y/N) " yn
 	if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
-		echo "   WARNING: Giving access to all of $HOME or / and similar is not safe"
-		printf '%s\n\033[33m' "   Also aisap might not let the application start when such paths are given"
-		printf '\n%s\n' "   Type the path to the directory"
-		read -p "   Example /media/external-drive or ~/Backups: " NEWDIR
+		echo "  WARNING: Giving access to all of $HOME or / and similar is not safe"
+		echo "  Also aisap might not let $2 start when such paths are given"
+		printf '\033[33m%s\n' "  Type the path to the directory"
+		read -p "  Example: /media/external-drive or ~/Backups: " NEWDIR
 		case "$NEWDIR" in
 			'$HOME'|'$HOME/'|"$HOME"|"$HOME/"|"/"|"~"|"~/"|"/home"|"/home/"|\
 			"$DATADIR"|'$XDG_DATA_HOME'|"$CONFIGDIR"|'$XDG_CONFIG_HOME'|"$BINDIR")
 				notify-send -u critical "DO YOU WANT THE FBI TO GET YA?"
-				printf '\033[31m%s\n' 
-				read -p "   SPOOKY LOCATION DETECTED! ARE YOU SURE? IF SO TYPE \"YES\": " YES
+				printf '\033[31m\n' 
+				read -p "  SPOOKY LOCATION! ARE YOU SURE? IF SO TYPE \"YES\": " YES
 				[ "$YES" != "YES" ] && echo " That's not \"YES\", aborting" && return 1
 				;;
 			'')
-				printf '\033[31m\n%s\n\n' "   No path given, aborting"
+				printf '\033[31m\n%s\n\n' " No path given, aborting"
 				return 1
 				;;
 		esac
-		echo "   Giving access to \"$NEWDIR\"..."
-		sed -i "s|--rm-file /path/to/nothing|--add-file $NEWDIR:rw|g" \
-			"$AMCACHEDIR/sandbox-scripts/$2" || exit 1
+		echo "  Giving access to \"$NEWDIR\"..."
+		sed -i "s|--rm-file /NOPATH|--add-file $NEWDIR:rw|g" "$TMPFILE" || return 1
 	fi
 	printf '\n\033[32m%s\n' " User directories access configured successfully!"
 }
 
 _install_sandbox_script() {
-	chmod a+x "$AMCACHEDIR/sandbox-scripts/$2" || return 1
-	sed -i "s|DUMMY|$APPIMAGE|g; s|SUDO |$SUDOCMD |g" \
-		"$AMCACHEDIR/sandbox-scripts/$2" || exit 1
-
+	chmod a+x "$TMPFILE" || return 1
+	sed -i "s|DUMMY|$APPIMAGE|g; s|SUDO|$SUDOCMD|g" "$TMPFILE" || return 1
 	# Remove exec permission from AppImage and its updater for better safety™
-	$SUDOCMD rm -f "$TARGET" || return 1
-	chmod a-x "$APPIMAGE" || return 1
-	sed -i 's|chmod a+x|chmod a-x|g' "$APPIMAGEPATH/AM-updater" || exit 1
-
-	# Put sandbox script in the place of the appimage symlink
-	$SUDOCMD mv "$AMCACHEDIR/sandbox-scripts/$2" "$TARGET" || return 1
-	rmdir "$AMCACHEDIR/sandbox-scripts"
-
-	printf '\n%s\n' " \"$2\" successfully sandboxed!"
-	printf '\n\033[0m%s\n' " The app will be sandboxed in \"${SANDBOXDIR:-$HOME/.local/am-sandboxes}\" once launched"
-	printf '\n%s\n' " This location can be moved by setting the 'SANDBOXDIR' env variable"
-	printf '\n%s\n' " --------------------------------------------------------------------------"
-	printf '\n\033[33m%s\n' " Use the --disable-sandbox flag if you want to revert the changes"
-	printf '\n\033[0m%s' " In this case that is:"
-	printf '\033[33m%s\033[36m\n\n' " $2 --disable-sandbox"
+	chmod a-x "$APPIMAGE" && $SUDOCMD rm -f "$TARGET" || return 1
+	sed -i 's|chmod a+x|chmod a-x|g' "$APPIMAGEDIR/AM-updater" || return 1
+	# Install the script
+	$SUDOCMD mv "$TMPFILE" "$TARGET" || return 1
+	SANDBOXDIR="${SANDBOXDIR:-$HOME/.local/am-sandboxes}"
+	printf '\033[32m\n%s\n\033[0m' " \"$2\" successfully sandboxed!"
+	printf '%s\n' " $2 will be sandboxed in \"$SANDBOXDIR\" once launched"
+	printf '%s\n' ' Set the $SANDBOXDIR env variable to move the location'
+	printf '\n\033[33m%s' ' Use "--disable-sandbox"'
+	printf '\033[0m%s\033[33m\n' " to revert the changes, in this case that is:"
+	printf '\033[33m%s\033[0m' " $2 --disable-sandbox"
+	printf '%s\033[33m%s\n\033[0m\n' " or " "$AMCLI --disable-sandbox $2"
 }
 
 # Main logic
@@ -308,7 +247,6 @@ case "$1" in
 			&& _generate_sandbox_script "${@}" \
 			&& _configure_dirs_access "${@}" \
 			&& _install_sandbox_script "${@}"
-			_remove_info_files
 			shift
 		done
 		;;
@@ -337,3 +275,4 @@ case "$1" in
 		done
 		;;
 esac
+_remove_info_files
