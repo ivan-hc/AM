@@ -5,7 +5,7 @@
 
 | <img src="https://github.com/user-attachments/assets/8f98fd3e-d94e-4b58-925d-e2ae8ff3a50c"> | <img src="https://github.com/user-attachments/assets/2c3affbd-5f0d-4092-b12f-a12c2d9566bc"> | <img src="https://github.com/user-attachments/assets/f3aa8360-890c-4e65-ae2a-bf2b3cb12882"> |
 | - | - | - |
-| *sandbox AppImages using BubbleWrap* | *list all available apps* | *get more info about applications* |
+| *sandbox AppImages* | *list all available apps* | *get more info about applications* |
 | <img src="https://github.com/user-attachments/assets/deff2450-cb70-4d36-a8c8-6d80d16987ed"> | <img src="https://github.com/user-attachments/assets/ca558c39-6354-4933-8c99-85f8fd1c3730"> | <img src="https://github.com/user-attachments/assets/40d90713-316e-4df1-be9a-edd15827bc60"> |
 | *how to install applications* | *search for apps using keywords* | *list all installed programs* |
 | <img src="https://github.com/user-attachments/assets/ff38a91f-7698-4498-bd46-40f0a69e32f9"> | <img src="https://github.com/user-attachments/assets/5886ba67-a337-435d-ac50-b280bc2cf7f8"> | <img src="https://github.com/user-attachments/assets/dfbcf06a-17e2-4fef-b28c-777f4b55565e"> |
