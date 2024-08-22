@@ -1061,9 +1061,7 @@ If you are a user who is used to dragging your local AppImages scattered around 
 
 The option `--launcher` allows you to drag and drop a local AppImage to create a launcher to place in the menu, like any other classic AppImage helper would... but in SHELL.
 
-This option also allows you to create a symbolic link or a shell script that calls your AppImage, to place in "`~/.local/bin`", so that you can call it from the terminal:
-- if you choose Y or ENTER, you can choose the name to use in $PATH
-- if you choose N, the option will take care of the name to give to a script with ".appimage" extension (in lower case)
+This option also allows you to create a symbolic link with the name you prefer, in "`~/.local/bin`". Leave blank to let the option create a shell script that calls your AppImage, with extension ".appimage", lowercased.
 
 ##### How to create a launcher for a local AppImage
 ```
@@ -1073,6 +1071,12 @@ or
 ```
 appman --launcher /path/to/File.AppImage
 ```
+In this video I'll integrade Brave AppImage, the first time without a name, and the second time by choosing "brave" (NOTE, the ".appimage" in $PATH is a little shell script that calls the AppImage, not the whole AppImage):
+
+https://github.com/user-attachments/assets/caa22ab7-b6a4-45c4-bd33-27316251e267
+
+Now the binaries are "two", keep read to see how to remove them using "AM" and "AppMan".
+
 ##### How to remove the orphan launchers
 In case you move your AppImages somewhere else or remove them, use the following otion `-c` or `clean` to get rid of all the orphaned launchers and dead symlinks and scripts you created earlier:
 ```
@@ -1082,13 +1086,9 @@ or
 ```
 appman -c
 ```
-In the first video it shows three AppImages first positioned in one directory and then moved to another, in order to show you both how launchers are created (option "`--launcher`") and how to remove them (option "`-c`" , started first with the AppImage packages in the starting directory and then with the aforementioned moved elsewhere). The second video is a close-up on the terminal, to see in detail how the "`--launcher`" option works:
+In this video all remove the AppImage, and then I'll remove the launchers and items in $PATH created in the previous video.
 
-##### Video 1
-https://github.com/ivan-hc/AM/assets/88724353/25d9df2b-3c4d-4494-8bbc-12e6ab2371fd
-
-##### Video 2
-https://github.com/ivan-hc/AM/assets/88724353/97c2b88d-f330-490c-970b-0f0bb89040dc
+https://github.com/user-attachments/assets/2dedf1a9-43c2-455c-8c97-2023bedc4203
 
 ##### AppImages from external media
 Another peculiarity concerns the use of the `-c` option on launchers created on AppImage packages placed on removable devices:
