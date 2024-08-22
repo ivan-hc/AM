@@ -3,13 +3,13 @@
 
 <div align="center">
 
-| <img src="https://raw.githubusercontent.com/ivan-hc/AM/dev/sample/sandbox.gif"> | <img src="https://raw.githubusercontent.com/ivan-hc/AM/dev/sample/list.gif"> | <img src="https://raw.githubusercontent.com/ivan-hc/AM/dev/sample/about.gif"> |
+| <img src="https://raw.githubusercontent.com/ivan-hc/AM/main/sample/sandbox.gif"> | <img src="https://raw.githubusercontent.com/ivan-hc/AM/main/sample/list.gif"> | <img src="https://raw.githubusercontent.com/ivan-hc/AM/main/sample/about.gif"> |
 | - | - | - |
-| *sandbox AppImages* | *list all available apps* | *get more info about applications* |
-| <img src="https://raw.githubusercontent.com/ivan-hc/AM/dev/sample/install.gif"> | <img src="https://raw.githubusercontent.com/ivan-hc/AM/dev/sample/query.gif"> | <img src="https://raw.githubusercontent.com/ivan-hc/AM/dev/sample/files.gif"> |
-| *how to install applications* | *search for apps using keywords* | *list all installed programs* |
-| <img src="https://raw.githubusercontent.com/ivan-hc/AM/dev/sample/backup-overwrite.gif"> | <img src="https://raw.githubusercontent.com/ivan-hc/AM/dev/sample/update.gif"> | <img src="https://raw.githubusercontent.com/ivan-hc/AM/dev/sample/nolibfuse.gif"> |
-| *create and restore app's snapshots* | *update everything* | *let AppImages get rid of libfuse2* |
+| *sandbox AppImages* | *list available apps* | *info about the apps* |
+| <img src="https://raw.githubusercontent.com/ivan-hc/AM/main/sample/install.gif"> | <img src="https://raw.githubusercontent.com/ivan-hc/AM/main/sample/query.gif"> | <img src="https://raw.githubusercontent.com/ivan-hc/AM/main/sample/files.gif"> |
+| *install applications* | *query lists using keywords* | *show the installed apps* |
+| <img src="https://raw.githubusercontent.com/ivan-hc/AM/main/sample/backup-overwrite.gif"> | <img src="https://raw.githubusercontent.com/ivan-hc/AM/main/sample/update.gif"> | <img src="https://raw.githubusercontent.com/ivan-hc/AM/main/sample/nolibfuse.gif"> |
+| *create and restore snapshots* | *update everything* | *get rid of libfuse2* |
 
 </div>
 
