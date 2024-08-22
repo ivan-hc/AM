@@ -1086,7 +1086,7 @@ or
 ```
 appman -c
 ```
-In this video all remove the AppImage, and then I'll remove the launchers and items in $PATH created in the previous video.
+In this video I'll remove the AppImage, and then I'll remove the launchers and items in $PATH created in the previous video (see above):
 
 https://github.com/user-attachments/assets/2dedf1a9-43c2-455c-8c97-2023bedc4203
 
