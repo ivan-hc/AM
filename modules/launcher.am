@@ -1,28 +1,23 @@
-#!/usr/bin/env bash
+#!/bin/sh
 
 #########################################################################################################################
 # THIS MODULE HELPS YOU INTEGRATE LOCAL APPIMAGES BY DRAG/DROP THEM INTO THE TERMINAL, LIKE ANY COMMON APPIMAGE ASSISTANT
 #########################################################################################################################
 
-function _launcher_appimage_extract() {
+_launcher_appimage_extract() {
 	"$arg" --appimage-extract share/icons/*/*/* 1>/dev/null
 	"$arg" --appimage-extract usr/share/icons/*/*/* 1>/dev/null
 	"$arg" --appimage-extract share/icons/*/*/*/* 1>/dev/null
 	"$arg" --appimage-extract usr/share/icons/*/*/*/* 1>/dev/null
-	"$arg" --appimage-extract -- *.svg 1>/dev/null
-	"$arg" --appimage-extract -- *.png 1>/dev/null
-	"$arg" --appimage-extract -- *.desktop 1>/dev/null
+	"$arg" --appimage-extract *.svg 1>/dev/null
+	"$arg" --appimage-extract *.png 1>/dev/null
+	"$arg" --appimage-extract *.desktop 1>/dev/null
 	"$arg" --appimage-extract share/applications/*.desktop 1>/dev/null
 	"$arg" --appimage-extract usr/share/applications/*.desktop 1>/dev/null
 }
 
-function _launcher_appimage_integration() {
-	echo "[Desktop Entry]" > ./"$appimage".desktop
-	echo "Version=1.0" >> ./"$appimage".desktop
-	echo "Type=Application" >> ./"$appimage".desktop
-	echo "Terminal=false" >> ./"$appimage".desktop
-	echo "StartupNotify=true" >> ./"$appimage".desktop
-	echo "Exec=$arg %U" >> ./"$appimage".desktop
+_launcher_appimage_integration() {
+	printf "[Desktop Entry]\nVersion=1.0\nType=Application\nTerminal=false\nStartupNotify=true\nExec=%s\n" "$arg %U" > ./"$appimage".desktop
 	cat ./squashfs-root/*.desktop | grep "^Name=" | head -1 >> ./"$appimage".desktop
 	cat ./squashfs-root/*.desktop | grep -F '^Name[' >> ./"$appimage".desktop
 	cat ./squashfs-root/*.desktop | grep "Categories=" >> ./"$appimage".desktop
@@ -34,63 +29,47 @@ function _launcher_appimage_integration() {
 	mv ./"$appimage".desktop "$DATADIR"/applications/AppImages/"$appimage".desktop 2>/dev/null
 	mv ./squashfs-root/*.png "$DATADIR"/icons/ 2>/dev/null
 	mv ./squashfs-root/*.svg "$DATADIR"/icons/ 2>/dev/null
-	mv ./squashfs-root/share/icons/hicolor/0x0/apps/*.png "$DATADIR"/icons/ 2>/dev/null
-	mv ./squashfs-root/share/icons/hicolor/22x22/apps/*.png "$DATADIR"/icons/ 2>/dev/null
-	mv ./squashfs-root/share/icons/hicolor/24x24/apps/*.png "$DATADIR"/icons/ 2>/dev/null
-	mv ./squashfs-root/share/icons/hicolor/32x32/apps/*.png "$DATADIR"/icons/ 2>/dev/null
-	mv ./squashfs-root/share/icons/hicolor/48x48/apps/*.png "$DATADIR"/icons/ 2>/dev/null
-	mv ./squashfs-root/share/icons/hicolor/64x64/apps/*.png "$DATADIR"/icons/ 2>/dev/null
-	mv ./squashfs-root/share/icons/hicolor/128x128/apps/*.png "$DATADIR"/icons/ 2>/dev/null
-	mv ./squashfs-root/share/icons/hicolor/256x256/apps/*.png "$DATADIR"/icons/ 2>/dev/null
-	mv ./squashfs-root/share/icons/hicolor/512x512/apps/*.png "$DATADIR"/icons/ 2>/dev/null
-	mv ./squashfs-root/share/icons/hicolor/scalable/apps/*.svg "$DATADIR"/icons/ 2>/dev/null
-	mv ./squashfs-root/share/pixmaps/*.png "$DATADIR"/icons/ 2>/dev/null
-	mv ./squashfs-root/usr/share/icons/hicolor/0x0/apps/*.png "$DATADIR"/icons/ 2>/dev/null
-	mv ./squashfs-root/usr/share/icons/hicolor/22x22/apps/*.png "$DATADIR"/icons/ 2>/dev/null
-	mv ./squashfs-root/usr/share/icons/hicolor/24x24/apps/*.png "$DATADIR"/icons/ 2>/dev/null
-	mv ./squashfs-root/usr/share/icons/hicolor/32x32/apps/*.png "$DATADIR"/icons/ 2>/dev/null
-	mv ./squashfs-root/usr/share/icons/hicolor/48x48/apps/*.png "$DATADIR"/icons/ 2>/dev/null
-	mv ./squashfs-root/usr/share/icons/hicolor/64x64/apps/*.png "$DATADIR"/icons/ 2>/dev/null
-	mv ./squashfs-root/usr/share/icons/hicolor/128x128/apps/*.png "$DATADIR"/icons/ 2>/dev/null
-	mv ./squashfs-root/usr/share/icons/hicolor/256x256/apps/*.png "$DATADIR"/icons/ 2>/dev/null
-	mv ./squashfs-root/usr/share/icons/hicolor/512x512/apps/*.png "$DATADIR"/icons/ 2>/dev/null
-	mv ./squashfs-root/usr/share/icons/hicolor/scalable/apps/*.svg "$DATADIR"/icons/ 2>/dev/null
-	mv ./squashfs-root/usr/share/pixmaps/*.png "$DATADIR"/icons/ 2>/dev/null
-	rm -R -f ./squashfs-root
+	share_dirs="usr/share share"
+	size_dirs="0x0 22x22 24x24 32x32 48x48 64x64 128x128 256x256 512x512"
+	for share in $share_dirs; do
+		for sizes in $size_dirs; do
+			mv ./squashfs-root/"${share}"/icons/hicolor/"${sizes}"/apps/*.png "$DATADIR"/icons/ 2>/dev/null
+		done
+		mv ./squashfs-root/"${share}"/icons/hicolor/scalable/apps/*.svg "$DATADIR"/icons/ 2>/dev/null
+		mv ./squashfs-root/"${share}"/pixmaps/*.png "$DATADIR"/icons/ 2>/dev/null
+	done
+	rm -Rf ./squashfs-root
 }
 
-function _launcher_appimage_bin() {
+_launcher_appimage_bin() {
 	mkdir -p "$HOME"/.local/bin
 	_check_if_home_local_bin_is_not_in_path
-	read -r -p "Do you want to customize the name of a symbolic link (Y) or let me choose (n)?" yn
-	case "$yn" in
-	'N'|'n')
+	read -r -p " Write a custom command to launch the app, or leave blank: " response
+	if [ -z "$response" ]; then
+		appimage_cmd=$(echo "$appimage" | tr '[:upper:]' '[:lower:]')
 		if ! echo "$appimage" | grep -q -i ".appimage"; then
-			echo -e '#!/bin/sh\n'"$arg"'' >> "$HOME"/.local/bin/"$(echo "$appimage" | tr '[:upper:]' '[:lower:]')".appimage
-			chmod a+x "$HOME"/.local/bin/"$(echo "$appimage" | tr '[:upper:]' '[:lower:]')".appimage
-			echo 'New command: "'"$(echo "$appimage" | tr '[:upper:]' '[:lower:]')"'.appimage" in ~/.local/bin'
+			printf '#!/bin/sh\n%s' "$arg" >> "$HOME"/.local/bin/"$appimage_cmd".appimage
+			chmod a+x "$HOME"/.local/bin/"$appimage_cmd".appimage
+			echo " New command: \"$appimage_cmd.appimage\" in ~/.local/bin"
 		else
-			echo -e '#!/bin/sh\n'"$arg"'' >> "$HOME"/.local/bin/"$(echo "$appimage" | tr '[:upper:]' '[:lower:]')"
-			chmod a+x "$HOME"/.local/bin/"$(echo "$appimage" | tr '[:upper:]' '[:lower:]')"
-			echo 'New command: "'"$(echo "$appimage" | tr '[:upper:]' '[:lower:]')"'" in ~/.local/bin'
-		fi;;
-	'Y'|'y'|*)
-		read -r -p "Add a name (or leave blank to skip): " response
-		case "$response" in
-		'')	return;;
-		*)	if command -v "$response" 1>/dev/null; then
-				echo 'ERROR: the '"$response"' command alredy exists, retry!'
-			else
-				ln -s "$arg" "$HOME"/.local/bin/"$response"
-			fi;;
-		esac
-	esac
+			printf '#!/bin/sh\n%s' "$arg" >> "$HOME"/.local/bin/"$appimage_cmd"
+			chmod a+x "$HOME"/.local/bin/"$appimage_cmd"
+			echo " New command: \"$appimage_cmd\" in ~/.local/bin"
+		fi
+	elif command -v "$response" 1>/dev/null; then
+		echo " ERROR: the \"$response\" command alredy exists, retry!"
+	else
+		ln -s "$arg" "$HOME"/.local/bin/"$response"
+	fi
 }
 
-function _launcher(){
-	if ! strings -d "$arg" 2>/dev/null | grep -F -q 'if you run it with the --appimage-extract option'; then
+_launcher(){
+	if ! test -f "$arg"; then
+		echo " ERROR: \"$arg\" not found"
+	elif ! strings -d "$arg" 2>/dev/null | grep -F -q 'if you run it with the --appimage-extract option'; then
 		echo " ERROR: \"$arg\" is NOT an AppImage"
 	else
+		printf " ◆ File: %s\n" "$arg"
 		appimage=$(basename -- "$arg")
 		mkdir -p "$DATADIR"/applications/AppImages
 		mkdir -p "$DATADIR"/icons
@@ -103,14 +82,10 @@ function _launcher(){
 	fi
 }
 
-case $2 in
-'') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
-esac
-
+[ -z "$2" ] && echo " USAGE: $AMCLI $1 [ARGUMENT]" && exit 1
 ARGS="$(echo "$@" | cut -f2- -d ' ')"
 for arg in $ARGS; do
 	echo "---------------------------------------------------------------------"
-	echo -e "◆ File: $arg\n"
 	_launcher
-	echo "---------------------------------------------------------------------"
 done
+echo "---------------------------------------------------------------------"
