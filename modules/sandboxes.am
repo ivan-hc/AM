@@ -82,10 +82,8 @@ _check_aisap() {
 }
 
 _generate_sandbox_script() {
-	TMPFILE="$AMCACHEDIR/$2.tmp"
-	rm -f "$TMPFILE" 2>/dev/null
 	printf '\n%s\n' " Making aisap sandbox script for \"$2\"..."
-	cat <<-"HEREDOC" >> "$TMPFILE"
+	tmpscript="$(cat <<-'HEREDOC'
 	#!/bin/sh
 	# aisap-am sandboxing script, aisap: https://github.com/mgord9518/aisap
 	# Thanks a lot to mgord9518 for making aisap!
@@ -110,9 +108,9 @@ _generate_sandbox_script() {
 	DBUS="$(ls /tmp/dbus* 2>/dev/null | head -1)"
 	# get xdg user dirs, unset if var = $HOME
 	for DIR in DESKTOP DOCUMENTS DOWNLOAD GAMES MUSIC PICTURES VIDEOS; do
-		eval XDG_DIR="$(xdg-user-dir $DIR 2>/dev/null)"
-		[ "$XDG_DIR" = "$HOME" ] || [ "$XDG_DIR" = "$HOME/" ] && XDG_DIR=""
-		eval $DIR="$XDG_DIR"
+	  eval XDG_DIR="$(xdg-user-dir $DIR 2>/dev/null)"
+	  [ "$XDG_DIR" = "$HOME" ] || [ "$XDG_DIR" = "$HOME/" ] && XDG_DIR=""
+	  eval $DIR="$XDG_DIR"
 	done	
 	# Use default location if var is not set
 	DESKTOP="${DESKTOP:-~/Desktop}"
@@ -176,6 +174,7 @@ _generate_sandbox_script() {
 	--add-device dri -- \
 	"$APPEXEC" "$@"
 	HEREDOC
+	)"
 }
 
 _configure_dirs_access() {
@@ -189,8 +188,8 @@ _configure_dirs_access() {
 		eval XDG_DIR=\$$DIR
 		read -p " Allow $2 access to \"$XDG_DIR\"? (y/N) " yn
 		if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
-			sed -i "s|--rm-file \"\$$DIR\"|--add-file \"\$$DIR\":rw|g" \
-				"$TMPFILE" || return 1
+			tmpscript=$(echo "$tmpscript" \
+				| sed "s#--rm-file \"\$$DIR\"#--add-file \"\$$DIR\":rw#g" )
 		fi
 	done
 	sleep 0.5
@@ -215,20 +214,21 @@ _configure_dirs_access() {
 				;;
 		esac
 		echo "  Giving access to \"$NEWDIR\"..."
-		sed -i "s|--rm-file /NOPATH|--add-file \"$NEWDIR\":rw|g" \
-			"$TMPFILE" || return 1
+		tmpscript=$(echo "$tmpscript" \
+			| sed "s#--rm-file /NOPATH#--add-file \"$NEWDIR\":rw#g")
 	fi
 	printf '\n\033[32m%s\n' " User directories access configured successfully!"
 }
 
 _install_sandbox_script() {
-	chmod a+x "$TMPFILE" || return 1
-	sed -i "s|DUMMY|$APPIMAGE|g; s|SUDO|$SUDOCMD|g" "$TMPFILE" || return 1
+	tmpscript=$(echo "$tmpscript" | sed "s#DUMMY#$APPIMAGE#g; s#SUDO#$SUDOCMD#g")
 	# Remove exec permission from AppImage and its updater for better safety™
-	chmod a-x "$APPIMAGE" && $SUDOCMD rm -f "$TARGET" || return 1
+	chmod a-x "$APPIMAGE" || return 1
 	sed -i 's|chmod a+x|chmod a-x|g' "$APPIMAGEDIR/AM-updater" || return 1
 	# Install the script
-	$SUDOCMD mv "$TMPFILE" "$TARGET" || return 1
+	$SUDOCMD rm -f "$TARGET" || return 1
+	$SUDOCMD echo "$tmpscript" > "$TARGET"
+	$SUDOCMD chmod a+x "$TARGET"
 	SANDBOXDIR="${SANDBOXDIR:-$HOME/.local/am-sandboxes}"
 	printf '\033[32m\n%s\n\033[0m' " \"$2\" successfully sandboxed!"
 	printf '\n%s\n' " $2 will be sandboxed in \"$SANDBOXDIR\""
