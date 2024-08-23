@@ -162,17 +162,17 @@ else
 	_appman
 fi
 AMCLIUPPER=$(echo "$AMCLI" | tr '[:lower:]' '[:upper:]')
-AMSETTINGS="$CONFIGDIR/$AMCLI"
-mkdir -p "$AMSETTINGS"
+AMDATADIR="$DATADIR/AM"
+mkdir -p "$AMDATADIR"
 
 # DEVELOPER MODE
-if test -f "$AMSETTINGS"/betatester; then
+if test -f "$AMDATADIR"/betatester; then
 	AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/dev"
 	AMBRANCH=$(basename "$AMREPO")
 fi
 
 function _betatester_message_on() {
-	if test -f "$AMSETTINGS"/betatester; then
+	if test -f "$AMDATADIR"/betatester; then
 		echo -e "$DIVIDING_LINE\n\"$AMCLIUPPER\" $AMVERSION: DEVELOPER MODE\n$DIVIDING_LINE"
 	fi
 }
@@ -277,12 +277,12 @@ function _3rd_party_lists() {
 		MULTIREPO=$(grep "List=" "$AMPATH/neodb" | grep -E "$arch-apps" | sed 's/List=//g')
 		for anyrepo in $MULTIREPO; do
 			if curl --output /dev/null --silent --head --fail "$anyrepo" 1>/dev/null; then
-				wget -q "$anyrepo" -O - | grep "◆" >> "$AMPATH"/"$arch"-apps
+				wget -q "$anyrepo" -O - | grep "◆" >> "$AMDATADIR"/"$arch"-apps
 			fi
 		done
-		sort "$AMPATH"/"$arch"-apps | uniq > "$AMPATH"/"$arch"-apps-backup
-		rm -f "$AMPATH"/"$arch"-apps
-		mv "$AMPATH"/"$arch"-apps-backup "$AMPATH"/"$arch"-apps
+		sort "$AMDATADIR"/"$arch"-apps | uniq > "$AMDATADIR"/"$arch"-apps-backup
+		rm -f "$AMDATADIR"/"$arch"-apps
+		mv "$AMDATADIR"/"$arch"-apps-backup "$AMDATADIR"/"$arch"-apps
 	fi
 }
 
@@ -299,18 +299,18 @@ available_options="about apikey backup clean downgrade download extra files inst
 
 function _completion_lists() {
 	# Remove existing lists and download new ones
-	rm -f "$AMPATH"/*-apps "$AMPATH"/*list "$AMPATH"/*options
-	wget -q "$APPSLISTDB" -P "$AMPATH"
+	rm -f "$AMPATH"/*-apps "$AMPATH"/*list "$AMPATH"/*options "$AMDATADIR"/*-apps "$AMDATADIR"/*list
+	wget -q "$APPSLISTDB" -P "$AMDATADIR"
 
 	# THIRD PARTY APPS
 	_3rd_party_lists
 
 	# Extract and append program names to the list
-	awk -v FS="(◆ | : )" '{print $2}' <"$AMPATH"/"$arch"-apps >> "$AMPATH"/list
+	awk -v FS="(◆ | : )" '{print $2}' <"$AMDATADIR"/"$arch"-apps >> "$AMDATADIR"/list
 
 	# Append options to the list
 	for o in $available_options; do
-		echo "$o" >> "$AMPATH"/list
+		echo "$o" >> "$AMDATADIR"/list
 	done
 }
 
@@ -321,7 +321,7 @@ if [ "$AMCLI_COMPLETION" != "$AMCLI" ]; then
 	if ! test -f "$COMPLETIONPATH/$COMPLETIONFILE"; then
 		echo '#!/usr/bin/env bash' >> "$COMPLETIONFILE"
 	fi
-	echo "complete -W \"\$(cat $AMPATH/list 2>/dev/null)\" $AMCLI" >> "$COMPLETIONFILE"
+	echo "complete -W \"\$(cat $AMDATADIR/list 2>/dev/null)\" $AMCLI" >> "$COMPLETIONFILE"
 	chmod a+x "$COMPLETIONFILE"
 	mv "$COMPLETIONFILE" "$COMPLETIONPATH/" 2> /dev/null
 	echo " Completion has been enabled!"
@@ -334,10 +334,14 @@ if [ -f "$HOME/.zshrc" ] || [ -f "$ZDOTDIR/.zshrc" ]; then
 	fi
 	if ! grep -q "source $ZSHDIR/$COMPLETIONFILE" "$ZSHDIR/.zshrc"; then
 		echo '#!/usr/bin/env bash' >> "$ZSHDIR/$COMPLETIONFILE"
-		echo "complete -W \"\$(cat $AMPATH/list 2>/dev/null)\" $AMCLI" >> "$ZSHDIR/$COMPLETIONFILE"
+		echo "complete -W \"\$(cat $AMDATADIR/list 2>/dev/null)\" $AMCLI" >> "$ZSHDIR/$COMPLETIONFILE"
 		chmod a+x "$ZSHDIR/$COMPLETIONFILE"
 		echo -e "\nautoload bashcompinit\nbashcompinit\nsource $ZSHDIR/$COMPLETIONFILE" >> "$ZSHDIR/.zshrc"
 	fi
+	COMPLETIONFILE="$ZSHDIR/$COMPLETIONFILE"
+fi
+if grep -q "$AMPATH/list" "$COMPLETIONFILE"; then
+	sed -i "s#$AMPATH/list#$AMDATADIR/list#g" "$COMPLETIONFILE"
 fi
 
 # VERSION OF THE INSTALLED APPS
@@ -533,9 +537,9 @@ fi
 # BETA TESTER
 function _use_beta_tester() {
 	if [ "$1" = "--devmode-disable" ]; then
-		rm -f "$AMSETTINGS"/betatester
+		rm -f "$AMDATADIR"/betatester
 	else
-		touch "$AMSETTINGS"/betatester
+		touch "$AMDATADIR"/betatester
 		_betatester_message_on
 	fi
 }

@@ -44,7 +44,7 @@ _about_page() {
 	fi
 	METAPACKAGES="kdegames kdeutils node platform-tools"
 	for m in $METAPACKAGES; do
-		if grep -q "◆ $1 : .*\"$m\"" "$AMPATH/$arch-apps"; then
+		if grep -q "◆ $1 : .*\"$m\"" "$AMDATADIR/$arch-apps"; then
 			if test -f "$APPSPATH/$m/remove"; then
 				app_status="installed\033[0m, as part of ${Green}$m\033[0m\n\n NOTE: run ${RED}$AMCLI -a $m\033[0m instead"
 				app_name="$m"
@@ -71,7 +71,7 @@ _about_generate_3rd_party() {
 	app_version=""
 	app_status=" STATUS: NOT INSTALLED"
 	package_name="$1"
-	if grep -q "◆ $arg : " "$AMPATH/$arch-apps"; then
+	if grep -q "◆ $arg : " "$AMDATADIR/$arch-apps"; then
 		printf ' PACKAGE: %s\n' "$arg" | tr '[:lower:]' '[:upper:]'
 		if [ -f "$APPSPATH/$1/remove" ]; then
 			disk_usage=$(du -sm "$APPSPATH/$1" | cut -f1)
@@ -79,7 +79,7 @@ _about_generate_3rd_party() {
 			app_status=$(printf " STATUS: INSTALLED, ABOUT $disk_usage MB OF DISK SPACE IN USE\n VERSION: $app_version")
 		fi
 		printf '%s\n' "$app_status"
-		grep "◆ $arg : " < "$AMPATH/$arch-apps" | cut -d':' -f2- | sed 's/^./\n /' | sed 's# SOURCE:#\n\n SOURCE:#g'
+		grep "◆ $arg : " < "$AMDATADIR/$arch-apps" | cut -d':' -f2- | sed 's/^./\n /' | sed 's# SOURCE:#\n\n SOURCE:#g'
 	else
 		printf ' "%s" IS NOT A VALID ARGUMENT\n' "$package_name"
 	fi
@@ -106,6 +106,8 @@ _colors() {
 }
 
 _list() {
+	# Check if github.com is online, if not, the function will read the offline list
+	wget -q --tries=10 --timeout=20 --spider https://github.com && _completion_lists
 	# Check the number of installed apps and libraries
 	LIBNUMBER=$(grep "usr/local/lib" "$APPSPATH"/*/remove 2> /dev/null | wc -l)
 	ITEMSNUMBER=$(cd "$APPSPATH" && find -name 'remove' -printf "%h\n" 2>/dev/null | sort -u | wc -l)
@@ -116,7 +118,7 @@ _list() {
 	fi
 	APPSNUMBER=$(("$ITEMSNUMBER" - "$LIBNUMBER"))
 	# Determine the number of available apps from the list
-	AVAILABLE_APPS_NUMBER=$(grep -v "ffwa-\|\"kdegames\"\|\"kdeutils\"\|\"node\"\|\"platform-tools\"" "$AMPATH/$arch-apps" | grep -e "$" -c)
+	AVAILABLE_APPS_NUMBER=$(grep -v "ffwa-\|\"kdegames\"\|\"kdeutils\"\|\"node\"\|\"platform-tools\"" "$AMDATADIR/$arch-apps" | grep -e "$" -c)
 	# Generate a list of the installed apps with version
 	if test -f "$AMCACHEDIR"/version-args; then
 		INSTALLED=$(sort "$AMCACHEDIR"/version-args 2>/dev/null | sed 's/	|	/ /g' | grep -v "◆ am ")
@@ -126,8 +128,6 @@ _list() {
 		INSTALLED=$(sort "$AMCACHEDIR"/version-args 2>/dev/null | sed 's/	|	/ /g' | grep -v "◆ am ")
 		MESSAGE2="\n$INSTALLED\n"
 	fi
-	# Check if github.com is online, if not, the function will read the offline list
-	wget -q --tries=10 --timeout=20 --spider https://github.com && _completion_lists
 	# Check if among the installed apps are available libraries
 	if [ "$LIBNUMBER" != 0 ]; then
 		# Check if the installed libraries are more than one
@@ -162,7 +162,7 @@ case "$1" in
 		for arg in $ARGS; do
 			if curl -o /dev/null -sIf "$AMCATALOGUEMARKDOWNS/${arg}.md" 1>/dev/null; then
 				_about_page "$arg"
-			elif grep -q "◆ $arg : " "$AMPATH/$arch-apps"; then
+			elif grep -q "◆ $arg : " "$AMDATADIR/$arch-apps"; then
 				_about_generate_3rd_party "$arg"
 			else
 				printf " ERROR: ${RED}\"$arg\" not found\033[0m\n"
@@ -178,7 +178,7 @@ case "$1" in
 			LIST=$(sort "$AMCACHEDIR/$arch-appimages" | _pretty_list)
 			printf "\n$MESSAGE\n$MESSAGE2\n LIST OF THE $AVAILABLE_APPIMAGES_NUMBER APPIMAGES AVAILABLE IN THE 'AM' REPOSITORY:\n$LIST\n" | less -Ir
 		else
-			LIST=$(sort "$AMPATH/$arch-apps" | _pretty_list)
+			LIST=$(sort "$AMDATADIR/$arch-apps" | _pretty_list)
 			printf "\n$MESSAGE\n$MESSAGE2\n LIST OF THE $AVAILABLE_APPS_NUMBER APPLICATIONS AVAILABLE IN THE 'AM' REPOSITORY:\n$LIST\n" | less -Ir
 		fi
 		#printf "\n$MESSAGE\n$MESSAGE2\n"
@@ -194,7 +194,7 @@ case "$1" in
 		if [ "$2" = --pkg ]; then
 			ARGS="$(echo "$@" | cut -f3- -d ' ' | tr -s ' ' '|')"
 			printf "\n Search results for packages: $ARGS\n\n" | tr '[:lower:]' '[:upper:]'
-			grep -iE "$ARGS" "$AMPATH/$arch-apps" --color=always | _pretty_list_compat
+			grep -iE "$ARGS" "$AMDATADIR/$arch-apps" --color=always | _pretty_list_compat
 		elif [ "$2" = --appimages ]; then
 			ARGS="$(echo "$@" | cut -f3- -d ' ')"
 			printf "\n Search results for \"$ARGS\":\n\n" | tr '[:lower:]' '[:upper:]'
@@ -208,7 +208,7 @@ case "$1" in
 			ARGS="$(echo "$@" | cut -f2- -d ' ')"
 			printf "\n Search results for \"$ARGS\":\n\n" | tr '[:lower:]' '[:upper:]'
 			PATTERN="$(echo "$ARGS" | sed 's/ /(?=.*/g; s/$/)/g; s/(/)(/g; s/^/(?=.*/g;')"
-			grep -Pi "$PATTERN" "$AMPATH/$arch-apps" | _pretty_list_compat
+			grep -Pi "$PATTERN" "$AMDATADIR/$arch-apps" | _pretty_list_compat
 		fi
 		printf '\n'
 		;;
