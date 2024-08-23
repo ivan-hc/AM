@@ -305,17 +305,24 @@ function _am_databases_check() {
 #####################################
 # CHECK VERSION OF THE INSTALLED APPS
 #####################################
-
+# Filters
 function _check_version_filters() {
-	sed "s/$arch//g; s/amd64//g; s/x86-64//g; s/x64//g; s/basic//g; s/standard//g; s/full//g; s/help//g;" | tr '-' '\n' | tr '_' '\n' | grep -vi "appimage\|$arg\|?\|tar." | grep "[0-9]" | head -1 | sed 's/^v//g; s/^\.//g; s/\.$//g;'
+	sed -E "s/$arch|amd64|x86-64|x64|basic|standard|full|help//g; s/-/\n/g; s/_/\n/g;" |\
+	grep -vi "appimage\|$arg\|?\|tar." | grep "[0-9]" | head -1 | sed 's/^v//g; s/^\.//g; s/\.$//g;'
 }
 
+function _check_version_grep_numbers() {
+	grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1
+}
+
+# Versions
 function _check_version_if_any_version_reference_is_somewhere() {
-	APPVERSION=$(grep -i "version=" "$APPSPATH"/"$arg"/* 2>/dev/null | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
+	APPVERSION=$(grep -i "version=" "$APPSPATH"/"$arg"/* 2>/dev/null | _check_version_grep_numbers)
 }
 
 function _check_version_if_zsync_file_exists() {
-	APPVERSION=$(strings -d ./"$arg"/*.zsync | grep -i "$(echo "$arg" | sed 's/-appimage//g')" | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
+	APPVERSION=$(strings -d ./"$arg"/*.zsync | grep -i "$(echo "$arg" | sed 's/-appimage//g')" |
+	_check_version_grep_numbers)
 	if [ -z "$APPVERSION" ]; then
 		APPVERSION=$(date -r ./"$arg"/*.zsync "+%Y.%m.%d")
 	fi
@@ -327,7 +334,7 @@ function _check_version_if_version_file_exists() {
 		if grep -q "download$" ./"$arg"/version; then
 			APPVERSION=$(sort "$APPSPATH"/"$arg"/version | tr '/' '\n' | _check_version_filters)
 		elif grep -q "://" ./"$arg"/version; then
-			APPVERSION=$(sort ./"$arg"/version | tr '/' '\n' | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
+			APPVERSION=$(sort ./"$arg"/version | tr '/' '\n' | _check_version_grep_numbers)
 		elif grep -q "/v[0-9]*" ./"$arg"/version; then
 			APPVERSION=$(sort "$APPSPATH"/"$arg"/version | tr '/' '\n' | grep "^v[0-9]" | head -1 | sed 's/^v//g')
 		elif [ "$(sort ./"$arg"/version | wc -w)" = 1 ]; then
@@ -342,7 +349,8 @@ function _check_version_if_version_file_exists() {
 }
 
 function _check_version_if_an_updater_exists() {
-	APPVERSION=$("$APPSPATH"/"$arg"/updater -d "$APPSPATH"/"$arg"/"$arg" 2>/dev/null | grep -i "$arg" | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
+	APPVERSION=$("$APPSPATH"/"$arg"/updater -d "$APPSPATH"/"$arg"/"$arg" 2>/dev/null | grep -i "$arg" |\
+	_check_version_grep_numbers)
 	if [ -z "$APPVERSION" ]; then
 		_check_version_if_any_version_reference_is_somewhere
 	fi
@@ -372,7 +380,8 @@ function _check_version_if_no_version_found() {
 function _check_version() {
 	rm -f "$AMCACHEDIR"/version-args
 	cd "$APPSPATH" &&
-	INSTALLED_APPS=$(find . -name 'remove' -printf "%h\n" 2>/dev/null | du -sh -- * 2> /dev/null | sort -rh | sed 's@.*	@@')
+	INSTALLED_APPS=$(find . -name 'remove' -printf "%h\n" 2>/dev/null | du -sh -- * 2> /dev/null |\
+	sort -rh | sed 's@.*	@@')
 	for arg in $INSTALLED_APPS; do
 		if test -f ./"$arg"/remove 2>/dev/null; then
 			if test -f ./"$arg"/*.zsync 2>/dev/null; then
