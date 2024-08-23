@@ -85,22 +85,6 @@ _about_generate_3rd_party() {
 	fi
 }
 
-_about_download_lib() {
-	printf "%s\n" " LIBRARY: $1" | tr '[:lower:]' '[:upper:]'
-	if [ -f "$APPSPATH/$1/remove" ]; then 
-		disk_usage=$(find /usr/local/lib -type f -name "$(echo "$1" | sed -e "s/[0-9]//")*" -exec du -sm {} + | tr '	' '\n' | head -1)
-		printf "%s\n" " STATUS: INSTALLED, ABOUT $disk_usage MB OF DISK SPACE IN USE"
-	else 
-		printf "%s\n" " STATUS: NOT INSTALLED"
-	fi
-	echo ""
-	grep "◆ $1 : " "$AMPATH/libs-list" | sed 's#.*:##; s/(/\n (/g'
-	printf '\n%s\n\n' " SITE/SOURCES:"
-	site_source=$(wget -qO- "$APPSDB/$1" | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | head -1)
-	echo " $site_source"
-	echo ""
-}
-
 #--------------------------------------------------------------------------
 # FUNCTIONS RELATED TO "LIST" AND "QUERY"
 
@@ -174,15 +158,12 @@ case "$1" in
 		_online_check
 		printf "%s\n" "-----------------------------------------------------------------------"
 		[ ! -f "$AMCACHEDIR"/version-args ] && _check_version
-		[ ! -f "$AMPATH/libs-list" ] && wget -q "$LIBSLISTDB" -P "$AMPATH"
 		ARGS="$(echo "$@" | cut -f2- -d ' ')" # Removes first argument
 		for arg in $ARGS; do
 			if curl -o /dev/null -sIf "$AMCATALOGUEMARKDOWNS/${arg}.md" 1>/dev/null; then
 				_about_page "$arg"
 			elif grep -q "◆ $arg : " "$AMPATH/$arch-apps"; then
 				_about_generate_3rd_party "$arg"
-			elif grep -q "◆ $arg : " "$AMPATH/libs-list"; then
-				_about_download_lib "$arg"
 			else
 				printf " ERROR: ${RED}\"$arg\" not found\033[0m\n"
 			fi
@@ -214,7 +195,6 @@ case "$1" in
 			ARGS="$(echo "$@" | cut -f3- -d ' ' | tr -s ' ' '|')"
 			printf "\n Search results for packages: $ARGS\n\n" | tr '[:lower:]' '[:upper:]'
 			grep -iE "$ARGS" "$AMPATH/$arch-apps" --color=always | _pretty_list_compat
-			grep -iE "$ARGS" "$AMPATH/libs-list" --color=always | _pretty_list_compat
 		elif [ "$2" = --appimages ]; then
 			ARGS="$(echo "$@" | cut -f3- -d ' ')"
 			printf "\n Search results for \"$ARGS\":\n\n" | tr '[:lower:]' '[:upper:]'
@@ -229,7 +209,6 @@ case "$1" in
 			printf "\n Search results for \"$ARGS\":\n\n" | tr '[:lower:]' '[:upper:]'
 			PATTERN="$(echo "$ARGS" | sed 's/ /(?=.*/g; s/$/)/g; s/(/)(/g; s/^/(?=.*/g;')"
 			grep -Pi "$PATTERN" "$AMPATH/$arch-apps" | _pretty_list_compat
-			grep -Pi "$PATTERN" "$AMPATH/libs-list" | _pretty_list_compat
 		fi
 		printf '\n'
 		;;
