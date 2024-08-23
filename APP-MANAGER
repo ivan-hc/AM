@@ -54,10 +54,7 @@ function _no_sudo() {
 
 _no_sudo
 
-#####################
 # "AM" CORE VARIABLES
-#####################
-
 function _am() {
 	AMCLI="am"
 	AMCLIPATH="$AMCLI"
@@ -77,10 +74,7 @@ function _am() {
 	mkdir -p "$AMPATH"/modules
 }
 
-#######################################
 # "APPMAN" CORE VARIABLES AND FUNCTIONS
-#######################################
-
 function _check_if_home_local_bin_is_not_in_path() {
 	if ! echo "$PATH" | grep -q "$BINDIR"; then
 		echo "$dividing_line"
@@ -161,9 +155,7 @@ function _appman() {
 	_check_if_home_local_bin_is_not_in_path
 }
 
-########################################
 # DETERMINE WHEN TO USE "AM" OR "APPMAN"
-########################################
 if [ "$DIR/$CLI" = "/usr/local/bin/am" ] 2>/dev/null; then
 	_am
 else
@@ -171,9 +163,7 @@ else
 fi
 AMCLIUPPER=$(echo "$AMCLI" | tr '[:lower:]' '[:upper:]')
 
-################
 # DEVELOPER MODE
-################
 if test -f "$AMPATH"/betatester; then
 	AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/dev"
 	AMBRANCH=$(basename "$AMREPO")
@@ -185,9 +175,16 @@ function _betatester_message_on() {
 	fi
 }
 
-###############
+# Apps database in use
+APPSDB="$AMREPO/programs/$arch"
+APPSLISTDB="$AMREPO/programs/$arch-apps"
+LIBSLISTDB="$AMREPO/programs/libs-list"
+
+################################################################################
+#				SECURITY
+################################################################################
+
 # SAFETY CHECKS
-###############
 function _am_dependences_check() {
 	# Check for essential commands required by the application
 	missing_deps=()
@@ -220,6 +217,8 @@ function _am_security_check() {
 	fi
 }
 
+_am_security_check
+
 # Function to check online connections (uses github.com by default, as the database and CLI itself are stored/hosted there)
 function _online_check() {
 	if ! wget -q --tries=10 --timeout=20 --spider https://github.com; then
@@ -231,16 +230,11 @@ function _online_check() {
 # Set header authorization if GitHub API key file exists
 [ -f "$AMPATH/ghapikey.txt" ] && HeaderAuthWithGITPAT=" --header \"Authorization: token $(<"$AMPATH/ghapikey.txt")\" "
 
-######################
-# APPS DATABASE IN USE
-######################
-APPSDB="$AMREPO/programs/$arch"
-APPSLISTDB="$AMREPO/programs/$arch-apps"
-LIBSLISTDB="$AMREPO/programs/libs-list"
+################################################################################
+#				3RD PARTY
+################################################################################
 
-#####################
 # 3RD PARTY DATABASES
-#####################
 function _am_newrepo_check() {
 	# Determine if the CLI uses the "main" branch of https://github.com/ivan-hc/AM or an alternative one
 	if [ -f "$AMPATH"/new-repo.txt ]; then
@@ -275,6 +269,8 @@ function _am_databases_check() {
 	fi
 }
 
+_am_databases_check "$@"
+
 function _3rd_party_lists() {
 	if [ -f "$AMPATH/neodb" ]; then
 		rm -R -f "$AMCACHEDIR/multirepo-args"
@@ -290,9 +286,39 @@ function _3rd_party_lists() {
 	fi
 }
 
-#####################################
-# CHECK VERSION OF THE INSTALLED APPS
-#####################################
+################################################################################
+#				UTILITIES
+################################################################################
+
+# COMPLETION LIST
+available_options="about apikey backup clean downgrade download extra files install \
+		list lock neodb newrepo nolibfuse overwrite query remove sync template test unlock update \
+		--appimages --apps --byname --config --convert --debug --devmode-disable --devmode-enable \
+		--disable-completion --enable-completion --force-latest --home --launcher --less --pkg \
+		--rollback --disable-sandbox --sandbox --silent --system --user"
+
+
+function _completion_lists() {
+	# Remove existing lists and download new ones
+	rm -Rf "$AMPATH"/{"$arch"-apps,*list,options} &&
+	wget -q "$APPSLISTDB" -P "$AMPATH" &&
+	wget -q "$LIBSLISTDB" -P "$AMPATH"
+
+	# THIRD PARTY APPS
+	_3rd_party_lists
+
+	# Extract and append program and library names to the list
+	for file in "$arch"-apps libs-list; do
+		awk -v FS="(◆ | : )" '{print $2}' <"$AMPATH"/"$file" >> "$AMPATH"/list
+	done
+
+	# Append options to the list
+	for o in $available_options; do
+		echo "$o" >> "$AMPATH"/list
+	done
+}
+
+# VERSION OF THE INSTALLED APPS
 # Filters
 function _check_version_filters() {
 	sed -E "s/$arch|amd64|x86-64|x64|basic|standard|full|help//g; s/-/\n/g; s/_/\n/g;" |\
@@ -417,94 +443,17 @@ if test -f "$AMCACHEDIR"/version-args; then
 	_check_version_for_auto_updatable_apps 2>/dev/null
 fi
 
+# This function removes all info and versions from the register
 function _remove_info_files() {
 	rm -f "$AMCACHEDIR"/files*
 	rm -f "$AMCACHEDIR"/version-args
 }
 
-##########################################
-# ENABLE/DISABLE BASH (AND ZSH) COMPLETION
-##########################################
+################################################################################
+#				INTERNAL OPTIONS
+################################################################################
 
-AMCLI_COMPLETION=$(grep -o "$AMCLI" 0<"$COMPLETIONPATH/$COMPLETIONFILE" | head -1)
-
-function _use_disable-completion() {
-	if [ "$AMCLI_COMPLETION" = "$AMCLI" ]; then
-		grep -v 'complete -W "$(cat '"$AMPATH"'/list 2>/dev/null)" '"$AMCLI"'' "$COMPLETIONPATH/$COMPLETIONFILE" > "$AMPATH"/$COMPLETIONFILE.backup &&
-		$SUDOCOMMAND mv "$AMPATH"/$COMPLETIONFILE.backup "$COMPLETIONPATH/$COMPLETIONFILE"
-		echo " Completion disabled! "
-	else
-		echo " Completion script is NOT enabled! "
-	fi
-}
-
-function _use_enable_completion() {
-	if [ "$AMCLI_COMPLETION" = "$AMCLI" ]; then
-		echo " Completion script is already enabled!"
-	else
-		$SUDOCOMMAND mkdir -p "$COMPLETIONPATH"
-		if [ "$AMCLI" = appman ]; then
-			if ! test -f "$COMPLETIONPATH/$COMPLETIONFILE"; then
-				echo '#!/usr/bin/env bash' >> "$COMPLETIONFILE"
-			fi
-		else
-			echo '#!/usr/bin/env bash' >> "$COMPLETIONFILE"
-		fi
-		echo 'complete -W "$(cat '"$AMPATH"'/list 2>/dev/null)" '"$AMCLI"'' >> "$COMPLETIONFILE"
-		chmod a+x "$COMPLETIONFILE"
-		$SUDOCOMMAND mv "$COMPLETIONFILE" "$COMPLETIONPATH/" 2> /dev/null
-		echo " Completion has been enabled!"
-	fi
-	if [ -f "$HOME/.zshrc" ] || [ -f "$ZDOTDIR/.zshrc" ]; then
-		if [ -n "$ZDOTDIR" ]; then
-			ZSHDIR="$ZDOTDIR"
-		else
-			ZSHDIR="$HOME"
-		fi
-		if grep -q "source $ZSHDIR/$COMPLETIONFILE" "$ZSHDIR/.zshrc"; then
-			echo "Zsh completion already enabled!"
-		else
-			echo '#!/usr/bin/env bash' >> "$ZSHDIR/$COMPLETIONFILE"
-			echo 'complete -W "$(cat '"$AMPATH"'/list 2>/dev/null)" '"$AMCLI"'' >> "$ZSHDIR/$COMPLETIONFILE"
-			chmod a+x "$ZSHDIR/$COMPLETIONFILE"
-			echo -e "\nautoload bashcompinit\nbashcompinit\nsource $ZSHDIR/$COMPLETIONFILE" >> "$ZSHDIR/.zshrc"
-		fi
-	fi
-}
-
-#################
-# COMPLETION LIST
-#################
-available_options="about apikey backup clean downgrade download extra files install \
-		list lock neodb newrepo nolibfuse overwrite query remove sync template test unlock update \
-		--appimages --apps --byname --config --convert --debug --devmode-disable --devmode-enable \
-		--disable-completion --enable-completion --force-latest --home --launcher --less --pkg \
-		--rollback --disable-sandbox --sandbox --silent --system --user"
-
-
-function _completion_lists() {
-	# Remove existing lists and download new ones
-	rm -Rf "$AMPATH"/{"$arch"-apps,*list,options} &&
-	wget -q "$APPSLISTDB" -P "$AMPATH" &&
-	wget -q "$LIBSLISTDB" -P "$AMPATH"
-
-	# THIRD PARTY APPS
-	_3rd_party_lists
-
-	# Extract and append program and library names to the list
-	for file in "$arch"-apps libs-list; do
-		awk -v FS="(◆ | : )" '{print $2}' <"$AMPATH"/"$file" >> "$AMPATH"/list
-	done
-
-	# Append options to the list
-	for o in $available_options; do
-		echo "$o" >> "$AMPATH"/list
-	done
-}
-
-##############################
 # "APPMAN MODE" FOR "AM" USERS
-##############################
 function _appman_mode_enabled_message() {
 	if [ "$CLI" = am ] 2>/dev/null; then
 		echo -e "$dividing_line\n \"AM\" is running as \"AppMan\", use ${Green}am --system\033[0m to switch it back to \"AM\"\n$dividing_line"
@@ -559,9 +508,63 @@ if [ "$AMCLI" = am ] 2>/dev/null; then
 	fi
 fi
 
-######################
+# BASH (AND ZSH) COMPLETION (ENABLE/DISABLE)
+AMCLI_COMPLETION=$(grep -o "$AMCLI" 0<"$COMPLETIONPATH/$COMPLETIONFILE" | head -1)
+function _use_disable-completion() {
+	if [ "$AMCLI_COMPLETION" = "$AMCLI" ]; then
+		grep -v 'complete -W "$(cat '"$AMPATH"'/list 2>/dev/null)" '"$AMCLI"'' "$COMPLETIONPATH/$COMPLETIONFILE" > "$AMPATH"/$COMPLETIONFILE.backup &&
+		$SUDOCOMMAND mv "$AMPATH"/$COMPLETIONFILE.backup "$COMPLETIONPATH/$COMPLETIONFILE"
+		echo " Completion disabled! "
+	else
+		echo " Completion script is NOT enabled! "
+	fi
+}
+
+function _use_enable_completion() {
+	if [ "$AMCLI_COMPLETION" = "$AMCLI" ]; then
+		echo " Completion script is already enabled!"
+	else
+		$SUDOCOMMAND mkdir -p "$COMPLETIONPATH"
+		if [ "$AMCLI" = appman ]; then
+			if ! test -f "$COMPLETIONPATH/$COMPLETIONFILE"; then
+				echo '#!/usr/bin/env bash' >> "$COMPLETIONFILE"
+			fi
+		else
+			echo '#!/usr/bin/env bash' >> "$COMPLETIONFILE"
+		fi
+		echo 'complete -W "$(cat '"$AMPATH"'/list 2>/dev/null)" '"$AMCLI"'' >> "$COMPLETIONFILE"
+		chmod a+x "$COMPLETIONFILE"
+		$SUDOCOMMAND mv "$COMPLETIONFILE" "$COMPLETIONPATH/" 2> /dev/null
+		echo " Completion has been enabled!"
+	fi
+	if [ -f "$HOME/.zshrc" ] || [ -f "$ZDOTDIR/.zshrc" ]; then
+		if [ -n "$ZDOTDIR" ]; then
+			ZSHDIR="$ZDOTDIR"
+		else
+			ZSHDIR="$HOME"
+		fi
+		if grep -q "source $ZSHDIR/$COMPLETIONFILE" "$ZSHDIR/.zshrc"; then
+			echo "Zsh completion already enabled!"
+		else
+			echo '#!/usr/bin/env bash' >> "$ZSHDIR/$COMPLETIONFILE"
+			echo 'complete -W "$(cat '"$AMPATH"'/list 2>/dev/null)" '"$AMCLI"'' >> "$ZSHDIR/$COMPLETIONFILE"
+			chmod a+x "$ZSHDIR/$COMPLETIONFILE"
+			echo -e "\nautoload bashcompinit\nbashcompinit\nsource $ZSHDIR/$COMPLETIONFILE" >> "$ZSHDIR/.zshrc"
+		fi
+	fi
+}
+
+# BETA TESTER
+function _use_beta_tester() {
+	if [ "$1" = "--devmode-disable" ]; then
+		rm -f "$AMPATH"/betatester
+	else
+		touch "$AMPATH"/betatester
+		_betatester_message_on
+	fi
+}
+
 # CLEAN UNNEEDED FILES
-######################
 function _clean_amcachedir_message() {
 	_clean_amcachedir
 	echo " ◆ Clear the contents of $AMCACHEDIR"
@@ -639,11 +642,10 @@ function _use_clean() {
 	echo -e "\n DONE!\n"
 }
 
-#######################################################
 # FORCE "LATEST" RELEASE FOR APPS INSTALLED FROM GITHUB
-#######################################################
 function _use_force_latest() {
-  	ARGS="$(echo "$@" | cut -f2- -d ' ')"
+  	_online_check
+	ARGS="$(echo "$@" | cut -f2- -d ' ')"
   	for arg in $ARGS; do
 	  	if ! test -d "$APPSPATH"/"$arg"; then
 			echo " ERROR: \"$arg\" is not installed, see \"-f\""
@@ -660,19 +662,7 @@ function _use_force_latest() {
 	done
 }
 
-################################################
-# UPDATE "AM"/"APPMAN", THE APPS AND THE MODULES
-################################################
-function _list_updatable_apps() {
-	_check_version
-	cd "$APPSPATH" &&
-	ARGS=$(find . -name 'AM-updater' -printf " %h\n" 2>/dev/null | sort -u | xargs -n 1 basename 2>/dev/null)
-	for arg in $ARGS; do
-		app_version=$(grep -w " ◆ $arg	|" "$AMCACHEDIR/version-args" | sed 's:.*|	::')
-		echo " ◆ $arg $app_version" >> "$AMCACHEDIR"/updatable-args-list
-	done
-}
-
+# SYNCHRONIZE
 function _sync_installation_scripts() {
 	echo -e "$dividing_line\n Checking for changes of the installation scripts in the online database..."
 	cd "$APPSPATH" &&
@@ -760,6 +750,8 @@ function _sync_amcli() {
 }
 
 function _use_sync() {
+	_online_check
+	_betatester_message_on
 	if [[ "$AMREPO" = *://* ]]; then
 		_sync_installation_scripts
 		_sync_modules
@@ -767,6 +759,7 @@ function _use_sync() {
 	fi
 }
 
+# UPDATE
 function _update_github_api_key_in_the_updater_files() {
 	local ghapikey_file="$AMPATH/ghapikey.txt"
 	if [ -f "$ghapikey_file" ]; then
@@ -785,6 +778,16 @@ function _update_github_api_key_in_the_updater_files() {
 		fi
 		done
     	fi
+}
+
+function _list_updatable_apps() {
+	_check_version
+	cd "$APPSPATH" &&
+	ARGS=$(find . -name 'AM-updater' -printf " %h\n" 2>/dev/null | sort -u | xargs -n 1 basename 2>/dev/null)
+	for arg in $ARGS; do
+		app_version=$(grep -w " ◆ $arg	|" "$AMCACHEDIR/version-args" | sed 's:.*|	::')
+		echo " ◆ $arg $app_version" >> "$AMCACHEDIR"/updatable-args-list
+	done
 }
 
 function _update_all_apps() {
@@ -826,6 +829,8 @@ function _update_all_apps() {
 }
 
 function _use_update() {
+	_online_check
+	_update_github_api_key_in_the_updater_files
 	case $2 in
 	''|'--apps')
 		_clean_amcachedir
@@ -865,9 +870,11 @@ function _use_update() {
 	esac
 }
 
-##########################################################################################
+################################################################################
+#				USAGE
+################################################################################
 
-# Handle all the external modules
+# HANDLE ALL THE EXTERNAL MODULES
 function _use_module() {
 	# Test if module exists
 	if ! test -f "$AMPATH/modules/$MODULE"; then
@@ -877,11 +884,6 @@ function _use_module() {
 	# Source module
 	source "$AMPATH/modules/$MODULE" "$@"
 }
-
-_am_security_check
-_am_databases_check "$@"
-
-##########################################################################################
 
 [ -z "$1" ] && echo " USAGE: $AMCLI [OPTION]" && echo "        $AMCLI [OPTION] [ARGUMENT]" &&
 	echo "" && echo " Run the \"$AMCLI -h\" command to find out more" && exit 1
@@ -948,12 +950,8 @@ case "$1" in
 		_use_module "$@"
 		;;
 	# INBUILT OPTIONS
-	'--devmode-disable')
-		rm -f "$AMPATH"/betatester
-		;;
-	'--devmode-enable')
-		touch "$AMPATH"/betatester
-		_betatester_message_on
+	'--devmode-disable'|'--devmode-enable')
+		_use_beta_tester "$@"
 		;;
 	'--disable-completion')
 		_use_disable-completion
@@ -962,7 +960,6 @@ case "$1" in
 		_use_enable_completion
 		;;
 	'--force-latest')
-		_online_check
 		_use_force_latest "$@"
 		;;
 	'--system')
@@ -975,13 +972,9 @@ case "$1" in
 		_use_clean
 		;;
 	'sync'|'-s')
-		_online_check
-		_betatester_message_on
 		_use_sync
 		;;
 	'update'|'-u'|'-U')
-		_online_check
-		_update_github_api_key_in_the_updater_files
 		_use_update "$@"
 		;;
 	'version'|'-v'|'--version')
