@@ -554,51 +554,35 @@ function _completion_lists() {
 	cat "$AMPATH"/options >> "$AMPATH"/list
 }
 
-#####################################################################
-# FUNCTIONS RELATED TO INTERNAL OPTIONS TO MADE "AM" WORK AS "APPMAN"
-#####################################################################
-
-# Function for the option "appman" or "--user" that helps "AM" function like "AppMan"
+##############################
+# "APPMAN MODE" FOR "AM" USERS
+##############################
 function _appman_mode_enabled_message() {
 	if [ "$CLI" = am ] 2>/dev/null; then
-		echo "$dividing_line"
-		#echo " \"AppMan Mode\" enabled!" | tr '[:lower:]' '[:upper:]'
-		echo -e " \"AM\" is running as \"AppMan\", use ${Green}am --system\033[0m to switch it back to \"AM\""
-		echo "$dividing_line"
+		echo -e "$dividing_line\n \"AM\" is running as \"AppMan\", use ${Green}am --system\033[0m to switch it back to \"AM\"\n$dividing_line"
 	fi
 }
 
 function _if_appman_mode_enabled() {
-	if [ "$CLI" = am ]; then
-		if test -f "$APPMANCONFIG"/appman-mode; then
-			_appman_mode_enabled_message
-		fi
-	fi
+	[ "$CLI" = am ] && [ -f "$APPMANCONFIG"/appman-mode ] && _appman_mode_enabled_message
 }
 
 function _use_appman() {
 	_online_check
 	if [ "$CLI" = appman ] 2>/dev/null; then
-		echo " This function only works for AM"
-		exit
+		echo " This function only works for AM" && exit
 	fi
 	if test -f "$APPMANCONFIG"/appman-mode; then
-		_appman
-		_appman_mode_enabled_message
+		_appman; _appman_mode_enabled_message
 	else
-		mkdir -p "$APPMANCONFIG"
-		touch "$APPMANCONFIG"/appman-mode
-		_appman
-		_appman_mode_enabled_message
+		mkdir -p "$APPMANCONFIG" && touch "$APPMANCONFIG"/appman-mode
+		_appman; _appman_mode_enabled_message
 	fi
 }
 
 function _back_to_am() {
 	if test -f "$APPMANCONFIG"/appman-mode; then
-		rm -f "$APPMANCONFIG"/appman-mode
-		echo "$dividing_line"
-		echo " \"AppMan Mode\" disabled!" | tr '[:lower:]' '[:upper:]'
-		echo "$dividing_line"
+		rm -f "$APPMANCONFIG"/appman-mode && echo -e "$dividing_line\n \"AppMan Mode\" disabled! \n$dividing_line"
 	fi
 }
 
@@ -618,22 +602,18 @@ if [ "$AMCLI" = am ] 2>/dev/null; then
 		esac
 	elif [ ! -w /opt/am ]; then
 		read -r -p " \"AM\" is read-only, want to use it in \"AppMan Mode\" (Y,n)? " yn
-		case $yn in
-		'N'|'n')
-			exit 0;;
-		'Y'|'y'|*)
-			echo "$dividing_line"
-			echo " \"AppMan Mode\" enabled!" | tr '[:lower:]' '[:upper:]'
-			echo "$dividing_line"
-			_use_appman 1>/dev/null;;
-		esac
+		if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
+			exit 0
+		else
+			echo -e "$dividing_line\n \"AppMan Mode\" enabled! \n$dividing_line"
+			_use_appman 1>/dev/null
+		fi
 	fi
 fi
 
-##############################################################
-# FUNCTIONS RELATED TO INTERNAL OPTION TO CLEAN UNNEEDED FILES
-##############################################################
-
+######################
+# CLEAN UNNEEDED FILES
+######################
 function _clean_amcachedir_message() {
 	_clean_amcachedir
 	echo " ◆ Clear the contents of $AMCACHEDIR"
@@ -653,30 +633,31 @@ function _clean_all_tmp_directories_from_appspath() {
 	fi
 }
 
+function _clean_determine_removable_launchers() {
+	if ! test -f "$APPIMAGENAME" 2> /dev/null; then
+		if ! test -d "$MOUNTPOINTS" 2> /dev/null; then
+			if echo "$MOUNTPOINTS" | grep -q "/media/"; then
+				unmounted_poin="/media"
+			elif echo "$MOUNTPOINTS" | grep -q "/mnt/"; then
+				unmounted_poin="/mnt"
+			fi
+			echo -e "\n 💀ERROR: cannot remove $(basename "$var")"
+			echo -e "   related AppImage is located in an unmounted path of $unmounted_poin\n"
+		else
+			rm -f "$var"
+			rm -f "$HOME"/.local/bin/"$launcher2del"*
+			cd "$HOME"/.local/bin && find . -xtype l -delete
+		fi
+	fi
+}
+
 function _clean_launchers() {
 	if test -d "$DATADIR"/applications/AppImages 2> /dev/null; then
 		for var in "$DATADIR"/applications/AppImages/*.desktop; do
 			APPIMAGENAME=$(grep "Exec=" 0<"$var" 2>/dev/null | head -1 | cut -c 6- | sed 's/\s.*$//')
+			launcher2del=$(basename -- "$(echo "$APPIMAGENAME" | tr '[:upper:]' '[:lower:]')")
 			MOUNTPOINTS=$(echo "$APPIMAGENAME" | cut -d'/' -f1-4)
-			if ! test -f "$APPIMAGENAME" 2> /dev/null; then
-				if ! test -d "$MOUNTPOINTS" 2> /dev/null; then
-					if echo "$MOUNTPOINTS" | grep -q "/media/"; then
-						echo ""
-						echo " 💀ERROR: cannot remove $(basename "$var")"
-						echo "   related AppImage is located in an unmounted path of /media"
-						echo ""
-					elif echo "$MOUNTPOINTS" | grep -q "/mnt/"; then
-						echo ""
-						echo " 💀ERROR: cannot remove $(basename "$var")"
-						echo "   related AppImage is located in an unmounted path of /mnt"
-						echo ""
-					fi
-				else
-					rm -f "$var"
-					rm -f "$HOME"/.local/bin/"$(basename -- "$(echo "$APPIMAGENAME" | tr '[:upper:]' '[:lower:]')")"*
-					cd "$HOME"/.local/bin && find . -xtype l -delete
-				fi
-			fi
+			_clean_determine_removable_launchers
 		done
 		echo ' ◆ Removed orphaned launchers produced with the "--launcher" option'
 		rmdir "$DATADIR"/applications/AppImages
@@ -685,9 +666,9 @@ function _clean_launchers() {
 
 function _clean_old_modules() {
 	if [ "$AMCLI" = am ] 2>/dev/null; then
-		MODULES=$(grep -Eo '\S*.am\S*' /opt/am/APP-MANAGER | sed 's@.*/@@' | grep -v ";" | grep ".am" | uniq | sort)
+		MODULES=$(sort /opt/am/APP-MANAGER | tr '"' '\n' | grep "[a-z]\.am$" | uniq)
 	else
-		MODULES=$(grep -Eo '\S*.am\S*' "$AMCLIPATH" 2>/dev/null | sed 's@.*/@@' | grep -v ";" | grep ".am" | uniq | sort)
+		MODULES=$(sort "$AMCLIPATH" 2>/dev/null | tr '"' '\n' | grep "[a-z]\.am$" | uniq)
 	fi
 	for m in "$APPSPATH"/"$AMCLI"/modules/*; do
 		if [[ "${MODULES}" != *"$(basename -- "$m")"* ]];then
@@ -708,6 +689,27 @@ function _use_clean() {
 	_clean_launchers 2> /dev/null
 	_clean_old_modules
 	echo -e "\n DONE!\n"
+}
+
+#######################################################
+# FORCE "LATEST" RELEASE FOR APPS INSTALLED FROM GITHUB
+#######################################################
+function _use_force_latest() {
+  	ARGS="$(echo "$@" | cut -f2- -d ' ')"
+  	for arg in $ARGS; do
+	  	if ! test -d "$APPSPATH"/"$arg"; then
+			echo " ERROR: \"$arg\" is not installed, see \"-f\""
+		elif ! test -f "$APPSPATH"/"$arg"/AM-updater; then
+			echo " ERROR: \"$AMCLI\" cannot manage updates for \"$arg\""
+		elif ! grep -q "api.github.com" "$APPSPATH"/"$arg"/AM-updater; then
+			echo " ERROR: \"$arg\" source is not on Github"
+		elif ! grep -q "/releases | " "$APPSPATH"/"$arg"/AM-updater; then
+			echo " ERROR: \"$arg\" does not redirect to a generic \"releases\""
+		else
+			sed -i 's#/releases | #/releases/latest | #g' "$APPSPATH"/"$arg"/AM-updater
+			"$AMCLIPATH" -u "$arg"
+		fi
+	done
 }
 
 ################################################
@@ -881,20 +883,11 @@ function _use_update() {
 		_clean_amcachedir
 		_list_updatable_apps
 		echo -e "$dividing_line\n \"$AMCLIUPPER\" CAN MANAGE UPDATES FOR THE FOLLOWING PROGRAMS:\n"
-		if test -f "$AMCACHEDIR/updatable-args-list"; then
-			cat "$AMCACHEDIR/updatable-args-list"
-		else
-			echo " None"
-		fi
+		[ -f "$AMCACHEDIR/updatable-args-list" ] && cat "$AMCACHEDIR/updatable-args-list" || echo " None"
 		echo -e "\n All self-updatable programs are excluded"
 		echo -e "$dividing_line\n >> START OF ALL PROCESSES <<\n$dividing_line"
-
 		_update_all_apps
-
-		if [ -z "$2" ]; then
-			echo "$dividing_line"
-			_use_sync
-		fi
+		[ -z "$2" ] &&	echo "$dividing_line" && _use_sync
 		echo -e "$dividing_line\n >> END OF ALL PROCESSES << \n$dividing_line"
 		sleep 0.2
 		exit
@@ -916,33 +909,12 @@ function _use_update() {
 				fi
 			else
 				UPDATERS=$(cd "$APPSPATH"/"$arg" 2>/dev/null && find . -name "*update*" -print 2>/dev/null)
-				if [ -n "$UPDATERS" ]; then
-					arg_autoupdatable=", it may have its update system"
-				fi
+				[ -n "$UPDATERS" ] && arg_autoupdatable=", it may have its update system"
 				echo " ✖ Cannot manage updates for \"$arg_upper\"$arg_autoupdatable"
 			fi
 		done
 		;;
 	esac
-}
-
-# OPTION TO UPDATE/DOWNGRADE A GITHUB APP TO "LATEST"
-function _use_force_latest() {
-  	ARGS="$(echo "$@" | cut -f2- -d ' ')"
-  	for arg in $ARGS; do
-	  	if ! test -d "$APPSPATH"/"$arg"; then
-			echo " ERROR: \"$arg\" is not installed, see \"-f\""
-		elif ! test -f "$APPSPATH"/"$arg"/AM-updater; then
-			echo " ERROR: \"$AMCLI\" cannot manage updates for \"$arg\""
-		elif ! grep -q "api.github.com" "$APPSPATH"/"$arg"/AM-updater; then
-			echo " ERROR: \"$arg\" source is not on Github"
-		elif ! grep -q "/releases | " "$APPSPATH"/"$arg"/AM-updater; then
-			echo " ERROR: \"$arg\" does not redirect to a generic \"releases\""
-		else
-			sed -i 's#/releases | #/releases/latest | #g' "$APPSPATH"/"$arg"/AM-updater
-			"$AMCLIPATH" -u "$arg"
-		fi
-	done
 }
 
 # HANDLE ALL THE EXTERNAL MODULES
