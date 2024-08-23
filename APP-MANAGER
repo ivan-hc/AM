@@ -234,6 +234,13 @@ function _online_check() {
 ######################
 # APPS DATABASE IN USE
 ######################
+APPSDB="$AMREPO/programs/$arch"
+APPSLISTDB="$AMREPO/programs/$arch-apps"
+LIBSLISTDB="$AMREPO/programs/libs-list"
+
+#####################
+# 3RD PARTY DATABASES
+#####################
 function _am_newrepo_check() {
 	# Determine if the CLI uses the "main" branch of https://github.com/ivan-hc/AM or an alternative one
 	if [ -f "$AMPATH"/new-repo.txt ]; then
@@ -247,10 +254,6 @@ function _am_newrepo_check() {
 			echo " Source: $AMREPO"
 			echo "$dividing_line"
 		fi
-	else
-		export APPSDB="$AMREPO/programs/$arch"
-		export APPSLISTDB="$AMREPO/programs/$arch-apps"
-		export LIBSLISTDB="$AMREPO/programs/libs-list"
 	fi
 }
 
@@ -269,6 +272,21 @@ function _am_databases_check() {
 				esac
 			fi
 		fi
+	fi
+}
+
+function _3rd_party_lists() {
+	if [ -f "$AMPATH/neodb" ]; then
+		rm -R -f "$AMCACHEDIR/multirepo-args"
+		MULTIREPO=$(grep "List=" "$AMPATH/neodb" | grep -E "$arch-apps" | sed 's/List=//g')
+		for anyrepo in $MULTIREPO; do
+			if curl --output /dev/null --silent --head --fail "$anyrepo" 1>/dev/null; then
+				wget -q "$anyrepo" -O - | grep "◆" >> "$AMPATH"/"$arch"-apps
+			fi
+		done
+		sort "$AMPATH"/"$arch"-apps | uniq > "$AMPATH"/"$arch"-apps-backup
+		rm -R -f "$AMPATH"/"$arch"-apps
+		mv "$AMPATH"/"$arch"-apps-backup "$AMPATH"/"$arch"-apps
 	fi
 }
 
@@ -471,18 +489,7 @@ function _completion_lists() {
 	wget -q "$LIBSLISTDB" -P "$AMPATH"
 
 	# THIRD PARTY APPS
-	if test -f "$AMPATH/neodb"; then
-		rm -R -f "$AMCACHEDIR/multirepo-args"
-		MULTIREPO=$(grep "List=" "$AMPATH/neodb" | grep -E "$arch-apps" | sed 's/List=//g')
-		for anyrepo in $MULTIREPO; do
-			if curl --output /dev/null --silent --head --fail "$anyrepo" 1>/dev/null; then
-				wget -q "$anyrepo" -O - | grep "◆" >> "$AMPATH"/"$arch"-apps
-			fi
-		done
-		sort "$AMPATH"/"$arch"-apps | uniq > "$AMPATH"/"$arch"-apps-backup
-		rm -R -f "$AMPATH"/"$arch"-apps
-		mv "$AMPATH"/"$arch"-apps-backup "$AMPATH"/"$arch"-apps
-	fi
+	_3rd_party_lists
 
 	# Extract and append program and library names to the list
 	for file in "$arch"-apps libs-list; do
