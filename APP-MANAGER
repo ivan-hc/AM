@@ -425,12 +425,14 @@ function _remove_info_files() {
 	rm -f "$AMCACHEDIR"/version-args
 }
 
-###################################################################################
-# FUNCTIONS RELATED TO INTERNAL OPTIONS TO ENABLE/DISABLE BASH (AND ZSH) COMPLETION
-###################################################################################
+##########################################
+# ENABLE/DISABLE BASH (AND ZSH) COMPLETION
+##########################################
+
+AMCLI_COMPLETION=$(grep -o "$AMCLI" 0<"$COMPLETIONPATH/$COMPLETIONFILE" | head -1)
 
 function _use_disable-completion() {
-	if [ "$(grep -o "$AMCLI" 0<"$COMPLETIONPATH/$COMPLETIONFILE" | head -1)" = "$AMCLI" ]; then
+	if [ "$AMCLI_COMPLETION" = "$AMCLI" ]; then
 		grep -v 'complete -W "$(cat '"$AMPATH"'/list 2>/dev/null)" '"$AMCLI"'' "$COMPLETIONPATH/$COMPLETIONFILE" > "$AMPATH"/$COMPLETIONFILE.backup &&
 		$SUDOCOMMAND mv "$AMPATH"/$COMPLETIONFILE.backup "$COMPLETIONPATH/$COMPLETIONFILE"
 		echo " Completion disabled! "
@@ -440,7 +442,7 @@ function _use_disable-completion() {
 }
 
 function _use_enable_completion() {
-	if [ "$(grep -o "$AMCLI" 0<"$COMPLETIONPATH/$COMPLETIONFILE" | head -1)" = "$AMCLI" ]; then
+	if [ "$AMCLI_COMPLETION" = "$AMCLI" ]; then
 		echo " Completion script is already enabled!"
 	else
 		$SUDOCOMMAND mkdir -p "$COMPLETIONPATH"
@@ -473,61 +475,19 @@ function _use_enable_completion() {
 	fi
 }
 
-# Generate a list of words to use in bash completion
-function _generate_options_list() {
-	rm -f "$AMPATH/options"
-	cat <<-HEREDOC >> "$AMPATH/options"
-		about
-		apikey
-		backup
-		clean
-		downgrade
-		download
-		extra
-		files
-		install
-		list
-		lock
-		neodb
-		newrepo
-		nolibfuse
-		overwrite
-		query
-		remove
-		sync
-		template
-		test
-		unlock
-		update
-		web
-		--appimages
-		--apps
-		--byname
-		--config
-		--convert
-		--debug
-		--devmode-disable
-		--devmode-enable
-		--disable-completion
-		--enable-completion
-		--force-latest
-		--home
-		--launcher
-		--less
-		--pkg
-		--rollback
-		--disable-sandbox
-		--sandbox
-		--silent
-		--system
-		--user
-	HEREDOC
-}
+#################
+# COMPLETION LIST
+#################
+available_options="about apikey backup clean downgrade download extra files install \
+		list lock neodb newrepo nolibfuse overwrite query remove sync template test unlock update \
+		--appimages --apps --byname --config --convert --debug --devmode-disable --devmode-enable \
+		--disable-completion --enable-completion --force-latest --home --launcher --less --pkg \
+		--rollback --disable-sandbox --sandbox --silent --system --user"
+
 
 function _completion_lists() {
-	_generate_options_list
 	# Remove existing lists and download new ones
-	rm -Rf "$AMPATH"/{"$arch"-apps,list,libs-list} &&
+	rm -Rf "$AMPATH"/{"$arch"-apps,*list,options} &&
 	wget -q "$APPSLISTDB" -P "$AMPATH" &&
 	wget -q "$LIBSLISTDB" -P "$AMPATH"
 
@@ -551,7 +511,9 @@ function _completion_lists() {
 	done
 
 	# Append options to the list
-	cat "$AMPATH"/options >> "$AMPATH"/list
+	for o in $available_options; do
+		echo "$o" >> "$AMPATH"/list
+	done
 }
 
 ##############################
@@ -917,7 +879,9 @@ function _use_update() {
 	esac
 }
 
-# HANDLE ALL THE EXTERNAL MODULES
+##########################################################################################
+
+# Handle all the external modules
 function _use_module() {
 	# Test if module exists
 	if ! test -f "$AMPATH/modules/$MODULE"; then
@@ -931,7 +895,8 @@ function _use_module() {
 _am_security_check
 _am_databases_check "$@"
 
-# OPTIONS
+##########################################################################################
+
 [ -z "$1" ] && echo " USAGE: $AMCLI [OPTION]" && echo "        $AMCLI [OPTION] [ARGUMENT]" &&
 	echo "" && echo " Run the \"$AMCLI -h\" command to find out more" && exit 1
 
