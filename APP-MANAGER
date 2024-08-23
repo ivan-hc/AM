@@ -23,10 +23,10 @@ export ARCH="$arch"
 BINDIR="${XDG_BIN_HOME:-$HOME/.local/bin}"
 DATADIR="${XDG_DATA_HOME:-$HOME/.local/share}"
 CONFIGDIR="${XDG_CONFIG_HOME:-$HOME/.config}"
-export CACHEDIR="${XDG_CACHE_HOME:-$HOME/.cache}"
+CACHEDIR="${XDG_CACHE_HOME:-$HOME/.cache}"
 
 function _create_cache_dir() {
-	AMCACHEDIR="$AMPATH/.cache"
+	AMCACHEDIR="$CACHEDIR/$AMCLI"
 	mkdir -p "$AMCACHEDIR"
 }
 
@@ -38,6 +38,10 @@ function _clean_amcachedir() {
 APPMANCONFIG="$CONFIGDIR/appman"
 SCRIPTDIR="$(xdg-user-dir DESKTOP 2>/dev/null || echo "$HOME")"
 export SCRIPTDIR
+
+# Completion file in bash and zsh
+COMPLETIONPATH="$HOME"
+COMPLETIONFILE=".bash_completion"
 
 # Colors
 RED='\033[0;31m'; Gold='\033[0;33m'; Green='\033[0;32m'; LightBlue='\033[1;34m';
@@ -66,8 +70,6 @@ function _am() {
 		echo 'ERROR: No sudo or doas found'
 		exit 1
 	fi
-	COMPLETIONPATH="/etc/bash_completion.d"
-	COMPLETIONFILE="am-completion.sh"
 	APPSPATH="/opt"
 	AMPATH="$APPSPATH/$AMCLI"
 	_create_cache_dir
@@ -100,8 +102,6 @@ function _appman_initialize() {
 	AMCLI="appman"
 	AMCLIPATH="$DIR/$AMCLI"
 	SUDOCOMMAND=""
-	COMPLETIONPATH="$HOME"
-	COMPLETIONFILE=".bash_completion"
 	APPSPATH="$HOME/$APPSDIR"
 	AMPATH="$HOME/$APPSDIR/$AMCLI"
 	_create_cache_dir
@@ -292,8 +292,8 @@ function _3rd_party_lists() {
 available_options="about apikey backup clean downgrade download extra files install \
 		list lock neodb newrepo nolibfuse overwrite query remove sync template test unlock update \
 		--appimages --apps --byname --config --convert --debug --devmode-disable --devmode-enable \
-		--disable-completion --enable-completion --force-latest --home --launcher --less --pkg \
-		--rollback --disable-sandbox --sandbox --silent --system --user"
+		--force-latest --home --launcher --less --pkg --rollback --disable-sandbox --sandbox \
+		--silent --system --user"
 
 
 function _completion_lists() {
@@ -314,6 +314,32 @@ function _completion_lists() {
 		echo "$o" >> "$AMPATH"/list
 	done
 }
+
+# BASH (AND ZSH) COMPLETION
+AMCLI_COMPLETION=$(grep -o "$AMCLI" 0<"$COMPLETIONPATH/$COMPLETIONFILE" | head -1)
+if [ "$AMCLI_COMPLETION" != "$AMCLI" ]; then
+	mkdir -p "$COMPLETIONPATH"
+	if ! test -f "$COMPLETIONPATH/$COMPLETIONFILE"; then
+		echo '#!/usr/bin/env bash' >> "$COMPLETIONFILE"
+	fi
+	echo "complete -W \"\$(cat $AMPATH/list 2>/dev/null)\" $AMCLI" >> "$COMPLETIONFILE"
+	chmod a+x "$COMPLETIONFILE"
+	mv "$COMPLETIONFILE" "$COMPLETIONPATH/" 2> /dev/null
+	echo " Completion has been enabled!"
+fi
+if [ -f "$HOME/.zshrc" ] || [ -f "$ZDOTDIR/.zshrc" ]; then
+	if [ -n "$ZDOTDIR" ]; then
+		ZSHDIR="$ZDOTDIR"
+	else
+		ZSHDIR="$HOME"
+	fi
+	if ! grep -q "source $ZSHDIR/$COMPLETIONFILE" "$ZSHDIR/.zshrc"; then
+		echo '#!/usr/bin/env bash' >> "$ZSHDIR/$COMPLETIONFILE"
+		echo "complete -W \"\$(cat $AMPATH/list 2>/dev/null)\" $AMCLI" >> "$ZSHDIR/$COMPLETIONFILE"
+		chmod a+x "$ZSHDIR/$COMPLETIONFILE"
+		echo -e "\nautoload bashcompinit\nbashcompinit\nsource $ZSHDIR/$COMPLETIONFILE" >> "$ZSHDIR/.zshrc"
+	fi
+fi
 
 # VERSION OF THE INSTALLED APPS
 # Filters
@@ -504,52 +530,6 @@ if [ "$AMCLI" = am ] 2>/dev/null; then
 		fi
 	fi
 fi
-
-# BASH (AND ZSH) COMPLETION (ENABLE/DISABLE)
-AMCLI_COMPLETION=$(grep -o "$AMCLI" 0<"$COMPLETIONPATH/$COMPLETIONFILE" | head -1)
-function _use_disable-completion() {
-	if [ "$AMCLI_COMPLETION" = "$AMCLI" ]; then
-		grep -v 'complete -W "$(cat '"$AMPATH"'/list 2>/dev/null)" '"$AMCLI"'' "$COMPLETIONPATH/$COMPLETIONFILE" > "$AMPATH"/$COMPLETIONFILE.backup &&
-		$SUDOCOMMAND mv "$AMPATH"/$COMPLETIONFILE.backup "$COMPLETIONPATH/$COMPLETIONFILE"
-		echo " Completion disabled! "
-	else
-		echo " Completion script is NOT enabled! "
-	fi
-}
-
-function _use_enable_completion() {
-	if [ "$AMCLI_COMPLETION" = "$AMCLI" ]; then
-		echo " Completion script is already enabled!"
-	else
-		$SUDOCOMMAND mkdir -p "$COMPLETIONPATH"
-		if [ "$AMCLI" = appman ]; then
-			if ! test -f "$COMPLETIONPATH/$COMPLETIONFILE"; then
-				echo '#!/usr/bin/env bash' >> "$COMPLETIONFILE"
-			fi
-		else
-			echo '#!/usr/bin/env bash' >> "$COMPLETIONFILE"
-		fi
-		echo 'complete -W "$(cat '"$AMPATH"'/list 2>/dev/null)" '"$AMCLI"'' >> "$COMPLETIONFILE"
-		chmod a+x "$COMPLETIONFILE"
-		$SUDOCOMMAND mv "$COMPLETIONFILE" "$COMPLETIONPATH/" 2> /dev/null
-		echo " Completion has been enabled!"
-	fi
-	if [ -f "$HOME/.zshrc" ] || [ -f "$ZDOTDIR/.zshrc" ]; then
-		if [ -n "$ZDOTDIR" ]; then
-			ZSHDIR="$ZDOTDIR"
-		else
-			ZSHDIR="$HOME"
-		fi
-		if grep -q "source $ZSHDIR/$COMPLETIONFILE" "$ZSHDIR/.zshrc"; then
-			echo "Zsh completion already enabled!"
-		else
-			echo '#!/usr/bin/env bash' >> "$ZSHDIR/$COMPLETIONFILE"
-			echo 'complete -W "$(cat '"$AMPATH"'/list 2>/dev/null)" '"$AMCLI"'' >> "$ZSHDIR/$COMPLETIONFILE"
-			chmod a+x "$ZSHDIR/$COMPLETIONFILE"
-			echo -e "\nautoload bashcompinit\nbashcompinit\nsource $ZSHDIR/$COMPLETIONFILE" >> "$ZSHDIR/.zshrc"
-		fi
-	fi
-}
 
 # BETA TESTER
 function _use_beta_tester() {
@@ -949,12 +929,6 @@ case "$1" in
 	# INBUILT OPTIONS
 	'--devmode-disable'|'--devmode-enable')
 		_use_beta_tester "$@"
-		;;
-	'--disable-completion')
-		_use_disable-completion
-		;;
-	'--enable-completion')
-		_use_enable_completion
 		;;
 	'--force-latest')
 		_use_force_latest "$@"
