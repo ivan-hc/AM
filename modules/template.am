@@ -339,197 +339,191 @@ case $2 in
 	;;
 esac
 
-while [ -n "$1" ]; do
-	rm -f "$AMCACHEDIR"/template-args
-	echo "$@" | tr ' ' '\n' >> "$AMCACHEDIR"/template-args && echo STOP >> "$AMCACHEDIR"/template-args
-	ARGS=$(tail -n +2 "$AMCACHEDIR"/template-args)
-	for arg in $ARGS; do
-		if [ "$arg" == STOP ]; then
-			exit
-		else
-			arg=$(echo "$arg" | tr '[:upper:]' '[:lower:]')
-			case $arg in
-			*)
-				cd "$SCRIPTDIR" || return
-				echo "##############################################################"
-				echo ""
-				echo " Create a template for \"$arg\"" | tr '[:lower:]' '[:upper:]'
-				echo ""
-				echo "--------------------------------------------------------------"
-				echo "" 
-				echo " EACH MODEL IS BASED ON A DIFFERENT METHOD OF BUILDING/UPDATING THE PROGRAM."
-				echo ""
-				echo " PLEASE, SELECT A TEMPLATE FOR \"$(echo "$arg" | tr '[:lower:]' '[:upper:]')\":"
-				echo ""
-				echo "  0) APPIMAGE, FROM ANY WEBSITE (BETTER IF FROM GITHUB.COM)"
-				echo "  1) APPIMAGE ON-THE-FLY, USING A DEDICATED SCRIPT"
-				echo "  2) ANY ARCHIVE/BINARY/SCRIPT FROM ANY WEBSITE"
-				echo '  3) WEBAPP BASED ON A FIREFOX PROFILE (REQUIRES "FIREFOX" IN $PATH)'
-				echo ""
-				read -r -p " WHAT KIND OF PROGRAM DO YOU WANT TO WRITE A SCRIPT FOR? : " templatetype
-				case "$templatetype" in
+ARGS="$(echo "$@" | cut -f2- -d ' ')"
+for arg in $ARGS; do
+	if [ "$arg" == STOP ]; then
+		exit
+	else
+		arg=$(echo "$arg" | tr '[:upper:]' '[:lower:]')
+		case $arg in
+		*)
+			cd "$SCRIPTDIR" || return
+			echo "##############################################################"
+			echo ""
+			echo " Create a template for \"$arg\"" | tr '[:lower:]' '[:upper:]'
+			echo ""
+			echo "--------------------------------------------------------------"
+			echo "" 
+			echo " EACH MODEL IS BASED ON A DIFFERENT METHOD OF BUILDING/UPDATING THE PROGRAM."
+			echo ""
+			echo " PLEASE, SELECT A TEMPLATE FOR \"$(echo "$arg" | tr '[:lower:]' '[:upper:]')\":"
+			echo ""
+			echo "  0) APPIMAGE, FROM ANY WEBSITE (BETTER IF FROM GITHUB.COM)"
+			echo "  1) APPIMAGE ON-THE-FLY, USING A DEDICATED SCRIPT"
+			echo "  2) ANY ARCHIVE/BINARY/SCRIPT FROM ANY WEBSITE"
+			echo '  3) WEBAPP BASED ON A FIREFOX PROFILE (REQUIRES "FIREFOX" IN $PATH)'
+			echo ""
+			read -r -p " WHAT KIND OF PROGRAM DO YOU WANT TO WRITE A SCRIPT FOR? : " templatetype
+			case "$templatetype" in
 
-				0) # APPIMAGE (ANY)
+			0) # APPIMAGE (ANY)
 
-					_template_create_dirs_and_ask_for_source
+				_template_create_dirs_and_ask_for_source
 
-					# ADD THE NAME OF THE SOURCE
-					read -r -ep " ◆ ADD THE URL OF THE SITE (BETTER IF IT COME FROM GITHUB), FOR EXAMPLE: $(echo -e '\n\n - if from github.com, use "https://github.com/USER/PROJECT"\n\n - if from other sources, use "https://www.SITENAME.com" or something\n\n URL: ')" RESPONSE
-					case "$RESPONSE" in
-					*)
-						if echo "$RESPONSE" | grep -q "https://github.com"; then
-							_template_then_github_source
-						elif echo "$RESPONSE" | grep -q "sourceforge"; then
-							_template_if_sourceforge
-						elif ! echo "$RESPONSE" | grep -q "://"; then
-							_template_then_github_source
-						else
-							_template_description_if_hosted_elsewhere
-							_template_help_by_repology
-						fi
+				# ADD THE NAME OF THE SOURCE
+				read -r -ep " ◆ ADD THE URL OF THE SITE (BETTER IF IT COME FROM GITHUB), FOR EXAMPLE: $(echo -e '\n\n - if from github.com, use "https://github.com/USER/PROJECT"\n\n - if from other sources, use "https://www.SITENAME.com" or something\n\n URL: ')" RESPONSE
+				case "$RESPONSE" in
+				*)
+					if echo "$RESPONSE" | grep -q "https://github.com"; then
+						_template_then_github_source
+					elif echo "$RESPONSE" | grep -q "sourceforge"; then
+						_template_if_sourceforge
+					elif ! echo "$RESPONSE" | grep -q "://"; then
+						_template_then_github_source
+					else
+						_template_description_if_hosted_elsewhere
+						_template_help_by_repology
+					fi
+				esac
+				# END OF THIS FUNCTION
+				echo "-----------------------------------------------------------------------"
+				echo -e "\n All files are saved in $SCRIPTDIR/am-scripts\n"
+				;;
+
+			1) # CREATE AN APPIMAGE ON-THE-FLY
+				mkdir -p ./am-scripts ./am-scripts/"$arch" ./am-scripts/portable-linux-apps.github.io/apps ./am-scripts/portable-linux-apps.github.io/icons
+				# DOWNLOAD THE TEMPLATE AND CONVERT THE ARGUMENT INTO A COMMAND
+				wget -q "$AMREPO"/templates/AM-SAMPLE-AppImage -O ./am-scripts/"$arch"/"$arg"
+				sed -i "s/SAMPLE/$arg/g" ./am-scripts/"$arch"/"$arg"
+
+				_template_description_if_hosted_elsewhere
+				_template_help_by_repology
+
+				# ADD A LINEAR DOWNLOAD URL
+				read -r -ep " ◆ ADD A LINEAR DOWNLOAD URL FOR THE SCRIPT OR LEAVE BLANK $(echo -e '\n : ')" dlurl
+				case "$dlurl" in
+				'')
+					sed -i 's#wget "$version"#wget "'"$AMREPO"'/appimage-bulder-scripts/'"$arch"'/$APP.sh" \&\& chmod a+x "$APP".sh \&\& ./"$APP".sh#g' ./am-scripts/"$arch"/"$arg"
+				;;
+				*)
+					sed -i 's#wget "$version"#wget "'"$dlurl"'" -O '"$arg"'.sh && chmod '"$arg"'.sh && ./'"$arg"'.sh#g' ./am-scripts/"$arch"/"$arg"
+				;;
+				esac
+				# END OF THIS FUNCTION
+				echo "-----------------------------------------------------------------------"
+				echo -e "\n All files are saved in $SCRIPTDIR/am-scripts\n"
+				;;
+
+			2) # DOWNLOAD ANY ARCHIVE
+
+				_template_create_dirs_and_ask_for_source
+
+				# ADD THE NAME OF THE SOURCE
+				read -r -ep " ◆ ADD THE URL OF THE SITE (BETTER IF IT COME FROM GITHUB), FOR EXAMPLE: $(echo -e '\n\n - if from github.com, use "https://github.com/USER/PROJECT"\n\n - if from other sources, use "https://www.SITENAME.com" or something\n\n URL: ')" RESPONSE
+				case "$RESPONSE" in
+				*)
+					if echo "$RESPONSE" | grep -q "https://github.com"; then
+						_template_then_github_source
+					elif echo "$RESPONSE" | grep -q "sourceforge"; then
+						_template_if_sourceforge
+					elif ! echo "$RESPONSE" | grep -q "://"; then
+						_template_then_github_source
+					else
+						_template_description_if_hosted_elsewhere
+						_template_help_by_repology
+					fi
+				esac
+				# LAUNCHER AND ICON (OPTIONAL)
+				read -r -p " ◆ Do you wish to add a launcher and a icon (y,N)? " yn
+				case $yn in
+				'Y'|'y')
+					# ADD LAUNCHER AND ICON REFERENCES TO THE INSTALLATION SCRIPT
+					_template_generate_desktop_file
+
+					# ENTER THE URL OF THE ICON THAT WILL APPEAR IN THE MENU
+					read -r -ep " ◆ COPY/PASTE THE URL OF THE ICON HERE $(echo -e '\n URL: ')" ICONURL
+					case "$ICONURL" in
+					'')	sed -i "s#ICONURL#https://portable-linux-apps.github.io/icons/$arg.png#g" ./am-scripts/"$arch"/"$arg"
+						;;
+					*)	sed -i "s#ICONURL#$ICONURL#g" ./am-scripts/"$arch"/"$arg"
+						wget -q -P ./am-scripts/portable-linux-apps.github.io/icons/ "$ICONURL"
+						;;
 					esac
-					# END OF THIS FUNCTION
 					echo "-----------------------------------------------------------------------"
-					echo -e "\n All files are saved in $SCRIPTDIR/am-scripts\n"
-					;;
-
-				1) # CREATE AN APPIMAGE ON-THE-FLY
-					mkdir -p ./am-scripts ./am-scripts/"$arch" ./am-scripts/portable-linux-apps.github.io/apps ./am-scripts/portable-linux-apps.github.io/icons
-					# DOWNLOAD THE TEMPLATE AND CONVERT THE ARGUMENT INTO A COMMAND
-					wget -q "$AMREPO"/templates/AM-SAMPLE-AppImage -O ./am-scripts/"$arch"/"$arg"
-					sed -i "s/SAMPLE/$arg/g" ./am-scripts/"$arch"/"$arg"
-
-					_template_description_if_hosted_elsewhere
-					_template_help_by_repology
-
-					# ADD A LINEAR DOWNLOAD URL
-					read -r -ep " ◆ ADD A LINEAR DOWNLOAD URL FOR THE SCRIPT OR LEAVE BLANK $(echo -e '\n : ')" dlurl
-					case "$dlurl" in
+					# BINARY NAME
+					read -r -ep " ◆ NAME OF THE BINARY FILE (LEAVE BLANK IF IT IS \"$arg\"): " BINARY
+					case "$BINARY" in
 					'')
-						sed -i 's#wget "$version"#wget "'"$AMREPO"'/appimage-bulder-scripts/'"$arch"'/$APP.sh" \&\& chmod a+x "$APP".sh \&\& ./"$APP".sh#g' ./am-scripts/"$arch"/"$arg"
-					;;
-					*)
-						sed -i 's#wget "$version"#wget "'"$dlurl"'" -O '"$arg"'.sh && chmod '"$arg"'.sh && ./'"$arg"'.sh#g' ./am-scripts/"$arch"/"$arg"
-					;;
-					esac
-					# END OF THIS FUNCTION
-					echo "-----------------------------------------------------------------------"
-					echo -e "\n All files are saved in $SCRIPTDIR/am-scripts\n"
-					;;
-
-				2) # DOWNLOAD ANY ARCHIVE
-
-					_template_create_dirs_and_ask_for_source
-
-					# ADD THE NAME OF THE SOURCE
-					read -r -ep " ◆ ADD THE URL OF THE SITE (BETTER IF IT COME FROM GITHUB), FOR EXAMPLE: $(echo -e '\n\n - if from github.com, use "https://github.com/USER/PROJECT"\n\n - if from other sources, use "https://www.SITENAME.com" or something\n\n URL: ')" RESPONSE
-					case "$RESPONSE" in
-					*)
-						if echo "$RESPONSE" | grep -q "https://github.com"; then
-							_template_then_github_source
-						elif echo "$RESPONSE" | grep -q "sourceforge"; then
-							_template_if_sourceforge
-						elif ! echo "$RESPONSE" | grep -q "://"; then
-							_template_then_github_source
-						else
-							_template_description_if_hosted_elsewhere
-							_template_help_by_repology
-						fi
-					esac
-					# LAUNCHER AND ICON (OPTIONAL)
-					read -r -p " ◆ Do you wish to add a launcher and a icon (y,N)? " yn
-					case $yn in
-					'Y'|'y')
-						# ADD LAUNCHER AND ICON REFERENCES TO THE INSTALLATION SCRIPT
-						_template_generate_desktop_file
-
-						# ENTER THE URL OF THE ICON THAT WILL APPEAR IN THE MENU
-						read -r -ep " ◆ COPY/PASTE THE URL OF THE ICON HERE $(echo -e '\n URL: ')" ICONURL
-						case "$ICONURL" in
-						'')	sed -i "s#ICONURL#https://portable-linux-apps.github.io/icons/$arg.png#g" ./am-scripts/"$arch"/"$arg"
-							;;
-						*)	sed -i "s#ICONURL#$ICONURL#g" ./am-scripts/"$arch"/"$arg"
-							wget -q -P ./am-scripts/portable-linux-apps.github.io/icons/ "$ICONURL"
-							;;
-						esac
-						echo "-----------------------------------------------------------------------"
-						# BINARY NAME
-						read -r -ep " ◆ NAME OF THE BINARY FILE (LEAVE BLANK IF IT IS \"$arg\"): " BINARY
-						case "$BINARY" in
-						'')
-							;;
-						*)	sed -i 's#ln -s /opt/$APP/$APP #ln -s /opt/$APP/'"$BINARY"' #g' ./am-scripts/"$arch"/"$arg"
-							;;
-						esac
-						echo "-----------------------------------------------------------------------"
-						# APPNAME
-						read -r -ep ' ◆ NAME OF THE APP (for the "Name" entry of the .desktop file): ' APPNAME
-						case "$APPNAME" in
-						*)
-							sed -i "s#APPNAME#$APPNAME#g" ./am-scripts/"$arch"/"$arg"
-							;;
-						esac
-						echo "-----------------------------------------------------------------------"
-						# PUT THE APP INTO A CATEGORY, THIS IS NEEDED FOR OUR CUSTOM DESKTOP FILE
-						_template_desktop_file_select_category
 						;;
-					'N'|'n'|*)
-						echo "-----------------------------------------------------------------------"
+					*)	sed -i 's#ln -s /opt/$APP/$APP #ln -s /opt/$APP/'"$BINARY"' #g' ./am-scripts/"$arch"/"$arg"
 						;;
 					esac
-					# END OF THIS FUNCTION
-					echo -e "\n All files are saved in $SCRIPTDIR/am-scripts\n"
-					;;
-
-				3) # CREATE A CUSTOM FIREFOX PROFILE ("firefox" MUST BE IN "$PATH" TO MADE IT WORK)
-					mkdir -p ./am-scripts ./am-scripts/"$arch" ./am-scripts/portable-linux-apps.github.io/apps ./am-scripts/portable-linux-apps.github.io/icons
-					# DOWNLOAD THE TEMPLATE AND CONVERT THE ARGUMENT INTO A COMMAND
-					wget -q "$AMREPO"/templates/AM-SAMPLE-Firefox-webapp -O ./am-scripts/"$arch"/"$arg" &&
-					sed -i "s/SAMPLE/$arg/g" ./am-scripts/"$arch"/"$arg" &&
-					# USE THE SUFFIX FROM NOW ON
-					mv ./am-scripts/"$arch"/"$arg" ./am-scripts/"$arch"/"ffwa-$arg"
-					arg="ffwa-$arg"
 					echo "-----------------------------------------------------------------------"
-					read -r -ep " ◆ NAME OF THE APP: " RESPONSE
-					case "$RESPONSE" in
+					# APPNAME
+					read -r -ep ' ◆ NAME OF THE APP (for the "Name" entry of the .desktop file): ' APPNAME
+					case "$APPNAME" in
 					*)
-						sed -i "s#GIVEMEANAME#$RESPONSE#g" ./am-scripts/"$arch"/"$arg"
-						# CREATE A WEBPAGE FOR https://portable-linux-apps.github.io CONTAINING ALL THE INFO ABOUT THIS APP
-						echo "# $(echo "$arg" | tr '[:lower:]' '[:upper:]')" >> ./am-scripts/portable-linux-apps.github.io/apps/"$arg".md
-						echo -e "\n WebApp & Firefox Profile for $RESPONSE.\n\n SITE: MYWEBSITE\n\n | [Applications](https://portable-linux-apps.github.io/apps.html) | [Home](https://portable-linux-apps.github.io)\n | --- | --- |" >> ./am-scripts/portable-linux-apps.github.io/apps/"$arg".md &&
-						# CREATE A NEW LINE FOR THE APPLICATION'S LIST
-						echo "◆ $arg : WebApp & Firefox Profile for $RESPONSE." >> ./am-scripts/list
+						sed -i "s#APPNAME#$APPNAME#g" ./am-scripts/"$arch"/"$arg"
+						;;
 					esac
+					echo "-----------------------------------------------------------------------"
 					# PUT THE APP INTO A CATEGORY, THIS IS NEEDED FOR OUR CUSTOM DESKTOP FILE
 					_template_desktop_file_select_category
-					# ENTER THE URL OF THE SITE YOU WANT TO CREATE A CUSTOM FIREFOX PROFILE FOR
-					read -r -ep " ◆ URL OF THE WEBAPP: " RESPONSE
-					case "$RESPONSE" in
-					*)
-						sed -i "s#MYWEBSITE#$RESPONSE#g" ./am-scripts/"$arch"/"$arg"; sed -i "s#MYWEBSITE#$RESPONSE#g" ./am-scripts/portable-linux-apps.github.io/apps/"$arg".md
-						;;
-					esac 
-					echo "-----------------------------------------------------------------------"
-					# ENTER THE URL OF THE ICON THAT WILL APPEAR IN THE MENU
-					read -r -ep " ◆ COPY/PASTE THE URL OF THE ICON HERE $(echo -e '\n URL: ')" RESPONSE
-					case "$RESPONSE" in
-					*)
-						sed -i "s#YOURICONURL#$RESPONSE#g" ./am-scripts/"$arch"/"$arg"
-						;;
-					esac
-					echo "-----------------------------------------------------------------------"
-					# END OF THIS FUNCTION
-					echo -e "\n All files are saved in $SCRIPTDIR/am-scripts\n"
 					;;
-
-				# NOTHING SELECTED
-				*)
-					echo -e "\n No valid argument was chosen: process aborted! \n" | tr '[:lower:]' '[:upper:]'; break
+				'N'|'n'|*)
+					echo "-----------------------------------------------------------------------"
 					;;
 				esac
-			esac
-		fi
-	done
-done
+				# END OF THIS FUNCTION
+				echo -e "\n All files are saved in $SCRIPTDIR/am-scripts\n"
+				;;
 
-shift
+			3) # CREATE A CUSTOM FIREFOX PROFILE ("firefox" MUST BE IN "$PATH" TO MADE IT WORK)
+				mkdir -p ./am-scripts ./am-scripts/"$arch" ./am-scripts/portable-linux-apps.github.io/apps ./am-scripts/portable-linux-apps.github.io/icons
+				# DOWNLOAD THE TEMPLATE AND CONVERT THE ARGUMENT INTO A COMMAND
+				wget -q "$AMREPO"/templates/AM-SAMPLE-Firefox-webapp -O ./am-scripts/"$arch"/"$arg" &&
+				sed -i "s/SAMPLE/$arg/g" ./am-scripts/"$arch"/"$arg" &&
+				# USE THE SUFFIX FROM NOW ON
+				mv ./am-scripts/"$arch"/"$arg" ./am-scripts/"$arch"/"ffwa-$arg"
+				arg="ffwa-$arg"
+				echo "-----------------------------------------------------------------------"
+				read -r -ep " ◆ NAME OF THE APP: " RESPONSE
+				case "$RESPONSE" in
+				*)
+					sed -i "s#GIVEMEANAME#$RESPONSE#g" ./am-scripts/"$arch"/"$arg"
+					# CREATE A WEBPAGE FOR https://portable-linux-apps.github.io CONTAINING ALL THE INFO ABOUT THIS APP
+					echo "# $(echo "$arg" | tr '[:lower:]' '[:upper:]')" >> ./am-scripts/portable-linux-apps.github.io/apps/"$arg".md
+					echo -e "\n WebApp & Firefox Profile for $RESPONSE.\n\n SITE: MYWEBSITE\n\n | [Applications](https://portable-linux-apps.github.io/apps.html) | [Home](https://portable-linux-apps.github.io)\n | --- | --- |" >> ./am-scripts/portable-linux-apps.github.io/apps/"$arg".md &&
+					# CREATE A NEW LINE FOR THE APPLICATION'S LIST
+					echo "◆ $arg : WebApp & Firefox Profile for $RESPONSE." >> ./am-scripts/list
+				esac
+				# PUT THE APP INTO A CATEGORY, THIS IS NEEDED FOR OUR CUSTOM DESKTOP FILE
+				_template_desktop_file_select_category
+				# ENTER THE URL OF THE SITE YOU WANT TO CREATE A CUSTOM FIREFOX PROFILE FOR
+				read -r -ep " ◆ URL OF THE WEBAPP: " RESPONSE
+				case "$RESPONSE" in
+				*)
+					sed -i "s#MYWEBSITE#$RESPONSE#g" ./am-scripts/"$arch"/"$arg"; sed -i "s#MYWEBSITE#$RESPONSE#g" ./am-scripts/portable-linux-apps.github.io/apps/"$arg".md
+					;;
+				esac 
+				echo "-----------------------------------------------------------------------"
+				# ENTER THE URL OF THE ICON THAT WILL APPEAR IN THE MENU
+				read -r -ep " ◆ COPY/PASTE THE URL OF THE ICON HERE $(echo -e '\n URL: ')" RESPONSE
+				case "$RESPONSE" in
+				*)
+					sed -i "s#YOURICONURL#$RESPONSE#g" ./am-scripts/"$arch"/"$arg"
+					;;
+				esac
+				echo "-----------------------------------------------------------------------"
+				# END OF THIS FUNCTION
+				echo -e "\n All files are saved in $SCRIPTDIR/am-scripts\n"
+				;;
+
+			# NOTHING SELECTED
+			*)
+				echo -e "\n No valid argument was chosen: process aborted! \n" | tr '[:lower:]' '[:upper:]'; break
+				;;
+			esac
+		esac
+	fi
+done
