@@ -111,22 +111,18 @@ function _appman_initialize() {
 
 function _appman_prompt_for_directory() {
 	local location
-	read -r -ep "Please, write the name or the path of your custom application's folder: $(echo -e '\n\n '"$HOME"'/')" location
+	read -r -ep " Please, write the name or the path of your custom application's folder: $(echo -e '\n\n '"$HOME"'/')" location
 	echo "$location"
 }
 
 function _appman_validate_directory() {
 	location=$1
 	if [ "$location" = "" ]; then
-		echo "$dividing_line"
-		echo "OPERATION ABORTED!"
+		echo -e "$dividing_line\nOPERATION ABORTED!"
 		exit  1
 	elif [ "$location" = ".local/bin" ]; then
-		echo "$dividing_line"
-		echo " 💀 ERROR, you can't install applications into a \"\$PATH\""
-		echo " The ~/.local/bin directory is normally used for executables."
-		echo " Please, choose a different path and retry!"
-		echo "$dividing_line"
+		echo -e "$dividing_line\n 💀 ERROR, you can't install applications into a \"\$PATH\""
+		echo -e " The ~/.local/bin directory is normally used for executables.\n Please, choose a different path and retry! \n$dividing_line"
 		exit  1
 	else
 		location_appman="${location/#$HOME}"
@@ -139,32 +135,22 @@ function _appman_validate_directory() {
 
 function _appman() {
 	if [ ! -f "$APPMANCONFIG"/appman-config ]; then
-		echo "$dividing_line"
-		echo " >>> Thank you for choosing AppMan!"
-		echo "$dividing_line"
-		echo "Before proceeding with any task, write the name of the directory in which"
-		echo 'you will install the apps, for example "Programs" or "My-apps", you can '
-		echo 'also choose a subfolder, for example ".local/My-apps" or a deeper path.'
-		echo ""
-		echo "The destination folder will be created in $HOME"
-		echo ""
-		echo "SYNTAX: PATH/TO/DIRNAME"
-		echo ""
-		echo 'NOTE, any spaces or "/" at the beginning and end will be removed. If you '
-		echo 'decide to change your choice in the future, first remove all the programs'
-		echo 'and then edit the ~/.config/appman/appman-config text file.'
-		echo "$dividing_line"
-		echo ""
+		echo -e "$dividing_line\n >>> Thank you for choosing AppMan! \n$dividing_line"
+		echo " Before proceeding with any task, write the name of the directory in which"
+		echo " you will install the apps, for example \"Programs\" or \"My-apps\", you can"
+		echo " also choose a subfolder, for example \".local/My-apps\" or a deeper path."
+		echo -e "\n The destination folder will be created in $HOME\n"
+		echo -e " SYNTAX: PATH/TO/DIRNAME\n"
+		echo " NOTE, any spaces or "/" at the beginning and end will be removed. If you"
+		echo " decide to change your choice in the future, first remove all the programs"
+		echo -e " and then edit the ~/.config/appman/appman-config text file.\n$dividing_line\n"
 		location=$(_appman_prompt_for_directory)
 		validated_location=$(_appman_validate_directory "$location")
 		mkdir -p "$APPMANCONFIG"
 		echo "$validated_location" >> "$APPMANCONFIG"/appman-config
-		echo "$dividing_line"
-		echo 'You are ready! Start installing your favorite apps locally!!'
-		echo "All apps will be installed in $HOME/$validated_location"
-		echo ""
-		echo 'In case of problems, use the option "-h".'
-		echo "$dividing_line"
+		echo -e "$dividing_line\n You are ready! Start installing your favorite apps locally!"
+		echo " All apps will be installed in $HOME/$validated_location"
+		echo -e "\n In case of problems, use the option \"-h\".\n$dividing_line"
 	fi
 	_appman_initialize "$(<"$APPMANCONFIG"/appman-config)"
 
@@ -174,46 +160,30 @@ function _appman() {
 ########################################
 # DETERMINE WHEN TO USE "AM" OR "APPMAN"
 ########################################
-
 if [ "$DIR/$CLI" = "/usr/local/bin/am" ] 2>/dev/null; then
 	_am
 else
 	_appman
 fi
-
 AMCLIUPPER=$(echo "$AMCLI" | tr '[:lower:]' '[:upper:]')
-
-# Set header authorization if GitHub API key file exists
-[ -f "$AMPATH/ghapikey.txt" ] && HeaderAuthWithGITPAT=" --header \"Authorization: token $(<"$AMPATH/ghapikey.txt")\" "
 
 ################
 # DEVELOPER MODE
 ################
-
 if test -f "$AMPATH"/betatester; then
 	AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/dev"
 	AMBRANCH=$(basename "$AMREPO")
 fi
+
 function _betatester_message_on() {
 	if test -f "$AMPATH"/betatester; then
-		echo "$dividing_line"
-		echo "\"$AMCLI\" $AMVERSION: developer mode" | tr '[:lower:]' '[:upper:]'
-		echo "$dividing_line"
+		echo -e "$dividing_line\n\"$AMCLIUPPER\" $AMVERSION: DEVELOPER MODE\n$dividing_line"
 	fi
 }
 
-function _use_betatester_on() {
-	touch "$AMPATH"/betatester
-}
-
-function _use_betatester_off() {
-	rm -f "$AMPATH"/betatester
-}
-
-###########################################
-# FUNCTIONS RELATED TO THE SAFE USE OF "AM"
-###########################################
-
+###############
+# SAFETY CHECKS
+###############
 function _am_dependences_check() {
 	# Check for essential commands required by the application
 	missing_deps=()
@@ -228,15 +198,12 @@ function _am_dependences_check() {
 	if [ -n "$missing_deps" ]; then
 		echo "$dividing_line"
 		printf " ${RED}💀 ERROR! MISSING ESSENTIAL COMMANDS\033[0m: %s\n\n Install the above and try again! \n" "${missing_deps[*]}"
-		echo "$dividing_line"
-		echo -e "\n ${Green}List of the $AMCLIUPPER $AMVERSION core dependences\033[0m:\n"
+		echo -e "$dividing_line\n ${Green}List of the $AMCLIUPPER $AMVERSION core dependences\033[0m:\n"
 		echo "$AMDEPENDENCES" | tr ' ' ',' | sed 's/,/, /g' | sed 's/^/ /g'
-		echo ""
-		echo "$dividing_line"
+		echo -e "\n$dividing_line"
 		echo " If this message appears it is because you are missing some dependency"
 		echo " and if its the first time its because something new has been introduced."
-		echo -e "\n See ${LightBlue}https://github.com/ivan-hc/AM#core-dependences\033[0m for more information"
-		echo "$dividing_line"
+		echo -e "\n See ${LightBlue}https://github.com/ivan-hc/AM#core-dependences\033[0m for more information\n$dividing_line"
 		exit 1
 	fi
 }
@@ -257,10 +224,12 @@ function _online_check() {
 	fi
 }
 
-###########################################
-# FUNCTIONS RELATED TO THE DATABASE OF APPS
-###########################################
+# Set header authorization if GitHub API key file exists
+[ -f "$AMPATH/ghapikey.txt" ] && HeaderAuthWithGITPAT=" --header \"Authorization: token $(<"$AMPATH/ghapikey.txt")\" "
 
+######################
+# APPS DATABASE IN USE
+######################
 function _am_newrepo_check() {
 	# Determine if the CLI uses the "main" branch of https://github.com/ivan-hc/AM or an alternative one
 	if [ -f "$AMPATH"/new-repo.txt ]; then
@@ -972,10 +941,10 @@ case "$1" in
 		;;
 	# INBUILT OPTIONS
 	'--devmode-disable')
-		_use_betatester_off
+		rm -f "$AMPATH"/betatester
 		;;
 	'--devmode-enable')
-		_use_betatester_on
+		touch "$AMPATH"/betatester
 		_betatester_message_on
 		;;
 	'--disable-completion')
