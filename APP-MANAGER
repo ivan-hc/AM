@@ -39,10 +39,6 @@ APPMANCONFIG="$CONFIGDIR/appman"
 SCRIPTDIR="$(xdg-user-dir DESKTOP 2>/dev/null || echo "$HOME")"
 export SCRIPTDIR
 
-# Completion file in bash and zsh
-COMPLETIONPATH="$HOME"
-COMPLETIONFILE=".bash_completion"
-
 # Colors
 RED='\033[0;31m'; Gold='\033[0;33m'; Green='\033[0;32m'; LightBlue='\033[1;34m';
 DIVIDING_LINE="--------------------\
@@ -315,16 +311,13 @@ function _completion_lists() {
 }
 
 # BASH (AND ZSH) COMPLETION
-AMCLI_COMPLETION=$(grep -o "$AMCLI" 0<"$COMPLETIONPATH/$COMPLETIONFILE" | head -1)
-if [ "$AMCLI_COMPLETION" != "$AMCLI" ]; then
-	mkdir -p "$COMPLETIONPATH"
-	if ! test -f "$COMPLETIONPATH/$COMPLETIONFILE"; then
-		echo '#!/usr/bin/env bash' >> "$COMPLETIONFILE"
-	fi
-	echo "complete -W \"\$(cat $AMDATADIR/list 2>/dev/null)\" $AMCLI" >> "$COMPLETIONFILE"
-	chmod a+x "$COMPLETIONFILE"
-	mv "$COMPLETIONFILE" "$COMPLETIONPATH/" 2> /dev/null
+if ! test -f "$HOME/.bash_completion"; then
+	echo '#!/usr/bin/env bash' >> "$HOME/.bash_completion"
+	echo "complete -W \"\$(cat $AMDATADIR/list 2>/dev/null)\" $AMCLI" >> "$HOME/.bash_completion"
+	chmod a+x "$HOME/.bash_completion"
 	echo " Completion has been enabled!"
+else
+	sed -i "s#$AMPATH/list#$AMDATADIR/list#g" "$HOME/.bash_completion"
 fi
 if [ -f "$HOME/.zshrc" ] || [ -f "$ZDOTDIR/.zshrc" ]; then
 	if [ -n "$ZDOTDIR" ]; then
@@ -332,16 +325,13 @@ if [ -f "$HOME/.zshrc" ] || [ -f "$ZDOTDIR/.zshrc" ]; then
 	else
 		ZSHDIR="$HOME"
 	fi
-	if ! grep -q "source $ZSHDIR/$COMPLETIONFILE" "$ZSHDIR/.zshrc"; then
-		echo '#!/usr/bin/env bash' >> "$ZSHDIR/$COMPLETIONFILE"
-		echo "complete -W \"\$(cat $AMDATADIR/list 2>/dev/null)\" $AMCLI" >> "$ZSHDIR/$COMPLETIONFILE"
-		chmod a+x "$ZSHDIR/$COMPLETIONFILE"
-		echo -e "\nautoload bashcompinit\nbashcompinit\nsource $ZSHDIR/$COMPLETIONFILE" >> "$ZSHDIR/.zshrc"
+	if ! grep -q "source $ZSHDIR/.bash_completion" "$ZSHDIR/.zshrc"; then
+		echo '#!/usr/bin/env bash' >> "$ZSHDIR/.bash_completion"
+		echo "complete -W \"\$(cat $AMDATADIR/list 2>/dev/null)\" $AMCLI" >> "$ZSHDIR/.bash_completion"
+		chmod a+x "$ZSHDIR/.bash_completion"
+		echo -e "\nautoload bashcompinit\nbashcompinit\nsource $ZSHDIR/.bash_completion" >> "$ZSHDIR/.zshrc"
 	fi
-	COMPLETIONFILE="$ZSHDIR/$COMPLETIONFILE"
-fi
-if grep -q "$AMPATH/list" "$COMPLETIONFILE"; then
-	sed -i "s#$AMPATH/list#$AMDATADIR/list#g" "$COMPLETIONFILE"
+	sed -i "s#$AMPATH/list#$AMDATADIR/list#g" "$ZSHDIR/.bash_completion"
 fi
 
 # VERSION OF THE INSTALLED APPS
@@ -670,25 +660,23 @@ function _sync_installation_scripts() {
 
 function _sync_modules() {
 	echo -e "$DIVIDING_LINE\n Check for updates in modules..."
-	MODULES=$(curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/ivan-hc/AM/contents/modules?ref="$AMBRANCH" |\
-	sed 's/[()",{}]/ /g; s/ /\n/g' | grep -o 'https.*raw.*modules.*am$')
-	for v in $MODULES; do
+	MODULES=$(curl -Ls "$AMREPO/APP-MANAGER" | tr '"' '\n' | grep "[a-z]\.am$")
+	for module_name in $MODULES; do
 		cd "$AMPATH"/modules || return
-		MODULENAME=$(echo "$v" | sed 's:.*/::')
-		if ! test -f ./"$MODULENAME"; then
-			echo " ◆ Downloading $MODULENAME (not previously installed)..."
-			wget -q "$v" 2> /dev/null
+		if ! test -f ./"$module_name"; then
+			echo " ◆ Downloading $module_name (not previously installed)..."
+			wget -q "$AMREPO/modules/$module_name" 2> /dev/null
 			chmod a+x ./"$MODULENAME"
 		fi
-		CURRENT=$(cat ./"$MODULENAME" 2>/dev/null)
-		SOURCE=$(wget -q "$v" -O -)
+		CURRENT=$(cat ./"$module_name" 2>/dev/null)
+		SOURCE=$(curl -Ls "$AMREPO/modules/$module_name")
 		if [ "$CURRENT" = "$SOURCE" ]; then
 			echo -ne "\r" 2> /dev/null
 		else
-			echo " ◆ Updating $MODULENAME..."
-			mkdir "$AMCACHEDIR"/tmp
+			echo " ◆ Updating $module_name..."
+			mkdir -p "$AMCACHEDIR"/tmp
 			cd "$AMCACHEDIR"/tmp || return
-			wget -q "$v"
+			wget -q "$AMREPO/modules/$module_name" 2> /dev/null
 			cd ..
 			echo y | mv tmp/*.am "$AMPATH"/modules/
 			rmdir tmp
