@@ -6,8 +6,9 @@
 
 case "$1" in
   'neodb')
-  	while [ -n "$1" ]; do
-		case $2 in
+  	ARGS="$(echo "$@" | cut -f2- -d ' ')"
+	for arg in $ARGS; do
+		case "$arg" in
 		'')
 		  	echo " This option allows you to add new repositories to the existing database"
 		  	echo ' this your setup will be saved in the configuration file called "neodb"'
@@ -45,12 +46,12 @@ case "$1" in
 				;;
 			esac
 			echo '--------------------------------------------------------------------------'
-			read -r -ep ' Now copy/paste the URL to the "'"$arch"'-apps" file, the applications list '"$(echo -e '\n: ')"'' appslisturl
+			read -r -ep ' Now copy/paste the URL to the "'"$ARCH"'-apps" file, the applications list '"$(echo -e '\n: ')"'' appslisturl
 			case "$appslisturl" in
 			'')	exit
 				;;
 			*)	if curl --output /dev/null --silent --head --fail "$appslisturl"  1>/dev/null; then
-					if ! echo "$appslisturl" | grep -q "$arch-apps"; then
+					if ! echo "$appslisturl" | grep -q "$ARCH-apps"; then
 						echo '--------------------------------------------------------------------------'
 						echo -e ' 💀 ERROR, not a valid name for this list, exiting.'; echo -e " Invalid file, retry! \n Visit https://github.com/ivan-hc/neodb for more information"; exit
 					elif ! wget -q "$appslisturl" -O - | grep -q "◆ "; then
@@ -96,45 +97,42 @@ case "$1" in
 			;;
 		esac
 	done
-	shift
 	;;
 
   'apikey')
-  	while [ -n "$1" ]; do
-		case $2 in
-		'') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;	
-		del|delete|remove)
-			if test -f "$AMPATH/ghapikey.txt"; then
+  	[ -z "$2" ] && echo " USAGE: $AMCLI $1 [ARGUMENT]" && exit 1
+	case $2 in
+	del|delete|remove)
+		if test -f "$AMPATH/ghapikey.txt"; then
+			rm -f "$AMPATH/ghapikey.txt"
+			echo "The file $AMPATH/ghapikey.txt has been deleted"; exit
+		else
+			echo "No file named $AMPATH/ghapikey.txt has been found"; exit
+		fi;;
+	*)
+		if [[ "$2" =~ ^(gh[ps]_[a-zA-Z0-9]{36}|github_pat_[a-zA-Z0-9]{22}_[a-zA-Z0-9]{59})$ ]]; then
+			test_apikey_output_with_wget=$(curl -Ls --header "Authorization: token $2" 'https://api.github.com/repos/ivan-hc/AM/releases' | head -1)
+			if [ -n "$test_apikey_output_with_wget" ]; then
 				rm -f "$AMPATH/ghapikey.txt"
-				echo "The file $AMPATH/ghapikey.txt has been deleted"; exit
+				echo "$2" >> "$AMPATH/ghapikey.txt"
+				echo "Validation successful!"
+				exit
 			else
-				echo "No file named $AMPATH/ghapikey.txt has been found"; exit
-			fi;;
-		*)
-			if [[ "$2" =~ ^(gh[ps]_[a-zA-Z0-9]{36}|github_pat_[a-zA-Z0-9]{22}_[a-zA-Z0-9]{59})$ ]]; then
-				test_apikey_output_with_wget=$(curl -Ls --header "Authorization: token $2" 'https://api.github.com/repos/ivan-hc/AM/releases' | head -1)
-				if [[ $(echo "$test_apikey_output_with_wget") ]]; then
-					rm -f "$AMPATH/ghapikey.txt"
-					echo "$2" >> "$AMPATH/ghapikey.txt"
-					echo "Validation successful!"
-					exit
-				else
-					echo "ERROR: This is not a valid key!"
-					exit
-				fi
-			else
-				echo "ERROR: Wrong expression, validation failed!"
+				echo "ERROR: This is not a valid key!"
 				exit
 			fi
-		;;
-		esac
-	done
-	shift
+		else
+			echo "ERROR: Wrong expression, validation failed!"
+			exit
+		fi
+	;;
+	esac
 	;;
 
   'newrepo')
-	while [ -n "$1" ]; do
-		case $2 in
+	ARGS="$(echo "$@" | cut -f2- -d ' ')"
+	for arg in $ARGS; do
+		case $arg in
 		'')
 			echo -e "\n USAGE: $AMCLI $1 [URL]	# Set a new repository"
 			echo "        $AMCLI $1 [PATH]	# Set a local directory as a new repository"
@@ -167,24 +165,24 @@ case "$1" in
 			exit
 			;;
 		*)
-			if echo "$2" | grep -q "raw.githubusercontent.com"; then
+			if echo "$arg" | grep -q "raw.githubusercontent.com"; then
 				rm -R -f "$AMPATH/new-repo.txt"
-				echo "$2" | sed 's/\/*$//g' >> "$AMPATH/new-repo.txt"
-				echo -e "\n Your NEW custom repository is:\n\n $2\n\n This will replace the main one!\n"
+				echo "$arg" | sed 's/\/*$//g' >> "$AMPATH/new-repo.txt"
+				echo -e "\n Your NEW custom repository is:\n\n $arg\n\n This will replace the main one!\n"
 				echo -e ' Use the command "'"$AMCLI"' newrepo off" to restore the default one!\n'
 				echo -e ' Repeat this command with a new URL to replace the one you just set!\n'
 				exit
-			elif curl --output /dev/null --silent --head --fail "$2"  1>/dev/null; then
+			elif curl --output /dev/null --silent --head --fail "$arg"  1>/dev/null; then
 				rm -R -f "$AMPATH/new-repo.txt"
-				echo "$2" | sed 's/\/*$//g' >> "$AMPATH/new-repo.txt"
-				echo -e "\n Your NEW custom repository is:\n\n $2\n\n This will replace the main one!\n"
+				echo "$arg" | sed 's/\/*$//g' >> "$AMPATH/new-repo.txt"
+				echo -e "\n Your NEW custom repository is:\n\n $arg\n\n This will replace the main one!\n"
 				echo -e ' Use the command "'"$AMCLI"' newrepo off" to restore the default one!\n'
 				echo -e ' Repeat this command with a new URL to replace the one you just set!\n'
 				exit
-			elif test -d "$2"; then
+			elif test -d "$arg"; then
 				rm -R -f "$AMPATH/new-repo.txt"
-				echo "$2" | sed 's/\/*$//g' >> "$AMPATH/new-repo.txt"
-				echo -e "\n Your NEW local/offline custom repository is:\n\n $2\n\n This will replace the main one!\n"
+				echo "$arg" | sed 's/\/*$//g' >> "$AMPATH/new-repo.txt"
+				echo -e "\n Your NEW local/offline custom repository is:\n\n $arg\n\n This will replace the main one!\n"
 				echo -e ' Use the command "'"$AMCLI"' newrepo off" to restore the default one!\n'
 				echo -e ' Repeat this command with a new URL to replace the one you just set!\n'
 				exit
@@ -195,6 +193,5 @@ case "$1" in
 			;;
 		esac
 	done
-	shift
 	;;
 esac
