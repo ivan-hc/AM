@@ -300,31 +300,23 @@ function _completion_lists() {
 	done
 }
 
-# BASH (AND ZSH) COMPLETION
-if ! test -f "$HOME/.bash_completion"; then
-	echo '#!/usr/bin/env bash' >> "$HOME/.bash_completion"
-fi
-if ! grep -o "$AMCLI" "$HOME/.bash_completion" 1> /dev/null; then
-	echo "complete -W \"\$(cat $AMDATADIR/list 2>/dev/null)\" $AMCLI" >> "$HOME/.bash_completion"
-	chmod a+x "$HOME/.bash_completion"
-	echo " Completion has been enabled!"
-else
-	sed -i "s#$AMPATH/list#$AMDATADIR/list#g" "$HOME/.bash_completion"
-fi
-if [ -f "$HOME/.zshrc" ] || [ -f "$ZDOTDIR/.zshrc" ]; then
-	if [ -n "$ZDOTDIR" ]; then
-		ZSHDIR="$ZDOTDIR"
-	else
-		ZSHDIR="$HOME"
+# BASH AND ZSH COMPLETION
+completion_file="${ZDOTDIR:-$HOME}"/.bash_completion
+if [ ! -f "$completion_file" ]; then
+	cat <<-HEREDOC >> "$completion_file"
+	#!/usr/bin/env bash
+	"complete -W \"\$(cat $AMDATADIR/list 2>/dev/null)\" $AMCLI"
+	HEREDOC
+	if [ -f "${ZDOTDIR:-$HOME}"/.zshrc ] && echo "$SHELL" | grep -q "zsh"; then
+		cat <<-HEREDOC >> "${ZDOTDIR:-$HOME}"/.zshrc
+		autoload bashcompinit
+		bashcompinit
+		source \"$completion_file\"
+		HEREDOC
 	fi
-	if ! grep -q "source $ZSHDIR/.bash_completion" "$ZSHDIR/.zshrc"; then
-		echo '#!/usr/bin/env bash' >> "$ZSHDIR/.bash_completion"
-		echo "complete -W \"\$(cat $AMDATADIR/list 2>/dev/null)\" $AMCLI" >> "$ZSHDIR/.bash_completion"
-		chmod a+x "$ZSHDIR/.bash_completion"
-		echo -e "\nautoload bashcompinit\nbashcompinit\nsource $ZSHDIR/.bash_completion" >> "$ZSHDIR/.zshrc"
-	fi
-	sed -i "s#$AMPATH/list#$AMDATADIR/list#g" "$ZSHDIR/.bash_completion"
+	echo " Shell completion has been enabled!"
 fi
+sed -i "s#$AMPATH/list#$AMDATADIR/list#g" "$completion_file" 2>/dev/null
 
 # VERSION OF THE INSTALLED APPS
 # Filters
