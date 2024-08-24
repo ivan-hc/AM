@@ -214,9 +214,6 @@ function _online_check() {
 	fi
 }
 
-# Set header authorization if GitHub API key file exists
-[ -f "$AMPATH/ghapikey.txt" ] && HeaderAuthWithGITPAT=" --header \"Authorization: token $(<"$AMPATH/ghapikey.txt")\" "
-
 ################################################################################
 #				3RD PARTY
 ################################################################################
@@ -450,6 +447,47 @@ function _remove_info_files() {
 #				INTERNAL OPTIONS
 ################################################################################
 
+# APIKEY
+ghapikey_file="$AMDATADIR/ghapikey.txt"
+[ -f "$AMPATH/ghapikey.txt" ] && mv "$ghapikey_file" "$ghapikey_file"
+# Set header authorization if GitHub API key file exists
+[ -f "$ghapikey_file" ] && HeaderAuthWithGITPAT=" --header \"Authorization: token $(<"$ghapikey_file")\" "
+
+function _use_apikey() {
+	case $2 in
+	'del'|'delete'|'remove')
+		[ -f "$ghapikey_file" ] && rm -f "$ghapikey_file" &&
+		echo " ✔ $ghapikey_file has been removed" || echo " ✖ No file named $ghapikey_file has been found"
+		exit
+	esac
+	if [[ "$2" =~ ^(gh[ps]_[a-zA-Z0-9]{36}|github_pat_[a-zA-Z0-9]{22}_[a-zA-Z0-9]{59})$ ]]; then
+		test_apikey_output_with_wget=$(curl -Ls --header "Authorization: token $2" 'https://api.github.com/repos/ivan-hc/AM/releases' | head -1)
+		[ -n "$test_apikey_output_with_wget" ] && echo "$2" > "$ghapikey_file" &&
+		echo "Validation successful!" || echo "ERROR: This is not a valid key!"
+	else
+		echo "ERROR: Wrong expression, validation failed!"
+	fi
+}
+
+function _update_github_api_key_in_the_updater_files() {
+	if [ -f "$ghapikey_file" ]; then
+		ghapikey=$(<"$ghapikey_file")
+		updater_files=("$APPSPATH"/*/AM-updater) # Assuming AM-updater is one level deeper
+		for f in "${updater_files[@]}"; do
+			if [ -f "$f" ] && grep -q "https://api.github.com" "$f"; then
+				# Check if the file already contains a valid API key
+				if ! grep -qE "(gh[ps]_[a-zA-Z0-9]{36}|github_pat_[a-zA-Z0-9]{22}_[a-zA-Z0-9]{59})" "$f"; then
+					# Insert HeaderAuthWithGITPAT before the GitHub API URL
+					sed -i "s#https://api.github.com#$HeaderAuthWithGITPAT https://api.github.com#g" "$f"
+				else
+					# Replace existing API key with the one from ghapikey.txt
+					sed -i "s#\(gh[ps]_[a-zA-Z0-9]\{36\}\|github_pat_[a-zA-Z0-9]\{22\}_[a-zA-Z0-9]\{59\}\)#$ghapikey#g" "$f"
+				fi
+			fi
+		done
+    	fi
+}
+
 # "APPMAN MODE" FOR "AM" USERS
 function _appman_mode_enabled_message() {
 	if [ "$CLI" = am ] 2>/dev/null; then
@@ -518,20 +556,20 @@ function _use_beta_tester() {
 # CLEAN UNNEEDED FILES
 function _clean_amcachedir_message() {
 	_clean_amcachedir
-	echo " ◆ Clear the contents of $AMCACHEDIR"
+	echo " ✔ Clear the contents of $AMCACHEDIR"
 }
 
 function _clean_all_home_cache_directories_of_appimages() {
 	if test -d "$APPSPATH"/*/*.home/.cache 2> /dev/null; then
 		rm -Rf "$APPSPATH"/*/*.home/.cache/* &&
-		echo " ◆ Clear the contents of all *.home/.cache AppImages directories"
+		echo " ✔ Clear the contents of all *.home/.cache AppImages directories"
 	fi
 }
 
 function _clean_all_tmp_directories_from_appspath() {
 	if test -d "$APPSPATH"/*/tmp 2> /dev/null; then
 		rm -Rf "$APPSPATH"/*/tmp &&
-		echo ' ◆ Removed all '"$APPSPATH"'/*/tmp directories'
+		echo ' ✔ Removed all '"$APPSPATH"'/*/tmp directories'
 	fi
 }
 
@@ -543,8 +581,8 @@ function _clean_determine_removable_launchers() {
 			elif echo "$MOUNTPOINTS" | grep -q "/mnt/"; then
 				unmounted_poin="/mnt"
 			fi
-			echo -e "\n ✖ ERROR: cannot remove $(basename "$var")"
-			echo -e "   related AppImage is located in an unmounted path of $unmounted_poin\n"
+			echo " ✖ ERROR: cannot remove \"$(basename "$var")\""
+			echo "   related AppImage is located in an unmounted path of $unmounted_poin"
 		else
 			rm -f "$var"
 			rm -f "$HOME"/.local/bin/"$launcher2del"*
@@ -561,7 +599,7 @@ function _clean_launchers() {
 			MOUNTPOINTS=$(echo "$APPIMAGENAME" | cut -d'/' -f1-4)
 			_clean_determine_removable_launchers
 		done
-		echo ' ◆ Removed orphaned launchers produced with the "--launcher" option'
+		echo ' ✔ Removed orphaned launchers produced with the "--launcher" option'
 		rmdir "$DATADIR"/applications/AppImages
 	fi
 }
@@ -575,7 +613,7 @@ function _clean_old_modules() {
 	for m in "$APPSPATH"/"$AMCLI"/modules/*; do
 		if [[ "${MODULES}" != *"$(basename -- "$m")"* ]];then
 			rm -f "$m" 2>/dev/null
-			echo " ◆ Removed obsolete module named \"$(basename -- "$m")\""
+			echo " ✔ Removed obsolete module named \"$(basename -- "$m")\""
 		fi
 	done
 }
@@ -584,12 +622,12 @@ function _clean_old_am_files_and_directories() {
 	if test -d "$AMPATH/.cache"; then
 		rm -f "$AMPATH"/betatester "$AMPATH"/.cache/* "$AMPATH"/*-apps "$AMPATH"/*list "$AMPATH"/*options
 		rmdir "$AMPATH"/.cache
-		echo " ◆ Removed obsolete files and directories from $AMPATH"
+		echo " ✔ Removed obsolete files and directories from $AMPATH"
 	fi
 }
 
 function _use_clean() {
-	echo "Cleaning temporary files and folders..." && sleep 0.1 &&
+	echo " Cleaning temporary files and folders..." && sleep 0.1 &&
 	for i in {100..000}; do
 		echo -ne " $i\r" && sleep 0.0001
 	done
@@ -599,7 +637,6 @@ function _use_clean() {
 	_clean_launchers 2> /dev/null
 	_clean_old_modules
 	_clean_old_am_files_and_directories
-	echo "Done!"
 }
 
 # FORCE "LATEST" RELEASE FOR APPS INSTALLED FROM GITHUB
@@ -718,26 +755,6 @@ function _use_sync() {
 }
 
 # UPDATE
-function _update_github_api_key_in_the_updater_files() {
-	local ghapikey_file="$AMPATH/ghapikey.txt"
-	if [ -f "$ghapikey_file" ]; then
-		ghapikey=$(<"$ghapikey_file")
-		local updater_files=("$APPSPATH"/*/AM-updater) # Assuming AM-updater is one level deeper
-		for f in "${updater_files[@]}"; do
-		if [ -f "$f" ] && grep -q "https://api.github.com" "$f"; then
-			# Check if the file already contains a valid API key
-			if ! grep -qE "(gh[ps]_[a-zA-Z0-9]{36}|github_pat_[a-zA-Z0-9]{22}_[a-zA-Z0-9]{59})" "$f"; then
-				# Insert HeaderAuthWithGITPAT before the GitHub API URL
-				sed -i "s#https://api.github.com#$HeaderAuthWithGITPAT https://api.github.com#g" "$f"
-			else
-				# Replace existing API key with the one from ghapikey.txt
-				sed -i "s#\(gh[ps]_[a-zA-Z0-9]\{36\}\|github_pat_[a-zA-Z0-9]\{22\}_[a-zA-Z0-9]\{59\}\)#$ghapikey#g" "$f"
-			fi
-		fi
-		done
-    	fi
-}
-
 function _list_updatable_apps() {
 	_check_version
 	cd "$APPSPATH" &&
@@ -895,13 +912,15 @@ case "$1" in
 		_use_module "$@"
 		;;
 	'neodb'|\
-	'apikey'|\
 	'newrepo')
 		MODULE="devtools.am"
 		_online_check
 		_use_module "$@"
 		;;
 	# INBUILT OPTIONS
+	'apikey')
+		_use_apikey "$@"
+		;;
 	'--devmode-disable'|'--devmode-enable')
 		_use_beta_tester "$@"
 		;;
