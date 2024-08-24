@@ -291,7 +291,7 @@ function _3rd_party_lists() {
 ################################################################################
 
 # COMPLETION LIST
-available_options="about apikey backup clean downgrade download extra files install \
+available_options="about apikey backup clean downgrade download extra files install launcher \
 		list lock neodb newrepo nolibfuse overwrite query remove sync template test unlock update \
 		--appimages --apps --byname --config --convert --debug --devmode-disable --devmode-enable \
 		--force-latest --home --launcher --less --pkg --rollback --disable-sandbox --sandbox \
@@ -671,13 +671,13 @@ function _sync_installation_scripts() {
 function _sync_modules() {
 	echo -e "$DIVIDING_LINE\n Check for updates in modules..."
 	MODULES=$(curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/ivan-hc/AM/contents/modules?ref="$AMBRANCH" |\
-	sed 's/[()",{}]/ /g; s/ /\n/g' | grep -o 'https.*raw.*modules.*am$' | grep -v "sync\|update")
+	sed 's/[()",{}]/ /g; s/ /\n/g' | grep -o 'https.*raw.*modules.*am$')
 	for v in $MODULES; do
 		cd "$AMPATH"/modules || return
 		MODULENAME=$(echo "$v" | sed 's:.*/::')
 		if ! test -f ./"$MODULENAME"; then
 			echo " ◆ Downloading $MODULENAME (not previously installed)..."
-			wget -q "$v"
+			wget -q "$v" 2> /dev/null
 			chmod a+x ./"$MODULENAME"
 		fi
 		CURRENT=$(cat ./"$MODULENAME" 2>/dev/null)
@@ -875,12 +875,13 @@ case "$1" in
 		MODULE="database.am"
 		_use_module "$@"
 		;;
-	'-b'|'backup'|\
-	'-o'|'overwrite'|\
-	'-R'|'-r'|'remove'|\
-	'--rollback'|'downgrade'|\
+	'backup'|'-b'|\
+	'downgrade'|'--rollback'|\
+	'launcher'|'--launcher'|\
 	'lock'|'unlock'|\
-	'nolibfuse')
+	'nolibfuse'|\
+	'overwrite'|'-o'|\
+	'remove'|'-R'|'-r')
 		MODULE="management.am"
 		_use_module "$@"
 		;;
@@ -916,10 +917,6 @@ case "$1" in
 	'-t'|'template')
 		MODULE="template.am"
 		_online_check
-		_use_module "$@"
-		;;
-	'--launcher')
-		MODULE="launcher.am"
 		_use_module "$@"
 		;;
 	'neodb'|\
