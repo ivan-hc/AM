@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/sh
 
 #############################################################################
 # THIS MODULE IS USED TO INSTALL APPS FROM THE DATABASE OR FROM LOCAL SCRIPTS
@@ -22,7 +22,7 @@ _spooky_check() {
 		echo ""
 		read -p " Do you wish to continue? (N/y): " yn
 		if ! echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
-			printf "\n INSTALLATION ABORTED!\n"
+			printf "\n INSTALLATION ABORTED! \n"
 			return 1
 		fi
 	fi
@@ -36,23 +36,23 @@ _apply_patches() {
 			-e "s#/usr/local/share#$DATADIR#g" \
 			-e "s#/opt/#$APPSPATH/#g" ./"$arg"
 	else
-		"$SUDOCMD" mkdir -p /usr/local/{share/applications,bin}
+		"$SUDOCMD" mkdir -p /usr/local/share/applications /usr/local/bin
 	fi
 	if ! grep -q -- "--debug" "$AMCACHEDIR"/install-args && wget --version | head -1 | grep -q ' 1.'; then
 		# Patch "wget" (version 1.x) to have a progress bar and fix errors when applying patches
 		sed -i "s#wget #wget -q --no-verbose --show-progress --progress=bar #g" ./"$arg"
 	fi
 	sed -i "s# https://api.github.com#$HeaderAuthWithGITPAT https://api.github.com#g" ./"$arg"
-	sed -i 's#DirIcon$#DirIcon  2>/dev/null#g' ./"$arg"
-	sed -i 's#DirIcon ./icons/"$APP" 1#DirIcon ./icons/"$APP" 2#g' ./"$arg"
+	sed -i "s#DirIcon\$#DirIcon  2>/dev/null#g" ./"$arg"
+	sed -i "s#DirIcon ./icons/\"\$APP\" 1#DirIcon ./icons/\"\$APP\" 2#g" ./"$arg"
 }
 
 _am_remover_check() {
 	# Put permission check in remove script and change ownership of directory
 	if [ "$AMCLI" = am ]; then
-		$SUDOCMD sed -i '1 a [ "$(id -u)" -ne 0 ] && echo "Permission denied" && exit 1' \
+		$SUDOCMD sed -i "1 a [ \"\$(id -u)\" -ne 0 ] && echo "Permission denied" && exit 1" \
 			"${LASTDIRPATH}"/remove 2>/dev/null
-		$SUDOCMD chown -R $USER ${LASTDIRPATH} 2>/dev/null
+		$SUDOCMD chown -R "$USER" "${LASTDIRPATH}" 2>/dev/null
 	fi
 
 }
@@ -73,7 +73,7 @@ _post_installation_processes() {
 	if [ "$AMCLI" = "appman" ]; then
 		# Likely not needed anymore: "s#Icon=/opt#Icon=$HOME/$APPSDIR#g"
 		sed -i -e "s#Exec=$arg#Exec=$BINDIR/$arg#g" \
-			-e 's#Exec=$APP#Exec='"$BINDIR"'/$APP#g' \
+			-e "s#Exec=\$APP#Exec=$BINDIR/\$APP#g" \
 			-e "s#Exec=/usr/bin/#Exec=$BINDIR/#g" \
 			-e "s#Exec=/opt/#Exec=$BINDIR/#g" "$DATADIR"/applications/*-AM.desktop 2>/dev/null
 	fi
@@ -93,7 +93,7 @@ _ending_the_installation() {
 		else
 			APPSIZE=$(du -sm "${LASTDIRPATH}" | awk '{print $1}' )
 			LASTDIRNAME=$(echo "\"$LASTDIR\"" | tr '[:lower:]' '[:upper:]')
-			echo -ne " ${Green}$LASTDIRNAME INSTALLED\033[0m ($APPSIZE MB OF DISK SPACE)\n"
+			printf " ${Green}$LASTDIRNAME INSTALLED\033[0m ($APPSIZE MB OF DISK SPACE)\n"
 			$SUDOCMD rm "$AMCACHEDIR"/"$arg"
 			_check_version
 			app_version=$(grep -w " ◆ $LASTDIR	|" 0<"$AMCACHEDIR"/version-args | sed 's:.*|	::')
@@ -150,7 +150,7 @@ _install_arg() {
 			sed -i 's#firefox --class#'"$(echo "$ffbrowser" | xargs -L 1 basename)"' --class#g' ./"$arg"
 		fi
 	elif grep -qi "^wget.*.sh.*chmod.*&&" ./"$arg"; then
-		appimage_bulder_script=$(grep "^wget " ./"$arg" | tr '"' '\n' | grep -i "^http" | sed 's/$APP/'"$arg"'/g')
+		appimage_bulder_script=$(grep "^wget " ./"$arg" | tr '"' '\n' | grep -i "^http" | sed "s/\$APP/$arg/g")
 		if curl --output /dev/null --silent --head --fail "$appimage_bulder_script" 1> /dev/null; then
 			for name in $app_deps; do
 				if curl -Ls "$appimage_bulder_script" | grep "^$name" 1>/dev/null; then
@@ -180,7 +180,7 @@ _install_arg() {
 		printf "\n ⚠️ This script will install a system library in /usr/local/lib\n\n"
 		read -p " Do you wish to continue? (N/y): " yn
 		if ! echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
-			printf "\n INSTALLATION ABORTED!\n"
+			printf "\n INSTALLATION ABORTED! \n"
 			return 0
 		fi
 	fi
@@ -222,58 +222,6 @@ _install_normally() {
 	_install_arg
 }
 
-# This function is entirely dedicated to third-party databases
-_install_from_third_party_repo() {
-	rm -R -f "$AMCACHEDIR/multirepo-args"
-	MULTIREPO=$(grep "Source=" "$AMPATH/neodb" | sed 's/Source=//g')
-	for anyrepo in $MULTIREPO; do
-		if curl --output /dev/null --silent --head --fail "$anyrepo"/"$arg"  1> /dev/null; then
-			echo "$anyrepo" >> "$AMCACHEDIR/multirepo-args"
-		fi
-	done
-	if test -f "$AMCACHEDIR/multirepo-args"; then
-		anyrepoargs=$(sort "$AMCACHEDIR/multirepo-args" 2> /dev/null | wc -l)
-		if [ "$anyrepoargs" -gt 0 ]; then
-			if curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg"  1> /dev/null; then
-				echo "$APPSDB" >> "$AMCACHEDIR/multirepo-args"
-			fi
-			anyrepoargall=$(sort "$AMCACHEDIR/multirepo-args" 2> /dev/null | wc -l)
-			if [ "$anyrepoargall" = 1 ]; then
-				mkdir -p "$AMCACHEDIR"/tmp && rm -f "$AMCACHEDIR"/tmp/* &&
-				wget -q "$(head -1 "$AMCACHEDIR/multirepo-args")/$arg" -O "$AMCACHEDIR"/tmp/"$arg" &&
-				cd "$AMCACHEDIR" && mv ./tmp/"$arg" ./"$arg" && rmdir ./tmp || return
-				rm -R -f "$AMCACHEDIR/multirepo-args"
-				_install_arg
-			else
-				printf '\n%s\n' " ◆ FOUND $APPNAME FROM MULTIPLE SOURCES:"
-				printf '%s\n\n' " Select a URL from this menu (read carefully) or press CTRL+C to abort:" 
-				sleep 1
-				select d in $(cat "$AMCACHEDIR/multirepo-args"); do 
-					test -n "$d" && break
-					echo ">>> Invalid Selection" 
-				done
-				mkdir -p "$AMCACHEDIR"/tmp && rm -f "$AMCACHEDIR"/tmp/* &&
-				wget -q "$d/$arg" -O "$AMCACHEDIR"/tmp/"$arg" &&
-				cd "$AMCACHEDIR" && mv ./tmp/"$arg" ./"$arg" && rmdir ./tmp || return
-				rm -R -f "$AMCACHEDIR/multirepo-args"
-				_install_arg
-			fi
-		elif curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg" 1>/dev/null; then
-			mkdir -p "$AMCACHEDIR"/tmp && rm -f "$AMCACHEDIR"/tmp/* &&
-			wget -q "$APPSDB"/"$arg" -O "$AMCACHEDIR"/tmp/"$arg" &&
-			cd "$AMCACHEDIR" && mv ./tmp/"$arg" ./"$arg" && rmdir ./tmp || return
-			rm -R -f "$AMCACHEDIR/multirepo-args"
-			_install_arg
-		else
-			echo " 💀 ERROR: \"$arg\" does NOT exist in the database, see \"$AMCLI -l\""
-		fi
-	elif curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg" 1>/dev/null; then
-		_install_normally
-	else
-		echo " 💀 ERROR: \"$arg\" does NOT exist in the database, see \"$AMCLI -l\""
-	fi
-}
-
 ##################################
 # OPTIONS AVAILABLE IN THIS MODULE
 ##################################
@@ -292,11 +240,11 @@ while [ -n "$1" ]; do
 			exit 1
 			;;
 		esac
-		[ "$AMCLI" = "am" ] && { $SUDOCMD echo -ne "\r" || exit 1; }
+		[ "$AMCLI" = "am" ] && { $SUDOCMD printf "\r" || exit 1; }
 
 		echo "============================================================================"
 		echo ""
-		echo -e "                  ${LightBlue}START OF ALL INSTALLATION PROCESSES\033[0m"
+		printf "                  ${LightBlue}START OF ALL INSTALLATION PROCESSES\033[0m\n"
 		echo ""
 		echo "============================================================================"
 		_clean_amcachedir 2>/dev/null
@@ -331,8 +279,6 @@ while [ -n "$1" ]; do
 						else
 							echo " 💀 ERROR: the file \"$arg\" does NOT exist"
 						fi
-					elif test -f "$AMPATH/neodb"; then
-						_install_from_third_party_repo
 					elif curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg"  1>/dev/null; then
 						_install_normally
 					else
@@ -345,8 +291,8 @@ while [ -n "$1" ]; do
 		done
 		if [ -f "$AMCACHEDIR"/installed ]; then
 			echo "============================================================================"
-			echo -e "\n                  ${LightBlue}END OF ALL INSTALLATION PROCESSES\n\033[0m"
-			echo -e "             The following new programs have been installed:\n"
+			printf "\n                  ${LightBlue}END OF ALL INSTALLATION PROCESSES\n\033[0m"
+			printf "\n             The following new programs have been installed:\n\n"
 			grep -w -v "◆ am" 0<"$AMCACHEDIR"/installed
 			echo ""
 			echo "============================================================================"
@@ -370,11 +316,11 @@ while [ -n "$1" ]; do
 		API_GITHUB_REPO="https://api.github.com/repos/$USER_PROJECT/releases"
 		sed -i "s#REPLACETHIS#$USER_PROJECT#g" "$CACHEDIR/extra/$3"
 		q="'"
-		if [ "$arch" = "x86_64" ]; then
+		if [ "$ARCH" = "x86_64" ]; then
 			FILTER=' | grep -vi "i386\\|i686\\|i586\\|i486\\|aarch64\\|arm64\\|armv7l"'
-		elif [ "$arch" = "i686" ]; then
+		elif [ "$ARCH" = "i686" ]; then
 			FILTER=' | grep -ie "i386\\|i686\\|i586\\|i486" '
-		elif [ "$arch" = "aarch64" ]; then
+		elif [ "$ARCH" = "aarch64" ]; then
 			FILTER=' | grep -ie "aarch64\\|arm64" '
 		fi
 		FUNCTION='curl -Ls '"$API_GITHUB_REPO"' | sed '"$q"'s/[()",{} ]/\\n/g'"$q"' | grep -oi "https.*mage$"'"$FILTER"' | head -1'
