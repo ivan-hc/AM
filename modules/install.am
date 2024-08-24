@@ -7,6 +7,48 @@
 BINDIR="${XDG_BIN_HOME:-$HOME/.local/bin}"
 SUDOCMD="$SUDOCOMMAND"
 
+#--------------------------------------------------------------------------
+# DOWNLOAD
+_convert_to_appman_compatible_script() {
+	if test -f "$APPMANCONFIG"/appman-config; then
+		APPSPATH=$(cat "$APPMANCONFIG"/appman-config)
+		sed -i "s# /usr/local/bin# $HOME/.local/bin#g" ./"$arg"
+		sed -i "s# /usr/local/share/applications# $DATADIR/applications#g" ./"$arg"
+		sed -i "s# /opt# $HOME/$APPSPATH#g" ./"$arg"
+		sed -i "s#/opt/#$HOME/$APPSPATH/#g" ./"$arg"
+		sed -i "s# https://api.github.com#$HeaderAuthWithGITPAT https://api.github.com#g" ./"$arg"
+		cat <<-HEREDOC >> ./"$arg"
+
+		# POST INSTALLATION PATCH FOR ALL LAUNCHERS
+		sed -i "s#Exec=\$APP#Exec=$HOME/.local/bin/$APP#g" $DATADIR/applications/*-AM.desktop
+		sed -i "s#Exec=/usr/bin/#Exec=$HOME/.local/bin/#g" $DATADIR/applications/*-AM.desktop
+		sed -i "s#Exec=/opt/#Exec=$HOME/$APPSDIR#g" $DATADIR/applications/*-AM.desktop
+		sed -i "s#Icon=/opt/#Icon=$HOME/$APPSDIR#g" $DATADIR/applications/*-AM.desktop
+
+		HEREDOC
+		printf " Converting $arg to an AppMan-compatible script.\r" && sleep 0.25 &&
+		printf "                                                                           \r"
+	else
+		echo ' 💀 ERROR: "--convert" requires a configuration file in ~/.config/appman'
+	fi
+}
+
+_download() {
+	if curl --output /dev/null --silent --head --fail "$APPSDB/$arg"  1>/dev/null; then
+		cd "$SCRIPTDIR" || return; wget -q "$APPSDB/$arg"
+		echo " ◆ \"$arg\" installation script downloaded! "
+	elif curl --output /dev/null --silent --head --fail "$AMREPO/testing/$ARCH/$arg"  1>/dev/null; then
+		echo " ⚠️ \"$arg\" downloaded from \"testing\", the unstable branch "
+		echo ""
+		echo " WARNING! PROGRAMS COMING FROM \"TESTING\" ARE BROKEN, USE AT YOUR OWN RISK!"
+		cd "$SCRIPTDIR" || return; wget -q "$AMREPO/testing/$ARCH/$arg"
+	else
+		echo " 💀 ERROR: \"$arg\" is NOT a valid argument"
+	fi
+}
+
+#--------------------------------------------------------------------------
+# INSTALL
 # If you use the --latest option, add the "latest" flag to scripts that point to a very common "release"
 _if_latest() {
 	if grep -q 'force-latest' "$AMCACHEDIR"/install-args; then
@@ -222,12 +264,36 @@ _install_normally() {
 	_install_arg
 }
 
-##################################
-# OPTIONS AVAILABLE IN THIS MODULE
-##################################
+################################################################################
+#				USAGE
+################################################################################
 
-while [ -n "$1" ]; do
-	case "$1" in
+case "$1" in
+	'-d'|'download')
+		case $2 in
+		'--convert')
+			[ -z "$3" ] && echo " USAGE: $AMCLI $1 $2 [ARGUMENT]" && exit 1
+			;;
+		'')
+			echo " USAGE: $AMCLI $1 [ARGUMENT]"
+			echo " USAGE: $AMCLI $1 --convert [ARGUMENT]"
+			exit 1
+			;;
+		esac
+		if [ "$2" = "--convert" ]; then
+			ARGS="$(echo "$@" | cut -f3- -d ' ')"
+			for arg in $ARGS; do
+				_download
+				_convert_to_appman_compatible_script
+			done
+		else
+			ARGS="$(echo "$@" | cut -f2- -d ' ')"
+			for arg in $ARGS; do
+				_download
+			done
+		fi
+		;;
+
 	'-i'|'install')
 		case $2 in
 		'--debug'|'--force-latest')
@@ -330,7 +396,4 @@ while [ -n "$1" ]; do
 		"$AMCLIPATH" -i "$CACHEDIR/extra/$3"
 		exit 1
 		;;
-	esac
-done
-
-shift
+esac
