@@ -102,7 +102,7 @@ Both can be updated using "[Topgrade](https://github.com/topgrade-rs/topgrade)".
 
 ### About "sudo" usage
 - "AppMan" can request the root password only in the very rare case in which you want to install a library;
-- "AM" requires the root password only to install, remove apps, enable a sandbox for an AppImage, or enable/disable bash completion.
+- "AM" requires the root password only to install, remove apps, enable a sandbox for an AppImage.
 
 All options cannot be executed with "`sudo`"/"`doas`".
 
@@ -607,15 +607,6 @@ See also "[How to update or remove apps manually](#how-to-update-or-remove-apps-
  DESCRIPTION:	Shows the version.
  ___________________________________________________________________________
 
- `--disable-completion`
-
- SYNOPSIS:
-
- `--disable-completion`
-
- DESCRIPTION:	Disable bash-completion.
- ___________________________________________________________________________
-
  `--disable-sandbox`
 
  SYNOPSIS:
@@ -623,15 +614,6 @@ See also "[How to update or remove apps manually](#how-to-update-or-remove-apps-
  `--disable-sandbox {PROGRAM}`
 
  DESCRIPTION:	Disable the sandbox for the selected app.
- ___________________________________________________________________________
-
- `--enable-completion`
-
- SYNOPSIS:
-
- `--enable-completion`
-
- DESCRIPTION:	Enable bash-completion to complete a keyword with the "TAB" key, using the names of all installable applications available.
  ___________________________________________________________________________
 
  `--force-latest`
@@ -1166,19 +1148,13 @@ EXTRA: The behavior of this option can be tested in a completely standalone way 
 
 __________________________________________________________________________
 ### How to enable bash completion
-Bash completion is enabled in "AM" on first installation, while the "AppMan" one requires to be enabled manually.
+From version 8, BASH/ZSH completion is enabled in "AM" and "AppMan" by default.
 
-For both there are two options:
-- `--enabe-completion` to enable it;
-- `--disable-completion` to disable it.
+A file $HOME/.bash_completion will be created, or if it exists, it will be patched to allow the command `am` or `appman` to read arguments from the related "list" of arguments, or other lists, to made it more extensible.
 
-The file used by "AM" is "/etc/bash_completion.d/am-completion.sh", so the root password is required to use the options. The file used by "AppMan" instead is "$HOME/.bash_completion".
+Before version 8, in "AM" were created a "/etc/bash_completion.d/am-completion.sh" using a dedicated option.
 
-Both use the keywords to be completed listed within the "list" file, generated from the options list and the applications list.
-
-https://user-images.githubusercontent.com/88724353/155971864-783c098c-e696-47b5-aaa8-85dab6ab3b46.mp4
-
-A more detailed guide on how to create your own bash completion script for your project is available [here](https://iridakos.com/programming/2018/03/01/bash-programmable-completion-tutorial).
+In case you still have it, run `sudo rm -f /etc/bash_completion.d/am-completion.sh` to remove it. Its no more necessary.
 
 ------------------------------------------------------------------------
 
