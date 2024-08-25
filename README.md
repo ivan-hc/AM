@@ -331,9 +331,10 @@ sudo ./INSTALL
 In both cases, the "INSTALL" script will create:
 - the script "/opt/am/APP-MANAGER"
 - the script "/opt/am/remove" (to remove "AM" using the command `am -R am`)
-- the directory "/opt/am/.cache" (where all processes will been executed)
 - the directory "/opt/am/modules" (containing the .am modules for the non-core options)
 - the symlink "/usr/local/bin/am" for "/opt/am/APP-MANAGER"
+
+all processes will been executed in $HOME/.cache/am
 
 NOTE, if you don't feel comfortable having to always use root permissions, the installation method for "AppMan" is totally different. If you are interested, go [to the next paragraph](#how-to-install-appman), else [Back to "Main Index"](#main-index) or jump to "[Usage (all the available options)](#usage)".
 
@@ -361,9 +362,10 @@ wget https://raw.githubusercontent.com/ivan-hc/AM/main/APP-MANAGER -O appman && 
 ### Structure of the "AppMan" installation
 Unlike "AM" which needs to be placed in specific locations, "AppMan" is portable. The modules and directories will be placed in the directory you chose:
 - the script "appman" is wherever you want
-- the directory "$HOME/path/to/your/custom/directory/.cache" (where all processes will been executed)
 - the directory "$HOME/path/to/your/custom/directory/modules" (containing the .am modules for the non-core options)
 - the configuration file "$HOME/.config/appman/appman-config" (the only fixed directory)
+
+all processes will been executed in $HOME/.cache/appman
 
 ------------------------------------------------------------------------
 
