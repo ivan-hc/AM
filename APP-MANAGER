@@ -254,21 +254,6 @@ function _am_databases_check() {
 
 _am_databases_check "$@"
 
-function _3rd_party_lists() {
-	if [ -f "$AMPATH/neodb" ]; then
-		rm -f "$AMCACHEDIR/multirepo-args"
-		MULTIREPO=$(grep "List=" "$AMPATH/neodb" | grep -E "$arch-apps" | sed 's/List=//g')
-		for anyrepo in $MULTIREPO; do
-			if curl --output /dev/null --silent --head --fail "$anyrepo" 1>/dev/null; then
-				wget -q "$anyrepo" -O - | grep "◆" >> "$AMDATADIR"/"$arch"-apps
-			fi
-		done
-		sort "$AMDATADIR"/"$arch"-apps | uniq > "$AMDATADIR"/"$arch"-apps-backup
-		rm -f "$AMDATADIR"/"$arch"-apps
-		mv "$AMDATADIR"/"$arch"-apps-backup "$AMDATADIR"/"$arch"-apps
-	fi
-}
-
 ################################################################################
 #				UTILITIES
 ################################################################################
@@ -282,15 +267,8 @@ available_options="about apikey backup clean config downgrade download extra fil
 
 function _completion_lists() {
 	# Remove existing lists and download new ones
-	rm -f "$AMDATADIR"/*-apps "$AMDATADIR"/*list
-	wget -q "$APPSLISTDB" -P "$AMDATADIR"
-
-	# THIRD PARTY APPS
-	_3rd_party_lists
-
-	# Extract and append program names to the list
-	awk -v FS="(◆ | : )" '{print $2}' <"$AMDATADIR"/"$arch"-apps >> "$AMDATADIR"/list
-
+	curl -Ls "$APPSLISTDB" > "$AMDATADIR/$arch-apps"
+	awk -v FS="(◆ | : )" '{print $2}' <"$AMDATADIR"/"$arch"-apps > "$AMDATADIR"/list
 	# Append options to the list
 	for o in $available_options; do
 		echo "$o" >> "$AMDATADIR"/list
