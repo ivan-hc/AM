@@ -218,41 +218,49 @@ function _online_check() {
 #				3RD PARTY
 ################################################################################
 
+function _use_newrepo() {
+	[ -z "$2" ] && echo " USAGE: $AMCLI $1 [ARGUMENT]" && exit 1
+	case $2 in
+	'add')
+		echo "$3" >> "$AMDATADIR/newrepo-lists"
+		;;
+	'enable')
+		[ -f "$AMDATADIR/newrepo-off" ] && mv "$AMDATADIR/newrepo-off" "$AMDATADIR/newrepo-on" && echo "New repo ON!"
+		;;
+	'disable')
+		[ -f "$AMDATADIR/newrepo-on" ] && mv "$AMDATADIR/newrepo-on" "$AMDATADIR/newrepo-off" && echo "New repo OFF!"
+		;;
+	'select')
+		[ ! -f "$AMDATADIR/newrepo-lists" ] && echo " ERROR, \"$AMDATADIR/newrepo-lists\" file not found" && exit 1
+		printf "Select a repo from the list or press CTRL+C to abort:\n$DIVIDING_LINE\n"; sleep 1
+		select repo in $(sort -u "$AMDATADIR/newrepo-lists" | uniq); do
+			test -n "$repo" && break
+			echo ">>> Invalid Selection"
+		done
+		echo "$repo" > "$AMDATADIR/newrepo-on"
+		;;
+	esac
+}
+
 # 3RD PARTY DATABASES
 function _am_newrepo_check() {
 	# Determine if the CLI uses the "main" branch of https://github.com/ivan-hc/AM or an alternative one
-	if [ -f "$AMPATH"/new-repo.txt ]; then
-		AMREPO=$(<"$AMPATH/new-repo.txt") # Utilizing command substitution with < for more efficient file reading
+	if [ -f "$AMDATADIR/newrepo-on" ]; then
+		if grep -q "^http" "$AMDATADIR/newrepo-on"; then
+			AMREPO=$(<"$AMDATADIR/newrepo-on")
+		elif grep -q "^/" "$AMDATADIR/newrepo-on"; then
+			AMREPO="file://$(<"$AMDATADIR/newrepo-on")"
+		fi
 		AMBRANCH=$(basename "$AMREPO")
 		export APPSDB="$AMREPO/programs/$arch"
 		export APPSLISTDB="$AMREPO/programs/$arch-apps"
-		if [ "$*" != "newrepo off" ]; then
-			echo "$DIVIDING_LINE"
-			echo " Source: $AMREPO"
-			echo "$DIVIDING_LINE"
-		fi
+		echo -e "$DIVIDING_LINE\n Source: $AMREPO\n$DIVIDING_LINE\n"
+		echo "$APPSDB"
+		echo "$APPSLISTDB"
 	fi
 }
 
-function _am_databases_check() {
-	_am_newrepo_check "$@"
-	# To implement future application database changes
-	if [ -f "$AMPATH/neodb" ]; then
-		if grep -q "://" "$AMPATH/neodb"; then
-			if grep -q "#STATUS=quiet" "$AMPATH/neodb"; then
-				case "$1" in
-				'-a'|'about'|'-d'|'download'|'-i'|'install'|'-l'|'list'|'-q'|'query')
-					echo "$DIVIDING_LINE"
-					echo " Source: Third party repositories are enabled"
-					echo "$DIVIDING_LINE"
-					;;
-				esac
-			fi
-		fi
-	fi
-}
-
-_am_databases_check "$@"
+_am_newrepo_check "$@"
 
 ################################################################################
 #				UTILITIES
@@ -1130,11 +1138,6 @@ case "$1" in
 		_if_appman_mode_enabled
 		_use_module "$@"
 		;;
-	'neodb'|'newrepo')
-		MODULE="devtools.am"
-		_online_check
-		_use_module "$@"
-		;;
 	'template'|'-t')
 		MODULE="template.am"
 		_online_check
@@ -1161,6 +1164,9 @@ case "$1" in
 		;;
 	'help'|'-h')
 		_use_help
+		;;
+	'newrepo'|'neodb')
+		_use_newrepo "$@"
 		;;
 	'sync'|'-s')
 		_use_sync
