@@ -35,13 +35,13 @@ _convert_to_appman_compatible_script() {
 
 _download() {
 	if curl --output /dev/null --silent --head --fail "$APPSDB/$arg"  1>/dev/null; then
-		cd "$SCRIPTDIR" || return; wget -q "$APPSDB/$arg"
+		cd "$SCRIPTDIR" || return; curl -Ls "$APPSDB/$arg" > ./"$arg"
 		echo " ◆ \"$arg\" installation script downloaded! "
 	elif curl --output /dev/null --silent --head --fail "$AMREPO/testing/$ARCH/$arg"  1>/dev/null; then
 		echo " ⚠️ \"$arg\" downloaded from \"testing\", the unstable branch "
 		echo ""
 		echo " WARNING! PROGRAMS COMING FROM \"TESTING\" ARE BROKEN, USE AT YOUR OWN RISK!"
-		cd "$SCRIPTDIR" || return; wget -q "$AMREPO/testing/$ARCH/$arg"
+		cd "$SCRIPTDIR" || return; curl -Ls "$AMREPO/testing/$ARCH/$arg" ./"$arg"
 	else
 		echo " 💀 ERROR: \"$arg\" is NOT a valid argument"
 	fi
@@ -106,7 +106,7 @@ _post_installation_processes() {
 	_am_remover_check
 	# Check for AM-updater script sothat CLI can manage updates
 	[ -f "${LASTDIRPATH}"/AM-updater ] && mkdir "${LASTDIRPATH}"/.am-installer 2>/dev/null \
-		&& wget -q "$APPSDB"/"$arg" -O "${LASTDIRPATH}"/.am-installer/"$arg"
+		&& curl -Ls "$APPSDB"/"$arg" > "${LASTDIRPATH}"/.am-installer/"$arg"
 	find "${LASTDIRPATH}"/icons/* -xtype l -delete 2>/dev/null # Removes broken links
 	# If you have a broken or missing icon in your "icons" directory, download one from the catalog
 	[ -z "$(ls -A "${LASTDIRPATH}"/icons 2>/dev/null)" ] \
@@ -257,8 +257,8 @@ _install_local_script() {
 
 # This is for scripts hosted on the official online database
 _install_normally() {
-	mkdir -p "$AMCACHEDIR"/tmp && rm -f "$AMCACHEDIR"/tmp/* &&
-	wget -q "$APPSDB"/"$arg" -O "$AMCACHEDIR"/tmp/"$arg" &&
+	mkdir -p "$AMCACHEDIR"/tmp && rm -f "$AMCACHEDIR"/tmp/* || return
+	curl -Ls "$APPSDB"/"$arg" > "$AMCACHEDIR"/tmp/"$arg" || return
 	cd "$AMCACHEDIR" && mkdir -p tmp && cd tmp || return
 	cd "$AMCACHEDIR" && mv ./tmp/"$arg" ./"$arg" && rmdir ./tmp || return
 	_install_arg
@@ -376,7 +376,7 @@ case "$1" in
 		fi
 		mkdir -p "$CACHEDIR/extra"
 		rm -f "$CACHEDIR/extra/$3"
-		wget -q "$AMREPO"/templates/AM-SAMPLE-AppImage -O "$CACHEDIR/extra/$3" || exit 1
+		curl -Ls "$AMREPO"/templates/AM-SAMPLE-AppImage > "$CACHEDIR/extra/$3" || exit 1
 		sed -i "s#APP=SAMPLE#APP=$3#g" "$CACHEDIR/extra/$3"
 		USER_PROJECT=$(echo "$2" | sed 's#https://github.com/##g' | cut -f1,2 -d'/')
 		API_GITHUB_REPO="https://api.github.com/repos/$USER_PROJECT/releases"
