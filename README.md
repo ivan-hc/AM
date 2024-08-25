@@ -334,7 +334,7 @@ In both cases, the "INSTALL" script will create:
 - the directory "/opt/am/modules" (containing the .am modules for the non-core options)
 - the symlink "/usr/local/bin/am" for "/opt/am/APP-MANAGER"
 
-all processes will been executed in $HOME/.cache/am
+all processes will been executed in $HOME/.cache/am, while application lists, keywords to use in bash/zsh completion and other files (for third party repos, betatesting, etcetera...) will be saved and updated in $HOME/.local/share/AM to be shared with "AppMan", if installed or you use "AM" in "AppMan Mode".
 
 NOTE, if you don't feel comfortable having to always use root permissions, the installation method for "AppMan" is totally different. If you are interested, go [to the next paragraph](#how-to-install-appman), else [Back to "Main Index"](#main-index) or jump to "[Usage (all the available options)](#usage)".
 
@@ -365,7 +365,7 @@ Unlike "AM" which needs to be placed in specific locations, "AppMan" is portable
 - the directory "$HOME/path/to/your/custom/directory/modules" (containing the .am modules for the non-core options)
 - the configuration file "$HOME/.config/appman/appman-config" (the only fixed directory)
 
-all processes will been executed in $HOME/.cache/appman
+all processes will been executed in $HOME/.cache/appman, while application lists, keywords to use in bash/zsh completion and other files (for third party repos, betatesting, etcetera...) will be saved and updated in $HOME/.local/share/AM to be shared with "AM", if installed.
 
 ------------------------------------------------------------------------
 
