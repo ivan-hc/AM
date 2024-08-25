@@ -218,20 +218,32 @@ function _online_check() {
 #				3RD PARTY
 ################################################################################
 
+function _newrepo_list_available() {
+	[ ! -f "$AMDATADIR/newrepo-lists" ] && echo " ERROR, \"$AMDATADIR/newrepo-lists\" file not found" && exit 1
+}
+
 function _use_newrepo() {
 	[ -z "$2" ] && echo " USAGE: $AMCLI $1 [ARGUMENT]" && exit 1
 	case $2 in
 	'add')
 		echo "$3" >> "$AMDATADIR/newrepo-lists"
 		;;
-	'enable')
-		[ -f "$AMDATADIR/newrepo-off" ] && mv "$AMDATADIR/newrepo-off" "$AMDATADIR/newrepo-on" && echo "New repo ON!"
+	'enable'|'on')
+		_newrepo_list_available
+		[ -f "$AMDATADIR/newrepo-off" ] && mv "$AMDATADIR/newrepo-off" "$AMDATADIR/newrepo-on" && echo " New repo ON!"
 		;;
-	'disable')
-		[ -f "$AMDATADIR/newrepo-on" ] && mv "$AMDATADIR/newrepo-on" "$AMDATADIR/newrepo-off" && echo "New repo OFF!"
+	'disable'|'off')
+		_newrepo_list_available
+		[ -f "$AMDATADIR/newrepo-on" ] && mv "$AMDATADIR/newrepo-on" "$AMDATADIR/newrepo-off" && echo " New repo OFF!"
+		;;
+	'info')
+		echo -e " Source: $AMREPO\n Apps: $APPSDB\n List: $APPSLISTDB"
+		;;
+	'purge')
+		[ -f "$AMDATADIR/newrepo-lists" ] && rm -f "$AMDATADIR"/newrepo* && echo " Removed all 3rd party repositories"
 		;;
 	'select')
-		[ ! -f "$AMDATADIR/newrepo-lists" ] && echo " ERROR, \"$AMDATADIR/newrepo-lists\" file not found" && exit 1
+		_newrepo_list_available
 		printf "Select a repo from the list or press CTRL+C to abort:\n$DIVIDING_LINE\n"; sleep 1
 		select repo in $(sort -u "$AMDATADIR/newrepo-lists" | uniq); do
 			test -n "$repo" && break
@@ -254,9 +266,9 @@ function _am_newrepo_check() {
 		AMBRANCH=$(basename "$AMREPO")
 		export APPSDB="$AMREPO/programs/$arch"
 		export APPSLISTDB="$AMREPO/programs/$arch-apps"
-		echo -e "$DIVIDING_LINE\n Source: $AMREPO\n$DIVIDING_LINE\n"
-		echo "$APPSDB"
-		echo "$APPSLISTDB"
+		export AMCATALOGUEMARKDOWNS=""
+		export AMCATALOGUEICONS=""
+		echo -e "$DIVIDING_LINE\n Source: $AMREPO\n$DIVIDING_LINE"
 	fi
 }
 
@@ -267,11 +279,11 @@ _am_newrepo_check "$@"
 ################################################################################
 
 # COMPLETION LIST
-available_options="about apikey backup clean config downgrade download extra files home install launcher list \
-		lock neodb newrepo nolibfuse overwrite query remove sandbox sync template test unlock update \
-		--appimages --apps --byname --config --convert --debug --devmode-disable --devmode-enable \
-		--force-latest --home --launcher --less --pkg --rollback --disable-sandbox --sandbox \
-		--silent --system --user"
+available_options="about add apikey backup clean config disable downgrade download enable extra files \
+	home info install launcher list lock neodb newrepo nolibfuse off on overwrite purge query \
+	remove sandbox select sync template test unlock update --appimages --apps --byname --config \
+	--convert --debug --devmode-disable --devmode-enable --force-latest --home --launcher --less \
+	--pkg --rollback --disable-sandbox --sandbox --system --user"
 
 function _completion_lists() {
 	# Remove existing lists and download new ones
@@ -748,22 +760,19 @@ ${Gold}list, -l\033[0m
 
 Description: Shows the list of all the apps available, or just the AppImages.
 
-${Gold}neodb\033[0m
+${Gold}newrepo, neodb\033[0m
 
-		${LightBlue}$AMCLI neodb
-		${LightBlue}$AMCLI newrepo --silent\033[0m
+		${LightBlue}$AMCLI newrepo add {URL}\\{PATH}
+		${LightBlue}$AMCLI newrepo select
+		${LightBlue}$AMCLI newrepo on\\off
+		${LightBlue}$AMCLI newrepo purge
+		${LightBlue}$AMCLI newrepo info\033[0m
 
-Description: Add third-party repos to the existing database, Use \"--silent\" \
-to hide messages about third-party repos in use.
-
-${Gold}newrepo\033[0m
-
-		${LightBlue}$AMCLI newrepo {URL}
-		${LightBlue}$AMCLI newrepo {PATH}
-		${LightBlue}$AMCLI newrepo off
-		${LightBlue}$AMCLI newrepo on\033[0m
-
-Description: Set a new default repo, use on/off to enable/disable it.
+Description: Set a new default repo, use \"add\" to append the path to a local \
+directory or an online URL, then use \"select\" to use it by default, a message \
+will warn you about the usage of this repo instead of the default one. Use \"on\"\
+/\"off\" to enable/disable it. Use \"purge\" to remove all 3rd party repos. Use \
+\"info\" to see the source from where installation scripts and lists are taken.
 
 ${Gold}nolibfuse\033[0m
 
