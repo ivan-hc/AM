@@ -138,7 +138,7 @@ function _appman() {
 if [ "$(realpath $0)" = "/opt/am/APP-MANAGER" ]; then
 	_am
 elif [ "$(realpath $0)" = "/usr/bin/am" ]; then
-	_am2
+	_am
 else
 	_appman
 fi
@@ -477,7 +477,7 @@ function _update_github_api_key_in_the_updater_files() {
 
 # "APPMAN MODE" FOR "AM" USERS
 function _appman_mode_enabled_message() {
-	if [ "$CLI" = am ] 2>/dev/null; then
+	if [ "$CLI" = am ]; then
 		echo -e "$DIVIDING_LINE\n \"AM\" is running as \"AppMan\", use ${Green}am --system\033[0m to switch it back to \"AM\"\n$DIVIDING_LINE"
 	fi
 }
@@ -488,7 +488,7 @@ function _if_appman_mode_enabled() {
 
 function _use_appman() {
 	_online_check
-	if [ "$CLI" = appman ] 2>/dev/null; then
+	if [ "$CLI" = appman ]; then
 		echo " This function only works for AM" && exit
 	fi
 	if test -f "$APPMANCONFIG"/appman-mode; then
@@ -505,7 +505,7 @@ function _back_to_am() {
 	fi
 }
 
-if [ "$AMCLI" = am ] 2>/dev/null; then
+if [ "$AMCLI" = am ]; then
 	if test -f "$APPMANCONFIG"/appman-mode; then
 		case "$1" in
 		'--system')
@@ -592,7 +592,7 @@ function _clean_launchers() {
 }
 
 function _clean_old_modules() {
-	if [ "$AMCLI" = am ] 2>/dev/null; then
+	if [ "$AMCLI" = am ]; then
 		MODULES=$(sort /opt/am/APP-MANAGER | tr '"' '\n' | grep "[a-z]\.am$" | uniq)
 	else
 		MODULES=$(sort "$AMCLIPATH" 2>/dev/null | tr '"' '\n' | grep "[a-z]\.am$" | uniq)
@@ -917,7 +917,7 @@ function _sync_installation_scripts() {
 		if test -f "$APPSPATH/$arg/.am-installer"/*; then
 			scriptname=$(ls "$APPSPATH/$arg/.am-installer/" | head -1)
 			CURRENT=$(cat "$APPSPATH"/"$arg"/.am-installer/"$scriptname")
-			SOURCE=$(wget -q "$APPSDB"/"$scriptname" -O -)
+			SOURCE=$(curl -Ls "$APPSDB"/"$scriptname")
 			if [ "$CURRENT" = "$SOURCE" ]; then
 				echo -ne "\r" 2> /dev/null
 			else
@@ -940,7 +940,7 @@ function _sync_modules() {
 		cd "$AMPATH"/modules || return
 		if ! test -f ./"$module_name"; then
 			echo " ◆ Downloading $module_name (not previously installed)..."
-			wget -q "$AMREPO/modules/$module_name" 2> /dev/null
+			curl -Os "$AMREPO/modules/$module_name" 2> /dev/null
 			chmod a+x ./"$MODULENAME"
 		fi
 		CURRENT=$(cat ./"$module_name" 2>/dev/null)
@@ -949,12 +949,7 @@ function _sync_modules() {
 			echo -ne "\r" 2> /dev/null
 		else
 			echo " ◆ Updating $module_name..."
-			mkdir -p "$AMCACHEDIR"/tmp
-			cd "$AMCACHEDIR"/tmp || return
-			wget -q "$AMREPO/modules/$module_name" 2> /dev/null
-			cd ..
-			echo y | mv tmp/*.am "$AMPATH"/modules/
-			rmdir tmp
+			curl -Ls "$AMREPO/modules/$module_name" > ./"$module_name" 2> /dev/null
 		fi
 	done
 	_clean_old_modules
@@ -963,27 +958,28 @@ function _sync_modules() {
 function _sync_amcli() {
 	echo "$DIVIDING_LINE"
 	_completion_lists
-	rm -f /opt/am/appman
-	if [ "$AMCLIPATH" = /opt/am/appman ] 2>/dev/null; then
+	CURRENT_AM_VERSION="$AMVERSION"
+	if [ "$AMCLIPATH" = /opt/am/appman ]; then
+		rm -f /opt/am/appman
 		AMCLIPATH="/opt/am/APP-MANAGER"
 		CURRENT_AM_VERSION=$("$AMCLIPATH" -v)
-	else
-		CURRENT_AM_VERSION=$("$AMCLIPATH" -v 2>/dev/null)
 	fi
-	echo -ne '\n ◆ SYNCHRONIZING "'"$AMCLIUPPER"'" VERSION '"$CURRENT_AM_VERSION"'...\r'; sleep 1
-	_clean_amcachedir 1>/dev/null; cd "$AMCACHEDIR" || return
-	if [ "$AMCLI" = am ] 2>/dev/null; then
-		wget -q "$AMREPO"/APP-MANAGER && chmod a+x ./APP-MANAGER
+	echo -ne "\n ◆ SYNCHRONIZING \"$AMCLIUPPER\" VERSION \"$CURRENT_AM_VERSION\"...\r" && sleep 0.25
+	_clean_amcachedir 1>/dev/null
+	cd "$AMCACHEDIR" || return
+	if [ "$AMCLI" = am ]; then
+		curl -Ls "$AMREPO"/APP-MANAGER > ./APP-MANAGER && chmod a+x ./APP-MANAGER
 		cd ..
 		echo y | mv "$AMCACHEDIR"/APP-MANAGER /opt/am/APP-MANAGER
 	else
-		wget -q "$AMREPO"/APP-MANAGER -O appman && chmod a+x ./"$AMCLI"
+		curl -Ls "$AMREPO"/APP-MANAGER > ./appman && chmod a+x ./"$AMCLI"
 		cd ..
 		echo y | mv "$AMCACHEDIR"/"$AMCLI" "$AMCLIPATH" 2>/dev/null
 	fi
-	if [ ! "$CURRENT_AM_VERSION" = "$("$AMCLIPATH" -v 2>/dev/null)" ] ; then
-		echo -ne ' A new release of "'"$AMCLIUPPER"'" is available, please wait...\r'
-		echo " ◆ \"$AMCLIUPPER\" IS NOW UPDATED TO THE BRAND NEW \"$("$AMCLIPATH" -v)\" VERSION!"
+	NEW_AM_VERSION=$("$AMCLIPATH" -v)
+	if [ ! "$CURRENT_AM_VERSION" = "$NEW_AM_VERSION" ]; then
+		echo -ne " A new release of \"$AMCLIUPPER\" is available, please wait...\r"
+		echo " ◆ \"$AMCLIUPPER\" IS NOW UPDATED TO THE BRAND NEW \"$NEW_AM_VERSION\" VERSION!"
 		echo -e "\n  Replacement of version \"$CURRENT_AM_VERSION\" currently in use, COMPLETED!"
 		echo -e "\n See https://github.com/ivan-hc/AM/commits/main\n"
 	else
@@ -995,8 +991,8 @@ function _sync_amcli() {
 function _use_sync() {
 	_online_check
 	_betatester_message_on
-	if echo "$AMREPO" | grep -q "^https://"; then
-		_sync_installation_scripts
+	_sync_installation_scripts
+	if [ "$(realpath $0)" != "/usr/bin/am" ]; then
 		_sync_modules
 		_sync_amcli
 	fi
