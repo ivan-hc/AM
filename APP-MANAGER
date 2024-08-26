@@ -48,8 +48,88 @@ DIVIDING_LINE="--------------------\
 [ -n "$SUDO_COMMAND" ] && echo -e "\n Please do not use \"sudo\" to execute \"$CLI\", try again.\n" && exit 1
 
 ################################################################################
+#				PREPARE APPMAN
+################################################################################
+
+# AppMan messages
+function _appman_error_local_bin_message() {
+	echo -e "$DIVIDING_LINE\n 💀 ERROR, you can't install applications into a \"\$PATH\""
+	echo -e " The ~/.local/bin directory is normally used for executables.\n Please, choose a different path and retry! \n$DIVIDING_LINE"
+}
+
+function _appman_startup_message() {
+	echo -e "$DIVIDING_LINE\n >>> Thank you for choosing AppMan! \n$DIVIDING_LINE"
+	echo " Before proceeding with any task, write the name of the directory in which"
+	echo " you will install the apps, for example \"Programs\" or \"My-apps\", you can"
+	echo " also choose a subfolder, for example \".local/My-apps\" or a deeper path."
+	echo -e "\n The destination folder will be created in $HOME\n"
+	echo -e " SYNTAX: PATH/TO/DIRNAME\n"
+	echo " NOTE, any spaces or \"/\" at the beginning and end will be removed. If you"
+	echo " decide to change your choice in the future, first remove all the programs"
+	echo -e " and then edit the ~/.config/appman/appman-config text file.\n$DIVIDING_LINE\n"
+}
+
+function _appman_ready_message() {
+	echo -e "$DIVIDING_LINE\n You are ready! Start installing your favorite apps locally!"
+	echo " All apps will be installed in $HOME/$validated_location"
+	echo -e "\n In case of problems, use the option \"-h\".\n$DIVIDING_LINE"
+}
+
+# AppMan directories checks
+function _appman_prompt_for_directory() {
+	local location
+	read -r -ep " Please, write the name or the path of your custom application's folder: $(echo -e '\n\n '"$HOME"'/')" location
+	echo "$location"
+}
+
+function _appman_validate_directory() {
+	location=$1
+	if [ "$location" = "" ]; then
+		echo -e "$DIVIDING_LINE\nOPERATION ABORTED!"
+		exit  1
+	elif [ "$location" = ".local/bin" ]; then
+		_appman_error_local_bin_message
+		exit  1
+	else
+		location_appman="${location/#$HOME}"
+		location_appman="${location_appman// /-}"
+		location_appman="${location_appman#/}"
+		location_appman="${location_appman%/}"
+		echo "$location_appman"
+	fi
+}
+
+################################################################################
 #				AM/APPMAN
 ################################################################################
+
+# "APPMAN" CORE VARIABLES AND FUNCTIONS
+function _appman_initialize() {
+	APPSDIR=$1
+	mkdir -p ~/"$APPSDIR"/appman/modules
+	mkdir -p "$BINDIR" "$DATADIR"/applications "$DATADIR"/icons
+	AMCLI="appman"
+	AMCLIPATH="$DIR/$AMCLI"
+	SUDOCMD=""
+	APPSPATH="$HOME/$APPSDIR"
+	AMPATH="$HOME/$APPSDIR/$AMCLI"
+	_create_cache_dir
+}
+
+function _appman() {
+	if [ ! -f "$APPMANCONFIG"/appman-config ]; then
+		_appman_startup_message
+		location=$(_appman_prompt_for_directory)
+		validated_location=$(_appman_validate_directory "$location")
+		mkdir -p "$APPMANCONFIG"
+		echo "$validated_location" >> "$APPMANCONFIG"/appman-config
+		_appman_ready_message
+	fi
+	_appman_initialize "$(<"$APPMANCONFIG"/appman-config)"
+	if ! echo "$PATH" | grep -q "$BINDIR"; then
+		echo -e "$DIVIDING_LINE\n ⚠️ WARNING: \"$BINDIR\" is not in PATH, apps may not run.\n$DIVIDING_LINE"
+	fi
+}
 
 # "AM" CORE VARIABLES
 function _am() {
@@ -67,68 +147,6 @@ function _am() {
 	AMPATH="$APPSPATH/$AMCLI"
 	_create_cache_dir
 	mkdir -p "$AMPATH"/modules
-}
-
-# "APPMAN" CORE VARIABLES AND FUNCTIONS
-function _appman_initialize() {
-	APPSDIR=$1
-	mkdir -p ~/"$APPSDIR"/appman/modules
-	mkdir -p "$BINDIR" "$DATADIR"/applications "$DATADIR"/icons
-	AMCLI="appman"
-	AMCLIPATH="$DIR/$AMCLI"
-	SUDOCMD=""
-	APPSPATH="$HOME/$APPSDIR"
-	AMPATH="$HOME/$APPSDIR/$AMCLI"
-	_create_cache_dir
-}
-
-function _appman_prompt_for_directory() {
-	local location
-	read -r -ep " Please, write the name or the path of your custom application's folder: $(echo -e '\n\n '"$HOME"'/')" location
-	echo "$location"
-}
-
-function _appman_validate_directory() {
-	location=$1
-	if [ "$location" = "" ]; then
-		echo -e "$DIVIDING_LINE\nOPERATION ABORTED!"
-		exit  1
-	elif [ "$location" = ".local/bin" ]; then
-		echo -e "$DIVIDING_LINE\n 💀 ERROR, you can't install applications into a \"\$PATH\""
-		echo -e " The ~/.local/bin directory is normally used for executables.\n Please, choose a different path and retry! \n$DIVIDING_LINE"
-		exit  1
-	else
-		location_appman="${location/#$HOME}"
-		location_appman="${location_appman// /-}"
-		location_appman="${location_appman#/}"
-		location_appman="${location_appman%/}"
-		echo "$location_appman"
-	fi
-}
-
-function _appman() {
-	if [ ! -f "$APPMANCONFIG"/appman-config ]; then
-		echo -e "$DIVIDING_LINE\n >>> Thank you for choosing AppMan! \n$DIVIDING_LINE"
-		echo " Before proceeding with any task, write the name of the directory in which"
-		echo " you will install the apps, for example \"Programs\" or \"My-apps\", you can"
-		echo " also choose a subfolder, for example \".local/My-apps\" or a deeper path."
-		echo -e "\n The destination folder will be created in $HOME\n"
-		echo -e " SYNTAX: PATH/TO/DIRNAME\n"
-		echo " NOTE, any spaces or "/" at the beginning and end will be removed. If you"
-		echo " decide to change your choice in the future, first remove all the programs"
-		echo -e " and then edit the ~/.config/appman/appman-config text file.\n$DIVIDING_LINE\n"
-		location=$(_appman_prompt_for_directory)
-		validated_location=$(_appman_validate_directory "$location")
-		mkdir -p "$APPMANCONFIG"
-		echo "$validated_location" >> "$APPMANCONFIG"/appman-config
-		echo -e "$DIVIDING_LINE\n You are ready! Start installing your favorite apps locally!"
-		echo " All apps will be installed in $HOME/$validated_location"
-		echo -e "\n In case of problems, use the option \"-h\".\n$DIVIDING_LINE"
-	fi
-	_appman_initialize "$(<"$APPMANCONFIG"/appman-config)"
-	if ! echo "$PATH" | grep -q "$BINDIR"; then
-		echo -e "$DIVIDING_LINE\n ⚠️ WARNING: \"$BINDIR\" is not in PATH, apps may not run.\n$DIVIDING_LINE"
-	fi
 }
 
 # DETERMINE WHEN TO USE "AM" OR "APPMAN"
