@@ -26,12 +26,12 @@ RED='\033[0;31m'; LightBlue='\033[1;34m'; Green='\033[0;32m'
 # INSTALL "AM"
 _prepare_am_directory() {
 	# CREATE AND ENTER THE MAIN DIRECTORY FOR "AM"
-	mkdir -p /opt/am/.cache /opt/am/modules /usr/local/bin && cd /opt/am || exit 1
+	mkdir -p /opt/am/modules /usr/local/bin && cd /opt/am || exit 1
 
 	# CREATE THE SCRIPT NEEDED TO UNINSTALL "AM"
 	printf '#!/bin/sh\n\nset -e\n' > /opt/am/remove
 	printf '\n%s\n' 'if [ "$(id -u)" -ne 0 ]; then echo "Permission denied"; exit 1; fi' >> /opt/am/remove
-	printf '%s\n' 'rm -f /usr/local/bin/am /etc/bash_completion.d/am-completion.sh' >> /opt/am/remove
+	printf '%s\n' 'rm -f /usr/local/bin/am' >> /opt/am/remove
 	printf '%s\n' 'rm -R -f /opt/am' >> /opt/am/remove
 	chmod a+x /opt/am/remove || exit 1
 
@@ -39,21 +39,17 @@ _prepare_am_directory() {
 	wget -q https://raw.githubusercontent.com/ivan-hc/AM/main/APP-MANAGER
 	chmod a+x /opt/am/APP-MANAGER
 	ln -s /opt/am/APP-MANAGER /usr/local/bin/am 2> /dev/null || printf "${RED}WARNING: Couldn't link am to \"/usr/local/bin/am\"!\033[0m\n"
-
-	# DOWNLOAD THE LIST OF THE AVAILABLE PROGRAMS
-	wget -q "https://raw.githubusercontent.com/ivan-hc/AM/main/programs/$arch-apps" || exit 1
 }
 
 _download_am_modules() {
 	# DOWNLOAD MODULES
 	cd /opt/am/modules || exit
-	MODULES=$(curl -Ls https://api.github.com/repos/ivan-hc/AM/contents/modules | sed 's/[()",{}]/ /g; s/ /\n/g' | grep -o 'https.*raw.*modules.*am$' | grep -v "sync\|update")
-	for v in $MODULES; do
-		MODULENAME=$(echo "$v" | sed 's:.*/::')
-		if ! test -f ./"$MODULENAME"; then
-			echo " ◆ Downloading $MODULENAME..."
-			wget -q "$v"
-			chmod a+x ./"$MODULENAME"
+	MODULES=$(curl -Ls https://raw.githubusercontent.com/ivan-hc/AM/main/APP-MANAGER | tr '"' '\n' | grep "[a-z]\.am$")
+	for module_name in $MODULES; do
+		if ! test -f ./"$module_name"; then
+			echo " ◆ Downloading $module_name..."
+			wget -q "https://raw.githubusercontent.com/ivan-hc/AM/main/modules/$module_name"
+			chmod a+x ./"$module_name"
 		fi
 	done
 	cd ..
@@ -62,29 +58,12 @@ _download_am_modules() {
 	chown -R $currentuser /opt/am 2> /dev/null
 }
 
-_enable_bash_completion() {
-	# ADD THE BASH COMPLETION SCRIPT
-	echo '#!/usr/bin/env bash' > /opt/am/am-completion.sh
-	echo 'complete -W "$(cat /opt/am/list 2>/dev/null)" am' >> /opt/am/am-completion.sh
-	chmod a+x /opt/am/am-completion.sh
-
-	if test -f /etc/bash_completion.d; then
-		mv /opt/am/am-completion.sh /etc/bash_completion.d/
-	else
-		mkdir -p /etc/bash_completion.d
-		mv /opt/am/am-completion.sh /etc/bash_completion.d/
-	fi
-}
-
 echo '--------------------------------------------------------------------------'
 printf " ${Green}Installing \"AM\" in /opt/am\033[0m\n"
 _prepare_am_directory
 echo '--------------------------------------------------------------------------'
 printf " ${Green}Installing modules\033[0m\n"
 _download_am_modules
-echo '--------------------------------------------------------------------------'
-printf " ${Green}Enable bash completion\033[0m\n"
-_enable_bash_completion
 echo '--------------------------------------------------------------------------'
 printf " ${Green}\"AM\" has been successfully installed!\033[0m\n"
 printf " Please, run \"${LightBlue}am -h\033[0m\" to see the list of the options.\n"

@@ -102,7 +102,7 @@ Both can be updated using "[Topgrade](https://github.com/topgrade-rs/topgrade)".
 
 ### About "sudo" usage
 - "AppMan" can request the root password only in the very rare case in which you want to install a library;
-- "AM" requires the root password only to install, remove apps, enable a sandbox for an AppImage, or enable/disable bash completion.
+- "AM" requires the root password only to install, remove apps, enable a sandbox for an AppImage.
 
 All options cannot be executed with "`sudo`"/"`doas`".
 
@@ -331,9 +331,10 @@ sudo ./INSTALL
 In both cases, the "INSTALL" script will create:
 - the script "/opt/am/APP-MANAGER"
 - the script "/opt/am/remove" (to remove "AM" using the command `am -R am`)
-- the directory "/opt/am/.cache" (where all processes will been executed)
 - the directory "/opt/am/modules" (containing the .am modules for the non-core options)
 - the symlink "/usr/local/bin/am" for "/opt/am/APP-MANAGER"
+
+all processes will been executed in $HOME/.cache/am, while application lists, keywords to use in bash/zsh completion and other files (for third party repos, betatesting, etcetera...) will be saved and updated in $HOME/.local/share/AM to be shared with "AppMan", if installed or you use "AM" in "AppMan Mode".
 
 NOTE, if you don't feel comfortable having to always use root permissions, the installation method for "AppMan" is totally different. If you are interested, go [to the next paragraph](#how-to-install-appman), else [Back to "Main Index"](#main-index) or jump to "[Usage (all the available options)](#usage)".
 
@@ -361,9 +362,10 @@ wget https://raw.githubusercontent.com/ivan-hc/AM/main/APP-MANAGER -O appman && 
 ### Structure of the "AppMan" installation
 Unlike "AM" which needs to be placed in specific locations, "AppMan" is portable. The modules and directories will be placed in the directory you chose:
 - the script "appman" is wherever you want
-- the directory "$HOME/path/to/your/custom/directory/.cache" (where all processes will been executed)
 - the directory "$HOME/path/to/your/custom/directory/modules" (containing the .am modules for the non-core options)
 - the configuration file "$HOME/.config/appman/appman-config" (the only fixed directory)
+
+all processes will been executed in $HOME/.cache/appman, while application lists, keywords to use in bash/zsh completion and other files (for third party repos, betatesting, etcetera...) will be saved and updated in $HOME/.local/share/AM to be shared with "AM", if installed.
 
 ------------------------------------------------------------------------
 
@@ -406,365 +408,222 @@ See also "[How to update or remove apps manually](#how-to-update-or-remove-apps-
 
  ___________________________________________________________________________
 
- ## OPTIONS
-
- (standard, for both "AM" and "APPMAN")
- ___________________________________________________________________________
- ___________________________________________________________________________
-
- `-a`, `about`
-
- SYNOPSIS:
-
- `-a {PROGRAM}`
-
- DESCRIPTION: 	Shows more info about one or more apps, all the pages are downloaded from https://portable-linux-apps.github.io
- ___________________________________________________________________________
-
- `-b`, `backup`
-
- SYNOPSIS:
-
- `-b {PROGRAM}`
-
- DESCRIPTION:	Save the current version of one or more apps, each snapshot is stored into a dedicated directory, under $HOME/.am-snapshots/$PROGRAM
-
- To restore the snapshots see the "-o" option.
- ___________________________________________________________________________
-
- `-c`, `clean`
-
- SYNOPSIS:
-
- `-c`
-
- DESCRIPTION:	Removes all the unnecessary files and folders.
- __________________________________________________________________________
-
- `-C`, `--config`
-
- SYNOPSIS:
+## OPTIONS:
  
- `-C {PROGRAM}`
+### `about, -a`
 
- DESCRIPTION:	Set a dedicated $XDD_CONFIG_HOME for one or more AppImages.
- __________________________________________________________________________
+		-a {PROGRAM}
 
- `-d`, `download`
+Description: Shows more info about one or more apps.
 
- SYNOPSIS:
+### `apikey`
 
- `-d {PROGRAM}`
+		apikey {Github Token}
+		apikey delete
 
- `-d --convert {PROGRAM}`
+Description: Accede to github APIs using your personal access tokens. The file named "ghapikey.txt" will be saved in ~/.local/share/AM. Use "del" to remove it.
 
- DESCRIPTION:	Download one or more installation scripts to your desktop. With the option "--convert" its converted to a standalone local installer, but AM requires AppMan to be installed to add custom directory settings.
- ___________________________________________________________________________
+### `backup, -b`
 
- `-e`, `extra`
+		-b {PROGRAM}
 
- SYNOPSIS:
+Description: Create a snapshot of the current version of an installed program.
 
- `-e {USER}/{PROJECT} {PROGRAM}`
+### `clean, -c`
 
- `-e {USER}/{PROJECT} {PROGRAM} {KEYWORD}`
+		-c
 
- DESCRIPTION:	Install AppImages from github.com, outside the database. This allows you to install, update and manage them all like the others. Where "user/project" can be the whole URL to the github repository, give a name to the program so that it can be used from the command line. Optionally, add an "univoque" keyword if multiple AppImages are listed.
- ___________________________________________________________________________
+Removes all the unnecessary files and folders.
 
- `-f`, `files`
+### `config, -C, --config`
 
- SYNOPSIS:
+		-C {PROGRAM}
 
- `-f`
+Description: Set a dedicated $XDG_CONFIG_HOME for one or more AppImages.
 
- `-f --byname`
+### `downgrade, --rollback`
 
- `-f --less`
+		--rollback {PROGRAM}
 
- DESCRIPTION:	Shows the list of all installed programs, with sizes. By default apps are sorted by size, use "--byname" to sort by name. With the option "--less" it shows only the number of installed apps.
- ___________________________________________________________________________
+Description: Download an older or specific app version.
 
- `-h`, `help`
+### `download, -d`
 
- SYNOPSIS:
+		-d {PROGRAM}
+		-d --convert {PROGRAM}
 
- `-h`
+Description: Download one or more installation scripts to your desktop or convert them to local installers for "AppMan" (the latter must be present).
 
- DESCRIPTION:	Prints this message.
- ___________________________________________________________________________
+### `extra, -e`
 
- `-H`, `--home`
+		-e user/project {APPNAME}
+		-e user/project {APPNAME} {KEYWORD}
 
- SYNOPSIS:
+Description: Install AppImages from github.com, outside the database. This allows you to install, update and manage them all like the others. Where "user/project" can be the whole URL to the github repository, give a name to the program so that it can be used from the command line. Optionally, add an "univoque" keyword if multiple AppImages are listed.
 
- `-H {PROGRAM}`
+### `files, -f`
 
- DESCRIPTION:	Set a dedicated $HOME directory for one or more AppImages.
- ___________________________________________________________________________
+		-f
+		-f --byname
+		-f --less
 
- `-i`, `install`
+Description: Shows the list of all installed programs, with sizes. By default apps are sorted by size, use "--byname" to sort by name. With the option "--less" it shows only the number of installed apps.
 
- SYNOPSIS:
+### `help -h`
 
- `-i {PROGRAM}`
+		-h
 
- `-i --debug {PROGRAM}`
+Description: Prints this message.
 
- `-i --force-latest {PROGRAM}`
+### `home, -H, --home`
 
- DESCRIPTION:   Install one or more programs or libraries from the list. With the "--debug" option you can see log messages to debug the script. For more details on "--force-latest", see the dedicated option, below.
- ___________________________________________________________________________
+		-H {PROGRAM}
 
- `-l`, `list`
+Description: Set a dedicated $HOME directory for one or more AppImages.
 
- SYNOPSIS:
+### `install, -i`
 
- `-l`
+		-i {PROGRAM}
+		-i --debug {PROGRAM}
+		-i --force-latest {PROGRAM}
 
- `-l --appimages`
+Description: Install one or more programs or libraries from the list. With the "--debug" option you can see log messages to debug the script. For more details on "--force-latest", see the dedicated option, below.
 
- DESCRIPTION:	Shows the list of all the apps available in the repository. Add the "--appimages" option to list only the AppImages.
- ___________________________________________________________________________
+### `lock`
 
- `-o`, `overwrite`
+		lock {PROGRAM}
 
- SYNOPSIS:
+Description: Prevent an application being updated, if it has an"AM-updater" script.
 
- `-o {PROGRAM}`
+### `list, -l`
 
- DESCRIPTION:	Overwrite the existing version of the app with a snapshot saved previously (see the option "-b", above).
- ___________________________________________________________________________
+		-l
+		-l --appimages
 
- `-q`, `query`
+Description: Shows the list of all the apps available, or just the AppImages.
 
- SYNOPSIS:
+### `newrepo, neodb`
 
- `-q {KEYWORD}`
+		newrepo add {URL}\{PATH}
+		newrepo select
+		newrepo on\off
+		newrepo purge
+		newrepo info
 
- `-q --appimages {KEYWORD}`
+Description: Set a new default repo, use "add" to append the path to a local directory or an online URL, then use "select" to use it by default, a message will warn you about the usage of this repo instead of the default one. Use "on"/"off" to enable/disable it. Use "purge" to remove all 3rd party repos. Use "info" to see the source from where installation scripts and lists are taken.
 
- `-q --pkg {PROGRAM1} {PROGRAM2}`
+### `nolibfuse`
 
- DESCRIPTION:	Can be used to search for keywords and terms in the list of available applications packages to display matches. This can be useful if you are looking for applications having a specific feature. Add the "--appimages" option to list only the AppImages. Add the suboption "--pkg" to search only the names of one or more apps.
- ___________________________________________________________________________
+		nolibfuse {PROGRAM}
 
- `-r`, `remove`
+Description: Convert old AppImages and get rid of "libfuse2" dependence.
 
- SYNOPSIS:
+### `overwrite, -o`
 
- `-r {PROGRAM}`
+		-o {PROGRAM}
 
- DESCRIPTION:	Removes one or more apps, requires confirmation.
- ___________________________________________________________________________
+Description: Overwrite apps with snapshots saved previously (see "-b").
 
- `-R`
+### `query, -q`
 
- SYNOPSIS:
+		-q {KEYWORD}
+		-q --appimages {KEYWORD}
+		-q --pkg {PROGRAM1} {PROGRAM2}
 
- `-R {PROGRAM}`
+Description: Search for keywords in the list of available applications, add the "--appimages" option to list only the AppImages or add "--pkg" to list multiple programs at once.
 
- DESCRIPTION:	Removes one or more apps without asking.
- ___________________________________________________________________________
+### `remove, -r`
 
- `-s`, `sync`
+		-r {PROGRAM}
 
- SYNOPSIS:
+Description: Removes one or more apps, requires confirmation.
 
- `-s`
+### `-R`
 
- DESCRIPTION:	Updates this script to the latest version hosted.
- ___________________________________________________________________________
+		-R {PROGRAM}
 
- `-t`, `template`
+Description: Removes one or more apps without asking.
 
- SYNOPSIS:
+### `sandbox, --sandbox`
 
- `-t {PROGRAM}`
+		sandbox {PROGRAM}
 
- DESCRIPTION:	This option allows you to generate a custom script from a list of different templates that may be vary according to the kind of app you want to upload to the "AM" repo, and the source where it is available. You can install it using the `am test /path/to/your-script` command.
- ___________________________________________________________________________
+Description: Run an AppImage in a sandbox using Aisap.
 
- `-u`, `-U`, `update`
+### `sync, -s`
 
- SYNOPSIS:
+		-s
 
- `-u`
+Description: Updates this script to the latest version hosted.
 
- `-u apps`
+### `template, -t`
 
- `-u {PROGRAM}`
+		-t {PROGRAM}
 
- DESCRIPTION: Update all the apps (and "am" itself) or just one. If you add the "`--apps`" suboption you only update apps.
- ___________________________________________________________________________
+Description: Generate a custom installation script.
 
- `-v`, `version`
+### `unlock`
 
- SYNOPSIS:
+		unlock {PROGRAM}
 
- `-v`
+Description: Unlock updates for the selected program (nulls "lock").
 
- DESCRIPTION:	Shows the version.
- ___________________________________________________________________________
+### `update, -u, -U`
 
- `--disable-completion`
+		-u
+		-u --apps
+		-u {PROGRAM}
 
- SYNOPSIS:
+Description: Update everything. Add "--apps" to update oly the apps or write only the apps you want to update by adding their names.
 
- `--disable-completion`
+### `version, -v`
 
- DESCRIPTION:	Disable bash-completion.
- ___________________________________________________________________________
+		-v
 
- `--disable-sandbox`
+Description: Shows the version.
 
- SYNOPSIS:
+### `--devmode-disable`
 
- `--disable-sandbox {PROGRAM}`
+		--devmode-disable
 
- DESCRIPTION:	Disable the sandbox for the selected app.
- ___________________________________________________________________________
+Description: Undo "--devmode-enable" (see below).
 
- `--enable-completion`
+### `--devmode-enable`
 
- SYNOPSIS:
+		--devmode-enable
 
- `--enable-completion`
+Description: Use the development branch (at your own risk).
 
- DESCRIPTION:	Enable bash-completion to complete a keyword with the "TAB" key, using the names of all installable applications available.
- ___________________________________________________________________________
+### `--disable-sandbox`
 
- `--force-latest`
+		--disable-sandbox {PROGRAM}
 
- SYNOPSIS:
+Description: Disable the sandbox for the selected app.
 
- `--force-latest {PROGRAM}`
+### `--force-latest`
 
- `-i --force-latest {PROGRAM}`
+		--force-latest {PROGRAM}
 
- DESCRIPTION:	Downgrades an installed app from pre-release to "latest". This can be used with "-i" to force the installation of apps from "latest". Many scripts point to "releases" to find the latest build for GNU/Linux if the developer has not uploaded one in "latest".
- ___________________________________________________________________________
+Description: Downgrades an installed app from pre-release to "latest".
 
- `--launcher`
+### `--launcher`
 
- SYNOPSIS:
+		--launcher /path/to/${APPIMAGE}
 
- `--launcher /path/to/${APPIMAGE}`
+Description: Drag/drop one or more AppImages in the terminal and embed them in the apps menu and customize a command to use from the CLI.
 
- DESCRIPTION:	Embed one or more local AppImages in the applications menu. I suggest dragging the files into the terminal to get the desired effect. Launchers are located in ~/.local/share/applications/AppImages by default.
- ___________________________________________________________________________
+### `--system`
 
- `--rollback`, `downgrade`
+		--system
 
- SYNOPSIS:
+Description: Switch "AM" back to "AM" from "AppMan Mode" (see "--user").
 
- `--rollback {PROGRAM}`
+### `--user, appman`
 
- DESCRIPTION:	Download an older or specific version of the software you are interested in (only works with Github).
- ___________________________________________________________________________
+		--user
 
- `--sandbox`
+Description: Made "AM" run in "AppMan Mode", locally, useful for unprivileged users. This option only works with "AM".
 
- SYNOPSIS:
-
- `--sandbox {PROGRAM}`
-
- DESCRIPTION:	Run an AppImage in a sandbox using Aisap.
- ___________________________________________________________________________
-
- `apikey`
-
- SYNOPSIS:
-
- `apikey {Github Token}`
-
- `apikey delete`
-
- DESCRIPTION:	Get unlimited access to https://api.github.com using your personal access tokens. The configuration file named "ghapikey.txt" will be saved in '$AMPATH' . Use the command "'$AMCLI' apikey delete/del/remove" to remove the file.
- __________________________________________________________________________
-
- `dev`, `devmode`
-
- SYNOPSIS:
-
- `dev off`
-
- `dev on`
-
- DESCRIPTION:	View the installer output during installation, use "on". It can be disabled with "off" or with the "`-s`" and "`-u`" options.
- __________________________________________________________________________
-
- `lock`
-
- SYNOPSIS:
-
- `lock {PROGRAM}`
-
- DESCRIPTION:	Lock the selected app to the current version installed, this only works if exists a dedicated "AM-updater" installed with the app.
- __________________________________________________________________________
-
- `neodb`
-
- SYNOPSIS:
-
- `neodb`
-
- `neodb --silent`
-
- DESCRIPTION:   Add third-party repos to extend the existing database. Use "--silent" to hide messages about third-party repos in use.
- __________________________________________________________________________
-
- `newrepo`
-
- SYNOPSIS:
-
- `newrepo {URL}`
-
- `newrepo off`
-
- `newrepo on`
-
- DESCRIPTION:   Set the variable "$AMREPO" to a new custom repository. Use "off" to restore the default one or overwrite it with a new one.
- __________________________________________________________________________
-
- `nolibfuse`
-
- SYNOPSIS:
-
- `nolibfuse {PROGRAM}`
-
- DESCRIPTION:   Convert an installed Type2 AppImage to get rid of libfuse2. New generation AppImages does not require libfuse2 installed.
- __________________________________________________________________________
-
- `unlock`
-
- SYNOPSIS:
-
- `unlock {PROGRAM}`
-
- DESCRIPTION:	Unlock updates for the selected program. This option nulls the option "lock" (see above).
- ___________________________________________________________________________
- ___________________________________________________________________________
-
-## EXTRA OPTIONS
- __________________________________________________________________________
-
- `--system`
-
- SYNOPSIS:
- 
- `--system`
-
- DESCRIPTION:	Switch "AM" back to "AM" from "AppMan Mode" (see --user).
- __________________________________________________________________________
-
- `--user`, `appman`			(only available for "AM")
-
- SYNOPSIS:
-
- `--user`
-
- DESCRIPTION:	Run "AM" as an unprivileged user making it act as "AppMan".
  __________________________________________________________________________
 
 </details>
@@ -1166,19 +1025,13 @@ EXTRA: The behavior of this option can be tested in a completely standalone way 
 
 __________________________________________________________________________
 ### How to enable bash completion
-Bash completion is enabled in "AM" on first installation, while the "AppMan" one requires to be enabled manually.
+From version 8, BASH/ZSH completion is enabled in "AM" and "AppMan" by default.
 
-For both there are two options:
-- `--enabe-completion` to enable it;
-- `--disable-completion` to disable it.
+A file $HOME/.bash_completion will be created, or if it exists, it will be patched to allow the command `am` or `appman` to read arguments from the related "list" of arguments, or other lists, to made it more extensible.
 
-The file used by "AM" is "/etc/bash_completion.d/am-completion.sh", so the root password is required to use the options. The file used by "AppMan" instead is "$HOME/.bash_completion".
+Before version 8, in "AM" were created a "/etc/bash_completion.d/am-completion.sh" using a dedicated option.
 
-Both use the keywords to be completed listed within the "list" file, generated from the options list and the applications list.
-
-https://user-images.githubusercontent.com/88724353/155971864-783c098c-e696-47b5-aaa8-85dab6ab3b46.mp4
-
-A more detailed guide on how to create your own bash completion script for your project is available [here](https://iridakos.com/programming/2018/03/01/bash-programmable-completion-tutorial).
+In case you still have it, run `sudo rm -f /etc/bash_completion.d/am-completion.sh` to remove it. Its no more necessary.
 
 ------------------------------------------------------------------------
 
@@ -1321,9 +1174,58 @@ appman -i --debug /path/to/your-script
 ```
 __________________________________________________________________________
 ### Third-party databases for applications (NeoDB)
-"AM"/"AppMan" can be extended by adding new application databases using a configuration file named "neodb".
+Use the option `newrepo` or `neodb` to add new repositories to use instead of this one. This works for both online and offline repositories.
 
-For more details, see the full guide at https://github.com/ivan-hc/neodb
+Set a new default repo, use "add" to append the path to a local directory or an online URL:
+```
+am newrepo add {URL}\{PATH}
+```
+or
+```
+appman newrepo add {URL}\{PATH}
+```
+then use "select" to use it by default:
+```
+am newrepo select
+```
+or
+```
+appman newrepo select
+```
+a message will warn you about the usage of this repo instead of the default one.
+
+In the screenshot below, I'm adding an offline directory and an online "RAW" fork of "AM"
+![Istantanea_2024-08-25_20-10-47](https://github.com/user-attachments/assets/599f1c11-e2dd-4343-ac51-32e0eeb2643f)
+
+Use "on"/"off" to enable/disable it:
+```
+am newrepo on
+am newrepo off
+```
+or
+```
+appman newrepo on
+appman newrepo off
+```
+Use "purge" to remove all 3rd party repos:
+```
+am newrepo purge
+```
+or
+```
+appman newrepo purge
+```
+Use "info" to see the source from where installation scripts and lists are taken.
+```
+am newrepo info
+```
+or
+```
+appman newrepo info
+```
+if no third-party repo is in use, you will see the default URLs from this repo.
+
+![Istantanea_2024-08-25_20-07-54 png](https://github.com/user-attachments/assets/793e64b9-7377-424c-a70e-a83e89c5225c)
 
 ------------------------------------------------------------------------
 
