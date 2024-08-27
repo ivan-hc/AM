@@ -57,7 +57,12 @@ function _clean_amcachedir() {
 
 # "APPMAN" CORE VARIABLES AND FUNCTIONS
 function _appman_check() {
-	if [ ! -f "$APPMANCONFIG"/appman-config ]; then
+	if [ -f "$APPMANCONFIG"/appman-config ]; then # Convert old config
+		OLDAPPSDIR=$(head -1 "$APPMANCONFIG"/appman-config 2>/dev/null)
+		echo "$HOME/$OLDAPPSDIR" > "$APPMANCONFIG"/apps-path || exit 1
+		rm -f "$APPMANCONFIG"/appman-config
+	fi
+	if [ ! -f "$APPMANCONFIG"/apps-path ]; then
 		echo "$DIVIDING_LINE" 
 		echo ">>> Thank you for choosing AppMan!"
 		echo "$DIVIDING_LINE"
@@ -88,7 +93,7 @@ function _appman_check() {
 			exit 1
 		fi
 		mkdir -p "$APPMANCONFIG" || exit 1
-		echo "${location%/}" > "$APPMANCONFIG"/appman-config || exit 1
+		echo "${location%/}" > "$APPMANCONFIG"/apps-path || exit 1
 		echo "$DIVIDING_LINE"
 		echo " You are ready! Start installing your favorite apps locally!"
 		echo " All apps will be installed in $location"
@@ -98,8 +103,8 @@ function _appman_check() {
 }
 
 function _appman() {
-	APPSDIR="$(cat "$APPMANCONFIG"/appman-config | head -1)"
-	mkdir -p "$APPSDIR"/appman/modules || exit 1
+	APPSDIR="$(head -1 "$APPMANCONFIG"/apps-path 2>/dev/null)"
+	[ -n "$APPSDIR" ] && mkdir -p "$APPSDIR"/appman/modules || exit 1
 	mkdir -p "$BINDIR" "$DATADIR"/applications "$DATADIR"/icons || exit 1
 	AMCLI="appman"
 	AMCLIPATH="$DIR/$AMCLI"
