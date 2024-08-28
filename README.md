@@ -122,18 +122,10 @@ All options cannot be executed with "`sudo`"/"`doas`".
 /usr/local/bin/$PROGRAM
 /usr/local/share/applications/$PROGRAM-AM.desktop
 ```
-NOTE, all installation scripts used before June 28, 2024 show launchers in /usr/share/applications with suffix "AM-" instead of the "AM.desktop" extension, like this:
-
-```
-/usr/share/applications/AM-$PROGRAM.desktop
-```
-From 8 July 2024 this configuration is no longer available. Reinstall the application to get the new configuration.
-
-The change to the default location for .desktop files from /usr/share/applications to /usr/local/share/applications was made to bring "AM" in line with GNU/Linux standards for installing system-wide third-party applications, see [here](https://refspecs.linuxfoundation.org/FHS_3.0/fhs/ch04s09.html).
 
 ------------------------------------------------------------------------
 
-- "**AppMan**" is more flexible, since it asks you where to install the apps in your $HOME directory. For example, suppose you want install everything in "Applicazioni" (the italian of "applications"), this is the structure of what an installation scripts installs with "AppMan" instead:
+- "**AppMan**" is more flexible, since it asks you where to install the apps. For example, suppose you want install everything in "Applicazioni" (the italian of "applications") and in your $HOME directory, this is the structure of what an installation scripts installs with "AppMan" instead:
 ```
 ~/Applicazioni/$PROGRAM/
 ~/Applicazioni/$PROGRAM/$PROGRAM
@@ -143,15 +135,10 @@ The change to the default location for .desktop files from /usr/share/applicatio
 ~/.local/bin/$PROGRAM
 ~/.local/share/applications/$PROGRAM-AM.desktop
 ```
-NOTE, all installation scripts used before June 28, 2024 show the launchers with suffix "AM-" instead of the "AM.desktop" extension, like this:
-```
-~/.local/share/applications/AM-$PROGRAM.desktop
-```
-From 8 July 2024 this configuration is no longer available. Reinstall the application to get the new configuration.
 
 The configuration file for AppMan is in `~/.config/appman` and contains the path you indicated at first startup. Changing its contents will result in changing the paths for each subsequent operation carried out with "AppMan", the apps and modules stored in the old path will not be manageable.
 
-At first startup you can indicate any directory or subdirectory you want, as long as it is in your $HOME.
+At first startup you can indicate any directory or subdirectory you want.
 
 ------------------------------------------------------------------------
 
@@ -362,7 +349,7 @@ wget https://raw.githubusercontent.com/ivan-hc/AM/main/APP-MANAGER -O appman && 
 ### Structure of the "AppMan" installation
 Unlike "AM" which needs to be placed in specific locations, "AppMan" is portable. The modules and directories will be placed in the directory you chose:
 - the script "appman" is wherever you want
-- the directory "$HOME/path/to/your/custom/directory/modules" (containing the .am modules for the non-core options)
+- the directory "/path/to/your/custom/directory/modules" (containing the .am modules for the non-core options)
 - the configuration file "$HOME/.config/appman/appman-config" (the only fixed directory)
 
 all processes will been executed in $HOME/.cache/appman, while application lists, keywords to use in bash/zsh completion and other files (for third party repos, betatesting, etcetera...) will be saved and updated in $HOME/.local/share/AM to be shared with "AM", if installed.
