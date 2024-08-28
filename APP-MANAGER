@@ -969,7 +969,7 @@ function _use_sync() {
 }
 
 # UPDATE
-function _list_updatable_apps() {
+function _update_list_updatable_apps() {
 	_check_version
 	cd "$APPSPATH" &&
 	ARGS=$(find . -name 'AM-updater' -printf " %h\n" 2>/dev/null | sort -u | xargs -n 1 basename 2>/dev/null)
@@ -979,29 +979,10 @@ function _list_updatable_apps() {
 	done
 }
 
-function _update_all_apps() {
-	for f in "$APPSPATH"/*/; do
-		cd "$f" 2>/dev/null &&
-		if test -f ./AM-updater; then
-			appname=$(printf '%s\n' "${PWD##*/}")
-			APPNAME=$(echo "$appname" | tr '[:lower:]' '[:upper:]')
-			if [ -w ./AM-updater ]; then
-				start=$(date +%s) &&
-				sh -x ./AM-updater >/dev/null 2>&1 | echo -ne ' Updating "'"$APPNAME"'"...\r' &&
-				end=$(date +%s) &&
-				echo " ◆ $APPNAME is updated, $((end - start)) seconds elapsed!" &
-			else
-				echo " ✖ $APPNAME is read-only, cannot update it!"
-			fi
-		else
-			echo ""  >/dev/null 2>&1
-		fi
-	done
-	wait
-	echo "$DIVIDING_LINE"
+function _update_determine_apps_version_changes() {
 	if test -f "$AMCACHEDIR"/updatable-args-list; then
 		mv "$AMCACHEDIR"/updatable-args-list "$AMCACHEDIR"/updatable-args-list-old
-		_list_updatable_apps
+		_update_list_updatable_apps
 		OLDVER="$AMCACHEDIR/updatable-args-list-old"
 		NEWVER="$AMCACHEDIR/updatable-args-list"
 		if cmp --silent -- "$NEWVER" "$OLDVER"; then
@@ -1014,6 +995,31 @@ function _update_all_apps() {
 	else
 		echo ' No apps to update here!'
 	fi
+}
+
+function _update_app() {
+	if [ -w "$APPSPATH"/"$arg"/AM-updater ]; then
+		start=$(date +%s) &&
+		sh -x "$APPSPATH"/"$arg"/AM-updater >/dev/null 2>&1 | echo -ne ' Updating "'"$APPNAME"'"...\r' &&
+		end=$(date +%s) &&
+		echo " ◆ $APPNAME is updated, $((end - start)) seconds elapsed!" &
+	else
+		echo " ✖ $APPNAME is read-only, cannot update it!"
+	fi
+}
+
+function _update_all_apps() {
+	for f in "$APPSPATH"/*/; do
+		cd "$f" 2>/dev/null || exit 1
+		arg=$(printf '%s\n' "${PWD##*/}")
+		if test -f "$APPSPATH"/"$arg"/AM-updater; then
+			APPNAME=$(echo "$arg" | tr '[:lower:]' '[:upper:]')
+			_update_app
+		fi
+	done
+	wait
+	echo "$DIVIDING_LINE"
+	_update_determine_apps_version_changes
 	rm -Rf "$APPSPATH/*/tmp"
 }
 
@@ -1023,7 +1029,7 @@ function _use_update() {
 	case $2 in
 	''|'--apps')
 		_clean_amcachedir
-		_list_updatable_apps
+		_update_list_updatable_apps
 		echo -e "$DIVIDING_LINE\n \"$AMCLIUPPER\" CAN MANAGE UPDATES FOR THE FOLLOWING PROGRAMS:\n"
 		[ -f "$AMCACHEDIR/updatable-args-list" ] && cat "$AMCACHEDIR/updatable-args-list" || echo " None"
 		echo -e "\n All self-updatable programs are excluded"
@@ -1037,24 +1043,18 @@ function _use_update() {
 	*)
 		ARGS="$(echo "$@" | cut -f2- -d ' ')"
 		for arg in $ARGS; do
-			arg_upper=$(echo "$arg" | tr '[:lower:]' '[:upper:]')
+			APPNAME=$(echo "$arg" | tr '[:lower:]' '[:upper:]')
 			if test -f "$APPSPATH"/"$arg"/AM-updater; then
-				if [ -w "$APPSPATH"/"$arg"/AM-updater ]; then
-					start=$(date +%s)
-					"$APPSPATH"/"$arg"/AM-updater >/dev/null 2>&1 | echo -ne " UPDATING $arg_upper\r"
-					end=$(date +%s)
-					echo " ◆ $arg_upper is updated, $((end - start)) seconds elapsed!"
-					_clean_amcachedir
-					_list_updatable_apps
-				else
-					echo " - $arg_upper is read-only, cannot update it!"
-				fi
+				cd "$APPSPATH/$arg" 2>/dev/null || exit 1
+				_update_app
 			else
 				UPDATERS=$(cd "$APPSPATH"/"$arg" 2>/dev/null && find . -name "*update*" -print 2>/dev/null)
 				[ -n "$UPDATERS" ] && arg_autoupdatable=", it may have its update system"
-				echo " ✖ Cannot manage updates for \"$arg_upper\"$arg_autoupdatable"
+				echo " ✖ Cannot manage updates for \"$APPNAME\"$arg_autoupdatable"
 			fi
 		done
+		wait
+		exit
 		;;
 	esac
 }
