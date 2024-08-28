@@ -21,7 +21,7 @@ am -t my-appname
 ```
 where `$XDG_DESKTOP_DIR` is your Desktop directory and `$ARCH` is your system architecture (for example x86_64 or i686), the "am-scripts" directory will contain the installation scripts in "$ARCH". Use the option `-i` to test the installation of the script:
 ```
-am -i $XDG_DESKTOP_DIR/am-scripts/$ARCH/myscript
+am -i $XDG_DESKTOP_DIR/am-scripts/$ARCH/my-script
 ```
 among the other stuff in the "am-scripts" directory created with the option `-t` you can see:
 - the "list" file, containing the lines to add to the list of available applications
