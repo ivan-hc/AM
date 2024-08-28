@@ -15,12 +15,19 @@ If all apply, then please consider opening a [new issue](https://github.com/ivan
 -----------------------------------------------
 
 ## Want to submit a new app?
-Use the option `-t` to create installation scripts, and the option `-i` to test them:
+Use the option `-t` to create the installation script:
 ```
 am -t my-appname
-am -i $XDG_DESKTOP_DIR/am-scripts/x86_64/myscript
 ```
-if you are not sure, submit your request at https://github.com/ivan-hc/AM/issues , we'll provide as soon as possible.
+where `$XDG_DESKTOP_DIR` is your Desktop directory and `$ARCH` is your system architecture (for example x86_64 or i686), the "am-scripts" directory will contain the installation scripts in "$ARCH". Use the option `-i` to test the installation of the script:
+```
+am -i $XDG_DESKTOP_DIR/am-scripts/$ARCH/myscript
+```
+among the other stuff in the "am-scripts" directory created with the option `-t` you can see:
+- the "list" file, containing the lines to add to the list of available applications
+- the directory bearing the name of our catalog, "[portable-linux-apps.github.io](https://portable-linux-apps.github.io)", its enough to drag/drop the content of this directory for a pull request on the dedicated [repo](https://github.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io).
+
+**NOT: if you are not sure, submit your request at https://github.com/ivan-hc/AM/issues , we'll provide as soon as possible.**
 
 -----------------------------------------------
 
