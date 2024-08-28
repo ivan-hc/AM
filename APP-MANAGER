@@ -103,7 +103,7 @@ function _appman() {
 	else
 		APPSDIR="$(head -1 "$APPMANCONFIG"/appman-config 2>/dev/null)"
 	fi
-	[ -n "$APPSDIR" ] && mkdir -p "$APPSDIR"/appman/modules || exit 1
+	[ -n "$APPSDIR" ] && mkdir -p "$APPSDIR"/appman || exit 1
 	mkdir -p "$BINDIR" "$DATADIR"/applications "$DATADIR"/icons || exit 1
 	AMCLI="appman"
 	AMCLIPATH="$DIR/$AMCLI"
@@ -136,7 +136,6 @@ function _am() {
 	APPSPATH="/opt"
 	AMPATH="$APPSPATH/$AMCLI"
 	_create_cache_dir
-	mkdir -p "$AMPATH"/modules
 }
 
 # DETERMINE WHEN TO USE "AM" OR "APPMAN"
@@ -153,6 +152,11 @@ fi
 ################################################################################
 
 AMCLIUPPER=$(echo "$AMCLI" | tr '[:lower:]' '[:upper:]')
+
+# Define modules path and source
+MODULES_PATH="$AMPATH/modules"
+MODULES_SOURCE="$AMREPO/modules"
+mkdir -p "$MODULES_PATH" || exit 1
 
 # Create new data directory and move important files there
 AMDATADIR="$DATADIR/AM"
@@ -570,7 +574,8 @@ function _clean_old_modules() {
 	else
 		MODULES=$(sort "$AMCLIPATH" 2>/dev/null | tr '"' '\n' | grep "[a-z]\.am$" | uniq)
 	fi
-	for m in "$APPSPATH"/"$AMCLI"/modules/*; do
+	[ -z "$MODULES_PATH" ] && exit 1
+	for m in "$MODULES_PATH"/*; do
 		if [[ "${MODULES}" != *"$(basename -- "$m")"* ]];then
 			rm -f "$m" 2>/dev/null
 			echo " ✔ Removed obsolete module named \"$(basename -- "$m")\""
@@ -907,19 +912,19 @@ function _sync_modules() {
 	echo -e "$DIVIDING_LINE\n Check for updates in modules..."
 	MODULES=$(curl -Ls "$AMREPO/APP-MANAGER" | tr '"' '\n' | grep "[a-z]\.am$")
 	for module_name in $MODULES; do
-		cd "$AMPATH"/modules || return
+		cd "$MODULES_PATH" || return
 		if ! test -f ./"$module_name"; then
 			echo " ◆ Downloading $module_name (not previously installed)..."
-			curl -Os "$AMREPO/modules/$module_name" 2>/dev/null
+			curl -Os "$MODULES_SOURCE/$module_name" 2>/dev/null
 			chmod a+x ./"$MODULENAME"
 		fi
 		CURRENT=$(cat ./"$module_name" 2>/dev/null)
-		SOURCE=$(curl -Ls "$AMREPO/modules/$module_name")
+		SOURCE=$(curl -Ls "$MODULES_SOURCE/$module_name")
 		if [ "$CURRENT" = "$SOURCE" ]; then
 			echo -ne "\r" 2>/dev/null
 		else
 			echo " ◆ Updating $module_name..."
-			curl -Ls "$AMREPO/modules/$module_name" > ./"$module_name" 2>/dev/null
+			curl -Ls "$MODULES_SOURCE/$module_name" > ./"$module_name" 2>/dev/null
 		fi
 	done
 	_clean_old_modules
@@ -1059,16 +1064,16 @@ function _use_update() {
 # HANDLE ALL THE EXTERNAL MODULES
 function _use_module() {
 	# Test if module exists
-	if [ ! -f "$AMPATH/modules/$MODULE" ]; then
+	if [ ! -f "$MODULES_PATH/$MODULE" ]; then
 		_online_check
-		if ! wget -q "$AMREPO/modules/$MODULE" -O "$AMPATH/modules/$MODULE"; then
+		if ! wget -q "$MODULES_SOURCE/$MODULE" -O "$MODULES_PATH/$MODULE"; then
 			echo " Module not found, run \"$AMCLI -s\" to update \"$AMCLIUPPER\""
 			exit 1
 		fi
-		chmod a+x "$AMPATH/modules/$MODULE"
+		chmod a+x "$MODULES_PATH/$MODULE"
 	fi
 	# Source module
-	source "$AMPATH/modules/$MODULE" "$@"
+	source "$MODULES_PATH/$MODULE" "$@"
 }
 
 [ -z "$1" ] && echo " USAGE: $AMCLI [OPTION]" && echo "        $AMCLI [OPTION] [ARGUMENT]" &&
