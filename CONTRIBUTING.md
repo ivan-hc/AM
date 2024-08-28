@@ -24,7 +24,7 @@ where `$XDG_DESKTOP_DIR` is your Desktop directory and `$ARCH` is your system ar
 am -i $XDG_DESKTOP_DIR/am-scripts/$ARCH/my-script
 ```
 among the other stuff in the "am-scripts" directory created with the option `-t` you can see:
-- the "list" file, containing the lines to add to the list of available applications
+- the "list" file, containing the lines to add to the list of available applications (the file "$ARCH-apps" available [here](https://github.com/ivan-hc/AM/tree/main/programs), NOT the "$ARCH"-appimages one, the latter is managed by the maintainer of this repository)
 - the directory bearing the name of our catalog, "[portable-linux-apps.github.io](https://portable-linux-apps.github.io)", its enough to drag/drop the content of this directory for a pull request on the dedicated [repo](https://github.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io).
 
 **NOT: if you are not sure, submit your request at https://github.com/ivan-hc/AM/issues , we'll provide as soon as possible.**
