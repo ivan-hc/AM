@@ -27,7 +27,7 @@ among the other stuff in the "am-scripts" directory created with the option `-t`
 - the "list" file, containing the lines to add to the list of available applications (the file "$ARCH-apps" available [here](https://github.com/ivan-hc/AM/tree/main/programs), **NOT the one named "$ARCH"-appimages**, the latter is managed by the maintainer of this repository);
 - the directory bearing the name of our catalog, "[portable-linux-apps.github.io](https://portable-linux-apps.github.io)", its enough to drag/drop the content of this directory for a pull request on the dedicated [repo](https://github.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io).
 
-**NOT: if you are not sure, submit your request at https://github.com/ivan-hc/AM/issues , we'll provide as soon as possible.**
+**NOTE: if you are not sure, submit your request at https://github.com/ivan-hc/AM/issues , we will try to provide all the above as soon as possible.**
 
 -----------------------------------------------
 
