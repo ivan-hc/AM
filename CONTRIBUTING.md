@@ -33,16 +33,9 @@ among the other stuff in the "am-scripts" directory created with the option `-t`
 
 ## Want to Submit Code?
 You can submit code by:
-1. forking the dev branch of this repository, at https://github.com/ivan-hc/AM/tree/dev
-2. install "AM" using this guide https://github.com/ivan-hc/AM?tab=readme-ov-file#installation
-3. also install "AppMan" using this other guide https://github.com/ivan-hc/AppMan?tab=readme-ov-file#installation
-4. use YOUR FORK/BRANCH using the option "`newrepo`", for example, where your github profile is $USER and your branch is "dev", do:
-```
-am newrepo https://raw.githubusercontent.com/$USER/AM/dev
-appman newrepo https://raw.githubusercontent.com/$USER/AM/dev
-```
-5. apply your changes on your fork and test them on both "AM" and AppMan until you're sure that they work without any problem
-6. submit a [pull request](https://github.com/ivan-hc/AM/pulls) to the "dev" branch, at https://github.com/ivan-hc/AM/tree/dev
+1. fork this repository
+2. install "AM" and "AppMan" using the guide at https://github.com/ivan-hc/AM#how-to-install-am
+3. submit a [pull request](https://github.com/ivan-hc/AM/pulls)
 
 -----------------------------------------------
 
