@@ -122,18 +122,10 @@ All options cannot be executed with "`sudo`"/"`doas`".
 /usr/local/bin/$PROGRAM
 /usr/local/share/applications/$PROGRAM-AM.desktop
 ```
-NOTE, all installation scripts used before June 28, 2024 show launchers in /usr/share/applications with suffix "AM-" instead of the "AM.desktop" extension, like this:
-
-```
-/usr/share/applications/AM-$PROGRAM.desktop
-```
-From 8 July 2024 this configuration is no longer available. Reinstall the application to get the new configuration.
-
-The change to the default location for .desktop files from /usr/share/applications to /usr/local/share/applications was made to bring "AM" in line with GNU/Linux standards for installing system-wide third-party applications, see [here](https://refspecs.linuxfoundation.org/FHS_3.0/fhs/ch04s09.html).
 
 ------------------------------------------------------------------------
 
-- "**AppMan**" is more flexible, since it asks you where to install the apps in your $HOME directory. For example, suppose you want install everything in "Applicazioni" (the italian of "applications"), this is the structure of what an installation scripts installs with "AppMan" instead:
+- "**AppMan**" is more flexible, since it asks you where to install the apps. For example, suppose you want install everything in "Applicazioni" (the italian of "applications") and in your $HOME directory, this is the structure of what an installation scripts installs with "AppMan" instead:
 ```
 ~/Applicazioni/$PROGRAM/
 ~/Applicazioni/$PROGRAM/$PROGRAM
@@ -143,15 +135,10 @@ The change to the default location for .desktop files from /usr/share/applicatio
 ~/.local/bin/$PROGRAM
 ~/.local/share/applications/$PROGRAM-AM.desktop
 ```
-NOTE, all installation scripts used before June 28, 2024 show the launchers with suffix "AM-" instead of the "AM.desktop" extension, like this:
-```
-~/.local/share/applications/AM-$PROGRAM.desktop
-```
-From 8 July 2024 this configuration is no longer available. Reinstall the application to get the new configuration.
 
 The configuration file for AppMan is in `~/.config/appman` and contains the path you indicated at first startup. Changing its contents will result in changing the paths for each subsequent operation carried out with "AppMan", the apps and modules stored in the old path will not be manageable.
 
-At first startup you can indicate any directory or subdirectory you want, as long as it is in your $HOME.
+At first startup you can indicate any directory or subdirectory you want.
 
 ------------------------------------------------------------------------
 
@@ -362,7 +349,7 @@ wget https://raw.githubusercontent.com/ivan-hc/AM/main/APP-MANAGER -O appman && 
 ### Structure of the "AppMan" installation
 Unlike "AM" which needs to be placed in specific locations, "AppMan" is portable. The modules and directories will be placed in the directory you chose:
 - the script "appman" is wherever you want
-- the directory "$HOME/path/to/your/custom/directory/modules" (containing the .am modules for the non-core options)
+- the directory "/path/to/your/custom/directory/modules" (containing the .am modules for the non-core options)
 - the configuration file "$HOME/.config/appman/appman-config" (the only fixed directory)
 
 all processes will been executed in $HOME/.cache/appman, while application lists, keywords to use in bash/zsh completion and other files (for third party repos, betatesting, etcetera...) will be saved and updated in $HOME/.local/share/AM to be shared with "AM", if installed.
@@ -488,6 +475,15 @@ Description: Set a dedicated $HOME directory for one or more AppImages.
 		-i --force-latest {PROGRAM}
 
 Description: Install one or more programs or libraries from the list. With the "--debug" option you can see log messages to debug the script. For more details on "--force-latest", see the dedicated option, below.
+
+### `install-appimage, -ia`
+ 
+                -ia {PROGRAM}
+                -ia --debug {PROGRAM}
+                -ia --force-latest {PROGRAM}
+ 
+ Description: Same as "install" (see above) but for AppImages only.
+
 
 ### `lock`
 
@@ -697,6 +693,13 @@ appman -i --debug $PROGRAM
 let test again the installation of AnyDesk using the `--debug` flag:
 
 https://github.com/user-attachments/assets/9dd73186-37e2-4742-887e-4f98192bd764
+
+### Install, run only installation scripts for AppImages
+All suboption above can be used to install AppImages only, it is enough to use the option `-ia`/`install-appimage` instead of `-i`/`install`. In this example, I'll run the script `brave-appimage` but running `brave`, that instead is the original upstream package:
+
+https://github.com/user-attachments/assets/b938430c-ec0b-4b90-850f-1332063d5e53
+
+in the video above I first launch a "query" with the `-q` option to show you the difference between `brave` and `brave-appimage`, and then `-q --appimages` to show you only the appimages from the list. More details at "[List and query all the applications available on the database](#list-and-query-all-the-applications-available-on-the-database)".
 
 ### Install the "latest" stable release instead of the latest "unstable"
 By default, many installation scripts for apps hosted on github will point to the more recent generic release instead of "latest", which is normally used to indicate that the build is "stable". This is because upstream developers do not always guarantee a certain packaging format in "latest", sometimes they may only publish packages for Windows or macOS, so pointing to "latest" would not guarantee that any package for Linux will be installed.

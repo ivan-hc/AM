@@ -172,7 +172,6 @@ for metapackage in $METAPACKAGES; do
 done	
 }
 
-
 ######################
 # INSTALLATION PROCESS
 ######################
@@ -365,6 +364,35 @@ case "$1" in
 		else
 			exit 1
 		fi
+		;;
+
+	'-ia'|'install-appimage')
+		if [ "$2" = "--debug" ]; then
+			echo "--debug " > "$AMCACHEDIR"/install-args
+			ARGS="$(echo "$@" | cut -f3- -d ' ' | tr ' ' '\n' | grep -v -- "--")"
+		elif [ "$2" = "--force-latest" ]; then
+			echo "--force-latest " > "$AMCACHEDIR"/install-args
+			ARGS="$(echo "$@" | cut -f3- -d ' ' | tr ' ' '\n' | grep -v -- "--")"
+		else
+			rm -f "$AMCACHEDIR"/install-args
+			ARGS="$(echo "$@" | cut -f2- -d ' ' | tr ' ' '\n' | grep -v -- "--")"
+		fi
+		for arg in $ARGS; do
+			curl -Ls "$AMREPO/programs/$arch-appimages" > "$AMCACHEDIR/$arch-appimages"
+			if grep -q "^◆ $arg : " "$AMCACHEDIR/$arch-appimages"; then
+				echo "$arg" >> "$AMCACHEDIR"/install-args
+			else
+				arg="$arg-appimage"
+				if ! grep -q "^◆ $arg : " "$AMCACHEDIR/$arch-appimages"; then
+					echo " ✖ \"$(echo "$arg" | sed 's/-appimage//g')\" is not an Appimage"
+				else
+					echo "$arg" >> "$AMCACHEDIR"/install-args
+				fi
+			fi
+		done
+		APPIMAGES_ARGS=$(cat "$AMCACHEDIR"/install-args | sed 's/\n/ /g')
+		"$AMCLIPATH" -i "$APPIMAGES_ARGS"
+		exit 1
 		;;
 
 	'-e'|'extra')

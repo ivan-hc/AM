@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 
-AMVERSION="8"
+AMVERSION="8.1"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
 AMBRANCH=$(basename "$AMREPO")
+MODULES_SOURCE="$AMREPO/modules"
 
 # Determine catalogue in use
 export AMCATALOGUEMARKDOWNS="https://portable-linux-apps.github.io/apps"
@@ -25,34 +26,103 @@ export DATADIR="${XDG_DATA_HOME:-$HOME/.local/share}"
 export CONFIGDIR="${XDG_CONFIG_HOME:-$HOME/.config}"
 export CACHEDIR="${XDG_CACHE_HOME:-$HOME/.cache}"
 
+export APPMANCONFIG="$CONFIGDIR/appman"
+export SCRIPTDIR="$(xdg-user-dir DESKTOP 2>/dev/null || echo "$HOME")"
+APPMANCONFIG="$CONFIGDIR/appman"
+SCRIPTDIR="$(xdg-user-dir DESKTOP 2>/dev/null || echo "$HOME")"
+export SCRIPTDIR
+
+# Colors
+RED='\033[0;31m' 
+Gold='\033[0;33m' 
+Green='\033[0;32m' 
+LightBlue='\033[1;34m'
+DIVIDING_LINE="-----------------------------------------------------------------------------"
+
+# Prevent the use of "sudo" ("AM")
+[ -n "$SUDO_COMMAND" ] && echo -e "\n Please do not use \"sudo\" to execute \"$CLI\", try again.\n" && exit 1
+
 function _create_cache_dir() {
 	AMCACHEDIR="$CACHEDIR/$AMCLI"
 	mkdir -p "$AMCACHEDIR"
 }
 
 function _clean_amcachedir() {
-	if [ -z "$AMCACHEDIR" ]; then exit 1; fi
+	[ -z "$AMCACHEDIR" ] && exit 1
 	rm -f "$AMCACHEDIR"/*
 }
 
-APPMANCONFIG="$CONFIGDIR/appman"
-SCRIPTDIR="$(xdg-user-dir DESKTOP 2>/dev/null || echo "$HOME")"
-export SCRIPTDIR
+################################################################################
+#				AM/APPMAN
+################################################################################
 
-# Colors
-RED='\033[0;31m'; Gold='\033[0;33m'; Green='\033[0;32m'; LightBlue='\033[1;34m';
-DIVIDING_LINE="--------------------\
----------------------------------------------------------"
-
-# Prevent the use of "sudo" ("AM")
-function _no_sudo() {
-	if [ -n "$SUDO_COMMAND" ]; then
-		echo -e "\n Please do not use \"sudo\" to execute \"$CLI\", try again.\n"
-		exit 1
+# "APPMAN" CORE VARIABLES AND FUNCTIONS
+function _appman_check() {
+	if [ ! -f "$APPMANCONFIG"/appman-config ]; then
+		echo "$DIVIDING_LINE" 
+		echo ">>> Thank you for choosing AppMan!"
+		echo "$DIVIDING_LINE"
+		echo " Before proceeding with any task, where do you want to install apps?"
+		printf '\n%s\n' " SYNTAX: /FULLPATH/TO/DIRNAME"
+		printf '%s\n\n' " EXAMPLE: $HOME/My-apps"
+		echo " NOTE: Any spaces in the path will be replaced for dashes"
+		echo " NOTE: If no input is given then \"~/Applications\" will be used as default"
+		echo ""
+		echo " if you wish to later change the location, first remove all the programs"
+		echo " and then edit the \"$APPMANCONFIG\"/appman-config file."
+		echo "$DIVIDING_LINE"
+		read -r -ep " Write the path or just press enter to use default: " location
+		location="$(echo "$location" | sed 's/[ \t]/-/g; s|^\./||' 2>/dev/null)"
+		[ -z "$location" ] && location="$HOME/Applications"
+		if ! echo "$location" | grep "^/" >/dev/null 2>&1; then
+			location="$HOME/$location"
+		fi
+		if echo "$location" | grep "$BINDIR" >/dev/null 2>&1; then
+			echo "$DIVIDING_LINE"
+			echo " 💀 ERROR, you can't install applications in \"$BINDIR\""
+			echo " $BINDIR is normally used for executables, Please choose a different path and retry!" 
+			echo "$DIVIDING_LINE"
+			exit  1
+		elif ! mkdir -p "$location" 2>/dev/null || [ ! -w "$location" ]; then
+			echo " 💀 ERROR: You don't have write access to $location or it is invalid" 
+			exit 1
+		fi
+		mkdir -p "$APPMANCONFIG" || exit 1
+		echo "${location%/}" > "$APPMANCONFIG"/appman-config || exit 1
+		echo "$DIVIDING_LINE"
+		echo " You are ready! Start installing your favorite apps locally!"
+		echo " All apps will be installed in $location"
+		echo " In case of problems, use the option \"-h\"."
+		echo "$DIVIDING_LINE"
 	fi
 }
 
-_no_sudo
+function _appman() {
+	_appman_check
+	if ! grep -q "^/" "$APPMANCONFIG"/appman-config; then
+		APPSDIR="$HOME/$(head -1 "$APPMANCONFIG"/appman-config 2>/dev/null)"
+	else
+		APPSDIR="$(head -1 "$APPMANCONFIG"/appman-config 2>/dev/null)"
+	fi
+	[ -n "$APPSDIR" ] && mkdir -p "$APPSDIR"/appman || exit 1
+	mkdir -p "$BINDIR" "$DATADIR"/applications "$DATADIR"/icons || exit 1
+	AMCLI="appman"
+	AMCLIPATH="$DIR/$AMCLI"
+	SUDOCMD=""
+	APPSPATH="$APPSDIR"
+	AMPATH="$APPSDIR/$AMCLI"
+	_create_cache_dir
+	if [ ! -w "$APPSPATH" ]; then
+		echo " ERROR: You don't have write access to $APPSPATH"
+		exit 1
+	elif ! echo "$PATH" | grep "$BINDIR" >/dev/null 2>&1; then
+		echo "$DIVIDING_LINE"
+		echo " ⚠️ WARNING: \"$BINDIR\" is not in PATH, apps may not run."
+		echo "$DIVIDING_LINE"
+	fi
+	MODULES_PATH="$AMPATH/modules"
+	mkdir -p "$MODULES_PATH" || exit 1
+}
 
 # "AM" CORE VARIABLES
 function _am() {
@@ -69,79 +139,25 @@ function _am() {
 	APPSPATH="/opt"
 	AMPATH="$APPSPATH/$AMCLI"
 	_create_cache_dir
-	mkdir -p "$AMPATH"/modules
-}
-
-# "APPMAN" CORE VARIABLES AND FUNCTIONS
-function _appman_initialize() {
-	APPSDIR=$1
-	mkdir -p ~/"$APPSDIR"/appman/modules
-	mkdir -p "$BINDIR" "$DATADIR"/applications "$DATADIR"/icons
-	AMCLI="appman"
-	AMCLIPATH="$DIR/$AMCLI"
-	SUDOCMD=""
-	APPSPATH="$HOME/$APPSDIR"
-	AMPATH="$HOME/$APPSDIR/$AMCLI"
-	_create_cache_dir
-}
-
-function _appman_prompt_for_directory() {
-	local location
-	read -r -ep " Please, write the name or the path of your custom application's folder: $(echo -e '\n\n '"$HOME"'/')" location
-	echo "$location"
-}
-
-function _appman_validate_directory() {
-	location=$1
-	if [ "$location" = "" ]; then
-		echo -e "$DIVIDING_LINE\nOPERATION ABORTED!"
-		exit  1
-	elif [ "$location" = ".local/bin" ]; then
-		echo -e "$DIVIDING_LINE\n 💀 ERROR, you can't install applications into a \"\$PATH\""
-		echo -e " The ~/.local/bin directory is normally used for executables.\n Please, choose a different path and retry! \n$DIVIDING_LINE"
-		exit  1
-	else
-		location_appman="${location/#$HOME}"
-		location_appman="${location_appman// /-}"
-		location_appman="${location_appman#/}"
-		location_appman="${location_appman%/}"
-		echo "$location_appman"
-	fi
-}
-
-function _appman() {
-	if [ ! -f "$APPMANCONFIG"/appman-config ]; then
-		echo -e "$DIVIDING_LINE\n >>> Thank you for choosing AppMan! \n$DIVIDING_LINE"
-		echo " Before proceeding with any task, write the name of the directory in which"
-		echo " you will install the apps, for example \"Programs\" or \"My-apps\", you can"
-		echo " also choose a subfolder, for example \".local/My-apps\" or a deeper path."
-		echo -e "\n The destination folder will be created in $HOME\n"
-		echo -e " SYNTAX: PATH/TO/DIRNAME\n"
-		echo " NOTE, any spaces or "/" at the beginning and end will be removed. If you"
-		echo " decide to change your choice in the future, first remove all the programs"
-		echo -e " and then edit the ~/.config/appman/appman-config text file.\n$DIVIDING_LINE\n"
-		location=$(_appman_prompt_for_directory)
-		validated_location=$(_appman_validate_directory "$location")
-		mkdir -p "$APPMANCONFIG"
-		echo "$validated_location" >> "$APPMANCONFIG"/appman-config
-		echo -e "$DIVIDING_LINE\n You are ready! Start installing your favorite apps locally!"
-		echo " All apps will be installed in $HOME/$validated_location"
-		echo -e "\n In case of problems, use the option \"-h\".\n$DIVIDING_LINE"
-	fi
-	_appman_initialize "$(<"$APPMANCONFIG"/appman-config)"
-	if ! echo "$PATH" | grep -q "$BINDIR"; then
-		echo -e "$DIVIDING_LINE\n ⚠️ WARNING: \"$BINDIR\" is not in PATH, apps may not run.\n$DIVIDING_LINE"
-	fi
+	MODULES_PATH="$AMPATH/modules"
 }
 
 # DETERMINE WHEN TO USE "AM" OR "APPMAN"
-if [ "$(realpath $0)" = "/opt/am/APP-MANAGER" ]; then
+if [ "$(realpath "$0")" = "/opt/am/APP-MANAGER" ]; then
 	_am
-elif [ "$(realpath $0)" = "/usr/bin/am" ]; then
+	mkdir -p "$MODULES_PATH" || exit 1
+elif [ "$(realpath "$0")" = "/usr/bin/am" ]; then
 	_am
+	AMPATH="$AMCACHEDIR"
+	MODULES_PATH="/usr/lib/am/modules"
 else
 	_appman
 fi
+
+################################################################################
+#				FINALIZE
+################################################################################
+
 AMCLIUPPER=$(echo "$AMCLI" | tr '[:lower:]' '[:upper:]')
 
 # Create new data directory and move important files there
@@ -158,9 +174,7 @@ if test -f "$AMDATADIR"/betatester; then
 fi
 
 function _betatester_message_on() {
-	if test -f "$AMDATADIR"/betatester; then
-		echo -e "$DIVIDING_LINE\n\"$AMCLIUPPER\" $AMVERSION: DEVELOPER MODE\n$DIVIDING_LINE"
-	fi
+	[ -f "$AMDATADIR"/betatester ] && echo -e "$DIVIDING_LINE\n\"$AMCLIUPPER\" $AMVERSION: DEVELOPER MODE\n$DIVIDING_LINE"
 }
 
 # Apps database in use
@@ -196,15 +210,7 @@ function _am_dependences_check() {
 	fi
 }
 
-function _am_security_check() {
-	_am_dependences_check
-	# Check and create the $AMPATH directory if it does not exist
-	if [ ! -d "$AMPATH" ]; then
-		$SUDOCMD mkdir -p "$AMPATH"
-	fi
-}
-
-_am_security_check
+_am_dependences_check
 
 # Function to check online connections (uses github.com by default, as the database and CLI itself are stored/hosted there)
 function _online_check() {
@@ -281,10 +287,10 @@ _am_newrepo_check "$@"
 
 # COMPLETION LIST
 available_options="about add apikey backup clean config disable downgrade download enable extra files \
-	home info install launcher list lock neodb newrepo nolibfuse off on overwrite purge query \
-	remove sandbox select sync template test unlock update --appimages --apps --byname --config \
-	--convert --debug --devmode-disable --devmode-enable --force-latest --home --launcher --less \
-	--pkg --rollback --disable-sandbox --sandbox --system --user"
+	home info install install-appimage launcher list lock neodb newrepo nolibfuse off on overwrite \
+	purge query remove sandbox select sync template test unlock update --appimages --apps --byname \
+	--config --convert --debug --devmode-disable --devmode-enable --force-latest --home --launcher \
+	--less --pkg --rollback --disable-sandbox --sandbox --system --user"
 
 function _completion_lists() {
 	# Remove existing lists and download new ones
@@ -328,11 +334,8 @@ function _check_version_if_any_version_reference_is_somewhere() {
 }
 
 function _check_version_if_zsync_file_exists() {
-	APPVERSION=$(strings -d ./"$arg"/*.zsync | grep -i "$(echo "$arg" | sed 's/-appimage//g')" |
-	_check_version_grep_numbers)
-	if [ -z "$APPVERSION" ]; then
-		APPVERSION=$(date -r ./"$arg"/*.zsync "+%Y.%m.%d")
-	fi
+	APPVERSION=$(strings -d ./"$arg"/*.zsync | grep -i "$(echo "$arg" | sed 's/-appimage//g')" | _check_version_grep_numbers)
+	[ -z "$APPVERSION" ] && APPVERSION=$(date -r ./"$arg"/*.zsync "+%Y.%m.%d")
 }
 
 function _check_version_if_version_file_exists() {
@@ -358,9 +361,7 @@ function _check_version_if_version_file_exists() {
 function _check_version_if_an_updater_exists() {
 	APPVERSION=$("$APPSPATH"/"$arg"/updater -d "$APPSPATH"/"$arg"/"$arg" 2>/dev/null | grep -i "$arg" |\
 	_check_version_grep_numbers)
-	if [ -z "$APPVERSION" ]; then
-		_check_version_if_any_version_reference_is_somewhere
-	fi
+	[ -z "$APPVERSION" ] && _check_version_if_any_version_reference_is_somewhere
 }
 
 function _check_version_if_library() {
@@ -375,7 +376,7 @@ function _check_version_if_binary_in_place() {
 function _check_version() {
 	rm -f "$AMCACHEDIR"/version-args
 	cd "$APPSPATH" &&
-	INSTALLED_APPS=$(find . -name 'remove' -printf "%h\n" 2>/dev/null | du -sh -- * 2> /dev/null |\
+	INSTALLED_APPS=$(find . -name 'remove' -printf "%h\n" 2>/dev/null | du -sh -- * 2>/dev/null |\
 	sort -rh | sed 's@.*	@@')
 	for arg in $INSTALLED_APPS; do
 		if test -f ./"$arg"/remove 2>/dev/null; then
@@ -391,17 +392,13 @@ function _check_version() {
 				_check_version_if_any_version_reference_is_somewhere
 			elif echo "$arg" | grep -q "ffwa-"; then
 				APPVERSION="WebApp"
-			elif grep -q "usr/local/lib" "$APPSPATH"/"$arg"/remove 2> /dev/null; then
+			elif grep -q "usr/local/lib" "$APPSPATH"/"$arg"/remove 2>/dev/null; then
 				_check_version_if_library
 			else
 				APPVERSION="unknown"
 			fi
 			if [ -z "$APPVERSION" ]; then
-				if test -f ./"$arg"/"$arg" 2>/dev/null; then
-					_check_version_if_binary_in_place
-				else
-					APPVERSION="unknown"
-				fi
+				[ -f ./"$arg"/"$arg" ] && _check_version_if_binary_in_place || APPVERSION="unknown"
 			fi
 			echo " ◆ $arg	|	$APPVERSION" >> "$AMCACHEDIR"/version-args
 		fi
@@ -410,7 +407,7 @@ function _check_version() {
 
 function _check_version_for_auto_updatable_apps() {
 	cd "$APPSPATH" &&
-	INSTALLED_APPS=$(find . -name 'remove' -printf "%h\n" 2>/dev/null | du -sh -- * 2> /dev/null | sort -rh | sed 's@.*	@@')
+	INSTALLED_APPS=$(find . -name 'remove' -printf "%h\n" 2>/dev/null | du -sh -- * 2>/dev/null | sort -rh | sed 's@.*	@@')
 	for arg in $INSTALLED_APPS; do
 		if test -f ./"$arg"/updater 2>/dev/null; then
 			_check_version_if_an_updater_exists
@@ -476,50 +473,30 @@ function _update_github_api_key_in_the_updater_files() {
 }
 
 # "APPMAN MODE" FOR "AM" USERS
-function _appman_mode_enabled_message() {
-	if [ "$CLI" = am ]; then
-		echo -e "$DIVIDING_LINE\n \"AM\" is running as \"AppMan\", use ${Green}am --system\033[0m to switch it back to \"AM\"\n$DIVIDING_LINE"
-	fi
-}
+APPMAN_MSG="$DIVIDING_LINE\n \"AM\" is running as \"AppMan\", use ${Green}am --system\033[0m to switch it back to \"AM\"\n$DIVIDING_LINE"
+APPMAN_MSG_OFF="$DIVIDING_LINE\n \"AppMan Mode\" disabled! \n$DIVIDING_LINE"
 
 function _if_appman_mode_enabled() {
-	[ "$CLI" = am ] && [ -f "$APPMANCONFIG"/appman-mode ] && _appman_mode_enabled_message
+	[ "$CLI" = am ] && [ -f "$APPMANCONFIG"/appman-mode ] && echo -e "$APPMAN_MSG"
 }
 
 function _use_appman() {
 	_online_check
-	if [ "$CLI" = appman ]; then
-		echo " This function only works for AM" && exit
-	fi
-	if test -f "$APPMANCONFIG"/appman-mode; then
-		_appman; _appman_mode_enabled_message
-	else
-		mkdir -p "$APPMANCONFIG" && touch "$APPMANCONFIG"/appman-mode
-		_appman; _appman_mode_enabled_message
-	fi
+	[ "$CLI" = appman ] && echo " This function only works for AM" && exit
+	[ ! -f "$APPMANCONFIG"/appman-mode ] && mkdir -p "$APPMANCONFIG" && touch "$APPMANCONFIG"/appman-mode
+	_appman && echo -e "$APPMAN_MSG"
 }
 
-function _back_to_am() {
-	if test -f "$APPMANCONFIG"/appman-mode; then
-		rm -f "$APPMANCONFIG"/appman-mode && echo -e "$DIVIDING_LINE\n \"AppMan Mode\" disabled! \n$DIVIDING_LINE"
-	fi
+function _use_am_again() {
+	[ -f "$APPMANCONFIG"/appman-mode ] && rm -f "$APPMANCONFIG"/appman-mode && echo -e "$APPMAN_MSG_OFF"
 }
 
 if [ "$AMCLI" = am ]; then
 	if test -f "$APPMANCONFIG"/appman-mode; then
-		case "$1" in
-		'--system')
-			_back_to_am
-			;;
-		''|*)
-			if ! test -f "$APPMANCONFIG"/appman-config; then
-				_appman_mode_enabled_message
-			fi
-			_appman
-			AMCLIPATH="/opt/am/APP-MANAGER"
-			;;
-		esac
-	elif [ ! -w /opt/am ]; then
+		[ ! -f "$APPMANCONFIG"/appman-config ] && echo -e "$APPMAN_MSG"
+		_appman
+		AMCLIPATH="$(realpath "$0")"
+	elif [ ! -w "$AMPATH" ]; then
 		read -r -p " \"AM\" is read-only, want to use it in \"AppMan Mode\" (Y,n)? " yn
 		if echo "$yn" | grep -i '^n' >/dev/null 2>&1; then
 			exit 0
@@ -532,12 +509,8 @@ fi
 
 # BETA TESTER
 function _use_beta_tester() {
-	if [ "$1" = "--devmode-disable" ]; then
-		rm -f "$AMDATADIR"/betatester
-	else
-		touch "$AMDATADIR"/betatester
-		_betatester_message_on
-	fi
+	[ "$1" = "--devmode-disable" ] && rm -f "$AMDATADIR"/betatester \
+	|| touch "$AMDATADIR"/betatester && _betatester_message_on
 }
 
 # CLEAN UNNEEDED FILES
@@ -547,22 +520,22 @@ function _clean_amcachedir_message() {
 }
 
 function _clean_all_home_cache_directories_of_appimages() {
-	if test -d "$APPSPATH"/*/*.home/.cache 2> /dev/null; then
+	if test -d "$APPSPATH"/*/*.home/.cache 2>/dev/null; then
 		rm -Rf "$APPSPATH"/*/*.home/.cache/* &&
 		echo " ✔ Clear the contents of all *.home/.cache AppImages directories"
 	fi
 }
 
 function _clean_all_tmp_directories_from_appspath() {
-	if test -d "$APPSPATH"/*/tmp 2> /dev/null; then
+	if test -d "$APPSPATH"/*/tmp 2>/dev/null; then
 		rm -Rf "$APPSPATH"/*/tmp &&
 		echo ' ✔ Removed all '"$APPSPATH"'/*/tmp directories'
 	fi
 }
 
 function _clean_determine_removable_launchers() {
-	if ! test -f "$APPIMAGENAME" 2> /dev/null; then
-		if ! test -d "$MOUNTPOINTS" 2> /dev/null; then
+	if ! test -f "$APPIMAGENAME" 2>/dev/null; then
+		if ! test -d "$MOUNTPOINTS" 2>/dev/null; then
 			if echo "$MOUNTPOINTS" | grep -q "/media/"; then
 				unmounted_poin="/media"
 			elif echo "$MOUNTPOINTS" | grep -q "/mnt/"; then
@@ -579,7 +552,7 @@ function _clean_determine_removable_launchers() {
 }
 
 function _clean_launchers() {
-	if test -d "$DATADIR"/applications/AppImages 2> /dev/null; then
+	if test -d "$DATADIR"/applications/AppImages 2>/dev/null; then
 		for var in "$DATADIR"/applications/AppImages/*.desktop; do
 			APPIMAGENAME=$(grep "Exec=" 0<"$var" 2>/dev/null | head -1 | cut -c 6- | sed 's/\s.*$//')
 			launcher2del=$(basename -- "$(echo "$APPIMAGENAME" | tr '[:upper:]' '[:lower:]')")
@@ -593,11 +566,12 @@ function _clean_launchers() {
 
 function _clean_old_modules() {
 	if [ "$AMCLI" = am ]; then
-		MODULES=$(sort /opt/am/APP-MANAGER | tr '"' '\n' | grep "[a-z]\.am$" | uniq)
+		MODULES=$(sort "$(realpath "$0")" | tr '"' '\n' | grep "[a-z]\.am$" | uniq)
 	else
 		MODULES=$(sort "$AMCLIPATH" 2>/dev/null | tr '"' '\n' | grep "[a-z]\.am$" | uniq)
 	fi
-	for m in "$APPSPATH"/"$AMCLI"/modules/*; do
+	[ -z "$MODULES_PATH" ] && exit 1
+	for m in "$MODULES_PATH"/*; do
 		if [[ "${MODULES}" != *"$(basename -- "$m")"* ]];then
 			rm -f "$m" 2>/dev/null
 			echo " ✔ Removed obsolete module named \"$(basename -- "$m")\""
@@ -621,7 +595,7 @@ function _use_clean() {
 	_clean_amcachedir_message
 	_clean_all_home_cache_directories_of_appimages
 	_clean_all_tmp_directories_from_appspath
-	_clean_launchers 2> /dev/null
+	_clean_launchers 2>/dev/null
 	_clean_old_modules
 	_clean_and_remove_old_am_cache_directory
 }
@@ -647,7 +621,8 @@ function _use_force_latest() {
 }
 
 #HELP
-function _help_body() {
+function _use_help() {
+	_if_appman_mode_enabled
 	printf "
 NAME: ${Green}$AMCLIUPPER\033[0m		\
 VERSION: ${Green}$AMVERSION\033[0m
@@ -748,6 +723,14 @@ ${Gold}install, -i\033[0m
 Description: Install one or more programs or libraries from the list. With the \
 \"--debug\" option you can see log messages to debug the script. For more \
 details on \"--force-latest\", see the dedicated option, below.
+
+${Gold}install-appimage, -ia\033[0m
+
+		${LightBlue}$AMCLI -ia {PROGRAM}
+		${LightBlue}$AMCLI -ia --debug {PROGRAM}
+		${LightBlue}$AMCLI -ia --force-latest {PROGRAM}\033[0m
+
+Description: Same as \"install\" (see above) but for AppImages only.
 
 ${Gold}lock\033[0m
 
@@ -900,12 +883,7 @@ $DIVIDING_LINE
 
  https://portable-linux-apps.github.io
 
-\n"
-}
-
-function _use_help() {
-	_if_appman_mode_enabled
-	_help_body | fold -sw 77 | sed 's/^/ /g' | less -Ir
+\n" | fold -sw 77 | sed 's/^/ /g' | less -Ir
 }
 
 # SYNCHRONIZE
@@ -920,7 +898,7 @@ function _sync_installation_scripts() {
 			CURRENT=$(cat "$APPSPATH"/"$arg"/.am-installer/"$scriptname")
 			SOURCE=$(curl -Ls "$APPSDB"/"$scriptname")
 			if [ "$CURRENT" = "$SOURCE" ]; then
-				echo -ne "\r" 2> /dev/null
+				echo -ne "\r" 2>/dev/null
 			else
 				echo -e " ◆ Changed https://github.com/ivan-hc/AM/blob/main/programs/$arch/$scriptname"
 			fi
@@ -938,19 +916,19 @@ function _sync_modules() {
 	echo -e "$DIVIDING_LINE\n Check for updates in modules..."
 	MODULES=$(curl -Ls "$AMREPO/APP-MANAGER" | tr '"' '\n' | grep "[a-z]\.am$")
 	for module_name in $MODULES; do
-		cd "$AMPATH"/modules || return
+		cd "$MODULES_PATH" || return
 		if ! test -f ./"$module_name"; then
 			echo " ◆ Downloading $module_name (not previously installed)..."
-			curl -Os "$AMREPO/modules/$module_name" 2> /dev/null
+			curl -Os "$MODULES_SOURCE/$module_name" 2>/dev/null
 			chmod a+x ./"$MODULENAME"
 		fi
 		CURRENT=$(cat ./"$module_name" 2>/dev/null)
-		SOURCE=$(curl -Ls "$AMREPO/modules/$module_name")
+		SOURCE=$(curl -Ls "$MODULES_SOURCE/$module_name")
 		if [ "$CURRENT" = "$SOURCE" ]; then
-			echo -ne "\r" 2> /dev/null
+			echo -ne "\r" 2>/dev/null
 		else
 			echo " ◆ Updating $module_name..."
-			curl -Ls "$AMREPO/modules/$module_name" > ./"$module_name" 2> /dev/null
+			curl -Ls "$MODULES_SOURCE/$module_name" > ./"$module_name" 2>/dev/null
 		fi
 	done
 	_clean_old_modules
@@ -960,22 +938,15 @@ function _sync_amcli() {
 	echo "$DIVIDING_LINE"
 	_completion_lists
 	CURRENT_AM_VERSION="$AMVERSION"
-	if [ "$AMCLIPATH" = /opt/am/appman ]; then
-		rm -f /opt/am/appman
-		AMCLIPATH="/opt/am/APP-MANAGER"
-		CURRENT_AM_VERSION=$("$AMCLIPATH" -v)
-	fi
 	echo -ne "\n ◆ SYNCHRONIZING \"$AMCLIUPPER\" VERSION \"$CURRENT_AM_VERSION\"...\r" && sleep 0.25
 	_clean_amcachedir 1>/dev/null
 	cd "$AMCACHEDIR" || return
 	if [ "$AMCLI" = am ]; then
 		curl -Ls "$AMREPO"/APP-MANAGER > ./APP-MANAGER && chmod a+x ./APP-MANAGER
-		cd ..
-		echo y | mv "$AMCACHEDIR"/APP-MANAGER /opt/am/APP-MANAGER
+		echo y | mv ./APP-MANAGER "$(realpath "$0")"
 	else
 		curl -Ls "$AMREPO"/APP-MANAGER > ./appman && chmod a+x ./"$AMCLI"
-		cd ..
-		echo y | mv "$AMCACHEDIR"/"$AMCLI" "$AMCLIPATH" 2>/dev/null
+		echo y | mv ./"$AMCLI" "$AMCLIPATH" 2>/dev/null
 	fi
 	NEW_AM_VERSION=$("$AMCLIPATH" -v)
 	if [ ! "$CURRENT_AM_VERSION" = "$NEW_AM_VERSION" ]; then
@@ -993,14 +964,15 @@ function _use_sync() {
 	_online_check
 	_betatester_message_on
 	_sync_installation_scripts
-	if [ "$(realpath $0)" != "/usr/bin/am" ]; then
+	if [ "$(realpath "$0")" != "/usr/bin/am" ]; then
 		_sync_modules
 		_sync_amcli
 	fi
+	echo "$DIVIDING_LINE"
 }
 
 # UPDATE
-function _list_updatable_apps() {
+function _update_list_updatable_apps() {
 	_check_version
 	cd "$APPSPATH" &&
 	ARGS=$(find . -name 'AM-updater' -printf " %h\n" 2>/dev/null | sort -u | xargs -n 1 basename 2>/dev/null)
@@ -1010,29 +982,10 @@ function _list_updatable_apps() {
 	done
 }
 
-function _update_all_apps() {
-	for f in "$APPSPATH"/*/; do
-		cd "$f" 2>/dev/null &&
-		if test -f ./AM-updater; then
-			appname=$(printf '%s\n' "${PWD##*/}")
-			APPNAME=$(echo "$appname" | tr '[:lower:]' '[:upper:]')
-			if [ -w ./AM-updater ]; then
-				start=$(date +%s) &&
-				sh -x ./AM-updater > /dev/null 2>&1 | echo -ne ' Updating "'"$APPNAME"'"...\r' &&
-				end=$(date +%s) &&
-				echo " ◆ $APPNAME is updated, $((end - start)) seconds elapsed!" &
-			else
-				echo " ✖ $APPNAME is read-only, cannot update it!"
-			fi
-		else
-			echo ""  > /dev/null 2>&1
-		fi
-	done
-	wait
-	echo "$DIVIDING_LINE"
+function _update_determine_apps_version_changes() {
 	if test -f "$AMCACHEDIR"/updatable-args-list; then
 		mv "$AMCACHEDIR"/updatable-args-list "$AMCACHEDIR"/updatable-args-list-old
-		_list_updatable_apps
+		_update_list_updatable_apps
 		OLDVER="$AMCACHEDIR/updatable-args-list-old"
 		NEWVER="$AMCACHEDIR/updatable-args-list"
 		if cmp --silent -- "$NEWVER" "$OLDVER"; then
@@ -1045,6 +998,31 @@ function _update_all_apps() {
 	else
 		echo ' No apps to update here!'
 	fi
+}
+
+function _update_app() {
+	if [ -w "$APPSPATH"/"$arg"/AM-updater ]; then
+		start=$(date +%s) &&
+		sh -x "$APPSPATH"/"$arg"/AM-updater >/dev/null 2>&1 | echo -ne ' Updating "'"$APPNAME"'"...\r' &&
+		end=$(date +%s) &&
+		echo " ◆ $APPNAME is updated, $((end - start)) seconds elapsed!" &
+	else
+		echo " ✖ $APPNAME is read-only, cannot update it!"
+	fi
+}
+
+function _update_all_apps() {
+	for f in "$APPSPATH"/*/; do
+		cd "$f" 2>/dev/null || exit 1
+		arg=$(printf '%s\n' "${PWD##*/}")
+		if test -f "$APPSPATH"/"$arg"/AM-updater; then
+			APPNAME=$(echo "$arg" | tr '[:lower:]' '[:upper:]')
+			_update_app
+		fi
+	done
+	wait
+	echo "$DIVIDING_LINE"
+	_update_determine_apps_version_changes
 	rm -Rf "$APPSPATH/*/tmp"
 }
 
@@ -1054,7 +1032,7 @@ function _use_update() {
 	case $2 in
 	''|'--apps')
 		_clean_amcachedir
-		_list_updatable_apps
+		_update_list_updatable_apps
 		echo -e "$DIVIDING_LINE\n \"$AMCLIUPPER\" CAN MANAGE UPDATES FOR THE FOLLOWING PROGRAMS:\n"
 		[ -f "$AMCACHEDIR/updatable-args-list" ] && cat "$AMCACHEDIR/updatable-args-list" || echo " None"
 		echo -e "\n All self-updatable programs are excluded"
@@ -1068,24 +1046,18 @@ function _use_update() {
 	*)
 		ARGS="$(echo "$@" | cut -f2- -d ' ')"
 		for arg in $ARGS; do
-			arg_upper=$(echo "$arg" | tr '[:lower:]' '[:upper:]')
+			APPNAME=$(echo "$arg" | tr '[:lower:]' '[:upper:]')
 			if test -f "$APPSPATH"/"$arg"/AM-updater; then
-				if [ -w "$APPSPATH"/"$arg"/AM-updater ]; then
-					start=$(date +%s)
-					"$APPSPATH"/"$arg"/AM-updater > /dev/null 2>&1 | echo -ne " UPDATING $arg_upper\r"
-					end=$(date +%s)
-					echo " ◆ $arg_upper is updated, $((end - start)) seconds elapsed!"
-					_clean_amcachedir
-					_list_updatable_apps
-				else
-					echo " - $arg_upper is read-only, cannot update it!"
-				fi
+				cd "$APPSPATH/$arg" 2>/dev/null || exit 1
+				_update_app
 			else
 				UPDATERS=$(cd "$APPSPATH"/"$arg" 2>/dev/null && find . -name "*update*" -print 2>/dev/null)
 				[ -n "$UPDATERS" ] && arg_autoupdatable=", it may have its update system"
-				echo " ✖ Cannot manage updates for \"$arg_upper\"$arg_autoupdatable"
+				echo " ✖ Cannot manage updates for \"$APPNAME\"$arg_autoupdatable"
 			fi
 		done
+		wait
+		exit
 		;;
 	esac
 }
@@ -1097,16 +1069,16 @@ function _use_update() {
 # HANDLE ALL THE EXTERNAL MODULES
 function _use_module() {
 	# Test if module exists
-	if [ ! -f "$AMPATH/modules/$MODULE" ]; then
+	if [ ! -f "$MODULES_PATH/$MODULE" ]; then
 		_online_check
-		if ! wget -q "$AMREPO/modules/$MODULE" -O "$AMPATH/modules/$MODULE"; then
+		if ! wget -q "$MODULES_SOURCE/$MODULE" -O "$MODULES_PATH/$MODULE"; then
 			echo " Module not found, run \"$AMCLI -s\" to update \"$AMCLIUPPER\""
 			exit 1
 		fi
-		chmod a+x "$AMPATH/modules/$MODULE"
+		chmod a+x "$MODULES_PATH/$MODULE"
 	fi
 	# Source module
-	source "$AMPATH/modules/$MODULE" "$@"
+	source "$MODULES_PATH/$MODULE" "$@"
 }
 
 [ -z "$1" ] && echo " USAGE: $AMCLI [OPTION]" && echo "        $AMCLI [OPTION] [ARGUMENT]" &&
@@ -1139,7 +1111,8 @@ case "$1" in
 		;;
 	'download'|'-d'|\
 	'extra'|'-e'|\
-	'install'|'-i')
+	'install'|'-i'|\
+	'install-appimage'|'-ia')
 		MODULE="install.am"
 		_online_check
 		_if_appman_mode_enabled
@@ -1158,7 +1131,7 @@ case "$1" in
 		_use_force_latest "$@"
 		;;
 	'--system')
-		_back_to_am
+		_use_am_again
 		;;
 	'apikey')
 		_use_apikey "$@"
