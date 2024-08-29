@@ -476,6 +476,15 @@ Description: Set a dedicated $HOME directory for one or more AppImages.
 
 Description: Install one or more programs or libraries from the list. With the "--debug" option you can see log messages to debug the script. For more details on "--force-latest", see the dedicated option, below.
 
+### `install-appimage, -ia`
+ 
+                -ia {PROGRAM}
+                -ia --debug {PROGRAM}
+                -ia --force-latest {PROGRAM}
+ 
+ Description: Same as "install" (see above) but for AppImages only.
+
+
 ### `lock`
 
 		lock {PROGRAM}
@@ -684,6 +693,13 @@ appman -i --debug $PROGRAM
 let test again the installation of AnyDesk using the `--debug` flag:
 
 https://github.com/user-attachments/assets/9dd73186-37e2-4742-887e-4f98192bd764
+
+### Install, run only installation scripts for AppImages
+All suboption above can be used to install AppImages only, it is enough to use the option `-ia`/`install-appimage` instead of `-i`/`install`. In this example, I'll run the script `brave-appimage` but running `brave`, that instead is the original upstream package:
+
+https://github.com/user-attachments/assets/b938430c-ec0b-4b90-850f-1332063d5e53
+
+in the video above I first launch a "query" with the `-q` option to show you the difference between `brave` and `brave-appimage`, and then `-q --appimages` to show you only the appimages from the list. More details at "[List and query all the applications available on the database](#list-and-query-all-the-applications-available-on-the-database)".
 
 ### Install the "latest" stable release instead of the latest "unstable"
 By default, many installation scripts for apps hosted on github will point to the more recent generic release instead of "latest", which is normally used to indicate that the build is "stable". This is because upstream developers do not always guarantee a certain packaging format in "latest", sometimes they may only publish packages for Windows or macOS, so pointing to "latest" would not guarantee that any package for Linux will be installed.
