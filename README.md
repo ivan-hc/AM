@@ -694,13 +694,6 @@ let test again the installation of AnyDesk using the `--debug` flag:
 
 https://github.com/user-attachments/assets/9dd73186-37e2-4742-887e-4f98192bd764
 
-### Install, run only installation scripts for AppImages
-All suboption above can be used to install AppImages only, it is enough to use the option `-ia`/`install-appimage` instead of `-i`/`install`. In this example, I'll run the script `brave-appimage` but running `brave`, that instead is the original upstream package:
-
-https://github.com/user-attachments/assets/b938430c-ec0b-4b90-850f-1332063d5e53
-
-in the video above I first launch a "query" with the `-q` option to show you the difference between `brave` and `brave-appimage`, and then `-q --appimages` to show you only the appimages from the list. More details at "[List and query all the applications available on the database](#list-and-query-all-the-applications-available-on-the-database)".
-
 ### Install the "latest" stable release instead of the latest "unstable"
 By default, many installation scripts for apps hosted on github will point to the more recent generic release instead of "latest", which is normally used to indicate that the build is "stable". This is because upstream developers do not always guarantee a certain packaging format in "latest", sometimes they may only publish packages for Windows or macOS, so pointing to "latest" would not guarantee that any package for Linux will be installed.
 
@@ -717,6 +710,25 @@ in this video I'll install "SqliteBrowser" using the `--force-latest` flag:
 https://github.com/user-attachments/assets/ee29adfd-90e1-46f7-aed9-b9c410f68776
 
 See also "[The script points to "releases" instead of downloading the latest stable](#the-script-points-to-releases-instead-of-downloading-the-latest-stable)".
+
+### Install, run only installation scripts for AppImages
+All suboption above can be used to install AppImages only, it is enough to use the option `-ia`/`install-appimage` instead of `-i`/`install`:
+```
+am -ia {PROGRAM}
+am -ia --debug {PROGRAM}
+am -ia --force-latest {PROGRAM}
+```
+or
+```
+appman -ia {PROGRAM}
+appman -ia --debug {PROGRAM}
+appman -ia --force-latest {PROGRAM}
+```
+In this example, I'll run the script `brave-appimage` but running `brave`, that instead is the original upstream package:
+
+https://github.com/user-attachments/assets/b938430c-ec0b-4b90-850f-1332063d5e53
+
+in the video above I first launch a "query" with the `-q` option to show you the difference between `brave` and `brave-appimage`, and then `-q --appimages` to show you only the appimages from the list. More details at "[List and query all the applications available on the database](#list-and-query-all-the-applications-available-on-the-database)".
 
 ------------------------------------------------------------------------
 
