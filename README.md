@@ -1040,9 +1040,7 @@ EXTRA: The behavior of this option can be tested in a completely standalone way 
 
 __________________________________________________________________________
 ### How to enable bash completion
-From version 8, BASH/ZSH completion is enabled in "AM" and "AppMan" by default.
-
-A file $HOME/.bash_completion will be created, or if it exists, it will be patched to allow the command `am` or `appman` to read arguments from the related "list" of arguments, or other lists, to made it more extensible.
+**From version 8**, BASH/ZSH completion is enabled in "AM" and "AppMan" by default. and **from version 8.1.1** a file $HOME/.local/share/bash-completion/completions/am (and no more $HOME/.bash_completion) will be created and shared by both `am` and `appman` to read arguments from the related "list" of arguments, or other lists, to made it more extensible.
 
 Before version 8, in "AM" were created a "/etc/bash_completion.d/am-completion.sh" using a dedicated option.
 
