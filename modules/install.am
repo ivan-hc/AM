@@ -25,7 +25,7 @@ _convert_to_appman_compatible_script() {
 		sed -i "s#Icon=/opt/#Icon=$HOME/$APPSDIR#g" $DATADIR/applications/*-AM.desktop
 
 		HEREDOC
-		printf " Converting $arg to an AppMan-compatible script.\r" && sleep 0.25 &&
+		printf " Converting %s to an AppMan-compatible script.\r" "$arg" && sleep 0.25 &&
 		printf "                                                                           \r"
 	else
 		echo ' 💀 ERROR: "--convert" requires a configuration file in ~/.config/appman'
@@ -57,7 +57,7 @@ _if_latest() {
 
 _spooky_check() {
 	if grep -i spooky ./"$arg" >/dev/null 2>&1; then
-		printf "\n ${RED}WARNING: \"$arg\" does not have a transparent build process! \033[0m\n\n"
+		printf "%b%b" "\n ${RED}WARNING:" " \"$arg\" does not have a transparent build process! \033[0m\n\n"
 		echo " We can't be sure as to what is inside the application"
 		echo " We highly recommend that you sandbox this application"
 		echo ""
@@ -134,7 +134,7 @@ _ending_the_installation() {
 		else
 			APPSIZE=$(du -sm "${LASTDIRPATH}" | awk '{print $1}' )
 			LASTDIRNAME=$(echo "\"$LASTDIR\"" | tr '[:lower:]' '[:upper:]')
-			printf " ${Green}$LASTDIRNAME INSTALLED\033[0m ($APPSIZE MB OF DISK SPACE)\n"
+			printf "%b%b%s\n" " ${Green}" "$LASTDIRNAME INSTALLED\033[0m" " ($APPSIZE MB OF DISK SPACE)"
 			$SUDOCMD rm "$AMCACHEDIR"/"$arg"
 			_check_version
 			app_version=$(grep -w " ◆ $LASTDIR	|" 0<"$AMCACHEDIR"/version-args | sed 's:.*|	::')
@@ -308,7 +308,7 @@ case "$1" in
 
 		echo "============================================================================"
 		echo ""
-		printf "                  ${LightBlue}START OF ALL INSTALLATION PROCESSES\033[0m\n"
+		printf "                  %bSTART OF ALL INSTALLATION PROCESSES\033[0m\n" "${LightBlue}"
 		echo ""
 		echo "============================================================================"
 		_clean_amcachedir 2>/dev/null
@@ -355,7 +355,7 @@ case "$1" in
 		done
 		if [ -f "$AMCACHEDIR"/installed ]; then
 			echo "============================================================================"
-			printf "\n                  ${LightBlue}END OF ALL INSTALLATION PROCESSES\n\033[0m"
+			printf "\n                  %bEND OF ALL INSTALLATION PROCESSES\n\033[0m" "${LightBlue}"
 			printf "\n             The following new programs have been installed:\n\n"
 			grep -w -v "◆ am" 0<"$AMCACHEDIR"/installed
 			echo ""
@@ -378,19 +378,19 @@ case "$1" in
 			ARGS="$(echo "$@" | cut -f2- -d ' ' | tr ' ' '\n' | grep -v -- "--")"
 		fi
 		for arg in $ARGS; do
-			curl -Ls "$AMREPO/programs/$arch-appimages" > "$AMCACHEDIR/$arch-appimages"
-			if grep -q "^◆ $arg : " "$AMCACHEDIR/$arch-appimages"; then
+			curl -Ls "$AMREPO/programs/$ARCH-appimages" > "$AMCACHEDIR/$ARCH-appimages"
+			if grep -q "^◆ $arg : " "$AMCACHEDIR/$ARCH-appimages"; then
 				echo "$arg" >> "$AMCACHEDIR"/install-args
 			else
 				arg="$arg-appimage"
-				if ! grep -q "^◆ $arg : " "$AMCACHEDIR/$arch-appimages"; then
+				if ! grep -q "^◆ $arg : " "$AMCACHEDIR/$ARCH-appimages"; then
 					echo " ✖ \"$(echo "$arg" | sed 's/-appimage//g')\" is not an Appimage"
 				else
 					echo "$arg" >> "$AMCACHEDIR"/install-args
 				fi
 			fi
 		done
-		APPIMAGES_ARGS=$(cat "$AMCACHEDIR"/install-args | sed 's/\n/ /g')
+		APPIMAGES_ARGS=$(<"$AMCACHEDIR"/install-args sed 's/\n/ /g')
 		"$AMCLIPATH" -i "$APPIMAGES_ARGS"
 		exit 1
 		;;
