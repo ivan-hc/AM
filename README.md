@@ -22,6 +22,21 @@ The engine of "AM"/"AppMan" is the "APP-MANAGER" script which, depending on how 
 You can consult the entire **list of managed apps** at [**portable-linux-apps.github.io/apps**](https://portable-linux-apps.github.io/apps).
 
 ------------------------------------------------------------------------
+# IMPORTANT!
+
+"AM"/"AppMan" is just a tool to provide applications easily and quickly and is only responsible for integrating the AppImages into the system and installing the various programs available, respecting the following order (refer to the option "`-d`" to download the installation script without installing it):
+1. creation of the base directories and the removal script
+2. download of the package
+3. creation of the version file and the update script
+4. possibly, extraction of the icons and .desktop files*
+
+*NOTE, aside from the references to downloading and updating apps (the "$version" variable), the **installation scripts are mostly the same**, especially for AppImages, and there may be slight variations in the final processes depending if the .desktop file has problems when it is extracted from the package and/or it fail in being added to the menu. If there are problems with updates or missing launchers, open an "[issue](https://github.com/ivan-hc/AM/issues)" and I'll fix it ASAP.
+
+That said, **any malfunction related to individual applications is the responsibility of the related developer or packager**.
+
+Refer to the option "`-a`" to know the sources of each program listed here, so you can contact them to report the bug.
+
+------------------------------------------------------------------------
 ### Main Index
 ------------------------------------------------------------------------
 [Differences between "AM" and "AppMan"](#differences-between-am-and-appman)
