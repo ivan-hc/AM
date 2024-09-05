@@ -483,6 +483,13 @@ Description: Prints this message.
 
 Description: Set a dedicated $HOME directory for one or more AppImages.
 
+### `icons, --icons`
+ 
+                --icons {PROGRAM}
+                --icons --all
+ 
+Description: Allow installed apps to use system icon themes. You can specify the name of the apps to change or use the "--all" flag to change all of them at once. This will remove the icon path from the .desktop file and add the symbolic link of all available icons in the $HOME/.local/share/icons/hicolor/scalable/apps directory.
+
 ### `install, -i`
 
 		-i {PROGRAM}
