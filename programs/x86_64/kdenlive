@@ -84,47 +84,44 @@ APP=kdenlive
 rm -f ./rollback-args* ./AM-rollback
 
 # STABLE AND MORE RECENT VERSIONS
-STABLE=$(curl -Ls https://download.kde.org/stable/kdenlive/ | grep -Eo "[0-9.?]*" | grep -i ".12\|.08\|.04" | uniq | sort -nr)
-for arg in $STABLE; do
-	for var in $arg; do
-		printf "%s\n" $(curl -Ls https://download.kde.org/stable/kdenlive/$var/linux/ | grep -Eo "[a-zA-Z0-9./?=_%:-]*" | grep -i kdenlive | uniq | sort -nr | grep -v '/' | grep -i appimage) >> "./rollback-args-1"
-	done
+STABLE=$(curl -Ls https://download.kde.org/stable/kdenlive/ | grep -o "[0-9][0-9]\.[0-9][0-9]" | uniq | sort -nr)
+for var in $STABLE; do
+	curl -Ls "https://download.kde.org/stable/kdenlive/$var/linux/" \
+	| tr '"' '\n' | grep -i "^kdenlive.*appimage$" | uniq | sort -nr >> "./rollback-args"
 done
 
 # ARCHIVED OLD RELEASES (THAT MAY NOT WORK)
-ARCHIVED=$(curl -Ls https://download.kde.org/Attic/kdenlive/ | grep -Eo "[0-9.?]*" | grep -i ".12\|.08\|.04" | uniq | sort -nr)
-for arg in $ARCHIVED; do
-	for var in $arg; do
-		printf "%s\n" $(curl -Ls https://download.kde.org/Attic/kdenlive/$var/linux/ | grep -Eo "[a-zA-Z0-9./?=_%:-]*" | grep -i kdenlive | uniq | sort -nr | grep -v '/' | grep -i appimage) >> "./rollback-args-2"
-	done
-done
-
-# PREPARE THE LIST OF VERSIONS BY MERGING THE TWO ABOVE
-for arg in $(cat ./rollback-args-1); do
-	for var in $arg; do
-		rel=$(echo $arg | cut -c 10- | cut -c -5)
-		printf "%s\n" https://download.kde.org/stable/kdenlive/$rel/linux/$arg >> "./rollback-args"
-	done
-done
-for arg in $(cat ./rollback-args-2); do
-	for var in $arg; do
-		rel=$(echo $arg | cut -c 10- | cut -c -5)
-		printf "%s\n" https://download.kde.org/Attic/kdenlive/$rel/linux/$arg >> "./rollback-args"
-	done
+ARCHIVED=$(curl -Ls https://download.kde.org/Attic/kdenlive/ | grep -o "[0-9][0-9]\.[0-9][0-9]" | uniq | sort -nr)
+for var in $ARCHIVED; do
+	curl -Ls "https://download.kde.org/Attic/kdenlive/$var/linux/" \
+	| tr '"' '\n' | grep -i "^kdenlive.*appimage$" | uniq | sort -nr >> "./rollback-args"
 done
 
 # LET ROLLBACK KDENLIVE
-echo -e "-----------------------------------------------------------------------\nYou have chosen to roll back $APP.\nRollback will be done from https://kdenlive.org\n-----------------------------------------------------------------------"
-printf "Select a URL from this menu (read carefully) or press CTRL+C to abort:\n-----------------------------------------------------------------------\n"; sleep 1;
-select d in $(cat "./rollback-args"); do test -n "$d" && break; echo ">>> Invalid Selection"; done
-cp ./AM-updater ./AM-rollback
-sed -i 's/version0/#version0/g' ./AM-rollback
-sed -i '/show-progress/c\wget -q --show-progress '$d'' ./AM-rollback
+echo "-----------------------------------------------------------------------"
+echo "You have chosen to roll back $APP."
+echo "Rollback will be done from https://kdenlive.org"
+echo "-----------------------------------------------------------------------"
+echo "Select a version (read carefully) or press CTRL+C to abort:"
+echo "-----------------------------------------------------------------------"
+select d in $(cat "./rollback-args"); do
+	test -n "$d" && break
+	echo ">>> Invalid Selection"
+done
+
+# PROCEEDE
+rel=$(echo "$d" | cut -c 10- | cut -c -5)
+if curl --output /dev/null --silent --head --fail "https://download.kde.org/stable/kdenlive/$rel/linux/$d" 1>/dev/null; then
+	dl="https://download.kde.org/stable/kdenlive/$rel/linux/$d"
+else
+	dl="https://download.kde.org/Attic/kdenlive/$rel/linux/$d"
+fi
+cp ./AM-updater ./AM-rollback && sed -i "s/version0/#version0/g; /show-progress/c\wget -q --show-progress \"$dl\";" ./AM-rollback
 ./AM-rollback
-rm -f ./version
-echo $d >> ./version
+echo "$dl" > ./version
 rm -f ./rollback-args* ./AM-rollback
-echo -e "\nROLLBACK SUCCESSFUL!"
+echo ""
+echo "ROLLBACK SUCCESSFUL!"
 exit
 EOF
 chmod a+x /opt/$APP/$APP-rollback
