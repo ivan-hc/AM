@@ -8,6 +8,6 @@ assignees: ''
 ---
 
 **Please, use the following syntax**
-- Name: brave
-- Site: https://github.com/brave/brave-browser
+- Name: obs-studio
+- Site: https://github.com/ivan-hc/OBS-Studio-appimage
 - Download page (only if not hosted on github.com):
