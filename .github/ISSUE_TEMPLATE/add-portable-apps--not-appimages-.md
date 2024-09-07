@@ -8,11 +8,11 @@ assignees: ''
 ---
 
 **Please, use the following syntax**
-- Name: brave
-- Site: https://github.com/brave/brave-browser
-- Download page (only if not hosted on github.com):
-- Icon (optional, use the URL): 
-- Desktop file (optional, attach the file or the URL, if does not exist, compile the spaces below):
-- App name (optional): Brave
-- Binary name (optional, leave blank if is the same of "Name"): 
-- Category (optional):
+- NAME: brave
+- SITE: https://github.com/brave/brave-browser
+- DOWNLOAD PAGE: #optional, only if not hosted on github.com
+- ICON: #optional, use the URL 
+- DESKTOP FILE: #optional, attach the file or the URL, if does not exist, compile the spaces below
+- APP NAME: Brave #optional, needed for desktop entry "Name" in a custom launcher
+- BINARY NAME: #optional, needed for desktop entry "Exec" in a custom launcher
+- CATEGORY: #optional, needed for desktop entry "Categories" in a custom launcher
