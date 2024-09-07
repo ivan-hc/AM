@@ -8,6 +8,6 @@ assignees: ''
 ---
 
 **Please, use the following syntax**
-- NAME: obs-studio
+- NAME: obs-studio #this will also be used as a command
 - SITE: https://github.com/ivan-hc/OBS-Studio-appimage
 - DOWNLOAD PAGE: #optional, only if not hosted on github.com
