@@ -10,4 +10,4 @@ assignees: ''
 **Please, use the following syntax**
 - Name: obs-studio
 - Site: https://github.com/ivan-hc/OBS-Studio-appimage
-- Download page (only if not hosted on github.com):
+- Download page (optional, only if not hosted on github.com):
