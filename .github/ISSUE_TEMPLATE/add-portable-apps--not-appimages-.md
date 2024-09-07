@@ -8,7 +8,7 @@ assignees: ''
 ---
 
 **Please, use the following syntax**
-- NAME: brave
+- NAME: brave #this will also be used as a command
 - SITE: https://github.com/brave/brave-browser
 - DOWNLOAD PAGE: #optional, only if not hosted on github.com
 - ICON: #optional, use the URL 
