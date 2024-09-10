@@ -1,6 +1,6 @@
 ---
-name: Bug report (applications only)
-about: Any issue related to the installed apps
+name: Bug report (generic)
+about: Create a report to help us improve
 title: ''
 labels: ''
 assignees: ''
@@ -19,21 +19,16 @@ The malfunction of the installation scripts will then be taken into account. On 
 --------------------------------------------------
 
 ## Are you using "AM" or "AppMan"?
-
 Write here
 
 ## What GNU/Linux distribution are you using it on?
-
 Write here
 
 ## Please, describe the bug
-
 Write here
 
 ## What are the steps/commands to perform?
-
 Write here
 
 ## What is the expected behavior?
-
 Write here

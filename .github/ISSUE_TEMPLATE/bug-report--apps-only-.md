@@ -1,5 +1,5 @@
 ---
-name: Bug report
+name: Bug report (apps only)
 about: Create a report to help us improve
 title: ''
 labels: ''
@@ -18,12 +18,5 @@ The malfunction of the installation scripts will then be taken into account. On 
 
 --------------------------------------------------
 
-## Are you using "AM" or "AppMan"?
-
-## What GNU/Linux distribution are you using it on?
-
 ## Please, describe the bug
-
-## What are the steps/commands to perform?
-
-## What is the expected behavior?
+Write here
