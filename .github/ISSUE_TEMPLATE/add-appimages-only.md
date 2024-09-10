@@ -1,5 +1,5 @@
 ---
-name: Add AppImages
+name: Add AppImages only
 about: Suggest AppImages for this database
 title: ''
 labels: ''
