@@ -1,6 +1,6 @@
 ---
-name: Bug report (apps only)
-about: Create a report to help us improve
+name: Bug report (applications only)
+about: Create a report to fix installation and integration of the available apps
 title: ''
 labels: ''
 assignees: ''
