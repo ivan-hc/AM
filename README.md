@@ -59,6 +59,7 @@ Refer to the option "`-a`" to know the sources of each program listed here, so y
 
 [Guides and tutorials](#guides-and-tutorials)
 - [Install applications](#install-applications)
+- [Install only AppImages](#install-only-appimages)
 - [Install AppImages not listed in this database but available in other github repos](#install-appimages-not-listed-in-this-database-but-available-in-other-github-repos)
 - [List the installed applications](#list-the-installed-applications)
 - [List and query all the applications available on the database](#list-and-query-all-the-applications-available-on-the-database)
@@ -657,6 +658,7 @@ Description: Made "AM" run in "AppMan Mode", locally, useful for unprivileged us
 This section is committed to giving small demonstrations of each available option, with videos:
 
   - [Install applications](#install-applications)
+  - [Install only AppImages](#install-only-appimages)
   - [Install AppImages not listed in this database but available in other github repos](#install-appimages-not-listed-in-this-database-but-available-in-other-github-repos)
   - [List the installed applications](#list-the-installed-applications)
   - [List and query all the applications available on the database](#list-and-query-all-the-applications-available-on-the-database)
@@ -733,8 +735,16 @@ https://github.com/user-attachments/assets/ee29adfd-90e1-46f7-aed9-b9c410f68776
 
 See also "[The script points to "releases" instead of downloading the latest stable](#the-script-points-to-releases-instead-of-downloading-the-latest-stable)".
 
-### Install, run only installation scripts for AppImages
-All suboption above can be used to install AppImages only, it is enough to use the option `-ia`/`install-appimage` instead of `-i`/`install`:
+------------------------------------------------------------------------
+
+| [Back to "Guides and tutorials"](#guides-and-tutorials) | [Back to "Main Index"](#main-index) |
+| - | - |
+
+------------------------------------------------------------------------
+
+__________________________________________________________________________
+## Install only AppImages
+All suboption for `-i`/`install` listed above can be used to install AppImages only, it is enough to use the option `-ia`/`install-appimage`:
 ```
 am -ia {PROGRAM}
 am -ia --debug {PROGRAM}
