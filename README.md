@@ -744,7 +744,7 @@ See also "[The script points to "releases" instead of downloading the latest sta
 
 __________________________________________________________________________
 ## Install only AppImages
-All suboption for `-i`/`install` listed above can be used to install AppImages only, it is enough to use the option `-ia`/`install-appimage`:
+All suboptions for `-i`/`install` listed above can be used to install AppImages only, it is enough to use the option `-ia`/`install-appimage`:
 ```
 am -ia {PROGRAM}
 am -ia --debug {PROGRAM}
