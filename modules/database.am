@@ -298,8 +298,12 @@ _list() {
 
 _list_appimages() {
 	# Determine the number of available apps
+	APPIMAGES_ARGS=$(curl -Ls https://portable-linux-apps.github.io/appimages.md | tr '/)' '\n' | grep -i ".md$" | uniq | sed 's/.md$//g')
 	if ! test -f "$AMCACHEDIR/$ARCH-appimages"; then
-		_online_check && curl -Ls "$AMREPO/programs/$ARCH-appimages" > "$AMCACHEDIR/$ARCH-appimages"
+		_online_check
+		for appimage in $APPIMAGES_ARGS; do
+			grep "◆ $appimage :" ~/.local/share/AM/"$ARCH"-apps >> "$AMCACHEDIR/$ARCH-appimages" &
+		done 
 	fi
 	AVAILABLE_APPIMAGES_NUMBER=$(grep -e "$" -c "$AMCACHEDIR/$ARCH-appimages")
 }
@@ -385,10 +389,7 @@ case "$1" in
 			ARGS="$(echo "$@" | cut -f3- -d ' ')"
 			printf "\n Search results for \"%s\":\n\n"  "$ARGS" | tr '[:lower:]' '[:upper:]'
 			PATTERN="$(echo "$ARGS" | sed 's/ /(?=.*/g; s/$/)/g; s/(/)(/g; s/^/(?=.*/g;')"
-			if ! test -f "$AMCACHEDIR/$ARCH-appimages"; then
-				_online_check
-				curl -Ls "$AMREPO/programs/$ARCH-appimages" > "$AMCACHEDIR/$ARCH-appimages"
-			fi
+			_list_appimages
 			grep -Pi "$PATTERN" "$AMCACHEDIR/$ARCH-appimages" | _pretty_list_compat
 		else
 			ARGS="$(echo "$@" | cut -f2- -d ' ')"
