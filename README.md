@@ -285,6 +285,7 @@ Below are the **essential system dependencies** that you must install before pro
 - "`coreutils`" (contains "`cat`", "`chmod`", "`chown`"...);
 - "`curl`", to check URLs;
 - "`grep`", to check files;
+- "`less`", to read the ever-longer lists;
 - "`sed`", to edit/adapt installed files;
 - "`wget`" to download all programs and update "AM"/"AppMan" itself.
 
