@@ -9,14 +9,14 @@ cd /opt/$APP
 
 # ADD THE REMOVER
 echo '#!/bin/sh' >> /opt/$APP/remove
-echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
+echo "rm -R -f /usr/local/share/applications/$APP-AM.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
 chmod a+x /opt/$APP/remove
 
 # DOWNLOAD THE ARCHIVE
 mkdir tmp
 cd ./tmp
 
-version=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep -i arm64 | grep browser_download_url | grep -i appimage | cut -d '"' -f 4 | head -1)
+version=$(curl -Ls https://api.github.com/repos/$REPO/releases | grep -i arm64 | grep browser_download_url | grep -i appimage | cut -d '"' -f 4 | head -1)
 wget $version
 echo "$version" >> /opt/$APP/version
 cd ..
@@ -33,7 +33,7 @@ cat >> /opt/$APP/AM-updater << 'EOF'
 APP=86box
 REPO="86Box/86Box"
 version0=$(cat /opt/$APP/version)
-version=$(wget -q https://api.github.com/repos/$REPO/releases -O - | grep -i arm64 | grep browser_download_url | grep -i appimage | cut -d '"' -f 4 | head -1)
+version=$(curl -Ls https://api.github.com/repos/$REPO/releases | grep -i arm64 | grep browser_download_url | grep -i appimage | cut -d '"' -f 4 | head -1)
 if [ $version = $version0 ]; then
   echo "Update not needed!"
 else
@@ -81,8 +81,8 @@ CHANGEICON=$(cat ./$APP.desktop | grep Icon= | head -1)
 sed -i "s#$CHANGEICON#Icon=/opt/$APP/icons/$APP#g" ./$APP.desktop
 
 mkdir icons
-mv $(./$APP --appimage-extract *.png) ./icons/$APP 2>/dev/null
-mv $(./$APP --appimage-extract *.svg) ./icons/$APP 2>/dev/null
+./$APP --appimage-extract *.png 2>&1 | grep -v "squashfs-root"; mv ./squashfs-root/*$app* ./icons/$APP 2>/dev/null
+./$APP --appimage-extract *.svg 2>&1 | grep -v "squashfs-root"; mv ./squashfs-root/*$app* ./icons/$APP 2>/dev/null
 ./$APP --appimage-extract share/icons/*/*/* 1>/dev/null
 ./$APP --appimage-extract usr/share/icons/*/*/* 1>/dev/null
 ./$APP --appimage-extract share/icons/*/*/*/* 1>/dev/null
@@ -107,13 +107,4 @@ mv ./squashfs-root/usr/share/icons/hicolor/512x512/apps/*$app* ./icons/$APP 2>/d
 mv ./squashfs-root/usr/share/icons/hicolor/scalable/apps/*$app* ./icons/$APP 2>/dev/null
 
 rm -R -f /opt/$APP/squashfs-root
-mv ./$APP.desktop /usr/share/applications/AM-$APP.desktop
-
-# CHANGE THE PERMISSIONS
-currentuser=$(who | awk '{print $1}')
-chown -R $currentuser /opt/$APP
-
-# MESSAGE
-echo "
- $APP is provided by https://github.com/$(echo $REPO | sed 's:/[^/]*$::')
-"
+mv ./$APP.desktop /usr/local/share/applications/$APP-AM.desktop

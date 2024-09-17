@@ -1,52 +1,62 @@
 #!/bin/sh
 
+# AM INSTALL SCRIPT VERSION 3.5
+set -u
 APP=chromium-latest
+SITE="https://www.chromium.org"
 
-# CREATING THE FOLDER
-mkdir /opt/$APP
-cd /opt/$APP;
+# CREATE DIRECTORIES AND ADD REMOVER
+[ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
+printf "#!/bin/sh\nset -e\nrm -f /usr/local/bin/$APP\nrm -R -f /opt/$APP" > ../remove
+printf '\n%s' "rm -f /usr/local/share/applications/$APP-AM.desktop" >> ../remove
+chmod a+x ../remove || exit 1
 
-# ADD THE REMOVER
-echo '#!/bin/sh' >> /opt/$APP/remove
-echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
-chmod a+x /opt/$APP/remove
+# DOWNLOAD AND PREPARE THE APP, $version is also used for updates
+version=$(curl -s "https://commondatastorage.googleapis.com/chromium-browser-snapshots/Linux_x64/LAST_CHANGE")
+wget "https://commondatastorage.googleapis.com/chromium-browser-snapshots/Linux_x64/$version/chrome-linux.zip" || exit 1
+[ -e ./*7z ] && 7z x ./*7z && rm -f ./*7z
+[ -e ./*tar.* ] && tar fx ./*tar.* && rm -f ./*tar.*
+[ -e ./*zip ] && unzip -qq ./*zip 1>/dev/null && rm -f ./*zip
+cd ..
+if [ -d ./tmp/* 2>/dev/null ]; then mv ./tmp/*/* ./; else mv ./tmp/* ./"$APP" 2>/dev/null || mv ./tmp/* ./; fi
+rm -R -f ./tmp || exit 1
+echo "$version" > ./version
+chmod a+x ./chrome || exit 1
 
-mkdir tmp;
-cd tmp;
-
-# DOWNLOADING THE PROGRAM
-build=$(curl -s "https://commondatastorage.googleapis.com/chromium-browser-snapshots/Linux_x64/LAST_CHANGE")
-wget https://commondatastorage.googleapis.com/chromium-browser-snapshots/Linux_x64/$build/chrome-linux.zip
-unzip -qq chrome-linux.zip
-
-echo $build >> /opt/$APP/LAST_CHANGE
-
-cd ..;
-mv ./tmp/chrome-linux/* ./;
-rm -R -f ./tmp
-
-# LINK
-ln -s /opt/$APP/chrome /usr/local/bin/$APP
+# LINK TO PATH
+ln -s "/opt/$APP/chrome" "/usr/local/bin/$APP"
 
 # SCRIPT TO UPDATE THE PROGRAM
-echo '#!/bin/sh
-version=$(cat /opt/'$APP'/LAST_CHANGE)
-build=$(curl -s "https://commondatastorage.googleapis.com/chromium-browser-snapshots/Linux_x64/LAST_CHANGE")
-if [ "$version" = "$build" ]; then
-  echo "Update not needed, exit!"
- else
-  notify-send "A new version of '$APP' is available, please wait!"
-  mkdir /opt/'$APP'/tmp
-  cd /opt/'$APP'/tmp
-  wget https://commondatastorage.googleapis.com/chromium-browser-snapshots/Linux_x64/$build/chrome-linux.zip
-  unzip -qq chrome-linux.zip
-  cd ..
-  mv --backup=t ./tmp/chrome-linux/* ./
-  rm -R -f ./tmp ./*~
-  rm -R -f /opt/'$APP'/LAST_CHANGE && echo $build >> /opt/'$APP'/LAST_CHANGE
-  notify-send "'$APP' is updated!"
-fi' >> /opt/$APP/AM-updater
-chmod a+x /opt/$APP/AM-updater
+cat >> ./AM-updater << 'EOF'
+#!/bin/sh
+set -u
+APP=chromium-latest
+SITE="https://www.chromium.org"
+version0=$(cat "/opt/$APP/version")
+version=$(curl -s "https://commondatastorage.googleapis.com/chromium-browser-snapshots/Linux_x64/LAST_CHANGE")
+[ -n "$version" ] || { echo "Error getting link"; exit 1; }
+if [ "$version" != "$version0" ]; then
+	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
+	notify-send "A new version of $APP is available, please wait"
+	wget "https://commondatastorage.googleapis.com/chromium-browser-snapshots/Linux_x64/$version/chrome-linux.zip" || exit 1
+	[ -e ./*7z ] && 7z x ./*7z && rm -f ./*7z
+	[ -e ./*tar.* ] && tar fx ./*tar.* && rm -f ./*tar.*
+	[ -e ./*zip ] && unzip -qq ./*zip 1>/dev/null && rm -f ./*zip
+	cd ..
+	if [ -d ./tmp/* 2>/dev/null ]; then mv --backup=t ./tmp/*/* ./; else mv --backup=t ./tmp/* ./"$APP" 2>/dev/null || mv --backup=t ./tmp/* ./; fi
+	chmod a+x ./chrome || exit 1
+	echo "$version" > ./version
+	rm -R -f ./tmp ./*~
+	notify-send "$APP is updated!"
+else
+	echo "Update not needed!"
+fi
+EOF
+chmod a+x ./AM-updater || exit 1
+
+# ICON
+mkdir -p icons
+cp ./*48.png ./icons/"$APP" 2> /dev/null
 
 # LAUNCHER
 echo "[Desktop Entry]
@@ -56,7 +66,7 @@ GenericName=Web Browser
 Comment=Access the Internet
 Exec=$APP %U
 Terminal=false
-Icon=/opt/$APP/product_logo_48.png 2> /dev/null
+Icon=/opt/$APP/icons/$APP
 Type=Application
 Categories=Network;WebBrowser;
 MimeType=application/pdf;application/rdf+xml;application/rss+xml;application/xhtml+xml;application/xhtml_xml;application/xml;image/gif;image/jpeg;image/png;image/webp;text/html;text/xml;x-scheme-handler/ftp;x-scheme-handler/http;x-scheme-handler/https;
@@ -68,13 +78,4 @@ Exec=$APP %U
 
 [Desktop Action new-private-window]
 Name=New Incognito Window
-Exec=$APP --incognito %U" >> /usr/share/applications/AM-$APP.desktop;
-
-currentuser=$(who | awk '{print $1}')
-chown -R $currentuser /opt/$APP
-# MESSAGE
-echo "
-
- Chromium Browser is provided by https://www.chromium.org
-  
-";
+Exec=$APP --incognito %U" > /usr/local/share/applications/"$APP"-AM.desktop

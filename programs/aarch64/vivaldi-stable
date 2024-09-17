@@ -9,14 +9,14 @@ cd /opt/$APP
 
 # ADD THE REMOVER
 echo '#!/bin/sh' >> /opt/$APP/remove
-echo "rm -R -f /usr/share/applications/AM-$APP.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
+echo "rm -R -f /usr/local/share/applications/$APP-AM.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
 chmod a+x /opt/$APP/remove
 
 # DOWNLOAD THE ARCHIVE
 mkdir tmp
 cd ./tmp
 
-version=$(echo "https://repo.vivaldi.com/snapshot/deb/pool/main/$(wget -q https://repo.vivaldi.com/snapshot/deb/pool/main/ -O - | grep $APP | grep arm64 | tail -1 | grep -o -P '(?<=href=").*(?=">vivaldi)')")
+version=$(echo "https://repo.vivaldi.com/snapshot/deb/pool/main/$(curl -Ls https://repo.vivaldi.com/snapshot/deb/pool/main/ | grep $APP | grep arm64 | tail -1 | grep -o -P '(?<=href=").*(?=">vivaldi)')")
 wget $version
 echo "$version" >> /opt/$APP/version
 ar x ./*deb
@@ -36,7 +36,7 @@ cat >> /opt/$APP/AM-updater << 'EOF'
 #!/usr/bin/env bash
 APP=vivaldi-stable
 version0=$(cat /opt/$APP/version)
-version=$(echo "https://repo.vivaldi.com/snapshot/deb/pool/main/$(wget -q https://repo.vivaldi.com/snapshot/deb/pool/main/ -O - | grep $APP | grep arm64 | tail -1 | grep -o -P '(?<=href=").*(?=">vivaldi)')")
+version=$(echo "https://repo.vivaldi.com/snapshot/deb/pool/main/$(curl -Ls https://repo.vivaldi.com/snapshot/deb/pool/main/ | grep $APP | grep arm64 | tail -1 | grep -o -P '(?<=href=").*(?=">vivaldi)')")
 if [ $version = $version0 ]; then
   echo "Update not needed!"
 else
@@ -66,17 +66,8 @@ sed -i '/^  DOWNLOAD/s/ -T[0-9]\+//' ./update-ffmpeg 2> /dev/null
 # LAUNCHER
 sed -i "s#Exec=/usr/bin/#Exec=#g" $APP.desktop
 sed -i "s#Icon=vivaldi#Icon=/opt/$APP/icons/$APP#g" $APP.desktop
-mv ./$APP.desktop /usr/share/applications/AM-$APP.desktop 2> /dev/null
+mv ./$APP.desktop /usr/local/share/applications/$APP-AM.desktop 2> /dev/null
 
 # ICON
 mkdir icons
 cp ./*256.png ./icons/$APP
-
-# CHANGE THE PERMISSIONS
-currentuser=$(who | awk '{print $1}')
-chown -R $currentuser /opt/$APP
-
-# MESSAGE
-echo "
- $APP is provided by $SITE
-"
