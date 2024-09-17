@@ -1,0 +1,451 @@
+#!/usr/bin/env bash
+
+##############################################################################################
+# THIS MODULE INCLUDES ALL THE ACTIONS INTENDED TO MANAGE THE APPS INSTALLED FROM THE DATABASE
+# AND ONE OPTION IS FOR LOCAL APPIMAGES INSTEAD
+# OPTIONS: BACKUP/RESTORE, DOWNGRADE, LAUNCHER, LOCK/UNLOCK, NOLIBFUSE, REMOVE
+##############################################################################################
+
+# BACKUP
+function _backup() {
+	if [ ! -f "$APPSPATH"/"$2"/remove ]; then
+		echo " \"$2\" is not a valid argument or is not installed."
+	else
+		read -r -p " Do you wish to backup the current version of $2? (y/N) " yn
+		if ! echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
+			printf "\n OPERATION ABORTED!\n\n"
+		else
+			mkdir -p "$HOME/.am-snapshots/$2"
+			date="$(date +%F-%X | sed 's/://g' | sed 's/-//g')"
+			cp -r "$APPSPATH"/"$2" "$HOME/.am-snapshots/$2/$date"
+			echo " SAVED in $HOME/.am-snapshots/$2"
+		fi
+	fi
+}
+
+# RESTORE
+function _overwrite() {
+	if [ ! -d "$HOME/.am-snapshots/$2" ]; then
+		echo " ERROR: No snapshot for \"$2\" found."
+	elif [ ! -f "$APPSPATH"/"$arg"/remove ]; then
+		echo " \"$2\" is not a valid argument or is not installed."
+	else
+		read -r -p " Do you wish to overwrite $2 with an older version? (y,N) " yn
+		if ! echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
+			printf "\n OPERATION ABORTED!\n\n"
+		else
+			printf "\n Please, select a snapshot or press CTRL+C to abort:\n\n"
+			sleep 1
+			select d in "$HOME/.am-snapshots/$2"/*; do 
+				test -n "$d" && break 
+				echo ">>> Invalid Selection" 
+			done
+			cp -r --backup=t "$d"/* "$APPSPATH"/"$2"/
+			rm -R -f ./tmp "$APPSPATH"/"$2"/*~
+			echo " RESTORE COMPLETED SUCCESSFULLY!"
+		fi
+	fi
+}
+
+# DOWNGRADE
+function _downgrade_entries_filter() {
+	grep -vi "^#\|version0=" ./AM-updater | grep "api.github.com" \
+		| tr '=' '\n' | sed 's/^\$(//g' \
+		| tail -1 | sed '1,${
+		s/version=$(//g
+		s/head -1)/head -100/g
+		s#$REPO#'"$REPO"'#g
+		s#releases/latest#releases#g
+		s#releases #releases?per_page=100 #g
+		s#/$tag/$app##g
+		}'
+}
+
+function _downgrade() {
+	# Safety checks
+	if [ ! -f "$APPSPATH"/"$2"/AM-updater ]; then
+		echo " No AM-updater available for \"$2\", cannot detect any URL!" 
+		return 1
+	elif [ -f "$APPSPATH"/"$2"/"$2"-rollback ]; then
+		cd "$APPSPATH"/"$2" || return 1
+		./"$2"-rollback || return 1
+		return 0
+	elif ! grep -q "api.github.com" "$APPSPATH"/"$2"/AM-updater; then
+		echo " The option \"$1\" only works for https://github.com"
+		return 1
+	fi
+	cd "$APPSPATH"/"$2" || return 1
+	entries_list=$(_downgrade_entries_filter)
+	urls="$(eval "$entries_list"  | grep -vi "zsync$")"
+	if ! echo "$urls" | grep -q "[0-9]"; then
+		echo " ERROR: No valid links found, sorry!"
+		exit 1
+	fi
+	echo "-----------------------------------------------------------------------"
+	echo "You have chosen to roll back \"$2\"."
+	echo "-----------------------------------------------------------------------"
+	echo "Select a URL from this menu (read carefully) or press CTRL+C to abort:"
+	echo "-----------------------------------------------------------------------" 
+	sleep 1
+	select d in $urls; do 
+		test -n "$d" && break 
+		echo ">>> Invalid Selection"
+	done
+	cp ./AM-updater ./AM-rollback
+	sed -i -e 's/version0/#version0/g' \
+		-e 's/appimageupdatetool -Or/#appimageupdatetool -Or/g' ./AM-rollback
+	[ -f ./"$2".zsync ] && mv ./"$2".zsync ./"$2".zsync.old
+	if wget --version | head -1 | grep -q ' 1.'; then
+		sed -i '/wget/c\wget -q --show-progress '"$d"'' ./AM-rollback
+	else
+		sed -i '/wget/c\wget '"$d"'' ./AM-rollback
+	fi
+	./AM-rollback && rm -f ./AM-rollback || return 1
+	mv ./"$2".zsync.old ./"$2".zsync 2>/dev/null
+	echo "$d" > ./version
+	echo "ROLLBACK SUCCESSFUL!"
+}
+
+# ICON THEME CHANGER
+function _icon_theme_export_to_datadir() {
+	PNG="$(file "$APPSPATH"/*/icons/* | grep -i '.png' | awk -F":" '{print $1}' | grep -vi .png)"
+	SVG="$(file "$APPSPATH"/*/icons/* | grep -i '.svg' | awk -F":" '{print $1}' | grep -vi .svg)"
+	for file in $PNG; do
+		ln -s "$file" "${file}".png
+	done
+	for file in $SVG; do
+		ln -s "$file" "${file}".svg
+	done
+	mkdir -p "$DATADIR"/icons/hicolor/scalable/apps
+	find "$DATADIR"/icons/hicolor/scalable/apps -xtype l -exec rm {} \;
+	ln -s "$APPSPATH"/*/icons/*.* "$DATADIR"/icons/hicolor/scalable/apps
+}
+
+function _icon_theme() {
+	if [ "$AMCLI" = am ]; then
+		$SUDOCMD sed -i "s#Icon=$APPSPATH/$arg/icons/#Icon=#g" /usr/local/share/applications/"$arg"*AM.desktop 2>/dev/null
+	else
+		sed -i "s#Icon=$APPSPATH/$arg/icons/#Icon=#g" "$DATADIR"/applications/"$arg"*AM.desktop 2>/dev/null
+	fi
+	_icon_theme_export_to_datadir 2>/dev/null
+}
+
+# LAUNCHER
+function _launcher_appimage_extract() {
+	"$arg" --appimage-extract share/icons/*/*/* 1>/dev/null
+	"$arg" --appimage-extract usr/share/icons/*/*/* 1>/dev/null
+	"$arg" --appimage-extract share/icons/*/*/*/* 1>/dev/null
+	"$arg" --appimage-extract usr/share/icons/*/*/*/* 1>/dev/null
+	"$arg" --appimage-extract *.svg 1>/dev/null
+	"$arg" --appimage-extract *.png 1>/dev/null
+	"$arg" --appimage-extract *.desktop 1>/dev/null
+	"$arg" --appimage-extract share/applications/*.desktop 1>/dev/null
+	"$arg" --appimage-extract usr/share/applications/*.desktop 1>/dev/null
+}
+
+function _launcher_appimage_integration() {
+	printf "[Desktop Entry]\nVersion=1.0\nType=Application\nTerminal=false\nStartupNotify=true\nExec=%s\n" "$arg %U" > ./"$appimage".desktop
+	cat ./squashfs-root/*.desktop | grep "^Name=" | head -1 >> ./"$appimage".desktop
+	cat ./squashfs-root/*.desktop | grep -F '^Name[' >> ./"$appimage".desktop
+	cat ./squashfs-root/*.desktop | grep "Categories=" >> ./"$appimage".desktop
+	cat ./squashfs-root/*.desktop | grep "Comment=" | head -1 >> ./"$appimage".desktop
+	cat ./squashfs-root/*.desktop | grep -F 'Comment[' >> ./"$appimage".desktop
+	cat ./squashfs-root/*.desktop | grep "Icon=" | head -1 >> ./"$appimage".desktop
+	cat ./squashfs-root/*.desktop | grep "MimeType=" | head -1 >> ./"$appimage".desktop
+	uniq ./"$appimage".desktop > ./"$appimage"-1.desktop && mv ./"$appimage"-1.desktop ./"$appimage".desktop
+	mv ./"$appimage".desktop "$DATADIR"/applications/AppImages/"$appimage".desktop 2>/dev/null
+	mv ./squashfs-root/*.png "$DATADIR"/icons/ 2>/dev/null
+	mv ./squashfs-root/*.svg "$DATADIR"/icons/ 2>/dev/null
+	share_dirs="usr/share share"
+	size_dirs="0x0 22x22 24x24 32x32 48x48 64x64 128x128 256x256 512x512"
+	for share in $share_dirs; do
+		for sizes in $size_dirs; do
+			mv ./squashfs-root/"${share}"/icons/hicolor/"${sizes}"/apps/*.png "$DATADIR"/icons/ 2>/dev/null
+		done
+		mv ./squashfs-root/"${share}"/icons/hicolor/scalable/apps/*.svg "$DATADIR"/icons/ 2>/dev/null
+		mv ./squashfs-root/"${share}"/pixmaps/*.png "$DATADIR"/icons/ 2>/dev/null
+	done
+	rm -Rf ./squashfs-root
+}
+
+function _launcher_appimage_bin() {
+	mkdir -p "$HOME"/.local/bin
+	_check_if_home_local_bin_is_not_in_path
+	read -r -p " Write a custom command to launch the app, or leave blank: " response
+	if [ -z "$response" ]; then
+		appimage_cmd=$(echo "$appimage" | tr '[:upper:]' '[:lower:]')
+		if ! echo "$appimage" | grep -q -i ".appimage"; then
+			printf '#!/bin/sh\n%s' "$arg" >> "$HOME"/.local/bin/"$appimage_cmd".appimage
+			chmod a+x "$HOME"/.local/bin/"$appimage_cmd".appimage
+			echo " New command: \"$appimage_cmd.appimage\" in ~/.local/bin"
+		else
+			printf '#!/bin/sh\n%s' "$arg" >> "$HOME"/.local/bin/"$appimage_cmd"
+			chmod a+x "$HOME"/.local/bin/"$appimage_cmd"
+			echo " New command: \"$appimage_cmd\" in ~/.local/bin"
+		fi
+	elif command -v "$response" 1>/dev/null; then
+		echo " ERROR: the \"$response\" command alredy exists, retry!"
+	else
+		ln -s "$arg" "$HOME"/.local/bin/"$response"
+	fi
+}
+
+function _launcher(){
+	if ! test -f "$arg"; then
+		echo " ERROR: \"$arg\" not found"
+	elif ! strings -d "$arg" 2>/dev/null | grep -F -q 'if you run it with the --appimage-extract option'; then
+		echo " ERROR: \"$arg\" is NOT an AppImage"
+	else
+		printf " ◆ File: %s\n" "$arg"
+		appimage=$(basename -- "$arg")
+		mkdir -p "$DATADIR"/applications/AppImages
+		mkdir -p "$DATADIR"/icons
+		chmod a+x "$arg"
+		cd "$(dirname "$arg")" || return
+
+		_launcher_appimage_extract 2>/dev/null
+		_launcher_appimage_integration 2>/dev/null
+		_launcher_appimage_bin
+	fi
+}
+
+# LOCK/UNLOCK
+function _lock() {
+	if [ ! -f "$APPSPATH"/"$2"/AM-updater ]; then
+		echo " \"$AMCLIUPPER\" cannot manage updates for $2, \"AM-updater\" file not found!"
+		return 1
+	fi
+	read -r -p " Do you wish to keep $2 at its current version? (y/N) " yn
+	if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
+		mv "$APPSPATH"/"$2"/AM-updater "$APPSPATH"/"$2"/AM-LOCK 1>/dev/null
+		echo " $2 has been locked at current version!"
+	else
+		echo " Operation aborted!"
+		return 1
+	fi
+}
+
+function _unlock() {
+	if ! test -f "$APPSPATH"/"$2"/AM-LOCK; then
+		echo " \"$2\" cannot be unlocked, \"AM-LOCK\" file not found!"
+		return 1
+	fi
+	read -r -p " Do you wish to unlock updates for $2? (Y/n) " yn
+	if echo "$yn" | grep -i '^n' >/dev/null 2>&1; then
+		echo " $2 is still locked at current version!"
+		return 1
+	else
+		mv "$APPSPATH"/"$2"/AM-LOCK "$APPSPATH"/"$2"/AM-updater 1>/dev/null
+		echo " \"$2\" can now receive updates!"
+	fi
+}
+
+# NO LIBFUSE
+function _nolibfuse() {
+	target="$(echo "${2}" | tr '[:lower:]' '[:upper:]')"
+	# safety checks
+	if ! cd "$APPSPATH"/"$2" 2>/dev/null; then
+		echo " ⚠️ Error: \"$target\" is NOT installed." 
+		return 1
+	fi
+	string="$(strings -d "./$2" 2>/dev/null)"
+	if ! echo "$string" | grep -q -- 'run it with the --appimage-extract'; then
+		echo " ⚠️ Error: $target is NOT an AppImage."
+		return 1
+	elif ! echo "$string" | grep -q -- 'AppImages require FUSE to run'; then
+		echo " ◆ $target is already a new generation AppImage."
+		return 1
+	elif test -f ./*.zsync; then
+		echo "-----------------------------------------------------------------------"
+		echo " Warning! Your AppImage uses \"zsync\" to update."
+		echo " The .zsync file will be removed and will no longer work"
+		echo " your \"AM-updater\" will likely still be able to update the AppImage"
+		echo " by comparing the old vs new version url, but it is not guaranteed"
+		read -r -p " Do you want to proceede anyway? (N/y) " yn
+		if ! echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
+				return 1
+		fi
+	fi
+
+	appimagetool="https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-$ARCH.AppImage"
+	printf " ...downloading appimagetool\r"
+	wget -q "$appimagetool" -O ./appimagetool || return 1
+	printf '#!/bin/sh\nexit 0' > ./desktop-file-validate # hack due to https://github.com/AppImage/appimagetool/pull/47
+	chmod a+x ./appimagetool ./desktop-file-validate
+	printf " ...extracting the AppImage\r"
+	./"$2" --appimage-extract >/dev/null 2>&1 && chmod 0755 ./squashfs-root
+	printf " ...trying to convert in new generation AppImage\r"
+	PATH="$PATH:$PWD" ARCH="$(uname -m)" ./appimagetool -n ./squashfs-root >/dev/null 2>&1
+	if ! test -f ./*.AppImage; then
+		echo " 💀Error when trying to convert $target. Operation Aborted."
+		rm -R -f ./appimagetool ./squashfs-root ./desktop-file-validate
+		return 1
+	fi
+
+	mv ./"$2" ./"$2".old && mv ./*.AppImage ./"$2" || return 1
+	echo " ◆ $target has been converted to a new generation AppImage."
+	rm -rf ./appimagetool ./squashfs-root ./desktop-file-validate ./*.zsync
+	if [ -f ./AM-updater ] && ! grep -q 'nolibfuse' ./AM-updater; then
+		sed -i "s/^else/	echo y | $AMCLIPATH nolibfuse \"\$APP\"\n	notify-send \"\$APP has been converted too\!\"\nelse/g" ./AM-updater 2>/dev/null
+		echo " The next update may replace this AppImage with a Type2 one"
+		echo " so I added this command to the bottom of the \"AM-updater\" script!"
+	fi
+	echo " Contact the upstream developers to make them officially upgrade!"
+	read -r -p " Do you wish to remove the old libfuse2 AppImage? (Y/n) " yn
+	if echo "$yn" | grep -i '^n' >/dev/null 2>&1; then
+		return 1
+	else
+		rm -f ./*.old
+	fi
+}
+
+# REMOVE
+function _remove() {
+	$SUDOCMD echo "" >/dev/null
+	echo "------------------------------------------------------------------------------"
+	if [ ! -d "$APPSPATH"/"$2" ]; then
+		echo -e " \"${RED}$arg\033[0m\" is not a valid \"APPNAME\", see \"$AMCLI -f\" for more."
+		return 1
+	fi
+	read -r -p " ◆ Do you wish to remove \"$2\"? (Y/n) " yn
+	if echo "$yn" | grep -i '^n' >/dev/null 2>&1; then
+		echo -e " \"${LightBlue}$2\033[0m\" has not been removed!"
+	else
+		$SUDOCMD "$APPSPATH"/"$2"/remove || return 1
+		sleep 0.1
+		echo -e " \"${Green}$2\033[0m\" has been removed!"
+	fi
+	[ -d "$DATADIR"/icons/hicolor/scalable/apps ] && find "$DATADIR"/icons/hicolor/scalable/apps -xtype l -exec rm {} \;
+}
+
+function _hard_remove() {
+	$SUDOCMD echo "" >/dev/null
+	echo "------------------------------------------------------------------------------"
+	if [ ! -d "$APPSPATH"/"$2" ]; then
+		echo -e " \"${RED}$2\033[0m\" is not a valid \"APPNAME\", see \"$AMCLI -f\" for more."
+		return 1
+	fi
+	$SUDOCMD "$APPSPATH"/"$arg"/remove || return 1
+	sleep 0.1
+	echo -e " \"${Green}$2\033[0m\" has been removed!"
+	[ -d "$DATADIR"/icons/hicolor/scalable/apps ] && find "$DATADIR"/icons/hicolor/scalable/apps -xtype l -exec rm {} \;
+}
+
+###########################################################################
+# OPTIONS AVAILABLE IN THIS MODULE
+###########################################################################
+
+# Main logic
+[ -z "$2" ] && echo " USAGE: $AMCLI $1 [ARGUMENT]" && exit 1
+case "$1" in
+	'backup'|'-b')
+		# Do a snapshot of an installed app
+		ARGS="$(echo "$@" | cut -f2- -d ' ')"
+		for arg in $ARGS; do
+			_backup "${@}"
+			shift
+		done
+		;;
+
+	'downgrade'|'--rollback')
+		# Downgrade the installed app to a previous version, from its online source
+		_online_check
+		ARGS="$(echo "$@" | cut -f2- -d ' ')"
+		for arg in $ARGS; do
+			_downgrade "${@}"
+			_clean_amcachedir
+			_update_list_updatable_apps
+			shift
+		done
+		;;
+
+	'icons'|'--icons')
+		# Place local AppImages into the menu by dragging and dropping them into the terminal
+		if [ "$2" = "--all" ]; then
+			ARGS=$(find . -name 'remove' -printf "%h\n" 2>/dev/null | du -sh -- * 2>/dev/null | sort -rh | sed 's@.*	@@')
+			read -r -p " ◆ Do you wish to allow custom icon theming for ALL the apps? (y,N) " yn
+		else
+			ARGS="$(echo "$@" | cut -f2- -d ' ')"
+			read -r -p " ◆ Do you wish to allow custom icon theming for the selected apps? (y,N) " yn
+		fi
+		if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
+			for arg in $ARGS; do
+				_icon_theme "${@}"
+			done
+			echo " ✔ Success!"
+		else
+			echo " ✖ Aborted!"
+		fi
+		;;
+
+	'launcher'|'--launcher')
+		# Place local AppImages into the menu by dragging and dropping them into the terminal
+		ARGS="$(echo "$@" | cut -f2- -d ' ')"
+		for arg in $ARGS; do
+			echo "---------------------------------------------------------------------"
+			_launcher "${@}"
+		done
+		echo "---------------------------------------------------------------------"
+		;;
+
+	'lock')
+		# Lock the version of an installed app
+		ARGS="$(echo "$@" | cut -f2- -d ' ')"
+		for arg in $ARGS; do
+			_lock "${@}"
+			shift
+		done
+		;;
+
+	'unlock')
+		# Unlock the version of an installed app
+		ARGS="$(echo "$@" | cut -f2- -d ' ')"
+		for arg in $ARGS; do
+			_unlock "${@}"
+			shift
+		done
+		;;
+
+	'nolibfuse')
+		# Convert old AppImages to a new standard and get rid of libfuse2 dependency
+		_online_check
+		ARGS="$(echo "$@" | cut -f2- -d ' ')"
+		for arg in $ARGS; do
+			_nolibfuse "${@}"
+			_remove_info_files
+			shift
+		done
+		;;
+
+	'overwrite'|'-o')
+		# Restore an app to a previous version using a snapshot (see "backup" or "-b", above)
+		ARGS="$(echo "$@" | cut -f2- -d ' ')"
+		for arg in $ARGS; do
+			_overwrite "${@}"
+			_remove_info_files
+			shift
+		done
+		;;
+
+	'remove'|'-r')
+		# Remove apps
+		ARGS="$(echo "$@" | cut -f2- -d ' ')"
+		for arg in $ARGS; do
+			_remove "${@}"
+			_remove_info_files
+			shift
+		done
+		echo "------------------------------------------------------------------------------"
+		;;
+
+	'-R')
+		# Remove apps without confirmation
+		ARGS="$(echo "$@" | cut -f2- -d ' ')"
+		for arg in $ARGS; do
+			_hard_remove "${@}"
+			_remove_info_files
+			shift
+		done
+		echo "------------------------------------------------------------------------------"
+		;;
+esac

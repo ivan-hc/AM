@@ -1,187 +1,402 @@
-#!/usr/bin/env bash
+#!/bin/sh
 
-function _completion_lists(){
-	# Remove existing lists and download new ones
-	rm -Rf $AMPATH/{$arch-apps,list,libs-list} &&
-	wget -q $APPSLISTDB -P $AMPATH &&
-	wget -q $LIBSLISTDB -P $AMPATH
+############################################################################################
+# THIS MODULE INCLUDES ALL THE ACTIONS INTENDED FOR THE MANAGEMENT OF LISTS AND SINGLE PAGES
+############################################################################################
 
-	# THIRD PARTY APPS
-	if test -f "$AMPATH/neodb"; then
-		rm -R -f "$AMPATH/.cache/multirepo-args"
-		MULTIREPO=$(cat "$AMPATH/neodb" | grep "List=" | grep -E "$arch-apps" | sed 's/List=//g')
-		for anyrepo in $MULTIREPO; do
-			if curl --output /dev/null --silent --head --fail $anyrepo 1>/dev/null; then
-				wget -q "$anyrepo" -O - | grep "◆" >> $AMPATH/$arch-apps
+#--------------------------------------------------------------------------
+# ABOUT
+_about_show_markdown() {
+	if curl -o /dev/null -sIf "$markdown_url"; then
+		markdown_page=$(curl -Ls "$markdown_url" \
+		| sed '1,${ /^\s*#/ d; /^\s*!/ d; /\[Applications]/d; /\ --- /d; /\ | - | /d; /\!\[/d; }' \
+		| sed '$!N;s/^\s*\n\s*$//;P;D')
+		echo "$markdown_page" | fold -sw 72 | sed 's/^ //g; s/^/ /g'
+	else
+		printf ' "%s" IS NOT A VALID ARGUMENT\n' "$package_name"
+	fi
+}
+
+_about_page() {
+	package_name="${Green}$1\033[0m"
+	markdown_url="$AMCATALOGUEMARKDOWNS/${1}.md"
+	printf " PACKAGE: %b\n" "$package_name"
+	app_name=$(echo "$1" | sed 's/-appimage//g; s/debian-testing-//g')
+	if test -f "$APPSPATH/$app_name/remove"; then
+		app_status="installed\033[0m"
+		if test -f "$APPSPATH/$app_name/.am-installer/$app_name"; then
+			app_status="installed\033[0m"
+		elif [ "$app_name" != "$1" ]; then
+			if test -f "$APPSPATH/$app_name/.am-installer/$1"; then
+				app_status="installed\033[0m, as ${Green}$app_name\033[0m"
+			fi
+		elif test -d "$APPSPATH/$app_name/.am-installer"; then
+			scriptname=$(basename -- "$(find "$APPSPATH"/"$arg"/.am-installer/* | head -1)")
+			if [ "$scriptname" != "$1" ]; then
+				app_status="installed\033[0m, but replaced by ${Green}$scriptname\033[0m\n\n NOTE: run ${RED}$AMCLI -a $scriptname\033[0m instead"
+			fi
+		fi
+	elif test -f "$APPSPATH/$app_name-appimage/remove"; then
+		app_status="installed\033[0m"
+		app_name="$app_name-appimage"
+	else
+		app_status="not installed"
+	fi
+	METAPACKAGES="kdegames kdeutils node platform-tools"
+	for m in $METAPACKAGES; do
+		if grep -q "◆ $1 : .*\"$m\"" "$AMDATADIR/$ARCH-apps"; then
+			if test -f "$APPSPATH/$m/remove"; then
+				app_status="installed\033[0m, as part of ${Green}$m\033[0m\n\n NOTE: run ${RED}$AMCLI -a $m\033[0m instead"
+				app_name="$m"
+			fi
+		elif [ "$1" = "$m" ]; then
+			app_status="installed\033[0m"
+		fi
+	done
+	if echo "$app_status" | grep -q "^installed"; then
+		printf " STATUS: %b\n" "${LightBlue}$app_status"
+		disk_usage=$(du -sm "$APPSPATH/$app_name" | cut -f1)
+		app_version=$(grep -w " ◆ $app_name	|" "$AMCACHEDIR"/version-args 2>/dev/null | sed 's:.*|	::')
+		echo ""
+		echo " Disk usage: $disk_usage MB"
+		echo " Installed version: $app_version"
+	else
+		echo " STATUS: $app_status"
+	fi
+	_about_show_markdown
+}
+
+#--------------------------------------------------------------------------
+# FILES
+_files_header() {
+	echo ""
+	APPSNUMB=$(find "$APPSPATH" -type f -name 'remove' -exec grep -L 'usr/local/lib' {} \; 2>/dev/null | sed -r 's|/[^/]+$||' | sort | uniq | wc -l)
+	if [ "$APPSNUMB" = 1 ]; then
+		APPSMESSAGE="YOU HAVE INSTALLED $APPSNUMB PROGRAM"
+	else
+		APPSMESSAGE="YOU HAVE INSTALLED $APPSNUMB PROGRAMS"
+	fi
+	if grep -q 'usr/local/lib' "$APPSPATH"/*/remove 2> /dev/null; then
+		LIBNUMB=$(grep -l "usr/local/lib" "$APPSPATH"/*/remove | wc -l)
+		if [ "$LIBNUMB" = 1 ]; then
+			LIBSMESSAGE="AND $LIBNUMB LIBRARY"
+		else
+			LIBSMESSAGE="AND $LIBNUMB LIBRARIES"
+		fi
+		echo "- $APPSMESSAGE $LIBSMESSAGE MANAGED BY $AMCLIUPPER"
+	else
+		echo "- $APPSMESSAGE MANAGED BY $AMCLIUPPER"
+	fi
+	echo ""
+}
+
+_files_sizes() {
+	if grep -q "usr/local/lib" ./"$arg"/remove; then
+		LIBNAME=$(<"$APPSPATH"/"$arg"/remove tr ' ' '\n' | grep "usr/local/lib" | head -1 | sed 's/*//g')
+		SIZE=$(du -sh "$LIBNAME"* | cut -f1 | sort -rh | head -1)
+	else
+		SIZE=$(du -sh -- "$arg" | cut -f1 -d"	")
+	fi
+	SIZE=$(echo "$SIZE" | sed 's/.$/ &/; s/$/iB/')
+	echo " ◆ $arg	|	$SIZE" >> "$AMCACHEDIR"/files-sizes
+}
+
+_files_if_binary() {
+	if file ./"$arg"/* | grep "static" >/dev/null 2>&1; then
+		echo " ◆ $arg	|	static-binary" >> "$AMCACHEDIR"/files-type
+	else
+		echo " ◆ $arg	|	dynamic-binary" >> "$AMCACHEDIR"/files-type
+	fi
+}
+
+_files_if_library() {
+	echo " ◆ $arg	|	library" >> "$AMCACHEDIR"/files-type
+}
+
+_files_if_script() {
+	if grep "/ffwa" "${LINK:-$FILE}" >/dev/null 2>&1; then
+		echo " ◆ $arg	|	launcher" >> "$AMCACHEDIR"/files-type
+	elif grep '#!.*bash' "${LINK:-$FILE}" >/dev/null 2>&1; then
+		echo " ◆ $arg	|	bash-script" >> "$AMCACHEDIR"/files-type
+	elif grep '#!.*dash' "${LINK:-$FILE}" >/dev/null 2>&1; then
+		echo " ◆ $arg	|	dash-script" >> "$AMCACHEDIR"/files-type
+	elif grep '#!.*bin.*sh' "${LINK:-$FILE}" >/dev/null 2>&1; then
+		echo " ◆ $arg	|	posix-script" >> "$AMCACHEDIR"/files-type
+	elif grep '#!.*awk' "${LINK:-$FILE}" >/dev/null 2>&1; then
+		echo " ◆ $arg	|	awk-script" >> "$AMCACHEDIR"/files-type
+	else
+		echo " ◆ $arg	|	script" >> "$AMCACHEDIR"/files-type
+	fi
+}
+
+_files_if_appimage() {
+	if ! echo "$string" | grep 'AppImages require FUSE to run' >/dev/null 2>&1; then
+		if grep "SANDBOXDIR" "$FILE" >/dev/null 2>&1; then
+			echo " ◆ $arg	|	appimage🔒" >> "$AMCACHEDIR"/files-type
+		else
+			echo " ◆ $arg	|	appimage" >> "$AMCACHEDIR"/files-type
+		fi
+	else
+		if grep "SANDBOXDIR" "$FILE" >/dev/null 2>&1; then
+			echo " ◆ $arg	|	appimage🔒*" >> "$AMCACHEDIR"/files-type
+		else
+			echo " ◆ $arg	|	appimage*" >> "$AMCACHEDIR"/files-type
+		fi
+	fi
+}
+
+_files_type() {
+	APPVERSION=$(<"$AMCACHEDIR"/version-args grep -w " ◆ $arg	|" | sed 's:.*|	::')
+	string=$(strings -d ./"$arg/$arg" 2>/dev/null)
+	FILE=$(command -v "$arg" 2>/dev/null)
+	LINK=$(readlink "$FILE" 2>/dev/null)
+	if echo "$string" | grep -- '--appimage-extract option' >/dev/null 2>&1; then
+		_files_if_appimage
+	elif file ./"$arg"/* | grep -E 'LSB|/bin' >/dev/null 2>&1; then
+		_files_if_binary
+	elif grep "#!" "${LINK:-$FILE}" >/dev/null 2>&1; then
+		_files_if_script
+	elif grep  "usr/local/lib" ./"$arg"/remove >/dev/null 2>&1; then
+		_files_if_library
+	else
+		echo " ◆ $arg	|	other" >> "$AMCACHEDIR"/files-type
+	fi
+}
+
+_files_files() {
+	cd "$APPSPATH" || exit 1
+	INSTALLED_APPS=$(find . -name 'remove' -printf "%h\n" 2>/dev/null | du -sh -- * 2> /dev/null | sort -rh | sed 's@.*	@@')
+	if ! test -f "$AMCACHEDIR"/version-args; then
+		_check_version
+	fi
+	if ! test -f "$AMCACHEDIR"/files-type; then
+		for arg in $INSTALLED_APPS; do
+			if test -f ./"$arg"/remove 2>/dev/null; then
+		 		_files_type
 			fi
 		done
-		cat $AMPATH/$arch-apps | sort | uniq > $AMPATH/$arch-apps-backup
-		rm -R -f $AMPATH/$arch-apps
-		mv $AMPATH/$arch-apps-backup $AMPATH/$arch-apps
 	fi
-
-	# Extract and append program and library names to the list
-	for file in $arch-apps libs-list; do
-		awk -v FS="(◆ | : )" '{print $2}' <$AMPATH/$file >> $AMPATH/list
-	done
-
-	# Append options to the list
-	cat $AMPATH/options >> $AMPATH/list
-}
-
-function _clean_lists_and_queries(){
-	# Remove references to URLs, "-a" elements and limit message length to a maximum of 80 characters in "-l" and "-q"
-	cut -c -81 | sed 's#http://[^ ]*##g' | sed 's#https://[^ ]*##g' | sed 's#ftp://[^ ]*##g' | sed 's/SITE://g' | sed 's/SOURCE://g'
-}
-
-case "$1" in
-
-  '-a'|'about')
-	case $2 in
-	'') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
-	esac
-
-	# Define functions
-	function usage() {
-		echo " USAGE: $AMCLI $1 [ARGUMENT]";
-	}
-
-	_check_version
-
-	function download_markdown() {
-		local markdown_url="$AMCATALOGUEMARKDOWNS/${1}.md"
-		local cache_dir="$AMPATH/.cache/about"
-		local app_status=" STATUS: NOT INSTALLED"
-		local package_name=${1^^}
-		if curl -o /dev/null -sIf "$markdown_url"; then 
-			mkdir -p "$cache_dir" && wget -q "$markdown_url" -P "$cache_dir"
-			sed -i '1,${ /^\s*#/ d; /^\s*!/ d; /\[Applications]/d; /\ --- /d; }' "$cache_dir/$1.md"
-			sed -i '$!N;s/^\s*\n\s*$//;P;D' "$cache_dir/$1.md"
-			printf " PACKAGE: %s\n" "$package_name"
-			if [ -f "$APPSPATH/$1/remove" ]; then
-				local disk_usage=$(du -sm "$APPSPATH/$1" | cut -f1)
-				local app_version=$(cat $AMPATH/.cache/version-args | grep -w " ◆ $1	|" | sed 's:.*|	::')
-				app_status=$(echo -e " STATUS: INSTALLED, ABOUT $disk_usage MB OF DISK SPACE IN USE\n VERSION: $app_version")
-			fi
-			printf "%s\n" "$app_status"
-			cat -s "$cache_dir/$1.md" && printf "%s\n" "-----------------------------------------------------------------------"
-			rm -R -f "$cache_dir"
-		else
-			printf " \"%s\" IS NOT A VALID ARGUMENT\n" "$package_name"
-		fi
-	}
-
-	function generate_3rd_party() {
-		local app_status=" STATUS: NOT INSTALLED"
-		local package_name=${1^^}
-		if grep -q "◆ $arg : " "$AMPATH/$arch-apps"; then
-			printf " PACKAGE: %s\n" "$arg" | tr a-z A-Z
-			if [ -f "$APPSPATH/$1/remove" ]; then
-				local disk_usage=$(du -sm "$APPSPATH/$1" | cut -f1)
-				local app_version=$(cat $AMPATH/.cache/version-args | grep -w " ◆ $1	|" | sed 's:.*|	::')
-				app_status=$(echo -e " STATUS: INSTALLED, ABOUT $disk_usage MB OF DISK SPACE IN USE\n VERSION: $app_version")
-			fi
-			printf "%s\n" "$app_status"
-			cat "$AMPATH/$arch-apps" | grep "◆ $arg : "  | cut -d':' -f2- | sed 's/^./\n /' | sed 's# SOURCE:#\n\n SOURCE:#g'
-			echo ""
-			printf "%s\n" "-----------------------------------------------------------------------"
-		else
-			printf " \"%s\" IS NOT A VALID ARGUMENT\n" "$package_name"
-		fi
-	}
-
-	function download_lib() {
-		local lib_name_upper=${1^^}
-		printf "%s\n" " LIBRARY: $lib_name_upper"
-		if [[ -f "$APPSPATH/$1/remove" ]]; then 
-			local lib_path=$(grep "usr/local/lib" "$APPSPATH/$1/remove" | head -1)
-			local disk_usage=$(du -sm "$lib_path" | cut -f1)
-
-			if [[ "$disk_usage" -eq 0 ]]; then
-				printf "%s\n" " STATUS: INSTALLED, LESS THAN 1 MB OF DISK SPACE IN USE"
-			else
-				printf "%s\n" " STATUS: INSTALLED, ABOUT $disk_usage MB OF DISK SPACE IN USE"
-			fi
-		else 
-			printf "%s\n" " STATUS: NOT INSTALLED"
-		fi
-		echo ""
-		grep "◆ $1 : " "$AMPATH/libs-list" | sed 's#.*:##' | sed 's/(/\n (/g'
-		echo "" && echo " SITE/SOURCES:" && echo ""
-		local site_source=$(wget -qO- "$APPSDB/$1" | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | head -1)
-		echo " $site_source"
-		echo ""
-		printf "%s\n" "-----------------------------------------------------------------------"
-	}
-
-	# Main logic
-	if [ ! -f "$AMPATH/libs-list" ]; then
-		wget -q $LIBSLISTDB -P $AMPATH
-	fi
-
-	# Skip the first argument which is not part of ARGS
-	for arg in "${@:2}"; do
-		if curl -o /dev/null -sIf "$AMCATALOGUEMARKDOWNS/${arg}.md" 1>/dev/null; then
-			download_markdown "$arg"
-		elif grep -q "◆ $arg : " "$AMPATH/$arch-apps"; then
-			generate_3rd_party
-		elif grep -q "◆ $arg : " "$AMPATH/libs-list"; then
-			download_lib "$arg"
-		else
-			printf "%s\n" " \"$arg\" is not a valid argument" | tr 'a-z' 'A-Z'
+	rm -f "$AMCACHEDIR"/files-sizes
+	for arg in $INSTALLED_APPS; do
+		if test -f ./"$arg"/remove 2>/dev/null; then
+			_files_sizes
 		fi
 	done
-	;;
+}
 
-  '-l'|'list')
-	function _list(){
-		LIBNUMBER=$(cat $APPSPATH/*/remove 2> /dev/null | grep "usr/local/lib" | wc -l)
-		ITEMSNUMBER=$(cd $APPSPATH && find -name 'remove' -printf "%h\n" 2>/dev/null | sort -u | wc -l)
-		if [ "$AMCLI" == am ]; then
+_files() {
+	_files_files
+	rm -f "$AMCACHEDIR"/files-args
+	INSTALLED_APPS=$(find . -name 'remove' -printf "%h\n" 2>/dev/null | du -sh -- * 2>/dev/null | sort -rh | sed 's@.*	@@')
+	for arg in $INSTALLED_APPS; do
+		if test -f ./"$arg"/remove 2>/dev/null; then
+			APPVERSION=$(grep -w " ◆ $arg	|" "$AMCACHEDIR"/version-args | tr '	' '\n' | tail -1)
+			APPTYPE=$(grep -w " ◆ $arg	|" "$AMCACHEDIR"/files-type | tr '	' '\n' | tail -1)
+			APPSYZE=$(grep -w " ◆ $arg	|" "$AMCACHEDIR"/files-sizes | tr '	' '\n' | tail -1)
+			echo " ◆ $arg	|	$APPVERSION	|	$APPTYPE	|	$APPSYZE" >> "$AMCACHEDIR"/files-args
+		fi
+	done
+}
+
+_files_show_only_number() {
+	find "$APPSPATH" -type f -name 'remove' 2>/dev/null | uniq | wc -l
+	exit 0
+}
+
+_files_appimage_type_notes() {
+	if grep -qe "appimage\*\|appimage🔒\*" "$AMCACHEDIR"/files*; then
+		printf " *has dependency to EOL libfuse2 library, please ask the creator to update\n"
+		printf "\n"
+	fi
+}
+
+_files_total_size() {
+	printf "\n"
+	command -v aisap >/dev/null 2>&1 && printf '%s\n\n' " AppImages with 🔒 are sandboxed with aisap"
+	echo " TOTAL SIZE: $(find . -type f -name 'remove' -printf "%h\n" | du -ch -- */ 2>/dev/null | awk 'END {print $1"iB"}' | sed 's/...$/ &/') of disk space in use"
+	printf "\n"
+}
+
+_files_sort_by_name() {
+	_files_header
+	rm -f "$AMCACHEDIR"/files-args-byname
+	_files
+	echo "- APPNAME | VERSION | TYPE | SIZE " > "$AMCACHEDIR"/files-args-byname
+	echo "- ------- | ------- | ---- | ----" >> "$AMCACHEDIR"/files-args-byname
+	sort "$AMCACHEDIR"/files-args 2>/dev/null >> "$AMCACHEDIR"/files-args-byname
+	column -t "$AMCACHEDIR"/files-args-byname
+	_files_total_size
+	_files_appimage_type_notes
+}
+
+_files_sort_by_size() {
+	_files_header
+	rm -f "$AMCACHEDIR"/files-args-bysize
+	_files
+	echo "- APPNAME | VERSION | TYPE | SIZE " > "$AMCACHEDIR"/files-args-bysize
+	echo "- ------- | ------- | ---- | ----" >> "$AMCACHEDIR"/files-args-bysize
+	cat "$AMCACHEDIR"/files-args >> "$AMCACHEDIR"/files-args-bysize 2>/dev/null
+	column -t "$AMCACHEDIR"/files-args-bysize
+	_files_total_size
+	_files_appimage_type_notes
+}
+
+#--------------------------------------------------------------------------
+# LIST/QUERY
+_pretty_list() {
+	# Remove references to URLs, "-a" elements in "-l" and "-q"
+	sed -E 's#(http|https|ftp)://[^ ]*##g; s#(SITE|SOURCE):##g; s/^/\n/g' | _colors | fold -sw 75 | sed 's/^/   /g; s/  ◆ /◆ /g; s/  :/ :/g'
+}
+
+_pretty_list_compat() {
+	# Remove references to URLs, "-a" elements in "-l" and "-q"
+	sed -E 's#(http|https|ftp)://[^ ]*##g; s#(SITE|SOURCE):##g' | _colors | fold -sw 75 | sed 's/^/   /g; s/  ◆ /◆ /g; s/  :/ :/g'
+}
+
+_colors() {
+	awk '{
+		printf "%s \033[32m%s\033[0m", $1, $2
+		{$1 = ""; $2 = ""; print $0;}
+	}'
+}
+
+_list() {
+	# Check if github.com is online, if not, the function will read the offline list
+	wget -q --tries=10 --timeout=20 --spider https://github.com && _completion_lists
+	# Check the number of installed apps and libraries
+	LIBNUMBER=$(grep "usr/local/lib" "$APPSPATH"/*/remove 2> /dev/null | wc -l)
+	ITEMSNUMBER=$(cd "$APPSPATH" && find . -name 'remove' -printf "%h\n" 2>/dev/null | sort -u | wc -l)
+	if [ "$AMCLI" = am ]; then
+		if test -f /opt/am/remove; then
 			ITEMSNUMBER=$(("$ITEMSNUMBER"-1))
 		fi
-		APPSNUMBER=$(echo "$(("$ITEMSNUMBER" - "$LIBNUMBER"))")
-		_check_version
-		if test -f $AMPATH/.cache/version-args; then
-			INSTALLED=$(cat $AMPATH/.cache/version-args | sort | sed 's/	|	/ /g' | grep -v "◆ am ")
-			MESSAGE2="\n$INSTALLED\n"
-		fi
-
-		wget -q --tries=10 --timeout=20 --spider https://github.com
-		if [[ $? -eq 0 ]]; then
-			_completion_lists
-		fi
-		if cat $APPSPATH/*/remove 2> /dev/null | grep -q "usr/local/lib"; then
-			if [ "$LIBNUMBER" == 1 ]; then
-				MESSAGE=$(echo " YOU HAVE INSTALLED $APPSNUMBER APPLICATIONS OUT OF $(grep -e "$" -c $AMPATH/$arch-apps) AVAILABLE, AND $LIBNUMBER LIBRARY")
-			else
-				MESSAGE=$(echo " YOU HAVE INSTALLED $APPSNUMBER APPLICATIONS OUT OF $(grep -e "$" -c $AMPATH/$arch-apps) AVAILABLE, AND $LIBNUMBER LIBRARIES")
-			fi
-		else
-			MESSAGE=$(echo " YOU HAVE INSTALLED $APPSNUMBER APPLICATIONS OUT OF $(grep -e "$" -c $AMPATH/$arch-apps) AVAILABLE")
-		fi
-		echo -e "\n$MESSAGE\n$MESSAGE2\n LIST OF THE $(grep -e "$" -c $AMPATH/$arch-apps) APPLICATIONS AVAILABLE IN THE 'AM' REPOSITORY:\n\n$(cat $AMPATH/$arch-apps | _clean_lists_and_queries)\n" | less -I
-		echo -e "\n$MESSAGE\n$MESSAGE2"
-	}
-	_list
-	;;
-
-  '-q'|'query')
-	case $2 in
-	'') echo " USAGE: $AMCLI $1 [ARGUMENT]"; exit;;
-	esac
-
-	wget -q --tries=10 --timeout=20 --spider https://github.com
-	if [[ $? -eq 0 ]]; then
-		_completion_lists
 	fi
-	ARGS=$(echo "$@" | sed 's/-q //')
-	echo ""
-	echo ' Search results for "'$ARGS'":' | tr a-z A-Z
-	echo ""
-	grep -i -E "$2" "$AMPATH/$arch-apps" | grep -i -E "$3" | grep -i -E "$4" | grep -i -E "$5" | grep -i -E "$6" | grep -i -E "$7" | grep -i -E "$8" | grep -i -E "$9" | _clean_lists_and_queries
-	grep -i -E "$2" "$AMPATH/libs-list" | grep -i -E "$3" | grep -i -E "$4" | grep -i -E "$5" | grep -i -E "$6" | grep -i -E "$7" | grep -i -E "$8" | grep -i -E "$9" | _clean_lists_and_queries
-	echo ""
-	exit
-	;;
+	APPSNUMBER=$(("$ITEMSNUMBER" - "$LIBNUMBER"))
+	# Determine the number of available apps from the list
+	AVAILABLE_APPS_NUMBER=$(grep -v "ffwa-\|\"kdegames\"\|\"kdeutils\"\|\"node\"\|\"platform-tools\"" "$AMDATADIR/$ARCH-apps" | grep -e "$" -c)
+	# Generate a list of the installed apps with version
+	if test -f "$AMCACHEDIR"/version-args; then
+		INSTALLED=$(sort "$AMCACHEDIR"/version-args 2>/dev/null | sed 's/	|	/ /g' | grep -v "◆ am ")
+		MESSAGE2="$INSTALLED"
+	else
+		_check_version
+		INSTALLED=$(sort "$AMCACHEDIR"/version-args 2>/dev/null | sed 's/	|	/ /g' | grep -v "◆ am ")
+		MESSAGE2="$INSTALLED"
+	fi
+	# Check if among the installed apps are available libraries
+	if [ "$LIBNUMBER" != 0 ]; then
+		# Check if the installed libraries are more than one
+		if [ "$LIBNUMBER" = 1 ]; then
+			MESSAGE=" YOU HAVE INSTALLED $APPSNUMBER APPLICATIONS OUT OF $AVAILABLE_APPS_NUMBER AVAILABLE, AND $LIBNUMBER LIBRARY"
+		else
+			MESSAGE=" YOU HAVE INSTALLED $APPSNUMBER APPLICATIONS OUT OF $AVAILABLE_APPS_NUMBER AVAILABLE, AND $LIBNUMBER LIBRARIES"
+		fi
+	else
+		MESSAGE=" YOU HAVE INSTALLED $APPSNUMBER APPLICATIONS OUT OF $AVAILABLE_APPS_NUMBER AVAILABLE"
+	fi
+}
+
+_list_appimages() {
+	# Determine the number of available apps
+	APPIMAGE_NAMES=$(curl -Ls https://portable-linux-apps.github.io/appimages.md | tr '/)' '\n' | grep -i ".md$" | uniq | sed 's/.md$//g')
+	if ! test -f "$AMCACHEDIR/$ARCH-appimages"; then
+		_online_check
+		for appimage in $APPIMAGE_NAMES; do
+			grep "◆ $appimage :" "$AMDATADIR/$ARCH-apps" >> "$AMCACHEDIR/$ARCH-appimages" &
+		done
+	fi
+	AVAILABLE_APPIMAGES_NUMBER=$(grep -e "$" -c "$AMCACHEDIR/$ARCH-appimages")
+}
+
+_list_msg_head() {
+	echo "" && echo "$MESSAGE" && echo "" && echo "$MESSAGE2" && echo ""
+}
+
+_list_msg_footer() {
+	echo "$LIST" && echo ""
+}
+
+_list_appimages_msg() {
+	_list_msg_head
+	echo " LIST OF THE $AVAILABLE_APPIMAGES_NUMBER APPIMAGES AVAILABLE IN THE 'AM' REPOSITORY:"
+	_list_msg_footer
+}
+
+_list_apps_msg() {
+	_list_msg_head
+	echo " LIST OF THE $AVAILABLE_APPS_NUMBER APPLICATIONS AVAILABLE IN THE 'AM' REPOSITORY:"
+	_list_msg_footer
+}
+
+################################################################################
+#				USAGE
+################################################################################
+
+case "$1" in
+	'-a'|'about')
+		[ -z "$2" ] && echo " USAGE: $AMCLI $1 [ARGUMENT]" && exit 1
+		_online_check
+		printf "%s\n" "-----------------------------------------------------------------------"
+		[ ! -f "$AMCACHEDIR"/version-args ] && _check_version
+		ARGS="$(echo "$@" | cut -f2- -d ' ')" # Removes first argument
+		for arg in $ARGS; do
+			if curl -o /dev/null -sIf "$AMCATALOGUEMARKDOWNS/${arg}.md" 1>/dev/null; then
+				_about_page "$arg"
+			else
+				printf " ERROR: %b not found\033[0m\n" "${RED}\"$arg\""
+			fi
+			printf "%s\n" "-----------------------------------------------------------------------"
+		done
+		;;
+
+	'-f'|'files')
+		if [ "$2" = "--less" ]; then
+			_files_show_only_number
+		elif [ "$2" = "--byname" ]; then
+			_files_sort_by_name
+			_betatester_message_on
+		else
+			_files_sort_by_size
+			_betatester_message_on
+		fi
+		;;
+
+	'-l'|'list')
+		_list
+		if [ "$2" = --appimages ]; then
+			_list_appimages
+			LIST=$(sort "$AMCACHEDIR/$ARCH-appimages" | _pretty_list)
+			_list_appimages_msg | less -Ir
+		else
+			LIST=$(sort "$AMDATADIR/$ARCH-apps" | _pretty_list)
+			_list_apps_msg | less -Ir
+		fi
+		#printf "\n$MESSAGE\n$MESSAGE2\n"
+		;;
+
+	'-q'|'query')
+		if [ -z "$2" ]; then
+			echo " USAGE: $AMCLI $1 [ARGUMENT]"
+			echo "        $AMCLI $1 --appimages [ARGUMENT]"
+			echo "        $AMCLI $1 --pkg [ARGUMENT]"; exit 1
+		fi
+		wget -q --tries=10 --timeout=20 --spider https://github.com && _completion_lists
+		if [ "$2" = --pkg ]; then
+			ARGS="$(echo "$@" | cut -f3- -d ' ' | tr -s ' ' '|')"
+			printf "\n Search results for packages: %s\n\n"  "$ARGS" | tr '[:lower:]' '[:upper:]'
+			grep -iE "$ARGS" "$AMDATADIR/$ARCH-apps" --color=always | _pretty_list_compat
+		elif [ "$2" = --appimages ]; then
+			ARGS="$(echo "$@" | cut -f3- -d ' ')"
+			printf "\n Search results for \"%s\":\n\n"  "$ARGS" | tr '[:lower:]' '[:upper:]'
+			PATTERN="$(echo "$ARGS" | sed 's/ /(?=.*/g; s/$/)/g; s/(/)(/g; s/^/(?=.*/g;')"
+			_list_appimages
+			grep -Pi "$PATTERN" "$AMCACHEDIR/$ARCH-appimages" | _pretty_list_compat
+		else
+			ARGS="$(echo "$@" | cut -f2- -d ' ')"
+			printf "\n Search results for \"%s\":\n\n"  "$ARGS" | tr '[:lower:]' '[:upper:]'
+			PATTERN="$(echo "$ARGS" | sed 's/ /(?=.*/g; s/$/)/g; s/(/)(/g; s/^/(?=.*/g;')"
+			grep -Pi "$PATTERN" "$AMDATADIR/$ARCH-apps" | _pretty_list_compat
+		fi
+		printf '\n'
+		;;
 esac

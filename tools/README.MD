@@ -1,12 +1,6 @@
-This section stores some external tools needed into the installation scripts:
+This section stores some extra tools:
+- am2plasite, a script to update main pages of https://portable-linux-apps.github.io using the application's list from this repo
+- pkg2appimage (lite version), a lightweight fork of [pkg2appimage](https://github.com/AppImage/pkg2appimage) that runs on systems without libfuse2
+- REPO-sample.zip contains templates I use to quick create my repositories, where I create AppImages
 
- - pkg2appimage (lite version), a lightweight version of [pkg2appimage](https://github.com/AppImage/pkg2appimage)
-
-Other tools are available on other repositories:
-
- - [appimagedl](https://github.com/ivan-hc/appimagedl)
- - [appimagetool](https://github.com/AppImage/AppImageKit)
- - [appimageupdatetool](https://github.com/AppImage/AppImageUpdate)
- - [libunionpreload](https://github.com/project-portable/libunionpreload)
- - [pkg2appimage-32bit](https://github.com/ivan-hc/pkg2appimage-32bit)
- - [upp](https://github.com/ivan-hc/upp)
+Other scripts or binaries can be added as appropriate.
