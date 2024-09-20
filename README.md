@@ -93,6 +93,7 @@ Refer to the option "`-a`" to know the sources of each program listed here, so y
 - [An application does not work, is old and unsupported](#an-application-does-not-work-is-old-and-unsupported)
 - [Cannot download or update an application](#cannot-download-or-update-an-application)
 - [Cannot mount and run AppImages](#cannot-mount-and-run-appimages)
+- [Failed to open squashfs image](#failed-to-open-squashfs-image)
 - [Spyware, malware and dangerous software](#spyware-malware-and-dangerous-software)
 - [Stop AppImage prompt to create its own launcher, desktop integration and doubled launchers](#stop-appimage-prompt-to-create-its-own-launcher-desktop-integration-and-doubled-launchers)
 - [The script points to "releases" instead of downloading the latest stable](#the-script-points-to-releases-instead-of-downloading-the-latest-stable)
@@ -1282,6 +1283,7 @@ if no third-party repo is in use, you will see the default URLs from this repo.
 # Troubleshooting
 
 - [An application does not work, is old and unsupported](#an-application-does-not-work-is-old-and-unsupported)
+- [Failed to open squashfs image](#failed-to-open-squashfs-image)
 - [Cannot download or update an application](#cannot-download-or-update-an-application)
 - [Cannot mount and run AppImages](#cannot-mount-and-run-appimages)
 - [Spyware, malware and dangerous software](#spyware-malware-and-dangerous-software)
@@ -1327,6 +1329,31 @@ However, I suggest contacting the upstream developers to convince them to upgrad
 
 * **If you cannot run some AppImages on Ubuntu 23.10+ or its derivatives, then refer to [Restricted unprivileged user namespaces are coming to Ubuntu 23.10 | Ubuntu](https://ubuntu.com/blog/ubuntu-23-10-restricted-unprivileged-user-namespaces) for possible causes and remedies.**
 * **If you cannot run chrome/chromium/electron-based AppImages, then refer to [Troubleshooting/Electron-sandboxing](https://docs.appimage.org/user-guide/troubleshooting/electron-sandboxing.html) for possible causes and remedies.**
+
+------------------------------------------------------------------------
+
+| [Back to "Troubleshooting"](#troubleshooting) | [Back to "Main Index"](#main-index) |
+| - | - |
+
+------------------------------------------------------------------------
+### Failed to open squashfs image
+When installing a script for an AppImage, you may see an error like this
+```
+This doesn't look like a squashfs image.
+Failed to open squashfs image
+sed: can't read ./appname.desktop: No such file or directory
+mv: cannot stat './appname.desktop': No such file or directory
+```
+Basically, the installation process encounters errors while trying to extract the .deskto launcher and icon from the AppImage, and most likely, the entire application execution via terminal may fail, especially if installed locally, via AppMan.
+
+Here's what you need to check:
+- the installation status via your distribution repositories of the "squashfs-tools" package;
+- the installation status of FUSE (whether it is version 2, 3 or higher);
+- whether AppImageLauncher is installed or present on the system, if so remove it.
+
+In the case of AppImageLauncher, as I write (today September 20, 2024), the repository has not been updated for a couple of years and the runtime used in the AppImages has changed. AppImageLauncher uses mechanisms to identify the AppImages present in the system, asking you to integrate them if you launch one. It acts a bit like a system daemon in effect, and could cause problems while you tend to manage the AppImages with different tools, and therefore even the execution via terminal can be problematic.
+
+Remove AppImageLauncher and its files, then reboot the system (see also [issues/955](https://github.com/ivan-hc/AM/issues/955) and [issues/107](https://github.com/ivan-hc/AM/issues/107)).
 
 ------------------------------------------------------------------------
 
