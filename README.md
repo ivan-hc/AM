@@ -89,6 +89,8 @@ Refer to the option "`-a`" to know the sources of each program listed here, so y
   - [How to test an installation script](#how-to-test-an-installation-script)
 - [Third-party databases for applications (NeoDB)](#third-party-databases-for-applications-neodb)
 
+[Instructions for Linux Distro Maintainers](#instructions-for-linux-distro-maintainers)
+
 [Troubleshooting](#troubleshooting)
 - [An application does not work, is old and unsupported](#an-application-does-not-work-is-old-and-unsupported)
 - [Cannot download or update an application](#cannot-download-or-update-an-application)
@@ -1273,6 +1275,27 @@ appman newrepo info
 if no third-party repo is in use, you will see the default URLs from this repo.
 
 ![Istantanea_2024-08-25_20-07-54 png](https://github.com/user-attachments/assets/793e64b9-7377-424c-a70e-a83e89c5225c)
+
+------------------------------------------------------------------------
+
+| [Install "AM"/"AppMan"](#installation) | [Back to "Guides and tutorials"](#guides-and-tutorials) | [Back to "Main Index"](#main-index) |
+| - | - | - |
+
+------------------------------------------------------------------------
+# Instructions for Linux Distro Maintainers
+
+You can package "AM" for Debian, Fedora, Arch Linux, Gentoo and many more GNU/Linux distros using the following configuration:
+```
+/usr/bin/am
+/usr/lib/am/modules
+```
+where "`/usr/bin/am`" is the script "[APP-MANAGER](https://github.com/ivan-hc/AM/blob/main/APP-MANAGER)" and "`/usr/lib/am/modules`" is the directory "[modules](https://github.com/ivan-hc/AM/tree/main/modules)" with all its content.
+
+Applications will continue to be installed in /opt, as always.
+
+What changes from the normal "AM" installation is the update of the CLI and modules, which will instead be completely managed by the package manager in use (APT, DNF, PacMan/YAY...).
+
+As for "AppMan", there is no packaging, as it is a standalone or self-updating script, and needs to be in a read-write directory without root privileges. However, it is possible to use "AM" in "[Appman Mode](https://github.com/ivan-hc/AM#how-to-use-am-in-non-privileged-mode-like-appman)".
 
 ------------------------------------------------------------------------
 
