@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="8.2.1"
+AMVERSION="8.3"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -1014,12 +1014,34 @@ function _update_determine_apps_version_changes() {
 	fi
 }
 
+function _update_updated_app_msg() {
+	end=$(date +%s)
+	echo " ◆ $APPNAME is updated, $((end - start)) seconds elapsed!"
+}
+
+function _update_run_updater() {
+	if grep -q "api.github.com" "$APPSPATH"/"$arg"/AM-updater; then
+		GH_API_ALLOWED=$(curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/ivan-hc/AM/releases/latest | sed 's/[()",{} ]/\n/g' | grep "^ivan-hc" | head -1)
+		if [ -z "$GH_API_ALLOWED" ]; then
+			if command -v torsocks 1>/dev/null; then
+				torsocks "$APPSPATH"/"$arg"/AM-updater >/dev/null 2>&1 && _update_updated_app_msg
+			else
+				echo " ✖ $APPNAME cannot be updated, you have reached GitHub API limit. Install \"torsocks\" from your system package manager and retry!" \
+				| fold -sw 72 | sed 's/^/   /g; s/   ✖/✖/g'
+			fi
+		else
+			"$APPSPATH"/"$arg"/AM-updater >/dev/null 2>&1 && _update_updated_app_msg
+		fi
+	else
+		"$APPSPATH"/"$arg"/AM-updater >/dev/null 2>&1 && _update_updated_app_msg
+	fi
+}
+
 function _update_app() {
+	APPNAME=$(echo "$arg" | tr '[:lower:]' '[:upper:]')
+	start=$(date +%s)
 	if [ -w "$APPSPATH"/"$arg"/AM-updater ]; then
-		start=$(date +%s) &&
-		sh -x "$APPSPATH"/"$arg"/AM-updater >/dev/null 2>&1 | echo -ne ' Updating "'"$APPNAME"'"...\r' &&
-		end=$(date +%s) &&
-		echo " ◆ $APPNAME is updated, $((end - start)) seconds elapsed!" &
+		_update_run_updater &
 	else
 		echo " ✖ $APPNAME is read-only, cannot update it!"
 	fi
@@ -1030,7 +1052,6 @@ function _update_all_apps() {
 		cd "$f" 2>/dev/null || exit 1
 		arg=$(printf '%s\n' "${PWD##*/}")
 		if test -f "$APPSPATH"/"$arg"/AM-updater; then
-			APPNAME=$(echo "$arg" | tr '[:lower:]' '[:upper:]')
 			_update_app
 		fi
 	done
@@ -1043,6 +1064,7 @@ function _update_all_apps() {
 function _use_update() {
 	_online_check
 	_update_github_api_key_in_the_updater_files
+	_clean_all_tmp_directories_from_appspath >/dev/null
 	case $2 in
 	''|'--apps')
 		_clean_amcachedir
@@ -1060,14 +1082,13 @@ function _use_update() {
 	*)
 		ARGS="$(echo "$@" | cut -f2- -d ' ')"
 		for arg in $ARGS; do
-			APPNAME=$(echo "$arg" | tr '[:lower:]' '[:upper:]')
 			if test -f "$APPSPATH"/"$arg"/AM-updater; then
 				cd "$APPSPATH/$arg" 2>/dev/null || exit 1
 				_update_app
 			else
 				UPDATERS=$(cd "$APPSPATH"/"$arg" 2>/dev/null && find . -name "*update*" -print 2>/dev/null)
 				[ -n "$UPDATERS" ] && arg_autoupdatable=", it may have its update system"
-				echo " ✖ Cannot manage updates for \"$APPNAME\"$arg_autoupdatable"
+				echo " ✖ Cannot manage updates for \"$(echo "$arg" | tr '[:lower:]' '[:upper:]')\"$arg_autoupdatable"
 			fi
 		done
 		wait
