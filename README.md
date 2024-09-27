@@ -300,6 +300,7 @@ The following are optional dependencies that some programs may require:
 - "`binutils`", contains a series of basic commands, including "`ar`" which extracts .deb packages;
 - "`unzip`", to extract .zip packages;
 - "`tar`", to extract .tar* packages;
+- "`torsocks`", to connect to the TOR network;
 - "`zsync`", about 10% of AppImages depend on this to be updated.
 
 ### Proceede
