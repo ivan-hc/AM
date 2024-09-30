@@ -301,7 +301,7 @@ The following are optional dependencies that some programs may require:
 - "`unzip`", to extract .zip packages;
 - "`tar`", to extract .tar* packages;
 - "`torsocks`", to connect to the TOR network;
-- "`zsync`", about 10% of AppImages depend on this to be updated.
+- "`zsync`", required by very few programs and AppImages (although it is mentioned in all installation scripts, it is often disabled because the managed .zsync files are often broken, especially for apps hosted on github.com).
 
 ### Proceede
 
