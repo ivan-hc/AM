@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="8.3-2"
+AMVERSION="8.3.1"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -220,6 +220,34 @@ function _online_check() {
 		exit
 	fi
 }
+
+# BLACKLIST FILES
+appimagelauncher_msg="Your installation of AppImageLauncher may have been done via DEB, RPM, or AUR, which interrupts the \
+natural operation of \"systemd-binfmt\" in addition to launching the aforementioned daemon. To avoid problems with \"$AMCLIUPPER\" \
+and any other AppImages helper, it's preferable to use \"only\" the standalone AppImage of AppImageLauncher, whose official \
+updated release can also be installed via \"$AMCLIUPPER\". But as long as you have the currently installed version, you can't use this CLI."
+
+function _blacklisted_file() {
+	echo ""
+	echo -e " ${RED}💀WARNING! Detected \"$blacklisted_file\"\033[0m"
+	echo ""
+	echo "It will prevent \"$AMCLIUPPER\" from working correctly with AppImages, especially when extracting, integrating and updating them." | fold -sw 77 | sed 's/^/ /g'
+	echo ""
+	if echo "$blacklisted_file" | grep -q appimagelauncherd; then
+		echo "$appimagelauncher_msg" | fold -sw 77 | sed 's/^/ /g'
+		echo "" && echo " Please remove \"AppImageLauncher\", reboot and retry!"
+	else
+		echo " Please remove \"$blacklisted_file\", reboot and retry!"
+	fi
+	echo ""
+	exit 0
+}
+
+if command -v appimaged &>/dev/null; then
+	blacklisted_file=$(command -v appimaged) _blacklisted_file
+elif command -v appimagelauncherd &>/dev/null; then
+	blacklisted_file=$(command -v appimagelauncherd) _blacklisted_file
+fi
 
 ################################################################################
 #				3RD PARTY
