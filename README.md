@@ -1475,7 +1475,11 @@ As the author of [this article](https://ubuntu.com/blog/ubuntu-23-10-restricted-
 
 User namespaces are a feature of the kernel. It's a feature which is supported by the Linux kernel. When a vulnerability is found, it's given a CVE and the code is fixed appropriately. If the kernel developers wanted to disable this feature by default, or restrict it, they could do so themselves.
 
-Introducing namespace restrictions via AppArmor is an additional security layer, but not required, since we already have more flexible sandboxing systems in the Linux world, in particular "[Bubblewrap](https://github.com/containers/bubblewrap)", used mainly by Flatpak and othe projects, including this and my other one, "[Archimage](https://github.com/ivan-hc/ArchImage)". **Canonical has only one interest in applying all these restrictions to Ubuntu: to enforce the use of Snap!** It's not that the Snapcraft database is that secure, it's not uncommon for some malicious user to have introduced malicious code into distributed applications. But as expected,Ubuntu is a distribution that knows how to attract criticism and disapproval. I say this as a former user (I started with Ubuntu 9.04): Canonical doesn't give a damn about Ubuntu users!
+Introducing namespace restrictions via AppArmor is an additional security layer, but not required, since we already have more flexible sandboxing systems in the Linux world, in particular "[Bubblewrap](https://github.com/containers/bubblewrap)", used mainly by Flatpak and othe projects, including this and my other one, "[Archimage](https://github.com/ivan-hc/ArchImage)".
+
+**Canonical has only one interest in applying all these restrictions to Ubuntu: to enforce the use of Snap!**
+
+It's not that the Snapcraft database is that secure, it's not uncommon for some malicious user to have introduced malicious code into distributed applications. But as expected,Ubuntu is a distribution that knows how to attract criticism and disapproval. I say this as a former user (I started with Ubuntu 9.04): Canonical doesn't give a damn about Ubuntu users!
 
 There are two solutions to this problem, one simple and one a little more complex:
 1. The simple solution is to stop using Ubuntu, completely! Change distribution!
