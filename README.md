@@ -99,6 +99,7 @@ Refer to the option "`-a`" to know the sources of each program listed here, so y
 - [Spyware, malware and dangerous software](#spyware-malware-and-dangerous-software)
 - [Stop AppImage prompt to create its own launcher, desktop integration and doubled launchers](#stop-appimage-prompt-to-create-its-own-launcher-desktop-integration-and-doubled-launchers)
 - [The script points to "releases" instead of downloading the latest stable](#the-script-points-to-releases-instead-of-downloading-the-latest-stable)
+- [Ubuntu mess](#ubuntu-mess)
 - [Wrong download link](#wrong-download-link)
 
 [Related projects](#related-projects)
@@ -1313,6 +1314,7 @@ As for "AppMan", there is no packaging, as it is a standalone or self-updating s
 - [Spyware, malware and dangerous software](#spyware-malware-and-dangerous-software)
 - [Stop AppImage prompt to create its own launcher, desktop integration and doubled launchers](#stop-appimage-prompt-to-create-its-own-launcher-desktop-integration-and-doubled-launchers)
 - [The script points to "releases" instead of downloading the latest stable](#the-script-points-to-releases-instead-of-downloading-the-latest-stable)
+- [Ubuntu mess](#ubuntu-mess)
 - [Wrong download link](#wrong-download-link)
 
 ------------------------------------------------------------------------
@@ -1351,7 +1353,7 @@ Alternatively you can use the "`nolibfuse`" option to "try" to convert old Type2
 
 However, I suggest contacting the upstream developers to convince them to upgrade their packages.
 
-* **If you cannot run some AppImages on Ubuntu 23.10+ or its derivatives, then refer to [Restricted unprivileged user namespaces are coming to Ubuntu 23.10 | Ubuntu](https://ubuntu.com/blog/ubuntu-23-10-restricted-unprivileged-user-namespaces) for possible causes and remedies.**
+* **If you cannot run some AppImages on Ubuntu 23.10+ or its derivatives, then refer to [Restricted unprivileged user namespaces are coming to Ubuntu 23.10 | Ubuntu](https://ubuntu.com/blog/ubuntu-23-10-restricted-unprivileged-user-namespaces) for possible causes and remedies or jump to "[Ubuntu mess](#ubuntu-mess)".**
 * **If you cannot run chrome/chromium/electron-based AppImages, then refer to [Troubleshooting/Electron-sandboxing](https://docs.appimage.org/user-guide/troubleshooting/electron-sandboxing.html) for possible causes and remedies.**
 
 ------------------------------------------------------------------------
@@ -1461,6 +1463,36 @@ am -u $PROGRAM
 ```
 
 See also "[Install the "latest" stable release instead of the latest "unstable"](#install-the-latest-stable-release-instead-of-the-latest-unstable)".
+
+------------------------------------------------------------------------
+
+| [Back to "Troubleshooting"](#troubleshooting) | [Back to "Main Index"](#main-index) |
+| - | - |
+
+------------------------------------------------------------------------
+### Ubuntu mess
+As the author of [this article](https://ubuntu.com/blog/ubuntu-23-10-restricted-unprivileged-user-namespaces) states, "*Ubuntu Desktop firmly places security at the forefront, and adheres to the principles of security by default*". Bullsh*t!
+
+User namespaces are a feature of the kernel. It's a feature which is supported by the Linux kernel. When a vulnerability is found, it's given a CVE and the code is fixed appropriately. If the kernel developers wanted to disable this feature by default, or restrict it, they could do so themselves.
+
+Introducing namespace restrictions via AppArmor is an additional security layer, but not required, since we already have more flexible sandboxing systems in the Linux world, in particular "[Bubblewrap](https://github.com/containers/bubblewrap)", used mainly by Flatpak and othe projects, including this and my other one, "[Archimage](https://github.com/ivan-hc/ArchImage)". **Canonical has only one interest in applying all these restrictions to Ubuntu: to enforce the use of Snap!** It's not that the Snapcraft database is that secure, it's not uncommon for some malicious user to have introduced malicious code into distributed applications. But as expected,Ubuntu is a distribution that knows how to attract criticism and disapproval. I say this as a former user (I started with Ubuntu 9.04): Canonical doesn't give a damn about Ubuntu users!
+
+There are two solutions to this problem, one simple and one a little more complex:
+1. The simple solution is to stop using Ubuntu, completely! Change distribution!
+2. The slightly more complex solution is to disable restrictions, via the command line. If you decide to adopt this one, see below.
+
+#### How to disable Apparmor restrictions
+If you chose number two and you feel happy with Ubuntu, follow these steps (as suggested [here](https://github.com/linuxmint/mint22-beta/issues/82)):
+1. run the following command to disable AppArmor restrictions (the file name is relative)
+```
+echo 'kernel.apparmor_restrict_unprivileged_userns = 0' | sudo tee /etc/sysctl.d/20-apparmor-mint.conf
+```
+2. Reboot.
+
+------------------------------------------------------------------------
+
+| [Back to "Troubleshooting"](#troubleshooting) | [Back to "Main Index"](#main-index) |
+| - | - |
 
 ------------------------------------------------------------------------
 ### Wrong download link
