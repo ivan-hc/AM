@@ -80,6 +80,7 @@ Refer to the option "`-a`" to know the sources of each program listed here, so y
 - [How to enable bash completion](#how-to-enable-bash-completion)
 - [How to update or remove apps manually](#how-to-update-or-remove-apps-manually)
 - [Downgrade an installed app to a previous version](#downgrade-an-installed-app-to-a-previous-version)
+- [How to use multiple versions of the same application](#how-to-use-multiple-versions-of-the-same-application)
 - [Create and test your own installation script](#create-and-test-your-own-installation-script)
   - [Option Zero: "AppImages"](#option-zero-appimages)
   - [Option One: "build AppImages on-the-fly"](#option-one-build-appimages-on-the-fly)
@@ -685,6 +686,7 @@ This section is committed to giving small demonstrations of each available optio
   - [How to enable bash completion](#how-to-enable-bash-completion)
   - [How to update or remove apps manually](#how-to-update-or-remove-apps-manually)
   - [Downgrade an installed app to a previous version](#downgrade-an-installed-app-to-a-previous-version)
+  - [How to use multiple versions of the same application](#how-to-use-multiple-versions-of-the-same-application)
   - [Create and test your own installation script](#create-and-test-your-own-installation-script)
     - [Option Zero: "AppImages"](#option-zero-appimages)
     - [Option One: "build AppImages on-the-fly"](#option-one-build-appimages-on-the-fly)
@@ -886,16 +888,22 @@ __________________________________________________________________________
 ### Backup and restore installed apps using snapshots
 
 #### Backup
-Option `-b` or `backup` creates a copy of the installed app into a dedicated directory under $HOME/.am-snapshots:
+Option `-b` or `backup` creates a copy of the installed app into a dedicated directory under $HOME/.am-snapshots. 
 
-https://github.com/ivan-hc/AM/assets/88724353/ae581bc0-f1c5-47da-a2c4-3d01c37cc5a4
+- by default, each snapshot is named with the date and time you have done the backup, just leave blank and press ENTER;
+- if you press "1", the snapshot version will be used as the name;
+- finally, you can simply write the name to give to the snapshot (spaces will be replaced with a "`_`").
 
-Each snapshot is named with the date and time you have done the backup. To restore the application to a previous version, copy/paste the name of the snapshot when the `-o` option will prompt it.
+https://github.com/user-attachments/assets/cff80e3d-a030-4649-a9ef-280938c2eb94
+
+To restore the application to a previous version, copy/paste the name of the snapshot when the `-o` option will prompt it.
 
 #### Restore
 Option `-o` or `overwrite` lists all the snapshots you have created with the option `-o` (see above), and allows you to overwrite the new one:
 
-https://github.com/ivan-hc/AM/assets/88724353/f9904ad2-42ec-4fce-9b21-b6b0f8a99414
+https://github.com/user-attachments/assets/b11e8a2d-9f94-43a2-8c0b-09b9e173394e
+
+See also "[How to use multiple versions of the same application](#how-to-use-multiple-versions-of-the-same-application)".
 
 ------------------------------------------------------------------------
 
@@ -1106,6 +1114,29 @@ am --rollback ${PROGRAM}
 This only works with the apps hosted on Github.
 
 https://github.com/ivan-hc/AM/assets/88724353/8f286711-7934-461a-8bc2-b3a3e1d5f269
+
+------------------------------------------------------------------------
+
+| [Back to "Guides and tutorials"](#guides-and-tutorials) | [Back to "Main Index"](#main-index) |
+| - | - |
+
+------------------------------------------------------------------------
+
+__________________________________________________________________________
+### How to use multiple versions of the same application
+Before you begin, you just need to know how to use snapshots via the `-b` and `-o` options (see "[*Backup and restore installed apps using snapshots*](#backup-and-restore-installed-apps-using-snapshots)") and how to downgrade applications where possible (see "[*Downgrade an installed app to a previous version*](#downgrade-an-installed-app-to-a-previous-version)").
+
+You can use the `-b` option for snapshots, and where applicable, you can use the `downgrade` or `--rollback` option to install older versions of a program. This way, whenever you want to use a different version of the same program, you can use `-o`, using the snapshot you prefer.
+
+For example, suppose you want to alternate "Kdenlive 24.08.1" (at the time of writing, it is the latest release available) with "Kdenlive 23.08" which still supports QT5, here's how to do it:
+1. do a backup with `am -b kdenlive`, press `y` and press `1`, this will create the snapshot "24.08.1";
+2. run the command `am downgrade kdenlive` and select the version 23.08 from the list;
+3. run a backup again with `am -b kdenlive`, press `y` and press `1` to create the snapshot "23.08";
+4. from now on, to switch between them, just use `am -o kdenlive` and select between "24.08.1" and "23.08", from the list.
+
+You can create as many snapshots as you want and switch them this way according to your needs!
+
+And if it is an AppImage, you can dedicate its own .home and .config directories to it (option `-H` and `-C`, respectively, in uppercase).
 
 ------------------------------------------------------------------------
 
