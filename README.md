@@ -1512,7 +1512,7 @@ Introducing namespace restrictions via AppArmor is an additional security layer,
 
 It's not that the Snapcraft database is that secure, it's not uncommon for some malicious user to have introduced malicious code into distributed applications. The reason they disable namespaces is due to some older privilege escalation bugs, but the problem with that is that it doesn't matter on desktop usage, any malware can just wait for you to enter your sudo password when updating, not to mention that it can already do everything the regular user can do, including deleting everything owned by the user. 
 
-But as expected,Ubuntu is a distribution that knows how to attract criticism and disapproval. I say this as a former user (I started with Ubuntu 9.04): Canonical doesn't give a damn about Ubuntu users!
+But as expected, Ubuntu is a distribution that knows how to attract criticism and disapproval. I say this as a former user (I started with Ubuntu 9.04): Canonical doesn't give a damn about Ubuntu users!
 
 There are two solutions to this problem, one simple and one a little more complex:
 1. The simple solution is to stop using Ubuntu, completely! Change distribution!
