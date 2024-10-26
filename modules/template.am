@@ -18,24 +18,33 @@ function _template_create_dirs_and_ask_for_source() {
 	echo "-----------------------------------------------------------------------"
 }
 
-function _template_if_github_source() {
-	RESPONSE=$(echo "$RESPONSE" | sed 's#https://github.com/##g' | cut -f1,2 -d'/')
-	sed -i "s#REPLACETHIS#$RESPONSE#g" ./am-scripts/"$arch"/"$arg"
-	# GET THE DESCRIPTION OF THIS REPOSITORY TO ADD IN ALL CREATED FILES
-	COMMENT=$(curl $HeaderAuthWithGITPAT https://api.github.com/repos/"$RESPONSE" 2>/dev/null | grep description | sed 's/"description": "//' | sed 's/",//' | cut -c 3-)
-	# CREATE A WEBPAGE FOR https://portable-linux-apps.github.io CONTAINING ALL THE INFO ABOUT THIS APP
+function _template_if_github_or_codeberg_source() {
+	# HEADER OF THE MARKDOWS
 	echo "# $(echo "$arg" | tr '[:lower:]' '[:upper:]')" >> ./am-scripts/portable-linux-apps.github.io/apps/"$arg".md
-	echo -e "\n $COMMENT\n\n SITE: https://github.com/$RESPONSE\n\n | [Applications](https://portable-linux-apps.github.io/apps.html) | [Home](https://portable-linux-apps.github.io)\n | --- | --- |" >> ./am-scripts/portable-linux-apps.github.io/apps/"$arg".md &&
+	q="'"
+	if echo "$RESPONSE" | grep -q "https://github.com"; then
+		RESPONSE=$(echo "$RESPONSE" | sed 's#https://github.com/##g' | cut -f1,2 -d'/')
+		COMMENT=$(curl $HeaderAuthWithGITPAT https://api.github.com/repos/"$RESPONSE" 2>/dev/null | grep description | sed 's/"description": "//' | sed 's/",//' | cut -c 3-)
+		CURL_COMMAND_REF="curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos"
+		echo -e "\n $COMMENT\n\n SITE: https://github.com/$RESPONSE\n\n | [Applications](https://portable-linux-apps.github.io/apps.html) | [Home](https://portable-linux-apps.github.io)\n | --- | --- |" >> ./am-scripts/portable-linux-apps.github.io/apps/"$arg".md
+	elif echo "$RESPONSE" | grep -q "https://codeberg.org"; then
+		RESPONSE=$(echo "$RESPONSE" | sed 's#https://codeberg.org/##g' | cut -f1,2 -d'/')
+		COMMENT=$(curl https://codeberg.org/"$RESPONSE" 2>/dev/null | grep "description.*content" | tail -1 | sed 's/content="/\n/; s/">//g' | tail -1)
+		CURL_COMMAND_REF="curl -Ls https://codeberg.org"
+		echo -e "\n $COMMENT\n\n SITE: https://codeberg.org/$RESPONSE\n\n | [Applications](https://portable-linux-apps.github.io/apps.html) | [Home](https://portable-linux-apps.github.io)\n | --- | --- |" >> ./am-scripts/portable-linux-apps.github.io/apps/"$arg".md
+	fi
+	# CHECK THE DOWNLOAD LINK, THE ONE THAT POINTS TO THE LATEST RELEASE, NOTE THAT IT MAY BE A DEVELOPMENT VERSION, ADD "/latest" AFTER "/releases" TO POINT TO THE LAST STABLE VERSION
+	q="'"
+	if [ "$templatetype" == 0 ]; then
+		FUNCTION=''"$CURL_COMMAND_REF"'/'"$RESPONSE"'/releases | sed '"$q"'s/[()",{} ]/\\n/g'"$q"' | grep -oi "https.*mage$" | grep -vi "i386\\|i686\\|aarch64\\|arm64\\|armv7l" | head -1'
+	elif [ "$templatetype" == 2 ]; then
+		FUNCTION=''"$CURL_COMMAND_REF"'/'"$RESPONSE"'/releases | sed '"$q"'s/[()",{} ]/\\n/g'"$q"' | grep -oi "https.*" | grep -vi "i386\\|i686\\|aarch64\\|arm64\\|armv7l" | head -1'
+	fi
+	sed -i "s#REPLACETHIS#$RESPONSE#g" ./am-scripts/"$arch"/"$arg"
 	# CREATE A NEW LINE FOR THE APPLICATION'S LIST
 	echo "◆ $arg : $COMMENT" >> ./am-scripts/list
 	echo "-----------------------------------------------------------------------"
 	# CHECK THE DOWNLOAD LINK, THE ONE THAT POINTS TO THE LATEST RELEASE, NOTE THAT IT MAY BE A DEVELOPMENT VERSION, ADD "/latest" AFTER "/releases" TO POINT TO THE LAST STABLE VERSION
-	q="'"
-	if [ "$templatetype" == 0 ]; then
-		FUNCTION='curl -Ls https://api.github.com/repos/'"$RESPONSE"'/releases | sed '"$q"'s/[()",{} ]/\\n/g'"$q"' | grep -oi "https.*mage$" | grep -vi "i386\\|i686\\|aarch64\\|arm64\\|armv7l" | head -1'
-	elif [ "$templatetype" == 2 ]; then
-		FUNCTION='curl -Ls https://api.github.com/repos/'"$RESPONSE"'/releases | sed '"$q"'s/[()",{} ]/\\n/g'"$q"' | grep -oi "https.*" | grep -vi "i386\\|i686\\|aarch64\\|arm64\\|armv7l" | head -1'
-	fi
 	sed -i "s#FUNCTION)#$FUNCTION)#g" ./am-scripts/"$arch"/"$arg"
 }
 
@@ -51,9 +60,9 @@ function _template_test_github_url_if_torsocks_exists() {
 	fi
 }
 
-function _template_then_github_source() {
+function _template_then_github_or_codeberg_source() {
 
-	_template_if_github_source
+	_template_if_github_or_codeberg_source
 
 	# Set the release as "latest" or keep it generic
 	read -r -p ' Latest release (y) or a generic one (N or leave blank)?' yn
@@ -75,11 +84,11 @@ function _template_then_github_source() {
 	'Y'|'y'|*)
 		if [ "$templatetype" == 0 ]; then
 			echo ""
-			GHURLPREVIEW_COMMAND="curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/$RESPONSE/releases$setlatest | sed 's/[()\",{} ]/\n/g' | grep -oi \"https.*mage$\" | grep -vi \"i386\|i686\|aarch64\|arm64\|armv7l\" | head -1"
+			GHURLPREVIEW_COMMAND="$CURL_COMMAND_REF/$RESPONSE/releases$setlatest | sed 's/[()\",{} ]/\n/g' | grep -oi \"https.*mage$\" | grep -vi \"i386\|i686\|aarch64\|arm64\|armv7l\" | head -1"
 			_template_test_github_url_if_torsocks_exists
 		elif [ "$templatetype" == 2 ]; then
 			echo ""
-			GHURLPREVIEW_COMMAND="curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/$RESPONSE/releases$setlatest | sed 's/[()\",{} ]/\n/g' | grep -oi \"https.*\" | grep -vi \"i386\|i686\|aarch64\|arm64\|armv7l\" | head -1"
+			GHURLPREVIEW_COMMAND="$CURL_COMMAND_REF/$RESPONSE/releases$setlatest | sed 's/[()\",{} ]/\n/g' | grep -oi \"https.*\" | grep -vi \"i386\|i686\|aarch64\|arm64\|armv7l\" | head -1"
 			_template_test_github_url_if_torsocks_exists
 		fi
 		echo -e "\n The URL above is an example of what both\n the install and update scripts will point to.\n"
@@ -103,11 +112,11 @@ function _template_then_github_source() {
 			'Y'|'y'|*)
 				if [ "$templatetype" == 0 ]; then
 					echo ""
-					GHURLPREVIEW_COMMAND="curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/$RESPONSE/releases$setlatest | sed 's/[()\",{} ]/\n/g' | grep -oi \"https.*mage$\" | grep -vi \"i386\|i686\|aarch64\|arm64\|armv7l\" | grep -i \"$response\" | head -1"
+					GHURLPREVIEW_COMMAND="$CURL_COMMAND_REF/$RESPONSE/releases$setlatest | sed 's/[()\",{} ]/\n/g' | grep -oi \"https.*mage$\" | grep -vi \"i386\|i686\|aarch64\|arm64\|armv7l\" | grep -i \"$response\" | head -1"
 					_template_test_github_url_if_torsocks_exists
 				elif [ "$templatetype" == 2 ]; then
 					echo ""
-					GHURLPREVIEW_COMMAND="curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/$RESPONSE/releases$setlatest | sed 's/[()\",{} ]/\n/g' | grep -oi \"https.*\" | grep -vi \"i386\|i686\|aarch64\|arm64\|armv7l\" | grep -i \"$response\" | head -1"
+					GHURLPREVIEW_COMMAND="$CURL_COMMAND_REF/$RESPONSE/releases$setlatest | sed 's/[()\",{} ]/\n/g' | grep -oi \"https.*\" | grep -vi \"i386\|i686\|aarch64\|arm64\|armv7l\" | grep -i \"$response\" | head -1"
 					_template_test_github_url_if_torsocks_exists
 				fi
 				echo -e "\n The URL above is an example of what both\n the install and update scripts will point to.\n"
@@ -130,11 +139,11 @@ function _template_then_github_source() {
 			'Y'|'y'|*)
 				if [ "$templatetype" == 0 ]; then
 					echo ""
-					GHURLPREVIEW_COMMAND="curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/$RESPONSE/releases$setlatest | sed 's/[()\",{} ]/\n/g' | grep -oi \"https.*mage$\" | grep -vi \"i386\|i686\|aarch64\|arm64\|armv7l\" | grep -v \"$response\" | head -1"
+					GHURLPREVIEW_COMMAND="$CURL_COMMAND_REF/$RESPONSE/releases$setlatest | sed 's/[()\",{} ]/\n/g' | grep -oi \"https.*mage$\" | grep -vi \"i386\|i686\|aarch64\|arm64\|armv7l\" | grep -v \"$response\" | head -1"
 					_template_test_github_url_if_torsocks_exists
 				elif [ "$templatetype" == 2 ]; then
 					echo ""
-					GHURLPREVIEW_COMMAND="curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/$RESPONSE/releases$setlatest | sed 's/[()\",{} ]/\n/g' | grep -oi \"https.*\" | grep -vi \"i386\|i686\|aarch64\|arm64\|armv7l\" | grep -v \"$response\" | head -1"
+					GHURLPREVIEW_COMMAND="$CURL_COMMAND_REF/$RESPONSE/releases$setlatest | sed 's/[()\",{} ]/\n/g' | grep -oi \"https.*\" | grep -vi \"i386\|i686\|aarch64\|arm64\|armv7l\" | grep -v \"$response\" | head -1"
 					_template_test_github_url_if_torsocks_exists
 				fi
 				echo -e "\n The URL above is an example of what both\n the install and update scripts will point to.\n"
@@ -372,11 +381,13 @@ for arg in $ARGS; do
 			case "$RESPONSE" in
 			*)
 				if echo "$RESPONSE" | grep -q "https://github.com"; then
-					_template_then_github_source
+					_template_then_github_or_codeberg_source
+				elif echo "$RESPONSE" | grep -q "https://codeberg.org"; then
+					_template_then_github_or_codeberg_source
 				elif echo "$RESPONSE" | grep -q "sourceforge"; then
 					_template_if_sourceforge
 				elif ! echo "$RESPONSE" | grep -q "://"; then
-					_template_then_github_source
+					_template_then_github_or_codeberg_source
 				else
 					_template_description_if_hosted_elsewhere
 					_template_help_by_repology
@@ -420,11 +431,13 @@ for arg in $ARGS; do
 			case "$RESPONSE" in
 			*)
 				if echo "$RESPONSE" | grep -q "https://github.com"; then
-					_template_then_github_source
+					_template_then_github_or_codeberg_source
+				elif echo "$RESPONSE" | grep -q "https://codeberg.org"; then
+					_template_then_github_or_codeberg_source
 				elif echo "$RESPONSE" | grep -q "sourceforge"; then
 					_template_if_sourceforge
 				elif ! echo "$RESPONSE" | grep -q "://"; then
-					_template_then_github_source
+					_template_then_github_or_codeberg_source
 				else
 					_template_description_if_hosted_elsewhere
 					_template_help_by_repology
