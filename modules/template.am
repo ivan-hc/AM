@@ -4,8 +4,9 @@
 # THIS MODULE IS USED TO CREATE INSTALLATION SCRIPS TO ADD TO THE DATABASE
 ##########################################################################
 
-# ------------------------------------------------------------------------------
-# COMMON FUNCTIONS FOR APPIMAGES AND ARCHIVES (OPTIONS 0 AND 2)
+# ------------------------------------------------------------------------
+# COMMON FUNCTIONS FOR OPTIONS 0 (APPIMAGES) AND 2 (ARCHIVES/FILES)
+# ------------------------------------------------------------------------
 
 function _template_create_dirs_and_ask_for_source() {
 	# Create base directories
@@ -22,15 +23,153 @@ function _template_create_dirs_and_ask_for_source() {
 
 function _template_create_markdown_webpage_for_the_catalog() {
 	echo "# $(echo "$arg" | tr '[:lower:]' '[:upper:]')" >> ./am-scripts/portable-linux-apps.github.io/apps/"$arg".md
-	echo -e "\n $COMMENT\n\n SITE: $RESPONSE\n\n | [Applications](https://portable-linux-apps.github.io/apps.html) | [Home](https://portable-linux-apps.github.io)\n | --- | --- |" >> ./am-scripts/portable-linux-apps.github.io/apps/"$arg".md &&
+	echo -e "\n $COMMENT\n\n SITE: $RESPONSE\n\n | [Applications](https://portable-linux-apps.github.io/apps.html) | [Home](https://portable-linux-apps.github.io)\n | --- | --- |" >> ./am-scripts/portable-linux-apps.github.io/apps/"$arg".md
 }
 
 function _template_create_new_line_for_application_list() {
 	echo "◆ $arg : $COMMENT" >> ./am-scripts/list
 }
 
-# ------------------------------------------------------------------------------
-# COMMON FUNCTIONS TO GIT REPOSITORIES
+function _template_description_if_hosted_elsewhere() {
+	sed -i "s#REPLACETHIS#$RESPONSE#g" ./am-scripts/"$arch"/"$arg"
+	# ADD A DESCRIPTION FOR THIS APPLICATION
+	read -r -ep " ◆ ADD A BRIEF DESCRIPTION FOR THIS APPLICATION $(echo -e '\n : ')" COMMENT
+	case "$COMMENT" in
+	*)
+		_template_create_markdown_webpage_for_the_catalog
+		_template_create_new_line_for_application_list
+		;;
+	esac
+	echo "$DIVIDING_LINE"
+}
+
+# ------------------------------------------------------------------------
+# FUNCTIONS TO HANDLE DOWNLOADS AND VERSIONS FROM ALTERNATIVE SOURCES
+# ------------------------------------------------------------------------
+
+function _template_custom_download_url_as_version_variable() {
+	# IF YOU CAN, USE A ONE-LINE COMMAND TO DOWNLOAD THE PROGRAM
+	read -r -ep " USE A ONE-LINE COMMAND TO CHECK THE URL TO THE PROGRAM OR THE VERSION $(echo -e '\n\n if the URL is fixed, simply add the "echo" command at the beginning\n\n :') " DOWNLOADURL
+	case "$DOWNLOADURL" in
+	*)
+		mv ./am-scripts/"$arch"/"$arg" ./am-scripts/"$arch"/"$arg".old
+		sed -n '1,14p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
+		echo 'version=$('$DOWNLOADURL')' >> ./am-scripts/"$arch"/"$arg"
+		sed -n '16,35p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
+		echo 'version=$('$DOWNLOADURL')' >> ./am-scripts/"$arch"/"$arg"
+		sed -n '37,132p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
+		rm -f ./am-scripts/"$arch"/"$arg".old
+		echo "$DIVIDING_LINE"
+		;;
+	esac
+}
+
+function _template_use_wget_to_download_a_linear_url_or_a_command() {
+	# FOR "WGET", ADD A LINEAR DOWNLOAD URL OR CHECK THE URL USING THE "$( ... )" SYNTAX
+	read -r -ep " ◆ FOR \"WGET\", ADD A COMMAND AS \"\$( ... )\" OR A LINEAR DOWNLOAD URL $(echo -e '\n : ')" DOWNLOADURL
+	case "$DOWNLOADURL" in
+	*)
+		mv ./am-scripts/"$arch"/"$arg" ./am-scripts/"$arch"/"$arg".old
+		sed -n '1,15p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
+		echo 'wget "'$DOWNLOADURL'" || exit 1' >> ./am-scripts/"$arch"/"$arg"
+		sed -n '17,40p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
+		if grep -q "appimage" ./am-scripts/"$arch"/"$arg".old; then
+			echo '	[ -e ../*.zsync ] && wget "$version.zsync" 2>/dev/null || { wget "'$DOWNLOADURL'" || exit 1; }' >> ./am-scripts/"$arch"/"$arg"
+		else
+			echo '	wget "'$DOWNLOADURL'" || exit 1' >> ./am-scripts/"$arch"/"$arg"
+		fi
+		sed -n '42,150p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
+		rm -f ./am-scripts/"$arch"/"$arg".old
+		echo "$DIVIDING_LINE"
+		;;
+	esac
+}
+
+function _template_use_repology() {
+	echo ""; echo " $repology"; echo ""
+	mv ./am-scripts/"$arch"/"$arg" ./am-scripts/"$arch"/"$arg".old
+	sed -n '1,14p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
+	echo 'version=$('$repology_command')' >> ./am-scripts/"$arch"/"$arg"
+	sed -n '16,35p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
+	echo 'version=$('$repology_command')' >> ./am-scripts/"$arch"/"$arg"
+	sed -n '37,132p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
+	rm -f ./am-scripts/"$arch"/"$arg".old
+}
+
+function _template_help_by_repology() {
+	# IF A DOWNLOAD URL IS LINEAR, USE https://repology.org
+	read -r -ep " Do you want to use repology.org to identify version (y,N)? " yn
+	case "$yn" in
+	'Y'|'y')
+		repology=$(wget -q https://repology.org/project/$arg/versions -O - | grep -i "new.*version" | head -1 | tr '><' '\n' | grep "^[0-9]")
+		repology_command="wget -q https://repology.org/project/$arg/versions -O - | grep -i \"new.*version\" | head -1 | tr '><' '\\n' | grep \"^[0-9]\""
+		if [ -z "$repology" ]; then
+			repology=$(wget -q https://repology.org/project/$arg/versions -O - | grep -i "uniq.*version" | head -1 | tr '><' '\n' | grep "^[0-9]")
+			repology_command="wget -q https://repology.org/project/$arg/versions -O - | grep -i \"uniq.*version\" | head -1 | tr '><' '\\n' | grep \"^[0-9]\""
+			_template_use_repology
+		else
+			_template_use_repology
+		fi
+		if [ "$templatetype" != 1 ]; then
+			_template_use_wget_to_download_a_linear_url_or_a_command
+		fi
+		;;
+	'N'|'n'|*)
+		echo "$DIVIDING_LINE"
+		_template_custom_download_url_as_version_variable
+		;;
+	esac
+}
+
+# ------------------------------------------------------------------------
+# CUSTOM LAUNCHERS GENERATOR
+# ------------------------------------------------------------------------
+
+# Function to add a generic .desktop file and an icon to the installation script (option 2)
+function _template_generate_desktop_file() {
+	sed -i "s/#printf/printf/g" ./am-scripts/"$arch"/"$arg"
+	cat <<-'HEREDOC' >> ./am-scripts/"$arch"/"$arg"
+
+	# ICON
+	mkdir -p icons
+	wget ICONURL -O ./icons/"$APP" 2> /dev/null
+
+	# LAUNCHER
+	echo "[Desktop Entry]
+	Name=APPNAME
+	Exec=$APP
+	Icon=/opt/$APP/icons/$APP
+	Type=Application
+	Terminal=false
+	Categories=YOURCATEGORY;" > /usr/local/share/applications/"$APP"-AM.desktop
+	HEREDOC
+}
+
+# Function to add a category to our custom .desktop file (options 2 and 3)
+function _template_desktop_file_select_category() {
+	echo -e " LIST OF CATEGORIES:\n 0) AudioVideo\n 1) Audio\n 2) Video\n 3) Development\n 4) Education\n 5) Game\n 6) Graphics\n 7) Network\n 8) Office\n 9) Science\n 10) Settings\n 11) System\n 12) Utility (default)\n "
+	read -r -p " CHOOSE A CATEGORY : " response
+	case "$response" in
+		0)	sed -i "s/YOURCATEGORY/AudioVideo/g" ./am-scripts/"$arch"/"$arg";;
+		1)	sed -i "s/YOURCATEGORY/Audio/g" ./am-scripts/"$arch"/"$arg";; 
+		2)	sed -i "s/YOURCATEGORY/Video/g" ./am-scripts/"$arch"/"$arg";; 
+		3)	sed -i "s/YOURCATEGORY/Development/g" ./am-scripts/"$arch"/"$arg";;
+		4)	sed -i "s/YOURCATEGORY/Education/g" ./am-scripts/"$arch"/"$arg";; 
+		5)	sed -i "s/YOURCATEGORY/Game/g" ./am-scripts/"$arch"/"$arg";; 
+		6)	sed -i "s/YOURCATEGORY/Graphics/g" ./am-scripts/"$arch"/"$arg";; 
+		7)	sed -i "s/YOURCATEGORY/Network/g" ./am-scripts/"$arch"/"$arg";;
+		8)	sed -i "s/YOURCATEGORY/Office/g" ./am-scripts/"$arch"/"$arg";; 
+		9)	sed -i "s/YOURCATEGORY/Science/g" ./am-scripts/"$arch"/"$arg";; 
+		10)	sed -i "s/YOURCATEGORY/Settings/g" ./am-scripts/"$arch"/"$arg";; 
+		11)	sed -i "s/YOURCATEGORY/System/g" ./am-scripts/"$arch"/"$arg";;
+		12|*)	sed -i "s/YOURCATEGORY/Utility/g" ./am-scripts/"$arch"/"$arg";;
+	esac
+	echo "$DIVIDING_LINE"
+}
+
+# ------------------------------------------------------------------------
+# COMMON FUNCTIONS TO DOWNLOAD APPS FROM GIT REPOSITORIES
+# ------------------------------------------------------------------------
 
 function _template_if_github() {
 	SITE="https://github.com"
@@ -172,79 +311,9 @@ function _template_then_git_repo() {
 	esac
 }
 
-function _template_custom_download_url_as_version_variable() {
-	# IF YOU CAN, USE A ONE-LINE COMMAND TO DOWNLOAD THE PROGRAM
-	read -r -ep " USE A ONE-LINE COMMAND TO CHECK THE URL TO THE PROGRAM OR THE VERSION $(echo -e '\n\n if the URL is fixed, simply add the "echo" command at the beginning\n\n :') " DOWNLOADURL
-	case "$DOWNLOADURL" in
-	*)
-		mv ./am-scripts/"$arch"/"$arg" ./am-scripts/"$arch"/"$arg".old
-		sed -n '1,14p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
-		echo 'version=$('$DOWNLOADURL')' >> ./am-scripts/"$arch"/"$arg"
-		sed -n '16,35p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
-		echo 'version=$('$DOWNLOADURL')' >> ./am-scripts/"$arch"/"$arg"
-		sed -n '37,132p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
-		rm -f ./am-scripts/"$arch"/"$arg".old
-		echo "$DIVIDING_LINE"
-		;;
-	esac
-}
-
-function _template_use_wget_to_download_a_linear_url_or_a_command() {
-	# FOR "WGET", ADD A LINEAR DOWNLOAD URL OR CHECK THE URL USING THE "$( ... )" SYNTAX
-	read -r -ep " ◆ FOR \"WGET\", ADD A COMMAND AS \"\$( ... )\" OR A LINEAR DOWNLOAD URL $(echo -e '\n : ')" DOWNLOADURL
-	case "$DOWNLOADURL" in
-	*)
-		mv ./am-scripts/"$arch"/"$arg" ./am-scripts/"$arch"/"$arg".old
-		sed -n '1,15p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
-		echo 'wget "'$DOWNLOADURL'" || exit 1' >> ./am-scripts/"$arch"/"$arg"
-		sed -n '17,40p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
-		if grep -q "appimage" ./am-scripts/"$arch"/"$arg".old; then
-			echo '	[ -e ../*.zsync ] && wget "$version.zsync" 2>/dev/null || { wget "'$DOWNLOADURL'" || exit 1; }' >> ./am-scripts/"$arch"/"$arg"
-		else
-			echo '	wget "'$DOWNLOADURL'" || exit 1' >> ./am-scripts/"$arch"/"$arg"
-		fi
-		sed -n '42,150p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
-		rm -f ./am-scripts/"$arch"/"$arg".old
-		echo "$DIVIDING_LINE"
-		;;
-	esac
-}
-
-function _template_use_repology() {
-	echo ""; echo " $repology"; echo ""
-	mv ./am-scripts/"$arch"/"$arg" ./am-scripts/"$arch"/"$arg".old
-	sed -n '1,14p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
-	echo 'version=$('$repology_command')' >> ./am-scripts/"$arch"/"$arg"
-	sed -n '16,35p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
-	echo 'version=$('$repology_command')' >> ./am-scripts/"$arch"/"$arg"
-	sed -n '37,132p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
-	rm -f ./am-scripts/"$arch"/"$arg".old
-}
-
-function _template_help_by_repology() {
-	# IF A DOWNLOAD URL IS LINEAR, USE https://repology.org
-	read -r -ep " Do you want to use repology.org to identify version (y,N)? " yn
-	case "$yn" in
-	'Y'|'y')
-		repology=$(wget -q https://repology.org/project/$arg/versions -O - | grep -i "new.*version" | head -1 | tr '><' '\n' | grep "^[0-9]")
-		repology_command="wget -q https://repology.org/project/$arg/versions -O - | grep -i \"new.*version\" | head -1 | tr '><' '\\n' | grep \"^[0-9]\""
-		if [ -z "$repology" ]; then
-			repology=$(wget -q https://repology.org/project/$arg/versions -O - | grep -i "uniq.*version" | head -1 | tr '><' '\n' | grep "^[0-9]")
-			repology_command="wget -q https://repology.org/project/$arg/versions -O - | grep -i \"uniq.*version\" | head -1 | tr '><' '\\n' | grep \"^[0-9]\""
-			_template_use_repology
-		else
-			_template_use_repology
-		fi
-		if [ "$templatetype" != 1 ]; then
-			_template_use_wget_to_download_a_linear_url_or_a_command
-		fi
-		;;
-	'N'|'n'|*)
-		echo "$DIVIDING_LINE"
-		_template_custom_download_url_as_version_variable
-		;;
-	esac
-}
+# ------------------------------------------------------------------------
+# FUNCTIONS SPECIFIC PER WEBSITE
+# ------------------------------------------------------------------------
 
 function _template_if_sourceforge() {
 	sed -i "s#REPLACETHIS#$RESPONSE#g" ./am-scripts/"$arch"/"$arg"
@@ -287,61 +356,6 @@ function _template_if_sourceforge() {
 		_template_custom_download_url_as_version_variable
 	fi
 	sed -i 's/*mage/*/g' ./am-scripts/"$arch"/"$arg"
-}
-
-function _template_description_if_hosted_elsewhere() {
-	sed -i "s#REPLACETHIS#$RESPONSE#g" ./am-scripts/"$arch"/"$arg"
-	# ADD A DESCRIPTION FOR THIS APPLICATION
-	read -r -ep " ◆ ADD A BRIEF DESCRIPTION FOR THIS APPLICATION $(echo -e '\n : ')" COMMENT
-	case "$COMMENT" in
-	*)
-		_template_create_markdown_webpage_for_the_catalog
-		_template_create_new_line_for_application_list
-		;;
-	esac
-	echo "$DIVIDING_LINE"
-}
-
-# Function to add a generic .desktop file and an icon to the installation script (option 2)
-function _template_generate_desktop_file() {
-	sed -i "s/#printf/printf/g" ./am-scripts/"$arch"/"$arg"
-	cat <<-'HEREDOC' >> ./am-scripts/"$arch"/"$arg"
-
-	# ICON
-	mkdir -p icons
-	wget ICONURL -O ./icons/"$APP" 2> /dev/null
-
-	# LAUNCHER
-	echo "[Desktop Entry]
-	Name=APPNAME
-	Exec=$APP
-	Icon=/opt/$APP/icons/$APP
-	Type=Application
-	Terminal=false
-	Categories=YOURCATEGORY;" > /usr/local/share/applications/"$APP"-AM.desktop
-	HEREDOC
-}
-
-# Function to add a category to our custom .desktop file (options 2 and 3)
-function _template_desktop_file_select_category() {
-	echo -e " LIST OF CATEGORIES:\n 0) AudioVideo\n 1) Audio\n 2) Video\n 3) Development\n 4) Education\n 5) Game\n 6) Graphics\n 7) Network\n 8) Office\n 9) Science\n 10) Settings\n 11) System\n 12) Utility (default)\n "
-	read -r -p " CHOOSE A CATEGORY : " response
-	case "$response" in
-		0)	sed -i "s/YOURCATEGORY/AudioVideo/g" ./am-scripts/"$arch"/"$arg";;
-		1)	sed -i "s/YOURCATEGORY/Audio/g" ./am-scripts/"$arch"/"$arg";; 
-		2)	sed -i "s/YOURCATEGORY/Video/g" ./am-scripts/"$arch"/"$arg";; 
-		3)	sed -i "s/YOURCATEGORY/Development/g" ./am-scripts/"$arch"/"$arg";;
-		4)	sed -i "s/YOURCATEGORY/Education/g" ./am-scripts/"$arch"/"$arg";; 
-		5)	sed -i "s/YOURCATEGORY/Game/g" ./am-scripts/"$arch"/"$arg";; 
-		6)	sed -i "s/YOURCATEGORY/Graphics/g" ./am-scripts/"$arch"/"$arg";; 
-		7)	sed -i "s/YOURCATEGORY/Network/g" ./am-scripts/"$arch"/"$arg";;
-		8)	sed -i "s/YOURCATEGORY/Office/g" ./am-scripts/"$arch"/"$arg";; 
-		9)	sed -i "s/YOURCATEGORY/Science/g" ./am-scripts/"$arch"/"$arg";; 
-		10)	sed -i "s/YOURCATEGORY/Settings/g" ./am-scripts/"$arch"/"$arg";; 
-		11)	sed -i "s/YOURCATEGORY/System/g" ./am-scripts/"$arch"/"$arg";;
-		12|*)	sed -i "s/YOURCATEGORY/Utility/g" ./am-scripts/"$arch"/"$arg";;
-	esac
-	echo "$DIVIDING_LINE"
 }
 
 #####################################
@@ -484,8 +498,8 @@ for arg in $ARGS; do
 		3) # CREATE A CUSTOM FIREFOX PROFILE ("firefox" MUST BE IN "$PATH" TO MADE IT WORK)
 			mkdir -p ./am-scripts ./am-scripts/"$arch" ./am-scripts/portable-linux-apps.github.io/apps ./am-scripts/portable-linux-apps.github.io/icons
 			# DOWNLOAD THE TEMPLATE AND CONVERT THE ARGUMENT INTO A COMMAND
-			wget -q "$AMREPO"/templates/AM-SAMPLE-Firefox-webapp -O ./am-scripts/"$arch"/"$arg" &&
-			sed -i "s/SAMPLE/$arg/g" ./am-scripts/"$arch"/"$arg" &&
+			wget -q "$AMREPO"/templates/AM-SAMPLE-Firefox-webapp -O ./am-scripts/"$arch"/"$arg"
+			sed -i "s/SAMPLE/$arg/g" ./am-scripts/"$arch"/"$arg"
 			# USE THE SUFFIX FROM NOW ON
 			mv ./am-scripts/"$arch"/"$arg" ./am-scripts/"$arch"/"ffwa-$arg"
 			arg="ffwa-$arg"
@@ -496,7 +510,7 @@ for arg in $ARGS; do
 				sed -i "s#GIVEMEANAME#$RESPONSE#g" ./am-scripts/"$arch"/"$arg"
 				# CREATE A WEBPAGE FOR https://portable-linux-apps.github.io CONTAINING ALL THE INFO ABOUT THIS APP
 				echo "# $(echo "$arg" | tr '[:lower:]' '[:upper:]')" >> ./am-scripts/portable-linux-apps.github.io/apps/"$arg".md
-				echo -e "\n WebApp & Firefox Profile for $RESPONSE.\n\n SITE: MYWEBSITE\n\n | [Applications](https://portable-linux-apps.github.io/apps.html) | [Home](https://portable-linux-apps.github.io)\n | --- | --- |" >> ./am-scripts/portable-linux-apps.github.io/apps/"$arg".md &&
+				echo -e "\n WebApp & Firefox Profile for $RESPONSE.\n\n SITE: MYWEBSITE\n\n | [Applications](https://portable-linux-apps.github.io/apps.html) | [Home](https://portable-linux-apps.github.io)\n | --- | --- |" >> ./am-scripts/portable-linux-apps.github.io/apps/"$arg".md
 				# CREATE A NEW LINE FOR THE APPLICATION'S LIST
 				echo "◆ $arg : WebApp & Firefox Profile for $RESPONSE." >> ./am-scripts/list
 			esac
