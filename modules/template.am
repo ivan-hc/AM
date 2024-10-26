@@ -4,7 +4,8 @@
 # THIS MODULE IS USED TO CREATE INSTALLATION SCRIPS TO ADD TO THE DATABASE
 ##########################################################################
 
-# COMMON FUNCTIONS FOR APPIMAGES AND ARCHIVES/PROGRAMS/SCRIPTS (OPTIONS 0 AND 2)
+# ------------------------------------------------------------------------------
+# COMMON FUNCTIONS FOR APPIMAGES AND ARCHIVES (OPTIONS 0 AND 2)
 
 function _template_create_dirs_and_ask_for_source() {
 	# Create base directories
@@ -16,9 +17,19 @@ function _template_create_dirs_and_ask_for_source() {
 		wget -q "$AMREPO"/templates/AM-SAMPLE-Archive -O ./am-scripts/"$arch"/"$arg"
 	fi
 	sed -i "s/SAMPLE/$arg/g" ./am-scripts/"$arch"/"$arg"
-	echo "-----------------------------------------------------------------------"
+	echo "$DIVIDING_LINE"
 }
 
+function _template_create_markdown_webpage_for_the_catalog() {
+	echo "# $(echo "$arg" | tr '[:lower:]' '[:upper:]')" >> ./am-scripts/portable-linux-apps.github.io/apps/"$arg".md
+	echo -e "\n $COMMENT\n\n SITE: $RESPONSE\n\n | [Applications](https://portable-linux-apps.github.io/apps.html) | [Home](https://portable-linux-apps.github.io)\n | --- | --- |" >> ./am-scripts/portable-linux-apps.github.io/apps/"$arg".md &&
+}
+
+function _template_create_new_line_for_application_list() {
+	echo "◆ $arg : $COMMENT" >> ./am-scripts/list
+}
+
+# ------------------------------------------------------------------------------
 # COMMON FUNCTIONS TO GIT REPOSITORIES
 
 function _template_if_github() {
@@ -55,9 +66,8 @@ function _template_if_git_repo() {
 	# Add the above function and reference repository in the installation script
 	sed -i "s#REPLACETHIS#$RESPONSE#g" ./am-scripts/"$arch"/"$arg"
 	sed -i "s#FUNCTION)#$FUNCTION)#g" ./am-scripts/"$arch"/"$arg"
-	# Create a new line for the application's list
-	echo "◆ $arg : $COMMENT" >> ./am-scripts/list
-	echo "-----------------------------------------------------------------------"
+	_template_create_new_line_for_application_list
+	echo "$DIVIDING_LINE"
 }
 
 function _template_test_github_url_if_torsocks_exists() {
@@ -86,7 +96,7 @@ function _template_then_git_repo() {
 		setlatest=""
 		;;
 	esac
-	echo "-----------------------------------------------------------------------"
+	echo "$DIVIDING_LINE"
 	# Check if the URL is correct
 	read -r -p ' Do you wish to check the link (Y,n)?' yn
 	case $yn in
@@ -103,7 +113,7 @@ function _template_then_git_repo() {
 		echo -e "\n The URL above is an example of what both\n the install and update scripts will point to.\n"
 		;;
 	esac
-	echo "-----------------------------------------------------------------------"
+	echo "$DIVIDING_LINE"
 	# Add/remove keywords or leave blank to skip
 	read -r -p ' If correct, press "ENTER", 1 to add keywords and 2 to remove keywords: ' response
 	case "$response" in
@@ -174,7 +184,7 @@ function _template_custom_download_url_as_version_variable() {
 		echo 'version=$('$DOWNLOADURL')' >> ./am-scripts/"$arch"/"$arg"
 		sed -n '37,132p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
 		rm -f ./am-scripts/"$arch"/"$arg".old
-		echo "-----------------------------------------------------------------------"
+		echo "$DIVIDING_LINE"
 		;;
 	esac
 }
@@ -195,9 +205,20 @@ function _template_use_wget_to_download_a_linear_url_or_a_command() {
 		fi
 		sed -n '42,150p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
 		rm -f ./am-scripts/"$arch"/"$arg".old
-		echo "-----------------------------------------------------------------------"
+		echo "$DIVIDING_LINE"
 		;;
 	esac
+}
+
+function _template_use_repology() {
+	echo ""; echo " $repology"; echo ""
+	mv ./am-scripts/"$arch"/"$arg" ./am-scripts/"$arch"/"$arg".old
+	sed -n '1,14p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
+	echo 'version=$('$repology_command')' >> ./am-scripts/"$arch"/"$arg"
+	sed -n '16,35p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
+	echo 'version=$('$repology_command')' >> ./am-scripts/"$arch"/"$arg"
+	sed -n '37,132p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
+	rm -f ./am-scripts/"$arch"/"$arg".old
 }
 
 function _template_help_by_repology() {
@@ -210,30 +231,16 @@ function _template_help_by_repology() {
 		if [ -z "$repology" ]; then
 			repology=$(wget -q https://repology.org/project/$arg/versions -O - | grep -i "uniq.*version" | head -1 | tr '><' '\n' | grep "^[0-9]")
 			repology_command="wget -q https://repology.org/project/$arg/versions -O - | grep -i \"uniq.*version\" | head -1 | tr '><' '\\n' | grep \"^[0-9]\""
-			echo ""; echo " $repology"; echo ""
-			mv ./am-scripts/"$arch"/"$arg" ./am-scripts/"$arch"/"$arg".old
-			sed -n '1,14p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
-			echo 'version=$('$repology_command')' >> ./am-scripts/"$arch"/"$arg"
-			sed -n '16,35p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
-			echo 'version=$('$repology_command')' >> ./am-scripts/"$arch"/"$arg"
-			sed -n '37,132p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
-			rm -f ./am-scripts/"$arch"/"$arg".old
+			_template_use_repology
 		else
-			echo ""; echo " $repology"; echo ""
-			mv ./am-scripts/"$arch"/"$arg" ./am-scripts/"$arch"/"$arg".old
-			sed -n '1,14p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
-			echo 'version=$('$repology_command')' >> ./am-scripts/"$arch"/"$arg"
-			sed -n '16,35p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
-			echo 'version=$('$repology_command')' >> ./am-scripts/"$arch"/"$arg"
-			sed -n '37,132p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
-			rm -f ./am-scripts/"$arch"/"$arg".old
+			_template_use_repology
 		fi
 		if [ "$templatetype" != 1 ]; then
 			_template_use_wget_to_download_a_linear_url_or_a_command
 		fi
 		;;
 	'N'|'n'|*)
-		echo "-----------------------------------------------------------------------"
+		echo "$DIVIDING_LINE"
 		_template_custom_download_url_as_version_variable
 		;;
 	esac
@@ -247,7 +254,7 @@ function _template_if_sourceforge() {
 	'')	SOURCEFORGE="https://sourceforge.net/p/$arg/activity/feed";;
 	*)	SOURCEFORGE="https://sourceforge.net/p/$projectname/activity/feed";;
 	esac
-	echo "-----------------------------------------------------------------------"
+	echo "$DIVIDING_LINE"
 	# FILE TYPE
 	if [ "$templatetype" = 0 ]; then
 		filetype="appimage"
@@ -261,14 +268,11 @@ function _template_if_sourceforge() {
 	read -r -ep " ◆ ADD A BRIEF DESCRIPTION FOR THIS APPLICATION $(echo -e '\n : ')" COMMENT
 	case "$COMMENT" in
 	*)
-		# CREATE A WEBPAGE FOR https://portable-linux-apps.github.io CONTAINING ALL THE INFO ABOUT THIS APP
-		echo "# $(echo "$arg" | tr '[:lower:]' '[:upper:]')" >> ./am-scripts/portable-linux-apps.github.io/apps/"$arg".md
-		echo -e "\n $COMMENT\n\n SITE: $RESPONSE\n\n | [Applications](https://portable-linux-apps.github.io/apps.html) | [Home](https://portable-linux-apps.github.io)\n | --- | --- |" >> ./am-scripts/portable-linux-apps.github.io/apps/"$arg".md &&
-		# CREATE A NEW LINE FOR THE APPLICATION'S LIST
-		echo "◆ $arg : $COMMENT" >> ./am-scripts/list
+		_template_create_markdown_webpage_for_the_catalog
+		_template_create_new_line_for_application_list
 		;;
 	esac
-	echo "-----------------------------------------------------------------------"
+	echo "$DIVIDING_LINE"
 	if curl --head --silent --fail $(curl -Ls $SOURCEFORGE | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep -i "$filetype" | grep -v '%' | head -1) 1> /dev/null; then
 		mv ./am-scripts/"$arch"/"$arg" ./am-scripts/"$arch"/"$arg".old
 		sed -n '1,14p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
@@ -291,14 +295,11 @@ function _template_description_if_hosted_elsewhere() {
 	read -r -ep " ◆ ADD A BRIEF DESCRIPTION FOR THIS APPLICATION $(echo -e '\n : ')" COMMENT
 	case "$COMMENT" in
 	*)
-		# CREATE A WEBPAGE FOR https://portable-linux-apps.github.io CONTAINING ALL THE INFO ABOUT THIS APP
-		echo "# $(echo "$arg" | tr '[:lower:]' '[:upper:]')" >> ./am-scripts/portable-linux-apps.github.io/apps/"$arg".md
-		echo -e "\n $COMMENT\n\n SITE: $RESPONSE\n\n | [Applications](https://portable-linux-apps.github.io/apps.html) | [Home](https://portable-linux-apps.github.io)\n | --- | --- |" >> ./am-scripts/portable-linux-apps.github.io/apps/"$arg".md &&
-		# CREATE A NEW LINE FOR THE APPLICATION'S LIST
-		echo "◆ $arg : $COMMENT" >> ./am-scripts/list
+		_template_create_markdown_webpage_for_the_catalog
+		_template_create_new_line_for_application_list
 		;;
 	esac
-	echo "-----------------------------------------------------------------------"
+	echo "$DIVIDING_LINE"
 }
 
 # Function to add a generic .desktop file and an icon to the installation script (option 2)
@@ -340,7 +341,7 @@ function _template_desktop_file_select_category() {
 		11)	sed -i "s/YOURCATEGORY/System/g" ./am-scripts/"$arch"/"$arg";;
 		12|*)	sed -i "s/YOURCATEGORY/Utility/g" ./am-scripts/"$arch"/"$arg";;
 	esac
-	echo "-----------------------------------------------------------------------"
+	echo "$DIVIDING_LINE"
 }
 
 #####################################
@@ -363,7 +364,7 @@ for arg in $ARGS; do
 		echo ""
 		echo " Create a template for \"$arg\"" | tr '[:lower:]' '[:upper:]'
 		echo ""
-		echo "--------------------------------------------------------------"
+		echo "$DIVIDING_LINE"
 		echo "" 
 		echo " EACH MODEL IS BASED ON A DIFFERENT METHOD OF BUILDING/UPDATING THE PROGRAM."
 		echo ""
@@ -397,7 +398,7 @@ for arg in $ARGS; do
 				fi
 			esac
 			# END OF THIS FUNCTION
-			echo "-----------------------------------------------------------------------"
+			echo "$DIVIDING_LINE"
 			echo -e "\n All files are saved in $SCRIPTDIR/am-scripts\n"
 			;;
 
@@ -421,7 +422,7 @@ for arg in $ARGS; do
 			;;
 			esac
 			# END OF THIS FUNCTION
-			echo "-----------------------------------------------------------------------"
+			echo "$DIVIDING_LINE"
 			echo -e "\n All files are saved in $SCRIPTDIR/am-scripts\n"
 			;;
 
@@ -460,7 +461,7 @@ for arg in $ARGS; do
 					wget -q -P ./am-scripts/portable-linux-apps.github.io/icons/ "$ICONURL"
 					;;
 				esac
-				echo "-----------------------------------------------------------------------"
+				echo "$DIVIDING_LINE"
 				# APPNAME
 				read -r -ep ' ◆ NAME OF THE APP (for the "Name" entry of the .desktop file): ' APPNAME
 				case "$APPNAME" in
@@ -468,12 +469,12 @@ for arg in $ARGS; do
 					sed -i "s#APPNAME#$APPNAME#g" ./am-scripts/"$arch"/"$arg"
 					;;
 				esac
-				echo "-----------------------------------------------------------------------"
+				echo "$DIVIDING_LINE"
 				# PUT THE APP INTO A CATEGORY, THIS IS NEEDED FOR OUR CUSTOM DESKTOP FILE
 				_template_desktop_file_select_category
 				;;
 			'N'|'n'|*)
-				echo "-----------------------------------------------------------------------"
+				echo "$DIVIDING_LINE"
 				;;
 			esac
 			# END OF THIS FUNCTION
@@ -488,7 +489,7 @@ for arg in $ARGS; do
 			# USE THE SUFFIX FROM NOW ON
 			mv ./am-scripts/"$arch"/"$arg" ./am-scripts/"$arch"/"ffwa-$arg"
 			arg="ffwa-$arg"
-			echo "-----------------------------------------------------------------------"
+			echo "$DIVIDING_LINE"
 			read -r -ep " ◆ NAME OF THE APP: " RESPONSE
 			case "$RESPONSE" in
 			*)
@@ -508,7 +509,7 @@ for arg in $ARGS; do
 				sed -i "s#MYWEBSITE#$RESPONSE#g" ./am-scripts/"$arch"/"$arg"; sed -i "s#MYWEBSITE#$RESPONSE#g" ./am-scripts/portable-linux-apps.github.io/apps/"$arg".md
 				;;
 			esac 
-			echo "-----------------------------------------------------------------------"
+			echo "$DIVIDING_LINE"
 			# ENTER THE URL OF THE ICON THAT WILL APPEAR IN THE MENU
 			read -r -ep " ◆ COPY/PASTE THE URL OF THE ICON HERE $(echo -e '\n URL: ')" RESPONSE
 			case "$RESPONSE" in
@@ -516,7 +517,7 @@ for arg in $ARGS; do
 				sed -i "s#YOURICONURL#$RESPONSE#g" ./am-scripts/"$arch"/"$arg"
 				;;
 			esac
-			echo "-----------------------------------------------------------------------"
+			echo "$DIVIDING_LINE"
 			# END OF THIS FUNCTION
 			echo -e "\n All files are saved in $SCRIPTDIR/am-scripts\n"
 			;;
