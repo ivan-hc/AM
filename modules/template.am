@@ -43,6 +43,20 @@ function _template_description_if_hosted_elsewhere() {
 	echo "$DIVIDING_LINE"
 }
 
+function _edit_script_head() {
+	mv ./am-scripts/"$arch"/"$arg" ./am-scripts/"$arch"/"$arg".old
+	sed -n '1,14p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
+}
+
+function _edit_script_middle() {
+	sed -n '16,35p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
+}
+
+function _edit_script_ending() {
+	sed -n '37,132p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
+	rm -f ./am-scripts/"$arch"/"$arg".old
+}
+
 # ------------------------------------------------------------------------
 # FUNCTIONS TO HANDLE DOWNLOADS AND VERSIONS FROM ALTERNATIVE SOURCES
 # ------------------------------------------------------------------------
@@ -52,13 +66,11 @@ function _template_custom_download_url_as_version_variable() {
 	read -r -ep " USE A ONE-LINE COMMAND TO CHECK THE URL TO THE PROGRAM OR THE VERSION $(echo -e '\n\n if the URL is fixed, simply add the "echo" command at the beginning\n\n :') " DOWNLOADURL
 	case "$DOWNLOADURL" in
 	*)
-		mv ./am-scripts/"$arch"/"$arg" ./am-scripts/"$arch"/"$arg".old
-		sed -n '1,14p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
+		_edit_script_head
 		echo 'version=$('$DOWNLOADURL')' >> ./am-scripts/"$arch"/"$arg"
-		sed -n '16,35p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
+		_edit_script_middle
 		echo 'version=$('$DOWNLOADURL')' >> ./am-scripts/"$arch"/"$arg"
-		sed -n '37,132p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
-		rm -f ./am-scripts/"$arch"/"$arg".old
+		_edit_script_ending
 		echo "$DIVIDING_LINE"
 		;;
 	esac
@@ -87,13 +99,11 @@ function _template_use_wget_to_download_a_linear_url_or_a_command() {
 
 function _template_use_repology() {
 	echo ""; echo " $repology"; echo ""
-	mv ./am-scripts/"$arch"/"$arg" ./am-scripts/"$arch"/"$arg".old
-	sed -n '1,14p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
+	_edit_script_head
 	echo 'version=$('$repology_command')' >> ./am-scripts/"$arch"/"$arg"
-	sed -n '16,35p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
+	_edit_script_middle
 	echo 'version=$('$repology_command')' >> ./am-scripts/"$arch"/"$arg"
-	sed -n '37,132p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
-	rm -f ./am-scripts/"$arch"/"$arg".old
+	_edit_script_ending
 }
 
 function _template_help_by_repology() {
@@ -343,13 +353,11 @@ function _template_if_sourceforge() {
 	esac
 	echo "$DIVIDING_LINE"
 	if curl --head --silent --fail $(curl -Ls $SOURCEFORGE | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep -i "$filetype" | grep -v '%' | head -1) 1> /dev/null; then
-		mv ./am-scripts/"$arch"/"$arg" ./am-scripts/"$arch"/"$arg".old
-		sed -n '1,14p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
+		_edit_script_head
 		echo "version=\$(curl -Ls $SOURCEFORGE | grep -Eo \"(http|https)://[a-zA-Z0-9./?=_%:-]*\" | grep -i \"$filetype\" | grep -v '%' | head -1)" >> ./am-scripts/"$arch"/"$arg"
-		sed -n '16,35p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
+		_edit_script_middle
 		echo "version=\$(curl -Ls $SOURCEFORGE | grep -Eo \"(http|https)://[a-zA-Z0-9./?=_%:-]*\" | grep -i \"$filetype\" | grep -v '%' | head -1)" >> ./am-scripts/"$arch"/"$arg"
-		sed -n '37,132p' ./am-scripts/"$arch"/"$arg".old >> ./am-scripts/"$arch"/"$arg"
-		rm -f ./am-scripts/"$arch"/"$arg".old
+		_edit_script_ending
 		curl -Ls $SOURCEFORGE | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep -i "$filetype" | grep -v '%' | head -1
 		echo -e "\n The URL above is an example of what both\n the install and update scripts will point to.\n"
 	else
