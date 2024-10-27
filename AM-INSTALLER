@@ -3,19 +3,19 @@
 set -e
 
 _away_error() {
-    ${1} >/dev/null 2>&1
+	${1} >/dev/null 2>&1
 }
 
 _away_all() {
-    ${1} >/dev/null
+	${1} >/dev/null
 }
 
 # Colors
 RED='\033[0;31m'; LightBlue='\033[1;34m'; Green='\033[0;32m'
 
 _check_dependency() {
-    program="$1"
-    _away_all command -v "$program" || { echo "For Installation to work, install \"$program\" first!" && exit 1; }
+	program="$1"
+	_away_all command -v "$program" || { echo "For Installation to work, install \"$program\" first!" && exit 1; }
 }
 
 _check_dependency 'wget'
@@ -23,42 +23,42 @@ _check_dependency 'curl'
 
 # INSTALL "AM" SYSTEM-WIDE
 _install_am() {
-    CACHEDIR="${XDG_CACHE_HOME:-$HOME/.cache}"
-    mkdir -p "$CACHEDIR" || true
-    rm -f "$CACHEDIR"/INSTALL-AM.sh || true
-    wget -q https://raw.githubusercontent.com/ivan-hc/AM/main/INSTALL -O "$CACHEDIR"/INSTALL-AM.sh && chmod a+x "$CACHEDIR"/INSTALL-AM.sh
-    if command -v sudo >/dev/null 2>&1; then
-        SUDOCMD="sudo"
-    elif command -v doas >/dev/null 2>&1; then
-        SUDOCMD="doas"
-    else
-        echo 'ERROR: No sudo or doas found'
-        exit 1
-    fi
-    $SUDOCMD "$CACHEDIR"/INSTALL-AM.sh && rm -f "$CACHEDIR"/INSTALL-AM.sh
+	CACHEDIR="${XDG_CACHE_HOME:-$HOME/.cache}"
+	mkdir -p "$CACHEDIR" || true
+	rm -f "$CACHEDIR"/INSTALL-AM.sh || true
+	wget -q https://raw.githubusercontent.com/ivan-hc/AM/main/INSTALL -O "$CACHEDIR"/INSTALL-AM.sh && chmod a+x "$CACHEDIR"/INSTALL-AM.sh
+	if command -v sudo >/dev/null 2>&1; then
+		SUDOCMD="sudo"
+	elif command -v doas >/dev/null 2>&1; then
+		SUDOCMD="doas"
+	else
+		echo 'ERROR: No sudo or doas found'
+		exit 1
+	fi
+	$SUDOCMD "$CACHEDIR"/INSTALL-AM.sh && rm -f "$CACHEDIR"/INSTALL-AM.sh
 }
 
 # INSTALL "AM" LOCALLY, AS "APPMAN"
 _install_appman() {
-    ZSHRC="${ZDOTDIR:-$HOME}/.zshrc"
-    BINDIR="${XDG_BIN_HOME:-$HOME/.local/bin}"
-    mkdir -p "$BINDIR"
-    if ! echo $PATH | grep "$BINDIR" >/dev/null 2>&1; then
-        echo '--------------------------------------------------------------------------'
-        echo " Adding $BINDIR to PATH, you might need to"
-        echo " close and reopen the terminal for this to take effect."
-        if [ -e ~/.bashrc ] && ! grep 'PATH="$PATH:$BINDIR"' ~/.bashrc >/dev/null 2>&1; then
-            printf '\n%s\n' 'BINDIR="${XDG_BIN_HOME:-$HOME/.local/bin}"' >> ~/.bashrc
-            printf '\n%s\n' 'if ! echo $PATH | grep "$BINDIR" >/dev/null 2>&1; then' >> ~/.bashrc
-            printf '    export PATH="$PATH:$BINDIR"\nfi\n' >> ~/.bashrc
-        fi
-        if [ -e "$ZSHRC" ] && ! grep 'PATH="$PATH:$BINDIR"' "$ZSHRC" >/dev/null 2>&1; then
-            printf '\n%s\n' 'BINDIR="${XDG_BIN_HOME:-$HOME/.local/bin}"' >> "$ZSHRC"
-            printf '\n%s\n' 'if ! echo $PATH | grep "$BINDIR" >/dev/null 2>&1; then' >> "$ZSHRC"
-            printf '    export PATH="$PATH:$BINDIR"\nfi\n' >> "$ZSHRC"
-        fi
-    fi
-    wget -q https://raw.githubusercontent.com/ivan-hc/AM/main/APP-MANAGER -O "$BINDIR"/appman && chmod a+x "$BINDIR"/appman
+	ZSHRC="${ZDOTDIR:-$HOME}/.zshrc"
+	BINDIR="${XDG_BIN_HOME:-$HOME/.local/bin}"
+	mkdir -p "$BINDIR"
+	if ! echo $PATH | grep "$BINDIR" >/dev/null 2>&1; then
+		echo '--------------------------------------------------------------------------'
+		echo " Adding $BINDIR to PATH, you might need to"
+		echo " close and reopen the terminal for this to take effect."
+		if [ -e ~/.bashrc ] && ! grep 'PATH="$PATH:$BINDIR"' ~/.bashrc >/dev/null 2>&1; then
+			printf '\n%s\n' 'BINDIR="${XDG_BIN_HOME:-$HOME/.local/bin}"' >> ~/.bashrc
+			printf '\n%s\n' 'if ! echo $PATH | grep "$BINDIR" >/dev/null 2>&1; then' >> ~/.bashrc
+			printf '	export PATH="$PATH:$BINDIR"\nfi\n' >> ~/.bashrc
+		fi
+		if [ -e "$ZSHRC" ] && ! grep 'PATH="$PATH:$BINDIR"' "$ZSHRC" >/dev/null 2>&1; then
+			printf '\n%s\n' 'BINDIR="${XDG_BIN_HOME:-$HOME/.local/bin}"' >> "$ZSHRC"
+			printf '\n%s\n' 'if ! echo $PATH | grep "$BINDIR" >/dev/null 2>&1; then' >> "$ZSHRC"
+			printf '	export PATH="$PATH:$BINDIR"\nfi\n' >> "$ZSHRC"
+		fi
+	fi
+	wget -q https://raw.githubusercontent.com/ivan-hc/AM/main/APP-MANAGER -O "$BINDIR"/appman && chmod a+x "$BINDIR"/appman
 }
 
 # CHOOSE BETWEEN "AM" AND "APPMAN"
@@ -79,29 +79,27 @@ printf " Choose how to install \"AM\" and all its managed applications.
    - you can replicate your configurations on every system you want
    - more storage space required, if more users use \"AppMan\"
 
+ 3) Install both \"AM\" and \"AppMan\":
+   - this option installs \"AM\" system-wide and \"AppMan\" locally
+   - you can use both installations to manage applications
+
 "
-read -r -p "Choose between \"AM\" (1) and \"AppMan\" (2), or both (1,2), or leave blank to exit: " response
-
-# Handle multiple selections
-IFS=',' read -r -a choices <<< "$response"
-for choice in "${choices[@]}"; do
-    case "$choice" in
-        1)
-            _install_am || exit 1
-            ;;
-        2)
-            _install_appman || exit 1
-            echo '--------------------------------------------------------------------------'
-            printf " ${Green}\"AppMan\" has been successfully installed!\033[0m\n"
-            printf " Please, run \"${LightBlue}appman -h\033[0m\" to see the list of the options.\n"
-            echo '--------------------------------------------------------------------------'
-            ;;
-        *)
-            echo "Invalid choice \"$choice\". Installation aborted." && exit 1
-            ;;
-    esac
-done
-
-if [ -z "$response" ]; then
-    echo "Installation aborted, exiting." && exit 1
-fi
+read -r -p "Choose between \"AM\" (type 1), \"AppMan\" (2), or both (3), or leave blank to exit: " response
+case "$response" in
+	1)	_install_am || exit 1
+		;;
+	2)	_install_appman || exit 1
+		echo '--------------------------------------------------------------------------'
+		printf " ${Green}\"AppMan\" has been successfully installed!\033[0m\n"
+		printf " Please, run \"${LightBlue}appman -h\033[0m\" to see the list of the options.\n"
+		echo '--------------------------------------------------------------------------'
+		;;
+	3)	_install_am || exit 1
+		_install_appman || exit 1
+		echo '--------------------------------------------------------------------------'
+		printf " ${Green}\"AM\" and \"AppMan\" have been successfully installed!\033[0m\n"
+		echo '--------------------------------------------------------------------------'
+		;;
+	''|*)	echo "Installation aborted, exiting." && exit 1
+		;;
+esac
