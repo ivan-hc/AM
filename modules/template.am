@@ -67,9 +67,9 @@ function _template_custom_download_url_as_version_variable() {
 	case "$DOWNLOADURL" in
 	*)
 		_edit_script_head
-		echo 'version=$('$DOWNLOADURL')' >> ./am-scripts/"$ARCH"/"$arg"
+		echo "version=\$($DOWNLOADURL)" >> ./am-scripts/"$ARCH"/"$arg"
 		_edit_script_middle
-		echo 'version=$('$DOWNLOADURL')' >> ./am-scripts/"$ARCH"/"$arg"
+		echo "version=\$($DOWNLOADURL)" >> ./am-scripts/"$ARCH"/"$arg"
 		_edit_script_ending
 		echo "$DIVIDING_LINE"
 		;;
@@ -83,12 +83,12 @@ function _template_use_wget_to_download_a_linear_url_or_a_command() {
 	*)
 		mv ./am-scripts/"$ARCH"/"$arg" ./am-scripts/"$ARCH"/"$arg".old
 		sed -n '1,15p' ./am-scripts/"$ARCH"/"$arg".old >> ./am-scripts/"$ARCH"/"$arg"
-		echo 'wget "'$DOWNLOADURL'" || exit 1' >> ./am-scripts/"$ARCH"/"$arg"
+		echo "wget \"$DOWNLOADURL\" || exit 1" >> ./am-scripts/"$ARCH"/"$arg"
 		sed -n '17,40p' ./am-scripts/"$ARCH"/"$arg".old >> ./am-scripts/"$ARCH"/"$arg"
 		if grep -q "appimage" ./am-scripts/"$ARCH"/"$arg".old; then
-			echo '	[ -e ../*.zsync ] && wget "$version.zsync" 2>/dev/null || { wget "'$DOWNLOADURL'" || exit 1; }' >> ./am-scripts/"$ARCH"/"$arg"
+			echo "	[ -e ../*.zsync ] && wget \"\$version.zsync\" 2>/dev/null || { wget \"$DOWNLOADURL\" || exit 1; }" >> ./am-scripts/"$ARCH"/"$arg"
 		else
-			echo '	wget "'$DOWNLOADURL'" || exit 1' >> ./am-scripts/"$ARCH"/"$arg"
+			echo "	wget \"$DOWNLOADURL\" || exit 1" >> ./am-scripts/"$ARCH"/"$arg"
 		fi
 		sed -n '42,150p' ./am-scripts/"$ARCH"/"$arg".old >> ./am-scripts/"$ARCH"/"$arg"
 		rm -f ./am-scripts/"$ARCH"/"$arg".old
@@ -100,9 +100,9 @@ function _template_use_wget_to_download_a_linear_url_or_a_command() {
 function _template_use_repology() {
 	echo ""; echo " $repology"; echo ""
 	_edit_script_head
-	echo 'version=$('$repology_command')' >> ./am-scripts/"$ARCH"/"$arg"
+	echo "version=\$($repology_command)" >> ./am-scripts/"$ARCH"/"$arg"
 	_edit_script_middle
-	echo 'version=$('$repology_command')' >> ./am-scripts/"$ARCH"/"$arg"
+	echo "version=\$($repology_command)" >> ./am-scripts/"$ARCH"/"$arg"
 	_edit_script_ending
 }
 
@@ -110,10 +110,10 @@ function _template_help_by_repology() {
 	# IF A DOWNLOAD URL IS LINEAR, USE https://repology.org
 	read -r -ep " Do you want to use repology.org to identify version (y,N)? " yn
 	if echo "$yn" | grep -qi "^y"; then
-		repology=$(wget -q https://repology.org/project/$arg/versions -O - | grep -i "new.*version" | head -1 | tr '><' '\n' | grep "^[0-9]")
+		repology=$(wget -q https://repology.org/project/"$arg"/versions -O - | grep -i "new.*version" | head -1 | tr '><' '\n' | grep "^[0-9]")
 		repology_command="wget -q https://repology.org/project/$arg/versions -O - | grep -i \"new.*version\" | head -1 | tr '><' '\\n' | grep \"^[0-9]\""
 		if [ -z "$repology" ]; then
-			repology=$(wget -q https://repology.org/project/$arg/versions -O - | grep -i "uniq.*version" | head -1 | tr '><' '\n' | grep "^[0-9]")
+			repology=$(wget -q https://repology.org/project/"$arg"/versions -O - | grep -i "uniq.*version" | head -1 | tr '><' '\n' | grep "^[0-9]")
 			repology_command="wget -q https://repology.org/project/$arg/versions -O - | grep -i \"uniq.*version\" | head -1 | tr '><' '\\n' | grep \"^[0-9]\""
 			_template_use_repology
 		else
@@ -324,13 +324,14 @@ function _template_if_sourceforge() {
 		;;
 	esac
 	echo "$DIVIDING_LINE"
-	if curl --head --silent --fail $(curl -Ls $SOURCEFORGE | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep -i "$filetype" | grep -v '%' | head -1) 1> /dev/null; then
+	sourceforge_url_test=$(curl -Ls "$SOURCEFORGE" | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep -i "$filetype" | grep -v '%' | head -1)
+	if curl --head --silent --fail "$sourceforge_url_test" 1> /dev/null; then
 		_edit_script_head
 		echo "version=\$(curl -Ls $SOURCEFORGE | grep -Eo \"(http|https)://[a-zA-Z0-9./?=_%:-]*\" | grep -i \"$filetype\" | grep -v '%' | head -1)" >> ./am-scripts/"$ARCH"/"$arg"
 		_edit_script_middle
 		echo "version=\$(curl -Ls $SOURCEFORGE | grep -Eo \"(http|https)://[a-zA-Z0-9./?=_%:-]*\" | grep -i \"$filetype\" | grep -v '%' | head -1)" >> ./am-scripts/"$ARCH"/"$arg"
 		_edit_script_ending
-		curl -Ls $SOURCEFORGE | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep -i "$filetype" | grep -v '%' | head -1
+		curl -Ls "$SOURCEFORGE" | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep -i "$filetype" | grep -v '%' | head -1
 		echo -e "\n The URL above is an example of what both\n the install and update scripts will point to.\n"
 	else
 		_template_custom_download_url_as_version_variable
@@ -367,7 +368,7 @@ for arg in $ARGS; do
 		echo "  0) APPIMAGE, FROM ANY WEBSITE (BETTER IF FROM GITHUB.COM)"
 		echo "  1) APPIMAGE ON-THE-FLY, USING A DEDICATED SCRIPT"
 		echo "  2) ANY ARCHIVE/BINARY/SCRIPT FROM ANY WEBSITE"
-		echo '  3) WEBAPP BASED ON A FIREFOX PROFILE (REQUIRES "FIREFOX" IN $PATH)'
+		echo "  3) WEBAPP BASED ON A FIREFOX PROFILE (REQUIRES \"FIREFOX\" IN \$PATH)"
 		echo ""
 		read -r -p " WHAT KIND OF PROGRAM DO YOU WANT TO WRITE A SCRIPT FOR? : " templatetype
 		case "$templatetype" in
