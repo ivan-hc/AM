@@ -409,15 +409,28 @@ case "$1" in
 		if [ -z "$2" ] || [ -z "$3" ]; then
 			echo " USAGE: $AMCLI $1 user/project [ARGUMENT]"
 			echo " USAGE: $AMCLI $1 user/project [ARGUMENT] [KEYWORD]"
+			echo " USAGE: $AMCLI $1 --user user/project [ARGUMENT]"
+			echo " USAGE: $AMCLI $1 --user user/project [ARGUMENT] [KEYWORD]"
 			exit 1
 		fi
+		case $2 in
+		'--user')
+			USER_PROJECT=$(echo "$3" | sed 's#https://github.com/##g' | cut -f1,2 -d'/')
+			EXTERNAL_APP_NAME="$4"
+			APP_KEYWORD="$5"
+			_check_appman_dirs_from_am
+			;;
+		*)
+			USER_PROJECT=$(echo "$2" | sed 's#https://github.com/##g' | cut -f1,2 -d'/')
+			EXTERNAL_APP_NAME="$3"
+			APP_KEYWORD="$4"
+			;;
+		esac
 		mkdir -p "$CACHEDIR/extra"
-		rm -f "$CACHEDIR/extra/$3"
-		curl -Ls "$AMREPO"/templates/AM-SAMPLE-AppImage > "$CACHEDIR/extra/$3" || exit 1
-		sed -i "s#APP=SAMPLE#APP=$3#g" "$CACHEDIR/extra/$3"
-		USER_PROJECT=$(echo "$2" | sed 's#https://github.com/##g' | cut -f1,2 -d'/')
+		curl -Ls "$AMREPO"/templates/AM-SAMPLE-AppImage > "$CACHEDIR/extra/$EXTERNAL_APP_NAME" || exit 1
+		sed -i "s#APP=SAMPLE#APP=$EXTERNAL_APP_NAME#g" "$CACHEDIR/extra/$EXTERNAL_APP_NAME"
 		API_GITHUB_REPO="https://api.github.com/repos/$USER_PROJECT/releases"
-		sed -i "s#REPLACETHIS#$USER_PROJECT#g" "$CACHEDIR/extra/$3"
+		sed -i "s#REPLACETHIS#$USER_PROJECT#g" "$CACHEDIR/extra/$EXTERNAL_APP_NAME"
 		q="'"
 		if [ "$ARCH" = "x86_64" ]; then
 			FILTER=' | grep -vi "i386\\|i686\\|i586\\|i486\\|aarch64\\|arm64\\|armv7l"'
@@ -427,10 +440,10 @@ case "$1" in
 			FILTER=' | grep -ie "aarch64\\|arm64" '
 		fi
 		FUNCTION='curl -Ls '"$API_GITHUB_REPO"' | sed '"$q"'s/[()",{} ]/\\n/g'"$q"' | grep -oi "https.*mage$"'"$FILTER"' | head -1'
-		sed -i "s#FUNCTION)#$FUNCTION)#g" "$CACHEDIR/extra/$3"
-		[ -n "$4" ] && sed -i "s# head -1# grep -i \"$4\" | head -1#g" "$CACHEDIR/extra/$3"
-		chmod a+x "$CACHEDIR/extra/$3"
-		"$AMCLI" -i "$CACHEDIR/extra/$3" || "$AMCLIPATH" -i "$CACHEDIR/extra/$3"
+		sed -i "s#FUNCTION)#$FUNCTION)#g" "$CACHEDIR/extra/$EXTERNAL_APP_NAME"
+		[ -n "$APP_KEYWORD" ] && sed -i "s# head -1# grep -i \"$APP_KEYWORD\" | head -1#g" "$CACHEDIR/extra/$EXTERNAL_APP_NAME"
+		chmod a+x "$CACHEDIR/extra/$EXTERNAL_APP_NAME"
+		"$AMCLI" -i "$CACHEDIR/extra/$EXTERNAL_APP_NAME" || "$AMCLIPATH" -i "$CACHEDIR/extra/$EXTERNAL_APP_NAME"
 		exit 1
 		;;
 esac
