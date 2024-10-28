@@ -50,8 +50,15 @@ _download() {
 # INSTALL
 # If you use the --latest option, add the "latest" flag to scripts that point to a very common "release"
 _if_latest() {
-	if grep -q 'force-latest' "$AMCACHEDIR"/install-args; then
-		sed -i 's#/releases#/releases/latest#g' ./"$arg"
+	if echo "$FLAGS" | grep -q -- '--force-latest'; then
+		sed -i 's#/releases #/releases/latest #g' ./"$arg"
+	fi
+}
+
+_if_debug() {
+	if ! echo "$FLAGS" | grep -q -- "--debug" && wget --version | head -1 | grep -q ' 1.'; then
+		# Patch "wget" (version 1.x) to have a progress bar and fix errors when applying patches
+		sed -i "s#wget #wget -q --no-verbose --show-progress --progress=bar #g" ./"$arg"
 	fi
 }
 
@@ -78,10 +85,6 @@ _apply_patches() {
 			-e "s#/opt/#$APPSPATH/#g" ./"$arg"
 	else
 		"$SUDOCMD" mkdir -p /usr/local/share/applications /usr/local/bin
-	fi
-	if ! grep -q -- "--debug" "$AMCACHEDIR"/install-args && wget --version | head -1 | grep -q ' 1.'; then
-		# Patch "wget" (version 1.x) to have a progress bar and fix errors when applying patches
-		sed -i "s#wget #wget -q --no-verbose --show-progress --progress=bar #g" ./"$arg"
 	fi
 	sed -i "s# https://api.github.com#$HeaderAuthWithGITPAT https://api.github.com#g" ./"$arg"
 	sed -i "s#DirIcon\$#DirIcon  2>/dev/null#g" ./"$arg"
@@ -225,6 +228,7 @@ _install_arg() {
 		fi
 	fi
 	_spooky_check || return 1
+	_if_debug
 	_if_latest
 	_apply_patches
 	echo ""
@@ -308,10 +312,9 @@ case "$1" in
 		;;
 
 	'-i'|'install')
+		[ "$AMCLI" = "am" ] && echo "$@" | grep -q -- "--user" && _check_appman_from_am 1>/dev/null
+
 		case $2 in
-		'--debug'|'--force-latest'|'--user')
-			[ -z "$3" ] && echo " USAGE: $AMCLI $1 $2 [ARGUMENT]" && exit 1
-			;;
 		'')
 			echo " USAGE: $AMCLI $1 [ARGUMENT]"
 			echo " USAGE: $AMCLI $1 --debug [ARGUMENT]"
@@ -320,7 +323,8 @@ case "$1" in
 			exit 1
 			;;
 		esac
-		[ "$AMCLI" = "am" ] && [ "$2" = "--user" ] && _check_appman_from_am || [ "$AMCLI" = "am" ] && { $SUDOCMD printf "\r" || exit 1; }
+
+		[ "$AMCLI" = "am" ] && { $SUDOCMD printf "\r" || exit 1; }
 
 		echo "============================================================================"
 		echo ""
@@ -328,46 +332,35 @@ case "$1" in
 		echo ""
 		echo "============================================================================"
 		_clean_amcachedir 2>/dev/null
-		echo "$@" | tr ' ' '\n' >> "$AMCACHEDIR"/install-args
-		ARGS=$(tail -n +2 "$AMCACHEDIR"/install-args | grep -v -- "--")
+
+		ARGS="$(echo "$@" | cut -f2- -d ' ' | tr ' ' '\n' | grep -v -- "--")"
+		FLAGS=$(echo "$@" | tr ' ' '\n' | grep -- "--" | tr '\n ' ' ')
 		METAPACKAGES="kdegames kdeutils node platform-tools"
 
 		for arg in $ARGS; do
 			echo ""
-			case $arg in
-			'--debug')
-				echo " You have decided to read the complete messages to debug the installation"
-				echo "____________________________________________________________________________"
-				;;
-			'--force-latest')
-				echo " You have decided to force downloads for the latest version (if it exists)"
-				echo "____________________________________________________________________________"
-				;;
-			*)
-				cd "$REALDIR" || return
-				# If the "tmp" directory is not removed, the installation failed, so remove the app
-				if [ -d "$APPSPATH"/"$arg"/tmp ]; then
-					$SUDOCMD "$APPSPATH"/"$arg"/remove 2> /dev/null
-				fi
-				# Various cases that may occur during installation
-				if test -f "$APPSPATH"/"$arg"/remove; then
-					echo " ◆ \"$arg\" is already installed!" | tr '[:lower:]' '[:upper:]'
-				else
-					if echo "$arg" | grep -q "/"; then
-						if test -f "$arg" 2> /dev/null; then
-							_install_local_script
-						else
-							echo " 💀 ERROR: the file \"$arg\" does NOT exist"
-						fi
-					elif curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg"  1>/dev/null; then
-						_install_normally
+			cd "$REALDIR" || return
+			# If the "tmp" directory is not removed, the installation failed, so remove the app
+			if [ -d "$APPSPATH"/"$arg"/tmp ]; then
+				$SUDOCMD "$APPSPATH"/"$arg"/remove 2> /dev/null
+			fi
+			# Various cases that may occur during installation
+			if test -f "$APPSPATH"/"$arg"/remove; then
+				echo " ◆ \"$arg\" is already installed!" | tr '[:lower:]' '[:upper:]'
+			else
+				if echo "$arg" | grep -q "/"; then
+					if test -f "$arg" 2> /dev/null; then
+						_install_local_script
 					else
-						echo " 💀 ERROR: \"$arg\" does NOT exist in the database, see \"$AMCLI -l\""
+						echo " 💀 ERROR: the file \"$arg\" does NOT exist"
 					fi
+				elif curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg"  1>/dev/null; then
+					_install_normally
+				else
+					echo " 💀 ERROR: \"$arg\" does NOT exist in the database, see \"$AMCLI -l\""
 				fi
-				echo "____________________________________________________________________________"
-				;;
-			esac
+			fi
+			echo "____________________________________________________________________________"
 		done
 		if [ -f "$AMCACHEDIR"/installed ]; then
 			echo "============================================================================"
@@ -383,17 +376,14 @@ case "$1" in
 		;;
 
 	'-ia'|'install-appimage')
-		if [ "$2" = "--debug" ]; then
-			echo "--debug " > "$AMCACHEDIR"/install-args
-			ARGS="$(echo "$@" | cut -f3- -d ' ' | tr ' ' '\n' | grep -v -- "--")"
-		elif [ "$2" = "--force-latest" ]; then
-			echo "--force-latest " > "$AMCACHEDIR"/install-args
-			ARGS="$(echo "$@" | cut -f3- -d ' ' | tr ' ' '\n' | grep -v -- "--")"
-		else
-			rm -f "$AMCACHEDIR"/install-args
-			ARGS="$(echo "$@" | cut -f2- -d ' ' | tr ' ' '\n' | grep -v -- "--")"
-		fi
+		[ "$AMCLI" = "am" ] && echo "$@" | grep -q -- "--user" && _check_appman_from_am 1>/dev/null
+
+		rm -f "$AMCACHEDIR"/install-args
+
+		ARGS="$(echo "$@" | cut -f2- -d ' ' | tr ' ' '\n' | grep -v -- "--")"
+		FLAGS=$(echo "$@" | tr ' ' '\n' | grep -- "--" | tr '\n ' ' ')
 		APPIMAGE_NAMES=$(curl -Ls https://portable-linux-apps.github.io/appimages.md | tr '/)' '\n' | grep -i ".md$" | uniq | sed 's/.md$//g' | grep -v "\[")
+
 		rm -f "$AMCACHEDIR/$ARCH-appimages"
 		for appimage in $APPIMAGE_NAMES; do
 			grep "◆ $appimage :" "$AMDATADIR/$ARCH-apps" >> "$AMCACHEDIR/$ARCH-appimages" &
@@ -411,7 +401,7 @@ case "$1" in
 			fi
 		done
 		APPIMAGES_ARGS=$(<"$AMCACHEDIR"/install-args sed 's/\n/ /g')
-		"$AMCLIPATH" -i "$APPIMAGES_ARGS"
+		"$AMCLI" -i $FLAGS "$APPIMAGES_ARGS" || "$AMCLIPATH" -i $FLAGS "$APPIMAGES_ARGS"
 		exit 1
 		;;
 
@@ -420,6 +410,8 @@ case "$1" in
 			echo " USAGE: $AMCLI $1 user/project [ARGUMENT]"
 			echo " USAGE: $AMCLI $1 user/project [ARGUMENT] [KEYWORD]"
 			exit 1
+		elif [ "$2" = "--user" ]; then
+			ARGS="$(echo "$@" | cut -f3- -d ' ' | tr ' ' '\n' | grep -v -- "--")"
 		fi
 		mkdir -p "$CACHEDIR/extra"
 		rm -f "$CACHEDIR/extra/$3"
@@ -440,7 +432,7 @@ case "$1" in
 		sed -i "s#FUNCTION)#$FUNCTION)#g" "$CACHEDIR/extra/$3"
 		[ -n "$4" ] && sed -i "s# head -1# grep -i \"$4\" | head -1#g" "$CACHEDIR/extra/$3"
 		chmod a+x "$CACHEDIR/extra/$3"
-		"$AMCLIPATH" -i "$CACHEDIR/extra/$3"
+		"$AMCLI" -i "$CACHEDIR/extra/$3" || "$AMCLIPATH" -i "$CACHEDIR/extra/$3"
 		exit 1
 		;;
 esac
