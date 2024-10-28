@@ -333,6 +333,13 @@ function _nolibfuse() {
 }
 
 # REMOVE
+function _do_remove() {
+	$SUDOCMD "$APPSPATH"/"$arg"/remove || return 1
+	sleep 0.1
+	echo -e " \"${Green}$2\033[0m\" has been removed!"
+	[ -d "$DATADIR"/icons/hicolor/scalable/apps ] && find "$DATADIR"/icons/hicolor/scalable/apps -xtype l -exec rm {} \;
+}
+
 function _remove() {
 	$SUDOCMD echo "" >/dev/null
 	echo "------------------------------------------------------------------------------"
@@ -340,28 +347,18 @@ function _remove() {
 		echo -e " \"${RED}$arg\033[0m\" is not a valid \"APPNAME\", see \"$AMCLI -f\" for more."
 		return 1
 	fi
-	read -r -p " ◆ Do you wish to remove \"$2\"? (Y/n) " yn
-	if echo "$yn" | grep -i '^n' >/dev/null 2>&1; then
-		echo -e " \"${LightBlue}$2\033[0m\" has not been removed!"
+	if echo "$1" | grep -q "R"; then
+		# Remove apps without confirmation
+		_do_remove
 	else
-		$SUDOCMD "$APPSPATH"/"$2"/remove || return 1
-		sleep 0.1
-		echo -e " \"${Green}$2\033[0m\" has been removed!"
+		# Remove apps
+		read -r -p " ◆ Do you wish to remove \"$2\"? (Y/n) " yn
+		if echo "$yn" | grep -i '^n' >/dev/null 2>&1; then
+			echo -e " \"${LightBlue}$2\033[0m\" has not been removed!"
+		else
+			_do_remove
+		fi
 	fi
-	[ -d "$DATADIR"/icons/hicolor/scalable/apps ] && find "$DATADIR"/icons/hicolor/scalable/apps -xtype l -exec rm {} \;
-}
-
-function _hard_remove() {
-	$SUDOCMD echo "" >/dev/null
-	echo "------------------------------------------------------------------------------"
-	if [ ! -d "$APPSPATH"/"$2" ]; then
-		echo -e " \"${RED}$2\033[0m\" is not a valid \"APPNAME\", see \"$AMCLI -f\" for more."
-		return 1
-	fi
-	$SUDOCMD "$APPSPATH"/"$arg"/remove || return 1
-	sleep 0.1
-	echo -e " \"${Green}$2\033[0m\" has been removed!"
-	[ -d "$DATADIR"/icons/hicolor/scalable/apps ] && find "$DATADIR"/icons/hicolor/scalable/apps -xtype l -exec rm {} \;
 }
 
 ###########################################################################
@@ -460,22 +457,11 @@ case "$1" in
 		done
 		;;
 
-	'remove'|'-r')
-		# Remove apps
-		ARGS="$(echo "$@" | cut -f2- -d ' ')"
-		for arg in $ARGS; do
-			_remove "${@}"
-			_remove_info_files
-			shift
-		done
-		echo "------------------------------------------------------------------------------"
-		;;
-
-	'-R')
+	'remove'|'-r'|'-R')
 		# Remove apps without confirmation
 		ARGS="$(echo "$@" | cut -f2- -d ' ')"
 		for arg in $ARGS; do
-			_hard_remove "${@}"
+			_remove "${@}"
 			_remove_info_files
 			shift
 		done
