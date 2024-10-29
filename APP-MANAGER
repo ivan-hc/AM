@@ -416,7 +416,7 @@ function _check_version_if_binary_in_place() {
 
 function _check_version() {
 	rm -f "$AMCACHEDIR"/version-args
-	cd "$APPSPATH" &&
+	cd "$APPSPATH" || exit 1
 	INSTALLED_APPS=$(find . -name 'remove' -printf "%h\n" 2>/dev/null | du -sh -- * 2>/dev/null |\
 	sort -rh | sed 's@.*	@@')
 	for arg in $INSTALLED_APPS; do
@@ -445,7 +445,7 @@ function _check_version() {
 }
 
 function _check_version_for_auto_updatable_apps() {
-	cd "$APPSPATH" &&
+	cd "$APPSPATH" || exit 1
 	INSTALLED_APPS=$(find . -name 'remove' -printf "%h\n" 2>/dev/null | du -sh -- * 2>/dev/null | sort -rh | sed 's@.*	@@')
 	for arg in $INSTALLED_APPS; do
 		if test -f ./"$arg"/updater 2>/dev/null; then
@@ -585,14 +585,14 @@ function _clean_amcachedir_message() {
 
 function _clean_all_home_cache_directories_of_appimages() {
 	if test -d "$APPSPATH"/*/*.home/.cache 2>/dev/null; then
-		rm -Rf "$APPSPATH"/*/*.home/.cache/* &&
+		rm -Rf "$APPSPATH"/*/*.home/.cache/*
 		echo " ✔ Clear the contents of all *.home/.cache AppImages directories"
 	fi
 }
 
 function _clean_all_tmp_directories_from_appspath() {
 	if test -d "$APPSPATH"/*/tmp 2>/dev/null; then
-		rm -Rf "$APPSPATH"/*/tmp &&
+		rm -Rf "$APPSPATH"/*/tmp
 		echo ' ✔ Removed all '"$APPSPATH"'/*/tmp directories'
 	fi
 }
@@ -652,7 +652,7 @@ function _clean_and_remove_old_am_cache_directory() {
 }
 
 function _use_clean() {
-	echo " Cleaning temporary files and folders..." && sleep 0.1 &&
+	echo " Cleaning temporary files and folders..." && sleep 0.1
 	for i in {100..000}; do
 		echo -ne " $i\r" && sleep 0.0001
 	done
@@ -994,7 +994,7 @@ $DIVIDING_LINE
 # SYNCHRONIZE
 function _sync_installation_scripts() {
 	echo -e "$DIVIDING_LINE\n Checking for changes of the installation scripts in the online database..."
-	cd "$APPSPATH" &&
+	cd "$APPSPATH" || exit 1
 	ARGS=$(find . -name 'AM-updater' -printf "%h\n" 2>/dev/null | sort -u | cut -c 3-)
 	for arg in $ARGS; do
 		mkdir -p "$APPSPATH/$arg/.am-installer"
@@ -1079,7 +1079,7 @@ function _use_sync() {
 # UPDATE
 function _update_list_updatable_apps() {
 	_check_version
-	cd "$APPSPATH" &&
+	cd "$APPSPATH" || exit 1
 	ARGS=$(find . -name 'AM-updater' -printf " %h\n" 2>/dev/null | sort -u | xargs -n 1 basename 2>/dev/null)
 	for arg in $ARGS; do
 		app_version=$(grep -w " ◆ $arg	|" "$AMCACHEDIR/version-args" | sed 's:.*|	::')
@@ -1208,10 +1208,14 @@ function _use_module() {
 	source "$MODULES_PATH/$MODULE" "$@"
 }
 
-[ -z "$1" ] && echo " USAGE: $AMCLI [OPTION]" && echo "        $AMCLI [OPTION] [ARGUMENT]" &&
-	echo "" && echo " Run the \"$AMCLI -h\" command to find out more" && exit 1
-
 case "$1" in
+	'')
+		echo " USAGE: $AMCLI [OPTION]"
+		echo "        $AMCLI [OPTION] [ARGUMENT]"
+		echo ""
+		echo " Run the \"$AMCLI -h\" command to find out more"
+		exit 0
+		;;
 	'about'|'-a'|\
 	'files'|'-f'|\
 	'list'|'-l'|\
