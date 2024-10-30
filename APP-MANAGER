@@ -48,8 +48,8 @@ function _create_cache_dir() {
 }
 
 function _clean_amcachedir() {
-	[ -z "$AMCACHEDIR" ] && exit 1
-	rm -f "$AMCACHEDIR"/*
+	[ "$AMCLI" = am ] && [ -d "$CACHEDIR"/am ] && rm -f "$CACHEDIR"/am/*
+	[ -d "$CACHEDIR"/appman ] && rm -f "$CACHEDIR"/appman/*
 }
 
 ################################################################################
@@ -166,9 +166,6 @@ AMCLIUPPER=$(echo "$AMCLI" | tr '[:lower:]' '[:upper:]')
 # Create new data directory and move important files there
 AMDATADIR="$DATADIR/AM"
 mkdir -p "$AMDATADIR"
-[ -f "$AMPATH/betatester" ] && mv "$AMPATH/betatester" "$AMDATADIR/betatester"
-[ -f "$AMPATH/list" ] && mv "$AMPATH/list" "$AMDATADIR/list"
-[ -f "$AMPATH/$arch-apps" ] && mv "$AMPATH/$arch-apps" "$AMDATADIR/$arch-apps"
 
 # DEVELOPER MODE
 if test -f "$AMDATADIR"/betatester; then
@@ -178,7 +175,8 @@ if test -f "$AMDATADIR"/betatester; then
 fi
 
 function _betatester_message_on() {
-	[ -f "$AMDATADIR"/betatester ] && echo -e "$DIVIDING_LINE\n\"$AMCLIUPPER\" $AMVERSION: DEVELOPER MODE\n$DIVIDING_LINE"
+	[ -f "$AMDATADIR"/betatester ] \
+	&& echo -e "$DIVIDING_LINE\n\"$AMCLIUPPER\" $AMVERSION: DEVELOPER MODE\n$DIVIDING_LINE"
 }
 
 # Apps database in use
@@ -270,10 +268,6 @@ fi
 #				3RD PARTY
 ################################################################################
 
-function _newrepo_list_available() {
-	[ ! -f "$AMDATADIR/newrepo-lists" ] && echo " ERROR, \"$AMDATADIR/newrepo-lists\" file not found" && exit 1
-}
-
 function _use_newrepo() {
 	[ -z "$2" ] && echo " USAGE: $AMCLI $1 [ARGUMENT]" && exit 1
 	case $2 in
@@ -282,11 +276,11 @@ function _use_newrepo() {
 		echo "$3" >> "$AMDATADIR/newrepo-lists"
 		;;
 	'enable'|'on')
-		_newrepo_list_available
+		[ ! -f "$AMDATADIR/newrepo-lists" ] && echo " ERROR, \"$AMDATADIR/newrepo-lists\" file not found" && exit 1
 		[ -f "$AMDATADIR/newrepo-off" ] && mv "$AMDATADIR/newrepo-off" "$AMDATADIR/newrepo-on" && echo " New repo ON!"
 		;;
 	'disable'|'off')
-		_newrepo_list_available
+		[ ! -f "$AMDATADIR/newrepo-lists" ] && echo " ERROR, \"$AMDATADIR/newrepo-lists\" file not found" && exit 1
 		[ -f "$AMDATADIR/newrepo-on" ] && mv "$AMDATADIR/newrepo-on" "$AMDATADIR/newrepo-off" && echo " New repo OFF!"
 		;;
 	'info')
@@ -296,7 +290,7 @@ function _use_newrepo() {
 		[ -f "$AMDATADIR/newrepo-lists" ] && rm -f "$AMDATADIR"/newrepo* && echo " Removed all 3rd party repositories"
 		;;
 	'select')
-		_newrepo_list_available
+		[ ! -f "$AMDATADIR/newrepo-lists" ] && echo " ERROR, \"$AMDATADIR/newrepo-lists\" file not found" && exit 1
 		printf "Select a repo from the list or press CTRL+C to abort:\n$DIVIDING_LINE\n"; sleep 1
 		select repo in $(sort -u "$AMDATADIR/newrepo-lists" | uniq); do
 			test -n "$repo" && break
@@ -364,7 +358,6 @@ if ! grep -o " $AMCLI$" "$completion_file" >/dev/null 2>&1; then
 	fi
 	echo "Shell completion has been enabled!"
 fi
-sed -i "s#$AMPATH/list#$AMDATADIR/list#g" "$completion_file" 2>/dev/null
 
 # VERSION OF THE INSTALLED APPS
 # Filters
@@ -519,10 +512,6 @@ APPMAN_MSG_OFF="$DIVIDING_LINE\n \"AppMan Mode\" disabled! \n$DIVIDING_LINE"
 APPMAN_MSG_THINK="$DIVIDING_LINE\nNOTE: You can also choose to simply use \"--user\" as a flag to install apps locally \
 (options \"-i\", \"-ia\" and \"-e\") instead of going fully into \"AppMan Mode\". \"AM\" can  handle local applications as well.\n$DIVIDING_LINE"
 
-function _if_appman_mode_enabled() {
-	[ "$CLI" = am ] && [ -f "$APPMANCONFIG"/appman-mode ] && echo -e "$APPMAN_MSG"
-}
-
 function _use_appman() {
 	_online_check
 	[ "$CLI" = appman ] && echo " This function only works for AM" && exit 0
@@ -534,10 +523,6 @@ function _use_appman() {
 		[ ! -f "$APPMANCONFIG"/appman-mode ] && mkdir -p "$APPMANCONFIG" && touch "$APPMANCONFIG"/appman-mode
 		_appman && echo -e "$APPMAN_MSG"
 	fi
-}
-
-function _use_am_again() {
-	[ -f "$APPMANCONFIG"/appman-mode ] && rm -f "$APPMANCONFIG"/appman-mode && echo -e "$APPMAN_MSG_OFF"
 }
 
 if [ "$AMCLI" = am ]; then
@@ -581,16 +566,11 @@ function _detect_appman_apps() {
 	fi
 }
 
-# BETA TESTER
-function _use_beta_tester() {
-	[ "$1" = "--devmode-disable" ] && rm -f "$AMDATADIR"/betatester \
-	|| touch "$AMDATADIR"/betatester && _betatester_message_on
-}
-
 # CLEAN UNNEEDED FILES
 function _clean_amcachedir_message() {
 	_clean_amcachedir
-	echo " ✔ Clear the contents of $AMCACHEDIR"
+	[ "$AMCLI" = am ] && [ -d "$CACHEDIR"/am ] && echo " ✔ Clear the contents of $CACHEDIR/am"
+	[ -d "$CACHEDIR"/appman ] && echo " ✔ Clear the contents of $CACHEDIR/appman"
 }
 
 function _clean_all_home_cache_directories_of_appimages() {
@@ -639,11 +619,7 @@ function _clean_launchers() {
 }
 
 function _clean_old_modules() {
-	if [ "$AMCLI" = am ]; then
-		MODULES=$(sort "$(realpath "$0")" | tr '"' '\n' | grep "[a-z]\.am$" | uniq)
-	else
-		MODULES=$(sort "$AMCLIPATH" 2>/dev/null | tr '"' '\n' | grep "[a-z]\.am$" | uniq)
-	fi
+	MODULES=$(sort "$(realpath "$0")" | tr '"' '\n' | grep "[a-z]\.am$" | uniq)
 	[ -z "$MODULES_PATH" ] && exit 1
 	for m in "$MODULES_PATH"/*; do
 		if [[ "${MODULES}" != *"$(basename -- "$m")"* ]];then
@@ -651,14 +627,6 @@ function _clean_old_modules() {
 			echo " ✔ Removed obsolete module named \"$(basename -- "$m")\""
 		fi
 	done
-}
-
-function _clean_and_remove_old_am_cache_directory() {
-	rm -f "$AMPATH"/{betatester,*list*,options,.cache/*}
-	if test -d "$AMPATH/.cache"; then
-		rmdir "$AMPATH"/.cache
-		echo " ✔ Removed no more needed $AMPATH/.cache directory"
-	fi
 }
 
 function _use_clean() {
@@ -671,7 +639,6 @@ function _use_clean() {
 	_clean_all_tmp_directories_from_appspath
 	_clean_launchers 2>/dev/null
 	_clean_old_modules
-	_clean_and_remove_old_am_cache_directory
 }
 
 # FORCE "LATEST" RELEASE FOR APPS INSTALLED FROM GITHUB
@@ -699,7 +666,7 @@ function _use_force_latest() {
 
 #HELP
 function _use_help() {
-	_if_appman_mode_enabled
+	[ "$CLI" = am ] && [ -f "$APPMANCONFIG"/appman-mode ] && echo -e "$APPMAN_MSG"
 	printf "
 NAME: ${Green}$AMCLIUPPER\033[0m		\
 VERSION: ${Green}$AMVERSION\033[0m
@@ -1252,7 +1219,7 @@ case "$1" in
 	'install-appimage'|'-ia')
 		MODULE="install.am"
 		_online_check
-		_if_appman_mode_enabled
+		[ "$CLI" = am ] && [ -f "$APPMANCONFIG"/appman-mode ] && echo -e "$APPMAN_MSG"
 		_use_module "$@"
 		;;
 	'template'|'-t')
@@ -1262,13 +1229,14 @@ case "$1" in
 		;;
 	# INBUILT OPTIONS
 	'--devmode-disable'|'--devmode-enable')
-		_use_beta_tester "$@"
+		[ "$1" = "--devmode-disable" ] && rm -f "$AMDATADIR"/betatester \
+		|| touch "$AMDATADIR"/betatester && _betatester_message_on
 		;;
 	'--force-latest')
 		_use_force_latest "$@"
 		;;
 	'--system')
-		_use_am_again
+		[ -f "$APPMANCONFIG"/appman-mode ] && rm -f "$APPMANCONFIG"/appman-mode && echo -e "$APPMAN_MSG_OFF"
 		;;
 	'apikey')
 		_use_apikey "$@"
