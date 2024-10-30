@@ -657,15 +657,28 @@ function _use_clean() {
 #				SYNC
 ################################################################################
 
+function _determine_args() {
+	ARGPATHS=$(find "$APPSPATH" -name 'AM-updater' -printf " %h\n" 2>/dev/null | sort -u | sed 's/ //g')
+	ARGS=$(echo "$ARGPATHS" | xargs -n 1 basename 2>/dev/null)
+	if [ "$AMCLI" = am ]; then
+		_detect_appman_apps
+		if [ -d "$APPMAN_APPSPATH" ]; then
+			APPMAN_PATHS=$(find "$APPMAN_APPSPATH" -name 'AM-updater' -printf " %h\n" 2>/dev/null | sort -u | sed 's/ //g')
+			ARGPATHS=$(echo -e "$ARGPATHS\n$APPMAN_PATHS")
+			ARGS=$(echo "$ARGPATHS" | xargs -n 1 basename 2>/dev/null)
+		fi
+	fi
+}
+
 function _sync_installation_scripts() {
 	echo -e "$DIVIDING_LINE\n Checking for changes of the installation scripts in the online database..."
-	cd "$APPSPATH" || exit 1
-	ARGS=$(find . -name 'AM-updater' -printf "%h\n" 2>/dev/null | sort -u | cut -c 3-)
+	_determine_args
 	for arg in $ARGS; do
-		mkdir -p "$APPSPATH/$arg/.am-installer"
-		if test -f "$APPSPATH/$arg/.am-installer"/*; then
-			scriptname=$(ls "$APPSPATH/$arg/.am-installer/" | head -1)
-			CURRENT=$(cat "$APPSPATH"/"$arg"/.am-installer/"$scriptname")
+		argpath=$(echo "$ARGPATHS" | grep "/$arg$")
+		mkdir -p "$argpath"/.am-installer
+		if test -f "$argpath/.am-installer"/*; then
+			scriptname=$(ls "$argpath/.am-installer/" | head -1)
+			CURRENT=$(cat "$argpath"/.am-installer/"$scriptname")
 			SOURCE=$(curl -Ls "$APPSDB"/"$scriptname")
 			if [ "$CURRENT" = "$SOURCE" ]; then
 				echo -ne "\r" 2>/dev/null
@@ -675,8 +688,8 @@ function _sync_installation_scripts() {
 		else
 			if curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg"  1>/dev/null; then
 				echo -e " ◆ No installation script for $arg, downloading one..."
-				mkdir -p "$APPSPATH/$arg/.am-installer"
-				wget -q "$APPSDB/$arg" -O "$APPSPATH/$arg/.am-installer/$arg"
+				mkdir -p "$argpath"/.am-installer
+				wget -q "$APPSDB/$arg" -O "$argpath"/.am-installer/"$arg"
 			fi
 		fi
 	done
@@ -742,8 +755,7 @@ function _use_sync() {
 
 function _update_list_updatable_apps() {
 	_check_version
-	cd "$APPSPATH" || exit 1
-	ARGS=$(find . -name 'AM-updater' -printf " %h\n" 2>/dev/null | sort -u | xargs -n 1 basename 2>/dev/null)
+	ARGS=$(find "$APPSPATH" -name 'AM-updater' -printf " %h\n" 2>/dev/null | sort -u | xargs -n 1 basename 2>/dev/null)
 	for arg in $ARGS; do
 		app_version=$(grep -w " ◆ $arg	|" "$AMCACHEDIR/version-args" | sed 's:.*|	::')
 		echo " ◆ $arg $app_version" >> "$AMCACHEDIR"/updatable-args-list
