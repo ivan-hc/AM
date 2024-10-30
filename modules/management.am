@@ -6,22 +6,6 @@
 # OPTIONS: BACKUP/RESTORE, DOWNGRADE, LAUNCHER, LOCK/UNLOCK, NOLIBFUSE, REMOVE
 ##############################################################################################
 
-APPSPATH_ORIGIN="$APPSPATH"
-
-function _check_appman_dirs_from_am() {
-	if [ "$AMCLI" = am ] && [ -f "$APPMANCONFIG"/appman-config ]; then
-		_appman
-		APPMAN_ON=1
-	fi
-	[ -n "$APPMAN_ON" ] && [ -f "$APPMANCONFIG"/appman-config ] && APPSPATH=$(<"$APPMANCONFIG"/appman-config)
-	if [ -n "$APPMAN_ON" ]; then
-		if ! echo "$APPSPATH" | grep -q "^/"; then
-			APPSPATH="$HOME/$(<"$APPMANCONFIG"/appman-config)"
-		fi
-		AMCACHEDIR="$CACHEDIR/appman"
-	fi
-}
-
 # BACKUP
 function _backup_name() {
 	printf "\n ◆ To set date and time as a name, press ENTER (default)\n ◆ To set the version as a name, press \"1\"\n ◆ To set a custom name, write anything else\n\n"
@@ -152,25 +136,27 @@ function _downgrade() {
 function _icon_theme_export_to_datadir() {
 	PNG="$(file "$APPSPATH"/*/icons/* | grep -i '.png' | awk -F":" '{print $1}' | grep -vi .png)"
 	SVG="$(file "$APPSPATH"/*/icons/* | grep -i '.svg' | awk -F":" '{print $1}' | grep -vi .svg)"
-	for file in $PNG; do
-		ln -s "$file" "${file}".png
-	done
-	for file in $SVG; do
-		ln -s "$file" "${file}".svg
-	done
+	for file in $PNG; do ln -s "$file" "${file}".png; done
+	for file in $SVG; do ln -s "$file" "${file}".svg; done
+	if [ -n "$APPMAN_APPSPATH" ]; then
+		PNG="$(file "$APPMAN_APPSPATH"/*/icons/* | grep -i '.png' | awk -F":" '{print $1}' | grep -vi .png)"
+		SVG="$(file "$APPMAN_APPSPATH"/*/icons/* | grep -i '.svg' | awk -F":" '{print $1}' | grep -vi .svg)"
+		for file in $PNG; do ln -s "$file" "${file}".png; done
+		for file in $SVG; do ln -s "$file" "${file}".svg; done
+	fi
 	mkdir -p "$DATADIR"/icons/hicolor/scalable/apps
 	find "$DATADIR"/icons/hicolor/scalable/apps -xtype l -exec rm {} \;
 	ln -s "$APPSPATH"/*/icons/*.* "$DATADIR"/icons/hicolor/scalable/apps
+	[ -n "$APPMAN_APPSPATH" ] && ln -s "$APPMAN_APPSPATH"/*/icons/*.* "$DATADIR"/icons/hicolor/scalable/apps
 }
 
 function _icon_theme() {
-	if [ "$AMCLI" = am ]; then
-		$SUDOCMD sed -i "s#Icon=$APPSPATH/$arg/icons/#Icon=#g" /usr/local/share/applications/"$arg"*AM.desktop 2>/dev/null
+	if [ "$AMCLI" = am ] && [ -f /usr/local/share/applications/"$arg"*AM.desktop ]; then
+		$SUDOCMD sed -i "s#Icon=$argpath/icons/#Icon=#g" /usr/local/share/applications/"$arg"*AM.desktop 2>/dev/null
 	else
-		sed -i "s#Icon=$APPSPATH/$arg/icons/#Icon=#g" "$DATADIR"/applications/"$arg"*AM.desktop 2>/dev/null
+		sed -i "s#Icon=$argpath/icons/#Icon=#g" "$DATADIR"/applications/"$arg"*AM.desktop 2>/dev/null
 	fi
 	_icon_theme_export_to_datadir 2>/dev/null
-	_check_appman_dirs_from_am && sed -i "s#Icon=$APPSPATH/$arg/icons/#Icon=#g" "$DATADIR"/applications/"$arg"*AM.desktop 2>/dev/null && _icon_theme_export_to_datadir 2>/dev/null
 }
 
 # LAUNCHER
@@ -391,8 +377,8 @@ case "$1" in
 	'backup'|'-b')
 		# Do a snapshot of an installed app
 		_determine_args
-		ENTRIES="$(echo "$@" | cut -f2- -d ' ')"
-		for arg in $ENTRIES; do
+		entries="$(echo "$@" | cut -f2- -d ' ')"
+		for arg in $entries; do
 			argpath=$(echo "$ARGPATHS" | grep "/$arg$")
 			_backup "${@}"
 			shift
@@ -403,8 +389,8 @@ case "$1" in
 		# Downgrade the installed app to a previous version, from its online source
 		_online_check
 		_determine_args
-		ENTRIES="$(echo "$@" | cut -f2- -d ' ')"
-		for arg in $ENTRIES; do
+		entries="$(echo "$@" | cut -f2- -d ' ')"
+		for arg in $entries; do
 			argpath=$(echo "$ARGPATHS" | grep "/$arg$")
 			_downgrade "${@}"
 			_clean_amcachedir
@@ -415,15 +401,17 @@ case "$1" in
 
 	'icons'|'--icons')
 		# Place local AppImages into the menu by dragging and dropping them into the terminal
+		_determine_args
 		if [ "$2" = "--all" ]; then
-			ARGS=$(find "$APPSPATH" -name 'remove' -printf "%h\n" 2>/dev/null | sed 's:.*/::')
+			entries=$(find "$APPSPATH" -name 'remove' -printf "%h\n" 2>/dev/null | sed 's:.*/::')
 			read -r -p " ◆ Do you wish to allow custom icon theming for ALL the apps? (y,N) " yn
 		else
-			ARGS="$(echo "$@" | cut -f2- -d ' ')"
+			entries="$(echo "$@" | cut -f2- -d ' ')"
 			read -r -p " ◆ Do you wish to allow custom icon theming for the selected apps? (y,N) " yn
 		fi
 		if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
-			for arg in $ARGS; do
+			for arg in $entries; do
+				argpath=$(echo "$ARGPATHS" | grep "/$arg$")
 				_icon_theme "${@}"
 			done
 			echo " ✔ Success!"
@@ -434,8 +422,8 @@ case "$1" in
 
 	'launcher'|'--launcher')
 		# Place local AppImages into the menu by dragging and dropping them into the terminal
-		ARGS="$(echo "$@" | cut -f2- -d ' ')"
-		for arg in $ARGS; do
+		entries="$(echo "$@" | cut -f2- -d ' ')"
+		for arg in $entries; do
 			echo "---------------------------------------------------------------------"
 			_launcher "${@}"
 		done
@@ -445,8 +433,8 @@ case "$1" in
 	'lock')
 		# Lock the version of an installed app
 		_determine_args
-		ENTRIES="$(echo "$@" | cut -f2- -d ' ')"
-		for arg in $ENTRIES; do
+		entries="$(echo "$@" | cut -f2- -d ' ')"
+		for arg in $entries; do
 			argpath=$(echo "$ARGPATHS" | grep "/$arg$")
 			_lock "${@}"
 			shift
@@ -456,8 +444,8 @@ case "$1" in
 	'unlock')
 		# Unlock the version of an installed app
 		_determine_args
-		ENTRIES="$(echo "$@" | cut -f2- -d ' ')"
-		for arg in $ENTRIES; do
+		entries="$(echo "$@" | cut -f2- -d ' ')"
+		for arg in $entries; do
 			argpath=$(echo "$ARGPATHS" | grep "/$arg$")
 			_unlock "${@}"
 			shift
@@ -468,8 +456,8 @@ case "$1" in
 		# Convert old AppImages to a new standard and get rid of libfuse2 dependency
 		_online_check
 		_determine_args
-		ENTRIES="$(echo "$@" | cut -f2- -d ' ')"
-		for arg in $ENTRIES; do
+		entries="$(echo "$@" | cut -f2- -d ' ')"
+		for arg in $entries; do
 			argpath=$(echo "$ARGPATHS" | grep "/$arg$")
 			_nolibfuse "${@}"
 			_remove_info_files
@@ -480,8 +468,8 @@ case "$1" in
 	'overwrite'|'-o')
 		# Restore an app to a previous version using a snapshot (see "backup" or "-b", above)
 		_determine_args
-		ENTRIES="$(echo "$@" | cut -f2- -d ' ')"
-		for arg in $ENTRIES; do
+		entries="$(echo "$@" | cut -f2- -d ' ')"
+		for arg in $entries; do
 			argpath=$(echo "$ARGPATHS" | grep "/$arg$")
 			_overwrite "${@}"
 			_remove_info_files
@@ -491,8 +479,8 @@ case "$1" in
 
 	'remove'|'-r')
 		# Remove apps
-		ARGS="$(echo "$@" | cut -f2- -d ' ')"
-		for arg in $ARGS; do
+		entries="$(echo "$@" | cut -f2- -d ' ')"
+		for arg in $entries; do
 			_remove "${@}"
 			_remove_info_files
 			shift
@@ -502,8 +490,8 @@ case "$1" in
 
 	'-R')
 		# Remove apps without confirmation
-		ARGS="$(echo "$@" | cut -f2- -d ' ')"
-		for arg in $ARGS; do
+		entries="$(echo "$@" | cut -f2- -d ' ')"
+		for arg in $entries; do
 			_hard_remove "${@}"
 			_remove_info_files
 			shift
