@@ -755,11 +755,30 @@ function _use_sync() {
 
 function _update_list_updatable_apps() {
 	_check_version
-	ARGS=$(find "$APPSPATH" -name 'AM-updater' -printf " %h\n" 2>/dev/null | sort -u | xargs -n 1 basename 2>/dev/null)
+	_determine_args
 	for arg in $ARGS; do
-		app_version=$(grep -w " ◆ $arg	|" "$AMCACHEDIR/version-args" | sed 's:.*|	::')
-		echo " ◆ $arg $app_version" >> "$AMCACHEDIR"/updatable-args-list
+		if [ -d "$APPSPATH"/"$arg" ]; then
+			app_version=$(grep -w " ◆ $arg	|" "$AMCACHEDIR/version-args" | sed 's:.*|	::')
+			echo " ◆ $arg $app_version" >> "$AMCACHEDIR"/updatable-args-list
+		fi
 	done
+	if [ "$AMCLI" = am ]; then
+		APPSPATH_ORIGIN="$APPSPATH"
+		AMCACHEDIR_ORIGIN="$AMCACHEDIR"
+		if [ -d "$APPMAN_APPSPATH" ]; then
+			APPSPATH="$APPMAN_APPSPATH"
+			mkdir -p "$CACHEDIR/appman" && AMCACHEDIR="$CACHEDIR/appman"
+			_check_version
+			for arg in $ARGS; do
+				if [ -d "$APPMAN_APPSPATH"/"$arg" ]; then
+					app_version=$(grep -w " ◆ $arg	|" "$AMCACHEDIR/version-args" | sed 's:.*|	::')
+					echo " ◆ $arg $app_version" >> "$CACHEDIR"/am/updatable-args-list
+				fi
+			done
+		fi
+		AMCACHEDIR="$AMCACHEDIR_ORIGIN"
+		APPSPATH="$APPSPATH_ORIGIN"
+	fi
 }
 
 function _update_determine_apps_version_changes() {
@@ -786,27 +805,27 @@ function _update_updated_app_msg() {
 }
 
 function _update_run_updater() {
-	if grep -q "api.github.com" "$APPSPATH"/"$arg"/AM-updater; then
+	if grep -q "api.github.com" "$argpath"/AM-updater; then
 		GH_API_ALLOWED=$(curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/ivan-hc/AM/releases/latest | sed 's/[()",{} ]/\n/g' | grep "^ivan-hc" | head -1)
 		if [ -z "$GH_API_ALLOWED" ]; then
 			if command -v torsocks 1>/dev/null; then
-				torsocks "$APPSPATH"/"$arg"/AM-updater >/dev/null 2>&1 && _update_updated_app_msg
+				torsocks "$argpath"/AM-updater >/dev/null 2>&1 && _update_updated_app_msg
 			else
 				echo " ✖ $APPNAME cannot be updated, you have reached GitHub API limit. Install \"torsocks\" from your system package manager and retry!" \
 				| fold -sw 72 | sed 's/^/   /g; s/   ✖/✖/g'
 			fi
 		else
-			"$APPSPATH"/"$arg"/AM-updater >/dev/null 2>&1 && _update_updated_app_msg
+			"$argpath"/AM-updater >/dev/null 2>&1 && _update_updated_app_msg
 		fi
 	else
-		"$APPSPATH"/"$arg"/AM-updater >/dev/null 2>&1 && _update_updated_app_msg
+		"$argpath"/AM-updater >/dev/null 2>&1 && _update_updated_app_msg
 	fi
 }
 
 function _update_app() {
 	APPNAME=$(echo "$arg" | tr '[:lower:]' '[:upper:]')
 	start=$(date +%s)
-	if [ -w "$APPSPATH"/"$arg"/AM-updater ]; then
+	if [ -w "$argpath"/AM-updater ]; then
 		_update_run_updater &
 	else
 		echo " ✖ $APPNAME is read-only, cannot update it!"
@@ -814,10 +833,11 @@ function _update_app() {
 }
 
 function _update_all_apps() {
-	for f in "$APPSPATH"/*/; do
-		cd "$f" 2>/dev/null || exit 1
+	for arg in $ARGS; do
+		argpath=$(echo "$ARGPATHS" | grep "/$arg$")
+		cd "$argpath" || exit 1
 		arg=$(printf '%s\n' "${PWD##*/}")
-		if test -f "$APPSPATH"/"$arg"/AM-updater; then
+		if test -f "$argpath"/AM-updater; then
 			_update_app
 		fi
 	done
@@ -825,6 +845,7 @@ function _update_all_apps() {
 	echo "$DIVIDING_LINE"
 	_update_determine_apps_version_changes
 	rm -Rf "$APPSPATH"/*/tmp
+	[ -d "$APPMAN_APPSPATH" ] && rm -Rf "$APPMAN_APPSPATH"/*/tmp
 }
 
 function _use_update() {
@@ -836,11 +857,10 @@ function _use_update() {
 		_clean_amcachedir
 		_update_list_updatable_apps
 		echo -e "$DIVIDING_LINE\n \"$AMCLIUPPER\" CAN MANAGE UPDATES FOR THE FOLLOWING PROGRAMS:\n"
-		[ -f "$AMCACHEDIR/updatable-args-list" ] && cat "$AMCACHEDIR/updatable-args-list" || echo " None"
+		[ -f "$AMCACHEDIR/updatable-args-list" ] && grep "◆" "$AMCACHEDIR/updatable-args-list" | sort || echo " None"
 		echo -e "\n All self-updatable programs are excluded"
 		echo -e "$DIVIDING_LINE\n >> START OF ALL PROCESSES <<\n$DIVIDING_LINE"
 		_update_all_apps
-		[ "$AMCLI" = "am" ] && _check_appman_from_am && _update_all_apps && _am
 		[ -z "$2" ] &&	echo "$DIVIDING_LINE" && _use_sync
 		echo -e "$DIVIDING_LINE\n >> END OF ALL PROCESSES << \n$DIVIDING_LINE"
 		sleep 0.2
