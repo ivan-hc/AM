@@ -867,13 +867,15 @@ function _use_update() {
 		exit 0
 		;;
 	*)
-		ARGS="$(echo "$@" | cut -f2- -d ' ')"
-		for arg in $ARGS; do
-			if test -f "$APPSPATH"/"$arg"/AM-updater; then
-				cd "$APPSPATH/$arg" 2>/dev/null || exit 1
+		_determine_args
+		ENTRIES="$(echo "$@" | cut -f2- -d ' ')"
+		for arg in $ENTRIES; do
+			argpath=$(echo "$ARGPATHS" | grep "/$arg$")
+			if test -f "$argpath"/AM-updater; then
+				cd "$argpath" 2>/dev/null || exit 1
 				_update_app
 			else
-				UPDATERS=$(cd "$APPSPATH"/"$arg" 2>/dev/null && find . -name "*update*" -print 2>/dev/null)
+				UPDATERS=$(cd "$argpath" 2>/dev/null && find . -name "*update*" -print 2>/dev/null)
 				[ -n "$UPDATERS" ] && arg_autoupdatable=", it may have its update system"
 				echo " ✖ Cannot manage updates for \"$(echo "$arg" | tr '[:lower:]' '[:upper:]')\"$arg_autoupdatable"
 			fi
@@ -886,19 +888,20 @@ function _use_update() {
 
 function _use_force_latest() {
   	_online_check
-	ARGS="$(echo "$@" | cut -f2- -d ' ')"
-  	for arg in $ARGS; do
-	  	[ -d "$APPSPATH"/"$arg" ] && FL_DIR="$APPSPATH/$arg" || _check_appman_dirs_from_am && [ -d "$APPSPATH"/"$arg" ] && FL_DIR="$APPSPATH/$arg"
-	  	if ! test -d "$APPSPATH"/"$arg"; then
+  	_determine_args
+	ENTRIES="$(echo "$@" | cut -f2- -d ' ')"
+  	for arg in $ENTRIES; do
+	  	argpath=$(echo "$ARGPATHS" | grep "/$arg$")
+	  	if ! test -d "$argpath"; then
 			echo " ERROR: \"$arg\" is not installed, see \"-f\""
-		elif ! test -f "$APPSPATH"/"$arg"/AM-updater; then
+		elif ! test -f "$argpath"/AM-updater; then
 			echo " ERROR: \"$AMCLI\" cannot manage updates for \"$arg\""
-		elif ! grep -q "api.github.com" "$APPSPATH"/"$arg"/AM-updater; then
+		elif ! grep -q "api.github.com" "$argpath"/AM-updater; then
 			echo " ERROR: \"$arg\" source is not on Github"
-		elif ! grep -q "/releases | " "$APPSPATH"/"$arg"/AM-updater; then
+		elif ! grep -q "/releases | " "$argpath"/AM-updater; then
 			echo " ERROR: \"$arg\" does not redirect to a generic \"releases\""
 		else
-			sed -i 's#/releases | #/releases/latest | #g' "$APPSPATH"/"$arg"/AM-updater
+			sed -i 's#/releases | #/releases/latest | #g' "$argpath"/AM-updater
 			APPNAME=$(echo "$arg" | tr '[:lower:]' '[:upper:]')
 			start=$(date +%s)
 			_update_run_updater
