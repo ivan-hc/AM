@@ -6,8 +6,6 @@
 
 #--------------------------------------------------------------------------
 # ABOUT
-APPSPATH_ORIGIN="$APPSPATH"
-
 _about_show_markdown() {
 	if curl -o /dev/null -sIf "$markdown_url"; then
 		markdown_page=$(curl -Ls "$markdown_url" \
@@ -20,27 +18,27 @@ _about_show_markdown() {
 }
 
 _about_page() {
+	_determine_args
 	package_name="${Green}$1\033[0m"
 	markdown_url="$AMCATALOGUEMARKDOWNS/${1}.md"
 	printf " PACKAGE: %b\n" "$package_name"
 	app_name=$(echo "$1" | sed 's/-appimage//g; s/debian-testing-//g')
-	if [ -f "$APPSPATH/$app_name/remove" ] || _check_appman_from_am 1>/dev/null && [ -f "$APPSPATH/$app_name/remove" ] \
-		|| APPSPATH="$APPSPATH_ORIGIN" && [ -f "$APPSPATH/$app_name/remove" ]; then
+	argpath=$(echo "$ARGPATHS" | grep "/$app_name$")
+	if [ -f "$argpath/remove" ]; then
 		app_status="installed\033[0m"
-		if test -f "$APPSPATH/$app_name/.am-installer/$app_name"; then
+		if test -f "$argpath/.am-installer/$app_name"; then
 			app_status="installed\033[0m"
 		elif [ "$app_name" != "$1" ]; then
-			if test -f "$APPSPATH/$app_name/.am-installer/$1"; then
+			if test -f "$argpath/.am-installer/$1"; then
 				app_status="installed\033[0m, as ${Green}$app_name\033[0m"
 			fi
-		elif test -d "$APPSPATH/$app_name/.am-installer"; then
-			scriptname=$(basename -- "$(find "$APPSPATH"/"$arg"/.am-installer/* | head -1)")
+		elif test -d "$argpath/.am-installer"; then
+			scriptname=$(basename -- "$(find "$argpath"/.am-installer/* | head -1)")
 			if [ "$scriptname" != "$1" ]; then
 				app_status="installed\033[0m, but replaced by ${Green}$scriptname\033[0m\n\n NOTE: run ${RED}$AMCLI -a $scriptname\033[0m instead"
 			fi
 		fi
-	elif [ -f "$APPSPATH/$app_name-appimage/remove" ] || _check_appman_from_am 1>/dev/null && [ -f "$APPSPATH/$app_name-appimage/remove" ] \
-		|| APPSPATH="$APPSPATH_ORIGIN" && [ -f "$APPSPATH/$app_name-appimage/remove" ]; then
+	elif [ -f "$argpath-appimage/remove" ]; then
 		app_status="installed\033[0m"
 		app_name="$app_name-appimage"
 	else
@@ -48,8 +46,9 @@ _about_page() {
 	fi
 	METAPACKAGES="kdegames kdeutils node platform-tools"
 	for m in $METAPACKAGES; do
+		metaargpath=$(echo "$ARGPATHS" | grep "/$m$")
 		if grep -q "◆ $1 : .*\"$m\"" "$AMDATADIR/$ARCH-apps"; then
-			if test -f "$APPSPATH/$m/remove"; then
+			if test -f "$metaargpath/remove"; then
 				app_status="installed\033[0m, as part of ${Green}$m\033[0m\n\n NOTE: run ${RED}$AMCLI -a $m\033[0m instead"
 				app_name="$m"
 			fi
@@ -59,7 +58,8 @@ _about_page() {
 	done
 	if echo "$app_status" | grep -q "^installed"; then
 		printf " STATUS: %b\n" "${LightBlue}$app_status"
-		disk_usage=$(du -sm "$APPSPATH/$app_name" | cut -f1)
+		disk_usage=$(du -sm "$argpath" | cut -f1)
+		[ -z "$disk_usage" ] && disk_usage=$(du -sm "$metaargpath" | cut -f1)
 		app_version=$(grep -w " ◆ $app_name	|" "$AMCACHEDIR"/version-args 2>/dev/null | sed 's:.*|	::')
 		echo ""
 		echo " Disk usage: $disk_usage MB"
@@ -355,16 +355,14 @@ case "$1" in
 	'-f'|'files')
 		if [ "$2" = "--less" ]; then
 			_files_number && echo "$FILES_NUMBER"
-			_check_appman_from_am && [ -n "$APPMAN_ON" ] && echo "$DIVIDING_LINE" && _files_number && echo "$FILES_NUMBER"
+			[ "$AMCLI" = am ] && [ -f "$APPMANCONFIG"/appman-config ] && _appman && echo "$DIVIDING_LINE" && _files_number && echo "$FILES_NUMBER"
 		elif [ "$2" = "--byname" ]; then
 			_files_sort_by_name
-			_check_appman_from_am && [ -n "$APPMAN_ON" ] && _files_number && [ "$FILES_NUMBER" != 0 ] \
-				&& echo "$DIVIDING_LINE" && _files_sort_by_name
+			[ "$AMCLI" = am ] && [ -f "$APPMANCONFIG"/appman-config ] && _appman && echo "$DIVIDING_LINE" && _files_sort_by_name
 			_betatester_message_on
 		else
 			_files_sort_by_size
-			_check_appman_from_am && [ -n "$APPMAN_ON" ] && _files_number && [ "$FILES_NUMBER" != 0 ] \
-				&& echo "$DIVIDING_LINE" && _files_sort_by_size
+			[ "$AMCLI" = am ] && [ -f "$APPMANCONFIG"/appman-config ] && _appman && echo "$DIVIDING_LINE" && _files_sort_by_size
 			_betatester_message_on
 		fi
 		;;
