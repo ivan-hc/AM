@@ -157,6 +157,27 @@ else
 	_appman
 fi
 
+function _detect_appman_apps() {
+	[ -f "$APPMANCONFIG/appman-config" ] && APPMAN_APPSPATH=$(<"$APPMANCONFIG/appman-config")
+	if ! echo "$APPMAN_APPSPATH" | grep -q "^/"; then
+		[ -f "$APPMANCONFIG/appman-config" ] && APPMAN_APPSPATH="$HOME/$(<"$APPMANCONFIG/appman-config")"
+	fi
+}
+
+function _determine_args() {
+	ARGPATHS=$(find "$APPSPATH" -name 'remove' -printf " %h\n" 2>/dev/null | sort -u | sed 's/ //g')
+	ARGS=$(echo "$ARGPATHS" | xargs -n 1 basename 2>/dev/null)
+	if [ "$AMCLI" = am ]; then
+		_detect_appman_apps
+		if [ -d "$APPMAN_APPSPATH" ]; then
+			APPMAN_PATHS=$(find "$APPMAN_APPSPATH" -name 'remove' -printf " %h\n" 2>/dev/null | sort -u | sed 's/ //g')
+			ARGPATHS=$(echo -e "$ARGPATHS\n$APPMAN_PATHS")
+			ARGS=$(echo "$ARGPATHS" | xargs -n 1 basename 2>/dev/null)
+		fi
+	fi
+	# use "argpath=$(echo "$ARGPATHS" | grep "/$arg$")" to determine the full path of "arg"
+}
+
 ################################################################################
 #				FINALIZE
 ################################################################################
@@ -372,68 +393,67 @@ function _check_version_grep_numbers() {
 
 # Versions
 function _check_version_if_any_version_reference_is_somewhere() {
-	APPVERSION=$(grep -i "version=" "$APPSPATH"/"$arg"/* 2>/dev/null | _check_version_grep_numbers)
+	APPVERSION=$(grep -i "version=" "$argpath"/* 2>/dev/null | _check_version_grep_numbers)
 }
 
 function _check_version_if_version_file_exists() {
-	APPVERSION=$(sort "$APPSPATH"/"$arg"/version | head -1 | sed 's:.*/::' | _check_version_filters)
+	APPVERSION=$(sort "$argpath"/version | head -1 | sed 's:.*/::' | _check_version_filters)
 	if [ -z "$APPVERSION" ]; then
-		if grep -q "download$" ./"$arg"/version; then
-			APPVERSION=$(sort "$APPSPATH"/"$arg"/version | tr '/' '\n' | _check_version_filters)
-		elif grep -q "://" ./"$arg"/version; then
-			APPVERSION=$(sort ./"$arg"/version | tr '/' '\n' | _check_version_grep_numbers)
-		elif grep -q "/v[0-9]*" ./"$arg"/version; then
-			APPVERSION=$(sort "$APPSPATH"/"$arg"/version | tr '/' '\n' | grep "^v[0-9]" | head -1 | sed 's/^v//g')
-		elif [ "$(sort ./"$arg"/version | wc -w)" = 1 ]; then
-			APPVERSION=$(sort ./"$arg"/version | head -1)
+		if grep -q "download$" "$argpath"/version; then
+			APPVERSION=$(sort "$argpath"/version | tr '/' '\n' | _check_version_filters)
+		elif grep -q "://" "$argpath"/version; then
+			APPVERSION=$(sort "$argpath"/version | tr '/' '\n' | _check_version_grep_numbers)
+		elif grep -q "/v[0-9]*" "$argpath"/version; then
+			APPVERSION=$(sort "$argpath"/version | tr '/' '\n' | grep "^v[0-9]" | head -1 | sed 's/^v//g')
+		elif [ "$(sort "$argpath"/version | wc -w)" = 1 ]; then
+			APPVERSION=$(sort "$argpath"/version | head -1)
 		fi
 	fi
 	if [ -z "$APPVERSION" ]; then
-		if grep -q "http.*download/.*[0-9].*/" ./"$arg"/version; then
-			APPVERSION=$(sort ./"$arg"/version | tr '/-' '\n' | grep "[0-9]" | _check_version_filters | tail -1)
+		if grep -q "http.*download/.*[0-9].*/" "$argpath"/version; then
+			APPVERSION=$(sort "$argpath"/version | tr '/-' '\n' | grep "[0-9]" | _check_version_filters | tail -1)
 		fi
 	fi
 }
 
 function _check_version_if_an_updater_exists() {
-	APPVERSION=$("$APPSPATH"/"$arg"/updater -d "$APPSPATH"/"$arg"/"$arg" 2>/dev/null | grep -i "$arg" |\
+	APPVERSION=$("$argpath"/updater -d "$argpath"/"$arg" 2>/dev/null | grep -i "$arg" |\
 	_check_version_grep_numbers)
 	[ -z "$APPVERSION" ] && _check_version_if_any_version_reference_is_somewhere
 }
 
 function _check_version_if_library() {
-	LIBNAME=$(sort "$APPSPATH"/"$arg"/remove | tr ' ' '\n' | grep "usr/local/lib" | head -1 | sed 's:.*/::')
+	LIBNAME=$(sort "$argpath"/remove | tr ' ' '\n' | grep "usr/local/lib" | head -1 | sed 's:.*/::')
 	APPVERSION=$(find /usr/local/lib -type f -name "$LIBNAME" -type f | sed 's:.*.so.::' | tail -1)
 }
 
 function _check_version_if_binary_in_place() {
-	APPVERSION=$(date -r ./"$arg"/"$arg" "+%Y.%m.%d")
+	APPVERSION=$(date -r "$argpath"/"$arg" "+%Y.%m.%d")
 }
 
 function _check_version() {
 	rm -f "$AMCACHEDIR"/version-args
-	cd "$APPSPATH" || exit 1
-	INSTALLED_APPS=$(find . -name 'remove' -printf "%h\n" 2>/dev/null | du -sh -- * 2>/dev/null |\
-	sort -rh | sed 's@.*	@@')
-	for arg in $INSTALLED_APPS; do
-		if test -f ./"$arg"/remove 2>/dev/null; then
-			if test -f ./"$arg"/version 2>/dev/null; then
+	_determine_args
+	for arg in $ARGS; do
+		argpath=$(echo "$ARGPATHS" | grep "/$arg$")
+		if test -f "$argpath"/remove 2>/dev/null; then
+			if test -f "$argpath"/version 2>/dev/null; then
 				_check_version_if_version_file_exists
-			elif test -f ./"$arg"/updater 2>/dev/null; then
+			elif test -f "$argpath"/updater 2>/dev/null; then
 				_check_version_if_an_updater_exists
 			elif [ "$arg" = "$AMCLI" ]; then
 				APPVERSION="$AMVERSION"
-			elif grep -qi "version=" ./"$arg"/* 2>/dev/null; then
+			elif grep -qi "version=" "$argpath"/* 2>/dev/null; then
 				_check_version_if_any_version_reference_is_somewhere
 			elif echo "$arg" | grep -q "ffwa-"; then
 				APPVERSION="WebApp"
-			elif grep -q "usr/local/lib" "$APPSPATH"/"$arg"/remove 2>/dev/null; then
+			elif grep -q "usr/local/lib" "$argpath"/remove 2>/dev/null; then
 				_check_version_if_library
 			else
 				APPVERSION="unknown"
 			fi
 			if [ -z "$APPVERSION" ]; then
-				[ -f ./"$arg"/"$arg" ] && _check_version_if_binary_in_place || APPVERSION="unknown"
+				[ -f "$argpath"/"$arg" ] && _check_version_if_binary_in_place || APPVERSION="unknown"
 			fi
 			echo " ◆ $arg	|	$APPVERSION" >> "$AMCACHEDIR"/version-args
 		fi
@@ -441,10 +461,10 @@ function _check_version() {
 }
 
 function _check_version_for_auto_updatable_apps() {
-	cd "$APPSPATH" || exit 1
-	INSTALLED_APPS=$(find . -name 'remove' -printf "%h\n" 2>/dev/null | du -sh -- * 2>/dev/null | sort -rh | sed 's@.*	@@')
-	for arg in $INSTALLED_APPS; do
-		if test -f ./"$arg"/updater 2>/dev/null; then
+	_determine_args
+	for arg in $ARGS; do
+		argpath=$(echo "$ARGPATHS" | grep "/$arg$")
+		if test -f "$argpath"/updater 2>/dev/null; then
 			_check_version_if_an_updater_exists
 			OLDAPPVERSION=$(grep " ◆ $arg	|" "$AMCACHEDIR"/version-args | tr '|' '\n' | sed 's/	//g' | head -2 | tail -1)
 			sed -i "/ ◆ $arg	|/s#$OLDAPPVERSION#$APPVERSION#" "$AMCACHEDIR"/*
@@ -561,13 +581,6 @@ function _check_appman_dirs_from_am() {
 	fi
 }
 
-function _detect_appman_apps() {
-	[ -f "$APPMANCONFIG/appman-config" ] && APPMAN_APPSPATH=$(<"$APPMANCONFIG/appman-config")
-	if ! echo "$APPMAN_APPSPATH" | grep -q "^/"; then
-		[ -f "$APPMANCONFIG/appman-config" ] && APPMAN_APPSPATH="$HOME/$(<"$APPMANCONFIG/appman-config")"
-	fi
-}
-
 ################################################################################
 #				CLEAN
 ################################################################################
@@ -657,19 +670,6 @@ function _use_clean() {
 #				SYNC
 ################################################################################
 
-function _determine_args() {
-	ARGPATHS=$(find "$APPSPATH" -name 'AM-updater' -printf " %h\n" 2>/dev/null | sort -u | sed 's/ //g')
-	ARGS=$(echo "$ARGPATHS" | xargs -n 1 basename 2>/dev/null)
-	if [ "$AMCLI" = am ]; then
-		_detect_appman_apps
-		if [ -d "$APPMAN_APPSPATH" ]; then
-			APPMAN_PATHS=$(find "$APPMAN_APPSPATH" -name 'AM-updater' -printf " %h\n" 2>/dev/null | sort -u | sed 's/ //g')
-			ARGPATHS=$(echo -e "$ARGPATHS\n$APPMAN_PATHS")
-			ARGS=$(echo "$ARGPATHS" | xargs -n 1 basename 2>/dev/null)
-		fi
-	fi
-}
-
 function _sync_installation_scripts() {
 	echo -e "$DIVIDING_LINE\n Checking for changes of the installation scripts in the online database..."
 	_determine_args
@@ -754,31 +754,17 @@ function _use_sync() {
 ################################################################################
 
 function _update_list_updatable_apps() {
-	_check_version
 	_determine_args
+	_check_version
 	for arg in $ARGS; do
-		if [ -d "$APPSPATH"/"$arg" ]; then
-			app_version=$(grep -w " ◆ $arg	|" "$AMCACHEDIR/version-args" | sed 's:.*|	::')
-			echo " ◆ $arg $app_version" >> "$AMCACHEDIR"/updatable-args-list
+		argpath=$(echo "$ARGPATHS" | grep "/$arg$")
+		if [ -d "$argpath" ]; then
+			if [ -f "$argpath/AM-updater" ]; then
+			 	app_version=$(grep -w " ◆ $arg	|" "$AMCACHEDIR/version-args" | sed 's:.*|	::')
+				echo " ◆ $arg $app_version" >> "$AMCACHEDIR"/updatable-args-list
+			fi
 		fi
 	done
-	if [ "$AMCLI" = am ]; then
-		APPSPATH_ORIGIN="$APPSPATH"
-		AMCACHEDIR_ORIGIN="$AMCACHEDIR"
-		if [ -d "$APPMAN_APPSPATH" ]; then
-			APPSPATH="$APPMAN_APPSPATH"
-			mkdir -p "$CACHEDIR/appman" && AMCACHEDIR="$CACHEDIR/appman"
-			_check_version
-			for arg in $ARGS; do
-				if [ -d "$APPMAN_APPSPATH"/"$arg" ]; then
-					app_version=$(grep -w " ◆ $arg	|" "$AMCACHEDIR/version-args" | sed 's:.*|	::')
-					echo " ◆ $arg $app_version" >> "$CACHEDIR"/am/updatable-args-list
-				fi
-			done
-		fi
-		AMCACHEDIR="$AMCACHEDIR_ORIGIN"
-		APPSPATH="$APPSPATH_ORIGIN"
-	fi
 }
 
 function _update_determine_apps_version_changes() {
