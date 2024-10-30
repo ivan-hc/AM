@@ -463,10 +463,9 @@ function _remove_info_files() {
 }
 
 ################################################################################
-#				INTERNAL OPTIONS
+#				APIKEY
 ################################################################################
 
-# APIKEY
 ghapikey_file="$AMDATADIR/ghapikey.txt"
 # Set header authorization if GitHub API key file exists
 [ -f "$ghapikey_file" ] && HeaderAuthWithGITPAT=" --header \"Authorization: token $(<"$ghapikey_file")\" "
@@ -506,7 +505,10 @@ function _update_github_api_key_in_the_updater_files() {
     	fi
 }
 
-# "APPMAN MODE" FOR "AM" USERS
+################################################################################
+#				APPMAN MODE
+################################################################################
+
 APPMAN_MSG="$DIVIDING_LINE\n \"AM\" is running as \"AppMan\", use ${Green}am --system\033[0m to switch it back to \"AM\"\n$DIVIDING_LINE"
 APPMAN_MSG_OFF="$DIVIDING_LINE\n \"AppMan Mode\" disabled! \n$DIVIDING_LINE"
 APPMAN_MSG_THINK="$DIVIDING_LINE\nNOTE: You can also choose to simply use \"--user\" as a flag to install apps locally \
@@ -566,7 +568,10 @@ function _detect_appman_apps() {
 	fi
 }
 
-# CLEAN UNNEEDED FILES
+################################################################################
+#				CLEAN
+################################################################################
+
 function _clean_amcachedir_message() {
 	_clean_amcachedir
 	[ "$AMCLI" = am ] && [ -d "$CACHEDIR"/am ] && echo " ✔ Clear the contents of $CACHEDIR/am"
@@ -642,30 +647,10 @@ function _use_clean() {
 	_clean_old_modules
 }
 
-# FORCE "LATEST" RELEASE FOR APPS INSTALLED FROM GITHUB
-function _use_force_latest() {
-  	_online_check
-	ARGS="$(echo "$@" | cut -f2- -d ' ')"
-  	for arg in $ARGS; do
-	  	[ -d "$APPSPATH"/"$arg" ] && FL_DIR="$APPSPATH/$arg" || _check_appman_dirs_from_am && [ -d "$APPSPATH"/"$arg" ] && FL_DIR="$APPSPATH/$arg"
-	  	if ! test -d "$APPSPATH"/"$arg"; then
-			echo " ERROR: \"$arg\" is not installed, see \"-f\""
-		elif ! test -f "$APPSPATH"/"$arg"/AM-updater; then
-			echo " ERROR: \"$AMCLI\" cannot manage updates for \"$arg\""
-		elif ! grep -q "api.github.com" "$APPSPATH"/"$arg"/AM-updater; then
-			echo " ERROR: \"$arg\" source is not on Github"
-		elif ! grep -q "/releases | " "$APPSPATH"/"$arg"/AM-updater; then
-			echo " ERROR: \"$arg\" does not redirect to a generic \"releases\""
-		else
-			sed -i 's#/releases | #/releases/latest | #g' "$APPSPATH"/"$arg"/AM-updater
-			APPNAME=$(echo "$arg" | tr '[:lower:]' '[:upper:]')
-			start=$(date +%s)
-			_update_run_updater
-		fi
-	done
-}
+################################################################################
+#				SYNC
+################################################################################
 
-# SYNCHRONIZE
 function _sync_installation_scripts() {
 	echo -e "$DIVIDING_LINE\n Checking for changes of the installation scripts in the online database..."
 	cd "$APPSPATH" || exit 1
@@ -745,7 +730,10 @@ function _use_sync() {
 	echo "$DIVIDING_LINE"
 }
 
-# UPDATE
+################################################################################
+#				UPDATE
+################################################################################
+
 function _update_list_updatable_apps() {
 	_check_version
 	cd "$APPSPATH" || exit 1
@@ -856,6 +844,28 @@ function _use_update() {
 		exit 0
 		;;
 	esac
+}
+
+function _use_force_latest() {
+  	_online_check
+	ARGS="$(echo "$@" | cut -f2- -d ' ')"
+  	for arg in $ARGS; do
+	  	[ -d "$APPSPATH"/"$arg" ] && FL_DIR="$APPSPATH/$arg" || _check_appman_dirs_from_am && [ -d "$APPSPATH"/"$arg" ] && FL_DIR="$APPSPATH/$arg"
+	  	if ! test -d "$APPSPATH"/"$arg"; then
+			echo " ERROR: \"$arg\" is not installed, see \"-f\""
+		elif ! test -f "$APPSPATH"/"$arg"/AM-updater; then
+			echo " ERROR: \"$AMCLI\" cannot manage updates for \"$arg\""
+		elif ! grep -q "api.github.com" "$APPSPATH"/"$arg"/AM-updater; then
+			echo " ERROR: \"$arg\" source is not on Github"
+		elif ! grep -q "/releases | " "$APPSPATH"/"$arg"/AM-updater; then
+			echo " ERROR: \"$arg\" does not redirect to a generic \"releases\""
+		else
+			sed -i 's#/releases | #/releases/latest | #g' "$APPSPATH"/"$arg"/AM-updater
+			APPNAME=$(echo "$arg" | tr '[:lower:]' '[:upper:]')
+			start=$(date +%s)
+			_update_run_updater
+		fi
+	done
 }
 
 ################################################################################
