@@ -268,8 +268,13 @@ _list() {
 	wget -q --tries=10 --timeout=20 --spider https://github.com && _completion_lists
 	# Check the number of installed apps and libraries
 	LIBNUMBER=$(grep "usr/local/lib" "$APPSPATH"/*/remove 2> /dev/null | wc -l)
-	ITEMSNUMBER=$(cd "$APPSPATH" && find . -name 'remove' -printf "%h\n" 2>/dev/null | sort -u | wc -l)
+	ITEMSNUMBER=$(find "$APPSPATH" -name 'remove' -printf "%h\n" 2>/dev/null | sort -u | wc -l)
+	_detect_appman_apps
 	if [ "$AMCLI" = am ]; then
+		if [ -d "$APPMAN_APPSPATH" ]; then
+			APPMAN_ITEMS=$(find "$APPMAN_APPSPATH" -name 'remove' -printf "%h\n" 2>/dev/null | sort -u | wc -l)
+			ITEMSNUMBER=$(("$ITEMSNUMBER"+"$APPMAN_ITEMS"))
+		fi
 		if test -f /opt/am/remove; then
 			ITEMSNUMBER=$(("$ITEMSNUMBER"-1))
 		fi
@@ -278,14 +283,15 @@ _list() {
 	# Determine the number of available apps from the list
 	AVAILABLE_APPS_NUMBER=$(grep -v "ffwa-\|\"kdegames\"\|\"kdeutils\"\|\"node\"\|\"platform-tools\"" "$AMDATADIR/$ARCH-apps" | grep -e "$" -c)
 	# Generate a list of the installed apps with version
-	if test -f "$AMCACHEDIR"/version-args; then
-		INSTALLED=$(sort "$AMCACHEDIR"/version-args 2>/dev/null | sed 's/	|	/ /g' | grep -v "◆ am ")
-		MESSAGE2="$INSTALLED"
-	else
+	[ ! -f "$AMCACHEDIR"/version-args ] && _check_version
+	if [ -n "$APPMAN_ITEMS" ]; then
 		_check_version
-		INSTALLED=$(sort "$AMCACHEDIR"/version-args 2>/dev/null | sed 's/	|	/ /g' | grep -v "◆ am ")
-		MESSAGE2="$INSTALLED"
+	else
+		grep " ◆ $ARGS	" "$AMCACHEDIR"/version-args > "$AMCACHEDIR"/version-args-real
+		sort "$AMCACHEDIR"/version-args-real > "$AMCACHEDIR"/version-args
 	fi
+	INSTALLED=$(sort "$AMCACHEDIR"/version-args 2>/dev/null | sed 's/	|	/ /g' | grep -v "◆ am " | uniq)
+	MESSAGE2="$INSTALLED"
 	# Check if among the installed apps are available libraries
 	if [ "$LIBNUMBER" != 0 ]; then
 		# Check if the installed libraries are more than one
