@@ -233,15 +233,31 @@ _install_arg() {
 	_apply_patches
 	echo ""
 	# Install script
+	if grep -q "https://repology.org" ./"$arg"; then
+		REPOLOGY_API_ALLOWED=$(curl -Ls https://repology.org/)
+		if [ -z "$REPOLOGY_API_ALLOWED" ]; then
+			if command -v torsocks 1>/dev/null; then
+				sed -i "s/version=\$(wget/version=\$(torsocks wget/g" ./"$arg"
+			else
+				echo " 💀 Cannot install \"$arg\", you have no access to https://repology.org, needed to check the version of this program." \
+				| fold -sw 72 | sed 's/^/   /g; s/   ✖/✖/g'
+				echo ""
+				echo "   Install \"torsocks\" from your system package manager and retry!" 
+				return 0
+			fi
+		fi
+	fi
 	if grep -q "api.github.com" ./"$arg"; then
 		GH_API_ALLOWED=$(curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/ivan-hc/AM/releases/latest | sed 's/[()",{} ]/\n/g' | grep "^ivan-hc" | head -1)
 		if [ -z "$GH_API_ALLOWED" ]; then
 			if command -v torsocks 1>/dev/null; then
 				$SUDOCMD torsocks ./"$arg"
 			else
-				echo " 💀 Cannot install \"$arg\", you have reached GitHub API limit. Install \"torsocks\" from your system package manager and retry!" \
+				echo " 💀 Cannot install \"$arg\", you have reached GitHub API limit." \
 				| fold -sw 72 | sed 's/^/   /g; s/   ✖/✖/g'
-				return
+				echo ""
+				echo "   Install \"torsocks\" from your system package manager and retry!" 
+				return 0
 			fi
 		else
 			$SUDOCMD ./"$arg"
