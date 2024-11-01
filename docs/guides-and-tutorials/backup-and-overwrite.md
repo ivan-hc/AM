@@ -42,5 +42,9 @@ You can create as many snapshots as you want and switch them this way according 
 
 And if it is an AppImage, you can dedicate its own .home and .config directories to it (option `-H` and `-C`, respectively, in uppercase).
 
+------------------------------------------------------------------------
+
 | [Back to "Guides and tutorials"](../../README.md#guides-and-tutorials) | [Back to "Main Index"](../../README.md#main-index) | ["Portable Linux Apps"](https://portable-linux-apps.github.io/) | [ "AppMan" ](https://github.com/ivan-hc/AppMan) |
 | - | - | - | - |
+
+------------------------------------------------------------------------

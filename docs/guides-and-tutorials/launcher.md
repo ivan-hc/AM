@@ -39,5 +39,9 @@ Another peculiarity concerns the use of the `-c` option on launchers created on 
 
 This is very useful if you have large AppImage packages that you necessarily need to place in a different partition.
 
+------------------------------------------------------------------------
+
 | [Back to "Guides and tutorials"](../../README.md#guides-and-tutorials) | [Back to "Main Index"](../../README.md#main-index) | ["Portable Linux Apps"](https://portable-linux-apps.github.io/) | [ "AppMan" ](https://github.com/ivan-hc/AppMan) |
 | - | - | - | - |
+
+------------------------------------------------------------------------

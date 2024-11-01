@@ -23,5 +23,9 @@ https://github.com/user-attachments/assets/b938430c-ec0b-4b90-850f-1332063d5e53
 
 In the video above, before proceeding I use the command `am -q` and `am -q --appimages` to show the difference between `brave` and `brave-appimage` in the lists.
 
+------------------------------------------------------------------------
+
 | [Back to "Guides and tutorials"](../../README.md#guides-and-tutorials) | [Back to "Main Index"](../../README.md#main-index) | ["Portable Linux Apps"](https://portable-linux-apps.github.io/) | [ "AppMan" ](https://github.com/ivan-hc/AppMan) |
 | - | - | - | - |
+
+------------------------------------------------------------------------

@@ -38,5 +38,9 @@ other non-privileged users will have to use root privileges.
 
 Non-privileged users can however use AppMan.
 
+------------------------------------------------------------------------
+
 | [Back to "Guides and tutorials"](../../README.md#guides-and-tutorials) | [Back to "Main Index"](../../README.md#main-index) | ["Portable Linux Apps"](https://portable-linux-apps.github.io/) | [ "AppMan" ](https://github.com/ivan-hc/AppMan) |
 | - | - | - | - |
+
+------------------------------------------------------------------------

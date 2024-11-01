@@ -52,5 +52,9 @@ if no third-party repo is in use, you will see the default URLs from this repo.
 
 ![Istantanea_2024-08-25_20-07-54 png](https://github.com/user-attachments/assets/793e64b9-7377-424c-a70e-a83e89c5225c)
 
+------------------------------------------------------------------------
+
 | [Back to "Guides and tutorials"](../../README.md#guides-and-tutorials) | [Back to "Main Index"](../../README.md#main-index) | ["Portable Linux Apps"](https://portable-linux-apps.github.io/) | [ "AppMan" ](https://github.com/ivan-hc/AppMan) |
 | - | - | - | - |
+
+------------------------------------------------------------------------

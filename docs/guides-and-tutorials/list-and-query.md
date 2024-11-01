@@ -27,5 +27,9 @@ If followed by `--appimages`, the search results will be only for the available 
 
 If followed by `--pkg`, all keywords will be listed also if not on the same line. This is good if you are looking for multiple packages.
 
+------------------------------------------------------------------------
+
 | [Back to "Guides and tutorials"](../../README.md#guides-and-tutorials) | [Back to "Main Index"](../../README.md#main-index) | ["Portable Linux Apps"](https://portable-linux-apps.github.io/) | [ "AppMan" ](https://github.com/ivan-hc/AppMan) |
 | - | - | - | - |
+
+------------------------------------------------------------------------
