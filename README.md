@@ -674,15 +674,15 @@ Applications will continue to be installed in /opt, as always. What changes from
 Below you can access documentation pages for common issues and frequently asked questions:
 
 ------------------------------------------------------------------------
-- [An application does not work, is old and unsupported](#an-application-does-not-work-is-old-and-unsupported)
-- [Cannot download or update an application](#cannot-download-or-update-an-application)
-- [Cannot mount and run AppImages](#cannot-mount-and-run-appimages)
-- [Failed to open squashfs image](#failed-to-open-squashfs-image)
-- [Spyware, malware and dangerous software](#spyware-malware-and-dangerous-software)
-- [Stop AppImage prompt to create its own launcher, desktop integration and doubled launchers](#stop-appimage-prompt-to-create-its-own-launcher-desktop-integration-and-doubled-launchers)
-- [The script points to "releases" instead of downloading the latest stable](#the-script-points-to-releases-instead-of-downloading-the-latest-stable)
-- [Ubuntu mess](#ubuntu-mess)
-- [Wrong download link](#wrong-download-link)
+- [An application does not work, is old and unsupported](docs/troubleshooting.md#an-application-does-not-work-is-old-and-unsupported)
+- [Cannot download or update an application](docs/troubleshooting.md#cannot-download-or-update-an-application)
+- [Cannot mount and run AppImages](docs/troubleshooting.md#cannot-mount-and-run-appimages)
+- [Failed to open squashfs image](docs/troubleshooting.md#failed-to-open-squashfs-image)
+- [Spyware, malware and dangerous software](docs/troubleshooting.md#spyware-malware-and-dangerous-software)
+- [Stop AppImage prompt to create its own launcher, desktop integration and doubled launchers](docs/troubleshooting.md#stop-appimage-prompt-to-create-its-own-launcher-desktop-integration-and-doubled-launchers)
+- [The script points to "releases" instead of downloading the latest stable](docs/troubleshooting.md#the-script-points-to-releases-instead-of-downloading-the-latest-stable)
+- [Ubuntu mess](docs/troubleshooting.md#ubuntu-mess)
+- [Wrong download link](docs/troubleshooting.md#wrong-download-link)
 
 ------------------------------------------------------------------------
 
