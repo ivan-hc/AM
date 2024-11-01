@@ -107,12 +107,5 @@ or
 appman -i --debug /path/to/your-script
 ```
 
-------------------------------------------------------------------------
-
-| [Back to "Guides and tutorials"](../../README.md#guides-and-tutorials) | [Back to "Main Index"](../../README.md#main-index) |
-| - | - |
-
-| ["Portable Linux Apps"](https://portable-linux-apps.github.io/) | [ "AM" ](https://github.com/ivan-hc/AM) | [ "AppMan" ](https://github.com/ivan-hc/AppMan) |
-| - | - | - |
-
-------------------------------------------------------------------------
+| [Back to "Guides and tutorials"](../../README.md#guides-and-tutorials) | [Back to "Main Index"](../../README.md#main-index) | ["Portable Linux Apps"](https://portable-linux-apps.github.io/) | [ "AppMan" ](https://github.com/ivan-hc/AppMan) |
+| - | - | - | - |

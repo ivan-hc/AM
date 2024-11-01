@@ -31,12 +31,5 @@ As you can see, there are all the files needed by any app listed in this databas
 
 Apps installed this way will enjoy the same benefits as those that can already be installed from the database with the "`-i`" or "`install`".
 
-------------------------------------------------------------------------
-
-| [Back to "Guides and tutorials"](../../README.md#guides-and-tutorials) | [Back to "Main Index"](../../README.md#main-index) |
-| - | - |
-
-| ["Portable Linux Apps"](https://portable-linux-apps.github.io/) | [ "AM" ](https://github.com/ivan-hc/AM) | [ "AppMan" ](https://github.com/ivan-hc/AppMan) |
-| - | - | - |
-
-------------------------------------------------------------------------
+| [Back to "Guides and tutorials"](../../README.md#guides-and-tutorials) | [Back to "Main Index"](../../README.md#main-index) | ["Portable Linux Apps"](https://portable-linux-apps.github.io/) | [ "AppMan" ](https://github.com/ivan-hc/AppMan) |
+| - | - | - | - |

@@ -8,12 +8,5 @@ Inside each installed applications directory, there are two scripts called "AM-u
 - To update an app manually, run the AM-updater script.
 - To remove an application instead, run the "remove" script.
 
-------------------------------------------------------------------------
-
-| [Back to "Guides and tutorials"](../../README.md#guides-and-tutorials) | [Back to "Main Index"](../../README.md#main-index) |
-| - | - |
-
-| ["Portable Linux Apps"](https://portable-linux-apps.github.io/) | [ "AM" ](https://github.com/ivan-hc/AM) | [ "AppMan" ](https://github.com/ivan-hc/AppMan) |
-| - | - | - |
-
-------------------------------------------------------------------------
+| [Back to "Guides and tutorials"](../../README.md#guides-and-tutorials) | [Back to "Main Index"](../../README.md#main-index) | ["Portable Linux Apps"](https://portable-linux-apps.github.io/) | [ "AppMan" ](https://github.com/ivan-hc/AppMan) |
+| - | - | - | - |
