@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="9-RC2"
+AMVERSION="9-RC2.1"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -657,21 +657,23 @@ function _sync_installation_scripts() {
 	_determine_args
 	for arg in $ARGS; do
 		argpath=$(echo "$ARGPATHS" | grep "/$arg$")
-		mkdir -p "$argpath"/.am-installer
-		if test -f "$argpath/.am-installer"/*; then
-			scriptname=$(ls "$argpath/.am-installer/" | head -1)
-			CURRENT=$(cat "$argpath"/.am-installer/"$scriptname")
-			SOURCE=$(curl -Ls "$APPSDB"/"$scriptname")
-			if [ "$CURRENT" = "$SOURCE" ]; then
-				echo -ne "\r" 2>/dev/null
+		if [ -f "$argpath"/AM-updater ]; then
+			mkdir -p "$argpath"/.am-installer
+			if test -f "$argpath/.am-installer"/*; then
+				scriptname=$(ls "$argpath/.am-installer/" | head -1)
+				CURRENT=$(cat "$argpath"/.am-installer/"$scriptname")
+				SOURCE=$(curl -Ls "$APPSDB"/"$scriptname")
+				if [ "$CURRENT" = "$SOURCE" ]; then
+					echo -ne "\r" 2>/dev/null
+				else
+					echo -e " ◆ Changed https://github.com/ivan-hc/AM/blob/main/programs/$arch/$scriptname"
+				fi
 			else
-				echo -e " ◆ Changed https://github.com/ivan-hc/AM/blob/main/programs/$arch/$scriptname"
-			fi
-		else
-			if curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg"  1>/dev/null; then
-				echo -e " ◆ No installation script for $arg, downloading one..."
-				mkdir -p "$argpath"/.am-installer
-				wget -q "$APPSDB/$arg" -O "$argpath"/.am-installer/"$arg"
+				if curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg"  1>/dev/null; then
+					echo -e " ◆ No installation script for $arg, downloading one..."
+					mkdir -p "$argpath"/.am-installer
+					wget -q "$APPSDB/$arg" -O "$argpath"/.am-installer/"$arg"
+				fi
 			fi
 		fi
 	done
