@@ -84,9 +84,6 @@ wget -q https://raw.githubusercontent.com/ivan-hc/AM/main/AM-INSTALLER && chmod 
 ```
 ...below, the screenshot of what will appear
 
-| ![AM-INSTALLER](https://github.com/user-attachments/assets/82b21979-e99d-4bee-b466-716bac1e7e45) |
-| - |
-
 Type "1" to install "AM", "2" to install "[AppMan](#what-is-appman)". Any other key will abort the installation.
 
 **Installation is complete!**
@@ -176,6 +173,8 @@ NOTE: by modifying the contents of `~/.config/appman`, you will only change the 
 
 The database aims to be a reference point where you can download all the AppImage packages scattered around the web, otherwise unobtainable, as you would expect from any package manager, through specific installation scripts for each application, as happens with the AUR PKGBUILDs, on Arch Linux. You can see all of them [here](https://github.com/ivan-hc/AM/tree/main/programs), divided by architecture.
 
+https://github.com/user-attachments/assets/31e36845-48e9-4274-8978-ca86b525d797
+
 You can view basic information, site links and sources using the related command `am -a {PROGRAM}`, or visit [**portable-linux-apps.github.io/apps**](https://portable-linux-apps.github.io/apps).
 
 ------------------------------------------------------------------------
@@ -187,7 +186,7 @@ In most cases, the "version comparison" is used between the installed one (file 
 ### How to update all installed apps
 Option `-u` or `update` updates all the installed apps and keeps "AM"/"AppMan" in sync with the latest version and all latest bug fixes.
 
-https://github.com/ivan-hc/AM/assets/88724353/f93ca782-2fc6-45a0-a3f2-1fba297a92bf
+https://github.com/user-attachments/assets/662d8eb2-38d7-45b8-9530-061189e6ed85
 
 1. To update only the programs, use `am -u --apps` / `appman -u --apps`
 2. To update just one program, use `am -u $PROGRAM` / `appman -u $PROGRAM`
