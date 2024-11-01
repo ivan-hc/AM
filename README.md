@@ -87,7 +87,9 @@ Copy/paste the following one line command to download and run the "[AM-INSTALLER
 ```
 wget -q https://raw.githubusercontent.com/ivan-hc/AM/main/AM-INSTALLER && chmod a+x ./AM-INSTALLER && ./AM-INSTALLER
 ```
-...below, the screenshot of what will appear
+...below, the screenshot of what will appear.
+
+![Istantanea_2024-11-02_00-03-39 png](https://github.com/user-attachments/assets/7bb170da-5b17-4d36-8d86-679d477debf5)
 
 Type "1" to install "AM", "2" to install "[AppMan](#what-is-appman)". Any other key will abort the installation.
 
