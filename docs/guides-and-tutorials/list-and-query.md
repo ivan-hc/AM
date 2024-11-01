@@ -1,4 +1,4 @@
-### List and query all the applications available on the database
+## List and query all the applications available on the database
 Option `-l` or `list` shows the whole list of apps available in this repository.
 
 This option uses `less` to show the list, so to exit its enough to press "**Q**".

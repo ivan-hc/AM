@@ -1,4 +1,4 @@
-### List the installed applications
+## List the installed applications
 Option `-f` or `files`, it shows the installed apps, the version, the size and the type of application:
 
 https://github.com/user-attachments/assets/31e36845-48e9-4274-8978-ca86b525d797

@@ -1,4 +1,4 @@
-### Create and test your own installation script
+## Create and test your own installation script
 Option `-t` or `template` allows you to create an "AM" compatible installation script using a "[templates](https://github.com/ivan-hc/AM/tree/main/templates)" that can be used by both "AM" and "AppMan". In fact, all AppMan does is take the installation scripts from this database and patch them to make them compatible with a rootless installation.
 
 The syntax to follow is this

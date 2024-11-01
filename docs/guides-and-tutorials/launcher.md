@@ -1,4 +1,4 @@
-### Integrate local AppImages into the menu by dragging and dropping them
+## Integrate local AppImages into the menu by dragging and dropping them
 If you are a user who is used to dragging your local AppImages scattered around the system and if you are a user who likes clutter and wants to place their packages in different places... this option is for you.
 
 The option `--launcher` allows you to drag and drop a local AppImage to create a launcher to place in the menu, like any other classic AppImage helper would... but in SHELL.

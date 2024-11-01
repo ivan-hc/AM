@@ -1,4 +1,4 @@
-### Install AppImages not listed in this database but available in other github repos
+## Install AppImages not listed in this database but available in other github repos
 From version 7.2 its possible to install AppImages not listed in this database, thanks to the option `-e` or `extra`.
 
 You need to add the URL to the github repo before the name you want to give to the AppImage (for command line usage, for example).

@@ -1,4 +1,4 @@
-### Third-party databases for applications (NeoDB)
+## Third-party databases for applications (NeoDB)
 Use the option `newrepo` or `neodb` to add new repositories to use instead of this one. This works for both online and offline repositories.
 
 Set a new default repo, use "add" to append the path to a local directory or an online URL:

@@ -1,4 +1,4 @@
-### Convert Type2 AppImages requiring libfuse2 to New Generation AppImages
+## Convert Type2 AppImages requiring libfuse2 to New Generation AppImages
 Option `nolibfuse` converts old Type2 AppImages asking for "libfuse2" into new generation AppImages:
 ```
 am nolibfuse $PROGRAM

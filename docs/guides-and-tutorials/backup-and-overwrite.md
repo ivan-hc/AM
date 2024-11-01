@@ -1,4 +1,4 @@
-### Backup and restore installed apps using snapshots
+## Backup and restore installed apps using snapshots
 
 #### Backup
 Option `-b` or `backup` creates a copy of the installed app into a dedicated directory under $HOME/.am-snapshots. 

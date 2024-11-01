@@ -1,4 +1,4 @@
-### Downgrade an installed app to a previous version
+## Downgrade an installed app to a previous version
 Use the `--rollback` option or `downgrade` in this way:
 ```
 am --rollback ${PROGRAM}

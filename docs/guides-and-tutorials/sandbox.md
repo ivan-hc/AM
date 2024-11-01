@@ -1,4 +1,4 @@
-### Sandbox an AppImage
+## Sandbox an AppImage
 Since version 6.12, "AM"/"AppMan" uses Bubblewrap for sandboxing AppImage packages, thanks to "[Aisap](https://github.com/mgord9518/aisap)", a highly intuitive and configurable command line solution.
 
 The option "`--sandbox`", which since version 5.3 was using Firejail, has taken on a completely different appearance and usability, thanks to the intense work of @Samueru-sama, who managed to extend and enhance "Aisap", making it extremely easy to use in our project, to the point of making us forget that we are using a command line utility.
