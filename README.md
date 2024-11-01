@@ -22,15 +22,16 @@ You can consult the entire **list of managed apps** at [**portable-linux-apps.gi
 ------------------------------------------------------------------------
 ## What does it do?
 
-"AM" easily integrates portable programs and AppImages system-wide or locally, allows for their updates and management from the command line, integrates them into the application menu and can even assemble them on the fly as an AUR helper.
+"AM" easily integrates portable programs and AppImages system-wide (by default) or locally (using the `--user` flag), allows for their updates and management from the command line, integrates them into the application menu and can even assemble them on the fly as an AUR helper.
 
-"AM" is just a tool to provide applications easily and quickly and is only responsible for integrating the AppImages into the system and installing the various programs available, respecting the following order (refer to the option "`-d`" to download the installation script without installing it):
+"AM" is just a tool to provide applications easily and quickly and is only responsible for integrating the AppImages into the system and installing the various programs available, respecting the following order:
 1. creation of the base directories and the removal script
 2. download of the package
 3. creation of the version file and the update script
 4. possibly, extraction of the icons and .desktop files
 
-NOTE: **"AM" is NOT responsible for the malfunction of individual apps!** This is a problem of those who develop or package them upstream. You can use the command `am -a {PROGRAM}` to view the description and get the sources **to contact the program maintainers**, or `am -d {PROGRAM}` to download and read the script on your desktop, and view the commands that allow you to download and integrate the programs.
+## Disclaim
+**"AM" is NOT responsible for the malfunction of individual apps!** This is a problem of those who develop or package them upstream. You can use the command `am -a {PROGRAM}` to view the description and get the sources **to contact the program maintainers**, or `am -d {PROGRAM}` to **download and read the script on your desktop to trace and reach the source safely**.
 
 ------------------------------------------------------------------------
 # Main index
