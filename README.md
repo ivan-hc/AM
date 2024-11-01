@@ -318,10 +318,6 @@ NOTE: Since this is an "install" option, you can add the "`--user`" flag (before
 
 Shows the list of all installed programs, with sizes. By default apps are sorted by size, use "`--byname`" to sort by name. With the option "`--less`" it shows only the number of installed apps.
 
-**Example**:
-
-https://github.com/user-attachments/assets/31e36845-48e9-4274-8978-ca86b525d797
-
 ------------------------------------------------------------------------
 ### `help`, `-h`
 
@@ -499,10 +495,6 @@ Unlock updates for the selected program (nulls "`lock`").
 **Description**:
 
 Update everything. Add "`--apps`" to update only the apps or write only the apps you want to update by adding their names.
-
-**Example:**
-
-https://github.com/user-attachments/assets/662d8eb2-38d7-45b8-9530-061189e6ed85
 
 ------------------------------------------------------------------------
 ### `version`, `-v`
