@@ -1,20 +1,33 @@
 ## Backup and restore installed apps using snapshots
 
-#### Backup
-Option `-b` or `backup` creates a copy of the installed app into a dedicated directory under $HOME/.am-snapshots. 
-
-- by default, each snapshot is named with the date and time you have done the backup, just leave blank and press ENTER;
-- if you press "1", the snapshot version will be used as the name;
+### Backup
+Option `-b` or `backup` creates a copy of the installed app into a dedicated directory under $HOME/.am-snapshots.
+```
+am -b {PROGRAM}
+```
+This command will present you with 3 possible options for naming your snapshot:
+- by default, just press ENTER to use the classic mix date+time of the snapshot creation;
+- if you press "**1**", the snapshot version will be used as the name;
 - finally, you can simply write the name to give to the snapshot (spaces will be replaced with a "`_`").
 
-https://github.com/user-attachments/assets/cff80e3d-a030-4649-a9ef-280938c2eb94
+A final message will also indicate the name of the just created snapshot.
 
-To restore the application to a previous version, copy/paste the name of the snapshot when the `-o` option will prompt it.
+NOTE that a check has been added to verify if a directory with the same name already exists. In that case you get an error. **You can't have two snapshots with the same name**, of course.
 
-#### Restore
-Option `-o` or `overwrite` lists all the snapshots you have created with the option `-o` (see above), and allows you to overwrite the new one:
+The above three cases are shown **in the screenshot below**, with the following results:
+1. in the first attempt I chose to use the version as the name, but it gave me error because the directory already existed;
+2. in the second instead I left it empty, thus creating a snapshot based on the date and time (default);
+3. finally I gave a custom name using a phrase with a space.
 
-https://github.com/user-attachments/assets/b11e8a2d-9f94-43a2-8c0b-09b9e173394e
+![Istantanea_2024-10-16_15-40-29 png](https://github.com/user-attachments/assets/da6f3aec-b2cf-4186-babe-f5ebf4985cd0)
+
+### Restore
+In the use that we will make of it, through the option `-o` or `overwrite`, we will have a result like this.
+```
+am -o {PROGRAM}
+```
+
+![Istantanea_2024-10-16_15-44-55 png](https://github.com/user-attachments/assets/92d8fdf0-96d0-4447-8c39-21860654a5bf)
 
 ### How to use multiple versions of the same application
 You can use the `-b` option for snapshots, and where applicable, you can use the `downgrade` or `--rollback` option to install older versions of a program. This way, whenever you want to use a different version of the same program, you can use `-o`, using the snapshot you prefer.
