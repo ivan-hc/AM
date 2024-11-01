@@ -54,6 +54,8 @@ You can consult the entire **list of managed apps** at [**portable-linux-apps.gi
 
 [Guides and tutorials](#guides-and-tutorials)
 
+[Instructions for Linux Distro Maintainers](#instructions-for-linux-distro-maintainers)
+
 [Troubleshooting](#troubleshooting)
 
 [Related projects](#related-projects)
@@ -643,6 +645,24 @@ Below you can access the documentation pages related to the use of "AM", complet
   - [How an installation script works](#how-an-installation-script-works)
   - [How to test an installation script](#how-to-test-an-installation-script)
 - [Third-party databases for applications (NeoDB)](#third-party-databases-for-applications-neodb)
+
+------------------------------------------------------------------------
+
+| [Back to "Main Index"](#main-index) |
+| - |
+
+------------------------------------------------------------------------
+# Instructions for Linux Distro Maintainers
+You can package "AM" for Debian, Fedora, Arch Linux, Gentoo and many more GNU/Linux distros using the following configuration:
+```
+/usr/bin/am
+/usr/lib/am/modules
+```
+where "`/usr/bin/am`" is the script "[APP-MANAGER](https://github.com/ivan-hc/AM/blob/main/APP-MANAGER)" and "`/usr/lib/am/modules`" is the directory "[modules](https://github.com/ivan-hc/AM/tree/main/modules)" with all its content.
+
+Applications will continue to be installed in /opt, as always. What changes from the normal "AM" installation is the update of the CLI and modules, which will instead be completely managed by the package manager in use (APT, DNF, PacMan/YAY...).
+
+**As for "AppMan"**, **there is no packaging**, as it is a standalone or self-updating script, and needs to be in a read-write directory without root privileges.
 
 ------------------------------------------------------------------------
 
