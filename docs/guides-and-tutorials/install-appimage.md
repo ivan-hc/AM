@@ -18,3 +18,11 @@ https://github.com/user-attachments/assets/b938430c-ec0b-4b90-850f-1332063d5e53
 in the video above I first launch a "query" with the `-q` option to show you the difference between `brave` and `brave-appimage`, and then `-q --appimages` to show you only the appimages from the list.
 
 ------------------------------------------------------------------------
+
+| [Back to "Guides and tutorials"](../../README.md#guides-and-tutorials) | [Back to "Main Index"](../../README.md#main-index) |
+| - | - |
+
+| ["Portable Linux Apps"](https://portable-linux-apps.github.io/) | [ "AM" ](https://github.com/ivan-hc/AM) | [ "AppMan" ](https://github.com/ivan-hc/AppMan) |
+| - | - | - |
+
+------------------------------------------------------------------------

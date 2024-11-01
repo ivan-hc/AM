@@ -43,3 +43,11 @@ in this video I'll install "SqliteBrowser" using the `--force-latest` flag:
 https://github.com/user-attachments/assets/ee29adfd-90e1-46f7-aed9-b9c410f68776
 
 ------------------------------------------------------------------------
+
+| [Back to "Guides and tutorials"](../../README.md#guides-and-tutorials) | [Back to "Main Index"](../../README.md#main-index) |
+| - | - |
+
+| ["Portable Linux Apps"](https://portable-linux-apps.github.io/) | [ "AM" ](https://github.com/ivan-hc/AM) | [ "AppMan" ](https://github.com/ivan-hc/AppMan) |
+| - | - | - |
+
+------------------------------------------------------------------------

@@ -16,3 +16,11 @@ If followed by `--pkg`, all keywords will be listed also if not on the same line
 https://github.com/user-attachments/assets/1b2f3f3b-fe22-416f-94d8-d5e0465b3f6d
 
 ------------------------------------------------------------------------
+
+| [Back to "Guides and tutorials"](../../README.md#guides-and-tutorials) | [Back to "Main Index"](../../README.md#main-index) |
+| - | - |
+
+| ["Portable Linux Apps"](https://portable-linux-apps.github.io/) | [ "AM" ](https://github.com/ivan-hc/AM) | [ "AppMan" ](https://github.com/ivan-hc/AppMan) |
+| - | - | - |
+
+------------------------------------------------------------------------
