@@ -5,15 +5,19 @@ You need to add the URL to the github repo before the name you want to give to t
 
 Optionally, you can add a "keyword" if more AppImages are listed in the same repo.
 
-Usage:
 ```
-am -e $USER/$PROJECT $PROGRAM
-am -e $USER/$PROJECT $PROGRAM $KEYWORD
+am -e user/project {APPNAME}
+am -e user/project {APPNAME} {KEYWORD}
 ```
 or
 ```
-appman -e $USER/$PROJECT $PROGRAM
-appman -e $USER/$PROJECT $PROGRAM $KEYWORD
+appman -e user/project {APPNAME}
+appman -e user/project {APPNAME} {KEYWORD}
+```
+To install apps locally, "AM" require the `--user` flag after the option.
+```
+am -e --user user/project {APPNAME}
+am -e --user user/project {APPNAME} {KEYWORD}
 ```
 You can give whatever name you want to the apps (as long as they does not overlap with commands already existing on your system, be careful).
 
@@ -29,7 +33,7 @@ https://github.com/user-attachments/assets/af00a5f2-f3fe-4616-899a-155cb31d2acd
 
 As you can see, there are all the files needed by any app listed in this database, also if an installation script for them does not exists.
 
-Apps installed this way will enjoy the same benefits as those that can already be installed from the database with the "`-i`" or "`install`".
+Apps installed this way will enjoy the same benefits as those that can already be installed from the database with the "`-i`" or "`install`" option.
 
 | [Back to "Guides and tutorials"](../../README.md#guides-and-tutorials) | [Back to "Main Index"](../../README.md#main-index) | ["Portable Linux Apps"](https://portable-linux-apps.github.io/) | [ "AppMan" ](https://github.com/ivan-hc/AppMan) |
 | - | - | - | - |
