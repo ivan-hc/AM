@@ -39,7 +39,6 @@ You can consult the entire **list of managed apps** at [**portable-linux-apps.gi
 
 [Installation](#installation)
 
- - [What is AppMan?](#what-is-appman)
  - [AM installation structure](#am-installation-structure)
  - [Uninstall AM](#uninstall-am)
  - [How are apps installed](#how-are-apps-installed)
