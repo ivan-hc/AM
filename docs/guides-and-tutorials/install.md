@@ -1,44 +1,50 @@
 ## Install applications
 The option `-i` or `install` is the one responsible of the installation of apps or libraries.
 
-### Install, normal behaviour
-This is the normal syntax:
-```
-am -i $PROGRAM
-```
-or
-```
-appman -i $PROGRAM
-```
-in this video I'll install AnyDesk:
-
 https://github.com/user-attachments/assets/62bc7444-8b1f-4db2-b23b-db7219eec15d
 
-### Install, debug an installation script
-The "install.am" module contains some patches to disable long messages. You can see them with the suboption `--debug`:
+### Install, normal behaviour
+This is the normal syntax.
 ```
-am -i --debug $PROGRAM
+am -i {PROGRAM}
+```
+To install programs locally, add the `--user` flag.
+```
+am -i --user {PROGRAM}
+```
+The latter corresponds to the syntax used in AppMan.
+```
+appman -i {PROGRAM}
+```
+Since version 9, "AM" also covers locally installed apps. It is therefore not necessary to add a root password, once the `--user` flag is added. And this can also be used in conjunction with the other flags below.
+
+### Install, debug an installation script
+The "install.am" module contains some patches to disable long messages. You can see them with the `--debug` flag.
+
+https://github.com/user-attachments/assets/9dd73186-37e2-4742-887e-4f98192bd764
+
+```
+am -i --debug {PROGRAM}
+am -i --user --debug {PROGRAM}
 ```
 or
 ```
-appman -i --debug $PROGRAM
+appman -i --debug {PROGRAM}
 ```
-let test again the installation of AnyDesk using the `--debug` flag:
 
-https://github.com/user-attachments/assets/9dd73186-37e2-4742-887e-4f98192bd764
 
 ### Install the "latest" stable release instead of the latest "unstable"
 By default, many installation scripts for apps hosted on github will point to the more recent generic release instead of "latest", which is normally used to indicate that the build is "stable". This is because upstream developers do not always guarantee a certain packaging format in "latest", sometimes they may only publish packages for Windows or macOS, so pointing to "latest" would not guarantee that any package for Linux will be installed.
 
-On the other hand, if you know that the upstream developer will always guarantee a Linux package in "latest" and "AM" instead points to a potentially unstable development version (Alpha, Beta, RC...), this is the syntax to adopt:
+On the other hand, if you know that the upstream developer will always guarantee a Linux package in "latest" and "AM" instead points to a potentially unstable development version (Alpha, Beta, RC...), this is the syntax to adopt.
 ```
-am -i --force-latest $PROGRAM
+am -i --force-latest {PROGRAM}
+am -i --user --force-latest {PROGRAM}
 ```
 or
 ```
-appman -i --force-latest $PROGRAM
+appman -i --force-latest {PROGRAM}
 ```
-in this video I'll install "SqliteBrowser" using the `--force-latest` flag:
 
 https://github.com/user-attachments/assets/ee29adfd-90e1-46f7-aed9-b9c410f68776
 
