@@ -28,14 +28,9 @@ You can consult the entire **list of managed apps** at [**portable-linux-apps.gi
 1. creation of the base directories and the removal script
 2. download of the package
 3. creation of the version file and the update script
-4. possibly, extraction of the icons and .desktop files*
+4. possibly, extraction of the icons and .desktop files
 
-------------------------------------------------------------------------
-## What doesn't it do!
-
-It does not guarantee the functioning of individual applications, **this is a problem of those who provide them or package them upstream**. Contact them!
-
-You can use the command `am -a {PROGRAM}` to view the description and get the sources, or `am -d {PROGRAM}` to download and read the script on your desktop, and view the commands that allow you to download and integrate the programs.
+NOTE: **"AM" is NOT responsible for the malfunction of individual apps!** This is a problem of those who develop or package them upstream. You can use the command `am -a {PROGRAM}` to view the description and get the sources **to contact the program maintainers**, or `am -d {PROGRAM}` to download and read the script on your desktop, and view the commands that allow you to download and integrate the programs.
 
 ------------------------------------------------------------------------
 # Main index
@@ -216,244 +211,278 @@ Visit [github.com/topgrade-rs/topgrade](https://github.com/topgrade-rs/topgrade)
 
 <details>
   <summary>Click here to see the full list of options</summary>
-
+  
+------------------------------------------------------------------------
 ## SYNOPSIS:
 
 		am {OPTION}
 		am {OPTION} {PROGRAM}
 
-DESCRIPTION: A command line utility to install and manage AppImages and other portable programs for GNU/Linux thanks to its AUR-inspired database.
-
+------------------------------------------------------------------------
 ## OPTIONS:
- 
-### about, -a
+------------------------------------------------------------------------
+### `about`, `-a`
 
 		am -a {PROGRAM}
 
-Description: Shows more info about one or more apps.
+**Description**: Shows more info about one or more apps.
 
-### apikey
+------------------------------------------------------------------------
+### `apikey`
 
 		am apikey {Github Token}
 		am apikey delete
 
-Description: Accede to github APIs using your personal access tokens. The file named "ghapikey.txt" will be saved in ~/.local/share/AM. Use "del" to remove it.
+**Description**: Accede to github APIs using your personal access tokens. The file named "ghapikey.txt" will be saved in ~/.local/share/AM. Use "del" to remove it.
 
-### backup, -b
+------------------------------------------------------------------------
+### `backup`, `-b`
 
 		am -b {PROGRAM}
 
-Description: Create a snapshot of the current version of an installed program.
+**Description**: Create a snapshot of the current version of an installed program.
 
-### clean, -c
+------------------------------------------------------------------------
+### `clean`, `-c`
 
 		am -c
 
 Removes all the unnecessary files and folders.
 
-### config, -C, --config
+------------------------------------------------------------------------
+### `config`, `-C`, `--config`
 
 		am -C {PROGRAM}
 
-Description: Set a dedicated $XDD_CONFIG_HOME for one or more AppImages.
+**Description**: Set a dedicated $XDD_CONFIG_HOME for one or more AppImages.
 
-### downgrade, --rollback
+------------------------------------------------------------------------
+### `downgrade`, `--rollback`
 
 		am --rollback {PROGRAM}
 
-Description: Download an older or specific app version.
+**Description**: Download an older or specific app version.
 
-### download, -d
+------------------------------------------------------------------------
+### `download`, `-d`
 
 		am -d {PROGRAM}
 		am -d --convert {PROGRAM}
 
-Description: Download one or more installation scripts to your desktop or convert them to local installers for "AppMan" (the latter must be present).
+**Description**: Download one or more installation scripts to your desktop or convert them to local installers for "AppMan" (the latter must be present).
 
-### extra, -e
+------------------------------------------------------------------------
+### `extra`, `-e`
 
 		am -e user/project {APPNAME}
 		am -e user/project {APPNAME} {KEYWORD}
 
-Description: Install AppImages from github.com, outside the database. This allows you to install, update and manage them all like the others. Where "user/project" can be the whole URL to the github repository, give a name to the program so that it can be used from the command line. Optionally, add an "univoque" keyword if multiple AppImages are listed.
+**Description**: Install AppImages from github.com, outside the database. This allows you to install, update and manage them all like the others. Where "user/project" can be the whole URL to the github repository, give a name to the program so that it can be used from the command line. Optionally, add an "univoque" keyword if multiple AppImages are listed.
 
-### files, -f
+------------------------------------------------------------------------
+### `files`, `-f`
 
 		am -f
 		am -f --byname
 		am -f --less
 
-Description: Shows the list of all installed programs, with sizes. By default apps are sorted by size, use "--byname" to sort by name. With the option "--less" it shows only the number of installed apps.
+**Description**: Shows the list of all installed programs, with sizes. By default apps are sorted by size, use "--byname" to sort by name. With the option "--less" it shows only the number of installed apps.
 
-### help -h
+------------------------------------------------------------------------
+### `help`, `-h`
 
 		am -h
 
-Description: Prints this message.
+**Description**: Prints this message.
 
-### home, -H, --home
+------------------------------------------------------------------------
+### `home`, `-H`, `--home`
 
 		am -H {PROGRAM}
 
-Description: Set a dedicated $HOME directory for one or more AppImages.
+**Description**: Set a dedicated $HOME directory for one or more AppImages.
 
-### icons, --icons
+------------------------------------------------------------------------
+### `icons`, `--icons`
 
 		am --icons {PROGRAM}
 		am --icons --all
 
-Description: Allow installed apps to use system icon themes. You can specify the name of the apps to change or use the "--all" flag to change all of them at once. This will remove the icon path from the .desktop file and add the symbolic link of all available icons in the ~/.local/share/icons/hicolor/scalable/apps directory.
+**Description**: Allow installed apps to use system icon themes. You can specify the name of the apps to change or use the "--all" flag to change all of them at once. This will remove the icon path from the .desktop file and add the symbolic link of all available icons in the ~/.local/share/icons/hicolor/scalable/apps directory.
 
-### install, -i
+------------------------------------------------------------------------
+### `install`, `-i`
 
 		am -i {PROGRAM}
 		am -i --debug {PROGRAM}
 		am -i --force-latest {PROGRAM}
 
-Description: Install one or more programs or libraries from the list. With the "--debug" option you can see log messages to debug the script. For more details on "--force-latest", see the dedicated option, below.
+**Description**: Install one or more programs or libraries from the list. With the "--debug" option you can see log messages to debug the script. For more details on "--force-latest", see the dedicated option, below.
 
-### install-appimage, -ia
+------------------------------------------------------------------------
+### `install-appimage`, `-ia`
 
 		am -ia {PROGRAM}
 		am -ia --debug {PROGRAM}
 		am -ia --force-latest {PROGRAM}
 
-Description: Same as "install" (see above) but for AppImages only.
+**Description**: Same as "install" (see above) but for AppImages only.
 
-### lock
+------------------------------------------------------------------------
+### `lock`
 
 		am lock {PROGRAM}
 
-Description: Prevent an application being updated, if it has an"AM-updater" script.
+**Description**: Prevent an application being updated, if it has an"AM-updater" script.
 
-### list, -l
+------------------------------------------------------------------------
+### `list`, `-l`
 
 		am -l
 		am -l --appimages
 
-Description: Shows the list of all the apps available, or just the AppImages.
+**Description**: Shows the list of all the apps available, or just the AppImages.
 
-### newrepo, neodb
+------------------------------------------------------------------------
+### `newrepo`, `neodb`
 
 		am newrepo add {URL}\{PATH}
 		am newrepo select
 		am newrepo on\off
 		am newrepo purge
 		am newrepo info
+------------------------------------------------------------------------
+**Description**: Set a new default repo, use "add" to append the path to a local directory or an online URL, then use "select" to use it by default, a message will warn you about the usage of this repo instead of the default one. Use "on"/"off" to enable/disable it. Use "purge" to remove all 3rd party repos. Use "info" to see the source from where installation scripts and lists are taken.
 
-Description: Set a new default repo, use "add" to append the path to a local directory or an online URL, then use "select" to use it by default, a message will warn you about the usage of this repo instead of the default one. Use "on"			/"off" to enable/disable it. Use "purge" to remove all 3rd party repos. Use "info" to see the source from where installation scripts and lists are taken.
-
-### nolibfuse
+------------------------------------------------------------------------
+### `nolibfuse`
 
 		am nolibfuse {PROGRAM}
 
-Description: Convert old AppImages and get rid of "libfuse2" dependence.
+**Description**: Convert old AppImages and get rid of "libfuse2" dependence.
 
-### overwrite, -o
+------------------------------------------------------------------------
+### `overwrite`, `-o`
 
 		am -o {PROGRAM}
 
-Description: Overwrite apps with snapshots saved previously (see "-b").
+**Description**: Overwrite apps with snapshots saved previously (see "-b").
 
-### query, -q
+------------------------------------------------------------------------
+### `query`, `-q`
 
 		am -q {KEYWORD}
 		am -q --appimages {KEYWORD}
 		am -q --pkg {PROGRAM1} {PROGRAM2}
 
-Description: Search for keywords in the list of available applications, add the "--appimages" option to list only the AppImages or add "--pkg" to list multiple programs at once.
+**Description**: Search for keywords in the list of available applications, add the "--appimages" option to list only the AppImages or add "--pkg" to list multiple programs at once.
 
-### remove, -r
+------------------------------------------------------------------------
+### `remove`, `-r`
 
 		am -r {PROGRAM}
 
-Description: Removes one or more apps, requires confirmation.
+**Description**: Removes one or more apps, requires confirmation.
 
-### -R
+------------------------------------------------------------------------
+### `-R`
 
 		am -R {PROGRAM}
 
-Description: Removes one or more apps without asking.
+**Description**: Removes one or more apps without asking.
 
-### sandbox, --sandbox
+------------------------------------------------------------------------
+### `sandbox`, `--sandbox`
 
 		am sandbox {PROGRAM}
 
-Description: Run an AppImage in a sandbox using Aisap.
+**Description**: Run an AppImage in a sandbox using Aisap.
 
-### sync, -s
+------------------------------------------------------------------------
+### `sync`, `-s`
 
 		am -s
 
-Description: Updates this script to the latest version hosted.
+**Description**: Updates this script to the latest version hosted.
 
-### template, -t
+------------------------------------------------------------------------
+### `template`, `-t`
 
 		am -t {PROGRAM}
 
-Description: Generate a custom installation script.
+**Description**: Generate a custom installation script.
 
-### unlock
+------------------------------------------------------------------------
+### `unlock`
 
 		am unlock {PROGRAM}
 
-Description: Unlock updates for the selected program (nulls "lock").
+**Description**: Unlock updates for the selected program (nulls "lock").
 
-### update, -u, -U
+------------------------------------------------------------------------
+### `update`, `-u`, `-U`
 
 		am -u
 		am -u --apps
 		am -u {PROGRAM}
 
-Description: Update everything. Add "--apps" to update only the apps or write only the apps you want to update by adding their names.
+**Description**: Update everything. Add "--apps" to update only the apps or write only the apps you want to update by adding their names.
 
-### version, -v
+------------------------------------------------------------------------
+### `version`, `-v`
 
 		am -v
 
-Description: Shows the version.
+**Description**: Shows the version.
 
-### --devmode-disable
+------------------------------------------------------------------------
+### `--devmode-disable`
 
 		am --devmode-disable
 
-Description: Undo "--devmode-enable" (see below).
+**Description**: Undo "--devmode-enable" (see below).
 
-### --devmode-enable
+------------------------------------------------------------------------
+### `--devmode-enable`
 
 		am --devmode-enable
 
-Description: Use the development branch (at your own risk).
+**Description**: Use the development branch (at your own risk).
 
-### --disable-sandbox
+------------------------------------------------------------------------
+### `--disable-sandbox`
 
 		am --disable-sandbox {PROGRAM}
 
-Description: Disable the sandbox for the selected app.
+**Description**: Disable the sandbox for the selected app.
 
-### --force-latest
+------------------------------------------------------------------------
+### `--force-latest`
 
 		am --force-latest {PROGRAM}
 
-Description: Downgrades an installed app from pre-release to "latest".
+**Description**: Downgrades an installed app from pre-release to "latest".
 
-### --launcher
+------------------------------------------------------------------------
+### `--launcher`
 
 		am --launcher /path/to/${APPIMAGE}
 
-Description: Drag/drop one or more AppImages in the terminal and embed them in the apps menu and customize a command to use from the CLI.
+**Description**: Drag/drop one or more AppImages in the terminal and embed them in the apps menu and customize a command to use from the CLI.
 
-### --system
+------------------------------------------------------------------------
+### `--system`
 
 		am --system
 
-Description: Switch "AM" back to "AM" from "AppMan Mode" (see "--user").
+**Description**: Switch "AM" back to "AM" from "AppMan Mode" (see "--user").
 
-### --user, appman
+------------------------------------------------------------------------
+### `--user`, `appman`
 
 		am --user
 
-Description: Made "AM" run in "AppMan Mode", locally, useful for unprivileged users. This option only works with "AM".
+**Description**: Made "AM" run in "AppMan Mode", locally, useful for unprivileged users. This option only works with "AM".
 
 The "--user" option can also be used just as a flag for installation options. For example:
 
