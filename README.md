@@ -38,6 +38,27 @@ It does not guarantee the functioning of individual applications, **this is a pr
 You can use the command `am -a {PROGRAM}` to view the description and get the sources, or `am -d {PROGRAM}` to download and read the script on your desktop, and view the commands that allow you to download and integrate the programs.
 
 ------------------------------------------------------------------------
+# Main index
+------------------------------------------------------------------------
+
+[Installation](#installation)
+
+ - [What is AppMan?](#what-is-appman)
+ - [AM installation structure](#am-installation-structure)
+ - [Uninstall AM](#uninstall-am)
+ - [How are apps installed](#how-are-apps-installed)
+ - [How to set the path to local apps](#how-to-set-the-path-to-local-apps)
+ - [What programs can be installed](#what-programs-can-be-installed)
+
+[How to update all programs, for real!](#how-to-update-all-programs-for-real)
+ - [How to update all installed apps](#how-to-update-all-installed-apps)
+ - [How to update everything using Topgrade](#how-to-update-everything-using-topgrade)
+
+[Usage](#usage)
+
+[Related projects](#related-projects)
+
+------------------------------------------------------------------------
 # Installation
 To install "AM" you must first install the "core" dependencies from your package manager:
 - "`coreutils`" (contains "`cat`", "`chmod`", "`chown`"...);
@@ -162,7 +183,7 @@ The database aims to be a reference point where you can download all the AppImag
 You can view basic information, site links and sources using the related command `am -a {PROGRAM}`, or visit [**portable-linux-apps.github.io/apps**](https://portable-linux-apps.github.io/apps).
 
 ------------------------------------------------------------------------
-## How to update all programs, for real?
+## How to update all programs, for real!
 Most of the apps managed by "AM" have a script called `AM-updater`. It tells how updates are checked when running the `am -u` command.
 
 In most cases, the "version comparison" is used between the installed one (file `version`) and an online source (official or not, depending on how hard or easy it is to find a download URL or just a number, using the terminal). In other cases, AppImages can rely on "`appimageupdatetool`" if they support "delta updates" (install it with the command `am -i appimageupdatetool`). However, there are some programs that update themselves (and among these the most famous is certainly Firefox, all official development builds).
@@ -177,7 +198,7 @@ https://github.com/ivan-hc/AM/assets/88724353/f93ca782-2fc6-45a0-a3f2-1fba297a92
 3. To update all the programs and "AM"/"AppMan" itself, just run the command`am -u` / `appman -u`
 4. To update only "AM"/"AppMan" and the modules use the option `-s` instead, `am -s` / `appman -s`
 
-### How to update everything using "Topgrade"
+### How to update everything using Topgrade
 Keeping your system up to date usually involves invoking multiple package managers. This results in big, non-portable shell one-liners saved in your shell. To remedy this, Topgrade detects which tools you use and runs the appropriate commands to update them.
 
 Install the "`topgrade`" package using the command
