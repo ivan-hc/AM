@@ -173,8 +173,6 @@ NOTE: by modifying the contents of `~/.config/appman`, you will only change the 
 
 The database aims to be a reference point where you can download all the AppImage packages scattered around the web, otherwise unobtainable, as you would expect from any package manager, through specific installation scripts for each application, as happens with the AUR PKGBUILDs, on Arch Linux. You can see all of them [here](https://github.com/ivan-hc/AM/tree/main/programs), divided by architecture.
 
-https://github.com/user-attachments/assets/31e36845-48e9-4274-8978-ca86b525d797
-
 You can view basic information, site links and sources using the related command `am -a {PROGRAM}`, or visit [**portable-linux-apps.github.io/apps**](https://portable-linux-apps.github.io/apps).
 
 ------------------------------------------------------------------------
@@ -185,8 +183,6 @@ In most cases, the "version comparison" is used between the installed one (file 
 
 ### How to update all installed apps
 Option `-u` or `update` updates all the installed apps and keeps "AM"/"AppMan" in sync with the latest version and all latest bug fixes.
-
-https://github.com/user-attachments/assets/662d8eb2-38d7-45b8-9530-061189e6ed85
 
 1. To update only the programs, use `am -u --apps` / `appman -u --apps`
 2. To update just one program, use `am -u $PROGRAM` / `appman -u $PROGRAM`
@@ -233,7 +229,7 @@ Visit [github.com/topgrade-rs/topgrade](https://github.com/topgrade-rs/topgrade)
 		am apikey {Github Token}
 		am apikey delete
 
-**Description**: Accede to github APIs using your personal access tokens. The file named "ghapikey.txt" will be saved in ~/.local/share/AM. Use "del" to remove it.
+**Description**: Accede to github APIs using your personal access tokens. The file named "ghapikey.txt" will be saved in ~/.local/share/AM. Use "`del`" to remove it.
 
 ------------------------------------------------------------------------
 ### `backup`, `-b`
@@ -254,7 +250,7 @@ Removes all the unnecessary files and folders.
 
 		am -C {PROGRAM}
 
-**Description**: Set a dedicated $XDD_CONFIG_HOME for one or more AppImages.
+**Description**: Set a dedicated `$XDD_CONFIG_HOME` for one or more AppImages.
 
 ------------------------------------------------------------------------
 ### `downgrade`, `--rollback`
@@ -269,7 +265,7 @@ Removes all the unnecessary files and folders.
 		am -d {PROGRAM}
 		am -d --convert {PROGRAM}
 
-**Description**: Download one or more installation scripts to your desktop or convert them to local installers for "AppMan" (the latter must be present).
+**Description**: Download one or more installation scripts to your desktop or convert them to local installers for "AppMan".
 
 ------------------------------------------------------------------------
 ### `extra`, `-e`
@@ -277,7 +273,9 @@ Removes all the unnecessary files and folders.
 		am -e user/project {APPNAME}
 		am -e user/project {APPNAME} {KEYWORD}
 
-**Description**: Install AppImages from github.com, outside the database. This allows you to install, update and manage them all like the others. Where "user/project" can be the whole URL to the github repository, give a name to the program so that it can be used from the command line. Optionally, add an "univoque" keyword if multiple AppImages are listed.
+**Description**: Install AppImages from github.com, outside the database. This allows you to install, update and manage them all like the others. Where "`user/project`" can be the whole URL to the github repository, give a name to the program so that it can be used from the command line. Optionally, add an "univoque" keyword if multiple AppImages are listed.
+
+NOTE: Since this is an "install" option, you can add the "`--user`" flag (before "`user/project`") to install apps locally. See "`--user`" at the bottom to learn more.
 
 ------------------------------------------------------------------------
 ### `files`, `-f`
@@ -286,7 +284,11 @@ Removes all the unnecessary files and folders.
 		am -f --byname
 		am -f --less
 
-**Description**: Shows the list of all installed programs, with sizes. By default apps are sorted by size, use "--byname" to sort by name. With the option "--less" it shows only the number of installed apps.
+**Description**: Shows the list of all installed programs, with sizes. By default apps are sorted by size, use "`--byname`" to sort by name. With the option "`--less`" it shows only the number of installed apps.
+
+**Example**:
+
+https://github.com/user-attachments/assets/31e36845-48e9-4274-8978-ca86b525d797
 
 ------------------------------------------------------------------------
 ### `help`, `-h`
@@ -308,7 +310,7 @@ Removes all the unnecessary files and folders.
 		am --icons {PROGRAM}
 		am --icons --all
 
-**Description**: Allow installed apps to use system icon themes. You can specify the name of the apps to change or use the "--all" flag to change all of them at once. This will remove the icon path from the .desktop file and add the symbolic link of all available icons in the ~/.local/share/icons/hicolor/scalable/apps directory.
+**Description**: Allow installed apps to use system icon themes. You can specify the name of the apps to change or use the "`--all`" flag to change all of them at once. This will remove the icon path from the .desktop file and add the symbolic link of all available icons in the `~/.local/share/icons/hicolor/scalable/apps` directory.
 
 ------------------------------------------------------------------------
 ### `install`, `-i`
@@ -317,7 +319,9 @@ Removes all the unnecessary files and folders.
 		am -i --debug {PROGRAM}
 		am -i --force-latest {PROGRAM}
 
-**Description**: Install one or more programs or libraries from the list. With the "--debug" option you can see log messages to debug the script. For more details on "--force-latest", see the dedicated option, below.
+**Description**: Install one or more programs or libraries from the list. With the "`--debug`" option you can see log messages to debug the script. For more details on "`--force-latest`", see the dedicated option, below.
+
+NOTE: Since this is an "install" option, you can add the "`--user`" flag to install apps locally. See "`--user`" at the bottom to learn more.
 
 ------------------------------------------------------------------------
 ### `install-appimage`, `-ia`
@@ -352,7 +356,7 @@ Removes all the unnecessary files and folders.
 		am newrepo purge
 		am newrepo info
 ------------------------------------------------------------------------
-**Description**: Set a new default repo, use "add" to append the path to a local directory or an online URL, then use "select" to use it by default, a message will warn you about the usage of this repo instead of the default one. Use "on"/"off" to enable/disable it. Use "purge" to remove all 3rd party repos. Use "info" to see the source from where installation scripts and lists are taken.
+**Description**: Set a new default repo, use "`add`" to append the path to a local directory or an online URL, then use "`select`" to use it by default, a message will warn you about the usage of this repo instead of the default one. Use "`on`"/"`off`" to enable/disable it. Use "`purge`" to remove all 3rd party repos. Use "`info`" to see the source from where installation scripts and lists are taken.
 
 ------------------------------------------------------------------------
 ### `nolibfuse`
@@ -375,7 +379,7 @@ Removes all the unnecessary files and folders.
 		am -q --appimages {KEYWORD}
 		am -q --pkg {PROGRAM1} {PROGRAM2}
 
-**Description**: Search for keywords in the list of available applications, add the "--appimages" option to list only the AppImages or add "--pkg" to list multiple programs at once.
+**Description**: Search for keywords in the list of available applications, add the "`--appimages`" option to list only the AppImages or add "`--pkg`" to list multiple programs at once.
 
 ------------------------------------------------------------------------
 ### `remove`, `-r`
@@ -417,7 +421,7 @@ Removes all the unnecessary files and folders.
 
 		am unlock {PROGRAM}
 
-**Description**: Unlock updates for the selected program (nulls "lock").
+**Description**: Unlock updates for the selected program (nulls "`lock`").
 
 ------------------------------------------------------------------------
 ### `update`, `-u`, `-U`
@@ -426,7 +430,11 @@ Removes all the unnecessary files and folders.
 		am -u --apps
 		am -u {PROGRAM}
 
-**Description**: Update everything. Add "--apps" to update only the apps or write only the apps you want to update by adding their names.
+**Description**: Update everything. Add "`--apps`" to update only the apps or write only the apps you want to update by adding their names.
+
+**Example:**
+
+https://github.com/user-attachments/assets/662d8eb2-38d7-45b8-9530-061189e6ed85
 
 ------------------------------------------------------------------------
 ### `version`, `-v`
@@ -440,7 +448,7 @@ Removes all the unnecessary files and folders.
 
 		am --devmode-disable
 
-**Description**: Undo "--devmode-enable" (see below).
+**Description**: Undo "`--devmode-enable`" (see below).
 
 ------------------------------------------------------------------------
 ### `--devmode-enable`
@@ -475,7 +483,7 @@ Removes all the unnecessary files and folders.
 
 		am --system
 
-**Description**: Switch "AM" back to "AM" from "AppMan Mode" (see "--user").
+**Description**: Switch "AM" back to "AM" from "AppMan Mode" (see "`--user`").
 
 ------------------------------------------------------------------------
 ### `--user`, `appman`
@@ -486,24 +494,24 @@ Removes all the unnecessary files and folders.
 
 The "--user" option can also be used just as a flag for installation options. For example:
 
-- Use it to install applications locally, option "-i" or "install":
+- Use it to install applications locally, option "`-i`" or "`install`":
 
 		am -i --user {PROGRAM}
 
-- Also suboptions of "-i" can work with this flag:
+- Also suboptions of "`-i`" can work with this flag:
 
 		am -i --user --debug {PROGRAM}
 		am -i --user --force-latest {PROGRAM}
 		am -i --user --debug --force-latest {PROGRAM}
 
-- Same for AppImages only, option "-ia" or "install-appimage":
+- Same for AppImages only, option "`-ia`" or "`install-appimage`":
 
 		am -ia --user --user {PROGRAM}
 		am -ia --user --debug {PROGRAM}
 		am -ia --user --force-latest {PROGRAM}
 		am -ia --user --debug --force-latest {PROGRAM}
 
-- External AppImages can be installed like this as well, option "-e" or "extra":
+- External AppImages can be installed like this as well, option "`-e`" or "`extra`":
 
 		am -e --user user/project {APPNAME}
 		am -e --user user/project {APPNAME} {KEYWORD}
