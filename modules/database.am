@@ -18,25 +18,27 @@ _about_show_markdown() {
 }
 
 _about_page() {
+	_determine_args
 	package_name="${Green}$1\033[0m"
 	markdown_url="$AMCATALOGUEMARKDOWNS/${1}.md"
 	printf " PACKAGE: %b\n" "$package_name"
 	app_name=$(echo "$1" | sed 's/-appimage//g; s/debian-testing-//g')
-	if test -f "$APPSPATH/$app_name/remove"; then
+	argpath=$(echo "$ARGPATHS" | grep "/$app_name$")
+	if [ -f "$argpath/remove" ]; then
 		app_status="installed\033[0m"
-		if test -f "$APPSPATH/$app_name/.am-installer/$app_name"; then
+		if test -f "$argpath/.am-installer/$app_name"; then
 			app_status="installed\033[0m"
 		elif [ "$app_name" != "$1" ]; then
-			if test -f "$APPSPATH/$app_name/.am-installer/$1"; then
+			if test -f "$argpath/.am-installer/$1"; then
 				app_status="installed\033[0m, as ${Green}$app_name\033[0m"
 			fi
-		elif test -d "$APPSPATH/$app_name/.am-installer"; then
-			scriptname=$(basename -- "$(find "$APPSPATH"/"$arg"/.am-installer/* | head -1)")
+		elif test -d "$argpath/.am-installer"; then
+			scriptname=$(basename -- "$(find "$argpath"/.am-installer/* | head -1)")
 			if [ "$scriptname" != "$1" ]; then
 				app_status="installed\033[0m, but replaced by ${Green}$scriptname\033[0m\n\n NOTE: run ${RED}$AMCLI -a $scriptname\033[0m instead"
 			fi
 		fi
-	elif test -f "$APPSPATH/$app_name-appimage/remove"; then
+	elif [ -f "$argpath-appimage/remove" ]; then
 		app_status="installed\033[0m"
 		app_name="$app_name-appimage"
 	else
@@ -44,8 +46,9 @@ _about_page() {
 	fi
 	METAPACKAGES="kdegames kdeutils node platform-tools"
 	for m in $METAPACKAGES; do
+		metaargpath=$(echo "$ARGPATHS" | grep "/$m$")
 		if grep -q "◆ $1 : .*\"$m\"" "$AMDATADIR/$ARCH-apps"; then
-			if test -f "$APPSPATH/$m/remove"; then
+			if test -f "$metaargpath/remove"; then
 				app_status="installed\033[0m, as part of ${Green}$m\033[0m\n\n NOTE: run ${RED}$AMCLI -a $m\033[0m instead"
 				app_name="$m"
 			fi
@@ -55,7 +58,8 @@ _about_page() {
 	done
 	if echo "$app_status" | grep -q "^installed"; then
 		printf " STATUS: %b\n" "${LightBlue}$app_status"
-		disk_usage=$(du -sm "$APPSPATH/$app_name" | cut -f1)
+		disk_usage=$(du -sm "$argpath" | cut -f1)
+		[ -z "$disk_usage" ] && disk_usage=$(du -sm "$metaargpath" | cut -f1)
 		app_version=$(grep -w " ◆ $app_name	|" "$AMCACHEDIR"/version-args 2>/dev/null | sed 's:.*|	::')
 		echo ""
 		echo " Disk usage: $disk_usage MB"
@@ -83,9 +87,9 @@ _files_header() {
 		else
 			LIBSMESSAGE="AND $LIBNUMB LIBRARIES"
 		fi
-		echo "- $APPSMESSAGE $LIBSMESSAGE MANAGED BY $AMCLIUPPER"
+		[ "$APPMAN_ON" = 1 ] && echo "- $APPSMESSAGE $LIBSMESSAGE LOCALLY, AS \"APPMAN\"" || echo "- $APPSMESSAGE $LIBSMESSAGE MANAGED BY \"$AMCLIUPPER\""
 	else
-		echo "- $APPSMESSAGE MANAGED BY $AMCLIUPPER"
+		[ "$APPMAN_ON" = 1 ] && echo "- $APPSMESSAGE LOCALLY, AS \"APPMAN\"" || echo "- $APPSMESSAGE MANAGED BY \"$AMCLIUPPER\""
 	fi
 	echo ""
 }
@@ -198,9 +202,8 @@ _files() {
 	done
 }
 
-_files_show_only_number() {
-	find "$APPSPATH" -type f -name 'remove' 2>/dev/null | uniq | wc -l
-	exit 0
+_files_number() {
+	FILES_NUMBER=$(find "$APPSPATH" -type f -name 'remove' 2>/dev/null | uniq | wc -l)
 }
 
 _files_appimage_type_notes() {
@@ -265,8 +268,13 @@ _list() {
 	wget -q --tries=10 --timeout=20 --spider https://github.com && _completion_lists
 	# Check the number of installed apps and libraries
 	LIBNUMBER=$(grep "usr/local/lib" "$APPSPATH"/*/remove 2> /dev/null | wc -l)
-	ITEMSNUMBER=$(cd "$APPSPATH" && find . -name 'remove' -printf "%h\n" 2>/dev/null | sort -u | wc -l)
+	ITEMSNUMBER=$(find "$APPSPATH" -name 'remove' -printf "%h\n" 2>/dev/null | sort -u | wc -l)
+	_detect_appman_apps
 	if [ "$AMCLI" = am ]; then
+		if [ -d "$APPMAN_APPSPATH" ]; then
+			APPMAN_ITEMS=$(find "$APPMAN_APPSPATH" -name 'remove' -printf "%h\n" 2>/dev/null | sort -u | wc -l)
+			ITEMSNUMBER=$(("$ITEMSNUMBER"+"$APPMAN_ITEMS"))
+		fi
 		if test -f /opt/am/remove; then
 			ITEMSNUMBER=$(("$ITEMSNUMBER"-1))
 		fi
@@ -275,14 +283,15 @@ _list() {
 	# Determine the number of available apps from the list
 	AVAILABLE_APPS_NUMBER=$(grep -v "ffwa-\|\"kdegames\"\|\"kdeutils\"\|\"node\"\|\"platform-tools\"" "$AMDATADIR/$ARCH-apps" | grep -e "$" -c)
 	# Generate a list of the installed apps with version
-	if test -f "$AMCACHEDIR"/version-args; then
-		INSTALLED=$(sort "$AMCACHEDIR"/version-args 2>/dev/null | sed 's/	|	/ /g' | grep -v "◆ am ")
-		MESSAGE2="$INSTALLED"
-	else
+	[ ! -f "$AMCACHEDIR"/version-args ] && _check_version
+	if [ -n "$APPMAN_ITEMS" ]; then
 		_check_version
-		INSTALLED=$(sort "$AMCACHEDIR"/version-args 2>/dev/null | sed 's/	|	/ /g' | grep -v "◆ am ")
-		MESSAGE2="$INSTALLED"
+	else
+		grep " ◆ $ARGS	" "$AMCACHEDIR"/version-args > "$AMCACHEDIR"/version-args-real
+		sort "$AMCACHEDIR"/version-args-real > "$AMCACHEDIR"/version-args
 	fi
+	INSTALLED=$(sort "$AMCACHEDIR"/version-args 2>/dev/null | sed 's/	|	/ /g' | grep -v "◆ am " | uniq)
+	MESSAGE2="$INSTALLED"
 	# Check if among the installed apps are available libraries
 	if [ "$LIBNUMBER" != 0 ]; then
 		# Check if the installed libraries are more than one
@@ -338,8 +347,8 @@ case "$1" in
 		_online_check
 		printf "%s\n" "-----------------------------------------------------------------------"
 		[ ! -f "$AMCACHEDIR"/version-args ] && _check_version
-		ARGS="$(echo "$@" | cut -f2- -d ' ')" # Removes first argument
-		for arg in $ARGS; do
+		entries="$(echo "$@" | cut -f2- -d ' ')" # Removes first argument
+		for arg in $entries; do
 			if curl -o /dev/null -sIf "$AMCATALOGUEMARKDOWNS/${arg}.md" 1>/dev/null; then
 				_about_page "$arg"
 			else
@@ -351,12 +360,15 @@ case "$1" in
 
 	'-f'|'files')
 		if [ "$2" = "--less" ]; then
-			_files_show_only_number
+			_files_number && echo "$FILES_NUMBER"
+			[ "$AMCLI" = am ] && [ -f "$APPMANCONFIG"/appman-config ] && _appman && echo "$DIVIDING_LINE" && _files_number && echo "$FILES_NUMBER"
 		elif [ "$2" = "--byname" ]; then
 			_files_sort_by_name
+			[ "$AMCLI" = am ] && [ -f "$APPMANCONFIG"/appman-config ] && _appman && APPMAN_ON=1 && _files_number && [ "$FILES_NUMBER" != 0 ] && echo "$DIVIDING_LINE" && _files_sort_by_name
 			_betatester_message_on
 		else
 			_files_sort_by_size
+			[ "$AMCLI" = am ] && [ -f "$APPMANCONFIG"/appman-config ] && _appman && APPMAN_ON=1 && _files_number && [ "$FILES_NUMBER" != 0 ] && echo "$DIVIDING_LINE" && _files_sort_by_size
 			_betatester_message_on
 		fi
 		;;
@@ -382,20 +394,20 @@ case "$1" in
 		fi
 		wget -q --tries=10 --timeout=20 --spider https://github.com && _completion_lists
 		if [ "$2" = --pkg ]; then
-			ARGS="$(echo "$@" | cut -f3- -d ' ' | tr -s ' ' '|')"
-			printf "\n Search results for packages: %s\n\n"  "$ARGS" | tr '[:lower:]' '[:upper:]'
-			grep -iE "$ARGS" "$AMDATADIR/$ARCH-apps" --color=always | _pretty_list_compat
+			entries="$(echo "$@" | cut -f3- -d ' ' | tr -s ' ' '|')"
+			printf "\n Search results for packages: %s\n\n"  "$entries" | tr '[:lower:]' '[:upper:]'
+			grep -iE "$entries" "$AMDATADIR/$ARCH-apps" --color=always | _pretty_list_compat
 		elif [ "$2" = --appimages ]; then
-			ARGS="$(echo "$@" | cut -f3- -d ' ')"
-			printf "\n Search results for \"%s\":\n\n"  "$ARGS" | tr '[:lower:]' '[:upper:]'
-			PATTERN="$(echo "$ARGS" | sed 's/ /(?=.*/g; s/$/)/g; s/(/)(/g; s/^/(?=.*/g;')"
+			entries="$(echo "$@" | cut -f3- -d ' ')"
+			printf "\n Search results for \"%s\":\n\n"  "$entries" | tr '[:lower:]' '[:upper:]'
+			pattern="$(echo "$entries" | sed 's/ /(?=.*/g; s/$/)/g; s/(/)(/g; s/^/(?=.*/g;')"
 			_list_appimages
-			grep -Pi "$PATTERN" "$AMCACHEDIR/$ARCH-appimages" | _pretty_list_compat
+			grep -Pi "$pattern" "$AMCACHEDIR/$ARCH-appimages" | _pretty_list_compat
 		else
-			ARGS="$(echo "$@" | cut -f2- -d ' ')"
-			printf "\n Search results for \"%s\":\n\n"  "$ARGS" | tr '[:lower:]' '[:upper:]'
-			PATTERN="$(echo "$ARGS" | sed 's/ /(?=.*/g; s/$/)/g; s/(/)(/g; s/^/(?=.*/g;')"
-			grep -Pi "$PATTERN" "$AMDATADIR/$ARCH-apps" | _pretty_list_compat
+			entries="$(echo "$@" | cut -f2- -d ' ')"
+			printf "\n Search results for \"%s\":\n\n"  "$entries" | tr '[:lower:]' '[:upper:]'
+			pattern="$(echo "$entries" | sed 's/ /(?=.*/g; s/$/)/g; s/(/)(/g; s/^/(?=.*/g;')"
+			grep -Pi "$pattern" "$AMDATADIR/$ARCH-apps" | _pretty_list_compat
 		fi
 		printf '\n'
 		;;
