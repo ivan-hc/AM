@@ -50,7 +50,11 @@ You can consult the entire **list of managed apps** at [**portable-linux-apps.gi
  - [How to update all installed apps](#how-to-update-all-installed-apps)
  - [How to update everything using Topgrade](#how-to-update-everything-using-topgrade)
 
-[Usage](#usage)
+[Options](#options)
+
+[Guides and tutorials](#guides-and-tutorials)
+
+[Troubleshooting](#troubleshooting)
 
 [Related projects](#related-projects)
 
@@ -176,6 +180,11 @@ The database aims to be a reference point where you can download all the AppImag
 You can view basic information, site links and sources using the related command `am -a {PROGRAM}`, or visit [**portable-linux-apps.github.io/apps**](https://portable-linux-apps.github.io/apps).
 
 ------------------------------------------------------------------------
+
+| [Back to "Main Index"](#main-index) |
+| - |
+
+------------------------------------------------------------------------
 ## How to update all programs, for real!
 Most of the apps managed by "AM" have a script called `AM-updater`. It tells how updates are checked when running the `am -u` command.
 
@@ -203,19 +212,22 @@ am -i --user topgrade
 Visit [github.com/topgrade-rs/topgrade](https://github.com/topgrade-rs/topgrade) to learn more.
 
 ------------------------------------------------------------------------
-# Usage
+
+| [Back to "Main Index"](#main-index) |
+| - |
+
+------------------------------------------------------------------------
+# OPTIONS
 
 <details>
   <summary>Click here to see the full list of options</summary>
   
 ------------------------------------------------------------------------
-## SYNOPSIS:
+## USAGE:
 
 		am {OPTION}
 		am {OPTION} {PROGRAM}
 
-------------------------------------------------------------------------
-## OPTIONS:
 ------------------------------------------------------------------------
 ### `about`, `-a`
 
@@ -589,6 +601,73 @@ The "`--user`" option can also be used just as a "flag" for installation options
 NOTE, "AM" 9 or higher is also able to, update and manage apps locally, by default, and without having to switch to "AppMan Mode".
 
 </details>
+
+------------------------------------------------------------------------
+
+| [Back to "Main Index"](#main-index) |
+| - |
+
+------------------------------------------------------------------------
+# Guides and tutorials
+Below you can access the documentation pages related to the use of "AM", complete with tutorials and demonstration videos, depending on the topic you are interested in:
+
+------------------------------------------------------------------------
+- [Install applications](#install-applications)
+- [Install only AppImages](#install-only-appimages)
+- [Install AppImages not listed in this database but available in other github repos](#install-appimages-not-listed-in-this-database-but-available-in-other-github-repos)
+- [List the installed applications](#list-the-installed-applications)
+- [List and query all the applications available on the database](#list-and-query-all-the-applications-available-on-the-database)
+- [Update all](#update-all)
+- [Backup and restore installed apps using snapshots](#backup-and-restore-installed-apps-using-snapshots)
+- [Remove one or more applications](#remove-one-or-more-applications)
+- [Convert Type2 AppImages requiring libfuse2 to New Generation AppImages](#convert-type2-appimages-requiring-libfuse2-to-new-generation-appimages)
+- [Integrate local AppImages into the menu by dragging and dropping them](#integrate-local-appimages-into-the-menu-by-dragging-and-dropping-them)
+  - [How to create a launcher for a local AppImage](#how-to-create-a-launcher-for-a-local-appimage)
+  - [How to remove the orphan launchers](#how-to-remove-the-orphan-launchers)
+  - [AppImages from external media](#appimages-from-external-media)
+- [How to use "AM" in non-privileged mode, like "AppMan"](#how-to-use-am-in-non-privileged-mode-like-appman)
+- [Sandbox an AppImage](#sandbox-an-appimage)
+  - [How to enable a sandbox](#how-to-enable-a-sandbox)
+  - [How to disable a sandbox](#how-to-disable-a-sandbox)
+  - [Sandboxing example](#sandboxing-example)
+  - [About Aisap sandboxing](#about-aisap-sandboxing)
+- [How to enable bash completion](#how-to-enable-bash-completion)
+- [How to update or remove apps manually](#how-to-update-or-remove-apps-manually)
+- [Downgrade an installed app to a previous version](#downgrade-an-installed-app-to-a-previous-version)
+- [How to use multiple versions of the same application](#how-to-use-multiple-versions-of-the-same-application)
+- [Create and test your own installation script](#create-and-test-your-own-installation-script)
+  - [Option Zero: "AppImages"](#option-zero-appimages)
+  - [Option One: "build AppImages on-the-fly"](#option-one-build-appimages-on-the-fly)
+  - [Option Two: "Archives and other programs"](#option-two-archives-and-other-programs)
+  - [Option Three: "Firefox profiles"](#option-three-firefox-profiles)
+  - [How an installation script works](#how-an-installation-script-works)
+  - [How to test an installation script](#how-to-test-an-installation-script)
+- [Third-party databases for applications (NeoDB)](#third-party-databases-for-applications-neodb)
+
+------------------------------------------------------------------------
+
+| [Back to "Main Index"](#main-index) |
+| - |
+
+------------------------------------------------------------------------
+# Troubleshooting
+Below you can access documentation pages for common issues and frequently asked questions:
+
+------------------------------------------------------------------------
+- [An application does not work, is old and unsupported](#an-application-does-not-work-is-old-and-unsupported)
+- [Cannot download or update an application](#cannot-download-or-update-an-application)
+- [Cannot mount and run AppImages](#cannot-mount-and-run-appimages)
+- [Failed to open squashfs image](#failed-to-open-squashfs-image)
+- [Spyware, malware and dangerous software](#spyware-malware-and-dangerous-software)
+- [Stop AppImage prompt to create its own launcher, desktop integration and doubled launchers](#stop-appimage-prompt-to-create-its-own-launcher-desktop-integration-and-doubled-launchers)
+- [The script points to "releases" instead of downloading the latest stable](#the-script-points-to-releases-instead-of-downloading-the-latest-stable)
+- [Ubuntu mess](#ubuntu-mess)
+- [Wrong download link](#wrong-download-link)
+
+------------------------------------------------------------------------
+
+| [Back to "Main Index"](#main-index) |
+| - |
 
 ------------------------------------------------------------------------
 # Related projects
