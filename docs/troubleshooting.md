@@ -15,6 +15,11 @@
 Use the `-a` option and go to the developer's site to report the problem. The task of "AM" is solely to install / remove / update the applications managed by it. Problems related to the failure of an installed program or any related bugs are attributable solely to its developers.
 
 ------------------------------------------------------------------------
+
+| [Back to "Troubleshooting"](#troubleshooting) | [Back to "Main Index"](../README.md#main-index) |
+| - | - |
+
+------------------------------------------------------------------------
 ### Cannot download or update an application
 There can be many reasons:
 - check your internet connection;
@@ -23,8 +28,8 @@ There can be many reasons:
 - the reference site has changed, report any changes at https://github.com/ivan-hc/AM/issues
 ------------------------------------------------------------------------
 
-| [Back to "Troubleshooting"](#troubleshooting)
-| - |
+| [Back to "Troubleshooting"](#troubleshooting) | [Back to "Main Index"](../README.md#main-index) |
+| - | - |
 
 ------------------------------------------------------------------------
 ### Cannot mount and run AppImages
@@ -51,8 +56,8 @@ However, I suggest contacting the upstream developers to convince them to upgrad
 
 ------------------------------------------------------------------------
 
-| [Back to "Troubleshooting"](#troubleshooting)
-| - |
+| [Back to "Troubleshooting"](#troubleshooting) | [Back to "Main Index"](../README.md#main-index) |
+| - | - |
 
 ------------------------------------------------------------------------
 ### Failed to open squashfs image
@@ -76,8 +81,8 @@ Remove AppImageLauncher and its files, then reboot the system (see also [issues/
 
 ------------------------------------------------------------------------
 
-| [Back to "Troubleshooting"](#troubleshooting)
-| - |
+| [Back to "Troubleshooting"](#troubleshooting) | [Back to "Main Index"](../README.md#main-index) |
+| - | - |
 
 ------------------------------------------------------------------------
 ### Spyware, malware and dangerous software
@@ -89,8 +94,8 @@ Before installing any application, try to know where it comes from first. This p
 
 ------------------------------------------------------------------------
 
-| [Back to "Troubleshooting"](#troubleshooting)
-| - |
+| [Back to "Troubleshooting"](#troubleshooting) | [Back to "Main Index"](../README.md#main-index) |
+| - | - |
 
 ------------------------------------------------------------------------
 ### Stop AppImage prompt to create its own launcher, desktop integration and doubled launchers
@@ -128,12 +133,12 @@ $APP
 ```
 This is the best method, since you decide wheter to allow the use of user's directories or not.
 
-For more details, see "[**Sandbox an AppImage**](#sandbox-an-appimage)".
+For more details, see "[**Sandbox an AppImage**](guides-and-tutorials/#sandbox.md)".
 
 ------------------------------------------------------------------------
 
-| [Back to "Troubleshooting"](#troubleshooting)
-| - |
+| [Back to "Troubleshooting"](#troubleshooting) | [Back to "Main Index"](../README.md#main-index) |
+| - | - |
 
 ------------------------------------------------------------------------
 ### The script points to "releases" instead of downloading the latest stable
@@ -159,8 +164,8 @@ See also "[Install the "latest" stable release instead of the latest "unstable"]
 
 ------------------------------------------------------------------------
 
-| [Back to "Troubleshooting"](#troubleshooting)
-| - |
+| [Back to "Troubleshooting"](#troubleshooting) | [Back to "Main Index"](../README.md#main-index) |
+| - | - |
 
 ------------------------------------------------------------------------
 ### Ubuntu mess
@@ -190,13 +195,17 @@ echo 'kernel.apparmor_restrict_unprivileged_userns = 0' | sudo tee /etc/sysctl.d
 
 ------------------------------------------------------------------------
 
-| [Back to "Troubleshooting"](#troubleshooting)
-| - |
+| [Back to "Troubleshooting"](#troubleshooting) | [Back to "Main Index"](../README.md#main-index) |
+| - | - |
 
 ------------------------------------------------------------------------
 ### Wrong download link
 The reasons may be two:
 - the referring link may have been changed, try the `--rollback` option or `downgrade`;
 - the reference site has changed, report any changes at https://github.com/ivan-hc/AM/issues
+------------------------------------------------------------------------
+
+| [Back to "Troubleshooting"](#troubleshooting) | [Back to "Main Index"](../README.md#main-index) |
+| - | - |
 
 ------------------------------------------------------------------------
