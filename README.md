@@ -30,7 +30,7 @@ You can consult the entire **list of managed apps** at [**portable-linux-apps.gi
 3. creation of the version file and the update script
 4. possibly, extraction of the icons and .desktop files
 
-## Disclaim
+## What doesn't it do!
 **"AM" is NOT responsible for the malfunction of individual apps!** This is a problem of those who develop or package them upstream. You can use the command `am -a {PROGRAM}` to view the description and get the sources **to contact the program maintainers**, or `am -d {PROGRAM}` to **download and read the script on your desktop to trace and reach the source safely**.
 
 ------------------------------------------------------------------------
