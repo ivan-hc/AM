@@ -25,7 +25,7 @@ sudo /opt/{PROGRAM}/remove
 ```
 or run the script directly if the app is installed unprivileged
 ```
-/path/to/umprivileged/directory/{PROGRAM}/remove
+/path/to/unprivileged/directory/{PROGRAM}/remove
 ```
 and just as there is a `remove` file, many (not all) installed programs have an `AM-updater` script, which is instead intended to update the installed app.
 
