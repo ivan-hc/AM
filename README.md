@@ -81,8 +81,10 @@ To install "AM" you must first install the "core" dependencies from your package
 
 </details>
 
-
+------------------------------------------------------------------------
 ### Quick installation
+The "AM-INSTALLER" script allows you to choose "[AppMan](#what-is-appman)" instead of "AM", briefly explaining the differences between the two.
+
 Copy/paste the following one line command to download and run the "[AM-INSTALLER](https://github.com/ivan-hc/AM/blob/main/AM-INSTALLER)" script
 ```
 wget -q https://raw.githubusercontent.com/ivan-hc/AM/main/AM-INSTALLER && chmod a+x ./AM-INSTALLER && ./AM-INSTALLER
@@ -98,6 +100,28 @@ Type "1" to install "AM", "2" to install "[AppMan](#what-is-appman)". Any other 
 Run `am -h` or jump to "**[Usage](#usage)**" to see all the available options.
 
 ------------------------------------------------------------------------
+### Other installation methods
+As already said, the "AM-INSTALLER" script in the previous paragraph helps you choosing between "[AppMan](#what-is-appman)" and "AM", briefly explaining the differences. However, installing "AM" can be much simpler than that. All "AM-INSTALLER" does when you select "1" is to download and run another script, named "[INSTALL](https://github.com/ivan-hc/AM/blob/main/INSTALL)". That said, you can easily install "AM" without "intermediaries".
+
+#### Using "GIT"
+Copy/paste the following commands
+```
+git clone https://github.com/ivan-hc/AM.git
+cd AM
+chmod a+x INSTALL
+sudo ./INSTALL
+```
+
+#### Using "Wget"
+Copy/paste the following commands
+```
+wget https://raw.githubusercontent.com/ivan-hc/AM/main/INSTALL && chmod a+x ./INSTALL && sudo ./INSTALL
+```
+This is definitely the quickest method of all!
+
+**NOTE, the reason why I gave priority to the "AM-INSTALLER" script in this guide is because "AM" can be used in different forms. In fact, not all users can afford to install "AM" with root privileges. That's why "[AppMan](#what-is-appman)" also exists.**
+
+------------------------------------------------------------------------
 ### What is AppMan?
 AppMan is a portable version of "AM", limited to installing and managing apps only locally and without root privileges.
 
@@ -105,7 +129,10 @@ The command name changes, from `am` to `appman`, but the script is the same.
 
 "AM" on the contrary, provides a "fixed" installation, but can install and manage apps both locally and at the system level.
 
-I recommend "AM" to privileged users who want to install and manage apps at multiple levels, and "AppMan" to non-privileged users who do not have large needs.
+- "AM" is for privileged users who want to install and manage apps at multiple levels
+- "AppMan" is the way to go for non-privileged users or those who don't have great needs
+
+If you want to know more about "AppMan", visit https://github.com/ivan-hc/AppMan
 
 ------------------------------------------------------------------------
 ### AM installation structure
