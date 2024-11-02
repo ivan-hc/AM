@@ -113,7 +113,7 @@ sudo ./INSTALL
 ```
 
 #### Using "Wget"
-Copy/paste the following commands
+Copy/paste the following one line command command
 ```
 wget https://raw.githubusercontent.com/ivan-hc/AM/main/INSTALL && chmod a+x ./INSTALL && sudo ./INSTALL
 ```
