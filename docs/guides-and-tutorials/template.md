@@ -183,7 +183,7 @@ All files and directories are created and saved in your XDG_DESKTOP directory (~
 	|
 	|-list
 ```
-where `portable-linux-apps.github.io` and `x86_64` are main directories, `apps` and `icons` are directories, `$appname` is the script and `list` is the list of the applications you have created:
+where `portable-linux-apps.github.io` and `x86_64` are main directories, `apps` and `icons` are subdirectories, `$appname` is the script and `list` is the list of the applications you have created:
 
 1. fork this repository
 2. upload the `$appname` script from the `x86_64` directory to the "`programs/x86_64`" directory of the repository
