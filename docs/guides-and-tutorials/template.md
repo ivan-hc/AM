@@ -8,6 +8,9 @@ This is a step-by-step guide on how to create, understand and test installation 
 ------------------------------------------------------------------------
 [Create your installation script](#create-your-installation-script)
 - [Option Zero: "**AppImages**"](#option-zero-appimages)
+  - [If the AppImage is hosted on github or codeberg](#if-the-appimage-is-hosted-on-github-or-codeberg)
+  - [If the AppImage is hosted sourceforge](#if-the-appimage-is-hosted-sourceforge)
+  - [If the AppImage is hosted on other sistes](#if-the-appimage-is-hosted-on-other-sistes)
 - [Option One: "**build AppImages on-the-fly**"](#option-one-build-appimages-on-the-fly)
 - [Option Two: "**Archives and other programs**"](#option-two-archives-and-other-programs)
 - [Option Three: "**Firefox profiles**"](#option-three-firefox-profiles)
@@ -51,18 +54,25 @@ Each option corresponds to a different type of application or helper to target w
 ------------------------------------------------------------------------
 ## Option Zero: "AppImages"
 The easiest script to create is certainly the one relating to AppImages, the "Zero" option.
-1. Enter the URL of the site
-   - if the AppImage is hosted on github, it will quickly detect the URL
-   - if the AppImage is not hosted on github,it will ask you to add a description of the app
-2. Detecting the  correct URL
-   - if the app is hosted on github, it will ask you if you want to add/remove keywords to use in `grep`, to detect the correct URL, else press ENTER
-   - if the app is not hosted on github, add a one-line command to detect the latest version of the app (advanced)
-  
+
+Much depends on the site it is hosted on.
+
+### If the AppImage is hosted on github or codeberg
+If the AppImage is hosted on github.com or codeberg.org, a default command will be added that is common with other repositories.
+
+You can also specify whether to always download from "latest" (not recommended) or from the most recent release (the default).
+
 In this video I'll create 2 installation scripts:
 - the first one is for "gimp", detected as first reference, no extra prompts
 - the second one is for "baobab-gtk3", hosted on a repository with multiple packages, so I have to add a keyword ("baobab"), univoque for the URL I'm interested in
 
 https://github.com/ivan-hc/AM/assets/88724353/b6513e8a-17ab-4671-baf7-d86183d57c11
+
+### If the AppImage is hosted sourceforge
+If the AppImage is hosted on sourceforge.net, a dedicated function will try to intercept the app by browsing the APIs. You can also use services like repology.org if you want to find the version of the application, if it is not present in the download URL.
+
+### If the AppImage is hosted on other sistes
+For AppImages published elsewhere, you will need more advanced knowledge of how to find the latest download URL using `curl` and `wget` (preferably the former), as well as knowledge of how to use `sed`, `grep`, and `tr`. Again, you may choose to use repology.org to determine the version if it is not present in the download URL.
 
 ------------------------------------------------------------------------
 
