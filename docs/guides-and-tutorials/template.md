@@ -9,24 +9,36 @@ or
 ```
 appman -t $PROGRAM
 ```
-The available options are as follows:
-
-0. Create a script for an AppImage package
-1. Build an AppImage on the fly using [appimagetool](https://github.com/AppImage/AppImageKit) and [pkg2appimage](https://github.com/AppImage/pkg2appimage)
-2. Download and unpack a generic archive (ZIP, TAR...)
-3. Create a custom Firefox profile
-
-To learn more about a specific option, use the index below
-- [Option Zero: "AppImages"](#option-zero-appimages)
-- [Option One: "build AppImages on-the-fly"](#option-one-build-appimages-on-the-fly)
-- [Option Two: "Archives and other programs"](#option-two-archives-and-other-programs)
-- [Option Three: "Firefox profiles"](#option-three-firefox-profiles)
-
-Otherwise, go directly to the last paragraphs, which are
-- [How an installation script works](#how-an-installation-script-works)
-- [How to test an installation script](#how-to-test-an-installation-script)
+and this is the screen that will appear:
 
 ![Istantanea_2024-06-17_21-35-26 png](https://github.com/ivan-hc/AM/assets/88724353/6e11aeff-9a70-44f7-bd73-1324b545704e)
+
+Each option corresponds to a different type of application or helper to target with an installation script:
+
+0. For **AppImages**, press "`0`" (zero)
+1. To **create an AppImage on the fly** using [appimagetool](https://github.com/AppImage/AppImageKit) and [pkg2appimage](https://github.com/AppImage/pkg2appimage), press "`1`" (one)
+2. For a **portable program** (archive, binary, script...), press "`2`" (two)
+3. For a **custom Firefox profile**, press "`3`" (three)
+
+Use the index below to quickly **navigate and access the four guides dedicated to each type of installation script**. At the bottom of this page you will also find an explanation of **how each installation script works**, and **how to test them locally**, before **uploading them to this database**.
+
+------------------------------------------
+The four options:
+
+- [Option Zero: "**AppImages**"](#option-zero-appimages)
+- [Option One: "**build AppImages on-the-fly**"](#option-one-build-appimages-on-the-fly)
+- [Option Two: "**Archives and other programs**"](#option-two-archives-and-other-programs)
+- [Option Three: "**Firefox profiles**"](#option-three-firefox-profiles)
+
+[How an installation script works](#how-an-installation-script-works)
+
+[How to test an installation script](#how-to-test-an-installation-script)
+
+[How to submit a Pull Request](#how-to-submit-a-pull-reqyest)
+
+------------------------------------------
+
+**Are you ready? Let's get started!**
 
 ------------------------------------------
 ### Option Zero: "AppImages"
@@ -112,6 +124,17 @@ or
 ```
 appman -i --debug /path/to/your-script
 ```
+
+------------------------------------------
+## How to submit a Pull Request
+A good example of how Pull Requests should be done is given by the user @Sush-ruta https://github.com/ivan-hc/AM/pull/981 https://github.com/ivan-hc/AM/pull/1000 https://github.com/ivan-hc/AM/pull/960 https://github.com/ivan-hc/AM/pull/957
+
+1. fork this repository
+2. add the architecture scripts (for example "`x86_64`") to the corresponding one in the "`programs`" directory
+3. drag all the Markdown files (with extension .md) in the first comment
+4. still in the first comment, add the contents of the "`list`" file
+
+I'll take care of the rest.
 
 ------------------------------------------------------------------------
 
