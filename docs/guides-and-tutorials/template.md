@@ -172,14 +172,14 @@ All files and directories are created and saved in your XDG_DESKTOP directory (~
 ~/Desktop/am-scripts
 	|
 	|-portable-linux-apps.github.io
-	|		|
-	|		|-apps
-	|		|
-	|		|-icons
-	|
-	|----x86_64
 	|	|
-	|	|-$appname
+	|	|-apps
+	|	|
+	|	|-icons
+	|
+	|-x86_64
+	|   |
+	|   |-$appname
 	|
 	|-list
 ```
