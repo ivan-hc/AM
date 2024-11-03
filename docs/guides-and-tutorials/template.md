@@ -202,6 +202,20 @@ https://github.com/ivan-hc/AM/assets/88724353/ce46e2f2-c251-4520-b41f-c511d4ce6c
 ## Option Three: "Firefox profiles"
 Option 3 creates a launcher that opens Firefox in a custom profile and on a specific page, such as in a WebApp. I created this option to counterbalance the amount of Electron/Chrome-based applications (and because I'm a firm Firefox's supporter).
 
+It is enough to give an AppName, a URL to the icon (a correct one, not like the one suggested in the video, down below) and a category.
+
+Here is an example for "ProtonMail"
+
+https://github.com/user-attachments/assets/120012de-777f-4cd0-8324-f761d8d4947a
+
+In practice, all we need to do is create a custom Firefox profile that can be launched from a .desktop file, which is all we are really creating in this process.
+
+**These "objects" are not even classified as applications**, and **therefore are not included in the application count when you run `am -l`**.
+
+As suggested in the video, it is preferable to have these custom profiles for yourself.
+
+Their advantage is to keep the data of the reference site well separated from the system profile used in Firefox.
+
 ------------------------------------------------------------------------
 
 | [Back to "Templates index"](#templates-index) |
