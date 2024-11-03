@@ -23,8 +23,8 @@ Each option corresponds to a different type of application or helper to target w
 Use the index below to quickly **navigate and access the four guides dedicated to each type of installation script**. At the bottom of this page you will also find an explanation of **how each installation script works**, and **how to test them locally**, before **uploading them to this database**.
 
 ------------------------------------------
-The four options:
-
+## Templates index
+------------------------------------------
 - [Option Zero: "**AppImages**"](#option-zero-appimages)
 - [Option One: "**build AppImages on-the-fly**"](#option-one-build-appimages-on-the-fly)
 - [Option Two: "**Archives and other programs**"](#option-two-archives-and-other-programs)
@@ -56,7 +56,12 @@ In this video I'll create 2 installation scripts:
 
 https://github.com/ivan-hc/AM/assets/88724353/b6513e8a-17ab-4671-baf7-d86183d57c11
 
-------------------------------------------
+------------------------------------------------------------------------
+
+| [Back to "Templates index"](#templates-index) |
+| - |
+
+------------------------------------------------------------------------
 ### Option One: "build AppImages on-the-fly"
 This was one of the very first approaches used to create this project. Before I started building AppImage packages myself, they were first compiled just like using any AUR-helper.
 
@@ -74,7 +79,12 @@ Two different operations (assembly and installation) require two different scrip
 
 Fun fact, up until version 7, this option included a unique template that installed and assembled the AppImage on the fly (see [this video](https://github.com/ivan-hc/AM/assets/88724353/6ae38787-e0e5-4b63-b020-c89c1e975ddd)). This method has been replaced as it was too pretentious for a process, assembly, which may instead require many more steps, too many to be included in both an installation script and an update script (AM-updater).
 
-------------------------------------------
+------------------------------------------------------------------------
+
+| [Back to "Templates index"](#templates-index) |
+| - |
+
+------------------------------------------------------------------------
 ### Option Two: "Archives and other programs"
 Option two is very similar to option zero. What changes is the number of questions, which allow you to customize both the application's .desktop file and the way a program should be extracted.
 
@@ -90,11 +100,21 @@ In this example, I'll use OBS Studio AppImage.
 
 https://github.com/ivan-hc/AM/assets/88724353/ce46e2f2-c251-4520-b41f-c511d4ce6c7d
 
-------------------------------------------
+------------------------------------------------------------------------
+
+| [Back to "Templates index"](#templates-index) |
+| - |
+
+------------------------------------------------------------------------
 ### Option Three: "Firefox profiles"
 Option 3 creates a launcher that opens Firefox in a custom profile and on a specific page, such as in a WebApp. I created this option to counterbalance the amount of Electron/Chrome-based applications (and because I'm a firm Firefox's supporter).
 
-------------------------------------------
+------------------------------------------------------------------------
+
+| [Back to "Templates index"](#templates-index) |
+| - |
+
+------------------------------------------------------------------------
 ## How an installation script works
 The structure of an installation script is designed for a system-wide installation, with "AM", since it is intended to be hosted in the database. But every path indicated within it is written so that "AppMan" can patch the essential parts, to hijack the installation at a local level and without root privileges:
 1. In the first step, the variables are indicated, such as the name of the application and a reference to the source of the app (mostly used in `--rollback` or `downgrade`);
@@ -106,7 +126,12 @@ The structure of an installation script is designed for a system-wide installati
 7. Create the "AM-updater" file, the script used to update the app. It resumes points 4, 5 and 6, with the difference that the "$version" variable we have saved at point 5 is compared with a new value, hosted at the app's source;
 8. Creation/extract/download launcher and icon, the methods change depending on the type of application. For AppImages they are extracted from the package.
 
-------------------------------------------
+------------------------------------------------------------------------
+
+| [Back to "Templates index"](#templates-index) |
+| - |
+
+------------------------------------------------------------------------
 ## How to test an installation script
 To install and test your script, use the command
 ```
@@ -125,7 +150,12 @@ or
 appman -i --debug /path/to/your-script
 ```
 
-------------------------------------------
+------------------------------------------------------------------------
+
+| [Back to "Templates index"](#templates-index) |
+| - |
+
+------------------------------------------------------------------------
 ## How to submit a Pull Request
 A good example of how Pull Requests should be done is given by the user @Sush-ruta https://github.com/ivan-hc/AM/pull/981 https://github.com/ivan-hc/AM/pull/1000 https://github.com/ivan-hc/AM/pull/960 https://github.com/ivan-hc/AM/pull/957
 
@@ -135,6 +165,11 @@ A good example of how Pull Requests should be done is given by the user @Sush-ru
 4. still in the first comment, add the contents of the "`list`" file
 
 I'll take care of the rest.
+
+------------------------------------------------------------------------
+
+| [Back to "Templates index"](#templates-index) |
+| - |
 
 ------------------------------------------------------------------------
 
