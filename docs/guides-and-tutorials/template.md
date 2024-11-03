@@ -83,8 +83,71 @@ Using different sites in fact starts to make things more complicated. See below.
 ### If the AppImage is hosted sourceforge
 If the AppImage is hosted on sourceforge.net, a dedicated function will try to intercept the app by browsing the APIs. You can also use services like repology.org if you want to find the version of the application, if it is not present in the download URL.
 
+About the source, it should be enough to add something like this
+```
+https://sourceforge.net/p/$projectname
+```
+where $projectname is ne name of the referenced page on sourceforge.net.
+
+You need also to specify a description for it.
+
+A preview of the download URL will be shown as well.
+
+Here is how to create an installation script for "Nootka".
+
+https://github.com/user-attachments/assets/c1c08c93-3a57-45b9-9515-551555eca3c4
+
+NOTE, if the URL does not always appear. In that case, you need to resort to more "drastic" methods. See below.
+
 ### If the AppImage is hosted on other sistes
 For AppImages published elsewhere, you will need more advanced knowledge of how to find the latest download URL using `curl` and `wget` (preferably the former), as well as knowledge of how to use `sed`, `grep`, and `tr`. Again, you may choose to use repology.org to determine the version if it is not present in the download URL.
+
+When downloading an installation script using the command `am -d $program` you will notice in most cases a variable "`$version`", which represents the URL for downloading the application.
+
+In the previous cases, it is easy to preset a URL for download, being generically "standard" sites.
+
+Here is how a version variable looks for Abiword (github)...
+```
+version=$(curl -Ls  https://api.github.com/repos/ivan-hc/Abiword-appimage/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | head -1)
+```
+...for SimpleScreenRecorder (still github)...
+```
+version=$(curl -Ls  https://api.github.com/repos/ivan-hc/Database-of-pkg2appimaged-packages/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | grep -i "simplescreenrecorder" | head -1)
+```
+...and for Nootka (sourceforge)
+```
+version=$(curl -Ls https://sourceforge.net/p/nootka/activity/feed | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep -i "appimage" | grep -v '%' | head -1)
+```
+...namely, the three AppImages created previously.
+
+All three have in common the following command, which downloads the package.
+```
+wget "$version" || exit 1
+```
+While **this is how a "`version`" variable looks in many sites other than the standard ones**, Inkscape for example have no `wget "$version"` reference...
+```
+version=$(wget -q https://repology.org/project/inkscape/related -O - | grep "version-newest" | head -1 | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}")
+wget "$(echo "https://inkscape.org/$(curl -Ls $(echo "https://inkscape.org/release/inkscape-$(curl -Ls https://inkscape.org/ | grep -Po '(?<=class="info")[^"]*' | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)/gnulinux/appimage/dl/") | grep "click here" | grep -o -P '(?<=href=").*(?=">click)')")" || exit 1
+```
+...this is "Lens" instead...
+```
+version=$(echo "https://api.k8slens.dev/binaries/Lens-$(wget -q https://repology.org/project/lens-kubernetes/versions -O - | grep "newest version" | head -1 | grep -o -P '(?<=">).*(?=</a)' | sed 's/^.*>//')-latest.x86_64.AppImage")
+wget "$version" || exit 1
+```
+...and this is "Ember"
+```
+version=$(wget -q https://repology.org/project/ember/versions -O - | grep -i "new.*version" | head -1 | tr '><' '\n' | grep "^[0-9]")
+wget "$(curl -Ls https://www.worldforge.org/downloads/ | tr '"' '\n' | grep -i "^http.*appimage")" || exit 1
+```
+interventions like this are mostly manual.
+
+It is advisable to test the commands to intercept the URL in another shell first, and then add them during the script creation process.
+
+NOTE, if finding a download URL seems so difficult, consider instead that the rest of the script remains almost the same as all the other scripts. You will not have to tamper with anything else... except for rare exceptions (for example, if the AppImage is enclosed in a zip/tar/7z archive...).
+
+In any case, read the content of the template, it is divided into sections that explain step by step what it does.
+
+The templates are by @Samueru-sama
 
 ------------------------------------------------------------------------
 
