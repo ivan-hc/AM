@@ -28,7 +28,8 @@ Otherwise, go directly to the last paragraphs, which are
 
 ![Istantanea_2024-06-17_21-35-26 png](https://github.com/ivan-hc/AM/assets/88724353/6e11aeff-9a70-44f7-bd73-1324b545704e)
 
-#### Option Zero: "AppImages"
+------------------------------------------
+### Option Zero: "AppImages"
 The easiest script to create is certainly the one relating to AppImages, the "Zero" option.
 1. Enter the URL of the site
    - if the AppImage is hosted on github, it will quickly detect the URL
@@ -43,7 +44,8 @@ In this video I'll create 2 installation scripts:
 
 https://github.com/ivan-hc/AM/assets/88724353/b6513e8a-17ab-4671-baf7-d86183d57c11
 
-#### Option One: "build AppImages on-the-fly"
+------------------------------------------
+### Option One: "build AppImages on-the-fly"
 This was one of the very first approaches used to create this project. Before I started building AppImage packages myself, they were first compiled just like using any AUR-helper.
 
 From version 7.1, the installation script for the AppImages is used, with the only difference that it points only to the version, while a second script will be downloaded, published separately, at [github.com/ivan-hc/AM/tree/main/appimage-bulder-scripts](https://github.com/ivan-hc/AM/tree/main/appimage-bulder-scripts), which will have the task of assembling the AppImage in the directory on the fly "tmp", during the installation process. When the second script has created the .AppImage file, the first script will continue the installation treating the created AppImage as a ready-made one downloaded from the internet.
@@ -60,7 +62,8 @@ Two different operations (assembly and installation) require two different scrip
 
 Fun fact, up until version 7, this option included a unique template that installed and assembled the AppImage on the fly (see [this video](https://github.com/ivan-hc/AM/assets/88724353/6ae38787-e0e5-4b63-b020-c89c1e975ddd)). This method has been replaced as it was too pretentious for a process, assembly, which may instead require many more steps, too many to be included in both an installation script and an update script (AM-updater).
 
-#### Option Two: "Archives and other programs"
+------------------------------------------
+### Option Two: "Archives and other programs"
 Option two is very similar to option zero. What changes is the number of questions, which allow you to customize both the application's .desktop file and the way a program should be extracted.
 
 This script also supports extraction of *7z, *tar* and *zip files, if those archives are downloaded instead of a standalone binary.
@@ -75,10 +78,12 @@ In this example, I'll use OBS Studio AppImage.
 
 https://github.com/ivan-hc/AM/assets/88724353/ce46e2f2-c251-4520-b41f-c511d4ce6c7d
 
-#### Option Three: "Firefox profiles"
+------------------------------------------
+### Option Three: "Firefox profiles"
 Option 3 creates a launcher that opens Firefox in a custom profile and on a specific page, such as in a WebApp. I created this option to counterbalance the amount of Electron/Chrome-based applications (and because I'm a firm Firefox's supporter).
 
-#### How an installation script works
+------------------------------------------
+## How an installation script works
 The structure of an installation script is designed for a system-wide installation, with "AM", since it is intended to be hosted in the database. But every path indicated within it is written so that "AppMan" can patch the essential parts, to hijack the installation at a local level and without root privileges:
 1. In the first step, the variables are indicated, such as the name of the application and a reference to the source of the app (mostly used in `--rollback` or `downgrade`);
 2. Create the directory of the application;
@@ -89,7 +94,8 @@ The structure of an installation script is designed for a system-wide installati
 7. Create the "AM-updater" file, the script used to update the app. It resumes points 4, 5 and 6, with the difference that the "$version" variable we have saved at point 5 is compared with a new value, hosted at the app's source;
 8. Creation/extract/download launcher and icon, the methods change depending on the type of application. For AppImages they are extracted from the package.
 
-#### How to test an installation script
+------------------------------------------
+## How to test an installation script
 To install and test your script, use the command
 ```
 am -i /path/to/your-script
