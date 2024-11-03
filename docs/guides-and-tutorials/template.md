@@ -49,7 +49,7 @@ Each option corresponds to a different type of application or helper to target w
 | - |
 
 ------------------------------------------------------------------------
-### Option Zero: "AppImages"
+## Option Zero: "AppImages"
 The easiest script to create is certainly the one relating to AppImages, the "Zero" option.
 1. Enter the URL of the site
    - if the AppImage is hosted on github, it will quickly detect the URL
@@ -70,7 +70,7 @@ https://github.com/ivan-hc/AM/assets/88724353/b6513e8a-17ab-4671-baf7-d86183d57c
 | - |
 
 ------------------------------------------------------------------------
-### Option One: "build AppImages on-the-fly"
+## Option One: "build AppImages on-the-fly"
 This was one of the very first approaches used to create this project. Before I started building AppImage packages myself, they were first compiled just like using any AUR-helper.
 
 From version 7.1, the installation script for the AppImages is used, with the only difference that it points only to the version, while a second script will be downloaded, published separately, at [github.com/ivan-hc/AM/tree/main/appimage-bulder-scripts](https://github.com/ivan-hc/AM/tree/main/appimage-bulder-scripts), which will have the task of assembling the AppImage in the directory on the fly "tmp", during the installation process. When the second script has created the .AppImage file, the first script will continue the installation treating the created AppImage as a ready-made one downloaded from the internet.
@@ -93,7 +93,7 @@ Fun fact, up until version 7, this option included a unique template that instal
 | - |
 
 ------------------------------------------------------------------------
-### Option Two: "Archives and other programs"
+## Option Two: "Archives and other programs"
 Option two is very similar to option zero. What changes is the number of questions, which allow you to customize both the application's .desktop file and the way a program should be extracted.
 
 This script also supports extraction of *7z, *tar* and *zip files, if those archives are downloaded instead of a standalone binary.
@@ -114,7 +114,7 @@ https://github.com/ivan-hc/AM/assets/88724353/ce46e2f2-c251-4520-b41f-c511d4ce6c
 | - |
 
 ------------------------------------------------------------------------
-### Option Three: "Firefox profiles"
+## Option Three: "Firefox profiles"
 Option 3 creates a launcher that opens Firefox in a custom profile and on a specific page, such as in a WebApp. I created this option to counterbalance the amount of Electron/Chrome-based applications (and because I'm a firm Firefox's supporter).
 
 ------------------------------------------------------------------------
