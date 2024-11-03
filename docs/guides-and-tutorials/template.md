@@ -6,7 +6,7 @@ This is a step-by-step guide on how to create, understand and test installation 
 ------------------------------------------------------------------------
 ## Templates index
 ------------------------------------------------------------------------
-[Create and test your own installation script](#create-and-test-your-own-installation-script)
+[Create your installation script](#create-your-installation-script)
 - [Option Zero: "**AppImages**"](#option-zero-appimages)
 - [Option One: "**build AppImages on-the-fly**"](#option-one-build-appimages-on-the-fly)
 - [Option Two: "**Archives and other programs**"](#option-two-archives-and-other-programs)
@@ -19,7 +19,7 @@ This is a step-by-step guide on how to create, understand and test installation 
 [How to submit a Pull Request](#how-to-submit-a-pull-request)
 
 ------------------------------------------------------------------------
-## Create and test your own installation script
+## Create your installation script
 Option `-t` or `template` allows you to create an "AM" compatible installation script using a "[templates](https://github.com/ivan-hc/AM/tree/main/templates)" that can be used by both "AM" and "AppMan". In fact, all AppMan does is take the installation scripts from this database and patch them to make them compatible with a rootless installation.
 
 The syntax to follow is this
