@@ -244,18 +244,25 @@ To install and test your script, use the command
 ```
 am -i /path/to/your-script
 ```
-or
+or rootless
 ```
+am -i --user /path/to/your-script
 appman -i /path/to/your-script
 ```
 To debug the installation, add the option `--debug`, like this
 ```
 am -i --debug /path/to/your-script
 ```
-or
+or rootless
 ```
+am -i --user --debug /path/to/your-script
 appman -i --debug /path/to/your-script
 ```
+You can also simply drag and drop files into the terminal for your testing, see the video down below
+
+https://github.com/user-attachments/assets/2b687305-fe73-4109-8871-131173755306
+
+NOTE, since you are experimenting with scripts you created, I highly recommend using for a rootless installation for your tests.
 
 ------------------------------------------------------------------------
 
