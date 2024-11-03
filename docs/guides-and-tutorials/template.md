@@ -36,12 +36,12 @@ and this is the screen that will appear:
 
 Each option corresponds to a different type of application or helper to target with an installation script:
 
-0. For **AppImages**, press "`0`" (zero)
-1. To **create an AppImage on the fly** using [appimagetool](https://github.com/AppImage/AppImageKit) and [pkg2appimage](https://github.com/AppImage/pkg2appimage), press "`1`" (one)
-2. For a **portable program** (archive, binary, script...), press "`2`" (two)
-3. For a **custom Firefox profile**, press "`3`" (three)
+0. For **AppImages**, [press "`0`" (zero)](#option-zero-appimages)
+1. To **create an AppImage on the fly** using [appimagetool](https://github.com/AppImage/AppImageKit) and [pkg2appimage](https://github.com/AppImage/pkg2appimage), [press "`1`" (one)](#option-one-build-appimages-on-the-fly)
+2. For a **portable program** (archive, binary, script...), [press "`2`" (two)](#option-two-archives-and-other-programs)
+3. For a **custom Firefox profile**, [press "`3`" (three)](#option-three-firefox-profiles)
 
-Use the index below to quickly **navigate and access the four guides dedicated to each type of installation script**. At the bottom of this page you will also find an explanation of **how each installation script works**, and **how to test them locally**, before **uploading them to this database**.
+**The next four paragraphs will explain in detail how to use the options [0](#option-zero-appimages), [1](#option-one-build-appimages-on-the-fly), [2](#option-two-archives-and-other-programs) and [3](#option-three-firefox-profiles).**
 
 ------------------------------------------------------------------------
 
