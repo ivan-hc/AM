@@ -167,7 +167,7 @@ appman -i --debug /path/to/your-script
 ## How to submit a Pull Request
 A good example of how Pull Requests should be done is given by the user @Sush-ruta https://github.com/ivan-hc/AM/pull/981 https://github.com/ivan-hc/AM/pull/1000 https://github.com/ivan-hc/AM/pull/960 https://github.com/ivan-hc/AM/pull/957
 
-All files and directories are created and saved in your XDG_DESKTOP directory (~/Desktop), under "`am-scripts`". This is the structure of the directories, considering that the scripts we create ar for the x86_64 architecture:
+All files and directories are created and saved in your XDG_DESKTOP directory (~/Desktop), under "`am-scripts`". This is the structure of the directories, considering that the scripts we create ar for the x86_64 architecture...
 ```
 ~/Desktop/am-scripts
 	|
@@ -183,8 +183,7 @@ All files and directories are created and saved in your XDG_DESKTOP directory (~
 	|
 	|-list
 ```
-where `portable-linux-apps.github.io` and `x86_64` are main directories, `apps` and `icons` are subdirectories, `$appname` is the script and `list` is the list of the applications you have created:
-
+...where `portable-linux-apps.github.io` and `x86_64` are main directories, `apps` and `icons` are subdirectories, `$appname` is the script and `list` is the list of the applications you have created:
 1. fork this repository
 2. upload the `$appname` script from the `x86_64` directory to the "`programs/x86_64`" directory of the repository
 3. drag and drop all the .md Markdown files from `portable-linux-apps.github.io/apps` to the first comment
