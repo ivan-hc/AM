@@ -169,7 +169,7 @@ A good example of how Pull Requests should be done is given by the user @Sush-ru
 
 All files and directories are created and saved in your XDG_DESKTOP directory (~/Desktop), under "`am-scripts`". This is the structure of the directories, considering that the scripts we create ar for the x86_64 architecture:
 ```
-~/Desktop
+~/Desktop/am-scripts
 	|
 	|-portable-linux-apps.github.io
 	|		|
