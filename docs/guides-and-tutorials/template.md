@@ -1,3 +1,24 @@
+# TEMPLATES: Create and test your own installation scripts
+This is a step-by-step guide on how to create, understand and test installation scripts in this database. You can use the table of contents below to navigate between the sections easily.
+
+**Are you ready? Let's get started!**
+
+------------------------------------------------------------------------
+## Templates index
+------------------------------------------------------------------------
+[Create and test your own installation script](#create-and-test-your-own-installation-script)
+- [Option Zero: "**AppImages**"](#option-zero-appimages)
+- [Option One: "**build AppImages on-the-fly**"](#option-one-build-appimages-on-the-fly)
+- [Option Two: "**Archives and other programs**"](#option-two-archives-and-other-programs)
+- [Option Three: "**Firefox profiles**"](#option-three-firefox-profiles)
+
+[How an installation script works](#how-an-installation-script-works)
+
+[How to test an installation script](#how-to-test-an-installation-script)
+
+[How to submit a Pull Request](#how-to-submit-a-pull-request)
+
+------------------------------------------------------------------------
 ## Create and test your own installation script
 Option `-t` or `template` allows you to create an "AM" compatible installation script using a "[templates](https://github.com/ivan-hc/AM/tree/main/templates)" that can be used by both "AM" and "AppMan". In fact, all AppMan does is take the installation scripts from this database and patch them to make them compatible with a rootless installation.
 
@@ -22,25 +43,12 @@ Each option corresponds to a different type of application or helper to target w
 
 Use the index below to quickly **navigate and access the four guides dedicated to each type of installation script**. At the bottom of this page you will also find an explanation of **how each installation script works**, and **how to test them locally**, before **uploading them to this database**.
 
-------------------------------------------
-## Templates index
-------------------------------------------
-- [Option Zero: "**AppImages**"](#option-zero-appimages)
-- [Option One: "**build AppImages on-the-fly**"](#option-one-build-appimages-on-the-fly)
-- [Option Two: "**Archives and other programs**"](#option-two-archives-and-other-programs)
-- [Option Three: "**Firefox profiles**"](#option-three-firefox-profiles)
+------------------------------------------------------------------------
 
-[How an installation script works](#how-an-installation-script-works)
+| [Back to "Templates index"](#templates-index) |
+| - |
 
-[How to test an installation script](#how-to-test-an-installation-script)
-
-[How to submit a Pull Request](#how-to-submit-a-pull-reqyest)
-
-------------------------------------------
-
-**Are you ready? Let's get started!**
-
-------------------------------------------
+------------------------------------------------------------------------
 ### Option Zero: "AppImages"
 The easiest script to create is certainly the one relating to AppImages, the "Zero" option.
 1. Enter the URL of the site
