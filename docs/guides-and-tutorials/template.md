@@ -62,11 +62,23 @@ If the AppImage is hosted on github.com or codeberg.org, a default command will 
 
 You can also specify whether to always download from "latest" (not recommended) or from the most recent release (the default).
 
-In this video I'll create 2 installation scripts:
-- the first one is for "gimp", detected as first reference, no extra prompts
-- the second one is for "baobab-gtk3", hosted on a repository with multiple packages, so I have to add a keyword ("baobab"), univoque for the URL I'm interested in
+Here's how to quickly create a script for an AppImage available on a github repository.
 
-https://github.com/ivan-hc/AM/assets/88724353/b6513e8a-17ab-4671-baf7-d86183d57c11
+https://github.com/user-attachments/assets/1eec87ae-79b8-4637-a8b4-1c6314f88b86
+
+Typically, this approach takes into account excluding all non-x86_64 architectures using the `grep -vi` command and including URLs starting with http and ending with "mage", i.e. `grep -i "http.*mage$"`.
+
+It will also show a preview of the download URL that will be used.
+
+If a repository contains multiple items, specify a keyword to include (choose 1) or exclude (choose 2).
+
+In the following video, we will create a script for SimpleScreenRecorder, which is present in a repository where there are multiple AppImage packages. In the first attempt it will show me "Webcamoid", but adding the keyword `simplescreenrecorder` will give us the exact URL, as the keyword is "unique" for that package.
+
+https://github.com/user-attachments/assets/e7bfed10-375f-405f-af7b-da7cd74862b8
+
+This ease is due to the choice of the reference site: if you choose a URL that contains the word `github.com` or `codeberg.org`, the detection will be automatic. It is therefore preferable to add only the github/codeberg repository instead of main sites if you want an easy life.
+
+Using different sites in fact starts to make things more complicated. See below.
 
 ### If the AppImage is hosted sourceforge
 If the AppImage is hosted on sourceforge.net, a dedicated function will try to intercept the app by browsing the APIs. You can also use services like repology.org if you want to find the version of the application, if it is not present in the download URL.
