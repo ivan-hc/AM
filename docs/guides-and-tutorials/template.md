@@ -179,19 +179,80 @@ Fun fact, up until version 7, this option included a unique template that instal
 
 ------------------------------------------------------------------------
 ## Option Two: "Archives and other programs"
-Option two is very similar to option zero. What changes is the number of questions, which allow you to customize both the application's .desktop file and the way a program should be extracted.
+Option two is very similar to option zero, the one for AppImages, with very few fundamental differences:
+- there is no reference to "`mage$`", so you will have to specify as a key word the extension of the file or archive to download, even if on github.com and codeberg.org
+- you can choose to add an icon and customize a .desktop file if it is a graphical application
 
-This script also supports extraction of *7z, *tar* and *zip files, if those archives are downloaded instead of a standalone binary.
-
-By default, the install script does not have a launcher and icon. To create one, press "Y", otherwise, press "N" or leave it blank. This is useful if you want to load scripts or tools that can be used from the command line.
-
-This option may be used also for AppImages, if you need to customize the launcher.
-
-Tu add an icon, you need an URL to that, but if you don't have one, just leave blank. The script will download an icon from [portable-linux-apps.github.io](https://portable-linux-apps.github.io/) if it is hosted there, when running the installation script.
-
-In this example, I'll use OBS Studio AppImage.
+That said, we can even create a script for AppImage, but customizing the launcher and the icon without having to rely on the "standard" operations for which the template used in the Zero option is designed. As in this video, I'll use OBS Studio AppImage (even if this is not the use for which this template is intended)
 
 https://github.com/ivan-hc/AM/assets/88724353/ce46e2f2-c251-4520-b41f-c511d4ce6c7d
+
+As mentioned in parenthesis, the template is designed for many other uses, such as interception and extraction of portable archives in ZIP, TAR and 7z format, but also scripts and static binary files.
+
+In addition, if you have chosen to add a launcher, you can always press enter and:
+- the icon will be downloaded from the catalog [portable-linux-apps.github.io](https://portable-linux-apps.github.io/)
+- the .deskto file will be minimal, without even names
+
+And speaking of the .desktop file, you can replace it with the official one, copying its content... but be careful to replace the entries `Exec=` and `Icon=` with the following
+```
+Exec=$APP
+Icon=/opt/$APP/icons/$APP
+```
+for example, if you have
+```
+[Desktop Entry]
+Name=Friday Night Funkin'
+Exec=PsychEngine
+Terminal=false
+Type=Application
+Icon=io.github.shadowmario.fnf-psychengine.png
+Comment=Engine originally used on Mind Games mod.
+Categories=Game;
+```
+you must change it as
+```
+[Desktop Entry]
+Name=Friday Night Funkin'
+Exec=$APP
+Terminal=false
+Type=Application
+Icon=/opt/$APP/icons/$APP
+Comment=Engine originally used on Mind Games mod.
+Categories=Game;
+```
+and most importantly, pay attention to the name of the binary file. In the example above we have `Exec=PsychEngine`, this means that the binary is not `$APP`, so you have to change the `chmod` (to made the file executable) and `ln` (to symlink the file in $PATH) references bi adding the exact name of the binary, so the two references of `chmod`
+```
+chmod a+x ./$APP
+```
+must be
+```
+chmod a+x ./PsychEngine
+```
+and the `ln` reference must change from
+```
+ln -s "/opt/$APP/$APP" "/usr/local/bin/$APP"
+```
+to
+```
+ln -s "/opt/$APP/PsychEngine" "/usr/local/bin/$APP"
+```
+or you will get errors.
+
+Same if the referenced binary is into a subdirectory. Sometime it can be into a "`bin`" directory or another path of the extracted archive. Well, in that case, you neeed to change the above like this
+```
+chmod a+x ./bin/PsychEngine
+```
+and
+```
+ln -s "/opt/$APP/bin/PsychEngine" "/usr/local/bin/$APP"
+```
+in short, if you are lucky and the binary has exactly the same name as `$APP` you will not have to change anything. Instead, you will have to manually intervene on the script, as I just described.
+
+Note that the download rules are the same as for AppImages in the "Zero" option. If you know the content of the extracted archive, you will have no problem modifying the script manually. However, it is up to you to find the download URL.
+
+In the case of archives, the sites github.com and codeberg.org are pre-set. Other sites must be set manually. So have the basic knowledge of SHELL described at [If the AppImage is hosted on other sistes](#if-the-appimage-is-hosted-on-other-sistes).
+
+If in doubt, download the pre-existing installation scripts and analyze their contents to get an idea of ​​how they work.
 
 ------------------------------------------------------------------------
 
