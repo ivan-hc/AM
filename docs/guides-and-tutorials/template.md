@@ -284,15 +284,112 @@ Their advantage is to keep the data of the reference site well separated from th
 
 ------------------------------------------------------------------------
 ## How an installation script works
-The structure of an installation script is designed for a system-wide installation, with "AM", since it is intended to be hosted in the database. But every path indicated within it is written so that "AppMan" can patch the essential parts, to hijack the installation at a local level and without root privileges:
-1. In the first step, the variables are indicated, such as the name of the application and a reference to the source of the app (mostly used in `--rollback` or `downgrade`);
-2. Create the directory of the application;
-3. The first file to be created is "`remove`", to quickly remove app's pieces in case of errors;
-4. Create the "tmp" directory, in which the app will be downloaded and, in the case of archives, extracted;
-5. Most scripts contain a "$version" variable, a command to intercept the URL to download the app. If the URL is linear and without univoque versions, "$version" can be used to detect a version number. Then save the value into a file "version" (this is important for the updates, see point 7);
-6. Downloading the application (and extract it in case of archive);
-7. Create the "AM-updater" file, the script used to update the app. It resumes points 4, 5 and 6, with the difference that the "$version" variable we have saved at point 5 is compared with a new value, hosted at the app's source;
-8. Creation/extract/download launcher and icon, the methods change depending on the type of application. For AppImages they are extracted from the package.
+The structure of an installation script is designed for a system-wide installation (as root), since it is intended to be hosted in this database. But every path indicated within it is written so that "`appman -i`" or "`am -i --user`" can patch the essential parts, to hijack the installation at a local level and without root privileges.
+
+This is a step-by-step focus on how an installation script runs, and we will take `brave` (official archive) and `brave-appimage` (the unofficial AppImage), you will see that they have a similar structure:
+1. The header, contains it is mento to set the `APP` and `SITE` variable
+```
+#!/bin/sh
+
+# AM INSTALL SCRIPT VERSION 3.5
+set -u
+APP=brave
+SITE="brave/brave-browser"
+```
+2. Create the working directories (where the app will be downloaded and installed) and the "`remove`" script. Thel latter is needed to quickly remove the app in case of wrong installation or other problems
+```
+# CREATE DIRECTORIES AND ADD REMOVER
+[ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
+printf "#!/bin/sh\nset -e\nrm -f /usr/local/bin/$APP\nrm -R -f /opt/$APP" > ../remove
+printf '\n%s' "rm -f /usr/local/share/applications/$APP-AM.desktop" >> ../remove
+chmod a+x ../remove || exit 1
+```
+3. Download and prepare the app, this part sets the `version` variable we talked at [Option Zero: "**AppImages**"](#option-zero-appimages).
+
+The structure of the first two lines are similar for both AppImages and archives.
+```
+version=$(curl -Ls https://api.github.com/repos/brave/brave-browser/releases/latest | sed 's/[()",{} ]/\n/g' | grep -oi "https.*" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | grep -i "https.*linux-amd64.zip$" | head -1)
+wget "$version" || exit 1
+```
+but while archives have this to detect and extract packages that can be present, trying to extract the content at several levels...
+```
+[ -e ./*7z ] && 7z x ./*7z && rm -f ./*7z
+[ -e ./*tar.* ] && tar fx ./*tar.* && rm -f ./*tar.*
+[ -e ./*zip ] && unzip -qq ./*zip 1>/dev/null && rm -f ./*zip
+cd ..
+if [ -d ./tmp/* 2>/dev/null ]; then mv ./tmp/*/* ./; else mv ./tmp/* ./"$APP" 2>/dev/null || mv ./tmp/* ./; fi
+```
+...AppImages have a space where you can add manually the same commands if the AppImage is into another kind of archive
+```
+# Keep this space in sync with other installation scripts
+# Use tar fx ./*tar* here for example in this line in case a compressed file is downloaded.
+cd ..
+mv ./tmp/*mage ./"$APP"
+# Keep this space in sync with other installation scripts
+```
+all the rest is quite the same (all depends if the binary have a different name, see the last part of [Option Two: "**Archives and other programs**"](#option-two-archives-and-other-programs))
+```
+rm -R -f ./tmp || exit 1
+echo "$version" > ./version
+chmod a+x ./"$APP" || exit 1
+```
+4. Symlink (note, if the binary is different from `$APP`, use the exact name, see the last part of [Option Two: "**Archives and other programs**"](#option-two-archives-and-other-programs))
+```
+# LINK TO PATH
+ln -s "/opt/$APP/$APP" "/usr/local/bin/$APP"
+```
+5. Creation of the script to update the program, also know as "AM-updater". It is a mix of the points 1 and 3, with in addition a system to detect newer versions of the app.
+6. Launcher and icon, whe hare have a difference between how it works for AppImages...
+```
+# LAUNCHER & ICON
+./"$APP" --appimage-extract *.desktop 1>/dev/null && mv ./squashfs-root/*.desktop ./"$APP".desktop
+./"$APP" --appimage-extract .DirIcon 1>/dev/null && mv ./squashfs-root/.DirIcon ./DirIcon
+COUNT=0
+while [ "$COUNT" -lt 10 ]; do # Tries to get the actual icon/desktop if it is a symlink to another symlink
+	if [ -L ./"$APP".desktop ]; then
+		LINKPATH="$(readlink ./"$APP".desktop | sed 's|^\./||' 2>/dev/null)"
+		./"$APP" --appimage-extract "$LINKPATH" 1>/dev/null && mv ./squashfs-root/"$LINKPATH" ./"$APP".desktop
+	fi
+	if [ -L ./DirIcon ]; then
+		LINKPATH="$(readlink ./DirIcon | sed 's|^\./||' 2>/dev/null)"
+		./"$APP" --appimage-extract "$LINKPATH" 1>/dev/null && mv ./squashfs-root/"$LINKPATH" ./DirIcon
+	fi
+	[ ! -L ./"$APP".desktop ] && [ ! -L ./DirIcon ] && break
+	COUNT=$((COUNT + 1))
+done
+sed -i "s#Exec=[^ ]*#Exec=$APP#g; s#Icon=.*#Icon=/opt/$APP/icons/$APP#g" ./"$APP".desktop
+mv ./"$APP".desktop /usr/local/share/applications/"$APP"-AM.desktop && mv ./DirIcon ./icons/"$APP" 1>/dev/null
+rm -R -f ./squashfs-root
+```
+...and how it works with portable programs. You can add A URLs to download them or a command to extract them from the package. Brave Browser have the easier system...
+```
+# ICON AND LAUNCHER
+DESKTOP="https://raw.githubusercontent.com/srevinsaju/Brave-AppImage/master/AppDir/brave-browser.desktop"
+wget "$DESKTOP" -O ./"$APP".desktop 2>/dev/null || exit 1
+mv ./product*logo*128*.png ./DirIcon
+sed -i "s#Exec=[^ ]*#Exec=$APP#g; s#Icon=.*#Icon=/opt/$APP/icons/$APP#g" ./"$APP".desktop
+mv ./"$APP".desktop /usr/local/share/applications/"$APP"-AM.desktop && mv ./DirIcon ./icons/"$APP" 1>/dev/null
+```
+...but other programs have something like this (here `funkin-psych`).
+```
+# ICON
+mkdir -p icons
+wget https://raw.githubusercontent.com/ShadowMario/FNF-PsychEngine/refs/heads/main/art/iconOG.png -O ./icons/"$APP" 2> /dev/null
+
+# LAUNCHER
+echo "[Desktop Entry]
+Name=Friday Night Funkin'
+Exec=$APP
+Icon=/opt/$APP/icons/$APP
+Terminal=false
+Type=Application
+Comment=Engine originally used on Mind Games mod.
+Categories=Game;" > /usr/local/share/applications/"$APP"-AM.desktop
+```
+
+NOTE, all installation scripts work like this, except the ones for portable CLI apps, the ones without a GUI. There you can completely remove point 6 (create launcher and icon).
+
+**This is all you need to know to create an installation script.**
 
 ------------------------------------------------------------------------
 
