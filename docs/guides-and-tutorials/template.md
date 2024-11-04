@@ -361,7 +361,7 @@ sed -i "s#Exec=[^ ]*#Exec=$APP#g; s#Icon=.*#Icon=/opt/$APP/icons/$APP#g" ./"$APP
 mv ./"$APP".desktop /usr/local/share/applications/"$APP"-AM.desktop && mv ./DirIcon ./icons/"$APP" 1>/dev/null
 rm -R -f ./squashfs-root
 ```
-...and how it works with portable programs. You can add an URLs to download them or a command to extract them from the package. Brave Browser have the easier system...
+...and how it works with portable programs. You can add URLs to download them or commands to extract them from the package. Brave Browser have the easier system...
 ```
 # ICON AND LAUNCHER
 DESKTOP="https://raw.githubusercontent.com/srevinsaju/Brave-AppImage/master/AppDir/brave-browser.desktop"
