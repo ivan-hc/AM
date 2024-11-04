@@ -220,7 +220,7 @@ Icon=/opt/$APP/icons/$APP
 Comment=Engine originally used on Mind Games mod.
 Categories=Game;
 ```
-and most importantly, pay attention to the name of the binary file. In the example above we have `Exec=PsychEngine`, this means that the binary is not `$APP`, so you have to change the `chmod` (to made the file executable) and `ln` (to symlink the file in $PATH) references bi adding the exact name of the binary, so the two references of `chmod`
+and most importantly, pay attention to the name of the binary file. In the example above we have `Exec=PsychEngine`, this means that the binary is not `$APP`, so you have to change the `chmod` (to made the file executable) and `ln` (to symlink the file in $PATH) references by adding the exact name of the binary, so the two references of `chmod`
 ```
 chmod a+x ./$APP
 ```
