@@ -162,17 +162,17 @@ _dependency_check_utils() {
 
 # Check if the installation script is a metapackage (example one of the 40+ kdegames scripts)
 _metapackage_check() {
-for metapackage in $METAPACKAGES; do
-	if grep -q "$metapackage" ./"$arg" 2> /dev/null; then
-		if [ -d "$APPSPATH"/"$metapackage"/tmp ]; then
-			$SUDOCMD "$APPSPATH"/"$metapackage"/remove 2> /dev/null
-		elif [ -d "$APPSPATH"/"$metapackage" ]; then
-			METAPACKAGE_NAME=$(echo "$metapackage" | tr '[:lower:]' '[:upper:]')
-			echo " ◆ $APPNAME IS PART OF \"$METAPACKAGE_NAME\", ALREADY INSTALLED" 
-			return 1
+	for metapackage in $METAPACKAGES; do
+		if grep -q "$metapackage" ./"$arg" 2> /dev/null; then
+			if [ -d "$APPSPATH"/"$metapackage"/tmp ]; then
+				$SUDOCMD "$APPSPATH"/"$metapackage"/remove 2> /dev/null
+			elif [ -d "$APPSPATH"/"$metapackage" ]; then
+				METAPACKAGE_NAME=$(echo "$metapackage" | tr '[:lower:]' '[:upper:]')
+				echo " ◆ $APPNAME IS PART OF \"$METAPACKAGE_NAME\", ALREADY INSTALLED" 
+				return 1
+			fi
 		fi
-	fi
-done	
+	done	
 }
 
 ######################
@@ -297,6 +297,20 @@ _install_normally() {
 	_install_arg
 }
 
+#########
+# TOOLBOX
+#########
+
+_toolbox() {
+	mkdir -p "$CACHEDIR/toolboxes"
+	curl -Ls "$AMREPO"/templates/AM-SAMPLE-AppImage > "$CACHEDIR/toolboxes/$arg.toolpack" || exit 1
+	sed -i "s#APP=SAMPLE#APP=$arg#g; \
+	s#FUNCTION#curl -Ls https://pkg.pkgforge.dev/$ARCH/$arg.AppImage.version#g; \
+	s#wget \"\$version\"#wget https://pkg.pkgforge.dev/$ARCH/$arg.AppImage#g" "$CACHEDIR/toolboxes/$arg.toolpack"
+	chmod a+x "$CACHEDIR/toolboxes/$arg.toolpack"
+	arg="$CACHEDIR/toolboxes/$arg.toolpack"
+}
+
 ################################################################################
 #				USAGE
 ################################################################################
@@ -369,6 +383,13 @@ case "$1" in
 						_install_local_script
 					else
 						echo " 💀 ERROR: the file \"$arg\" does NOT exist"
+					fi
+				elif echo "$@" | grep -q -- "--toolpack"; then
+					if curl --output /dev/null --silent --head --fail "https://pkg.pkgforge.dev/$ARCH/$arg"  1>/dev/null; then
+						_toolbox
+						_install_local_script
+					else
+						echo " 💀 ERROR: \"$arg\" does NOT exist in Toolpacks"
 					fi
 				elif curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg"  1>/dev/null; then
 					_install_normally
