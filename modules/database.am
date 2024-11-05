@@ -12,6 +12,16 @@ _about_show_markdown() {
 		| sed '1,${ /^\s*#/ d; /^\s*!/ d; /\[Applications]/d; /\ --- /d; /\ | - | /d; /\!\[/d; }' \
 		| sed '$!N;s/^\s*\n\s*$//;P;D')
 		echo "$markdown_page" | fold -sw 72 | sed 's/^ //g; s/^/ /g'
+	elif echo "$package_name" | grep -q ".toolpack"; then
+		toolpack_appimage_name=$(echo "$arg" | sed 's/\.toolpack//g')
+		if curl -o /dev/null -sIf "https://pkg.pkgforge.dev/$ARCH/$toolpack_appimage_name.AppImage.repology.json"; then
+			toolpack_description=""
+			toolpack_site=""
+			echo ""
+			echo "$toolpack_description" | fold -sw 72 | sed 's/^ //g; s/^/ /g'
+			echo ""
+			echo "SOURCE: $toolpack_site" | fold -sw 72 | sed 's/^ //g; s/^/ /g'
+		fi
 	else
 		printf ' "%s" IS NOT A VALID ARGUMENT\n' "$package_name"
 	fi
@@ -22,7 +32,7 @@ _about_page() {
 	package_name="${Green}$1\033[0m"
 	markdown_url="$AMCATALOGUEMARKDOWNS/${1}.md"
 	printf " PACKAGE: %b\n" "$package_name"
-	app_name=$(echo "$1" | sed 's/-appimage//g; s/debian-testing-//g')
+	app_name=$(echo "$1" | sed 's/-appimage//g; s/debian-testing-//g; s/\.toolpack//g')
 	argpath=$(echo "$ARGPATHS" | grep "/$app_name$")
 	if [ -f "$argpath/remove" ]; then
 		app_status="installed\033[0m"
@@ -350,6 +360,8 @@ case "$1" in
 		entries="$(echo "$@" | cut -f2- -d ' ')" # Removes first argument
 		for arg in $entries; do
 			if curl -o /dev/null -sIf "$AMCATALOGUEMARKDOWNS/${arg}.md" 1>/dev/null; then
+				_about_page "$arg"
+			elif echo "$arg" | grep -q ".toolpack$"; then
 				_about_page "$arg"
 			else
 				printf " ERROR: %b not found\033[0m\n" "${RED}\"$arg\""
