@@ -288,6 +288,17 @@ _install_local_script() {
 	fi
 }
 
+# This function is needed to handle AppImages from https://github.com/pkgforge/pkgcache
+_toolpack_handler() {
+	mkdir -p "$CACHEDIR/toolpack"
+	curl -Ls "$AMREPO"/templates/AM-SAMPLE-AppImage > "$CACHEDIR/toolpack/$arg.toolpack" || exit 1
+	sed -i "s#APP=SAMPLE#APP=$arg#g; \
+	s#FUNCTION#curl -Ls https://pkg.pkgforge.dev/$ARCH/$arg.AppImage.version#g; \
+	s#wget \"\$version\"#wget https://pkg.pkgforge.dev/$ARCH/$arg.AppImage#g" "$CACHEDIR/toolpack/$arg.toolpack"
+	chmod a+x "$CACHEDIR/toolpack/$arg.toolpack"
+	arg="$CACHEDIR/toolpack/$arg.toolpack"
+}
+
 # This is for scripts hosted on the official online database
 _install_normally() {
 	mkdir -p "$AMCACHEDIR"/tmp && rm -f "$AMCACHEDIR"/tmp/* || return
@@ -295,20 +306,6 @@ _install_normally() {
 	cd "$AMCACHEDIR" && mkdir -p tmp && cd tmp || return
 	cd "$AMCACHEDIR" && mv ./tmp/"$arg" ./"$arg" && rmdir ./tmp || return
 	_install_arg
-}
-
-#########
-# TOOLBOX
-#########
-
-_toolbox() {
-	mkdir -p "$CACHEDIR/toolboxes"
-	curl -Ls "$AMREPO"/templates/AM-SAMPLE-AppImage > "$CACHEDIR/toolboxes/$arg.toolpack" || exit 1
-	sed -i "s#APP=SAMPLE#APP=$arg#g; \
-	s#FUNCTION#curl -Ls https://pkg.pkgforge.dev/$ARCH/$arg.AppImage.version#g; \
-	s#wget \"\$version\"#wget https://pkg.pkgforge.dev/$ARCH/$arg.AppImage#g" "$CACHEDIR/toolboxes/$arg.toolpack"
-	chmod a+x "$CACHEDIR/toolboxes/$arg.toolpack"
-	arg="$CACHEDIR/toolboxes/$arg.toolpack"
 }
 
 ################################################################################
@@ -386,7 +383,7 @@ case "$1" in
 					fi
 				elif echo "$@" | grep -q -- "--toolpack"; then
 					if curl --output /dev/null --silent --head --fail "https://pkg.pkgforge.dev/$ARCH/$arg"  1>/dev/null; then
-						_toolbox
+						_toolpack_handler
 						_install_local_script
 					else
 						echo " 💀 ERROR: \"$arg\" does NOT exist in Toolpacks"
