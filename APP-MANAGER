@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="9"
+AMVERSION="9.0.2"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -174,6 +174,23 @@ function _determine_args() {
 		fi
 	fi
 	# use "argpath=$(echo "$ARGPATHS" | grep "/$arg$")" to determine the full path of "arg"
+}
+
+function _icon_theme_export_to_datadir() {
+	PNG="$(file "$APPSPATH"/*/icons/* | grep -i '.png' | awk -F":" '{print $1}' | grep -vi .png)"
+	SVG="$(file "$APPSPATH"/*/icons/* | grep -i '.svg' | awk -F":" '{print $1}' | grep -vi .svg)"
+	for file in $PNG; do ln -s "$file" "${file}".png; done
+	for file in $SVG; do ln -s "$file" "${file}".svg; done
+	if [ -n "$APPMAN_APPSPATH" ]; then
+		PNG="$(file "$APPMAN_APPSPATH"/*/icons/* | grep -i '.png' | awk -F":" '{print $1}' | grep -vi .png)"
+		SVG="$(file "$APPMAN_APPSPATH"/*/icons/* | grep -i '.svg' | awk -F":" '{print $1}' | grep -vi .svg)"
+		for file in $PNG; do ln -s "$file" "${file}".png; done
+		for file in $SVG; do ln -s "$file" "${file}".svg; done
+	fi
+	mkdir -p "$DATADIR"/icons/hicolor/scalable/apps
+	find "$DATADIR"/icons/hicolor/scalable/apps -xtype l -exec rm {} \;
+	ln -s "$APPSPATH"/*/icons/*.* "$DATADIR"/icons/hicolor/scalable/apps
+	[ -n "$APPMAN_APPSPATH" ] && ln -s "$APPMAN_APPSPATH"/*/icons/*.* "$DATADIR"/icons/hicolor/scalable/apps
 }
 
 ################################################################################
@@ -977,6 +994,14 @@ case "$1" in
 	'version'|'-v'|'--version')
 		echo "$AMVERSION"
 		;;
+	'--disable-notifications')
+		_determine_args
+		for n in $ARGPATHS; do sed -e '/notify-send/ s/^#*/#/' -i "$n/AM-updater" 2>/dev/null; done
+		;;
+	'--enable-notifications')
+		_determine_args
+		for n in $ARGPATHS; do sed -e '/notify-send/ s/^#*//' -i "$n/AM-updater" 2>/dev/null; done
+		;;
 	'help'|'-h')
 		################################################################################
 		#				HELP
@@ -1070,21 +1095,23 @@ case "$1" in
 					${LightBlue}$AMCLI --icons {PROGRAM}
 					${LightBlue}$AMCLI --icons --all\033[0m
 
-			Description: Allow installed apps to use system icon themes. You can specify the name of the apps to change or use the \"--all\" flag to change all of them at once. This will remove the icon path from the .desktop file and add the symbolic link of all available icons in the $DATADIR/icons/hicolor/scalable/apps directory.
+			Description: Allow installed apps to use system icon themes. You can specify the name of the apps to change or use the \"--all\" flag to change all of them at once. This will remove the icon path from the .desktop file and add the symbolic link of all available icons in the $DATADIR/icons/hicolor/scalable/apps directory. The \"--icons\" option can be used as \"flag\" in the \"-i\" and \"-ia\" options.
 
 			${Gold}install, -i\033[0m
 
 					${LightBlue}$AMCLI -i {PROGRAM}
 					${LightBlue}$AMCLI -i --debug {PROGRAM}
-					${LightBlue}$AMCLI -i --force-latest {PROGRAM}\033[0m
+					${LightBlue}$AMCLI -i --force-latest {PROGRAM}
+					${LightBlue}$AMCLI -i --icons {PROGRAM}\033[0m
 
-			Description: Install one or more programs or libraries from the list. With the \"--debug\" option you can see log messages to debug the script. For more details on \"--force-latest\", see the dedicated option, below.
+			Description: Install one or more programs or libraries from the list. With the \"--debug\" option you can see log messages to debug the script. For more details on \"--force-latest\", see the dedicated option, below. Use the \"--icons\" flag to allow the program to use icon themes.
 
 			${Gold}install-appimage, -ia\033[0m
 
 					${LightBlue}$AMCLI -ia {PROGRAM}
 					${LightBlue}$AMCLI -ia --debug {PROGRAM}
-					${LightBlue}$AMCLI -ia --force-latest {PROGRAM}\033[0m
+					${LightBlue}$AMCLI -ia --force-latest {PROGRAM}
+					${LightBlue}$AMCLI -ia --icons {PROGRAM}\033[0m
 
 			Description: Same as \"install\" (see above) but for AppImages only.
 
@@ -1193,11 +1220,23 @@ case "$1" in
 
 			Description: Use the development branch (at your own risk).
 
+			${Gold}--disable-notifications\033[0m
+
+					${LightBlue}$AMCLI --disable-notifications\033[0m
+
+			Description: Disable notifications during apps update.
+
 			${Gold}--disable-sandbox\033[0m
 
 					${LightBlue}$AMCLI --disable-sandbox {PROGRAM}\033[0m
 
 			Description: Disable the sandbox for the selected app.
+
+			${Gold}--enable-notifications\033[0m
+
+					${LightBlue}$AMCLI --enable-notifications\033[0m
+
+			Description: Eable notifications during apps update (nulls \"--disable-notifications\").
 
 			${Gold}--force-latest\033[0m
 
@@ -1233,14 +1272,18 @@ case "$1" in
 
 				${LightBlue}am -i --user --debug {PROGRAM}\033[0m
 				${LightBlue}am -i --user --force-latest {PROGRAM}
-				${LightBlue}am -i --user --debug --force-latest {PROGRAM}\033[0m
+				${LightBlue}am -i --user --icons {PROGRAM}
+				${LightBlue}am -i --user --debug --force-latest {PROGRAM}
+				${LightBlue}am -i --user --debug --force-latest --icons {PROGRAM}\033[0m
 
 			- Same for AppImages only, option \"-ia\" or \"install-appimage\":
 
 				${LightBlue}am -ia --user {PROGRAM}\033[0m
 				${LightBlue}am -ia --user --debug {PROGRAM}
 				${LightBlue}am -ia --user --force-latest {PROGRAM}
-				${LightBlue}am -ia --user --debug --force-latest {PROGRAM}\033[0m
+				${LightBlue}am -ia --user --icons {PROGRAM}
+				${LightBlue}am -ia --user --debug --force-latest {PROGRAM}
+				${LightBlue}am -ia --user --debug --force-latest --icons {PROGRAM}\033[0m
 
 			- External AppImages can be installed like this as well, option \"-e\" or \"extra\":
 

@@ -374,27 +374,30 @@ Set a dedicated $HOME directory for one or more AppImages.
 
 **Description**:
 
-Allow installed apps to use system icon themes. You can specify the name of the apps to change or use the "`--all`" flag to change all of them at once. This will remove the icon path from the .desktop file and add the symbolic link of all available icons in the `~/.local/share/icons/hicolor/scalable/apps` directory.
+Allow installed apps to use system icon themes. You can specify the name of the apps to change or use the "`--all`" flag to change all of them at once. This will remove the icon path from the .desktop file and add the symbolic link of all available icons in the `~/.local/share/icons/hicolor/scalable/apps` directory. The "`--icons`" 
+ option can be used as "flag" in the "`-i`" and "`-ia`" options.
 
 ------------------------------------------------------------------------
 ### `install`, `-i`
 
-		am -i {PROGRAM}
-		am -i --debug {PROGRAM}
-		am -i --force-latest {PROGRAM}
+ 		am -i {PROGRAM}
+ 		am -i --debug {PROGRAM}
+ 		am -i --force-latest {PROGRAM}
+ 		am -i --icons {PROGRAM}
 
 **Description**:
 
-Install one or more programs or libraries from the list. With the "`--debug`" option you can see log messages to debug the script. For more details on "`--force-latest`", see the dedicated option, below.
+Install one or more programs or libraries from the list. With the "`--debug`" option you can see log messages to debug the script. For more details on "`--force-latest`", see the dedicated option, below. Use the "`--icons`" flag to allow the program to use icon themes.
 
 NOTE: Since this is an "install" option, you can add the "`--user`" flag to install apps locally. See "`--user`" at the bottom to learn more.
 
 ------------------------------------------------------------------------
 ### `install-appimage`, `-ia`
 
-		am -ia {PROGRAM}
-		am -ia --debug {PROGRAM}
-		am -ia --force-latest {PROGRAM}
+ 		am -ia {PROGRAM}
+ 		am -ia --debug {PROGRAM}
+ 		am -ia --force-latest {PROGRAM}
+ 		am -ia --icons {PROGRAM}
 
 **Description**:
 
@@ -554,6 +557,15 @@ Undo "`--devmode-enable`" (see below).
 Use the development branch (at your own risk).
 
 ------------------------------------------------------------------------
+### `--disable-notifications`
+
+		am --disable-notifications
+
+**Description**:
+
+Disable notifications during apps update.
+
+------------------------------------------------------------------------
 ### `--disable-sandbox`
 
 		am --disable-sandbox {PROGRAM}
@@ -561,6 +573,15 @@ Use the development branch (at your own risk).
 **Description**:
 
 Disable the sandbox for the selected app.
+
+------------------------------------------------------------------------
+### `--enable-notifications`
+
+		am --enable-notifications
+
+**Description**:
+
+Eable notifications during apps update (nulls "`--disable-notifications`").
 
 ------------------------------------------------------------------------
 ### `--force-latest`
@@ -606,16 +627,20 @@ The "`--user`" option can also be used just as a "flag" for installation options
 
 - Also suboptions of "`-i`" can work with this flag:
 
-		am -i --user --debug {PROGRAM}
-		am -i --user --force-latest {PROGRAM}
-		am -i --user --debug --force-latest {PROGRAM}
+ 		am -i --user --debug {PROGRAM}
+ 		am -i --user --force-latest {PROGRAM}
+ 		am -i --user --icons {PROGRAM}
+ 		am -i --user --debug --force-latest {PROGRAM}
+ 		am -i --user --debug --force-latest --icons {PROGRAM}
 
 - Same for AppImages only, option "`-ia`" or "`install-appimage`":
 
-		am -ia --user --user {PROGRAM}
-		am -ia --user --debug {PROGRAM}
-		am -ia --user --force-latest {PROGRAM}
-		am -ia --user --debug --force-latest {PROGRAM}
+	 	am -ia --user {PROGRAM}
+	 	am -ia --user --debug {PROGRAM}
+ 		am -ia --user --force-latest {PROGRAM}
+	 	am -ia --user --icons {PROGRAM}
+	 	am -ia --user --debug --force-latest {PROGRAM}
+	 	am -ia --user --debug --force-latest --icons {PROGRAM}
 
 - External AppImages can be installed like this as well, option "`-e`" or "`extra`":
 
