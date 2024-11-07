@@ -554,6 +554,15 @@ Undo "`--devmode-enable`" (see below).
 Use the development branch (at your own risk).
 
 ------------------------------------------------------------------------
+### `--disable-notifications`
+
+		am --disable-notifications
+
+**Description**:
+
+Disable notifications during apps update.
+
+------------------------------------------------------------------------
 ### `--disable-sandbox`
 
 		am --disable-sandbox {PROGRAM}
@@ -561,6 +570,15 @@ Use the development branch (at your own risk).
 **Description**:
 
 Disable the sandbox for the selected app.
+
+------------------------------------------------------------------------
+### `--enable-notifications`
+
+		am --enable-notifications
+
+**Description**:
+
+Eable notifications during apps update (nulls "`--disable-notifications`").
 
 ------------------------------------------------------------------------
 ### `--force-latest`
