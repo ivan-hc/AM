@@ -48,10 +48,17 @@ _download() {
 
 #--------------------------------------------------------------------------
 # INSTALL
-# If you use the --latest option, add the "latest" flag to scripts that point to a very common "release"
 _if_latest() {
 	if echo "$FLAGS" | grep -q -- '--force-latest'; then
+		# If you use the --latest option, add the "latest" flag to scripts that point to a very common "release"
 		sed -i 's#/releases #/releases/latest #g' ./"$arg"
+	fi
+}
+
+_if_icons() {
+	if echo "$FLAGS" | grep -q -- '--icons'; then
+		# Install the app so that it can rely on an icon theme (if available)
+		sed -i "s#Icon=/opt/\$APP/icons/#Icon=#g" ./"$arg"
 	fi
 }
 
@@ -120,6 +127,10 @@ _post_installation_processes() {
 			-e "s#Exec=\$APP#Exec=$BINDIR/\$APP#g" \
 			-e "s#Exec=/usr/bin/#Exec=$BINDIR/#g" \
 			-e "s#Exec=/opt/#Exec=$BINDIR/#g" "$DATADIR"/applications/*-AM.desktop 2>/dev/null
+	fi
+	if echo "$FLAGS" | grep -q -- '--icons'; then
+		# Export all icons for hicolor theme usage
+		_icon_theme_export_to_datadir 2>/dev/null
 	fi
 }
 
@@ -229,6 +240,7 @@ _install_arg() {
 	fi
 	_spooky_check || return 1
 	_if_debug
+	_if_icons
 	_if_latest
 	_apply_patches
 	echo ""
@@ -335,6 +347,7 @@ case "$1" in
 			echo " USAGE: $AMCLI $1 [ARGUMENT]"
 			echo " USAGE: $AMCLI $1 --debug [ARGUMENT]"
 			echo " USAGE: $AMCLI $1 --force-latest [ARGUMENT]"
+			echo " USAGE: $AMCLI $1 --icons [ARGUMENT]"
 			[ "$AMCLI" = "am" ] && echo " USAGE: $AMCLI $1 --user [ARGUMENT]"
 			exit 1
 			;;
