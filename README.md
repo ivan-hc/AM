@@ -387,7 +387,7 @@ Allow installed apps to use system icon themes. You can specify the name of the 
 
 **Description**:
 
-Install one or more programs or libraries from the list. With the "`--debug`" option you can see log messages to debug the script. For more details on "`--force-latest`", see the dedicated option, below. Use the "`--icons`" flag to allow the program to use icon themes.
+Install one or more programs or libraries from the list. With the "`--debug`" option you can see log messages to debug the script. For more details on "`--force-latest`", see the dedicated option, below. Use the "`--icons`" flag to allow the program to use icon themes. It can also be extended with additional flags (see "`--toolpack`").
 
 NOTE: Since this is an "install" option, you can add the "`--user`" flag to install apps locally. See "`--user`" at the bottom to learn more.
 
@@ -420,7 +420,7 @@ Prevent an application being updated, if it has an"AM-updater" script.
 
 **Description**:
 
-Shows the list of all the apps available, or just the AppImages.
+Shows the list of all the apps available, or just the AppImages. It can also be extended with additional flags (see "`--toolpack`").
 
 ------------------------------------------------------------------------
 ### `newrepo`, `neodb`
@@ -462,7 +462,7 @@ Overwrite apps with snapshots saved previously (see "-b").
 
 **Description**:
 
-Search for keywords in the list of available applications, add the "`--appimages`" option to list only the AppImages or add "`--pkg`" to list multiple programs at once.
+Search for keywords in the list of available applications, add the "`--appimages`" option to list only the AppImages or add "`--pkg`" to list multiple programs at once. It can also be extended with additional flags (see "`--toolpack`").
 
 ------------------------------------------------------------------------
 ### `remove`, `-r`
@@ -609,6 +609,18 @@ Drag/drop one or more AppImages in the terminal and embed them in the apps menu 
 **Description**:
 
 Switch "AM" back to "AM" from "AppMan Mode" (see "`--user`").
+
+------------------------------------------------------------------------
+### `--toolpack`
+
+                am -i --toolpack {PROGRAM}
+                am -i --toolpack --user {PROGRAM}
+                am -l --toolpack
+                am -q --toolpack {KEYWORD}
+ 
+**Description**:
+
+This is a flag to use in "`-i`" to install Toolpack programs, in "`-l`" to list all available Toolpacks, and "`-q`" to search the Toolpack list. Toolpack is a collection of programs external to the "AM" database. Visit https://github.com/Azathothas/Toolpacks to learn more.
 
 ------------------------------------------------------------------------
 ### `--user`, `appman`
