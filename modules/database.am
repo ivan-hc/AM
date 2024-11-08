@@ -12,6 +12,13 @@ _about_show_markdown() {
 		| sed '1,${ /^\s*#/ d; /^\s*!/ d; /\[Applications]/d; /\ --- /d; /\ | - | /d; /\!\[/d; }' \
 		| sed '$!N;s/^\s*\n\s*$//;P;D')
 		echo "$markdown_page" | fold -sw 72 | sed 's/^ //g; s/^/ /g'
+	elif curl -Ls "$toolpack_readme" | grep -q "^| $arg " || curl -Ls "$toolpack_readme" | grep -q "^| $(echo "$arg" | sed 's/\.toolpack//g') "; then
+		toolpack_appname=$(echo "$arg" | sed 's/\.toolpack//g')
+		toolpack_md=$(curl -Ls "$toolpack_readme")
+		toolpack_arg=$(echo "$toolpack_md" | grep -i "^| $toolpack_appname " | tr '|' '\n' | cut -c 2- | grep .)
+		toolpack_about_description=$(echo "$toolpack_arg" | awk -F: "NR==$toolpack_description")
+		toolpack_about_site=$(echo "$toolpack_arg" | awk -F: "NR==$toolpack_site")
+		printf "\n%b\n\nSOURCE: %b\n" "$toolpack_about_description" "$toolpack_about_site" | fold -sw 72 | sed 's/^ //g; s/^/ /g'
 	else
 		printf ' "%s" IS NOT A VALID ARGUMENT\n' "$package_name"
 	fi
@@ -22,7 +29,7 @@ _about_page() {
 	package_name="${Green}$1\033[0m"
 	markdown_url="$AMCATALOGUEMARKDOWNS/${1}.md"
 	printf " PACKAGE: %b\n" "$package_name"
-	app_name=$(echo "$1" | sed 's/-appimage//g; s/debian-testing-//g')
+	app_name=$(echo "$1" | sed 's/-appimage//g; s/debian-testing-//g; s/\.toolpack//g')
 	argpath=$(echo "$ARGPATHS" | grep "/$app_name$")
 	if [ -f "$argpath/remove" ]; then
 		app_status="installed\033[0m"
@@ -350,6 +357,11 @@ case "$1" in
 		entries="$(echo "$@" | cut -f2- -d ' ')" # Removes first argument
 		for arg in $entries; do
 			if curl -o /dev/null -sIf "$AMCATALOGUEMARKDOWNS/${arg}.md" 1>/dev/null; then
+				_about_page "$arg"
+			elif curl -Ls "$toolpack_readme" | grep -q "^| $arg "; then
+				arg="$arg.toolpack"
+				_about_page "$arg"
+			elif echo "$arg" | grep -q ".toolpack$"; then
 				_about_page "$arg"
 			else
 				printf " ERROR: %b not found\033[0m\n" "${RED}\"$arg\""
