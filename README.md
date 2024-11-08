@@ -754,6 +754,9 @@ Below you can access documentation pages for common issues and frequently asked 
 - *[pkg2appimage](https://github.com/AppImage/pkg2appimage), create AppImages on the fly from existing .deb packages*
 - *[repology](https://github.com/repology), the encyclopedia of all software versions*
 
+#### Partner projects, i.e. those that actively contribute to this project
+- *[Toolpacks](https://github.com/Azathothas/Toolpacks), Largest Collection of Multi-Platform Pre-Compiled Static Binaries*
+
 #### My other projects
 - *[AppImaGen](https://github.com/ivan-hc/AppImaGen), easily create AppImages from Ubuntu PPAs or Debian using pkg2appimage and appimagetool*
 - *[ArchImage](https://github.com/ivan-hc/ArchImage), create AppImages for all distributions using Arch Linux packages. Powered by JuNest*
