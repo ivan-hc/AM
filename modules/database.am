@@ -324,12 +324,32 @@ _list_appimages() {
 	AVAILABLE_APPIMAGES_NUMBER=$(grep -e "$" -c "$AMCACHEDIR/$ARCH-appimages")
 }
 
+_list_toolpacks() {
+	# Determine the number of available apps
+	if ! test -f "$AMCACHEDIR/$ARCH-toolpack"; then
+		toolpack_md=$(curl -Ls "$toolpack_readme")
+		TOOLPACK_NAMES=$(echo "$toolpack_md" | cut -d' ' -f2- | awk '{print $1}')
+		for toolpack in $TOOLPACK_NAMES; do
+			toolpack_arg=$(echo "$toolpack_md" | grep -i "^| $toolpack " | tr '|' '\n' | cut -c 2- | grep .) \
+			&& toolpack_about_description=$(echo "$toolpack_arg" | awk -F: "NR==$toolpack_description") \
+			&& echo "◆ $toolpack : $toolpack_about_description" >> "$AMCACHEDIR/$ARCH-toolpack" &
+		done
+	fi
+	AVAILABLE_TOOLPACKS_NUMBER=$(grep -e "$" -c "$AMCACHEDIR/$ARCH-toolpack")
+}
+
 _list_msg_head() {
 	echo "" && echo "$MESSAGE" && echo "" && echo "$MESSAGE2" && echo ""
 }
 
 _list_msg_footer() {
 	echo "$LIST" && echo ""
+}
+
+_list_toolpacks_msg() {
+	_list_msg_head
+	echo " LIST OF THE $AVAILABLE_TOOLPACKS_NUMBER TOOLPACK PROGRAMS AVAILABLE:"
+	_list_msg_footer
 }
 
 _list_appimages_msg() {
@@ -391,6 +411,10 @@ case "$1" in
 			_list_appimages
 			LIST=$(sort "$AMCACHEDIR/$ARCH-appimages" | _pretty_list)
 			_list_appimages_msg | less -Ir
+		elif [ "$2" = --toolpack ]; then
+			_list_toolpacks
+			LIST=$(sort "$AMCACHEDIR/$ARCH-toolpack" | _pretty_list)
+			_list_toolpacks_msg | less -Ir
 		else
 			LIST=$(sort "$AMDATADIR/$ARCH-apps" | _pretty_list)
 			_list_apps_msg | less -Ir
@@ -402,7 +426,8 @@ case "$1" in
 		if [ -z "$2" ]; then
 			echo " USAGE: $AMCLI $1 [ARGUMENT]"
 			echo "        $AMCLI $1 --appimages [ARGUMENT]"
-			echo "        $AMCLI $1 --pkg [ARGUMENT]"; exit 1
+			echo "        $AMCLI $1 --pkg [ARGUMENT]"
+			echo "        $AMCLI $1 --toolpack [ARGUMENT]"; exit 1
 		fi
 		wget -q --tries=10 --timeout=20 --spider https://github.com && _completion_lists
 		if [ "$2" = --pkg ]; then
@@ -415,6 +440,12 @@ case "$1" in
 			pattern="$(echo "$entries" | sed 's/ /(?=.*/g; s/$/)/g; s/(/)(/g; s/^/(?=.*/g;')"
 			_list_appimages
 			grep -Pi "$pattern" "$AMCACHEDIR/$ARCH-appimages" | _pretty_list_compat
+		elif [ "$2" = --toolpack ]; then
+			entries="$(echo "$@" | cut -f3- -d ' ')"
+			printf "\n Search results for \"%s\":\n\n"  "$entries" | tr '[:lower:]' '[:upper:]'
+			pattern="$(echo "$entries" | sed 's/ /(?=.*/g; s/$/)/g; s/(/)(/g; s/^/(?=.*/g;')"
+			_list_toolpacks
+			grep -Pi "$pattern" "$AMCACHEDIR/$ARCH-toolpack" | _pretty_list_compat
 		else
 			entries="$(echo "$@" | cut -f2- -d ' ')"
 			printf "\n Search results for \"%s\":\n\n"  "$entries" | tr '[:lower:]' '[:upper:]'
