@@ -223,7 +223,9 @@ Another feature of "AM" is extensibility, thanks to the management of applicatio
 These databases have the task of supporting and enriching the list of applications that can be installed via "AM". Here are the ones currently supported:
 - "[Toolpacks](https://github.com/Azathothas/Toolpacks)", the flag to use is `--toolpack`
 
-Third-party databases can show basic information normally with the option `-a` or `about`, no flag is needed here. However, the name of the package will be shown with an extension equivalent to the flag used to install it (for example `{PROGRAM}` will be `{PROGRAM}.toolpack` if coming from the "Toolpacks" database).
+Third-party databases can show basic information normally with the option `-a` or `about`, no flag is needed here. However, the name of the package will be shown with an extension equivalent to the flag used to install it. For example `{PROGRAM}` will be `{PROGRAM}.toolpack` if coming from the "Toolpacks" database.
+
+Same thing, you can use `am -i {PROGRAM}.toolpack` or `am -i --user {PROGRAM}.toolpack` to install the program without using the flag.
 
 ------------------------------------------------------------------------
 
@@ -635,6 +637,8 @@ Switch "AM" back to "AM" from "AppMan Mode" (see "`--user`").
 **Description**:
 
 This is a flag to use in "`-i`" to install Toolpack programs, in "`-l`" to list all available Toolpacks, and "`-q`" to search the Toolpack list. Toolpack is a collection of programs external to the "AM" database. Visit https://github.com/Azathothas/Toolpacks to learn more.
+
+NOTE, for installations you can use "`.toolpack`" as the package extension instead of using the flag.
 
 ------------------------------------------------------------------------
 ### `--user`, `appman`
