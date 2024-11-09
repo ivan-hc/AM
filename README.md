@@ -46,6 +46,7 @@ You can use the command `am -a {PROGRAM}` to view the description and get the so
  - [How are apps installed](#how-are-apps-installed)
  - [How to set the path to local apps](#how-to-set-the-path-to-local-apps)
  - [What programs can be installed](#what-programs-can-be-installed)
+   - [Supported third-party databases](#supported-third-party-databases)
 
 [How to update all programs, for real!](#how-to-update-all-programs-for-real)
  - [How to update all installed apps](#how-to-update-all-installed-apps)
@@ -210,6 +211,19 @@ NOTE: by modifying the contents of `~/.config/appman`, you will only change the 
 The database aims to be a reference point where you can download all the AppImage packages scattered around the web, otherwise unobtainable, as you would expect from any package manager, through specific installation scripts for each application, as happens with the AUR PKGBUILDs, on Arch Linux. You can see all of them [here](https://github.com/ivan-hc/AM/tree/main/programs), divided by architecture.
 
 You can view basic information, site links and sources using the related command `am -a {PROGRAM}`, or visit [**portable-linux-apps.github.io/apps**](https://portable-linux-apps.github.io/apps).
+
+#### Supported third-party databases
+Another feature of "AM" is extensibility, thanks to the management of applications from external databases through the use of dedicated "flags" to be used during the installation process (option `-i` or `install`), the creation of lists (`-l` or `list`) and searches (`-q` or `query`)
+```
+                am -i --{FLAG} {PROGRAM}
+                am -i --{FLAG} --user {PROGRAM}
+                am -l --{FLAG}
+                am -q --{FLAG} {KEYWORD}
+```
+These databases have the task of supporting and enriching the list of applications that can be installed via "AM". Here are the ones currently supported:
+- "[Toolpacks](https://github.com/Azathothas/Toolpacks)", the flag to use is `--toolpack`
+
+Third-party databases can show basic information normally with the option `-a` or `about`, no flag is needed here. However, the name of the package will be shown with an extension equivalent to the flag used to install it (for example `{PROGRAM}` will be `{PROGRAM}.toolpack` if coming from the "Toolpacks" database).
 
 ------------------------------------------------------------------------
 
