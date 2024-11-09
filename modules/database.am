@@ -4,8 +4,9 @@
 # THIS MODULE INCLUDES ALL THE ACTIONS INTENDED FOR THE MANAGEMENT OF LISTS AND SINGLE PAGES
 ############################################################################################
 
-#--------------------------------------------------------------------------
-# ABOUT
+################################################################################
+#				ABOUT
+################################################################################
 _about_show_markdown() {
 	if curl -o /dev/null -sIf "$markdown_url"; then
 		markdown_page=$(curl -Ls "$markdown_url" \
@@ -77,8 +78,9 @@ _about_page() {
 	_about_show_markdown
 }
 
-#--------------------------------------------------------------------------
-# FILES
+################################################################################
+#				FILES
+################################################################################
 _files_header() {
 	echo ""
 	APPSNUMB=$(find "$APPSPATH" -type f -name 'remove' -exec grep -L 'usr/local/lib' {} \; 2>/dev/null | sed -r 's|/[^/]+$||' | sort | uniq | wc -l)
@@ -101,16 +103,7 @@ _files_header() {
 	echo ""
 }
 
-_files_sizes() {
-	if grep -q "usr/local/lib" ./"$arg"/remove; then
-		LIBNAME=$(<"$APPSPATH"/"$arg"/remove tr ' ' '\n' | grep "usr/local/lib" | head -1 | sed 's/*//g')
-		SIZE=$(du -sh "$LIBNAME"* | cut -f1 | sort -rh | head -1)
-	else
-		SIZE=$(du -sh -- "$arg" | cut -f1 -d"	")
-	fi
-	SIZE=$(echo "$SIZE" | sed 's/.$/ &/; s/$/iB/')
-	echo " ◆ $arg	|	$SIZE" >> "$AMCACHEDIR"/files-sizes
-}
+# Functions to determine file's type
 
 _files_if_binary() {
 	if file ./"$arg"/* | grep "static" >/dev/null 2>&1; then
@@ -174,6 +167,29 @@ _files_type() {
 	fi
 }
 
+# Function to determine file's size
+_files_sizes() {
+	if grep -q "usr/local/lib" ./"$arg"/remove; then
+		LIBNAME=$(<"$APPSPATH"/"$arg"/remove tr ' ' '\n' | grep "usr/local/lib" | head -1 | sed 's/*//g')
+		SIZE=$(du -sh "$LIBNAME"* | cut -f1 | sort -rh | head -1)
+	else
+		SIZE=$(du -sh -- "$arg" | cut -f1 -d"	")
+	fi
+	SIZE=$(echo "$SIZE" | sed 's/.$/ &/; s/$/iB/')
+	echo " ◆ $arg	|	$SIZE" >> "$AMCACHEDIR"/files-sizes
+}
+
+# Function to determine file's database
+_files_db() {
+	if test -f "$APPSPATH"/"$arg"/.am-installer/*toolpack; then
+		DB="toolpacks"
+	else
+		DB="am"
+	fi
+	echo " ◆ $arg	|	$DB" >> "$AMCACHEDIR"/files-db
+}
+
+# Functions to create file's table
 _files_files() {
 	cd "$APPSPATH" || exit 1
 	INSTALLED_APPS=$(find . -name 'remove' -printf "%h\n" 2>/dev/null | du -sh -- * 2> /dev/null | sort -rh | sed 's@.*	@@')
@@ -187,10 +203,11 @@ _files_files() {
 			fi
 		done
 	fi
-	rm -f "$AMCACHEDIR"/files-sizes
+	rm -f "$AMCACHEDIR"/files-sizes "$AMCACHEDIR"/files-db
 	for arg in $INSTALLED_APPS; do
 		if test -f ./"$arg"/remove 2>/dev/null; then
 			_files_sizes
+			_files_db
 		fi
 	done
 }
@@ -204,7 +221,8 @@ _files() {
 			APPVERSION=$(grep -w " ◆ $arg	|" "$AMCACHEDIR"/version-args | tr '	' '\n' | tail -1)
 			APPTYPE=$(grep -w " ◆ $arg	|" "$AMCACHEDIR"/files-type | tr '	' '\n' | tail -1)
 			APPSYZE=$(grep -w " ◆ $arg	|" "$AMCACHEDIR"/files-sizes | tr '	' '\n' | tail -1)
-			echo " ◆ $arg	|	$APPVERSION	|	$APPTYPE	|	$APPSYZE" >> "$AMCACHEDIR"/files-args
+			APPDB=$(grep -w " ◆ $arg	|" "$AMCACHEDIR"/files-db | tr '	' '\n' | tail -1)
+			echo " ◆ $arg	|	$APPDB	|	$APPVERSION	|	$APPTYPE	|	$APPSYZE" >> "$AMCACHEDIR"/files-args
 		fi
 	done
 }
@@ -231,8 +249,8 @@ _files_sort_by_name() {
 	_files_header
 	rm -f "$AMCACHEDIR"/files-args-byname
 	_files
-	echo "- APPNAME | VERSION | TYPE | SIZE " > "$AMCACHEDIR"/files-args-byname
-	echo "- ------- | ------- | ---- | ----" >> "$AMCACHEDIR"/files-args-byname
+	echo "- APPNAME | DB | VERSION | TYPE | SIZE " > "$AMCACHEDIR"/files-args-byname
+	echo "- ------- | -- | ------- | ---- | ----" >> "$AMCACHEDIR"/files-args-byname
 	sort "$AMCACHEDIR"/files-args 2>/dev/null >> "$AMCACHEDIR"/files-args-byname
 	column -t "$AMCACHEDIR"/files-args-byname
 	_files_total_size
@@ -243,16 +261,17 @@ _files_sort_by_size() {
 	_files_header
 	rm -f "$AMCACHEDIR"/files-args-bysize
 	_files
-	echo "- APPNAME | VERSION | TYPE | SIZE " > "$AMCACHEDIR"/files-args-bysize
-	echo "- ------- | ------- | ---- | ----" >> "$AMCACHEDIR"/files-args-bysize
+	echo "- APPNAME | DB | VERSION | TYPE | SIZE " > "$AMCACHEDIR"/files-args-bysize
+	echo "- ------- | -- | ------- | ---- | ----" >> "$AMCACHEDIR"/files-args-bysize
 	cat "$AMCACHEDIR"/files-args >> "$AMCACHEDIR"/files-args-bysize 2>/dev/null
 	column -t "$AMCACHEDIR"/files-args-bysize
 	_files_total_size
 	_files_appimage_type_notes
 }
 
-#--------------------------------------------------------------------------
-# LIST/QUERY
+################################################################################
+#				LIST/QUERY
+################################################################################
 _pretty_list() {
 	# Remove references to URLs, "-a" elements in "-l" and "-q"
 	sed -E 's#(http|https|ftp)://[^ ]*##g; s#(SITE|SOURCE):##g; s/^/\n/g' | _colors | fold -sw 75 | sed 's/^/   /g; s/  ◆ /◆ /g; s/  :/ :/g'
