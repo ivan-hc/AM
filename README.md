@@ -431,12 +431,13 @@ Prevent an application being updated, if it has an"AM-updater" script.
 ------------------------------------------------------------------------
 ### `list`, `-l`
 
-		am -l
-		am -l --appimages
+                am -l
+                am -l --all
+                am -l --appimages
 
 **Description**:
 
-Shows the list of all the apps available, or just the AppImages. It can also be extended with additional flags (see "`--toolpack`").
+Shows the list of all the apps available, or just the AppImages. It can also be extended with additional flags, the "`--all`" flag allows you to consult the set of all supported databases (see "`--toolpack`").
 
 ------------------------------------------------------------------------
 ### `newrepo`, `neodb`
@@ -472,13 +473,14 @@ Overwrite apps with snapshots saved previously (see "-b").
 ------------------------------------------------------------------------
 ### `query`, `-q`
 
-		am -q {KEYWORD}
-		am -q --appimages {KEYWORD}
-		am -q --pkg {PROGRAM1} {PROGRAM2}
+                am -q {KEYWORD}
+                am -q --all {KEYWORD}
+                am -q --appimages {KEYWORD}
+                am -q --pkg {PROGRAM1} {PROGRAM2}
 
 **Description**:
 
-Search for keywords in the list of available applications, add the "`--appimages`" option to list only the AppImages or add "`--pkg`" to list multiple programs at once. It can also be extended with additional flags (see "`--toolpack`").
+Search for keywords in the list of available applications, add the "`--appimages`" option to list only the AppImages or add "`--pkg`" to list multiple programs at once. It can also be extended with additional flags, the "`--all`" flag allows you to consult the set of all supported databases (see "`--toolpack`").
 
 ------------------------------------------------------------------------
 ### `remove`, `-r`
