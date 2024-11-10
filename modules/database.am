@@ -4,14 +4,22 @@
 # THIS MODULE INCLUDES ALL THE ACTIONS INTENDED FOR THE MANAGEMENT OF LISTS AND SINGLE PAGES
 ############################################################################################
 
-#--------------------------------------------------------------------------
-# ABOUT
+################################################################################
+#				ABOUT
+################################################################################
 _about_show_markdown() {
 	if curl -o /dev/null -sIf "$markdown_url"; then
 		markdown_page=$(curl -Ls "$markdown_url" \
 		| sed '1,${ /^\s*#/ d; /^\s*!/ d; /\[Applications]/d; /\ --- /d; /\ | - | /d; /\!\[/d; }' \
 		| sed '$!N;s/^\s*\n\s*$//;P;D')
 		echo "$markdown_page" | fold -sw 72 | sed 's/^ //g; s/^/ /g'
+	elif curl -Ls "$toolpack_readme" | grep -q "^| $arg " || curl -Ls "$toolpack_readme" | grep -q "^| $(echo "$arg" | sed 's/\.toolpack//g') "; then
+		toolpack_appname=$(echo "$arg" | sed 's/\.toolpack//g')
+		toolpack_md=$(curl -Ls "$toolpack_readme")
+		toolpack_arg=$(echo "$toolpack_md" | grep -i "^| $toolpack_appname " | tr '|' '\n' | cut -c 2- | grep .)
+		toolpack_about_description=$(echo "$toolpack_arg" | awk -F: "NR==$toolpack_description")
+		toolpack_about_site=$(echo "$toolpack_arg" | awk -F: "NR==$toolpack_site")
+		printf "\n%b\n\nSOURCE: %b\n" "$toolpack_about_description" "$toolpack_about_site" | fold -sw 72 | sed 's/^ //g; s/^/ /g'
 	else
 		printf ' "%s" IS NOT A VALID ARGUMENT\n' "$package_name"
 	fi
@@ -22,7 +30,7 @@ _about_page() {
 	package_name="${Green}$1\033[0m"
 	markdown_url="$AMCATALOGUEMARKDOWNS/${1}.md"
 	printf " PACKAGE: %b\n" "$package_name"
-	app_name=$(echo "$1" | sed 's/-appimage//g; s/debian-testing-//g')
+	app_name=$(echo "$1" | sed 's/-appimage//g; s/debian-testing-//g; s/\.toolpack//g')
 	argpath=$(echo "$ARGPATHS" | grep "/$app_name$")
 	if [ -f "$argpath/remove" ]; then
 		app_status="installed\033[0m"
@@ -70,8 +78,9 @@ _about_page() {
 	_about_show_markdown
 }
 
-#--------------------------------------------------------------------------
-# FILES
+################################################################################
+#				FILES
+################################################################################
 _files_header() {
 	echo ""
 	APPSNUMB=$(find "$APPSPATH" -type f -name 'remove' -exec grep -L 'usr/local/lib' {} \; 2>/dev/null | sed -r 's|/[^/]+$||' | sort | uniq | wc -l)
@@ -94,16 +103,7 @@ _files_header() {
 	echo ""
 }
 
-_files_sizes() {
-	if grep -q "usr/local/lib" ./"$arg"/remove; then
-		LIBNAME=$(<"$APPSPATH"/"$arg"/remove tr ' ' '\n' | grep "usr/local/lib" | head -1 | sed 's/*//g')
-		SIZE=$(du -sh "$LIBNAME"* | cut -f1 | sort -rh | head -1)
-	else
-		SIZE=$(du -sh -- "$arg" | cut -f1 -d"	")
-	fi
-	SIZE=$(echo "$SIZE" | sed 's/.$/ &/; s/$/iB/')
-	echo " ◆ $arg	|	$SIZE" >> "$AMCACHEDIR"/files-sizes
-}
+# Functions to determine file's type
 
 _files_if_binary() {
 	if file ./"$arg"/* | grep "static" >/dev/null 2>&1; then
@@ -167,6 +167,35 @@ _files_type() {
 	fi
 }
 
+# Function to determine file's size
+_files_sizes() {
+	if grep -q "usr/local/lib" ./"$arg"/remove; then
+		LIBNAME=$(<"$APPSPATH"/"$arg"/remove tr ' ' '\n' | grep "usr/local/lib" | head -1 | sed 's/*//g')
+		SIZE=$(du -sh "$LIBNAME"* | cut -f1 | sort -rh | head -1)
+	else
+		SIZE=$(du -sh -- "$arg" | cut -f1 -d"	")
+	fi
+	SIZE=$(echo "$SIZE" | sed 's/.$/ &/; s/$/iB/')
+	echo " ◆ $arg	|	$SIZE" >> "$AMCACHEDIR"/files-sizes
+}
+
+# Function to determine file's database
+_files_db() {
+	if test -f "$APPSPATH"/"$arg"/.am-installer/*toolpack; then
+		DB="toolpacks"
+	elif [ "$arg" = am ]; then
+		DB="am"
+	elif test -f "$CACHEDIR"/extra/"$arg" || test -f "$APPSPATH"/"$arg"/.am-installer/"$arg" && ! grep -q "^APP=" "$APPSPATH"/"$arg"/.am-installer/"$arg"; then
+		DB="none"
+	elif test -f "$AMDATADIR/$ARCH-apps" && ! grep -q "^◆ $arg :" "$AMDATADIR/$ARCH-apps"; then
+		DB="unknown"
+	else
+		DB="am"
+	fi
+	echo " ◆ $arg	|	$DB" >> "$AMCACHEDIR"/files-db
+}
+
+# Functions to create file's table
 _files_files() {
 	cd "$APPSPATH" || exit 1
 	INSTALLED_APPS=$(find . -name 'remove' -printf "%h\n" 2>/dev/null | du -sh -- * 2> /dev/null | sort -rh | sed 's@.*	@@')
@@ -180,10 +209,11 @@ _files_files() {
 			fi
 		done
 	fi
-	rm -f "$AMCACHEDIR"/files-sizes
+	rm -f "$AMCACHEDIR"/files-sizes "$AMCACHEDIR"/files-db
 	for arg in $INSTALLED_APPS; do
 		if test -f ./"$arg"/remove 2>/dev/null; then
 			_files_sizes
+			_files_db
 		fi
 	done
 }
@@ -197,7 +227,8 @@ _files() {
 			APPVERSION=$(grep -w " ◆ $arg	|" "$AMCACHEDIR"/version-args | tr '	' '\n' | tail -1)
 			APPTYPE=$(grep -w " ◆ $arg	|" "$AMCACHEDIR"/files-type | tr '	' '\n' | tail -1)
 			APPSYZE=$(grep -w " ◆ $arg	|" "$AMCACHEDIR"/files-sizes | tr '	' '\n' | tail -1)
-			echo " ◆ $arg	|	$APPVERSION	|	$APPTYPE	|	$APPSYZE" >> "$AMCACHEDIR"/files-args
+			APPDB=$(grep -w " ◆ $arg	|" "$AMCACHEDIR"/files-db | tr '	' '\n' | tail -1)
+			echo " ◆ $arg	|	$APPDB	|	$APPVERSION	|	$APPTYPE	|	$APPSYZE" >> "$AMCACHEDIR"/files-args
 		fi
 	done
 }
@@ -224,8 +255,8 @@ _files_sort_by_name() {
 	_files_header
 	rm -f "$AMCACHEDIR"/files-args-byname
 	_files
-	echo "- APPNAME | VERSION | TYPE | SIZE " > "$AMCACHEDIR"/files-args-byname
-	echo "- ------- | ------- | ---- | ----" >> "$AMCACHEDIR"/files-args-byname
+	echo "- APPNAME | DB | VERSION | TYPE | SIZE " > "$AMCACHEDIR"/files-args-byname
+	echo "- ------- | -- | ------- | ---- | ----" >> "$AMCACHEDIR"/files-args-byname
 	sort "$AMCACHEDIR"/files-args 2>/dev/null >> "$AMCACHEDIR"/files-args-byname
 	column -t "$AMCACHEDIR"/files-args-byname
 	_files_total_size
@@ -236,16 +267,17 @@ _files_sort_by_size() {
 	_files_header
 	rm -f "$AMCACHEDIR"/files-args-bysize
 	_files
-	echo "- APPNAME | VERSION | TYPE | SIZE " > "$AMCACHEDIR"/files-args-bysize
-	echo "- ------- | ------- | ---- | ----" >> "$AMCACHEDIR"/files-args-bysize
+	echo "- APPNAME | DB | VERSION | TYPE | SIZE " > "$AMCACHEDIR"/files-args-bysize
+	echo "- ------- | -- | ------- | ---- | ----" >> "$AMCACHEDIR"/files-args-bysize
 	cat "$AMCACHEDIR"/files-args >> "$AMCACHEDIR"/files-args-bysize 2>/dev/null
 	column -t "$AMCACHEDIR"/files-args-bysize
 	_files_total_size
 	_files_appimage_type_notes
 }
 
-#--------------------------------------------------------------------------
-# LIST/QUERY
+################################################################################
+#				LIST/QUERY
+################################################################################
 _pretty_list() {
 	# Remove references to URLs, "-a" elements in "-l" and "-q"
 	sed -E 's#(http|https|ftp)://[^ ]*##g; s#(SITE|SOURCE):##g; s/^/\n/g' | _colors | fold -sw 75 | sed 's/^/   /g; s/  ◆ /◆ /g; s/  :/ :/g'
@@ -313,8 +345,25 @@ _list_appimages() {
 		for appimage in $APPIMAGE_NAMES; do
 			grep "◆ $appimage :" "$AMDATADIR/$ARCH-apps" >> "$AMCACHEDIR/$ARCH-appimages" &
 		done
+		wait
 	fi
 	AVAILABLE_APPIMAGES_NUMBER=$(grep -e "$" -c "$AMCACHEDIR/$ARCH-appimages")
+}
+
+_list_toolpacks() {
+	# Determine the number of available apps
+	if ! test -f "$AMCACHEDIR/$ARCH-toolpack"; then
+		toolpack_md=$(curl -Ls "$toolpack_readme")
+		TOOLPACK_NAMES=$(echo "$toolpack_md" | cut -d' ' -f2- | awk '{print $1}')
+		for toolpack in $TOOLPACK_NAMES; do
+			toolpack_arg=$(echo "$toolpack_md" | grep -i "^| $toolpack " | tr '|' '\n' | cut -c 2- | grep .) \
+			&& toolpack_about_description=$(echo "$toolpack_arg" | awk -F: "NR==$toolpack_description" | sed 's/ $/./g') \
+			&& echo "◆ $toolpack : $toolpack_about_description" >> "$AMCACHEDIR/$ARCH-toolpack" &
+		done
+		wait
+		sort "$AMCACHEDIR/$ARCH-toolpack" | uniq > "$AMCACHEDIR/$ARCH-toolpack-new" && mv "$AMCACHEDIR/$ARCH-toolpack-new" "$AMCACHEDIR/$ARCH-toolpack" || exit 1
+	fi
+	AVAILABLE_TOOLPACKS_NUMBER=$(grep -e "$" -c "$AMCACHEDIR/$ARCH-toolpack")
 }
 
 _list_msg_head() {
@@ -323,6 +372,12 @@ _list_msg_head() {
 
 _list_msg_footer() {
 	echo "$LIST" && echo ""
+}
+
+_list_toolpacks_msg() {
+	_list_msg_head
+	echo " LIST OF THE $AVAILABLE_TOOLPACKS_NUMBER TOOLPACK PROGRAMS AVAILABLE:"
+	_list_msg_footer
 }
 
 _list_appimages_msg() {
@@ -334,6 +389,15 @@ _list_appimages_msg() {
 _list_apps_msg() {
 	_list_msg_head
 	echo " LIST OF THE $AVAILABLE_APPS_NUMBER APPLICATIONS AVAILABLE IN THE 'AM' REPOSITORY:"
+	_list_msg_footer
+}
+
+_list_apps_all_msg() {
+	_list_msg_head
+	AVAILABLE_APPS_NUMBER=$(grep -v "ffwa-\|\"kdegames\"\|\"kdeutils\"\|\"node\"\|\"platform-tools\"" "$AMDATADIR/$ARCH-apps" | grep -e "$" -c)
+	AVAILABLE_TOOLPACKS_NUMBER=$(grep -e "$" -c "$AMCACHEDIR/$ARCH-toolpack")
+	AVAILABLE_TOTAL_PROGRAMS=$(("$AVAILABLE_APPS_NUMBER" + "$AVAILABLE_TOOLPACKS_NUMBER"))
+	echo " LIST OF THE $AVAILABLE_TOTAL_PROGRAMS PROGRAMS AVAILABLE IN ALL OUR SUPPORTED DATABASES:"
 	_list_msg_footer
 }
 
@@ -350,6 +414,11 @@ case "$1" in
 		entries="$(echo "$@" | cut -f2- -d ' ')" # Removes first argument
 		for arg in $entries; do
 			if curl -o /dev/null -sIf "$AMCATALOGUEMARKDOWNS/${arg}.md" 1>/dev/null; then
+				_about_page "$arg"
+			elif curl -Ls "$toolpack_readme" | grep -q "^| $arg "; then
+				arg="$arg.toolpack"
+				_about_page "$arg"
+			elif echo "$arg" | grep -q ".toolpack$"; then
 				_about_page "$arg"
 			else
 				printf " ERROR: %b not found\033[0m\n" "${RED}\"$arg\""
@@ -375,22 +444,43 @@ case "$1" in
 
 	'-l'|'list')
 		_list
-		if [ "$2" = --appimages ]; then
+		if [ "$2" = --all ]; then
+			_list_toolpacks
+			LIST=$(sort "$AMDATADIR/$ARCH-apps" "$AMCACHEDIR/$ARCH-toolpack" | uniq | _pretty_list)
+			_list_apps_all_msg | less -Ir
+			echo "$DIVIDING_LINE"
+			echo " $(("$AVAILABLE_APPS_NUMBER" + "$AVAILABLE_TOOLPACKS_NUMBER")) programs in all supported databases"
+			echo "$DIVIDING_LINE"
+		elif [ "$2" = --appimages ]; then
 			_list_appimages
 			LIST=$(sort "$AMCACHEDIR/$ARCH-appimages" | _pretty_list)
 			_list_appimages_msg | less -Ir
+			echo "$DIVIDING_LINE"
+			echo " $AVAILABLE_APPIMAGES_NUMBER AppImages in the \"AM\" database"
+			echo "$DIVIDING_LINE"
+		elif [ "$2" = --toolpack ]; then
+			_list_toolpacks
+			LIST=$(sort "$AMCACHEDIR/$ARCH-toolpack" | _pretty_list)
+			_list_toolpacks_msg | less -Ir
+			echo "$DIVIDING_LINE"
+			echo " $AVAILABLE_TOOLPACKS_NUMBER programs in the \"Toolpacks\" database"
+			echo "$DIVIDING_LINE"
 		else
 			LIST=$(sort "$AMDATADIR/$ARCH-apps" | _pretty_list)
 			_list_apps_msg | less -Ir
+			echo "$DIVIDING_LINE"
+			echo " $AVAILABLE_APPS_NUMBER programs in the \"AM\" database"
+			echo "$DIVIDING_LINE"
 		fi
-		#printf "\n$MESSAGE\n$MESSAGE2\n"
 		;;
 
 	'-q'|'query')
 		if [ -z "$2" ]; then
 			echo " USAGE: $AMCLI $1 [ARGUMENT]"
+			echo "        $AMCLI $1 --all [ARGUMENT]"
 			echo "        $AMCLI $1 --appimages [ARGUMENT]"
-			echo "        $AMCLI $1 --pkg [ARGUMENT]"; exit 1
+			echo "        $AMCLI $1 --pkg [ARGUMENT]"
+			echo "        $AMCLI $1 --toolpack [ARGUMENT]"; exit 1
 		fi
 		wget -q --tries=10 --timeout=20 --spider https://github.com && _completion_lists
 		if [ "$2" = --pkg ]; then
@@ -403,6 +493,18 @@ case "$1" in
 			pattern="$(echo "$entries" | sed 's/ /(?=.*/g; s/$/)/g; s/(/)(/g; s/^/(?=.*/g;')"
 			_list_appimages
 			grep -Pi "$pattern" "$AMCACHEDIR/$ARCH-appimages" | _pretty_list_compat
+		elif [ "$2" = --toolpack ]; then
+			entries="$(echo "$@" | cut -f3- -d ' ')"
+			printf "\n Search results for \"%s\":\n\n"  "$entries" | tr '[:lower:]' '[:upper:]'
+			pattern="$(echo "$entries" | sed 's/ /(?=.*/g; s/$/)/g; s/(/)(/g; s/^/(?=.*/g;')"
+			_list_toolpacks
+			grep -Pi "$pattern" "$AMCACHEDIR/$ARCH-toolpack" | _pretty_list_compat
+		elif [ "$2" = --all ]; then
+			entries="$(echo "$@" | cut -f3- -d ' ')"
+			printf "\n Search results for \"%s\":\n\n"  "$entries" | tr '[:lower:]' '[:upper:]'
+			pattern="$(echo "$entries" | sed 's/ /(?=.*/g; s/$/)/g; s/(/)(/g; s/^/(?=.*/g;')"
+			_list_toolpacks
+			sort "$AMCACHEDIR/$ARCH-toolpack" "$AMDATADIR/$ARCH-apps" | grep -Pi "$pattern" | _pretty_list_compat
 		else
 			entries="$(echo "$@" | cut -f2- -d ' ')"
 			printf "\n Search results for \"%s\":\n\n"  "$entries" | tr '[:lower:]' '[:upper:]'

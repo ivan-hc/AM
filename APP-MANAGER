@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="9.0.2"
+AMVERSION="9.1"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -360,6 +360,11 @@ function _am_newrepo_check() {
 
 _am_newrepo_check "$@"
 
+# 3RD PARTY SOURCES -- TOOLPACK
+toolpack_repo="https://github.com/Azathothas/Toolpacks"
+export toolpack_readme="https://bin.pkgforge.dev/${ARCH}/AM.txt"
+export toolpack_name="1" toolpack_description="2" toolpack_site="3" toolpack_dl="4" toolpack_ver="5"
+
 ################################################################################
 #				UTILITIES
 ################################################################################
@@ -369,12 +374,13 @@ available_options="about add apikey backup clean config disable downgrade downlo
 	install install-appimage launcher list lock neodb newrepo nolibfuse off on overwrite purge query remove sandbox \
 	select sync template test unlock update --all --appimages --apps --byname --config --convert --debug \
 	--devmode-disable --devmode-enable --disable-notifications --enable-notifications --force-latest --home --icons \
-	--launcher --less --pkg --rollback --disable-sandbox --sandbox --system --user"
+	--launcher --less --pkg --rollback --disable-sandbox --sandbox --system --toolpack --user"
 
 function _completion_lists() {
 	# Remove existing lists and download new ones
 	curl -Ls "$APPSLISTDB" > "$AMDATADIR/$arch-apps"
 	awk -v FS="(◆ | : )" '{print $2}' <"$AMDATADIR"/"$arch"-apps > "$AMDATADIR"/list
+	[ -f "$AMCACHEDIR/$ARCH-toolpack" ] && awk -v FS="(◆ | : )" '{print $2}' <"$AMCACHEDIR/$ARCH-toolpack" >> "$AMDATADIR"/list
 	# Append options to the list
 	for o in $available_options; do
 		echo "$o" >> "$AMDATADIR"/list
@@ -1104,7 +1110,7 @@ case "$1" in
 					${LightBlue}$AMCLI -i --force-latest {PROGRAM}
 					${LightBlue}$AMCLI -i --icons {PROGRAM}\033[0m
 
-			Description: Install one or more programs or libraries from the list. With the \"--debug\" option you can see log messages to debug the script. For more details on \"--force-latest\", see the dedicated option, below. Use the \"--icons\" flag to allow the program to use icon themes.
+			Description: Install one or more programs or libraries from the list. With the \"--debug\" option you can see log messages to debug the script. For more details on \"--force-latest\", see the dedicated option, below. Use the \"--icons\" flag to allow the program to use icon themes. It can also be extended with additional flags (see \"--toolpack\").
 
 			${Gold}install-appimage, -ia\033[0m
 
@@ -1124,9 +1130,10 @@ case "$1" in
 			${Gold}list, -l\033[0m
 
 					${LightBlue}$AMCLI -l
+					${LightBlue}$AMCLI -l --all
 					${LightBlue}$AMCLI -l --appimages\033[0m
 
-			Description: Shows the list of all the apps available, or just the AppImages.
+			Description: Shows the list of all the apps available, or just the AppImages. It can also be extended with additional flags, the \"--all\" flag allows you to consult the set of all supported databases (see \"--toolpack\").
 
 			${Gold}newrepo, neodb\033[0m
 
@@ -1153,10 +1160,11 @@ case "$1" in
 			${Gold}query, -q\033[0m
 
 					${LightBlue}$AMCLI -q {KEYWORD}
+					${LightBlue}$AMCLI -q --all {KEYWORD}
 					${LightBlue}$AMCLI -q --appimages {KEYWORD}
 					${LightBlue}$AMCLI -q --pkg {PROGRAM1} {PROGRAM2}\033[0m
 
-			Description: Search for keywords in the list of available applications, add the \"--appimages\" option to list only the AppImages or add \"--pkg\" to list multiple programs at once.
+			Description: Search for keywords in the list of available applications, add the \"--appimages\" option to list only the AppImages or add \"--pkg\" to list multiple programs at once. It can also be extended with additional flags, the \"--all\" flag allows you to consult the set of all supported databases (see \"--toolpack\").
 
 			${Gold}remove, -r\033[0m
 
@@ -1255,6 +1263,17 @@ case "$1" in
 					${LightBlue}am --system\033[0m
 
 			Description: Switch \"AM\" back to \"AM\" from \"AppMan Mode\" (see \"--user\").
+
+			${Gold}--toolpack\033[0m
+
+					${LightBlue}$AMCLI -i --toolpack {PROGRAM}\033[0m
+					${LightBlue}am -i --toolpack --user {PROGRAM}
+					${LightBlue}$AMCLI -l --toolpack
+					${LightBlue}$AMCLI -q --toolpack {KEYWORD}\033[0m
+
+			Description: This is a flag to use in \"-i\" to install Toolpack programs, in \"-l\" to list all available Toolpacks, and \"-q\" to search the Toolpack list. Toolpack is a collection of programs external to the \"AM\" database. Visit $toolpack_repo to learn more.
+
+			NOTE, for installations you can use \".toolpack\" as the package extension instead of using the flag.
 
 			${Gold}--user\033[0m
 
