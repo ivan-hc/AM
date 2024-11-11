@@ -101,6 +101,13 @@ _files_header() {
 		[ "$APPMAN_ON" = 1 ] && echo "- $APPSMESSAGE LOCALLY, AS \"APPMAN\"" || echo "- $APPSMESSAGE MANAGED BY \"$AMCLIUPPER\""
 	fi
 	echo ""
+	if test -f "$APPSPATH"/*/.am-installer/*.toolpack; then
+		files_table_header="- APPNAME | DB | VERSION | TYPE | SIZE "
+		files_table_header_lines="- ------- | -- | ------- | ---- | ----"
+	else
+		files_table_header="- APPNAME | VERSION | TYPE | SIZE "
+		files_table_header_lines="- ------- | ------- | ---- | ----"
+	fi
 }
 
 # Functions to determine file's type
@@ -228,7 +235,11 @@ _files() {
 			APPTYPE=$(grep -w " ◆ $arg	|" "$AMCACHEDIR"/files-type | tr '	' '\n' | tail -1)
 			APPSYZE=$(grep -w " ◆ $arg	|" "$AMCACHEDIR"/files-sizes | tr '	' '\n' | tail -1)
 			APPDB=$(grep -w " ◆ $arg	|" "$AMCACHEDIR"/files-db | tr '	' '\n' | tail -1)
-			echo " ◆ $arg	|	$APPDB	|	$APPVERSION	|	$APPTYPE	|	$APPSYZE" >> "$AMCACHEDIR"/files-args
+			if test -f "$APPSPATH"/*/.am-installer/*.toolpack; then
+				echo " ◆ $arg	|	$APPDB	|	$APPVERSION	|	$APPTYPE	|	$APPSYZE" >> "$AMCACHEDIR"/files-args
+			else
+				echo " ◆ $arg	|	$APPVERSION	|	$APPTYPE	|	$APPSYZE" >> "$AMCACHEDIR"/files-args
+			fi
 		fi
 	done
 }
@@ -255,8 +266,8 @@ _files_sort_by_name() {
 	_files_header
 	rm -f "$AMCACHEDIR"/files-args-byname
 	_files
-	echo "- APPNAME | DB | VERSION | TYPE | SIZE " > "$AMCACHEDIR"/files-args-byname
-	echo "- ------- | -- | ------- | ---- | ----" >> "$AMCACHEDIR"/files-args-byname
+	echo "$files_table_header" > "$AMCACHEDIR"/files-args-byname
+	echo "$files_table_header_lines" >> "$AMCACHEDIR"/files-args-byname
 	sort "$AMCACHEDIR"/files-args 2>/dev/null >> "$AMCACHEDIR"/files-args-byname
 	column -t "$AMCACHEDIR"/files-args-byname
 	_files_total_size
@@ -267,8 +278,8 @@ _files_sort_by_size() {
 	_files_header
 	rm -f "$AMCACHEDIR"/files-args-bysize
 	_files
-	echo "- APPNAME | DB | VERSION | TYPE | SIZE " > "$AMCACHEDIR"/files-args-bysize
-	echo "- ------- | -- | ------- | ---- | ----" >> "$AMCACHEDIR"/files-args-bysize
+	echo "$files_table_header" > "$AMCACHEDIR"/files-args-bysize
+	echo "$files_table_header_lines" >> "$AMCACHEDIR"/files-args-bysize
 	cat "$AMCACHEDIR"/files-args >> "$AMCACHEDIR"/files-args-bysize 2>/dev/null
 	column -t "$AMCACHEDIR"/files-args-bysize
 	_files_total_size
@@ -353,7 +364,7 @@ _list_appimages() {
 _list_toolpacks() {
 	# Determine the number of available apps
 	if ! test -f "$AMCACHEDIR/$ARCH-toolpack"; then
-		toolpack_md=$(curl -Ls "$toolpack_readme")
+		toolpack_md=$(curl -Ls "$toolpack_readme" | grep -v "\.appimage ")
 		TOOLPACK_NAMES=$(echo "$toolpack_md" | cut -d' ' -f2- | awk '{print $1}')
 		for toolpack in $TOOLPACK_NAMES; do
 			toolpack_arg=$(echo "$toolpack_md" | grep -i "^| $toolpack " | tr '|' '\n' | cut -c 2- | grep .) \
