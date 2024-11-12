@@ -305,9 +305,15 @@ _toolpack_handler() {
 	mkdir -p "$CACHEDIR/toolpack"
 	toolpack_version="curl -Ls "$toolpack_readme" | grep -i \"^| $arg \" | tr '|' '\\\n' | cut -c 2- | grep . | awk -F: \"NR==$toolpack_ver\""
 	toolpak_url="curl -Ls "$toolpack_readme" | grep -i \"^| $arg \" | tr '|' '\\\n' | cut -c 2- | grep . | awk -F: \"NR==$toolpack_dl\""
-	curl -Ls "$AMREPO"/templates/AM-SAMPLE-Archive > "$CACHEDIR/toolpack/$arg.toolpack" || exit 1
-	sed -i "s#APP=SAMPLE#APP=$arg#g; s#FUNCTION#$toolpack_version#g; s#wget \"\$version\"#wget \$($toolpak_url)#g" "$CACHEDIR/toolpack/$arg.toolpack"
-	sed -e '/\[ -e/ s/^#*/#/' -i "$CACHEDIR/toolpack/$arg.toolpack" 2>/dev/null
+	if echo "$arg" | grep -q "appbundle$"; then
+		curl -Ls "$AMREPO"/templates/AM-SAMPLE-AppBundle > "$CACHEDIR/toolpack/$arg.toolpack" || exit 1
+		sed -i "s#APP=SAMPLE#APP=$arg#g; s#FUNCTION#$toolpack_version#g; s#wget \"\$version\"#wget \$($toolpak_url)#g" "$CACHEDIR/toolpack/$arg.toolpack"
+		sed -i 's/\.dwfs.appbundle$//g; s/\.appbundle$//g' "$CACHEDIR/toolpack/$arg.toolpack"
+	else
+		curl -Ls "$AMREPO"/templates/AM-SAMPLE-Archive > "$CACHEDIR/toolpack/$arg.toolpack" || exit 1
+		sed -i "s#APP=SAMPLE#APP=$arg#g; s#FUNCTION#$toolpack_version#g; s#wget \"\$version\"#wget \$($toolpak_url)#g" "$CACHEDIR/toolpack/$arg.toolpack"
+		sed -e '/\[ -e/ s/^#*/#/' -i "$CACHEDIR/toolpack/$arg.toolpack" 2>/dev/null
+	fi
 	chmod a+x "$CACHEDIR/toolpack/$arg.toolpack"
 	arg="$CACHEDIR/toolpack/$arg.toolpack"
 }
