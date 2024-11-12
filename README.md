@@ -721,6 +721,7 @@ Below you can access the documentation pages related to the use of "AM", complet
   - [Option Three: "Firefox profiles"](docs/guides-and-tutorials/template.md#option-three-firefox-profiles)
   - [How an installation script works](docs/guides-and-tutorials/template.md#how-an-installation-script-works)
   - [How to test an installation script](docs/guides-and-tutorials/template.md#how-to-test-an-installation-script)
+  - [How to submit a Pull Request](docs/guides-and-tutorials/template.md#how-to-submit-a-pull-request)
 - [Third-party databases for applications (NeoDB)](docs/guides-and-tutorials/newrepo.md)
 
 ------------------------------------------------------------------------
