@@ -322,6 +322,21 @@ _list() {
 	APPSNUMBER=$(("$ITEMSNUMBER" - "$LIBNUMBER"))
 	# Determine the number of available apps from the list
 	AVAILABLE_APPS_NUMBER=$(grep -v "ffwa-\|\"kdegames\"\|\"kdeutils\"\|\"node\"\|\"platform-tools\"" "$AMDATADIR/$ARCH-apps" | grep -e "$" -c)
+	if ! test -f "$AMDATADIR/$ARCH-appimages"; then
+		_online_check
+		_sync_appimages_list
+		AVAILABLE_APPIMAGES_NUMBER=$(grep -e "$" -c "$AMDATADIR/$ARCH-appimages")
+	else
+		AVAILABLE_APPIMAGES_NUMBER=$(grep -e "$" -c "$AMDATADIR/$ARCH-appimages")
+	fi
+	if ! test -f "$AMDATADIR/$ARCH-toolpack"; then
+		_online_check
+		_sync_toolpacks_list
+		AVAILABLE_TOOLPACKS_NUMBER=$(grep -e "$" -c "$AMDATADIR/$ARCH-toolpack")
+	else
+		AVAILABLE_TOOLPACKS_NUMBER=$(grep -e "$" -c "$AMDATADIR/$ARCH-toolpack")
+	fi
+	[ -n "$AVAILABLE_TOOLPACKS_NUMBER" ] && AVAILABLE_TOTAL_APPS_NUMBER=$(("$AVAILABLE_APPS_NUMBER" + "$AVAILABLE_TOOLPACKS_NUMBER"))
 	# Generate a list of the installed apps with version
 	[ ! -f "$AMCACHEDIR"/version-args ] && _check_version
 	if [ -n "$APPMAN_ITEMS" ]; then
@@ -336,47 +351,37 @@ _list() {
 	if [ "$LIBNUMBER" != 0 ]; then
 		# Check if the installed libraries are more than one
 		if [ "$LIBNUMBER" = 1 ]; then
-			MESSAGE=" YOU HAVE INSTALLED $APPSNUMBER APPLICATIONS OUT OF $AVAILABLE_APPS_NUMBER AVAILABLE, AND $LIBNUMBER LIBRARY"
+			MESSAGE=" YOU HAVE INSTALLED $APPSNUMBER PROGRAMS OUT OF $AVAILABLE_TOTAL_APPS_NUMBER AVAILABLE, AND $LIBNUMBER LIBRARY"
 		else
-			MESSAGE=" YOU HAVE INSTALLED $APPSNUMBER APPLICATIONS OUT OF $AVAILABLE_APPS_NUMBER AVAILABLE, AND $LIBNUMBER LIBRARIES"
+			MESSAGE=" YOU HAVE INSTALLED $APPSNUMBER PROGRAMS OUT OF $AVAILABLE_TOTAL_APPS_NUMBER AVAILABLE, AND $LIBNUMBER LIBRARIES"
 		fi
 	else
-		MESSAGE=" YOU HAVE INSTALLED $APPSNUMBER APPLICATIONS OUT OF $AVAILABLE_APPS_NUMBER AVAILABLE"
+		MESSAGE=" YOU HAVE INSTALLED $APPSNUMBER PROGRAMS OUT OF $AVAILABLE_TOTAL_APPS_NUMBER AVAILABLE"
 	fi
 }
 
 _list_appimages() {
-	# Determine the number of available apps
-	APPIMAGE_NAMES=$(curl -Ls https://portable-linux-apps.github.io/appimages.md | tr '/)' '\n' | grep -i ".md$" | uniq | sed 's/.md$//g' | grep -v "\[")
-	if ! test -f "$AMCACHEDIR/$ARCH-appimages"; then
+	wget -q --tries=10 --timeout=20 --spider https://github.com && _sync_appimages_list
+	if ! test -f "$AMDATADIR/$ARCH-appimages"; then
 		_online_check
-		for appimage in $APPIMAGE_NAMES; do
-			grep "◆ $appimage :" "$AMDATADIR/$ARCH-apps" >> "$AMCACHEDIR/$ARCH-appimages" &
-		done
-		wait
+		_sync_appimages_list
 	fi
-	AVAILABLE_APPIMAGES_NUMBER=$(grep -e "$" -c "$AMCACHEDIR/$ARCH-appimages")
 }
 
 _list_toolpacks() {
-	# Determine the number of available apps
-	if ! test -f "$AMCACHEDIR/$ARCH-toolpack"; then
+	wget -q --tries=10 --timeout=20 --spider https://github.com && _sync_toolpacks_list
+	if ! test -f "$AMDATADIR/$ARCH-toolpack"; then
 		_online_check
-		toolpack_md=$(curl -Ls "$toolpack_readme" | grep -v "\.appimage ")
-		TOOLPACK_NAMES=$(echo "$toolpack_md" | cut -d' ' -f2- | awk '{print $1}')
-		for toolpack in $TOOLPACK_NAMES; do
-			toolpack_arg=$(echo "$toolpack_md" | grep -i "^| $toolpack " | tr '|' '\n' | cut -c 2- | grep .) \
-			&& toolpack_about_description=$(echo "$toolpack_arg" | awk -F: "NR==$toolpack_description" | sed 's/ $/./g') \
-			&& echo "◆ $toolpack : $toolpack_about_description" >> "$AMCACHEDIR/$ARCH-toolpack" &
-		done
-		wait
-		sort "$AMCACHEDIR/$ARCH-toolpack" | uniq > "$AMCACHEDIR/$ARCH-toolpack-new" && mv "$AMCACHEDIR/$ARCH-toolpack-new" "$AMCACHEDIR/$ARCH-toolpack" || exit 1
+		_sync_toolpacks_list
 	fi
-	AVAILABLE_TOOLPACKS_NUMBER=$(grep -e "$" -c "$AMCACHEDIR/$ARCH-toolpack")
 }
 
 _list_msg_head() {
 	echo "" && echo "$MESSAGE" && echo "" && echo "$MESSAGE2" && echo ""
+}
+
+_list_msg_suggest_all() {
+	printf "\n To list all installable programs, use the \"%b--all\033[0m\" flag\n" "${LightBlue}"
 }
 
 _list_msg_footer() {
@@ -385,28 +390,28 @@ _list_msg_footer() {
 
 _list_toolpacks_msg() {
 	_list_msg_head
-	echo " LIST OF THE $AVAILABLE_TOOLPACKS_NUMBER TOOLPACK PROGRAMS AVAILABLE:"
+	echo " LIST OF THE $AVAILABLE_TOOLPACKS_NUMBER PROGRAMS AVAILABLE IN THE \"TOOLPACKS\" DATABASE:"
+	_list_msg_suggest_all
 	_list_msg_footer
 }
 
 _list_appimages_msg() {
 	_list_msg_head
-	echo " LIST OF THE $AVAILABLE_APPIMAGES_NUMBER APPIMAGES AVAILABLE IN THE 'AM' REPOSITORY:"
+	echo " LIST OF THE $AVAILABLE_APPIMAGES_NUMBER APPIMAGES AVAILABLE IN THE \"AM\" DATABASE:"
+	_list_msg_suggest_all
 	_list_msg_footer
 }
 
 _list_apps_msg() {
 	_list_msg_head
-	echo " LIST OF THE $AVAILABLE_APPS_NUMBER APPLICATIONS AVAILABLE IN THE 'AM' REPOSITORY:"
+	echo " LIST OF THE $AVAILABLE_APPS_NUMBER PROGRAMS AVAILABLE IN THE \"AM\" DATABASE:"
+	_list_msg_suggest_all
 	_list_msg_footer
 }
 
 _list_apps_all_msg() {
 	_list_msg_head
-	AVAILABLE_APPS_NUMBER=$(grep -v "ffwa-\|\"kdegames\"\|\"kdeutils\"\|\"node\"\|\"platform-tools\"" "$AMDATADIR/$ARCH-apps" | grep -e "$" -c)
-	AVAILABLE_TOOLPACKS_NUMBER=$(grep -e "$" -c "$AMCACHEDIR/$ARCH-toolpack")
-	AVAILABLE_TOTAL_PROGRAMS=$(("$AVAILABLE_APPS_NUMBER" + "$AVAILABLE_TOOLPACKS_NUMBER"))
-	echo " LIST OF THE $AVAILABLE_TOTAL_PROGRAMS PROGRAMS AVAILABLE IN ALL OUR SUPPORTED DATABASES:"
+	echo " LIST OF THE $AVAILABLE_TOTAL_APPS_NUMBER PROGRAMS AVAILABLE IN ALL SUPPORTED DATABASES:"
 	_list_msg_footer
 }
 
@@ -455,21 +460,21 @@ case "$1" in
 		_list
 		if [ "$2" = --all ]; then
 			_list_toolpacks
-			LIST=$(sort "$AMDATADIR/$ARCH-apps" "$AMCACHEDIR/$ARCH-toolpack" | uniq | _pretty_list)
+			LIST=$(sort "$AMDATADIR/$ARCH-apps" "$AMDATADIR/$ARCH-toolpack" | uniq | _pretty_list)
 			_list_apps_all_msg | less -Ir
 			echo "$DIVIDING_LINE"
 			echo " $(("$AVAILABLE_APPS_NUMBER" + "$AVAILABLE_TOOLPACKS_NUMBER")) programs in all supported databases"
 			echo "$DIVIDING_LINE"
 		elif [ "$2" = --appimages ]; then
 			_list_appimages
-			LIST=$(sort "$AMCACHEDIR/$ARCH-appimages" | _pretty_list)
+			LIST=$(sort "$AMDATADIR/$ARCH-appimages" | _pretty_list)
 			_list_appimages_msg | less -Ir
 			echo "$DIVIDING_LINE"
 			echo " $AVAILABLE_APPIMAGES_NUMBER AppImages in the \"AM\" database"
 			echo "$DIVIDING_LINE"
 		elif [ "$2" = --toolpack ]; then
 			_list_toolpacks
-			LIST=$(sort "$AMCACHEDIR/$ARCH-toolpack" | _pretty_list)
+			LIST=$(sort "$AMDATADIR/$ARCH-toolpack" | _pretty_list)
 			_list_toolpacks_msg | less -Ir
 			echo "$DIVIDING_LINE"
 			echo " $AVAILABLE_TOOLPACKS_NUMBER programs in the \"Toolpacks\" database"
@@ -496,24 +501,25 @@ case "$1" in
 			entries="$(echo "$@" | cut -f3- -d ' ' | tr -s ' ' '|')"
 			printf "\n Search results for packages: %s\n\n"  "$entries" | tr '[:lower:]' '[:upper:]'
 			grep -iE "$entries" "$AMDATADIR/$ARCH-apps" --color=always | _pretty_list_compat
+			[ -f "$AMDATADIR/$ARCH-toolpack" ] && grep -iE "$entries" "$AMDATADIR/$ARCH-toolpack" --color=always | _pretty_list_compat
 		elif [ "$2" = --appimages ]; then
 			entries="$(echo "$@" | cut -f3- -d ' ')"
 			printf "\n Search results for \"%s\":\n\n"  "$entries" | tr '[:lower:]' '[:upper:]'
 			pattern="$(echo "$entries" | sed 's/ /(?=.*/g; s/$/)/g; s/(/)(/g; s/^/(?=.*/g;')"
 			_list_appimages
-			grep -Pi "$pattern" "$AMCACHEDIR/$ARCH-appimages" | _pretty_list_compat
+			grep -Pi "$pattern" "$AMDATADIR/$ARCH-appimages" | _pretty_list_compat
 		elif [ "$2" = --toolpack ]; then
 			entries="$(echo "$@" | cut -f3- -d ' ')"
 			printf "\n Search results for \"%s\":\n\n"  "$entries" | tr '[:lower:]' '[:upper:]'
 			pattern="$(echo "$entries" | sed 's/ /(?=.*/g; s/$/)/g; s/(/)(/g; s/^/(?=.*/g;')"
 			_list_toolpacks
-			grep -Pi "$pattern" "$AMCACHEDIR/$ARCH-toolpack" | _pretty_list_compat
+			grep -Pi "$pattern" "$AMDATADIR/$ARCH-toolpack" | _pretty_list_compat
 		elif [ "$2" = --all ]; then
 			entries="$(echo "$@" | cut -f3- -d ' ')"
 			printf "\n Search results for \"%s\":\n\n"  "$entries" | tr '[:lower:]' '[:upper:]'
 			pattern="$(echo "$entries" | sed 's/ /(?=.*/g; s/$/)/g; s/(/)(/g; s/^/(?=.*/g;')"
 			_list_toolpacks
-			sort "$AMCACHEDIR/$ARCH-toolpack" "$AMDATADIR/$ARCH-apps" | grep -Pi "$pattern" | _pretty_list_compat
+			sort "$AMDATADIR/$ARCH-toolpack" "$AMDATADIR/$ARCH-apps" | grep -Pi "$pattern" | _pretty_list_compat
 		else
 			entries="$(echo "$@" | cut -f2- -d ' ')"
 			printf "\n Search results for \"%s\":\n\n"  "$entries" | tr '[:lower:]' '[:upper:]'
