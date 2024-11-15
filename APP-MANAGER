@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="9.1.1"
+AMVERSION="9.1.1-1"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -372,7 +372,7 @@ export toolpack_name="1" toolpack_description="2" toolpack_site="3" toolpack_dl=
 # COMPLETION LIST
 available_options="about add apikey backup clean config disable downgrade download enable extra files home icons info \
 	install install-appimage launcher list lock neodb newrepo nolibfuse off on overwrite purge query remove sandbox \
-	select sync template test unlock update --all --appimages --apps --byname --config --convert --debug \
+	select sync template test unlock update --all --add --appimages --apps --byname --config --convert --debug \
 	--devmode-disable --devmode-enable --disable-notifications --enable-notifications --force-latest --home --icons \
 	--launcher --less --pkg --rollback --disable-sandbox --sandbox --system --toolpack --user"
 
@@ -585,6 +585,27 @@ if [ "$AMCLI" = am ]; then
 		fi
 	fi
 fi
+
+################################################################################
+#				APPMAN PROFILE MANAGER
+################################################################################
+
+function _appman_add_profile() {
+	_appman_check
+	_detect_appman_apps
+	if ! test -f "$APPMANCONFIG"/profiles; then
+		touch "$APPMANCONFIG"/profiles
+	fi
+	if ! grep -q "$APPMAN_APPSPATH" "$APPMANCONFIG"/profiles; then
+		echo "$APPMAN_APPSPATH" >> "$APPMANCONFIG"/profiles
+	fi
+	APPMAN_EXTRA_PATH=$(echo "$@" | cut -f2- -d ' ')
+	if ! grep -q "$APPMAN_EXTRA_PATH" "$APPMANCONFIG"/profiles; then
+		echo "$APPMAN_EXTRA_PATH" >> "$APPMANCONFIG"/profiles
+	else
+		echo "This path already exists, retry!"
+	fi
+}
 
 ################################################################################
 #				CLEAN
@@ -987,6 +1008,9 @@ case "$1" in
 		_use_module "$@"
 		;;
 	# INBUILT OPTIONS
+	'--add')
+		_appman_add_profile "$@"
+		;;
 	'--devmode-disable'|'--devmode-enable')
 		[ "$1" = "--devmode-disable" ] && rm -f "$AMDATADIR"/betatester \
 		|| touch "$AMDATADIR"/betatester && _betatester_message_on
