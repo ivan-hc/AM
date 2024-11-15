@@ -42,7 +42,7 @@ You can use the command `am -a {PROGRAM}` to view the description and get the so
 [Installation](#installation)
 
  - [AM installation structure](#am-installation-structure)
- - [Uninstall AM](#uninstall-am)
+ - [Uninstall](#uninstall)
  - [How are apps installed](#how-are-apps-installed)
  - [How to set the path to local apps](#how-to-set-the-path-to-local-apps)
  - [What programs can be installed](#what-programs-can-be-installed)
@@ -148,7 +148,7 @@ The classic "AM" installation has the following structure:
 Where the command `/usr/local/bin/am` is just a symbolic link to `/opt/am/APP-MANAGER`. The directory `/opt/am/modules` contains the modules "not vital" for "AM" but necessary for managing the apps. The script `/opt/am/remove` is instead necessary for removing "AM".
 
 ------------------------------------------------------------------------
-### Uninstall AM
+### Uninstall
 To uninstall "AM" simply run this command:
 ```
 sudo /opt/am/remove
@@ -158,6 +158,8 @@ or from the CLI directly
 am -R am
 ```
 NOTE, it is recommended to remove apps first using the `-R` option, and then "AM", since locally installed apps may have a different path than `/opt`, see "[How are apps installed](#how-are-apps-installed)", below.
+
+**If you are an AppMan user**, `appman` is a portable script, you can simply remove it manually. **If you used AM-INSTALLER**, you simply need to remove the `$HOME/.local/bin/appman` script. To remove applications, the same rule as AM, above, applies. Their location is the one you indicated in the `$HOME/.config/appman/appman-config` file.
 
 ------------------------------------------------------------------------
 ### How are apps installed
