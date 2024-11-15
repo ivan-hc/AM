@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="9.1.1-1"
+AMVERSION="9.1.1-2"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -374,7 +374,7 @@ available_options="about add apikey backup clean config disable downgrade downlo
 	install install-appimage launcher list lock neodb newrepo nolibfuse off on overwrite purge query remove sandbox \
 	select sync template test unlock update --all --add --appimages --apps --byname --config --convert --debug \
 	--devmode-disable --devmode-enable --disable-notifications --enable-notifications --force-latest --home --icons \
-	--launcher --less --pkg --rollback --disable-sandbox --sandbox --system --toolpack --user"
+	--launcher --less --pkg --profile-manager --rollback --disable-sandbox --sandbox --system --toolpack --user"
 
 function _completion_lists() {
 	# Remove existing lists and download new ones
@@ -604,6 +604,20 @@ function _appman_add_profile() {
 		echo "$APPMAN_EXTRA_PATH" >> "$APPMANCONFIG"/profiles
 	else
 		echo "This path already exists, retry!"
+	fi
+}
+
+function _appman_profile_manager() {
+	if ! test -f "$APPMANCONFIG"/profiles; then
+		echo "No profiles list available"
+	else
+		echo -e "Select an local profile to use for applications or press CTRL+C to abort:\n$DIVIDING_LINE\n"; sleep 1
+		select profile in $(sort -u "$APPMANCONFIG/profiles" | uniq | grep .); do
+			test -n "$profile" && break
+			echo ">>> Invalid Selection"
+		done
+		_clean_amcachedir
+		echo "$profile" > "$APPMANCONFIG"/appman-config
 	fi
 }
 
@@ -1010,6 +1024,9 @@ case "$1" in
 	# INBUILT OPTIONS
 	'--add')
 		_appman_add_profile "$@"
+		;;
+	'--profile-manager')
+		_appman_profile_manager
 		;;
 	'--devmode-disable'|'--devmode-enable')
 		[ "$1" = "--devmode-disable" ] && rm -f "$AMDATADIR"/betatester \
