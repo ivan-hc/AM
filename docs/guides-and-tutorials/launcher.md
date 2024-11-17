@@ -34,7 +34,7 @@ https://github.com/user-attachments/assets/2dedf1a9-43c2-455c-8c97-2023bedc4203
 
 ##### AppImages from external media
 Another peculiarity concerns the use of the `-c` option on launchers created on AppImage packages placed on removable devices:
-- if in the .desktop file belongs to an AppImage placed in /mnt or /media and none of the references are mounted, the option `-c` will not be able to remove it until you mount the exact device where it was placed in the moment you have created the launcher;
+- if in the .desktop file belongs to an AppImage placed in /mnt /media or /run/media and none of the references are mounted, the option `-c` will not be able to remove it until you mount the exact device where it was placed in the moment you have created the launcher;
 - if you mount that same device and the AppImage is not where it was when you created the launcher, it will be removed.
 
 This is very useful if you have large AppImage packages that you necessarily need to place in a different partition.
