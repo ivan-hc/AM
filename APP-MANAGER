@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="9.1.1-4"
+AMVERSION="9.1.1-6"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -612,34 +612,38 @@ function _clean_all_tmp_directories_from_appspath() {
 	done
 }
 
-function _clean_determine_removable_launchers() {
-	if ! test -f "$APPIMAGENAME" 2>/dev/null; then
-		if ! test -d "$MOUNTPOINTS" 2>/dev/null; then
-			if echo "$MOUNTPOINTS" | grep -q "/media/"; then
-				unmounted_poin="/media"
-			elif echo "$MOUNTPOINTS" | grep -q "/mnt/"; then
-				unmounted_poin="/mnt"
-			fi
-			echo " ✖ ERROR: cannot remove \"$(basename "$var")\""
-			echo "   related AppImage is located in an unmounted path of $unmounted_poin"
-		else
-			rm -f "$var"
-			rm -f "$HOME"/.local/bin/"$launcher2del"*
-			cd "$HOME"/.local/bin && find . -xtype l -delete
-		fi
-	fi
-}
-
 function _clean_launchers() {
-	if test -d "$DATADIR"/applications/AppImages 2>/dev/null; then
+	if test -d "$DATADIR"/applications/AppImages; then
 		for var in "$DATADIR"/applications/AppImages/*.desktop; do
-			APPIMAGENAME=$(grep "Exec=" 0<"$var" 2>/dev/null | head -1 | cut -c 6- | sed 's/\s.*$//')
-			launcher2del=$(basename -- "$(echo "$APPIMAGENAME" | tr '[:upper:]' '[:lower:]')")
-			MOUNTPOINTS=$(echo "$APPIMAGENAME" | cut -d'/' -f1-4)
-			_clean_determine_removable_launchers
+			# full path to appimage
+			appimagename=$(grep "Exec=" 0<"$var" 2>/dev/null | head -1 | cut -c 6- | sed 's/\s.*$//')
+			# name of the appimage
+			launcher2del=$(basename -- "$(echo "$appimagename" | tr '[:upper:]' '[:lower:]')")
+			# removable mount point where the appimage may be stored
+			mountpoint=$(echo "$appimagename" | cut -d'/' -f1-4)
+			if ! test -f "$appimagename"; then
+				if echo "$mountpoint" | grep -q "^/media/\|^/mnt/\|^/run/media/" && ! test -d "$mountpoint"; then
+					if echo "$mountpoint" | grep -q "^/media/"; then
+						unmounted_point="/media"
+					elif echo "$mountpoint" | grep -q "^/mnt/"; then
+						unmounted_point="/mnt"
+					elif echo "$mountpoint" | grep -q "^/run/media/"; then
+						unmounted_point="/run/media"
+					fi
+					echo " ✖ ERROR: cannot remove \"$(basename "$var")\""
+					echo "   related AppImage is located in an unmounted path of $unmounted_point"
+				else
+					rm -f "$var"
+					rm -f "$HOME"/.local/bin/"$launcher2del"*
+				fi
+			fi
 		done
+		grep -q "^Exec=/media/\|^^Exec=/mnt/\|^^Exec=/run/media/" "$DATADIR"/applications/AppImages/* && mountpoint_enabled=1
+		[ -z "$mountpoint_enabled" ] && cd "$HOME"/.local/bin && find . -xtype l -delete
 		echo ' ✔ Removed orphaned launchers produced with the "--launcher" option'
 		rmdir "$DATADIR"/applications/AppImages
+	else
+		cd "$HOME"/.local/bin && find . -xtype l -delete
 	fi
 }
 
