@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="9.1.1-15"
+AMVERSION="9.1.1-16"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -804,6 +804,7 @@ function _update_list_updatable_apps() {
 }
 
 function _update_determine_apps_version_changes() {
+	[ -z "$debug_update" ] && echo "$DIVIDING_LINE"
 	if test -f "$AMCACHEDIR"/updatable-args-list; then
 		mv "$AMCACHEDIR"/updatable-args-list "$AMCACHEDIR"/updatable-args-list-old
 		_update_list_updatable_apps
@@ -822,9 +823,6 @@ function _update_determine_apps_version_changes() {
 }
 
 function _update_run_updater() {
-	if echo "$FLAGS" | grep -q -- "--debug"; then
-		debug_update="1"
-	fi
 	if grep -q "api.github.com" "$argpath"/AM-updater; then
 		GH_API_ALLOWED=$(curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/ivan-hc/AM/releases/latest | sed 's/[()",{} ]/\n/g' | grep "^ivan-hc" | head -1)
 		if [ -z "$GH_API_ALLOWED" ]; then
@@ -842,7 +840,7 @@ function _update_run_updater() {
 	fi
 	end=$(date +%s)
 	echo " ◆ $APPNAME is updated, $((end - start)) seconds elapsed!"
-	echo "$DIVIDING_LINE"
+	[ -n "$debug_update" ] && echo "$DIVIDING_LINE"
 }
 
 function _update_app() {
@@ -877,6 +875,9 @@ function _use_update() {
 
 	ENTRIES="$(echo "$@" | cut -f2- -d ' ' | tr ' ' '\n' | grep -v -- "^-\|^$1$")"
 	FLAGS=$(echo "$@" | tr ' ' '\n' | grep -- "--" | tr '\n ' ' ')
+	if echo "$FLAGS" | grep -q -- "--debug"; then
+		debug_update="1"
+	fi
 	if [ -z "$ENTRIES" ]; then
 		_clean_amcachedir
 		_update_list_updatable_apps
@@ -888,12 +889,14 @@ function _use_update() {
 		if ! echo "$FLAGS" | grep -q -- "--apps"; then
 			echo "$DIVIDING_LINE"
 			_use_sync
-			echo -e "$DIVIDING_LINE\n >> END OF ALL PROCESSES << \n$DIVIDING_LINE"
+			echo -e " >> END OF ALL PROCESSES << \n$DIVIDING_LINE"
 			sleep 0.2
 			exit 0
+		else
+			echo "$DIVIDING_LINE"
 		fi
 	else
-		echo "$DIVIDING_LINE"
+		[ -n "$debug_update" ] && echo "$DIVIDING_LINE"
 		_determine_args
 		for arg in $ENTRIES; do
 			argpath=$(echo "$ARGPATHS" | grep "/$arg$")
