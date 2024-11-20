@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="9.1.1-10"
+AMVERSION="9.1.1-11"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -826,16 +826,28 @@ function _update_run_updater() {
 		GH_API_ALLOWED=$(curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/ivan-hc/AM/releases/latest | sed 's/[()",{} ]/\n/g' | grep "^ivan-hc" | head -1)
 		if [ -z "$GH_API_ALLOWED" ]; then
 			if command -v torsocks 1>/dev/null; then
-				torsocks "$argpath"/AM-updater >/dev/null 2>&1
+				if ! echo "$FLAGS" | grep -q -- "--debug"; then
+					torsocks "$argpath"/AM-updater >/dev/null 2>&1
+				else
+					torsocks "$argpath"/AM-updater
+				fi
 			else
 				echo " ✖ $APPNAME cannot be updated, you have reached GitHub API limit. Install \"torsocks\" from your system package manager and retry!" \
 				| fold -sw 72 | sed 's/^/   /g; s/   ✖/✖/g'
 			fi
 		else
-			"$argpath"/AM-updater >/dev/null 2>&1
+			if ! echo "$FLAGS" | grep -q -- "--debug"; then
+				"$argpath"/AM-updater >/dev/null 2>&1
+			else
+				"$argpath"/AM-updater
+			fi
 		fi
 	else
-		"$argpath"/AM-updater >/dev/null 2>&1
+		if ! echo "$FLAGS" | grep -q -- "--debug"; then
+			"$argpath"/AM-updater >/dev/null 2>&1
+		else
+			"$argpath"/AM-updater
+		fi
 	fi
 	end=$(date +%s)
 	echo " ◆ $APPNAME is updated, $((end - start)) seconds elapsed!"
@@ -871,8 +883,10 @@ function _use_update() {
 	_online_check
 	_update_github_api_key_in_the_updater_files
 	_clean_all_tmp_directories_from_appspath >/dev/null
-	case $2 in
-	''|'--apps')
+
+	ENTRIES="$(echo "$@" | cut -f2- -d ' ' | tr ' ' '\n' | grep -v -- "--")"
+	FLAGS=$(echo "$@" | tr ' ' '\n' | grep -- "--" | tr '\n ' ' ')
+	if [ -z "$ENTRIES" ]; then
 		_clean_amcachedir
 		_update_list_updatable_apps
 		echo -e "$DIVIDING_LINE\n \"$AMCLIUPPER\" CAN MANAGE UPDATES FOR THE FOLLOWING PROGRAMS:\n"
@@ -880,15 +894,16 @@ function _use_update() {
 		echo -e "\n All self-updatable programs are excluded"
 		echo -e "$DIVIDING_LINE\n >> START OF ALL PROCESSES <<\n$DIVIDING_LINE"
 		_update_all_apps
-		[ -z "$2" ] &&	echo "$DIVIDING_LINE" && _use_sync
-		echo -e "$DIVIDING_LINE\n >> END OF ALL PROCESSES << \n$DIVIDING_LINE"
-		sleep 0.2
-		exit 0
-		;;
-	*)
+		if ! echo "$FLAGS" | grep -q -- "--apps"; then
+			echo "$DIVIDING_LINE"
+			_use_sync
+			echo -e "$DIVIDING_LINE\n >> END OF ALL PROCESSES << \n$DIVIDING_LINE"
+			sleep 0.2
+			exit 0
+		fi
+	else
 		echo "$DIVIDING_LINE"
 		_determine_args
-		ENTRIES="$(echo "$@" | cut -f2- -d ' ')"
 		for arg in $ENTRIES; do
 			argpath=$(echo "$ARGPATHS" | grep "/$arg$")
 			if test -f "$argpath"/AM-updater; then
@@ -902,8 +917,7 @@ function _use_update() {
 		done
 		wait
 		exit 0
-		;;
-	esac
+	fi
 }
 
 function _use_force_latest() {
@@ -1235,9 +1249,12 @@ case "$1" in
 
 					${LightBlue}$AMCLI -u
 					${LightBlue}$AMCLI -u --apps
+					${LightBlue}$AMCLI -u --debug
+					${LightBlue}$AMCLI -u --apps --debug
 					${LightBlue}$AMCLI -u {PROGRAM}\033[0m
+					${LightBlue}$AMCLI -u --debug {PROGRAM}\033[0m
 
-			Description: Update everything. Add \"--apps\" to update only the apps or write only the apps you want to update by adding their names.
+			Description: Update everything. Add \"--apps\" to update only the apps or write only the apps you want to update by adding their names. Add the \"--debug\" flag to view the output of AM-updater scripts.
 
 			${Gold}version, -v\033[0m
 
