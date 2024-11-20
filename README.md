@@ -248,6 +248,8 @@ Option `-u` or `update` updates all the installed apps and keeps "AM"/"AppMan" i
 3. To update all the programs and "AM"/"AppMan" itself, just run the command`am -u` / `appman -u`
 4. To update only "AM"/"AppMan" and the modules use the option `-s` instead, `am -s` / `appman -s`
 
+The `-u` option can also be combined with the `--debug` flag to show the output of installed application updates.
+
 ### How to update everything using Topgrade
 Keeping your system up to date usually involves invoking multiple package managers. This results in big, non-portable shell one-liners saved in your shell. To remedy this, Topgrade detects which tools you use and runs the appropriate commands to update them.
 
@@ -541,13 +543,16 @@ Unlock updates for the selected program (nulls "`lock`").
 ------------------------------------------------------------------------
 ### `update`, `-u`, `-U`
 
-		am -u
-		am -u --apps
-		am -u {PROGRAM}
+ 		am -u
+ 		am -u --apps
+ 		am -u --debug
+ 		am -u --apps --debug
+ 		am -u {PROGRAM}
+ 		am -u --debug {PROGRAM}
 
 **Description**:
 
-Update everything. Add "`--apps`" to update only the apps or write only the apps you want to update by adding their names.
+Update everything. Add "`--apps`" to update only the apps or write only the apps you want to update by adding their names. Add the "`--debug`" flag to view the output of AM-updater scripts.
 
 ------------------------------------------------------------------------
 ### `version`, `-v`
