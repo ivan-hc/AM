@@ -374,11 +374,15 @@ _list_appimages() {
 	fi
 }
 
-_list_toolpacks() {
+_list_third_party() {
 	wget -q --tries=10 --timeout=20 --spider https://github.com && _sync_toolpacks_list
 	if ! test -f "$AMDATADIR/$ARCH-toolpack"; then
 		_online_check
 		_sync_toolpacks_list
+	fi
+	if ! test -f "$AMDATADIR/$ARCH-appbundle"; then
+		_online_check
+		_sync_appbundle_list
 	fi
 }
 
@@ -394,7 +398,7 @@ _list_msg_footer() {
 	echo "$LIST" && echo ""
 }
 
-_list_toolpacks_msg() {
+_list_third_party_msg() {
 	_list_msg_head
 	echo " LIST OF THE $AVAILABLE_TOOLPACKS_NUMBER PROGRAMS AVAILABLE IN THE \"TOOLPACKS\" DATABASE:"
 	_list_msg_suggest_all
@@ -419,6 +423,11 @@ _list_apps_all_msg() {
 	_list_msg_head
 	echo " LIST OF THE $AVAILABLE_TOTAL_APPS_NUMBER PROGRAMS AVAILABLE IN ALL SUPPORTED DATABASES:"
 	_list_msg_footer
+}
+
+_query_lists() {
+	printf "\n Search results for \"%s\":\n\n"  "$entries" | tr '[:lower:]' '[:upper:]'
+	pattern="$(echo "$entries" | sed 's/ /(?=.*/g; s/$/)/g; s/(/)(/g; s/^/(?=.*/g;')"
 }
 
 ################################################################################
@@ -465,7 +474,7 @@ case "$1" in
 	'-l'|'list')
 		_list
 		if [ "$2" = --all ]; then
-			_list_toolpacks
+			_list_third_party
 			LIST=$(sort "$AMDATADIR/$ARCH-apps" "$AMDATADIR/$ARCH-toolpack" | uniq | _pretty_list)
 			_list_apps_all_msg | less -Ir
 			echo "$DIVIDING_LINE"
@@ -479,9 +488,9 @@ case "$1" in
 			echo " $AVAILABLE_APPIMAGES_NUMBER AppImages in the \"AM\" database"
 			echo "$DIVIDING_LINE"
 		elif [ "$2" = --toolpack ]; then
-			_list_toolpacks
+			_list_third_party
 			LIST=$(sort "$AMDATADIR/$ARCH-toolpack" | _pretty_list)
-			_list_toolpacks_msg | less -Ir
+			_list_third_party_msg | less -Ir
 			echo "$DIVIDING_LINE"
 			echo " $AVAILABLE_TOOLPACKS_NUMBER programs in the \"Toolpacks\" database"
 			echo "$DIVIDING_LINE"
@@ -506,30 +515,16 @@ case "$1" in
 		if [ "$2" = --pkg ]; then
 			entries="$(echo "$@" | cut -f3- -d ' ' | tr -s ' ' '|')"
 			printf "\n Search results for packages: %s\n\n"  "$entries" | tr '[:lower:]' '[:upper:]'
-			grep -iE "$entries" "$AMDATADIR/$ARCH-apps" --color=always | _pretty_list_compat
-			[ -f "$AMDATADIR/$ARCH-toolpack" ] && grep -iE "$entries" "$AMDATADIR/$ARCH-toolpack" --color=always | _pretty_list_compat
-		elif [ "$2" = --appimages ]; then
+			sort "$AMDATADIR"/"$ARCH"-* | uniq | grep -iE "$entries" --color=always | _pretty_list_compat
+		elif [ "$2" = --appimages ] || [ "$2" = --toolpack ] || [ "$2" = --all ]; then
 			entries="$(echo "$@" | cut -f3- -d ' ')"
-			printf "\n Search results for \"%s\":\n\n"  "$entries" | tr '[:lower:]' '[:upper:]'
-			pattern="$(echo "$entries" | sed 's/ /(?=.*/g; s/$/)/g; s/(/)(/g; s/^/(?=.*/g;')"
-			_list_appimages
-			grep -Pi "$pattern" "$AMDATADIR/$ARCH-appimages" | _pretty_list_compat
-		elif [ "$2" = --toolpack ]; then
-			entries="$(echo "$@" | cut -f3- -d ' ')"
-			printf "\n Search results for \"%s\":\n\n"  "$entries" | tr '[:lower:]' '[:upper:]'
-			pattern="$(echo "$entries" | sed 's/ /(?=.*/g; s/$/)/g; s/(/)(/g; s/^/(?=.*/g;')"
-			_list_toolpacks
-			grep -Pi "$pattern" "$AMDATADIR/$ARCH-toolpack" | _pretty_list_compat
-		elif [ "$2" = --all ]; then
-			entries="$(echo "$@" | cut -f3- -d ' ')"
-			printf "\n Search results for \"%s\":\n\n"  "$entries" | tr '[:lower:]' '[:upper:]'
-			pattern="$(echo "$entries" | sed 's/ /(?=.*/g; s/$/)/g; s/(/)(/g; s/^/(?=.*/g;')"
-			_list_toolpacks
-			sort "$AMDATADIR/$ARCH-toolpack" "$AMDATADIR/$ARCH-apps" | grep -Pi "$pattern" | _pretty_list_compat
+			_query_lists
+			[ "$2" = --all ] && _list_third_party && sort "$AMDATADIR"/"$ARCH"-* | uniq | grep -Pi "$pattern" | _pretty_list_compat
+			[ "$2" = --appimages ] && _list_appimages && grep -Pi "$pattern" "$AMDATADIR/$ARCH-appimages" | _pretty_list_compat
+			[ "$2" = --toolpack ] && _list_third_party && grep -Pi "$pattern" "$AMDATADIR/$ARCH-toolpack" | _pretty_list_compat
 		else
 			entries="$(echo "$@" | cut -f2- -d ' ')"
-			printf "\n Search results for \"%s\":\n\n"  "$entries" | tr '[:lower:]' '[:upper:]'
-			pattern="$(echo "$entries" | sed 's/ /(?=.*/g; s/$/)/g; s/(/)(/g; s/^/(?=.*/g;')"
+			_query_lists
 			grep -Pi "$pattern" "$AMDATADIR/$ARCH-apps" | _pretty_list_compat
 		fi
 		printf '\n'
