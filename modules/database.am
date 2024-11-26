@@ -335,14 +335,10 @@ _list() {
 		AVAILABLE_APPIMAGES_NUMBER=$(grep -e "$" -c "$AMDATADIR/$ARCH-appimages")
 	fi
 	if ! test -f "$AMDATADIR/$ARCH-toolpack"; then
-		_online_check
-		_sync_toolpacks_list
-		_completion_lists
-		AVAILABLE_TOOLPACKS_NUMBER=$(grep -e "$" -c "$AMDATADIR/$ARCH-toolpack")
-	else
-		AVAILABLE_TOOLPACKS_NUMBER=$(grep -e "$" -c "$AMDATADIR/$ARCH-toolpack")
+		_online_check && _sync_toolpacks_list &&  _sync_appbundle_list && _completion_lists
 	fi
-	[ -n "$AVAILABLE_TOOLPACKS_NUMBER" ] && AVAILABLE_TOTAL_APPS_NUMBER=$(("$AVAILABLE_APPS_NUMBER" + "$AVAILABLE_TOOLPACKS_NUMBER"))
+	AVAILABLE_THIRD_PARTY_NUMBER=$(sort "$AMDATADIR/$ARCH-appbundle" "$AMDATADIR/$ARCH-toolpack" | grep -e "$" -c)
+	[ -n "$AVAILABLE_THIRD_PARTY_NUMBER" ] && AVAILABLE_TOTAL_APPS_NUMBER=$(("$AVAILABLE_APPS_NUMBER" + "$AVAILABLE_THIRD_PARTY_NUMBER"))
 	# Generate a list of the installed apps with version
 	[ ! -f "$AMCACHEDIR"/version-args ] && _check_version
 	if [ -n "$APPMAN_ITEMS" ]; then
@@ -375,7 +371,7 @@ _list_appimages() {
 }
 
 _list_third_party() {
-	wget -q --tries=10 --timeout=20 --spider https://github.com && _sync_toolpacks_list
+	wget -q --tries=10 --timeout=20 --spider https://github.com && _sync_toolpacks_list && _sync_appbundle_list
 	if ! test -f "$AMDATADIR/$ARCH-toolpack"; then
 		_online_check
 		_sync_toolpacks_list
@@ -400,7 +396,7 @@ _list_msg_footer() {
 
 _list_third_party_msg() {
 	_list_msg_head
-	echo " LIST OF THE $AVAILABLE_TOOLPACKS_NUMBER PROGRAMS AVAILABLE IN THE \"TOOLPACKS\" DATABASE:"
+	echo " $AVAILABLE_THIRD_PARTY_NUMBER PROGRAMS AVAILABLE ON \"TOOLPACKS\" & \"APPBUNDLEHUB\" DATABASES:"
 	_list_msg_suggest_all
 	_list_msg_footer
 }
@@ -478,7 +474,7 @@ case "$1" in
 			LIST=$(sort "$AMDATADIR/$ARCH-apps" "$AMDATADIR/$ARCH-toolpack" | uniq | _pretty_list)
 			_list_apps_all_msg | less -Ir
 			echo "$DIVIDING_LINE"
-			echo " $(("$AVAILABLE_APPS_NUMBER" + "$AVAILABLE_TOOLPACKS_NUMBER")) programs in all supported databases"
+			echo " $(("$AVAILABLE_APPS_NUMBER" + "$AVAILABLE_THIRD_PARTY_NUMBER")) programs in all supported databases"
 			echo "$DIVIDING_LINE"
 		elif [ "$2" = --appimages ]; then
 			_list_appimages
@@ -489,10 +485,10 @@ case "$1" in
 			echo "$DIVIDING_LINE"
 		elif [ "$2" = --toolpack ]; then
 			_list_third_party
-			LIST=$(sort "$AMDATADIR/$ARCH-toolpack" | _pretty_list)
+			LIST=$(sort "$AMDATADIR/$ARCH-toolpack" "$AMDATADIR/$ARCH-appbundle" | _pretty_list)
 			_list_third_party_msg | less -Ir
 			echo "$DIVIDING_LINE"
-			echo " $AVAILABLE_TOOLPACKS_NUMBER programs in the \"Toolpacks\" database"
+			echo " $AVAILABLE_THIRD_PARTY_NUMBER programs in the \"Toolpacks\" & \"AppBundleHUB\" databases"
 			echo "$DIVIDING_LINE"
 		else
 			LIST=$(sort "$AMDATADIR/$ARCH-apps" | _pretty_list)
