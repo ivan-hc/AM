@@ -8,6 +8,7 @@
 #				ABOUT
 ################################################################################
 _about_show_markdown() {
+	_sync_third_party_lists
 	if curl -o /dev/null -sIf "$markdown_url"; then
 		markdown_page=$(curl -Ls "$markdown_url" \
 		| sed '1,${ /^\s*#/ d; /^\s*!/ d; /\[Applications]/d; /\ --- /d; /\ | - | /d; /\!\[/d; }' \
@@ -81,7 +82,7 @@ _about_page() {
 #				FILES
 ################################################################################
 _files_header() {
-	CHECK_TOOLPACK="$(find "$APPSPATH"/*/* -type f -name '*.toolpack' -print -quit 2>/dev/null)"
+	CHECK_SUPPORTED_THIRD_PARTY_APPS="$(find "$APPSPATH"/*/* -type f -name '*.toolpack' -print -quit 2>/dev/null)"
 	echo ""
 	APPSNUMB=$(find "$APPSPATH" -type f -name 'remove' -exec grep -L 'usr/local/lib' {} \; 2>/dev/null | sed -r 's|/[^/]+$||' | sort | uniq | wc -l)
 	if [ "$APPSNUMB" = 1 ]; then
@@ -101,7 +102,7 @@ _files_header() {
 		[ "$APPMAN_ON" = 1 ] && echo "- $APPSMESSAGE LOCALLY, AS \"APPMAN\"" || echo "- $APPSMESSAGE MANAGED BY \"$AMCLIUPPER\""
 	fi
 	echo ""
-	if [ -n "$CHECK_TOOLPACK" ]; then
+	if [ -n "$CHECK_SUPPORTED_THIRD_PARTY_APPS" ]; then
 		files_table_header="- APPNAME | DB | VERSION | TYPE | SIZE "
 		files_table_header_lines="- ------- | -- | ------- | ---- | ----"
 	else
@@ -237,7 +238,7 @@ _files() {
 			APPTYPE=$(grep -w " ◆ $arg	|" "$AMCACHEDIR"/files-type | tr '	' '\n' | tail -1)
 			APPSYZE=$(grep -w " ◆ $arg	|" "$AMCACHEDIR"/files-sizes | tr '	' '\n' | tail -1)
 			APPDB=$(grep -w " ◆ $arg	|" "$AMCACHEDIR"/files-db | tr '	' '\n' | tail -1)
-			if [ -n "$CHECK_TOOLPACK" ]; then
+			if [ -n "$CHECK_SUPPORTED_THIRD_PARTY_APPS" ]; then
 				echo " ◆ $arg	|	$APPDB	|	$APPVERSION	|	$APPTYPE	|	$APPSYZE" >> "$AMCACHEDIR"/files-args
 			else
 				echo " ◆ $arg	|	$APPVERSION	|	$APPTYPE	|	$APPSYZE" >> "$AMCACHEDIR"/files-args
@@ -335,7 +336,10 @@ _list() {
 		AVAILABLE_APPIMAGES_NUMBER=$(grep -e "$" -c "$AMDATADIR/$ARCH-appimages")
 	fi
 	if ! test -f "$AMDATADIR/$ARCH-toolpack"; then
-		_online_check && _sync_toolpacks_list &&  _sync_appbundle_list && _completion_lists
+		_online_check && _sync_third_party_lists && _completion_lists
+	fi
+	if ! test -f "$AMDATADIR/$ARCH-appbundle"; then
+		_online_check && _sync_third_party_lists && _completion_lists
 	fi
 	AVAILABLE_THIRD_PARTY_NUMBER=$(sort "$AMDATADIR/$ARCH-appbundle" "$AMDATADIR/$ARCH-toolpack" | grep -e "$" -c)
 	[ -n "$AVAILABLE_THIRD_PARTY_NUMBER" ] && AVAILABLE_TOTAL_APPS_NUMBER=$(("$AVAILABLE_APPS_NUMBER" + "$AVAILABLE_THIRD_PARTY_NUMBER"))
@@ -371,14 +375,12 @@ _list_appimages() {
 }
 
 _list_third_party() {
-	wget -q --tries=10 --timeout=20 --spider https://github.com && _sync_toolpacks_list && _sync_appbundle_list
+	wget -q --tries=10 --timeout=20 --spider https://github.com && _sync_third_party_lists
 	if ! test -f "$AMDATADIR/$ARCH-toolpack"; then
-		_online_check
-		_sync_toolpacks_list
+		_online_check && _sync_toolpacks_list
 	fi
 	if ! test -f "$AMDATADIR/$ARCH-appbundle"; then
-		_online_check
-		_sync_appbundle_list
+		_online_check && _sync_appbundle_list
 	fi
 }
 
