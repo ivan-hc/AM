@@ -44,13 +44,16 @@ _about_status_if_metapackages() {
 }
 
 _about_description_for_third_party() {
-	about_description=$(echo "$appname_arg" | awk -F: "NR==$awk_description")
-	about_site=$(echo "$appname_arg" | awk -F: "NR==$awk_site")
 	if echo "$appname" | grep -q ".appbundle$"; then
+		readme_source="$appbundle_readme"
 		repo_source="$appbundle_repo"
 	else
+		readme_source="$toolpack_readme"
 		repo_source="$toolpack_repo"
 	fi
+	appname_arg=$(curl -Ls "$readme_source" | grep -i "^| $appname " | tr '|' '\n' | cut -c 2- | grep .)
+	about_description=$(echo "$appname_arg" | awk -F: "NR==$awk_description")
+	about_site=$(echo "$appname_arg" | awk -F: "NR==$awk_site")
 	printf "\n%b\n\nSOURCE: %b\n\nDATABASE: %b\n" "$about_description" "$about_site" "$repo_source"
 }
 
@@ -60,19 +63,15 @@ _about_description() {
 		echo "$markdown_page"
 	elif grep -q "^◆ $package_name " "$AMDATADIR"/"$ARCH"-*; then
 		appname=$(echo "$package_name" | sed 's/\.toolpack//g')
-		appname_arg=$(curl -Ls "$toolpack_readme" | grep -i "^| $appname " | tr '|' '\n' | cut -c 2- | grep .)
 		_about_description_for_third_party
 	elif grep -q "^◆ $app_name " "$AMDATADIR"/"$ARCH"-*; then
 		appname=$(echo "$app_name" | sed 's/\.toolpack//g')
-		appname_arg=$(curl -Ls "$toolpack_readme" | grep -i "^| $appname " | tr '|' '\n' | cut -c 2- | grep .)
 		_about_description_for_third_party
 	elif grep -q "^◆ $app_name.nixappimage " "$AMDATADIR"/"$ARCH"-*; then
 		appname=$(echo "$app_name.nixappimage" | sed 's/\.toolpack//g')
-		appname_arg=$(curl -Ls "$toolpack_readme" | grep -i "^| $appname " | tr '|' '\n' | cut -c 2- | grep .)
 		_about_description_for_third_party
 	elif grep -q "^◆ $app_name.dwfs.appbundle " "$AMDATADIR"/"$ARCH"-*; then
 		appname=$(echo "$app_name.dwfs.appbundle" | sed 's/\.toolpack//g')
-		appname_arg=$(curl -Ls "$appbundle_readme" | grep -i "^| $appname " | tr '|' '\n' | cut -c 2- | grep .)
 		_about_description_for_third_party
 	else
 		printf ' "%s" IS NOT A VALID ARGUMENT\n' "$package_name"
