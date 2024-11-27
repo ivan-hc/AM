@@ -7,20 +7,79 @@
 ################################################################################
 #				ABOUT
 ################################################################################
-_about_show_markdown() {
-	_sync_third_party_lists
+
+_about_package() {
+	package_name="$arg"
+	app_name=$(echo "$arg" | sed 's/-appimage//g; s/debian-testing-//g; s/\.toolpack//g; s/\.dwfs.appbundle//g; s/\.appbundle//g; s/\.nixappimage//g')
+}
+
+_about_status() {
+	_determine_args
+	_about_package
+	argpath=$(echo "$ARGPATHS" | grep "/$app_name$")
+	if [ -f "$argpath/remove" ]; then
+		app_status="installed\033[0m"
+		if test -f "$argpath"/.am-installer/*; then
+			scriptname=$(basename -- "$(find "$argpath"/.am-installer/* | head -1)" | sed 's/appbundle.toolpack$/appbundle/g')
+			if [ "$app_name" != "$scriptname" ]; then
+				app_status="installed\033[0m, but replaced by ${Green}$scriptname\033[0m\n\n NOTE: run ${RED}$AMCLI -a $scriptname\033[0m instead"
+				if [ "$package_name" = "$scriptname" ]; then
+					app_status="installed\033[0m, as ${Green}$app_name\033[0m"
+				fi
+			fi
+		fi
+	else
+		app_status="not installed"
+	fi
+}
+
+_about_status_if_metapackages() {
+	METAPACKAGES="kdegames kdeutils node platform-tools"
+	for m in $METAPACKAGES; do
+		metaargpath=$(echo "$ARGPATHS" | grep "/$m$")
+		if grep -q "◆ $arg : .*\"$m\"" "$AMDATADIR/$ARCH-apps"; then
+			if test -f "$metaargpath/remove"; then
+				app_status="installed\033[0m, as part of ${Green}$m\033[0m\n\n NOTE: run ${RED}$AMCLI -a $m\033[0m instead"
+				app_name="$m"
+			fi
+		elif [ "$arg" = "$m" ]; then
+			app_status="installed\033[0m"
+		fi
+	done
+}
+
+_about_description_for_third_party() {
+	about_description=$(echo "$appname_arg" | awk -F: "NR==$awk_description")
+	about_site=$(echo "$appname_arg" | awk -F: "NR==$awk_site")
+	if echo "$appname" | grep -q ".appbundle$"; then
+		repo_source="$appbundle_repo"
+	else
+		repo_source="$toolpack_repo"
+	fi
+	printf "\n%b\n\nSOURCE: %b\n\nDATABASE: %b\n" "$about_description" "$about_site" "$repo_source"
+}
+
+_about_description() {
+	markdown_url="$AMCATALOGUEMARKDOWNS/${arg}.md"
 	if curl -o /dev/null -sIf "$markdown_url"; then
-		markdown_page=$(curl -Ls "$markdown_url" \
-		| sed '1,${ /^\s*#/ d; /^\s*!/ d; /\[Applications]/d; /\ --- /d; /\ | - | /d; /\!\[/d; }' \
-		| sed '$!N;s/^\s*\n\s*$//;P;D')
-		echo "$markdown_page" | fold -sw 72 | sed 's/^ //g; s/^/ /g'
-	elif curl -Ls "$toolpack_readme" | grep -q "^| $arg " || curl -Ls "$toolpack_readme" | grep -q "^| $(echo "$arg" | sed 's/\.toolpack//g') "; then
-		toolpack_appname=$(echo "$arg" | sed 's/\.toolpack//g')
-		toolpack_md=$(curl -Ls "$toolpack_readme")
-		toolpack_arg=$(echo "$toolpack_md" | grep -i "^| $toolpack_appname " | tr '|' '\n' | cut -c 2- | grep .)
-		toolpack_about_description=$(echo "$toolpack_arg" | awk -F: "NR==$awk_description")
-		toolpack_about_site=$(echo "$toolpack_arg" | awk -F: "NR==$awk_site")
-		printf "\n%b\n\nSOURCE: %b\nDATABASE: https://github.com/Azathothas/Toolpacks\n" "$toolpack_about_description" "$toolpack_about_site" | fold -sw 72 | sed 's/^ //g; s/^/ /g'
+		markdown_page=$(curl -Ls "$markdown_url" | sed '1,${ /^\s*#/ d; /^\s*!/ d; /\[Applications]/d; /\ --- /d; /\ | - | /d; /\!\[/d; }' | sed '$!N;s/^\s*\n\s*$//;P;D')
+		echo "$markdown_page"
+	elif grep -q "^◆ $package_name " "$AMDATADIR"/"$ARCH"-*; then
+		appname=$(echo "$package_name" | sed 's/\.toolpack//g')
+		appname_arg=$(curl -Ls "$toolpack_readme" | grep -i "^| $appname " | tr '|' '\n' | cut -c 2- | grep .)
+		_about_description_for_third_party
+	elif grep -q "^◆ $app_name " "$AMDATADIR"/"$ARCH"-*; then
+		appname=$(echo "$app_name" | sed 's/\.toolpack//g')
+		appname_arg=$(curl -Ls "$toolpack_readme" | grep -i "^| $appname " | tr '|' '\n' | cut -c 2- | grep .)
+		_about_description_for_third_party
+	elif grep -q "^◆ $app_name.nixappimage " "$AMDATADIR"/"$ARCH"-*; then
+		appname=$(echo "$app_name.nixappimage" | sed 's/\.toolpack//g')
+		appname_arg=$(curl -Ls "$toolpack_readme" | grep -i "^| $appname " | tr '|' '\n' | cut -c 2- | grep .)
+		_about_description_for_third_party
+	elif grep -q "^◆ $app_name.dwfs.appbundle " "$AMDATADIR"/"$ARCH"-*; then
+		appname=$(echo "$app_name.dwfs.appbundle" | sed 's/\.toolpack//g')
+		appname_arg=$(curl -Ls "$appbundle_readme" | grep -i "^| $appname " | tr '|' '\n' | cut -c 2- | grep .)
+		_about_description_for_third_party
 	else
 		printf ' "%s" IS NOT A VALID ARGUMENT\n' "$package_name"
 	fi
@@ -28,45 +87,16 @@ _about_show_markdown() {
 
 _about_page() {
 	_determine_args
-	package_name="${Green}$1\033[0m"
-	markdown_url="$AMCATALOGUEMARKDOWNS/${1}.md"
-	printf " PACKAGE: %b\n" "$package_name"
+	package_name=$(echo "$arg" | sed 's/.appbundle.toolpack/.appbundle/g')
+	markdown_url="$AMCATALOGUEMARKDOWNS/${arg}.md"
+	printf " PACKAGE: %b%b\033[0m\n" "${Green}" "$package_name"
 	app_name=$(echo "$1" | sed 's/-appimage//g; s/debian-testing-//g; s/\.toolpack//g; s/\.dwfs.appbundle//g; s/\.appbundle//g; s/\.nixappimage//g')
 	argpath=$(echo "$ARGPATHS" | grep "/$app_name$")
-	if [ -f "$argpath/remove" ]; then
-		app_status="installed\033[0m"
-		if test -f "$argpath"/.am-installer/*; then
-			scriptname=$(basename -- "$(find "$argpath"/.am-installer/* | head -1)")
-			if [ "$app_name" != "$scriptname" ]; then
-				app_status="installed\033[0m, but replaced by ${Green}$scriptname\033[0m\n\n NOTE: run ${RED}$AMCLI -a $scriptname\033[0m instead"
-			fi
-			if test -f "$argpath"/.am-installer/"$arg" && [ "$arg" != "$app_name" ]; then
-				app_status="installed\033[0m, as ${Green}$app_name\033[0m"
-			fi
-			if echo "$arg" | grep -q "\.toolpack$" && ! test -f "$argpath"/.am-installer/"$arg"; then
-				app_status="not installed"
-			fi
-		elif [ "$arg" != "$app_name" ]; then
-			app_status="not installed"
-		fi
-	else
-		app_status="not installed"
-	fi
-	METAPACKAGES="kdegames kdeutils node platform-tools"
-	for m in $METAPACKAGES; do
-		metaargpath=$(echo "$ARGPATHS" | grep "/$m$")
-		if grep -q "◆ $1 : .*\"$m\"" "$AMDATADIR/$ARCH-apps"; then
-			if test -f "$metaargpath/remove"; then
-				app_status="installed\033[0m, as part of ${Green}$m\033[0m\n\n NOTE: run ${RED}$AMCLI -a $m\033[0m instead"
-				app_name="$m"
-			fi
-		elif [ "$1" = "$m" ]; then
-			app_status="installed\033[0m"
-		fi
-	done
+	_about_status
+	_about_status_if_metapackages
 	if echo "$app_status" | grep -q "^installed"; then
 		printf " STATUS: %b\n" "${LightBlue}$app_status"
-		disk_usage=$(du -sm "$argpath" | cut -f1)
+		disk_usage=$(du -sm "$argpath" 2>/dev/null | cut -f1)
 		[ -z "$disk_usage" ] && disk_usage=$(du -sm "$metaargpath" | cut -f1)
 		app_version=$(grep -w " ◆ $app_name	|" "$AMCACHEDIR"/version-args 2>/dev/null | sed 's:.*|	::')
 		echo ""
@@ -75,7 +105,7 @@ _about_page() {
 	else
 		echo " STATUS: $app_status"
 	fi
-	_about_show_markdown
+	_about_description | fold -sw 72 | sed 's/^ //g; s/^/ /g'
 }
 
 ################################################################################
@@ -436,21 +466,18 @@ case "$1" in
 	'-a'|'about')
 		[ -z "$2" ] && echo " USAGE: $AMCLI $1 [ARGUMENT]" && exit 1
 		_online_check
-		printf "%s\n" "-----------------------------------------------------------------------"
-		[ ! -f "$AMCACHEDIR"/version-args ] && _check_version
+		_sync_third_party_lists
+		echo "$DIVIDING_LINE"
+		rm -f "$AMCACHEDIR"/version-args && _check_version
 		entries="$(echo "$@" | cut -f2- -d ' ')" # Removes first argument
 		for arg in $entries; do
-			if curl -o /dev/null -sIf "$AMCATALOGUEMARKDOWNS/${arg}.md" 1>/dev/null; then
-				_about_page "$arg"
-			elif curl -Ls "$toolpack_readme" | grep -q "^| $arg "; then
-				arg="$arg.toolpack"
-				_about_page "$arg"
-			elif echo "$arg" | grep -q ".toolpack$"; then
-				_about_page "$arg"
-			else
+			tparg=$(echo "$arg" | sed 's/\.toolpack//g; s/\.appimage//g; s/\.dwfs.appbundle$//g; s/\.appbundle$//g; s/\.nixappimage//g')
+			if ! grep -q "^◆ $arg \|^◆ $arg.toolpack \|^◆ $arg.dwfs.appbundle \|^◆ $tparg " "$AMDATADIR"/"$ARCH"-*; then
 				printf " ERROR: %b not found\033[0m\n" "${RED}\"$arg\""
+			else
+				_about_page "$arg"
 			fi
-			printf "%s\n" "-----------------------------------------------------------------------"
+			echo "$DIVIDING_LINE"
 		done
 		;;
 
@@ -519,7 +546,7 @@ case "$1" in
 			_query_lists
 			[ "$2" = --all ] && _list_third_party && sort "$AMDATADIR"/"$ARCH"-* | uniq | grep -Pi "$pattern" | _pretty_list_compat
 			[ "$2" = --appimages ] && _list_appimages && grep -Pi "$pattern" "$AMDATADIR/$ARCH-appimages" | _pretty_list_compat
-			[ "$2" = --toolpack ] && _list_third_party && grep -Pi "$pattern" "$AMDATADIR/$ARCH-toolpack" | _pretty_list_compat
+			[ "$2" = --toolpack ] && _list_third_party && sort "$AMDATADIR/$ARCH-toolpack" "$AMDATADIR/$ARCH-appbundle" | grep -Pi "$pattern" | _pretty_list_compat
 		else
 			entries="$(echo "$@" | cut -f2- -d ' ')"
 			_query_lists
