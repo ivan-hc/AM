@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="9.1.2-1"
+AMVERSION="9.1.3"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -360,10 +360,14 @@ function _am_newrepo_check() {
 
 _am_newrepo_check "$@"
 
-# 3RD PARTY SOURCES -- TOOLPACK
+# 3RD PARTY SOURCES
+appbundle_repo="https://github.com/xplshn/AppBundleHUB"
+appbundle_readme="https://raw.githubusercontent.com/xplshn/dbin-metadata/refs/heads/master/misc/cmd/AM-support/AM.txt"
+
 toolpack_repo="https://github.com/Azathothas/Toolpacks"
 toolpack_readme="https://bin.pkgforge.dev/${ARCH}/AM.txt"
-export toolpack_name="1" toolpack_description="2" toolpack_site="3" toolpack_dl="4" toolpack_ver="5"
+
+export awk_name="1" awk_description="2" awk_site="3" awk_dl="4" awk_ver="5" # Numbers to use in "awk" to determine columns
 
 ################################################################################
 #				UTILITIES
@@ -380,6 +384,7 @@ function _completion_lists() {
 	# Remove existing lists and download new ones
 	curl -Ls "$APPSLISTDB" > "$AMDATADIR/$arch-apps"
 	awk -v FS="(◆ | : )" '{print $2}' <"$AMDATADIR"/"$arch"-apps > "$AMDATADIR"/list
+	[ -f "$AMDATADIR"/"$ARCH"-appbundle ] && awk '{print $2}' "$AMDATADIR"/"$ARCH"-appbundle >> "$AMDATADIR"/list
 	[ -f "$AMDATADIR"/"$ARCH"-toolpack ] && awk '{print $2}' "$AMDATADIR"/"$ARCH"-toolpack | sed -e 's/$/.toolpack/' >> "$AMDATADIR"/list
 	# Append options to the list
 	for o in $available_options; do
@@ -720,15 +725,25 @@ function _sync_appimages_list() {
 	fi
 }
 
+function _sync_appbundle_list() {
+	rm -f "$AMDATADIR/$ARCH-appbundle"
+	curl -Ls "$appbundle_readme" | grep -v "\.appimage \|?" | grep "\.appbundle " | cut -d":" -f1 | cut -d"@" -f2 | sed 's/^| /◆ /g; s/ https$//g; s/ :$//g; s/ | / : /g; s/ |$/./g; s/\.\.$/./g;' | sort > "$AMDATADIR/$ARCH-appbundle"
+}
+
 function _sync_toolpacks_list() {
 	rm -f "$AMDATADIR/$ARCH-toolpack"
-	curl -Ls "$toolpack_readme" | grep -v "\.appimage \|?" | cut -d":" -f1 | cut -d"@" -f2 | sed 's/^| /◆ /g; s/ | https$/. To install it use the "--toolpack" flag./g; s/ | / : /g' > "$AMDATADIR/$ARCH-toolpack"
+	curl -Ls "$toolpack_readme" | grep -v "\.appimage \|.appbundle \|?" | cut -d":" -f1 | cut -d"@" -f2 | sed 's/^| /◆ /g; s/ | https$/. To install it use the "--toolpack" flag./g; s/ | / : /g' | sort > "$AMDATADIR/$ARCH-toolpack"
+}
+
+function _sync_third_party_lists() {
+	_sync_appbundle_list
+	_sync_toolpacks_list
 }
 
 function _sync_databases() {
 	echo -e "$DIVIDING_LINE\n Check and update offline lists of additional databases..."
 	_sync_appimages_list
-	_sync_toolpacks_list
+	_sync_third_party_lists
 	_completion_lists
 }
 

@@ -192,7 +192,7 @@ _metapackage_check() {
 
 # This function is needed to parse the installation script and then execute it
 _install_arg() {
-	APPNAME=$(echo "\"$arg\"" | tr '[:lower:]' '[:upper:]')
+	APPNAME=$(echo "\"$arg\"" | sed 's/appbundle.toolpack/appbundle/g' | tr '[:lower:]' '[:upper:]')
 	chmod a+x ./"$arg"
 	_metapackage_check || return 1
 	_dependency_check_utils || return 1
@@ -300,26 +300,31 @@ _install_local_script() {
 	fi
 }
 
-# This function is needed to handle Toolpacks
-_toolpack_handler() {
-	mkdir -p "$CACHEDIR/toolpack"
-	toolpack_version="curl -Ls "$toolpack_readme" | grep -i \"^| $arg \" | tr '|' '\\\n' | cut -c 2- | grep . | awk -F: \"NR==$toolpack_ver\""
-	toolpak_url="curl -Ls "$toolpack_readme" | grep -i \"^| $arg \" | tr '|' '\\\n' | cut -c 2- | grep . | awk -F: \"NR==$toolpack_dl\""
+# This function is needed to handle programs from third-party supported databases
+_3rd_party_handler() {
+	mkdir -p "$CACHEDIR/extra"
 	if echo "$arg" | grep -q "appbundle$"; then
-		curl -Ls "$AMREPO"/templates/AM-SAMPLE-AppBundle > "$CACHEDIR/toolpack/$arg.toolpack" || exit 1
-		sed -i "s#APP=SAMPLE#APP=$arg#g; s#FUNCTION#$toolpack_version#g; s#wget \"\$version\"#wget \$($toolpak_url)#g" "$CACHEDIR/toolpack/$arg.toolpack"
-		sed -i 's/\.dwfs.appbundle$//g; s/\.appbundle$//g' "$CACHEDIR/toolpack/$arg.toolpack"
-	elif echo "$arg" | grep -q "nixappimage$"; then
-		curl -Ls "$AMREPO"/templates/AM-SAMPLE-AppImage > "$CACHEDIR/toolpack/$arg.toolpack" || exit 1
-		sed -i "s#APP=SAMPLE#APP=$arg#g; s#FUNCTION#$toolpack_version#g; s#wget \"\$version\"#wget \$($toolpak_url)#g" "$CACHEDIR/toolpack/$arg.toolpack"
-		sed -i 's/\.nixappimage$//g' "$CACHEDIR/toolpack/$arg.toolpack"
+		third_party_readme="$appbundle_readme"
 	else
-		curl -Ls "$AMREPO"/templates/AM-SAMPLE-Archive > "$CACHEDIR/toolpack/$arg.toolpack" || exit 1
-		sed -i "s#APP=SAMPLE#APP=$arg#g; s#FUNCTION#$toolpack_version#g; s#wget \"\$version\"#wget \$($toolpak_url)#g" "$CACHEDIR/toolpack/$arg.toolpack"
-		sed -e '/\[ -e/ s/^#*/#/' -i "$CACHEDIR/toolpack/$arg.toolpack" 2>/dev/null
+		third_party_readme="$toolpack_readme"
 	fi
-	chmod a+x "$CACHEDIR/toolpack/$arg.toolpack"
-	arg="$CACHEDIR/toolpack/$arg.toolpack"
+	awk_version="curl -Ls "$third_party_readme" | grep -i \"^| $arg \" | tr '|' '\\\n' | cut -c 2- | grep . | awk -F: \"NR==$awk_ver\""
+	third_party_url="curl -Ls "$third_party_readme" | grep -i \"^| $arg \" | tr '|' '\\\n' | cut -c 2- | grep . | awk -F: \"NR==$awk_dl\""
+	if echo "$arg" | grep -q "appbundle$"; then
+		curl -Ls "$AMREPO"/templates/AM-SAMPLE-AppBundle > "$CACHEDIR/extra/$arg.toolpack" || exit 1
+		sed -i "s#APP=SAMPLE#APP=$arg#g; s#FUNCTION#$awk_version#g; s#wget \"\$version\"#wget \$($third_party_url)#g" "$CACHEDIR/extra/$arg.toolpack"
+		sed -i 's/\.dwfs.appbundle$//g; s/\.appbundle$//g' "$CACHEDIR/extra/$arg.toolpack"
+	elif echo "$arg" | grep -q "nixappimage$"; then
+		curl -Ls "$AMREPO"/templates/AM-SAMPLE-AppImage > "$CACHEDIR/extra/$arg.toolpack" || exit 1
+		sed -i "s#APP=SAMPLE#APP=$arg#g; s#FUNCTION#$awk_version#g; s#wget \"\$version\"#wget \$($third_party_url)#g" "$CACHEDIR/extra/$arg.toolpack"
+		sed -i 's/\.nixappimage$//g' "$CACHEDIR/extra/$arg.toolpack"
+	else
+		curl -Ls "$AMREPO"/templates/AM-SAMPLE-Archive > "$CACHEDIR/extra/$arg.toolpack" || exit 1
+		sed -i "s#APP=SAMPLE#APP=$arg#g; s#FUNCTION#$awk_version#g; s#wget \"\$version\"#wget \$($third_party_url)#g" "$CACHEDIR/extra/$arg.toolpack"
+		sed -e '/\[ -e/ s/^#*/#/' -i "$CACHEDIR/extra/$arg.toolpack" 2>/dev/null
+	fi
+	chmod a+x "$CACHEDIR/extra/$arg.toolpack"
+	arg="$CACHEDIR/extra/$arg.toolpack"
 }
 
 # This is for scripts hosted on the official online database
@@ -406,20 +411,22 @@ case "$1" in
 					else
 						echo " 💀 ERROR: the file \"$arg\" does NOT exist"
 					fi
-				elif echo "$@" | grep -q -- "--toolpack" || echo "$@" | grep -q -- ".toolpack$"; then
+				elif echo "$@" | grep -q -- "--toolpack" \
+				|| echo "$@" | tr ' ' '\n' | grep -q ".toolpack$" \
+				|| echo "$@" | tr ' ' '\n' | grep -q ".appbundle$"; then
 					arg=$(echo "$arg" | sed 's/\.toolpack//g; s/\.appimage//g')
-					if curl -Ls "$toolpack_readme" | grep -q "^| $arg "; then
-						_toolpack_handler
+					if curl -Ls "$appbundle_readme" | grep -q "^| $arg " || curl -Ls "$toolpack_readme" | grep -q "^| $arg "; then
+						_3rd_party_handler
 						_install_local_script
 					elif curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg"  1>/dev/null; then
 						_install_normally
 					else
-						echo " 💀 ERROR: \"$arg\" does NOT exist in Toolpacks"
+						echo " 💀 ERROR: \"$arg\" does NOT exist, $(printf "see \"%b$AMCLI -l --all\033[0m\"\n\n" "${Gold}")"
 					fi
 				elif curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg"  1>/dev/null; then
 					_install_normally
 				else
-					echo " 💀 ERROR: \"$arg\" does NOT exist in the database, see \"$AMCLI -l\""
+					echo " 💀 ERROR: \"$arg\" does NOT exist in the \"AM\" database, $(printf "see \"%b$AMCLI -l\033[0m\"\n\n" "${Gold}")"
 				fi
 			fi
 			echo "____________________________________________________________________________"
