@@ -52,74 +52,6 @@ _download() {
 #				INSTALL
 ################################################################################
 
-_post_installation_processes() {
-	LASTDIR=$(ls -td "$APPSPATH"/* | head -1 | sed 's:.*/::')
-	LASTDIRPATH="${APPSPATH}/${LASTDIR}"
-	# Put permission check in remove script and change ownership of directory
-	if [ "$AMCLI" = am ]; then
-		$SUDOCMD sed -i "1 a [ \"\$(id -u)\" -ne 0 ] && echo "Permission denied" && exit 1" \
-			"${LASTDIRPATH}"/remove 2>/dev/null
-		$SUDOCMD chown -R "$USER" "${LASTDIRPATH}" 2>/dev/null
-	fi
-	# Check for AM-updater script sothat CLI can manage updates
-	[ -f "${LASTDIRPATH}"/AM-updater ] && mkdir "${LASTDIRPATH}"/.am-installer 2>/dev/null \
-		&& curl -Ls "$APPSDB"/"$arg" > "${LASTDIRPATH}"/.am-installer/"$arg"
-	find "${LASTDIRPATH}"/icons/* -xtype l -delete 2>/dev/null # Removes broken links
-	# If you have a broken or missing icon in your "icons" directory, download one from the catalog
-	[ -z "$(ls -A "${LASTDIRPATH}"/icons 2>/dev/null)" ] \
-		&& wget -q "$AMCATALOGUEICONS"/"$arg".png -O "${LASTDIRPATH}"/icons/"$arg" 2>/dev/null
-	# Patch .desktop to change paths if the app is installed locally
-	if [ "$AMCLI" = "appman" ]; then
-		# Likely not needed anymore: "s#Icon=/opt#Icon=$HOME/$APPSDIR#g"
-		sed -i -e "s#Exec=$arg#Exec=$BINDIR/$arg#g" \
-			-e "s#Exec=\$APP#Exec=$BINDIR/\$APP#g" \
-			-e "s#Exec=/usr/bin/#Exec=$BINDIR/#g" \
-			-e "s#Exec=/opt/#Exec=$BINDIR/#g" "$DATADIR"/applications/*-AM.desktop 2>/dev/null
-	fi
-	if echo "$FLAGS" | grep -q -- '--icons'; then
-		# Export all icons for hicolor theme usage
-		_icon_theme_export_to_datadir 2>/dev/null
-	fi
-}
-
-_ending_the_installation() {
-	LASTDIR=$(ls -td "$APPSPATH"/* | head -1 | sed 's:.*/::')
-	if [ -f "${LASTDIRPATH}"/remove ]; then
-		if test -d "${LASTDIRPATH}"/tmp; then
-			echo " 💀 ERROR DURING INSTALLATION, REMOVED $APPNAME!"
-			$SUDOCMD "$APPSPATH/$LASTDIR/remove" 1>/dev/null
-		elif test -f "$APPSPATH/$LASTDIR/version" && [ -z "$(cat "$APPSPATH/$LASTDIR/version")" ]; then
-			echo " 💀 ERROR DURING INSTALLATION, REMOVED $APPNAME!"
-			$SUDOCMD "$APPSPATH/$LASTDIR/remove" 1> /dev/null
-		else
-			APPSIZE=$(du -sm "${LASTDIRPATH}" | awk '{print $1}' )
-			LASTDIRNAME=$(echo "\"$LASTDIR\"" | tr '[:lower:]' '[:upper:]')
-			printf "%b%b%s\n" " ${Green}" "$LASTDIRNAME INSTALLED\033[0m" " ($APPSIZE MB OF DISK SPACE)"
-			$SUDOCMD rm "$AMCACHEDIR"/"$arg"
-			_check_version
-			app_version=$(grep -w " ◆ $LASTDIR	|" 0<"$AMCACHEDIR"/version-args | sed 's:.*|	::')
-			echo " ◆ $LASTDIR $app_version" >> "$AMCACHEDIR"/installed
-		fi
-	else
-		echo " INSTALLATION ABORTED!"
-	fi
-}
-
-_check_if_spooky_flag_exists() {
-	# Determine if an installation script is flagged as "spooky"
-	if grep -i spooky ./"$arg" >/dev/null 2>&1; then
-		printf "%b%b" "\n ${RED}WARNING:" " \"$arg\" does not have a transparent build process! \033[0m\n\n"
-		echo " We can't be sure as to what is inside the application"
-		echo " We highly recommend that you sandbox this application"
-		echo ""
-		read -r -p " Do you wish to continue? (N/y): " yn
-		if ! echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
-			printf "\n INSTALLATION ABORTED! \n"
-			return 1
-		fi
-	fi
-}
-
 _check_if_optional_dependences_are_needed() {
 	# Determine generic build utils
 	app_deps="ar gcc glib-compile-schemas make tar unzip"
@@ -176,6 +108,34 @@ _check_if_script_installs_a_metapackage() {
 	done	
 }
 
+_check_if_spooky_flag_exists() {
+	# Determine if an installation script is flagged as "spooky"
+	if grep -i spooky ./"$arg" >/dev/null 2>&1; then
+		printf "%b%b" " ${RED}WARNING:" " \"$arg\" does not have a transparent build process! \033[0m\n"
+		printf "\n We can't be sure as to what is inside the application\n We highly recommend that you sandbox this application\n\n"
+		read -r -p " Do you wish to continue? (N/y): " yn
+		if ! echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
+			printf "\n INSTALLATION ABORTED! \n"
+			return 1
+		fi
+	fi
+}
+
+_check_kind_of_installation_script() {
+	# Check if you are installing an app or a library
+	echo " ◆ $APPNAME: starting installation script"
+	if grep -qi "^wget.*.sh.*chmod.*&&" ./"$arg"; then
+		printf "\n This script will create an AppImage on the fly, please wait...\n"
+	elif grep -q "/usr/local/lib" ./"$arg"; then
+		printf "\n ⚠️ This script will install a system library in /usr/local/lib\n\n"
+		read -r -p " Do you wish to continue? (N/y): " yn
+		if ! echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
+			printf "\n INSTALLATION ABORTED! \n"
+			return 1
+		fi
+	fi
+}
+
 _apply_patches() {
 	# Patch "wget" (version 1.x) to have a progress bar and fix errors when applying patches
 	if ! echo "$FLAGS" | grep -q -- "--debug" && wget --version | head -1 | grep -q ' 1.'; then
@@ -209,25 +169,67 @@ _torsocks_error_message() {
 	printf "\nInstall \"torsocks\" from your system package manager and retry! \n"
 }
 
-# This function is needed to parse the installation script and then execute it
+_post_installation_processes() {
+	LASTDIR=$(ls -td "$APPSPATH"/* | head -1 | sed 's:.*/::')
+	LASTDIRPATH="${APPSPATH}/${LASTDIR}"
+	# Put permission check in remove script and change ownership of directory
+	if [ "$AMCLI" = am ]; then
+		$SUDOCMD sed -i "1 a [ \"\$(id -u)\" -ne 0 ] && echo "Permission denied" && exit 1" \
+			"${LASTDIRPATH}"/remove 2>/dev/null
+		$SUDOCMD chown -R "$USER" "${LASTDIRPATH}" 2>/dev/null
+	fi
+	# Check for AM-updater script sothat CLI can manage updates
+	[ -f "${LASTDIRPATH}"/AM-updater ] && mkdir "${LASTDIRPATH}"/.am-installer 2>/dev/null \
+		&& curl -Ls "$APPSDB"/"$arg" > "${LASTDIRPATH}"/.am-installer/"$arg"
+	find "${LASTDIRPATH}"/icons/* -xtype l -delete 2>/dev/null # Removes broken links
+	# If you have a broken or missing icon in your "icons" directory, download one from the catalog
+	[ -z "$(ls -A "${LASTDIRPATH}"/icons 2>/dev/null)" ] \
+		&& wget -q "$AMCATALOGUEICONS"/"$arg".png -O "${LASTDIRPATH}"/icons/"$arg" 2>/dev/null
+	# Patch .desktop to change paths if the app is installed locally
+	if [ "$AMCLI" = "appman" ]; then
+		# Likely not needed anymore: "s#Icon=/opt#Icon=$HOME/$APPSDIR#g"
+		sed -i -e "s#Exec=$arg#Exec=$BINDIR/$arg#g" \
+			-e "s#Exec=\$APP#Exec=$BINDIR/\$APP#g" \
+			-e "s#Exec=/usr/bin/#Exec=$BINDIR/#g" \
+			-e "s#Exec=/opt/#Exec=$BINDIR/#g" "$DATADIR"/applications/*-AM.desktop 2>/dev/null
+	fi
+	if echo "$FLAGS" | grep -q -- '--icons'; then
+		# Export all icons for hicolor theme usage
+		_icon_theme_export_to_datadir 2>/dev/null
+	fi
+}
+
+_ending_the_installation() {
+	LASTDIR=$(ls -td "$APPSPATH"/* | head -1 | sed 's:.*/::')
+	if [ -f "${LASTDIRPATH}"/remove ]; then
+		if test -d "${LASTDIRPATH}"/tmp; then
+			echo " 💀 ERROR DURING INSTALLATION, REMOVED $APPNAME!"
+			$SUDOCMD "$APPSPATH/$LASTDIR/remove" 1>/dev/null
+		elif test -f "$APPSPATH/$LASTDIR/version" && [ -z "$(cat "$APPSPATH/$LASTDIR/version")" ]; then
+			echo " 💀 ERROR DURING INSTALLATION, REMOVED $APPNAME!"
+			$SUDOCMD "$APPSPATH/$LASTDIR/remove" 1> /dev/null
+		else
+			APPSIZE=$(du -sm "${LASTDIRPATH}" | awk '{print $1}' )
+			LASTDIRNAME=$(echo "\"$LASTDIR\"" | tr '[:lower:]' '[:upper:]')
+			printf "%b%b%s\n" " ${Green}" "$LASTDIRNAME INSTALLED\033[0m" " ($APPSIZE MB OF DISK SPACE)"
+			$SUDOCMD rm "$AMCACHEDIR"/"$arg"
+			_check_version
+			app_version=$(grep -w " ◆ $LASTDIR	|" 0<"$AMCACHEDIR"/version-args | sed 's:.*|	::')
+			echo " ◆ $LASTDIR $app_version" >> "$AMCACHEDIR"/installed
+		fi
+	else
+		echo " INSTALLATION ABORTED!"
+	fi
+}
+
 _install_arg() {
+	# This function is needed to parse the installation script and then execute it
 	APPNAME=$(echo "\"$arg\"" | sed 's/appbundle.toolpack/appbundle/g' | tr '[:lower:]' '[:upper:]')
 	chmod a+x ./"$arg"
-	_check_if_script_installs_a_metapackage || return 1
 	_check_if_optional_dependences_are_needed || return 1
-	# Check if you are installing an app or a library
-	echo " ◆ $APPNAME: starting installation script"
-	if grep -qi "^wget.*.sh.*chmod.*&&" ./"$arg"; then
-		printf "\n This script will create an AppImage on the fly, please wait...\n"
-	elif grep -q "/usr/local/lib" ./"$arg"; then
-		printf "\n ⚠️ This script will install a system library in /usr/local/lib\n\n"
-		read -r -p " Do you wish to continue? (N/y): " yn
-		if ! echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
-			printf "\n INSTALLATION ABORTED! \n"
-			return 0
-		fi
-	fi
+	_check_if_script_installs_a_metapackage || return 1
 	_check_if_spooky_flag_exists || return 1
+	_check_kind_of_installation_script || return 1
 	_apply_patches
 	# Determine if Torsocks is needed
 	if command -v torsocks 1>/dev/null; then
@@ -260,20 +262,6 @@ _install_arg() {
 #			INSTALLATION CASES
 #--------------------------------------------------------------------------
 
-_install_local_script() {
-	# This function is for local installation scripts
-	path2arg="$arg"
-	arg=$(echo "$path2arg" | sed 's:.*/::')
-	mkdir -p "$AMCACHEDIR"/tmp && rm -f "$AMCACHEDIR"/tmp/* \
-		&& cp "$path2arg" "$AMCACHEDIR"/tmp/"$arg" && cd "$AMCACHEDIR" \
-		&& mv ./tmp/"$arg" ./"$arg" && rmdir ./tmp || return
-	if ! test -d "$APPSPATH"/"$arg"; then
-		_install_arg
-	else
-		echo " ◆ \"$arg\" is already installed!" | tr '[:lower:]' '[:upper:]'
-	fi
-}
-
 _3rd_party_apps_handler() {
 	# This function is needed to handle programs from third-party supported databases
 	mkdir -p "$CACHEDIR/extra"
@@ -299,6 +287,20 @@ _3rd_party_apps_handler() {
 	fi
 	chmod a+x "$CACHEDIR/extra/$arg.toolpack"
 	arg="$CACHEDIR/extra/$arg.toolpack"
+}
+
+_install_local_script() {
+	# This function is for local installation scripts
+	path2arg="$arg"
+	arg=$(echo "$path2arg" | sed 's:.*/::')
+	mkdir -p "$AMCACHEDIR"/tmp && rm -f "$AMCACHEDIR"/tmp/* \
+		&& cp "$path2arg" "$AMCACHEDIR"/tmp/"$arg" && cd "$AMCACHEDIR" \
+		&& mv ./tmp/"$arg" ./"$arg" && rmdir ./tmp || return
+	if ! test -d "$APPSPATH"/"$arg"; then
+		_install_arg
+	else
+		echo " ◆ \"$arg\" is already installed!" | tr '[:lower:]' '[:upper:]'
+	fi
 }
 
 _install_normally() {
