@@ -293,22 +293,18 @@ _install_local_script() {
 	# This function is for local installation scripts
 	path2arg="$arg"
 	arg=$(echo "$path2arg" | sed 's:.*/::')
-	mkdir -p "$AMCACHEDIR"/tmp && rm -f "$AMCACHEDIR"/tmp/* \
-		&& cp "$path2arg" "$AMCACHEDIR"/tmp/"$arg" && cd "$AMCACHEDIR" \
-		&& mv ./tmp/"$arg" ./"$arg" && rmdir ./tmp || return
+	mkdir -p "$AMCACHEDIR"/tmp && rm -f "$AMCACHEDIR"/tmp/* || return 1
+	cp "$path2arg" "$AMCACHEDIR"/tmp/"$arg" && cd "$AMCACHEDIR" && mv ./tmp/"$arg" ./"$arg" && rmdir ./tmp || return 1
 	if ! test -d "$APPSPATH"/"$arg"; then
 		_install_arg
-	else
-		echo " ◆ \"$arg\" is already installed!" | tr '[:lower:]' '[:upper:]'
 	fi
 }
 
 _install_normally() {
 	# This is for scripts hosted on the official online database
-	mkdir -p "$AMCACHEDIR"/tmp && rm -f "$AMCACHEDIR"/tmp/* || return
-	curl -Ls "$APPSDB"/"$arg" > "$AMCACHEDIR"/tmp/"$arg" || return
-	cd "$AMCACHEDIR" && mkdir -p tmp && cd tmp || return
-	cd "$AMCACHEDIR" && mv ./tmp/"$arg" ./"$arg" && rmdir ./tmp || return
+	mkdir -p "$AMCACHEDIR"/tmp && rm -f "$AMCACHEDIR"/tmp/* || return 1
+	curl -Ls "$APPSDB"/"$arg" > "$AMCACHEDIR"/tmp/"$arg" || return 1
+	cd "$AMCACHEDIR" && mv ./tmp/"$arg" ./"$arg" && rmdir ./tmp || return 1
 	_install_arg
 }
 
@@ -371,13 +367,11 @@ case "$1" in
 
 		for arg in $entries; do
 			echo ""
-			cd "$REALDIR" || return
+			cd "$REALDIR" || return 1
 			# If the "tmp" directory is not removed, the installation failed, so remove the app
-			if [ -d "$APPSPATH"/"$arg"/tmp ]; then
-				$SUDOCMD "$APPSPATH"/"$arg"/remove 2> /dev/null
-			fi
+			[ -d "$APPSPATH"/"$arg"/tmp ] && $SUDOCMD "$APPSPATH"/"$arg"/remove 2> /dev/null
 			# Various cases that may occur during installation
-			tparg=$(echo "$arg" | sed 's/\.toolpack//g; s/\.appimage//g; s/\.dwfs.appbundle$//g; s/\.appbundle$//g; s/\.nixappimage//g')
+			tparg=$(echo "$arg" | sed 's/\.toolpack//g; s/\.appimage//g; ; s/\^debian-testing-//g; s/\-appimage$//g; s/\.dwfs.appbundle$//g; s/\.appbundle$//g; s/\.nixappimage//g')
 			if test -f "$APPSPATH"/"$tparg"/remove; then
 				echo " ◆ \"$tparg\" is already installed!" | tr '[:lower:]' '[:upper:]'
 			elif echo "$arg" | grep -q "/"; then
@@ -386,15 +380,11 @@ case "$1" in
 				else
 					echo " 💀 ERROR: the file \"$arg\" does NOT exist"
 				fi
-			elif echo "$@" | grep -q -- "--toolpack" \
-			|| echo "$@" | tr ' ' '\n' | grep -q ".toolpack$" \
-			|| echo "$@" | tr ' ' '\n' | grep -q ".appbundle$"; then
+			elif echo "$@" | grep -q -- "--toolpack" || echo "$arg" | grep -q ".toolpack$" || echo "$arg" | grep -q ".appbundle$"; then
 				arg=$(echo "$arg" | sed 's/\.toolpack//g; s/\.appimage//g')
 				if curl -Ls "$appbundle_readme" | grep -q "^| $arg " || curl -Ls "$toolpack_readme" | grep -q "^| $arg "; then
 					_3rd_party_apps_handler
 					_install_local_script
-				elif curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg"  1>/dev/null; then
-					_install_normally
 				else
 					echo " 💀 ERROR: \"$arg\" does NOT exist, $(printf "see \"%b$AMCLI -l --all\033[0m\"\n\n" "${Gold}")"
 				fi
