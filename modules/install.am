@@ -105,14 +105,14 @@ _ending_the_installation() {
 	fi
 }
 
-# Determine if an installation script is flagged as "spooky"
-_spooky_check() {
+_check_if_spooky_flag_exists() {
+	# Determine if an installation script is flagged as "spooky"
 	if grep -i spooky ./"$arg" >/dev/null 2>&1; then
 		printf "%b%b" "\n ${RED}WARNING:" " \"$arg\" does not have a transparent build process! \033[0m\n\n"
 		echo " We can't be sure as to what is inside the application"
 		echo " We highly recommend that you sandbox this application"
 		echo ""
-		read -p " Do you wish to continue? (N/y): " yn
+		read -r -p " Do you wish to continue? (N/y): " yn
 		if ! echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
 			printf "\n INSTALLATION ABORTED! \n"
 			return 1
@@ -120,20 +120,49 @@ _spooky_check() {
 	fi
 }
 
-# Check if the installation script contain a keyword related to a missing dependence
-_dependency_check_utils() {
+_check_if_optional_dependences_are_needed() {
+	# Determine generic build utils
 	app_deps="ar gcc glib-compile-schemas make tar unzip"
+	script_content=$(cat ./"$arg")
+	# Determine if this is an AppImage that can be compiled on-the-fly
+	if grep -qi "^wget.*.sh.*chmod.*&&" ./"$arg"; then
+		appimage_bulder_script=$(grep "^wget " ./"$arg" | tr '"' '\n' | grep -i "^http" | sed "s/\$APP/$arg/g")
+		if curl --output /dev/null --silent --head --fail "$appimage_bulder_script" 1> /dev/null; then
+			script_content=$(curl -Ls "$appimage_bulder_script")
+			if echo "$script_content" | grep -ie "appimagetool\|pkg2appimage" 1>/dev/null; then
+				if ! command -v convert >/dev/null 2>&1; then
+					echo " 💀 ERROR: cannot create \"$arg\" without \"convert\" (from \"imagemagick\")" 
+					return 1
+				fi
+			fi
+		else
+			echo " 💀 ERROR: cannot create \"$arg\", the builder does not exists" 
+			return 1
+		fi
+	fi
+	# Determine if this script installs a Firefox webapp
+	if grep -q 'ffwa-' ./"$arg"; then
+		ffbrowser=$(find ${PATH//:/ } -maxdepth 1 -name "firefox*" | sort | head -1)
+		if [ -z "$ffbrowser" ]; then
+			echo " 💀 ERROR: you cannot install \"$arg\" without installing \"firefox\""
+			return 1
+		else
+			sed -i 's#firefox --class#'"$(echo "$ffbrowser" | xargs -L 1 basename)"' --class#g' ./"$arg"
+		fi
+	fi
+	# Check missing dependency
 	for name in $app_deps; do
-		if grep "^$name" ./"$arg" 1>/dev/null && ! command -v "$name" >/dev/null 2>&1; then
-			[ "$name" = "ar" ] && name="binutils"
-			echo " 💀 ERROR: cannot install \"$arg\" without \"$name\"" 
+		dependency_name="$name"
+		[ "$name" = "ar" ] && dependency_name="binutils"
+		if echo "$script_content" | grep -q "^$name" && ! command -v "$name" >/dev/null 2>&1; then
+			echo " 💀 ERROR: cannot install \"$arg\" without \"$dependency_name\"" 
 			return 1
 		fi
 	done
 }
 
-# Check if the installation script is a metapackage (example one of the 40+ kdegames scripts)
-_metapackage_check() {
+_check_if_script_installs_a_metapackage() {
+	# Check if the installation script is a metapackage (example one of the 40+ kdegames scripts)
 	for metapackage in $METAPACKAGES; do
 		if grep -q "$metapackage" ./"$arg" 2> /dev/null; then
 			if [ -d "$APPSPATH"/"$metapackage"/tmp ]; then
@@ -147,7 +176,6 @@ _metapackage_check() {
 	done	
 }
 
-# Patches
 _apply_patches() {
 	# Patch "wget" (version 1.x) to have a progress bar and fix errors when applying patches
 	if ! echo "$FLAGS" | grep -q -- "--debug" && wget --version | head -1 | grep -q ' 1.'; then
@@ -176,7 +204,6 @@ _apply_patches() {
 	echo ""
 }
 
-# Prompt an error message for Torsocks
 _torsocks_error_message() {
 	echo "💀 Cannot install \"$arg\", $TORSOCKS_MESSAGE"
 	printf "\nInstall \"torsocks\" from your system package manager and retry! \n"
@@ -186,51 +213,21 @@ _torsocks_error_message() {
 _install_arg() {
 	APPNAME=$(echo "\"$arg\"" | sed 's/appbundle.toolpack/appbundle/g' | tr '[:lower:]' '[:upper:]')
 	chmod a+x ./"$arg"
-	_metapackage_check || return 1
-	_dependency_check_utils || return 1
-	if grep -q 'ffwa-' ./"$arg"; then
-		ffbrowser=$(find ${PATH//:/ } -maxdepth 1 -name "firefox*" | sort | head -1)
-		if [ -z "$ffbrowser" ]; then
-			echo " 💀 ERROR: you cannot install \"$arg\" without installing \"firefox\""; return 0
-		else
-			sed -i 's#firefox --class#'"$(echo "$ffbrowser" | xargs -L 1 basename)"' --class#g' ./"$arg"
-		fi
-	elif grep -qi "^wget.*.sh.*chmod.*&&" ./"$arg"; then
-		appimage_bulder_script=$(grep "^wget " ./"$arg" | tr '"' '\n' | grep -i "^http" | sed "s/\$APP/$arg/g")
-		if curl --output /dev/null --silent --head --fail "$appimage_bulder_script" 1> /dev/null; then
-			for name in $app_deps; do
-				if curl -Ls "$appimage_bulder_script" | grep "^$name" 1>/dev/null; then
-					if ! command -v "$name" >/dev/null 2>&1; then
-						[ "$name" = "ar" ] && name="binutils"
-						echo " 💀 ERROR: cannot install \"$arg\" without \"$name\""
-						return 0
-					fi
-				fi
-			done
-			if curl -Ls "$appimage_bulder_script" | grep -ie "appimagetool\|pkg2appimage" 1>/dev/null; then
-				if ! command -v convert >/dev/null 2>&1; then
-					echo " 💀 ERROR: cannot create \"$arg\" without \"convert\" (from \"imagemagick\")" 
-					return 0
-				fi
-			fi
-		else
-			echo " 💀 ERROR: cannot create \"$arg\", the builder does not exists" 
-			return 0
-		fi
-	fi
+	_check_if_script_installs_a_metapackage || return 1
+	_check_if_optional_dependences_are_needed || return 1
 	# Check if you are installing an app or a library
 	echo " ◆ $APPNAME: starting installation script"
 	if grep -qi "^wget.*.sh.*chmod.*&&" ./"$arg"; then
 		printf "\n This script will create an AppImage on the fly, please wait...\n"
 	elif grep -q "/usr/local/lib" ./"$arg"; then
 		printf "\n ⚠️ This script will install a system library in /usr/local/lib\n\n"
-		read -p " Do you wish to continue? (N/y): " yn
+		read -r -p " Do you wish to continue? (N/y): " yn
 		if ! echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
 			printf "\n INSTALLATION ABORTED! \n"
 			return 0
 		fi
 	fi
-	_spooky_check || return 1
+	_check_if_spooky_flag_exists || return 1
 	_apply_patches
 	# Determine if Torsocks is needed
 	if command -v torsocks 1>/dev/null; then
@@ -263,8 +260,8 @@ _install_arg() {
 #			INSTALLATION CASES
 #--------------------------------------------------------------------------
 
-# This function is for local installation scripts
 _install_local_script() {
+	# This function is for local installation scripts
 	path2arg="$arg"
 	arg=$(echo "$path2arg" | sed 's:.*/::')
 	mkdir -p "$AMCACHEDIR"/tmp && rm -f "$AMCACHEDIR"/tmp/* \
@@ -277,16 +274,16 @@ _install_local_script() {
 	fi
 }
 
-# This function is needed to handle programs from third-party supported databases
-_3rd_party_handler() {
+_3rd_party_apps_handler() {
+	# This function is needed to handle programs from third-party supported databases
 	mkdir -p "$CACHEDIR/extra"
 	if echo "$arg" | grep -q "appbundle$"; then
 		third_party_readme="$appbundle_readme"
 	else
 		third_party_readme="$toolpack_readme"
 	fi
-	awk_version="curl -Ls "$third_party_readme" | grep -i \"^| $arg \" | tr '|' '\\\n' | cut -c 2- | grep . | awk -F: \"NR==$awk_ver\""
-	third_party_url="curl -Ls "$third_party_readme" | grep -i \"^| $arg \" | tr '|' '\\\n' | cut -c 2- | grep . | awk -F: \"NR==$awk_dl\""
+	awk_version="curl -Ls $third_party_readme | grep -i \"^| $arg \" | tr '|' '\\\n' | cut -c 2- | grep . | awk -F: \"NR==$awk_ver\""
+	third_party_url="curl -Ls $third_party_readme | grep -i \"^| $arg \" | tr '|' '\\\n' | cut -c 2- | grep . | awk -F: \"NR==$awk_dl\""
 	if echo "$arg" | grep -q "appbundle$"; then
 		curl -Ls "$AMREPO"/templates/AM-SAMPLE-AppBundle > "$CACHEDIR/extra/$arg.toolpack" || exit 1
 		sed -i "s#APP=SAMPLE#APP=$arg#g; s#FUNCTION#$awk_version#g; s#wget \"\$version\"#wget \$($third_party_url)#g" "$CACHEDIR/extra/$arg.toolpack"
@@ -304,8 +301,8 @@ _3rd_party_handler() {
 	arg="$CACHEDIR/extra/$arg.toolpack"
 }
 
-# This is for scripts hosted on the official online database
 _install_normally() {
+	# This is for scripts hosted on the official online database
 	mkdir -p "$AMCACHEDIR"/tmp && rm -f "$AMCACHEDIR"/tmp/* || return
 	curl -Ls "$APPSDB"/"$arg" > "$AMCACHEDIR"/tmp/"$arg" || return
 	cd "$AMCACHEDIR" && mkdir -p tmp && cd tmp || return
@@ -392,7 +389,7 @@ case "$1" in
 			|| echo "$@" | tr ' ' '\n' | grep -q ".appbundle$"; then
 				arg=$(echo "$arg" | sed 's/\.toolpack//g; s/\.appimage//g')
 				if curl -Ls "$appbundle_readme" | grep -q "^| $arg " || curl -Ls "$toolpack_readme" | grep -q "^| $arg "; then
-					_3rd_party_handler
+					_3rd_party_apps_handler
 					_install_local_script
 				elif curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg"  1>/dev/null; then
 					_install_normally
