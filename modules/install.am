@@ -4,6 +4,7 @@
 # THIS MODULE IS USED TO INSTALL APPS FROM THE DATABASE OR FROM LOCAL SCRIPTS
 #############################################################################
 
+AMCLIPATH_ORIGIN="$AMCLIPATH"
 BINDIR="${XDG_BIN_HOME:-$HOME/.local/bin}"
 
 ################################################################################
@@ -370,10 +371,13 @@ case "$1" in
 			cd "$REALDIR" || return 1
 			# If the "tmp" directory is not removed, the installation failed, so remove the app
 			[ -d "$APPSPATH"/"$arg"/tmp ] && $SUDOCMD "$APPSPATH"/"$arg"/remove 2> /dev/null
+			# Check if the app wil be installed with the same name as the argument
+			pure_arg=$(echo "$arg" | sed 's/\.toolpack//g; s/\.dwfs.appbundle$//g; s/\.appbundle$//g; s/\.nixappimage//g')
+			pure_arg=$(echo "$pure_arg" | sed 's/\.appimage//g; s/\^debian-testing-//g; s/\-appimage$//g')
+			echo "$arg" | grep -q -- "-appimage$" && curl -Ls "$APPSDB"/"$arg" | grep -q "APP=.*-appimage$" && pure_arg="$arg"
 			# Various cases that may occur during installation
-			tparg=$(echo "$arg" | sed 's/\.toolpack//g; s/\.appimage//g; ; s/\^debian-testing-//g; s/\-appimage$//g; s/\.dwfs.appbundle$//g; s/\.appbundle$//g; s/\.nixappimage//g')
-			if test -f "$APPSPATH"/"$tparg"/remove; then
-				echo " ◆ \"$tparg\" is already installed!" | tr '[:lower:]' '[:upper:]'
+			if test -f "$APPSPATH"/"$pure_arg"/remove; then
+				echo " ◆ \"$pure_arg\" is already installed!" | tr '[:lower:]' '[:upper:]'
 			elif echo "$arg" | grep -q "/"; then
 				if test -f "$arg" 2> /dev/null; then
 					_install_local_script
@@ -386,12 +390,12 @@ case "$1" in
 					_3rd_party_apps_handler
 					_install_local_script
 				else
-					echo " 💀 ERROR: \"$arg\" does NOT exist, $(printf "see \"%b$AMCLI -l --all\033[0m\"\n\n" "${Gold}")"
+					echo "💀 ERROR: \"$arg\" does NOT exist, $(printf "please check the list, run the \"%b$AMCLIPATH_ORIGIN -l --all\033[0m\" command.\n\n" "${Gold}")" | fold -sw 72 | sed 's/^/ /g'
 				fi
-			elif curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg"  1>/dev/null; then
+			elif curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg" 1>/dev/null; then
 				_install_normally
 			else
-				echo " 💀 ERROR: \"$arg\" does NOT exist in the \"AM\" database, $(printf "see \"%b$AMCLI -l\033[0m\"\n\n" "${Gold}")"
+				echo "💀 ERROR: \"$arg\" does NOT exist in the \"AM\" database, $(printf "please check the list, run the \"%b$AMCLIPATH_ORIGIN -l\033[0m\" command.\n\n" "${Gold}")" | fold -sw 72 | sed 's/^/ /g'
 			fi
 			echo "____________________________________________________________________________"
 		done
@@ -404,7 +408,6 @@ case "$1" in
 		;;
 
 	'-ia'|'install-appimage')
-		AMCLIPATH_ORIGIN="$AMCLIPATH"
 		[ "$AMCLI" = "am" ] && echo "$@" | grep -q -- "--user" && _appman
 
 		rm -f "$AMCACHEDIR"/install-args
@@ -435,7 +438,6 @@ case "$1" in
 		;;
 
 	'-e'|'extra')
-		AMCLIPATH_ORIGIN="$AMCLIPATH"
 		if [ -z "$2" ] || [ -z "$3" ]; then
 			echo " USAGE: $AMCLI $1 user/project [ARGUMENT]"
 			echo " USAGE: $AMCLI $1 user/project [ARGUMENT] [KEYWORD]"
