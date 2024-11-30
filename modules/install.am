@@ -290,6 +290,27 @@ _3rd_party_apps_handler() {
 	arg="$CACHEDIR/extra/$arg.toolpack"
 }
 
+_install_appimage() {
+	# This function is ment to select and install only AppImages
+	rm -f "$AMCACHEDIR"/install-args
+	_sync_appimages_list
+	for arg in $entries; do
+		if grep -q "^◆ $arg : " "$AMDATADIR/$ARCH-appimages"; then
+			echo "$arg" >> "$AMCACHEDIR"/install-args
+		else
+			arg="$arg-appimage"
+			if ! grep -q "^◆ $arg : " "$AMDATADIR/$ARCH-appimages"; then
+				echo "$DIVIDING_LINE"
+				echo " ✖ \"$(echo "$arg" | sed 's/-appimage//g')\" is not an Appimage"
+				echo "$DIVIDING_LINE"
+			else
+				echo "$arg" >> "$AMCACHEDIR"/install-args
+			fi
+		fi
+	done
+	entries=$(cat "$AMCACHEDIR"/install-args 2>/dev/null)
+}
+
 _install_local_script() {
 	# This function is for local installation scripts
 	path2arg="$arg"
@@ -339,7 +360,8 @@ case "$1" in
 		fi
 		;;
 
-	'-i'|'install')
+	'install'|'-i'|\
+	'install-appimage'|'-ia')
 		[ "$AMCLI" = "am" ] && echo "$@" | grep -q -- "--user" && _appman
 
 		case $2 in
@@ -365,6 +387,8 @@ case "$1" in
 		entries="$(echo "$@" | cut -f2- -d ' ' | tr ' ' '\n' | grep -v -- "--")"
 		FLAGS=$(echo "$@" | tr ' ' '\n' | grep -- "--" | tr '\n ' ' ')
 		METAPACKAGES="kdegames kdeutils node platform-tools"
+
+		if [ "$1" = "-ia" ] || [ "$1" = "install-appimage" ]; then _install_appimage; fi
 
 		for arg in $entries; do
 			echo ""
@@ -405,36 +429,6 @@ case "$1" in
 		&& grep -w -v "◆ am" 0<"$AMCACHEDIR"/installed
 		printf "\n============================================================================\n"
 		exit 0
-		;;
-
-	'-ia'|'install-appimage')
-		[ "$AMCLI" = "am" ] && echo "$@" | grep -q -- "--user" && _appman
-
-		rm -f "$AMCACHEDIR"/install-args
-
-		entries="$(echo "$@" | cut -f2- -d ' ' | tr ' ' '\n' | grep -v -- "--")"
-		FLAGS=$(echo "$@" | tr ' ' '\n' | grep -- "--" | tr '\n ' ' ')
-		APPIMAGE_NAMES=$(curl -Ls https://portable-linux-apps.github.io/appimages.md | tr '/)' '\n' | grep -i ".md$" | uniq | sed 's/.md$//g' | grep -v "\[")
-
-		rm -f "$AMCACHEDIR/$ARCH-appimages"
-		for appimage in $APPIMAGE_NAMES; do
-			grep "◆ $appimage :" "$AMDATADIR/$ARCH-apps" >> "$AMCACHEDIR/$ARCH-appimages" &
-		done
-		for arg in $entries; do
-			if grep -q "^◆ $arg : " "$AMCACHEDIR/$ARCH-appimages"; then
-				echo "$arg" >> "$AMCACHEDIR"/install-args
-			else
-				arg="$arg-appimage"
-				if ! grep -q "^◆ $arg : " "$AMCACHEDIR/$ARCH-appimages"; then
-					echo " ✖ \"$(echo "$arg" | sed 's/-appimage//g')\" is not an Appimage"
-				else
-					echo "$arg" >> "$AMCACHEDIR"/install-args
-				fi
-			fi
-		done
-		APPIMAGES_ARGS=$(<"$AMCACHEDIR"/install-args sed 's/\n/ /g')
-		"$AMCLIPATH_ORIGIN" -i $FLAGS "$APPIMAGES_ARGS"
-		exit 1
 		;;
 
 	'-e'|'extra')
