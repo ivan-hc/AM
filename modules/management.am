@@ -206,6 +206,35 @@ function _launcher(){
 	fi
 }
 
+function _launchers_not_found() {
+	MISSING_LAUNCHERS_MSG=" No launcher found."
+	printf "%b\n%b\n%b\n" "$DIVIDING_LINE" "$MISSING_LAUNCHERS_MSG" "$DIVIDING_LINE"
+}
+
+function _launcher_update() {
+	_clean_launchers 2>/dev/null 1>/dev/null
+	MISSING_LAUNCHERS_MSG="No launcher found, use option \"--launcher\" to create them."
+	[ ! -d "$DATADIR"/applications/AppImages ] && _launchers_not_found && exit 0
+	[ -d "$DATADIR"/applications/AppImages ] && [ -z "$( ls -A "$DATADIR"/applications/AppImages )" ] && _launchers_not_found && exit 0
+	if ! command -v appimageupdatetool 1>/dev/null; then
+		update_launchers_error_message=" 💀 ERROR! Missing command \"${RED}appimageupdatetool\033[0m\", install it and retry!"
+		printf "%b\n%b\n%b\n" "$DIVIDING_LINE" "$update_launchers_error_message" "$DIVIDING_LINE"
+		exit 0
+	else
+		echo "$DIVIDING_LINE"
+		for var in "$DATADIR"/applications/AppImages/*.desktop; do
+			appimage_full_path=$(grep "^Exec=" 0<"$var" 2>/dev/null | head -1 | cut -c 6- | sed 's/"//g; s/\s.*$//')
+			appimagename=$(basename -- "$appimage_full_path")
+			appimage_path=$(echo "$appimage_full_path" | sed -E 's|/[^/]+$|/|')
+			appimage_updating_msg="◆ Trying to update $appimagename..."
+			printf "%b\n\n" "$appimage_updating_msg"
+			appimageupdatetool -Or "$appimage_full_path"
+			echo "$DIVIDING_LINE"
+		done
+		exit 0
+	fi
+}
+
 # LOCK/UNLOCK
 function _lock() {
 		if [ ! -f "$argpath"/AM-updater ]; then
@@ -392,6 +421,9 @@ case "$1" in
 
 	'launcher'|'--launcher')
 		# Place local AppImages into the menu by dragging and dropping them into the terminal
+		if [ "$2" = "-u" ] || [ "$2" = "-U" ] || [ "$2" = "update" ]; then
+			_launcher_update
+		fi
 		entries="$(echo "$@" | cut -f2- -d ' ')"
 		for arg in $entries; do
 			echo "---------------------------------------------------------------------"
