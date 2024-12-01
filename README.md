@@ -716,6 +716,7 @@ Below you can access the documentation pages related to the use of "AM", complet
   - [How to create a launcher for a local AppImage](docs/guides-and-tutorials/launcher.md#how-to-create-a-launcher-for-a-local-appimage)
   - [How to remove the orphan launchers](docs/guides-and-tutorials/launcher.md#how-to-remove-the-orphan-launchers)
   - [AppImages from external media](docs/guides-and-tutorials/launcher.md#appimages-from-external-media)
+  - [Update scattered AppImages](docs/guides-and-tutorials/launcher.md#update-scattered-appimages)
 - [Sandbox an AppImage](docs/guides-and-tutorials/sandbox.md)
   - [How to enable a sandbox](docs/guides-and-tutorials/sandbox.md#how-to-enable-a-sandbox)
   - [How to disable a sandbox](docs/guides-and-tutorials/sandbox.md#how-to-disable-a-sandbox)
