@@ -168,7 +168,7 @@ function _launcher_appimage_bin() {
 	mkdir -p "$BINDIR"
 	if ! echo "$PATH" | grep "$BINDIR" >/dev/null 2>&1; then
 		echo "$DIVIDING_LINE"
-		echo "WARNING: \"$BINDIR\" is not in PATH, apps may not run from command line." | fold -sw 77 | sed 's/^/ /g'
+		echo "WARNING: \"$BINDIR\" is not in PATH, apps may not run from command line." | _fit
 		echo "$DIVIDING_LINE"
 	fi
 	read -r -p " Write a custom command to launch the app, or leave blank: " response
@@ -176,23 +176,34 @@ function _launcher_appimage_bin() {
 		appimage_cmd=$(echo "$appimage" | tr '[:upper:]' '[:lower:]')
 		if ! echo "$appimage" | grep -q -i ".appimage"; then
 			[ -n "$BINDIR" ] && printf '#!/bin/sh\n%s' "$arg" >> "$BINDIR"/"$appimage_cmd".appimage \
-			&& chmod a+x "$BINDIR"/"$appimage_cmd".appimage && echo " New command: \"$appimage_cmd.appimage\" in $BINDIR"
+			&& chmod a+x "$BINDIR"/"$appimage_cmd".appimage && echo " New command: \"$appimage_cmd.appimage\" in $BINDIR" | _fit
 		else
 			[ -n "$BINDIR" ] && printf '#!/bin/sh\n%s' "$arg" >> "$BINDIR"/"$appimage_cmd" \
-			&& chmod a+x "$BINDIR"/"$appimage_cmd" && echo " New command: \"$appimage_cmd\" in $BINDIR"
+			&& chmod a+x "$BINDIR"/"$appimage_cmd" && echo "New command: \"$appimage_cmd\" in $BINDIR" | _fit
 		fi
 	elif command -v "$response" 1>/dev/null; then
-		echo " ERROR: the \"$response\" command alredy exists, retry!"
+		if test -f "$BINDIR"/"$response"; then
+			echo "WARNING, \"$BINDIR/$response\" already exists!" | _fit
+			read -r -p " Do you Want to override it? (y,N) " yn
+			if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
+				ln -sf "$arg" "$BINDIR"/"$response"
+			else
+				echo " You have chosen not to assign a command."
+			fi
+		else
+			echo "ERROR: the \"$response\" command alredy exists, retry!" | _fit
+		fi
 	else
-		[ -n "$BINDIR" ] && ln -s "$arg" "$BINDIR"/"$response"
+		[ -n "$BINDIR" ] && ln -sf "$arg" "$BINDIR"/"$response"
 	fi
 }
 
 function _launcher(){
+	_clean_launchers 2>/dev/null 1>/dev/null
 	if ! test -f "$arg"; then
-		echo " ERROR: \"$arg\" not found"
+		echo "ERROR: \"$arg\" not found" | _fit
 	elif ! strings -d "$arg" 2>/dev/null | grep -F -q 'if you run it with the --appimage-extract option'; then
-		echo " ERROR: \"$arg\" is NOT an AppImage"
+		echo "ERROR: \"$arg\" is NOT an AppImage" | _fit
 	else
 		printf " ◆ File: %s\n" "$arg"
 		appimage=$(basename -- "$arg")
