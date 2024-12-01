@@ -549,10 +549,11 @@ Unlock updates for the selected program (nulls "`lock`").
  		am -u --apps --debug
  		am -u {PROGRAM}
  		am -u --debug {PROGRAM}
+ 		am -u --launcher
 
 **Description**:
 
-Update everything. Add "`--apps`" to update only the apps or write only the apps you want to update by adding their names. Add the "`--debug`" flag to view the output of AM-updater scripts.
+Update everything. Add "`--apps`" to update only the apps or write only the apps you want to update by adding their names. Add the "`--debug`" flag to view the output of AM-updater scripts. Add the "`--launcher`" flag to try to update only local AppImages integrated with the "`--launcher`" option (see "`--launcher`").
 
 ------------------------------------------------------------------------
 ### `version`, `-v`
@@ -625,6 +626,8 @@ Downgrades an installed app from pre-release to "latest".
 **Description**:
 
 Drag/drop one or more AppImages in the terminal and embed them in the apps menu and customize a command to use from the CLI.
+
+NOTE that "`--launcher`" can be used as a flag in "`-u`" to try to update the integrated AppImages (see "`-u`"). This works only if "appimageupdatetool" is installed and delta updates are supported. This flag does not work miracles, I strongly suggest to use options "`-ia`" and "`-e`" instead.
 
 ------------------------------------------------------------------------
 ### `--system`
