@@ -327,18 +327,20 @@ _files_appman_mode_view() {
 }
 
 _files_launcher_message() {
-	#echo "-	APPIMAGE | PATH "
-	#echo "- -------- | ----"
+	echo "-	APPIMAGE | PATH | SIZE "
+	echo "- -------- | ---- | ----"
 	for var in "$DATADIR"/applications/AppImages/*.desktop; do
 		appimage_full_path=$(grep "^Exec=" 0<"$var" 2>/dev/null | head -1 | cut -c 6- | sed 's/"//g; s/\s.*$//')
 		appimagename=$(basename -- "$appimage_full_path")
 		appimage_path=$(echo "$appimage_full_path" | sed -E 's|/[^/]+$|/|; s/\/*$//g')
 		appimage_size="$(du -sh -- "$appimage_full_path" 2>/dev/null | cut -f1 -d"	")"
 		appimage_size_unit=$(echo "$appimage_size" | sed 's/.$/ &/; s/$/iB/')
-		echo "◆ File: $appimagename"
-		[ -d "$appimage_path" ] && echo "  Path: $appimage_path" || echo "  Path: $appimage_path (unmounted)"
-		[ -d "$appimage_path" ] && echo "  Size: $appimage_size_unit" || echo " Size: unknown"
-		echo ""
+		[ ! -d "$appimage_path" ] && appimage_path="$appimage_path*" &&	appimage_size_unit="unknown"
+		echo "◆ $appimagename | $appimage_path | $appimage_size_unit"
+		#echo "◆ File: $appimagename"
+		#echo "  Path: $appimage_path"
+		#echo "  Size: $appimage_size_unit"
+		#echo ""
 	done
 }
 
@@ -356,7 +358,9 @@ _files_launcher() {
 	[ "$FILES_LAUNCHERS_NUMBER" = 1 ] && APPIMAGES="APPIMAGE" || APPIMAGES="APPIMAGES"
 	LAUNCHERS_MESSAGE="- YOU HAVE INTEGRATED $FILES_LAUNCHERS_NUMBER $APPIMAGES USING THE \"--launcher\" OPTION"
 	printf "\n%b\n\n" "$LAUNCHERS_MESSAGE"
-	_files_launcher_message | _fit
+	#_files_launcher_message | _fit
+	_files_launcher_message | column -t
+	_files_launcher_message | grep -q " unknown$" && printf "\n *this path is listed but not mounted, file size unknown\n\n" || printf "\n"
 }
 
 ################################################################################
