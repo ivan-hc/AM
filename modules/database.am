@@ -322,6 +322,47 @@ _files_sort_by_size() {
 	_files_appimage_type_notes
 }
 
+_files_appman_mode_view() {
+	[ "$AMCLI" = am ] && [ -f "$APPMANCONFIG"/appman-config ] && _appman && APPMAN_ON=1 && _files_number && [ "$FILES_NUMBER" != 0 ] && echo "$DIVIDING_LINE" 
+}
+
+_files_launcher_message() {
+	echo "-	APPIMAGE | PATH | SIZE "
+	echo "- -------- | ---- | ----"
+	for var in "$DATADIR"/applications/AppImages/*.desktop; do
+		appimage_full_path=$(grep "^Exec=" 0<"$var" 2>/dev/null | head -1 | cut -c 6- | sed 's/"//g; s/\s.*$//')
+		appimagename=$(basename -- "$appimage_full_path")
+		appimage_path=$(echo "$appimage_full_path" | sed -E 's|/[^/]+$|/|; s/\/*$//g')
+		appimage_size="$(du -sh -- "$appimage_full_path" 2>/dev/null | cut -f1 -d"	")"
+		appimage_size_unit=$(echo "$appimage_size" | sed 's/.$/ &/; s/$/iB/')
+		[ ! -d "$appimage_path" ] && appimage_path="$appimage_path*" &&	appimage_size_unit="unknown"
+		echo "◆ $appimagename | $appimage_path | $appimage_size_unit"
+		#echo "◆ File: $appimagename"
+		#echo "  Path: $appimage_path"
+		#echo "  Size: $appimage_size_unit"
+		#echo ""
+	done
+}
+
+_files_missing_launcher_message() {
+	MISSING_LAUNCHERS_MSG=" No launcher found, use option \"${Green}--launcher\033[0m\" to create them."
+	printf "%b\n%b\n%b\n" "$DIVIDING_LINE" "$MISSING_LAUNCHERS_MSG" "$DIVIDING_LINE"
+}
+
+_files_launcher() {
+	_clean_launchers 2>/dev/null 1>/dev/null
+	MISSING_LAUNCHERS_MSG="No launcher found, use option \"--launcher\" to create them."
+	[ ! -d "$DATADIR"/applications/AppImages ] && _files_missing_launcher_message && exit 0
+	[ -d "$DATADIR"/applications/AppImages ] && [ -z "$( ls -A "$DATADIR"/applications/AppImages )" ] && _files_missing_launcher_message && exit 0
+	FILES_LAUNCHERS_NUMBER=$(find "$DATADIR"/applications/AppImages -type f -name '*.desktop' 2>/dev/null | uniq | wc -l)
+	[ "$FILES_LAUNCHERS_NUMBER" = 1 ] && APPIMAGES="APPIMAGE" || APPIMAGES="APPIMAGES"
+	LAUNCHERS_MESSAGE="- YOU HAVE INTEGRATED $FILES_LAUNCHERS_NUMBER $APPIMAGES USING THE \"--launcher\" OPTION"
+	printf "\n%b\n\n" "$LAUNCHERS_MESSAGE"
+	#_files_launcher_message | _fit
+	_files_launcher_message | column -t
+	_files_launcher_message | grep -q " unknown$" && printf "\n *this path is listed but not mounted, file size unknown\n\n" || printf "\n"
+}
+
 ################################################################################
 #				LIST/QUERY
 ################################################################################
@@ -490,11 +531,13 @@ case "$1" in
 			[ "$AMCLI" = am ] && [ -f "$APPMANCONFIG"/appman-config ] && _appman && echo "$DIVIDING_LINE" && _files_number && echo "$FILES_NUMBER"
 		elif [ "$2" = "--byname" ]; then
 			_files_sort_by_name
-			[ "$AMCLI" = am ] && [ -f "$APPMANCONFIG"/appman-config ] && _appman && APPMAN_ON=1 && _files_number && [ "$FILES_NUMBER" != 0 ] && echo "$DIVIDING_LINE" && _files_sort_by_name
+			_files_appman_mode_view && _files_sort_by_name
+			[ -d "$DATADIR"/applications/AppImages ] && echo "$DIVIDING_LINE" && _files_launcher
 			_betatester_message_on
 		else
 			_files_sort_by_size
-			[ "$AMCLI" = am ] && [ -f "$APPMANCONFIG"/appman-config ] && _appman && APPMAN_ON=1 && _files_number && [ "$FILES_NUMBER" != 0 ] && echo "$DIVIDING_LINE" && _files_sort_by_size
+			_files_appman_mode_view && _files_sort_by_size
+			[ -d "$DATADIR"/applications/AppImages ] && echo "$DIVIDING_LINE" && _files_launcher
 			_betatester_message_on
 		fi
 		;;

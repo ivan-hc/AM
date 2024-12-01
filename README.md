@@ -549,10 +549,11 @@ Unlock updates for the selected program (nulls "`lock`").
  		am -u --apps --debug
  		am -u {PROGRAM}
  		am -u --debug {PROGRAM}
+ 		am -u --launcher
 
 **Description**:
 
-Update everything. Add "`--apps`" to update only the apps or write only the apps you want to update by adding their names. Add the "`--debug`" flag to view the output of AM-updater scripts.
+Update everything. Add "`--apps`" to update only the apps or write only the apps you want to update by adding their names. Add the "`--debug`" flag to view the output of AM-updater scripts. Add the "`--launcher`" flag to try to update only local AppImages integrated with the "`--launcher`" option (see "`--launcher`").
 
 ------------------------------------------------------------------------
 ### `version`, `-v`
@@ -625,6 +626,8 @@ Downgrades an installed app from pre-release to "latest".
 **Description**:
 
 Drag/drop one or more AppImages in the terminal and embed them in the apps menu and customize a command to use from the CLI.
+
+NOTE that "`--launcher`" can be used as a flag in "`-u`" to try to update the integrated AppImages (see "`-u`"). This works only if "appimageupdatetool" is installed and delta updates are supported. This flag does not work miracles, I strongly suggest to use options "`-ia`" and "`-e`" instead.
 
 ------------------------------------------------------------------------
 ### `--system`
@@ -713,6 +716,7 @@ Below you can access the documentation pages related to the use of "AM", complet
   - [How to create a launcher for a local AppImage](docs/guides-and-tutorials/launcher.md#how-to-create-a-launcher-for-a-local-appimage)
   - [How to remove the orphan launchers](docs/guides-and-tutorials/launcher.md#how-to-remove-the-orphan-launchers)
   - [AppImages from external media](docs/guides-and-tutorials/launcher.md#appimages-from-external-media)
+  - [Update scattered AppImages](docs/guides-and-tutorials/launcher.md#update-scattered-appimages)
 - [Sandbox an AppImage](docs/guides-and-tutorials/sandbox.md)
   - [How to enable a sandbox](docs/guides-and-tutorials/sandbox.md#how-to-enable-a-sandbox)
   - [How to disable a sandbox](docs/guides-and-tutorials/sandbox.md#how-to-disable-a-sandbox)

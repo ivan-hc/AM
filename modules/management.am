@@ -107,11 +107,11 @@ function _downgrade() {
 		echo " ERROR: No valid links found, sorry!"
 		exit 1
 	fi
-	echo "-----------------------------------------------------------------------"
+	echo "$DIVIDING_LINE"
 	echo "You have chosen to roll back \"$2\"."
-	echo "-----------------------------------------------------------------------"
+	echo "$DIVIDING_LINE"
 	echo "Select a URL from this menu (read carefully) or press CTRL+C to abort:"
-	echo "-----------------------------------------------------------------------"
+	echo "$DIVIDING_LINE"
 	sleep 1
 	select d in $urls; do
 		test -n "$d" && break
@@ -168,7 +168,7 @@ function _launcher_appimage_bin() {
 	mkdir -p "$BINDIR"
 	if ! echo "$PATH" | grep "$BINDIR" >/dev/null 2>&1; then
 		echo "$DIVIDING_LINE"
-		echo "WARNING: \"$BINDIR\" is not in PATH, apps may not run from command line." | fold -sw 77 | sed 's/^/ /g'
+		echo "WARNING: \"$BINDIR\" is not in PATH, apps may not run from command line." | _fit
 		echo "$DIVIDING_LINE"
 	fi
 	read -r -p " Write a custom command to launch the app, or leave blank: " response
@@ -176,23 +176,34 @@ function _launcher_appimage_bin() {
 		appimage_cmd=$(echo "$appimage" | tr '[:upper:]' '[:lower:]')
 		if ! echo "$appimage" | grep -q -i ".appimage"; then
 			[ -n "$BINDIR" ] && printf '#!/bin/sh\n%s' "$arg" >> "$BINDIR"/"$appimage_cmd".appimage \
-			&& chmod a+x "$BINDIR"/"$appimage_cmd".appimage && echo " New command: \"$appimage_cmd.appimage\" in $BINDIR"
+			&& chmod a+x "$BINDIR"/"$appimage_cmd".appimage && echo " New command: \"$appimage_cmd.appimage\" in $BINDIR" | _fit
 		else
 			[ -n "$BINDIR" ] && printf '#!/bin/sh\n%s' "$arg" >> "$BINDIR"/"$appimage_cmd" \
-			&& chmod a+x "$BINDIR"/"$appimage_cmd" && echo " New command: \"$appimage_cmd\" in $BINDIR"
+			&& chmod a+x "$BINDIR"/"$appimage_cmd" && echo "New command: \"$appimage_cmd\" in $BINDIR" | _fit
 		fi
 	elif command -v "$response" 1>/dev/null; then
-		echo " ERROR: the \"$response\" command alredy exists, retry!"
+		if test -f "$BINDIR"/"$response"; then
+			echo "WARNING, \"$BINDIR/$response\" already exists!" | _fit
+			read -r -p " Do you Want to override it? (y,N) " yn
+			if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
+				ln -sf "$arg" "$BINDIR"/"$response"
+			else
+				echo " You have chosen not to assign a command."
+			fi
+		else
+			echo "ERROR: the \"$response\" command alredy exists, retry!" | _fit
+		fi
 	else
-		[ -n "$BINDIR" ] && ln -s "$arg" "$BINDIR"/"$response"
+		[ -n "$BINDIR" ] && ln -sf "$arg" "$BINDIR"/"$response"
 	fi
 }
 
 function _launcher(){
+	_clean_launchers 2>/dev/null 1>/dev/null
 	if ! test -f "$arg"; then
-		echo " ERROR: \"$arg\" not found"
+		echo "ERROR: \"$arg\" not found" | _fit
 	elif ! strings -d "$arg" 2>/dev/null | grep -F -q 'if you run it with the --appimage-extract option'; then
-		echo " ERROR: \"$arg\" is NOT an AppImage"
+		echo "ERROR: \"$arg\" is NOT an AppImage" | _fit
 	else
 		printf " ◆ File: %s\n" "$arg"
 		appimage=$(basename -- "$arg")
@@ -254,7 +265,7 @@ function _nolibfuse() {
 		echo " ◆ $target is already a new generation AppImage."
 		return 1
 	elif test -f ./*.zsync; then
-		echo "-----------------------------------------------------------------------"
+		echo "$DIVIDING_LINE"
 		echo " Warning! Your AppImage uses \"zsync\" to update."
 		echo " The .zsync file will be removed and will no longer work"
 		echo " your \"AM-updater\" will likely still be able to update the AppImage"
@@ -393,11 +404,17 @@ case "$1" in
 	'launcher'|'--launcher')
 		# Place local AppImages into the menu by dragging and dropping them into the terminal
 		entries="$(echo "$@" | cut -f2- -d ' ')"
+		if [ "$2" = "-u" ] || [ "$2" = "-U" ] || [ "$2" = "update" ]; then
+			entries="$(echo "$@" | cut -f3- -d ' ')"
+			echo "$DIVIDING_LINE"
+			_update_launchers
+			printf "%b\n ◆ Updates check finished! \n" "$DIVIDING_LINE"
+		fi
 		for arg in $entries; do
-			echo "---------------------------------------------------------------------"
+			echo "$DIVIDING_LINE"
 			_launcher "${@}"
 		done
-		echo "---------------------------------------------------------------------"
+		echo "$DIVIDING_LINE"
 		;;
 
 	'lock')
@@ -455,7 +472,7 @@ case "$1" in
 			_remove_info_files
 			shift
 		done
-		echo "------------------------------------------------------------------------------"
+		echo "$DIVIDING_LINE"
 		;;
 
 	'-R')
@@ -466,6 +483,6 @@ case "$1" in
 			_remove_info_files
 			shift
 		done
-		echo "------------------------------------------------------------------------------"
+		echo "$DIVIDING_LINE"
 		;;
 esac

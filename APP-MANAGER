@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="9.1.3"
+AMVERSION="9.2"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -50,6 +50,11 @@ function _clean_amcachedir() {
 	[ -d "$CACHEDIR"/appman ] && rm -f "$CACHEDIR"/appman/*
 }
 
+# Fit texts to an acceptable width
+function _fit() {
+	fold -sw 77 | sed 's/^/ /g'
+}
+
 ################################################################################
 #				AM/APPMAN
 ################################################################################
@@ -70,7 +75,7 @@ function _appman_check() {
 		echo "$DIVIDING_LINE"
 		[ "$AMCLI" = am ] && echo ">>> Configure AppMan" || echo ">>> Thank you for choosing AppMan!"
 		echo "$DIVIDING_LINE"
-		echo "$APPMAN_SETUP_MSG" | fold -sw 77 | sed 's/^/ /g'
+		echo "$APPMAN_SETUP_MSG" | _fit
 		echo "$DIVIDING_LINE"
 		read -r -ep " Write the path or just press enter to use default:$(printf "\n\n ")" location
 		location="$(echo "$location" | sed 's/[ \t]/-/g; s|^\./||' 2>/dev/null)"
@@ -282,10 +287,10 @@ function _blacklisted_file() {
 	echo ""
 	echo -e " ${RED}💀WARNING! Detected \"$blacklisted_file\"\033[0m"
 	echo ""
-	echo "It will prevent \"$AMCLIUPPER\" from working correctly with AppImages, especially when extracting, integrating and updating them." | fold -sw 77 | sed 's/^/ /g'
+	echo "It will prevent \"$AMCLIUPPER\" from working correctly with AppImages, especially when extracting, integrating and updating them." | _fit
 	echo ""
 	if echo "$blacklisted_file" | grep -q appimagelauncherd; then
-		echo "$appimagelauncher_msg" | fold -sw 77 | sed 's/^/ /g'
+		echo "$appimagelauncher_msg" | _fit
 		echo "" && echo " Please remove \"AppImageLauncher\", reboot and retry!"
 	else
 		echo " Please remove \"$blacklisted_file\", reboot and retry!"
@@ -565,7 +570,7 @@ APPMAN_MSG_THINK="$DIVIDING_LINE\nNOTE: You can also choose to simply use \"--us
 function _use_appman() {
 	_online_check
 	[ "$CLI" = appman ] && echo " This function only works for AM" && exit 0
-	echo -e "$APPMAN_MSG_THINK" | fold -sw 77 | sed 's/^/ /g'
+	echo -e "$APPMAN_MSG_THINK" | _fit
 	read -r -p " Do you wish to enter \"AppMan Mode\" (y,N)?" yn
 	if ! echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
 		echo "$DIVIDING_LINE"
@@ -620,9 +625,10 @@ function _clean_all_tmp_directories_from_appspath() {
 
 function _clean_launchers() {
 	if test -d "$DATADIR"/applications/AppImages; then
+		rm -f "$AMCACHEDIR"/mountpoints
 		for var in "$DATADIR"/applications/AppImages/*.desktop; do
 			# full path to appimage
-			appimagename=$(grep "Exec=" 0<"$var" 2>/dev/null | head -1 | cut -c 6- | sed 's/"//g; s/\s.*$//')
+			appimagename=$(grep "^Exec=" 0<"$var" 2>/dev/null | head -1 | cut -c 6- | sed 's/"//g; s/\s.*$//')
 			# name of the appimage
 			launcher2del=$(basename -- "$(echo "$appimagename" | tr '[:upper:]' '[:lower:]')")
 			# removable mount point where the appimage may be stored
@@ -638,6 +644,7 @@ function _clean_launchers() {
 					mountpoint=""
 				fi
 				if [ -n "$mountpoint" ] && ! test -d "$mountpoint"; then
+					echo "$mountpoint" >> "$AMCACHEDIR"/mountpoints
 					echo " ✖ ERROR: cannot remove \"$(basename "$var")\""
 					echo "   related AppImage is located in an unmounted path of $unmounted_point"
 				else
@@ -646,8 +653,14 @@ function _clean_launchers() {
 				fi
 			fi
 		done
-		grep -q "^Exec=/media/\|^Exec=/mnt/\|^Exec=/run/media/\|^Exec=\"/media/\|^Exec=\"/mnt/\|^Exec=\"/run/media/" "$DATADIR"/applications/AppImages/* && mountpoint_enabled=1
+		if test -f "$AMCACHEDIR"/mountpoints; then
+			mountpoints=$(sort "$AMCACHEDIR"/mountpoints)
+			for m in $mountpoints; do
+				[ ! -d "$m" ] && mountpoint_enabled=1
+			done
+		fi
 		[ -z "$mountpoint_enabled" ] && [ -n "$BINDIR" ] && cd "$BINDIR" && find . -xtype l -delete
+		rm -f "$AMCACHEDIR"/mountpoints
 		echo ' ✔ Removed orphaned launchers produced with the "--launcher" option'
 		rmdir "$DATADIR"/applications/AppImages
 	else
@@ -805,6 +818,13 @@ function _use_sync() {
 #				UPDATE
 ################################################################################
 
+function _update_updatable_apps_msg_head() {
+	printf " \"%b\" CAN MANAGE UPDATES FOR THE FOLLOWING PROGRAMS:\n%b\n\n" "$AMCLIUPPER" "$DIVIDING_LINE"
+	[ -f "$AMCACHEDIR/updatable-args-list" ] && grep "◆" "$AMCACHEDIR/updatable-args-list" | sort || echo " None"
+	printf "\n All self-updatable programs are excluded\n"
+	echo "$DIVIDING_LINE"
+}
+
 function _update_list_updatable_apps() {
 	_determine_args
 	_check_version
@@ -843,16 +863,28 @@ function _update_run_updater() {
 		GH_API_ALLOWED=$(curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/ivan-hc/AM/releases/latest | sed 's/[()",{} ]/\n/g' | grep "^ivan-hc" | head -1)
 		if [ -z "$GH_API_ALLOWED" ]; then
 			if command -v torsocks 1>/dev/null; then
-				[ -z "$debug_update" ] && torsocks "$argpath"/AM-updater >/dev/null 2>&1 || torsocks "$argpath"/AM-updater
+				if [ -z "$debug_update" ]; then
+					torsocks "$argpath"/AM-updater >/dev/null 2>&1
+				else
+					torsocks "$argpath"/AM-updater
+				fi
 			else
 				echo " ✖ $APPNAME cannot be updated, you have reached GitHub API limit. Install \"torsocks\" from your system package manager and retry!" \
 				| fold -sw 72 | sed 's/^/   /g; s/   ✖/✖/g'
 			fi
 		else
-			[ -z "$debug_update" ] && "$argpath"/AM-updater >/dev/null 2>&1 || "$argpath"/AM-updater
+			if [ -z "$debug_update" ]; then
+				"$argpath"/AM-updater >/dev/null 2>&1
+			else
+				"$argpath"/AM-updater
+			fi
 		fi
 	else
-		[ -z "$debug_update" ] && "$argpath"/AM-updater >/dev/null 2>&1 || "$argpath"/AM-updater
+		if [ -z "$debug_update" ]; then
+			"$argpath"/AM-updater >/dev/null 2>&1
+		else
+			"$argpath"/AM-updater
+		fi
 	fi
 	end=$(date +%s)
 	echo " ◆ $APPNAME is updated, $((end - start)) seconds elapsed!"
@@ -884,6 +916,36 @@ function _update_all_apps() {
 	[ -d "$APPMAN_APPSPATH" ] && rm -Rf "$APPMAN_APPSPATH"/*/tmp
 }
 
+function _update_launchers_not_found_msg() {
+	MISSING_LAUNCHERS_MSG=" No launcher found."
+	printf "%b\n%b\n%b\n" "$DIVIDING_LINE" "$MISSING_LAUNCHERS_MSG" "$DIVIDING_LINE"
+}
+
+function _update_launchers() {
+	_clean_launchers 2>/dev/null 1>/dev/null
+	MISSING_LAUNCHERS_MSG="No launcher found, use option \"--launcher\" to create them."
+	[ ! -d "$DATADIR"/applications/AppImages ] && _update_launchers_not_found_msg && exit 0
+	[ -d "$DATADIR"/applications/AppImages ] && [ -z "$( ls -A "$DATADIR"/applications/AppImages )" ] && _update_launchers_not_found_msg && exit 0
+	if ! command -v appimageupdatetool 1>/dev/null; then
+		update_launchers_error_message=" 💀 ERROR! Missing command \"${RED}appimageupdatetool\033[0m\", install it and retry!"
+		printf "%b\n%b\n%b\n" "$DIVIDING_LINE" "$update_launchers_error_message" "$DIVIDING_LINE"
+	else
+		echo " ◆ Update local AppImages integrated manually"
+		for var in "$DATADIR"/applications/AppImages/*.desktop; do
+			appimage_full_path=$(grep "^Exec=" 0<"$var" 2>/dev/null | head -1 | cut -c 6- | sed 's/"//g; s/\s.*$//')
+			appimagename=$(basename -- "$appimage_full_path")
+			appimage_path=$(echo "$appimage_full_path" | sed -E 's|/[^/]+$|/|; s/\/*$//g')
+			printf "%b\n File: %b%b\033[0m\n Path: %b" "$DIVIDING_LINE" "${Green}" "$appimagename" "$appimage_path"
+			if ! test -f "$appimage_full_path"; then
+				echo "(unmounted)" | _fit
+			else
+				printf "\n\n"
+				appimageupdatetool -Or "$appimage_full_path"
+			fi
+		done
+	fi
+}
+
 function _use_update() {
 	_online_check
 	_update_github_api_key_in_the_updater_files
@@ -897,20 +959,23 @@ function _use_update() {
 	if [ -z "$ENTRIES" ]; then
 		_clean_amcachedir
 		_update_list_updatable_apps
-		echo -e "$DIVIDING_LINE\n \"$AMCLIUPPER\" CAN MANAGE UPDATES FOR THE FOLLOWING PROGRAMS:\n"
-		[ -f "$AMCACHEDIR/updatable-args-list" ] && grep "◆" "$AMCACHEDIR/updatable-args-list" | sort || echo " None"
-		echo -e "\n All self-updatable programs are excluded"
-		echo -e "$DIVIDING_LINE\n >> START OF ALL PROCESSES <<\n$DIVIDING_LINE"
-		_update_all_apps
-		if ! echo "$FLAGS" | grep -q -- "--apps"; then
-			echo "$DIVIDING_LINE"
+		printf "%b\n >> START OF ALL PROCESSES << \n%b\n" "$DIVIDING_LINE" "$DIVIDING_LINE"
+		if echo "$FLAGS" | grep -q -- "--apps"; then
+			_update_updatable_apps_msg_head
+			_update_all_apps
+		elif echo "$FLAGS" | grep -q -- "--launcher"; then
+			_update_launchers
+		else
+			_update_updatable_apps_msg_head
+			_update_all_apps
 			_use_sync
-			echo -e " >> END OF ALL PROCESSES << \n$DIVIDING_LINE"
+			printf " >> END OF ALL PROCESSES << \n%b\n" "$DIVIDING_LINE"
 			sleep 0.2
 			exit 0
-		else
-			echo "$DIVIDING_LINE"
 		fi
+		printf "%b\n >> END OF ALL PROCESSES << \n%b\n" "$DIVIDING_LINE" "$DIVIDING_LINE"
+		sleep 0.2
+		exit 0
 	else
 		[ -n "$debug_update" ] && echo "$DIVIDING_LINE"
 		_determine_args
@@ -1262,9 +1327,10 @@ case "$1" in
 					${LightBlue}$AMCLI -u --debug
 					${LightBlue}$AMCLI -u --apps --debug
 					${LightBlue}$AMCLI -u {PROGRAM}\033[0m
-					${LightBlue}$AMCLI -u --debug {PROGRAM}\033[0m
+					${LightBlue}$AMCLI -u --debug {PROGRAM}
+					${LightBlue}$AMCLI -u --launcher\033[0m
 
-			Description: Update everything. Add \"--apps\" to update only the apps or write only the apps you want to update by adding their names. Add the \"--debug\" flag to view the output of AM-updater scripts.
+			Description: Update everything. Add \"--apps\" to update only the apps or write only the apps you want to update by adding their names. Add the \"--debug\" flag to view the output of AM-updater scripts. Add the \"--launcher\" flag to try to update only local AppImages integrated with the \"--launcher\" option (see \"--launcher\").
 
 			${Gold}version, -v\033[0m
 
@@ -1313,6 +1379,8 @@ case "$1" in
 					${LightBlue}$AMCLI --launcher /path/to/\${APPIMAGE}\033[0m
 
 			Description: Drag/drop one or more AppImages in the terminal and embed them in the apps menu and customize a command to use from the CLI.
+
+			NOTE that \"--launcher\" can be used as a flag in \"-u\" to try to update the integrated AppImages (see \"-u\"). This works only if \"appimageupdatetool\" is installed and delta updates are supported. This flag does not work miracles, I strongly suggest to use options \"-ia\" and \"-e\" instead.
 
 			${Gold}--system\033[0m
 
@@ -1375,7 +1443,7 @@ case "$1" in
 
 			 https://portable-linux-apps.github.io
 
-			\n" | sed 's/^			//g' | fold -sw 77 | sed 's/^/ /g' | less -Ir
+			\n" | sed 's/^			//g' | _fit | less -Ir
 		}
 
 		if [ -t 1 ]; then _use_help; else _use_help | sed -e 's/\x1b\[[0-9;]*m//g'; fi
