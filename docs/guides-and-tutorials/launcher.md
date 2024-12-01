@@ -39,6 +39,44 @@ Another peculiarity concerns the use of the `-c` option on launchers created on 
 
 This is very useful if you have large AppImage packages that you necessarily need to place in a different partition.
 
+##### Update scattered AppImages
+If a local AppImage supports delta updates, you need to install `appimageupdatetool`
+```
+am -i appimageupdatetool
+```
+or locally, with AM
+```
+am -i --user appimageupdatetool
+```
+or AppMan
+```
+appman -i appimageupdatetool
+```
+after that, you can simply run the `-u` option with the `--launcher` flag and vice versa, `--launcher` with the `-u` flag, to try to update them
+```
+am -u --launcher
+```
+or
+```
+am --launcher -u
+```
+or
+```
+appman -u --launcher
+```
+or
+```
+appman --launcher -u
+```
+
+AppImages are not updated directly with `-u` because I believe it is a user choice to keep an AppImage at a specific version or not.
+
+https://github.com/user-attachments/assets/ff6b7a60-7a2a-4684-aeba-8efe227b604a
+
+Again, **these updates only work if the AppImage supports binary deltas**!
+
+If you want to be sure to update all AppImages, rely on the [`-ia`](./install-appimage.md) and [`-e`](./extra.md) options instead.
+
 ------------------------------------------------------------------------
 
 | [Back to "Guides and tutorials"](../../README.md#guides-and-tutorials) | [Back to "Main Index"](../../README.md#main-index) | ["Portable Linux Apps"](https://portable-linux-apps.github.io/) | [ "AppMan" ](https://github.com/ivan-hc/AppMan) |
