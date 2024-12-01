@@ -5,7 +5,8 @@ The option `--launcher` allows you to drag and drop a local AppImage to create a
 
 This option also allows you to create a symbolic link with the name you prefer, in "`~/.local/bin`". Leave blank to let the option create a shell script that calls your AppImage, with extension ".appimage", lowercased.
 
-##### How to create a launcher for a local AppImage
+---------------------------
+### How to create a launcher for a local AppImage
 ```
 am --launcher /path/to/File.AppImage
 ```
@@ -19,7 +20,8 @@ https://github.com/user-attachments/assets/caa22ab7-b6a4-45c4-bd33-27316251e267
 
 Now the binaries are "two", keep read to see how to remove them using "AM" and "AppMan".
 
-##### How to remove the orphan launchers
+---------------------------
+### How to remove the orphan launchers
 In case you move your AppImages somewhere else or remove them, use the following otion `-c` or `clean` to get rid of all the orphaned launchers and dead symlinks and scripts you created earlier:
 ```
 am -c
@@ -32,14 +34,16 @@ In this video I'll remove the AppImage, and then I'll remove the launchers and i
 
 https://github.com/user-attachments/assets/2dedf1a9-43c2-455c-8c97-2023bedc4203
 
-##### AppImages from external media
+---------------------------
+### AppImages from external media
 Another peculiarity concerns the use of the `-c` option on launchers created on AppImage packages placed on removable devices:
 - if in the .desktop file belongs to an AppImage placed in /mnt or /media and none of the references are mounted, the option `-c` will not be able to remove it until you mount the exact device where it was placed in the moment you have created the launcher;
 - if you mount that same device and the AppImage is not where it was when you created the launcher, it will be removed.
 
 This is very useful if you have large AppImage packages that you necessarily need to place in a different partition.
 
-##### Update scattered AppImages
+---------------------------
+### Update scattered AppImages
 If a local AppImage supports delta updates, you need to install `appimageupdatetool`
 ```
 am -i appimageupdatetool
@@ -48,11 +52,11 @@ or locally, with AM
 ```
 am -i --user appimageupdatetool
 ```
-or AppMan
+or AppMan.
 ```
 appman -i appimageupdatetool
 ```
-after that, you can simply run the `-u` option with the `--launcher` flag and vice versa, `--launcher` with the `-u` flag, to try to update them
+After that, you can simply run the `-u` option with the `--launcher` flag and vice versa, `--launcher` with the `-u` flag, to try to update them
 ```
 am -u --launcher
 ```
