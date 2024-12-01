@@ -625,6 +625,7 @@ function _clean_all_tmp_directories_from_appspath() {
 
 function _clean_launchers() {
 	if test -d "$DATADIR"/applications/AppImages; then
+		rm -f "$AMCACHEDIR"/mountpoints
 		for var in "$DATADIR"/applications/AppImages/*.desktop; do
 			# full path to appimage
 			appimagename=$(grep "^Exec=" 0<"$var" 2>/dev/null | head -1 | cut -c 6- | sed 's/"//g; s/\s.*$//')
@@ -643,6 +644,7 @@ function _clean_launchers() {
 					mountpoint=""
 				fi
 				if [ -n "$mountpoint" ] && ! test -d "$mountpoint"; then
+					echo "$mountpoint" >> "$AMCACHEDIR"/mountpoints
 					echo " ✖ ERROR: cannot remove \"$(basename "$var")\""
 					echo "   related AppImage is located in an unmounted path of $unmounted_point"
 				else
@@ -651,8 +653,14 @@ function _clean_launchers() {
 				fi
 			fi
 		done
-		grep -q "^Exec=/media/\|^Exec=/mnt/\|^Exec=/run/media/\|^Exec=\"/media/\|^Exec=\"/mnt/\|^Exec=\"/run/media/" "$DATADIR"/applications/AppImages/* && mountpoint_enabled=1
+		if test -f "$AMCACHEDIR"/mountpoints; then
+			mountpoints=$(sort "$AMCACHEDIR"/mountpoints)
+			for m in $mountpoints; do
+				[ ! -d "$m" ] && mountpoint_enabled=1
+			done
+		fi
 		[ -z "$mountpoint_enabled" ] && [ -n "$BINDIR" ] && cd "$BINDIR" && find . -xtype l -delete
+		rm -f "$AMCACHEDIR"/mountpoints
 		echo ' ✔ Removed orphaned launchers produced with the "--launcher" option'
 		rmdir "$DATADIR"/applications/AppImages
 	else
