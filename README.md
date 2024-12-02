@@ -404,24 +404,27 @@ Allow installed apps to use system icon themes. You can specify the name of the 
  		am -i --debug {PROGRAM}
  		am -i --force-latest {PROGRAM}
  		am -i --icons {PROGRAM}
+ 		am -i --sandbox {PROGRAM}
 
 **Description**:
 
-Install one or more programs or libraries from the list. With the "`--debug`" option you can see log messages to debug the script. For more details on "`--force-latest`", see the dedicated option, below. Use the "`--icons`" flag to allow the program to use icon themes. It can also be extended with additional flags (see "`--toolpack`").
+Install one or more programs or libraries from the list. With the "`--debug`" option you can see log messages to debug the script. For more details on "`--force-latest`", see the dedicated option, below. Use the "`--icons`" flag to allow the program to use icon themes. It can also be extended with additional flags (see "`--toolpack`"). The "`--sandbox`" flag allows you to set sandboxes for AppImage packages.
 
 NOTE: Since this is an "install" option, you can add the "`--user`" flag to install apps locally. See "`--user`" at the bottom to learn more.
 
 ------------------------------------------------------------------------
-### `install-appimage`, `-ia`
+### `install-appimage`, `-ia`, `-ias`
 
  		am -ia {PROGRAM}
  		am -ia --debug {PROGRAM}
  		am -ia --force-latest {PROGRAM}
  		am -ia --icons {PROGRAM}
+ 		am -ia --sandbox {PROGRAM}
+ 		am -ias {PROGRAM}
 
 **Description**:
 
-Same as "install" (see above) but for AppImages only.
+Same as "install" (see above) but for AppImages only.  Option "`-ias`" (aka Install AppImage & Sandox) is equivalent to "`-ia --sandbox`", to set sandboxes for AppImage packages.
 
 ------------------------------------------------------------------------
 ### `lock`
@@ -512,6 +515,8 @@ Removes one or more apps without asking.
 **Description**:
 
 Run an AppImage in a sandbox using Aisap.
+
+NOTE, "`--sandbox`" can be used as a flag in "`-i`" and "`-ia`" or can be replaced using the option "`-ias`" (aka Install AppImage & Sandox).
 
 ------------------------------------------------------------------------
 ### `sync`, `-s`
@@ -705,6 +710,7 @@ Below you can access the documentation pages related to the use of "AM", complet
 ------------------------------------------------------------------------
 - [Install applications](docs/guides-and-tutorials/install.md)
 - [Install only AppImages](docs/guides-and-tutorials/install-appimage.md)
+  - [Install and sandbox AppImages in one go](docs/guides-and-tutorials/install-appimage.md#install-and-sandbox-appimages-in-one-go)
 - [Install AppImages not listed in this database but available in other github repos](docs/guides-and-tutorials/extra.md)
 - [List the installed applications](docs/guides-and-tutorials/files.md)
 - [List and query all the applications available on the database](docs/guides-and-tutorials/list-and-query.md)
