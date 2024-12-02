@@ -9,7 +9,6 @@ All flags for the `-i`/`install` option can be used here as well.
 am -ia --debug {PROGRAM}
 am -ia --force-latest {PROGRAM}
 am -ia --debug {PROGRAM}
-am -ia --force-latest {PROGRAM}
 am -ia --sandbox {PROGRAM}
 ```
 Same for AppMan.
@@ -17,6 +16,7 @@ Same for AppMan.
 appman -ia {PROGRAM}
 appman -ia --debug {PROGRAM}
 appman -ia --force-latest {PROGRAM}
+appman -ia --sandbox {PROGRAM}
 ```
 In this example, I run the script `brave-appimage` but running `brave`, that instead is the original upstream package.
 
