@@ -64,7 +64,7 @@ appman -i --sandbox {PROGRAM}
 
 ![Istantanea_2024-12-02_03-50-43-2](https://github.com/user-attachments/assets/da90b4ea-f199-469c-b2a3-e410577f3847)
 
-...note that sandboxing only works for AppImages using Aisap/Bubblewrap (see "[Sandboxing](./sandbox.md)"), for other programs it will not work.
+...note that sandboxing only works for AppImages (see "[Sandboxing](./sandbox.md)"), for other programs it will not work.
 
 NOTE, **it is recommended to use the `-i --sandbox` combination only if you have local and custom scripts to install.**
 
