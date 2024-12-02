@@ -8,7 +8,6 @@ All flags for the `-i`/`install` option can be used here as well.
 ```
 am -ia --debug {PROGRAM}
 am -ia --force-latest {PROGRAM}
-am -ia --debug {PROGRAM}
 am -ia --sandbox {PROGRAM}
 ```
 Same for AppMan.
@@ -38,9 +37,9 @@ appman -ias {PROGRAM}
 
 https://github.com/user-attachments/assets/3498f29b-3f6b-48b1-b4ff-2b1d083af57c
 
-NOTE, `-ia --sandbox` and `-ias` are only for the AppImages listed in the "AM" database!
+NOTE, **`-ia --sandbox` and `-ias` are only for the AppImages listed in the "AM" database!**
 
-To Install and Sandbox other AppImages from local scripts and third-party/custom databases, use the `-i --sandbox` combination
+To Install and Sandbox other AppImages from local scripts and third-party/custom databases, **use the `-i --sandbox` combination instead**
 ```
 am -i --sandbox {PROGRAM}
 am -i --user --sandbox {PROGRAM}
