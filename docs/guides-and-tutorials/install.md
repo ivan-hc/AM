@@ -32,7 +32,6 @@ or
 appman -i --debug {PROGRAM}
 ```
 
-
 ### Install the "latest" stable release instead of the latest "unstable"
 By default, many installation scripts for apps hosted on github will point to the more recent generic release instead of "latest", which is normally used to indicate that the build is "stable". This is because upstream developers do not always guarantee a certain packaging format in "latest", sometimes they may only publish packages for Windows or macOS, so pointing to "latest" would not guarantee that any package for Linux will be installed.
 
@@ -47,6 +46,27 @@ appman -i --force-latest {PROGRAM}
 ```
 
 https://github.com/user-attachments/assets/ee29adfd-90e1-46f7-aed9-b9c410f68776
+
+### Install and Sandbox AppImages
+Since version 9.3 it is possible to use the "`--sandbox`" flag to sandbox only AppImages during the update process
+```
+am -i --sandbox {PROGRAM}
+am -i --user --sandbox {PROGRAM}
+```
+or
+```
+appman -i --sandbox {PROGRAM}
+```
+
+![Istantanea_2024-12-02_03-50-43-2](https://github.com/user-attachments/assets/da90b4ea-f199-469c-b2a3-e410577f3847)
+
+...note that sandboxing only works for AppImages using Aisap/Bubblewrap (see "[Sandboxing](./sandbox.md)"), for other programs it will not work.
+
+However, **it is recommended to use the `-i --sandbox` combination only if you have local and custom scripts to install.**
+
+If you rely on the AppImages listed in the "AM" database, use the `-ia --sandbox` combination or even better `-ias` (Install AppImage & Sandox).
+
+See more at "[Install only AppImages](./install-appimage.md)".
 
 ------------------------------------------------------------------------
 
