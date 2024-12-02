@@ -52,7 +52,7 @@ https://github.com/user-attachments/assets/ee29adfd-90e1-46f7-aed9-b9c410f68776
 
 ----------------------------------------------------
 ### Install and Sandbox AppImages
-Since version 9.3 it is possible to use the "`--sandbox`" flag to sandbox only AppImages during the update process
+Since version 9.3 it is possible to use the "`--sandbox`" flag to sandbox only AppImages during the installation process
 ```
 am -i --sandbox {PROGRAM}
 am -i --user --sandbox {PROGRAM}
@@ -66,7 +66,7 @@ appman -i --sandbox {PROGRAM}
 
 ...note that sandboxing only works for AppImages using Aisap/Bubblewrap (see "[Sandboxing](./sandbox.md)"), for other programs it will not work.
 
-However, **it is recommended to use the `-i --sandbox` combination only if you have local and custom scripts to install.**
+NOTE, **it is recommended to use the `-i --sandbox` combination only if you have local and custom scripts to install.**
 
 If you rely on the AppImages listed in the "AM" database, use the `-ia --sandbox` combination or even better `-ias` (Install AppImage & Sandox).
 
