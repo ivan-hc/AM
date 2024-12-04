@@ -4,6 +4,9 @@
 # THIS MODULE INCLUDES ALL ACTIONS INTENDED TO ISOLATE DOTFILES OR CONTAINERIZE INSTALLED APPIMAGES
 ###################################################################################################
 
+AMCLIPATH_ORIGIN="$AMCLIPATH"
+SUDOCMD_ORIGIN="$SUDOCMD"
+
 # Get xdg variables for _configure_dirs_access
 for DIR in DESKTOP DOCUMENTS DOWNLOAD GAMES MUSIC PICTURES VIDEOS; do
 	eval XDG_DIR="$(xdg-user-dir $DIR 2>/dev/null)"
@@ -70,13 +73,25 @@ _check_aisap() {
 			echo " OPERATION ABORTED!"
 			return 1
 		fi
-		"$AMCLIPATH" -i aisap >/dev/null 2>&1
+		if [ "$CLI" = am ] && [ -f "$APPMANCONFIG"/appman-config ]; then
+			read -r -p " ◆ DO YOU WISH TO INSTALL AISAP LOCALLY? (Y/n) " yn
+			if echo "$yn" | grep -i '^n' >/dev/null 2>&1; then
+				"$AMCLIPATH_ORIGIN" -i aisap >/dev/null 2>&1
+			else
+				"$AMCLIPATH_ORIGIN" -i --user aisap >/dev/null 2>&1
+			fi
+		else
+			"$AMCLIPATH_ORIGIN" -i aisap >/dev/null 2>&1
+		fi
 		command -v aisap 1>/dev/null || return 1
 		echo " aisap installed successfully!"
-	fi	
+	fi
 	if grep "aisap-am" "$TARGET" >/dev/null 2>&1; then
 		echo " $1 is already sandboxed!"
 		return 1
+	fi
+	if [ -f "$BINDIR"/"$1" ]; then
+		SUDOCMD=""
 	fi
 }
 
@@ -239,6 +254,7 @@ _install_sandbox_script() {
 	printf '\033[0m%s\033[33m\n' " to revert the changes, in this case that is:"
 	printf '\033[33m%s\033[0m' " $1 --disable-sandbox"
 	printf '%s\033[33m%s\n\033[0m\n' " or " "$AMCLI --disable-sandbox $1"
+	SUDOCMD="$SUDOCMD_ORIGIN"
 }
 
 # Main logic

@@ -1,4 +1,6 @@
 ## Sandbox an AppImage
+This page explains in detail how AppImage sandboxing works individually in "AM". To apply them during installation, go to the related guide "[Install and sandbox AppImages in one go](./install-appimage.md#install-and-sandbox-appimages-in-one-go)" instead.
+
 Since version 6.12, "AM"/"AppMan" uses Bubblewrap for sandboxing AppImage packages, thanks to "[Aisap](https://github.com/mgord9518/aisap)", a highly intuitive and configurable command line solution.
 
 The option "`--sandbox`", which since version 5.3 was using Firejail, has taken on a completely different appearance and usability, thanks to the intense work of @Samueru-sama, who managed to extend and enhance "Aisap", making it extremely easy to use in our project, to the point of making us forget that we are using a command line utility.
@@ -7,6 +9,7 @@ The option "`--sandbox`", which since version 5.3 was using Firejail, has taken 
 
 In this sense, "Aisap" may be considered a reference point for the future of AppImages sandboxing!
 
+----------------------------------------------------
 #### How to enable a sandbox
 This method works as follows:
 ```
@@ -28,12 +31,14 @@ We will first compile the Aisap script in a non-privileged, easy-to-access direc
 
 NOTE, the default location for the sandboxed homes is at $HOME/.local/am-sandboxes, but that location can be changed by setting the $SANDBOXDIR environemt variable.
 
+----------------------------------------------------
 #### How to disable a sandbox
 To remove the sandbox just run the command of the AppImage with the flag "--disable-sandbox", like this:
 ```
 $APP --disable-sandbox
 ```
 
+----------------------------------------------------
 #### Sandboxing example
 In the video below we will use "Baobab" (GTK3 version), a disk space analyzer, available in the database as "baobab-gtk3".
 
@@ -41,6 +46,7 @@ Among the XDG directories we will authorize "Images" (Pictures) and "Videos" (Vi
 
 https://github.com/ivan-hc/AM/assets/88724353/dd193943-7b08-474a-bbbb-4a6906de8b24
 
+----------------------------------------------------
 #### About Aisap sandboxing
 For more information about "Aisap", visit https://github.com/mgord9518/aisap
 

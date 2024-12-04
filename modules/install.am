@@ -101,8 +101,8 @@ _check_if_script_installs_a_metapackage() {
 			if [ -d "$APPSPATH"/"$metapackage"/tmp ]; then
 				$SUDOCMD "$APPSPATH"/"$metapackage"/remove 2> /dev/null
 			elif [ -d "$APPSPATH"/"$metapackage" ]; then
-				METAPACKAGE_NAME=$(echo "$metapackage" | tr '[:lower:]' '[:upper:]')
-				echo " ◆ $APPNAME IS PART OF \"$METAPACKAGE_NAME\", ALREADY INSTALLED"
+				LASTDIR=$(echo "$metapackage" | tr '[:lower:]' '[:upper:]')
+				echo " ◆ $APPNAME IS PART OF \"$LASTDIR\", ALREADY INSTALLED"
 				return 1
 			fi
 		fi
@@ -360,7 +360,7 @@ case "$1" in
 		fi
 		;;
 
-	'install'|'-i'|\
+	'install'|'-i'|'-ias'|\
 	'install-appimage'|'-ia')
 		[ "$AMCLI" = "am" ] && echo "$@" | grep -q -- "--user" && _appman
 
@@ -370,6 +370,7 @@ case "$1" in
 			echo " USAGE: $AMCLI $1 --debug [ARGUMENT]"
 			echo " USAGE: $AMCLI $1 --force-latest [ARGUMENT]"
 			echo " USAGE: $AMCLI $1 --icons [ARGUMENT]"
+			echo " USAGE: $AMCLI $1 --sandbox [ARGUMENT]"
 			[ "$AMCLI" = "am" ] && echo " USAGE: $AMCLI $1 --user [ARGUMENT]"
 			exit 1
 			;;
@@ -389,6 +390,7 @@ case "$1" in
 		METAPACKAGES="kdegames kdeutils node platform-tools"
 
 		if [ "$1" = "-ia" ] || [ "$1" = "install-appimage" ]; then _install_appimage; fi
+		if [ "$1" = "-ias" ]; then FLAGS=$(printf "%b\n--sandbox\n" "$FLAGS"); _install_appimage; fi
 
 		for arg in $entries; do
 			echo ""
@@ -423,12 +425,28 @@ case "$1" in
 			else
 				echo "💀 ERROR: \"$arg\" does NOT exist in the \"AM\" database, $(printf "please check the list, run the \"%b$AMCLIPATH_ORIGIN -l\033[0m\" command.\n\n" "${Gold}")" | fold -sw 72 | sed 's/^/ /g'
 			fi
+			# Sandbox argument
+			if echo "$FLAGS" | grep -q -- "--sandbox" && [ "$LASTDIR" != aisap ]; then
+				if [ -f "$APPSPATH/$LASTDIR/$LASTDIR" ]; then
+					if ! command -v aisap >/dev/null 2>&1; then
+						mv "$AMCACHEDIR"/installed "$CACHEDIR"/installed.backup.am 2>/dev/null
+						"$AMCLIPATH_ORIGIN" --sandbox "$LASTDIR"
+						sort "$AMCACHEDIR"/installed >> "$CACHEDIR"/installed.backup.am 2>/dev/null
+						mv "$CACHEDIR"/installed.backup.am "$AMCACHEDIR"/installed 2>/dev/null
+					else
+						echo ""
+						"$AMCLIPATH_ORIGIN" --sandbox "$LASTDIR"
+					fi
+				else
+					printf "\n ERROR: \"%b\" is NOT an AppImage\n" "$LASTDIR"
+				fi
+			fi
 			echo "____________________________________________________________________________"
 		done
 		echo "============================================================================"
 		printf "\n                  %bEND OF ALL INSTALLATION PROCESSES\n\033[0m" "${LightBlue}"
 		[ -f "$AMCACHEDIR"/installed ] && printf "\n             The following new programs have been installed:\n\n" \
-		&& grep -w -v "◆ am" 0<"$AMCACHEDIR"/installed
+		&& sort "$AMCACHEDIR"/installed | grep -w -v "◆ am"
 		printf "\n============================================================================\n"
 		exit 0
 		;;
