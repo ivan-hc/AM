@@ -35,7 +35,7 @@ or
 appman -ias {PROGRAM}
 ```
 
-https://github.com/user-attachments/assets/f761445f-5220-4167-af09-4f07fc5f30c1
+https://github.com/user-attachments/assets/151b5400-415c-48c5-81dd-65a7be1a9b06
 
 NOTE, **`-ia --sandbox` and `-ias` are only for the AppImages listed in the "AM" database!**
 
