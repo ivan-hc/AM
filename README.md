@@ -343,7 +343,7 @@ Download an older or specific app version.
 
 **Description**:
 
-Download one or more installation scripts to your desktop or convert them to local installers for "AppMan".
+Download one or more installation scripts to your desktop or convert them to local installers for "AppMan". To test the scripts, use the "`am -i '/path/to/script'`" command or enter the directory of the script and run the "`am -i ./script`" command, even using dedicated flags, if necessary (see "`-i`").
 
 ------------------------------------------------------------------------
 ### `extra`, `-e`
@@ -534,7 +534,7 @@ Updates this script to the latest version hosted.
 
 **Description**:
 
-Generate a custom installation script.
+Generate a custom installation script. To test the scripts, use the "`am -i '/path/to/script'`" command or enter the directory of the script and run the "`am -i ./script`" command, even using dedicated flags, if necessary (see "`-i`").
 
 ------------------------------------------------------------------------
 ### `unlock`
