@@ -326,7 +326,7 @@ _files_sort_by_size() {
 }
 
 _files_appman_mode_view() {
-	[ "$AMCLI" = am ] && [ -f "$APPMANCONFIG"/appman-config ] && _appman && APPMAN_ON=1 && _files_number && [ "$FILES_NUMBER" != 0 ] && echo "$DIVIDING_LINE" 
+	[ "$AMCLI" = am ] && [ -f "$APPMANCONFIG"/appman-config ] && _appman && APPMAN_ON=1 && _files_number && [ "$FILES_NUMBER" != 0 ] && echo "$DIVIDING_LINE"
 }
 
 _files_launcher_message() {
@@ -501,8 +501,18 @@ _list_apps_all_msg() {
 }
 
 _query_lists() {
-	printf "\n Search results for \"%s\":\n\n"  "$entries" | tr '[:lower:]' '[:upper:]'
-	pattern="$(echo "$entries" | sed 's/ /(?=.*/g; s/$/)/g; s/(/)(/g; s/^/(?=.*/g;')"
+	printf "\n Search results for \"%s\":\n\n"  "$@" | tr '[:lower:]' '[:upper:]'
+}
+
+_find_no_order() {
+	while read -r line; do
+		match=1
+		for term in "$@"; do
+			[ -n "$term" ] || continue
+			echo "$line" | grep -qi -- "$term" || { match=0; break; }
+		done
+		[ "$match" -eq 1 ] && echo "$line"
+	done
 }
 
 ################################################################################
@@ -586,20 +596,28 @@ case "$1" in
 			echo "        $AMCLI $1 --toolpack [ARGUMENT]"; exit 1
 		fi
 		wget -q --tries=10 --timeout=20 --spider https://github.com && _completion_lists
-		if [ "$2" = --pkg ]; then
-			entries="$(echo "$@" | cut -f3- -d ' ' | tr -s ' ' '|')"
-			printf "\n Search results for packages: %s\n\n"  "$entries" | tr '[:lower:]' '[:upper:]'
-			sort "$AMDATADIR"/"$ARCH"-* | uniq | grep -iE "$entries" --color=always | _pretty_list_compat
-		elif [ "$2" = --appimages ] || [ "$2" = --toolpack ] || [ "$2" = --all ]; then
-			entries="$(echo "$@" | cut -f3- -d ' ')"
-			_query_lists
-			[ "$2" = --all ] && _list_third_party && sort "$AMDATADIR"/"$ARCH"-* | uniq | grep -Pi "$pattern" | _pretty_list_compat
-			[ "$2" = --appimages ] && _list_appimages && grep -Pi "$pattern" "$AMDATADIR/$ARCH-appimages" | _pretty_list_compat
-			[ "$2" = --toolpack ] && _list_third_party && sort "$AMDATADIR/$ARCH-toolpack" | grep -Pi "$pattern" | _pretty_list_compat
+		shift
+		if [ "$1" = --pkg ]; then
+			shift
+			regex="$(echo "$@" | tr -s ' ' '|')"
+			printf "\n Search results for packages: %s\n\n" "$regex" | tr '[:lower:]' '[:upper:]'
+			sort "$AMDATADIR"/"$ARCH"-* | uniq \
+				| grep -iE "$regex" --color=always | _pretty_list_compat
+		elif [ "$1" = --all ]; then
+			shift
+			_query_lists "$*"
+			_list_third_party && sort "$AMDATADIR"/"$ARCH"-* | uniq | _find_no_order "$@" | _pretty_list_compat
+		elif [ "$1" = --appimages ]; then
+			shift
+			_query_lists "$*"
+			_list_appimages && sort "$AMDATADIR/$ARCH-appimages" | uniq | _find_no_order "$@" | _pretty_list_compat
+		elif [ "$1" = --toolpack ]; then
+			shift
+			_query_lists "$*"
+			_list_third_party && sort "$AMDATADIR/$ARCH-toolpack" | _find_no_order "$@" | _pretty_list_compat
 		else
-			entries="$(echo "$@" | cut -f2- -d ' ')"
-			_query_lists
-			sort "$AMDATADIR"/"$ARCH"-app* | uniq | grep -Pi "$pattern" | _pretty_list_compat
+			_query_lists "$*"
+			sort "$AMDATADIR"/"$ARCH"-app* | uniq | _find_no_order "$@" | _pretty_list_compat
 		fi
 		printf '\n'
 		;;
