@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="9.3-2"
+AMVERSION="9.3-3"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -17,8 +17,10 @@ DIR="$( cd "$( dirname "$0" )" && pwd )"
 CLI=$(basename "$0")
 
 # Determine system architecture and current user
-arch="$HOSTTYPE"
-export ARCH="$arch"
+ARCH="$(uname -m)"
+[ "$ARCH" = "amd64" ] && ARCH=x86_64
+arch="$ARCH"
+export ARCH arch
 
 # XDG Variables
 export BINDIR="${XDG_BIN_HOME:-$HOME/.local/bin}"
@@ -39,7 +41,10 @@ LightBlue='\033[1;34m'
 DIVIDING_LINE="-----------------------------------------------------------------------------"
 
 # Prevent the use of "sudo" ("AM")
-[ -n "$SUDO_COMMAND" ] && echo -e "\n Please do not use \"sudo\" to execute \"$CLI\", try again.\n" && exit 1
+if [ -n "${SUDO_USER:-$DOAS_USER}" ]; then
+	printf "\n Please do not use \"sudo\" to execute \"$CLI\", try again.\n\n"
+	exit 1
+fi
 
 function _create_cache_dir() {
 	AMCACHEDIR="$CACHEDIR/$AMCLI"
@@ -255,13 +260,14 @@ function _am_dependences_check() {
 }
 
 function _check_ubuntu_mess() {
-	if ! unshare --user -p /bin/true >/dev/null 2>&1; then
+	if command -v unshare >/dev/null 2>&1 && ! unshare --user -p /bin/true >/dev/null 2>&1; then
 		echo "$DIVIDING_LINE"
 		echo ""
 		echo -e " ${RED}⚠️ WARNING: ACCESS TO USER NAMESPACES IS RESTRICTED! \033[0m"
 		echo ""
-		echo " Some apps may not run, you need to enable access to user namespaces,"
-		echo -e " please visit ${LightBlue}https://github.com/ivan-hc/AM#ubuntu-mess\033[0m to know more."
+		echo " Some apps may not run, you need to enable access to user namespaces, see"
+		echo -e " ${LightBlue}https://github.com/ivan-hc/AM/blob/main/docs/troubleshooting.md#ubuntu-mess\033[0m"
+		echo " to know more."
 		echo ""
 		echo "$DIVIDING_LINE"
 	fi
