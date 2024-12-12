@@ -175,7 +175,7 @@ _files_if_script() {
 }
 
 _files_if_appimage() {
-	if ! echo "$string" | grep 'AppImages require FUSE to run' >/dev/null 2>&1; then
+	if file ./"$arg/$arg" | grep -qi "static"; then
 		if grep "SANDBOXDIR" "$FILE" >/dev/null 2>&1; then
 			echo " ◆ $arg	|	appimage🔒" >> "$AMCACHEDIR"/files-type
 		else
@@ -192,10 +192,9 @@ _files_if_appimage() {
 
 _files_type() {
 	APPVERSION=$(<"$AMCACHEDIR"/version-args grep -w " ◆ $arg	|" | sed 's:.*|	::')
-	string=$(strings -d ./"$arg/$arg" 2>/dev/null)
 	FILE=$(command -v "$arg" 2>/dev/null)
 	LINK=$(readlink "$FILE" 2>/dev/null)
-	if echo "$string" | grep 'github.com/AppImage/AppImageKit/wiki/FUSE' >/dev/null 2>&1; then
+	if strings ./"$arg/$arg" 2>/dev/null | grep -q -m 1 'github.com/AppImage/AppImageKit/wiki/FUSE'; then
 		_files_if_appimage
 	elif file ./"$arg"/* | grep -E 'LSB|/bin' >/dev/null 2>&1; then
 		_files_if_binary
@@ -242,15 +241,16 @@ _files_db() {
 _files_files() {
 	cd "$APPSPATH" || exit 1
 	INSTALLED_APPS=$(find . -name 'remove' -printf "%h\n" 2>/dev/null | du -sh -- * 2> /dev/null | sort -rh | sed 's@.*	@@')
-	if ! test -f "$AMCACHEDIR"/version-args; then
+	if [ ! -f "$AMCACHEDIR"/version-args ]; then
 		_check_version
 	fi
-	if ! test -f "$AMCACHEDIR"/files-type; then
+	if [ ! -f "$AMCACHEDIR"/files-type ]; then
 		for arg in $INSTALLED_APPS; do
-			if test -f ./"$arg"/remove 2>/dev/null; then
-		 		_files_type
+			if [ -f ./"$arg"/remove 2>/dev/null ]; then
+		 		_files_type &
 			fi
 		done
+		wait
 	fi
 	rm -f "$AMCACHEDIR"/files-sizes "$AMCACHEDIR"/files-db
 	for arg in $INSTALLED_APPS; do
