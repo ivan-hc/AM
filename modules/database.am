@@ -115,14 +115,14 @@ _about_page() {
 _files_header() {
 	CHECK_SUPPORTED_THIRD_PARTY_APPS="$(find "$APPSPATH"/* -type f -name '*.toolpack' -print -quit 2>/dev/null)"
 	echo ""
-	APPSNUMB=$(find "$APPSPATH" -type f -name 'remove' -exec grep -L 'usr/local/lib' {} \; 2>/dev/null | sed -r 's|/[^/]+$||' | sort | uniq | wc -l)
+	APPSNUMB=$(find "$APPSPATH" -type f -name 'remove' -exec grep -L 'usr/local/lib' {} \; 2>/dev/null | sed -r 's|/[^/]+$||' | sort | uniq | wc -l | sed 's/ //g')
 	if [ "$APPSNUMB" = 1 ]; then
 		APPSMESSAGE="YOU HAVE INSTALLED $APPSNUMB PROGRAM"
 	else
 		APPSMESSAGE="YOU HAVE INSTALLED $APPSNUMB PROGRAMS"
 	fi
 	if grep -q 'usr/local/lib' "$APPSPATH"/*/remove 2> /dev/null; then
-		LIBNUMB=$(grep -l "usr/local/lib" "$APPSPATH"/*/remove | wc -l)
+		LIBNUMB=$(grep -l "usr/local/lib" "$APPSPATH"/*/remove | wc -l | sed 's/ //g')
 		if [ "$LIBNUMB" = 1 ]; then
 			LIBSMESSAGE="AND $LIBNUMB LIBRARY"
 		else
@@ -240,7 +240,7 @@ _files_db() {
 # Functions to create file's table
 _files_files() {
 	cd "$APPSPATH" || exit 1
-	INSTALLED_APPS=$(find . -name 'remove' -printf "%h\n" 2>/dev/null | du -sh -- * 2> /dev/null | sort -rh | sed 's@.*	@@')
+	INSTALLED_APPS=$(find . -name 'remove' -print 2>/dev/null | du -sh -- * 2> /dev/null | sort -rh | sed 's@.*	@@')
 	if [ ! -f "$AMCACHEDIR"/version-args ]; then
 		_check_version
 	fi
@@ -264,7 +264,7 @@ _files_files() {
 _files() {
 	_files_files
 	rm -f "$AMCACHEDIR"/files-args
-	INSTALLED_APPS=$(find . -name 'remove' -printf "%h\n" 2>/dev/null | du -sh -- * 2>/dev/null | sort -rh | sed 's@.*	@@')
+	INSTALLED_APPS=$(find . -name 'remove' -print 2>/dev/null | du -sh -- * 2>/dev/null | sort -rh | sed 's@.*	@@')
 	for arg in $INSTALLED_APPS; do
 		if test -f ./"$arg"/remove 2>/dev/null; then
 			APPVERSION=$(grep -w " ◆ $arg	|" "$AMCACHEDIR"/version-args | tr '	' '\n' | tail -1)
@@ -281,7 +281,7 @@ _files() {
 }
 
 _files_number() {
-	FILES_NUMBER=$(find "$APPSPATH" -type f -name 'remove' 2>/dev/null | uniq | wc -l)
+	FILES_NUMBER=$(find "$APPSPATH" -type f -name 'remove' 2>/dev/null | uniq | wc -l | sed 's/ //g')
 }
 
 _files_appimage_type_notes() {
@@ -296,7 +296,7 @@ _files_total_size() {
 	if command -v aisap >/dev/null 2>&1 && grep -qe "appimage🔒" "$AMCACHEDIR"/files*; then
 		printf '%s\n\n' " AppImages with 🔒 are sandboxed with aisap"
 	fi
-	TOTAL_SIZE=$(du -shc $(find "$APPSPATH" -maxdepth 2 -type f -name 'remove' -printf "%h\n" 2>/dev/null) | tail -n1 | awk 'END {print $1"iB"}' | sed 's/...$/ &/')
+	TOTAL_SIZE=$(du -shc $(find "$APPSPATH" -maxdepth 2 -type f -name 'remove' -print 2>/dev/null) | tail -n1 | awk 'END {print $1"iB"}' | sed 's/...$/ &/')
 	echo " TOTAL SIZE: $TOTAL_SIZE of disk space in use"
 	printf "\n"
 }
@@ -357,7 +357,7 @@ _files_launcher() {
 	MISSING_LAUNCHERS_MSG="No launcher found, use option \"--launcher\" to create them."
 	[ ! -d "$DATADIR"/applications/AppImages ] && _files_missing_launcher_message && exit 0
 	[ -d "$DATADIR"/applications/AppImages ] && [ -z "$( ls -A "$DATADIR"/applications/AppImages )" ] && _files_missing_launcher_message && exit 0
-	FILES_LAUNCHERS_NUMBER=$(find "$DATADIR"/applications/AppImages -type f -name '*.desktop' 2>/dev/null | uniq | wc -l)
+	FILES_LAUNCHERS_NUMBER=$(find "$DATADIR"/applications/AppImages -type f -name '*.desktop' 2>/dev/null | uniq | wc -l | sed 's/ //g')
 	[ "$FILES_LAUNCHERS_NUMBER" = 1 ] && APPIMAGES="APPIMAGE" || APPIMAGES="APPIMAGES"
 	LAUNCHERS_MESSAGE="- YOU HAVE INTEGRATED $FILES_LAUNCHERS_NUMBER $APPIMAGES USING THE \"--launcher\" OPTION"
 	printf "\n%b\n\n" "$LAUNCHERS_MESSAGE"
@@ -390,12 +390,12 @@ _list() {
 	# Check if github.com is online, if not, the function will read the offline list
 	wget -q --tries=10 --timeout=20 --spider https://github.com && _completion_lists
 	# Check the number of installed apps and libraries
-	LIBNUMBER=$(grep "usr/local/lib" "$APPSPATH"/*/remove 2> /dev/null | wc -l)
-	ITEMSNUMBER=$(find "$APPSPATH" -name 'remove' -printf "%h\n" 2>/dev/null | sort -u | wc -l)
+	LIBNUMBER=$(grep "usr/local/lib" "$APPSPATH"/*/remove 2> /dev/null | wc -l | sed 's/ //g')
+	ITEMSNUMBER=$(find "$APPSPATH" -name 'remove' -print 2>/dev/null | sort -u | wc -l | sed 's/ //g')
 	_detect_appman_apps
 	if [ "$AMCLI" = am ]; then
 		if [ -d "$APPMAN_APPSPATH" ]; then
-			APPMAN_ITEMS=$(find "$APPMAN_APPSPATH" -name 'remove' -printf "%h\n" 2>/dev/null | sort -u | wc -l)
+			APPMAN_ITEMS=$(find "$APPMAN_APPSPATH" -name 'remove' -print 2>/dev/null | sort -u | wc -l | sed 's/ //g')
 			ITEMSNUMBER=$(("$ITEMSNUMBER"+"$APPMAN_ITEMS"))
 		fi
 		if test -f /opt/am/remove; then
