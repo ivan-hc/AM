@@ -191,10 +191,10 @@ _files_if_appimage() {
 }
 
 _files_type() {
-	APPVERSION=$(<"$AMCACHEDIR"/version-args grep -w " ◆ $arg	|" | sed 's:.*|	::')
+	APPVERSION=$(grep -w " ◆ $arg	|" "$AMCACHEDIR"/version-args | sed 's:.*|	::')
 	FILE=$(command -v "$arg" 2>/dev/null)
 	LINK=$(readlink "$FILE" 2>/dev/null)
-	if strings ./"$arg/$arg" 2>/dev/null | grep -q -m 1 'github.com/AppImage/AppImageKit/wiki/FUSE'; then
+	if grep -Eaoq -m 1 'github.com/AppImage/AppImageKit/wiki/FUSE' ./"$arg/$arg" 2>/dev/null; then
 		_files_if_appimage
 	elif file ./"$arg"/* | grep -E 'LSB|/bin' >/dev/null 2>&1; then
 		_files_if_binary
@@ -246,7 +246,7 @@ _files_files() {
 	fi
 	if [ ! -f "$AMCACHEDIR"/files-type ]; then
 		for arg in $INSTALLED_APPS; do
-			if [ -f ./"$arg"/remove 2>/dev/null ]; then
+			if [ -f ./"$arg"/remove ]; then
 		 		_files_type &
 			fi
 		done
@@ -254,11 +254,12 @@ _files_files() {
 	fi
 	rm -f "$AMCACHEDIR"/files-sizes "$AMCACHEDIR"/files-db
 	for arg in $INSTALLED_APPS; do
-		if test -f ./"$arg"/remove 2>/dev/null; then
-			_files_sizes
+		if [ -f ./"$arg"/remove ]; then
+			_files_sizes &
 			_files_db
 		fi
 	done
+	wait
 }
 
 _files() {
@@ -296,7 +297,7 @@ _files_total_size() {
 	if command -v aisap >/dev/null 2>&1 && grep -qe "appimage🔒" "$AMCACHEDIR"/files*; then
 		printf '%s\n\n' " AppImages with 🔒 are sandboxed with aisap"
 	fi
-	TOTAL_SIZE=$(du -shc $(find "$APPSPATH" -maxdepth 2 -type f -name 'remove' -print 2>/dev/null) | tail -n1 | awk 'END {print $1"iB"}' | sed 's/...$/ &/')
+	TOTAL_SIZE=$(du -shc $(find "$APPSPATH" -maxdepth 1 -type f -name 'remove' -print 2>/dev/null) | tail -n1 | awk 'END {print $1"iB"}' | sed 's/...$/ &/')
 	echo " TOTAL SIZE: $TOTAL_SIZE of disk space in use"
 	printf "\n"
 }
