@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="9.3-4"
+AMVERSION="9.3-5"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -21,6 +21,15 @@ ARCH="$(uname -m)"
 [ "$ARCH" = "amd64" ] && ARCH=x86_64
 arch="$ARCH"
 export ARCH arch
+
+# Determine alternative operating systems
+if [ "$(uname -o)" = FreeBSD ]; then
+	sed_cmd="gsed"
+	TERM=xterm-clear
+	export TERM
+else
+	sed_cmd="sed"
+fi
 
 # XDG Variables
 export BINDIR="${XDG_BIN_HOME:-$HOME/.local/bin}"
@@ -213,6 +222,11 @@ AMCLIUPPER=$(echo "$AMCLI" | tr '[:lower:]' '[:upper:]')
 # Create new data directory and move important files there
 AMDATADIR="$DATADIR/AM"
 mkdir -p "$AMDATADIR"
+if [ "$sed_cmd" = gsed ]; then
+	mkdir -p "$AMDATADIR/bin"
+	export PATH="${AMDATADIR}"/bin/:"${PATH}"
+	[ ! -f "${AMDATADIR}"/bin/sed ] && ln -s /usr/local/bin/gsed  "${AMDATADIR}"/bin/sed
+fi
 
 # DEVELOPER MODE
 if test -f "$AMDATADIR"/betatester; then
@@ -238,7 +252,7 @@ APPSLISTDB="$AMREPO/programs/$arch-apps"
 function _am_dependences_check() {
 	# Check for essential commands required by the application
 	missing_deps=()
-	AMDEPENDENCES="cat chmod chown curl grep less sed wget"
+	AMDEPENDENCES="cat chmod chown curl grep less $sed_cmd wget"
 	for name in $AMDEPENDENCES; do
 		if ! command -v "$name" &>/dev/null; then
 			missing_deps+=("$name")
