@@ -115,7 +115,12 @@ _about_page() {
 _files_header() {
 	CHECK_SUPPORTED_THIRD_PARTY_APPS="$(find "$APPSPATH"/* -type f -name '*.toolpack' -print -quit 2>/dev/null)"
 	echo ""
-	APPSNUMB=$(find "$APPSPATH" -type f -name 'remove' -exec grep -L 'usr/local/lib' {} \; 2>/dev/null | sed -r 's|/[^/]+$||' | sort | uniq | wc -l | sed 's/ //g')
+	_files_number
+	APPSNUMB="$FILES_NUMBER"
+	if grep -q 'usr/local/lib' "$APPSPATH"/*/remove 2> /dev/null; then
+		LIBNUMB=$(grep -l "usr/local/lib" "$APPSPATH"/*/remove | wc -l | sed 's/ //g')
+		APPSNUMB=$(("$APPSNUMB"-"$LIBNUMB"))
+	fi
 	if [ "$APPSNUMB" = 1 ]; then
 		APPSMESSAGE="YOU HAVE INSTALLED $APPSNUMB PROGRAM"
 	else
@@ -282,7 +287,9 @@ _files() {
 }
 
 _files_number() {
-	FILES_NUMBER=$(find "$APPSPATH" -type f -name 'remove' 2>/dev/null | uniq | wc -l | sed 's/ //g')
+	_determine_args
+	INSTALLED_APPS=$(echo "$ARGPATHS" | grep "$APPSPATH")
+	FILES_NUMBER=$(echo "$INSTALLED_APPS" | uniq | wc -l | sed 's/ //g')
 }
 
 _files_appimage_type_notes() {
