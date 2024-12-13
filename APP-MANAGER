@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="9.3-9"
+AMVERSION="9.3-10"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -228,7 +228,7 @@ if [ "$sed_cmd" = gsed ]; then
 fi
 
 # DEVELOPER MODE
-if test -f "$AMDATADIR"/betatester; then
+if [ -f "$AMDATADIR"/betatester ]; then
 	AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/dev"
 	AMBRANCH=$(basename "$AMREPO")
 	MODULES_SOURCE="$AMREPO/modules"
@@ -386,7 +386,7 @@ function _am_newrepo_check() {
 _am_newrepo_check "$@"
 
 # 3RD PARTY SOURCES
-appbundle_repo="https://github.com/xplshn/AppBundleHUB"
+export appbundle_repo="https://github.com/xplshn/AppBundleHUB"
 appbundle_readme="https://raw.githubusercontent.com/xplshn/dbin-metadata/refs/heads/master/misc/cmd/AM-support/AM.txt"
 
 toolpack_repo="https://github.com/Azathothas/Toolpacks"
@@ -489,10 +489,10 @@ function _check_version() {
 	_determine_args
 	for arg in $ARGS; do
 		argpath=$(echo "$ARGPATHS" | grep "/$arg$")
-		if test -f "$argpath"/remove 2>/dev/null; then
-			if test -f "$argpath"/version 2>/dev/null; then
+		if [ -f "$argpath"/remove ]; then
+			if [ -f "$argpath"/version ]; then
 				_check_version_if_version_file_exists
-			elif test -f "$argpath"/updater 2>/dev/null; then
+			elif [ -f "$argpath"/updater ]; then
 				_check_version_if_an_updater_exists
 			elif [ "$arg" = "$AMCLI" ]; then
 				APPVERSION="$AMVERSION"
@@ -517,7 +517,7 @@ function _check_version_for_auto_updatable_apps() {
 	_determine_args
 	for arg in $ARGS; do
 		argpath=$(echo "$ARGPATHS" | grep "/$arg$")
-		if test -f "$argpath"/updater 2>/dev/null; then
+		if [ -f "$argpath"/updater ]; then
 			_check_version_if_an_updater_exists
 			OLDAPPVERSION=$(grep " ◆ $arg	|" "$AMCACHEDIR"/version-args | tr '|' '\n' | sed 's/	//g' | head -2 | tail -1)
 			sed -i "/ ◆ $arg	|/s#$OLDAPPVERSION#$APPVERSION#" "$AMCACHEDIR"/*
@@ -525,7 +525,7 @@ function _check_version_for_auto_updatable_apps() {
 	done
 }
 
-if test -f "$AMCACHEDIR"/version-args; then
+if [ -f "$AMCACHEDIR"/version-args ]; then
 	_check_version_for_auto_updatable_apps 2>/dev/null
 fi
 
@@ -601,7 +601,7 @@ function _use_appman() {
 }
 
 if [ "$AMCLI" = am ]; then
-	if test -f "$APPMANCONFIG"/appman-mode; then
+	if [ -f "$APPMANCONFIG"/appman-mode ]; then
 		[ ! -f "$APPMANCONFIG"/appman-config ] && echo -e "$APPMAN_MSG"
 		_appman
 		AMCLIPATH="$(realpath "$0")"
@@ -637,14 +637,14 @@ function _clean_all_home_cache_directories_of_appimages() {
 function _clean_all_tmp_directories_from_appspath() {
 	_determine_args
 	for arg in $ARGPATHS; do
-		if test -d "$arg"/tmp; then
+		if [ -d "$arg"/tmp ]; then
 			rm -Rf "$arg"/tmp && echo " ✔ Removed $arg/tmp"
 		fi
 	done
 }
 
 function _clean_launchers() {
-	if test -d "$DATADIR"/applications/AppImages; then
+	if [ -d "$DATADIR"/applications/AppImages ]; then
 		rm -f "$AMCACHEDIR"/mountpoints
 		for var in "$DATADIR"/applications/AppImages/*.desktop; do
 			# full path to appimage
@@ -653,7 +653,7 @@ function _clean_launchers() {
 			launcher2del=$(basename -- "$(echo "$appimagename" | tr '[:upper:]' '[:lower:]')")
 			# removable mount point where the appimage may be stored
 			mountpoint=$(echo "$appimagename" | cut -d'/' -f1-4)
-			if ! test -f "$appimagename"; then
+			if [ ! -f "$appimagename" ]; then
 				if echo "$appimagename" | grep -q "^/media/\|^/mnt/"; then
 					mountpoint=$(echo "$appimagename" | cut -d'/' -f1-4)
 					unmounted_point=$(echo "$mountpoint" | cut -d'/' -f1-2)
@@ -663,7 +663,7 @@ function _clean_launchers() {
 				else
 					mountpoint=""
 				fi
-				if [ -n "$mountpoint" ] && ! test -d "$mountpoint"; then
+				if [ -n "$mountpoint" ] && [ ! -d "$mountpoint" ]; then
 					echo "$mountpoint" >> "$AMCACHEDIR"/mountpoints
 					echo " ✖ ERROR: cannot remove \"$(basename "$var")\""
 					echo "   related AppImage is located in an unmounted path of $unmounted_point"
@@ -673,7 +673,7 @@ function _clean_launchers() {
 				fi
 			fi
 		done
-		if test -f "$AMCACHEDIR"/mountpoints; then
+		if [ -f "$AMCACHEDIR"/mountpoints ]; then
 			mountpoints=$(sort "$AMCACHEDIR"/mountpoints)
 			for m in $mountpoints; do
 				[ ! -d "$m" ] && mountpoint_enabled=1
@@ -861,7 +861,7 @@ function _update_list_updatable_apps() {
 
 function _update_determine_apps_version_changes() {
 	[ -z "$debug_update" ] && echo "$DIVIDING_LINE"
-	if test -f "$AMCACHEDIR"/updatable-args-list; then
+	if [ -f "$AMCACHEDIR"/updatable-args-list ]; then
 		mv "$AMCACHEDIR"/updatable-args-list "$AMCACHEDIR"/updatable-args-list-old
 		_update_list_updatable_apps
 		OLDVER="$AMCACHEDIR/updatable-args-list-old"
@@ -926,7 +926,7 @@ function _update_all_apps() {
 		argpath=$(echo "$ARGPATHS" | grep "/$arg$")
 		cd "$argpath" || exit 1
 		arg=$(printf '%s\n' "${PWD##*/}")
-		if test -f "$argpath"/AM-updater; then
+		if [ -f "$argpath"/AM-updater ]; then
 			_update_app
 		fi
 	done
@@ -956,7 +956,7 @@ function _update_launchers() {
 			appimagename=$(basename -- "$appimage_full_path")
 			appimage_path=$(echo "$appimage_full_path" | sed -E 's|/[^/]+$|/|; s/\/*$//g')
 			printf "%b\n File: %b%b\033[0m\n Path: %b" "$DIVIDING_LINE" "${Green}" "$appimagename" "$appimage_path"
-			if ! test -f "$appimage_full_path"; then
+			if [ ! -f "$appimage_full_path" ]; then
 				echo "(unmounted)" | _fit
 			else
 				printf "\n\n"
@@ -1001,7 +1001,7 @@ function _use_update() {
 		_determine_args
 		for arg in $ENTRIES; do
 			argpath=$(echo "$ARGPATHS" | grep "/$arg$")
-			if test -f "$argpath"/AM-updater; then
+			if [ -f "$argpath"/AM-updater ]; then
 				cd "$argpath" 2>/dev/null || exit 1
 				_update_app
 			else
@@ -1021,9 +1021,9 @@ function _use_force_latest() {
 	ENTRIES="$(echo "$@" | cut -f2- -d ' ')"
   	for arg in $ENTRIES; do
 	  	argpath=$(echo "$ARGPATHS" | grep "/$arg$")
-	  	if ! test -d "$argpath"; then
+	  	if [ ! -d "$argpath" ]; then
 			echo " ERROR: \"$arg\" is not installed, see \"-f\""
-		elif ! test -f "$argpath"/AM-updater; then
+		elif [ ! -f "$argpath"/AM-updater ]; then
 			echo " ERROR: \"$AMCLI\" cannot manage updates for \"$arg\""
 		elif ! grep -q "api.github.com" "$argpath"/AM-updater; then
 			echo " ERROR: \"$arg\" source is not on Github"
