@@ -15,17 +15,17 @@ _convert_to_appman_compatible_script() {
 	_detect_appman_apps
 	_appman
 	if [ -d "$APPMAN_APPSPATH" ]; then
-		sed -i "s# /usr/local/bin# $BINDIR#g" ./"$arg"
-		sed -i "s# /usr/local/share/applications# $DATADIR/applications#g" ./"$arg"
-		sed -i "s# /opt# $APPMAN_APPSPATH#g" ./"$arg"
-		sed -i "s# https://api.github.com#$HeaderAuthWithGITPAT https://api.github.com#g" ./"$arg"
+		sed -i'' -e "s# /usr/local/bin# $BINDIR#g" ./"$arg"
+		sed -i'' -e "s# /usr/local/share/applications# $DATADIR/applications#g" ./"$arg"
+		sed -i'' -e "s# /opt# $APPMAN_APPSPATH#g" ./"$arg"
+		sed -i'' -e "s# https://api.github.com#$HeaderAuthWithGITPAT https://api.github.com#g" ./"$arg"
 		cat <<-HEREDOC >> ./"$arg"
 
 		# POST INSTALLATION PATCH FOR ALL LAUNCHERS
-		sed -i "s#Exec=\$APP#Exec=$BINDIR/$APP#g" $DATADIR/applications/*-AM.desktop
-		sed -i "s#Exec=/usr/bin/#Exec=$BINDIR/#g" $DATADIR/applications/*-AM.desktop
-		sed -i "s#Exec=/opt/#Exec=$HOME/$APPSDIR#g" $DATADIR/applications/*-AM.desktop
-		sed -i "s#Icon=/opt/#Icon=$HOME/$APPSDIR#g" $DATADIR/applications/*-AM.desktop
+		sed -i'' -e "s#Exec=\$APP#Exec=$BINDIR/$APP#g" $DATADIR/applications/*-AM.desktop
+		sed -i'' -e "s#Exec=/usr/bin/#Exec=$BINDIR/#g" $DATADIR/applications/*-AM.desktop
+		sed -i'' -e "s#Exec=/opt/#Exec=$HOME/$APPSDIR#g" $DATADIR/applications/*-AM.desktop
+		sed -i'' -e "s#Icon=/opt/#Icon=$HOME/$APPSDIR#g" $DATADIR/applications/*-AM.desktop
 
 		HEREDOC
 		printf " Converting %s to an AppMan-compatible script.\r" "$arg" && sleep 0.25 &&
@@ -79,7 +79,7 @@ _check_if_optional_dependences_are_needed() {
 			echo " 💀 ERROR: you cannot install \"$arg\" without installing \"firefox\""
 			return 1
 		else
-			sed -i 's#firefox --class#'"$(echo "$ffbrowser" | xargs -L 1 basename)"' --class#g' ./"$arg"
+			sed -i'' -e 's#firefox --class#'"$(echo "$ffbrowser" | xargs -L 1 basename)"' --class#g' ./"$arg"
 		fi
 	fi
 	# Check missing dependency
@@ -139,33 +139,31 @@ _check_kind_of_installation_script() {
 _apply_patches() {
 	# Patch "wget" (version 1.x) to have a progress bar and fix errors when applying patches
 	if ! echo "$FLAGS" | grep -q -- "--debug" && wget --version | head -1 | grep -q ' 1.'; then
-		sed -i "s#wget #wget -q --no-verbose --show-progress --progress=bar #g" ./"$arg"
+		sed -i'' -e "s#wget #wget -q --no-verbose --show-progress --progress=bar #g" ./"$arg"
 	fi
 	# Install the app so that it can rely on an icon theme (if available)
 	if echo "$FLAGS" | grep -q -- '--icons'; then
-		sed -i "s#Icon=/opt/\$APP/icons/#Icon=#g" ./"$arg"
+		sed -i'' -e "s#Icon=/opt/\$APP/icons/#Icon=#g" ./"$arg"
 	fi
 	# If you use the --latest option, add the "latest" flag to scripts that point to a very common "release"
 	if echo "$FLAGS" | grep -q -- '--force-latest'; then
-		sed -i 's#/releases #/releases/latest #g' ./"$arg"
+		sed -i'' -e 's#/releases #/releases/latest #g' ./"$arg"
 	fi
 	# Patches /usr/local for $HOME equivalent for AppMan
 	if [ "$AMCLI" = "appman" ]; then
-		sed -i -e "s#/usr/local/bin#$BINDIR#g" \
+		sed -i'' -e -e "s#/usr/local/bin#$BINDIR#g" \
 			-e "s#/usr/local/share#$DATADIR#g" \
 			-e "s#/opt/#$APPSPATH/#g" ./"$arg"
 	else
 		"$SUDOCMD" mkdir -p /usr/local/share/applications /usr/local/bin
 	fi
 	# Patch to apply to installation scripts
-	sed -i "s# https://api.github.com#$HeaderAuthWithGITPAT https://api.github.com#g" ./"$arg"
-	sed -i "s#DirIcon\$#DirIcon  2>/dev/null#g" ./"$arg"
-	sed -i "s#DirIcon ./icons/\"\$APP\" 1#DirIcon ./icons/\"\$APP\" 2#g" ./"$arg"
+	sed -i'' -e "s# https://api.github.com#$HeaderAuthWithGITPAT https://api.github.com#g" ./"$arg"
+	sed -i'' -e "s#DirIcon\$#DirIcon  2>/dev/null#g" ./"$arg"
+	sed -i'' -e "s#DirIcon ./icons/\"\$APP\" 1#DirIcon ./icons/\"\$APP\" 2#g" ./"$arg"
 	echo ""
 	# Patch for FreeBSD
-	if [ "$sed_cmd" = gsed ]; then
-		sed -i -- "s/^sed -i/gsed -i/g" ./"$arg"
-	fi
+	sed -i'' -e "s/^sed -i/sed -i'' -e/g" ./"$arg"
 }
 
 _torsocks_error_message() {
@@ -178,7 +176,7 @@ _post_installation_processes() {
 	LASTDIRPATH="${APPSPATH}/${LASTDIR}"
 	# Put permission check in remove script and change ownership of directory
 	if [ "$AMCLI" = am ]; then
-		$SUDOCMD sed -i "1 a [ \"\$(id -u)\" -ne 0 ] && echo "Permission denied" && exit 1" \
+		$SUDOCMD sed -i'' -e "1 a [ \"\$(id -u)\" -ne 0 ] && echo "Permission denied" && exit 1" \
 			"${LASTDIRPATH}"/remove 2>/dev/null
 		$SUDOCMD chown -R "$USER" "${LASTDIRPATH}" 2>/dev/null
 	fi
@@ -192,7 +190,7 @@ _post_installation_processes() {
 	# Patch .desktop to change paths if the app is installed locally
 	if [ "$AMCLI" = "appman" ]; then
 		# Likely not needed anymore: "s#Icon=/opt#Icon=$HOME/$APPSDIR#g"
-		sed -i -e "s#Exec=$arg#Exec=$BINDIR/$arg#g" \
+		sed -i'' -e "s#Exec=$arg#Exec=$BINDIR/$arg#g" \
 			-e "s#Exec=\$APP#Exec=$BINDIR/\$APP#g" \
 			-e "s#Exec=/usr/bin/#Exec=$BINDIR/#g" \
 			-e "s#Exec=/opt/#Exec=$BINDIR/#g" "$DATADIR"/applications/*-AM.desktop 2>/dev/null
@@ -243,7 +241,7 @@ _install_arg() {
 		REPOLOGY_API_ALLOWED=$(curl -Ls https://repology.org/)
 		TORSOCKS_MESSAGE="you have no access to https://repology.org, needed to check the version of this program."
 		if grep -q "https://repology.org" ./"$arg" && [ -z "$REPOLOGY_API_ALLOWED" ] && [ -n "$TORSOCKS" ]; then
-			sed -i "s/version=\$(wget/version=\$(torsocks wget/g" ./"$arg"
+			sed -i'' -e "s/version=\$(wget/version=\$(torsocks wget/g" ./"$arg"
 		fi
 		[ -z "$REPOLOGY_API_ALLOWED" ] && [ -z "$TORSOCKS" ] && _torsocks_error_message | fold -sw 72 | sed 's/^/   /g; s/   ✖/✖/g' && return 0
 	elif grep -q "api.github.com" ./"$arg"; then
@@ -278,15 +276,15 @@ _3rd_party_apps_handler() {
 	third_party_url="curl -Ls $third_party_readme | grep -i \"^| $arg \" | tr '|' '\\\n' | cut -c 2- | grep . | awk -F: \"NR==$awk_dl\""
 	if echo "$arg" | grep -q "appbundle$"; then
 		curl -Ls "$AMREPO"/templates/AM-SAMPLE-AppBundle > "$CACHEDIR/extra/$arg.toolpack" || exit 1
-		sed -i "s#APP=SAMPLE#APP=$arg#g; s#FUNCTION#$awk_version#g; s#wget \"\$version\"#wget \$($third_party_url)#g" "$CACHEDIR/extra/$arg.toolpack"
-		sed -i 's/\.dwfs.appbundle$//g; s/\.appbundle$//g' "$CACHEDIR/extra/$arg.toolpack"
+		sed -i'' -e "s#APP=SAMPLE#APP=$arg#g; s#FUNCTION#$awk_version#g; s#wget \"\$version\"#wget \$($third_party_url)#g" "$CACHEDIR/extra/$arg.toolpack"
+		sed -i'' -e 's/\.dwfs.appbundle$//g; s/\.appbundle$//g' "$CACHEDIR/extra/$arg.toolpack"
 	elif echo "$arg" | grep -q "nixappimage$"; then
 		curl -Ls "$AMREPO"/templates/AM-SAMPLE-AppImage > "$CACHEDIR/extra/$arg.toolpack" || exit 1
-		sed -i "s#APP=SAMPLE#APP=$arg#g; s#FUNCTION#$awk_version#g; s#wget \"\$version\"#wget \$($third_party_url)#g" "$CACHEDIR/extra/$arg.toolpack"
-		sed -i 's/\.nixappimage$//g' "$CACHEDIR/extra/$arg.toolpack"
+		sed -i'' -e "s#APP=SAMPLE#APP=$arg#g; s#FUNCTION#$awk_version#g; s#wget \"\$version\"#wget \$($third_party_url)#g" "$CACHEDIR/extra/$arg.toolpack"
+		sed -i'' -e 's/\.nixappimage$//g' "$CACHEDIR/extra/$arg.toolpack"
 	else
 		curl -Ls "$AMREPO"/templates/AM-SAMPLE-Archive > "$CACHEDIR/extra/$arg.toolpack" || exit 1
-		sed -i "s#APP=SAMPLE#APP=$arg#g; s#FUNCTION#$awk_version#g; s#wget \"\$version\"#wget \$($third_party_url)#g" "$CACHEDIR/extra/$arg.toolpack"
+		sed -i'' -e "s#APP=SAMPLE#APP=$arg#g; s#FUNCTION#$awk_version#g; s#wget \"\$version\"#wget \$($third_party_url)#g" "$CACHEDIR/extra/$arg.toolpack"
 		sed -e '/\[ -e/ s/^#*/#/' -i "$CACHEDIR/extra/$arg.toolpack" 2>/dev/null
 	fi
 	chmod a+x "$CACHEDIR/extra/$arg.toolpack"
@@ -476,9 +474,9 @@ case "$1" in
 		esac
 		mkdir -p "$CACHEDIR/extra"
 		curl -Ls "$AMREPO"/templates/AM-SAMPLE-AppImage > "$CACHEDIR/extra/$EXTERNAL_APP_NAME" || exit 1
-		sed -i "s#APP=SAMPLE#APP=$EXTERNAL_APP_NAME#g" "$CACHEDIR/extra/$EXTERNAL_APP_NAME"
+		sed -i'' -e "s#APP=SAMPLE#APP=$EXTERNAL_APP_NAME#g" "$CACHEDIR/extra/$EXTERNAL_APP_NAME"
 		API_GITHUB_REPO="https://api.github.com/repos/$USER_PROJECT/releases"
-		sed -i "s#REPLACETHIS#$USER_PROJECT#g" "$CACHEDIR/extra/$EXTERNAL_APP_NAME"
+		sed -i'' -e "s#REPLACETHIS#$USER_PROJECT#g" "$CACHEDIR/extra/$EXTERNAL_APP_NAME"
 		q="'"
 		if [ "$ARCH" = "x86_64" ]; then
 			FILTER=' | grep -vi "i386\\|i686\\|i586\\|i486\\|aarch64\\|arm64\\|armv7l"'
@@ -488,8 +486,8 @@ case "$1" in
 			FILTER=' | grep -ie "aarch64\\|arm64" '
 		fi
 		FUNCTION='curl -Ls '"$API_GITHUB_REPO"' | sed '"$q"'s/[()",{} ]/\\n/g'"$q"' | grep -oi "https.*mage$"'"$FILTER"' | head -1'
-		sed -i "s#FUNCTION)#$FUNCTION)#g" "$CACHEDIR/extra/$EXTERNAL_APP_NAME"
-		[ -n "$APP_KEYWORD" ] && sed -i "s# head -1# grep -i \"$APP_KEYWORD\" | head -1#g" "$CACHEDIR/extra/$EXTERNAL_APP_NAME"
+		sed -i'' -e "s#FUNCTION)#$FUNCTION)#g" "$CACHEDIR/extra/$EXTERNAL_APP_NAME"
+		[ -n "$APP_KEYWORD" ] && sed -i'' -e "s# head -1# grep -i \"$APP_KEYWORD\" | head -1#g" "$CACHEDIR/extra/$EXTERNAL_APP_NAME"
 		chmod a+x "$CACHEDIR/extra/$EXTERNAL_APP_NAME"
 		[ "$AMCLI" = "am" ] && [ "$2" = "--user" ] && "$AMCLIPATH_ORIGIN" -i --user "$CACHEDIR/extra/$EXTERNAL_APP_NAME" \
 		|| "$AMCLIPATH_ORIGIN" -i "$CACHEDIR/extra/$EXTERNAL_APP_NAME"
