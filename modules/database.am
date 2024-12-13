@@ -245,7 +245,8 @@ _files_db() {
 # Functions to create file's table
 _files_files() {
 	cd "$APPSPATH" || exit 1
-	INSTALLED_APPS=$(find . -name 'remove' -print 2>/dev/null | du -sh -- * 2> /dev/null | sort -rh | sed 's@.*	@@')
+	INSTALLED_APPS_BY_SIZE=$(du -sh $INSTALLED_APPS_PATHS 2> /dev/null | sort -rh)
+	INSTALLED_APPS=$(echo "$INSTALLED_APPS_BY_SIZE" | xargs -n 1 basename 2>/dev/null)
 	if [ ! -f "$AMCACHEDIR"/version-args ]; then
 		_check_version
 	fi
@@ -270,7 +271,6 @@ _files_files() {
 _files() {
 	_files_files
 	rm -f "$AMCACHEDIR"/files-args
-	INSTALLED_APPS=$(find . -name 'remove' -print 2>/dev/null | du -sh -- * 2>/dev/null | sort -rh | sed 's@.*	@@')
 	for arg in $INSTALLED_APPS; do
 		if test -f ./"$arg"/remove 2>/dev/null; then
 			APPVERSION=$(grep -w " ◆ $arg	|" "$AMCACHEDIR"/version-args | tr '	' '\n' | tail -1)
@@ -288,10 +288,10 @@ _files() {
 
 _files_number() {
 	_determine_args
-	INSTALLED_APPS=$(echo "$ARGPATHS" | grep "$APPSPATH")
+	INSTALLED_APPS_PATHS=$(echo "$ARGPATHS" | grep "$APPSPATH")
 	FILES_NUMBER=$(find "$APPSPATH" -type f -name 'remove' 2>/dev/null | uniq | wc -l | sed 's/ //g')
 	if [ "$FILES_NUMBER" != 0 ]; then
-		FILES_NUMBER=$(echo "$INSTALLED_APPS" | uniq | wc -l | sed 's/ //g')
+		FILES_NUMBER=$(echo "$INSTALLED_APPS_PATHS" | uniq | wc -l | sed 's/ //g')
 	fi
 }
 
@@ -307,8 +307,8 @@ _files_total_size() {
 	if command -v aisap >/dev/null 2>&1 && grep -qe "appimage🔒" "$AMCACHEDIR"/files*; then
 		printf '%s\n\n' " AppImages with 🔒 are sandboxed with aisap"
 	fi
-	INSTALLED_APPS=$(echo "$ARGPATHS" | grep "$APPSPATH" | tr '\n' ' ')
-	TOTAL_SIZE=$(du -shc $INSTALLED_APPS | awk 'END {print $1"iB"}' | sed 's/...$/ &/')
+	INSTALLED_APPS_PLAN=$(echo "$INSTALLED_APPS_PATHS" | tr '\n' ' ')
+	TOTAL_SIZE=$(du -shc $INSTALLED_APPS_PLAN | awk 'END {print $1"iB"}' | sed 's/...$/ &/')
 	echo " TOTAL SIZE: $TOTAL_SIZE of disk space in use"
 	printf "\n"
 }
