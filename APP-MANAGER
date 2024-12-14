@@ -22,14 +22,8 @@ ARCH="$(uname -m)"
 arch="$ARCH"
 export ARCH arch
 
-# Determine alternative operating systems
-if uname | grep -q "BSD\|DragonFly\|DynFi\|FreeNAS\|helloSystem\|OPNsense\|pfSense\|TrueNAS\|XigmaNAS"; then
-	sed_cmd="gsed"
-	TERM=xterm-clear
-	export TERM
-else
-	sed_cmd="sed"
-fi
+[ -n "$TERM" ] || TERM=xterm-clear
+export TERM
 
 # XDG Variables
 export BINDIR="${XDG_BIN_HOME:-$HOME/.local/bin}"
@@ -53,6 +47,11 @@ DIVIDING_LINE="-----------------------------------------------------------------
 if [ -n "${SUDO_USER:-$DOAS_USER}" ]; then
 	printf "\n Please do not use \"sudo\" to execute \"$CLI\", try again.\n\n"
 	exit 1
+fi
+
+# check what sed we have
+if ! sed --version 2>/dev/null | grep -qi gnu && ! command -v gsed 1>/dev/null; then
+  echo "WARNING: You don't have GNU sed, things will likely break"
 fi
 
 function _create_cache_dir() {
@@ -263,7 +262,7 @@ APPSLISTDB="$AMREPO/programs/$arch-apps"
 function _am_dependences_check() {
 	# Check for essential commands required by the application
 	missing_deps=()
-	AMDEPENDENCES="cat chmod chown curl grep $sed_cmd wget"
+	AMDEPENDENCES="cat chmod chown curl grep sed wget"
 	for name in $AMDEPENDENCES; do
 		if ! command -v "$name" &>/dev/null; then
 			missing_deps+=("$name")
