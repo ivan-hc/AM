@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="9.3-12"
+AMVERSION="9.3-13"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -474,7 +474,12 @@ _check_version_grep_numbers() {
 
 # Versions
 _check_version_if_any_version_reference_is_somewhere() {
-	APPVERSION=$(grep -i "version=" "$argpath"/* 2>/dev/null | _check_version_grep_numbers)
+	txt_files=$(file "$argpath"/* | awk -F: '/ASCII text/ {print $1}')
+	for txtf in $txt_files; do
+		if grep -qi "^version=" "$txtf" && grep -qi "^name=" "$txtf"; then
+			APPVERSION=$(grep -i "^version=" "$txtf" | cut -c 9- | tr -cd '[:alnum:]._-')
+		fi
+	done
 }
 
 _check_version_if_version_file_exists() {
@@ -497,12 +502,6 @@ _check_version_if_version_file_exists() {
 	fi
 }
 
-_check_version_if_an_updater_exists() {
-	APPVERSION=$("$argpath"/updater -d "$argpath"/"$arg" 2>/dev/null | grep -i "$arg" |\
-	_check_version_grep_numbers)
-	[ -z "$APPVERSION" ] && _check_version_if_any_version_reference_is_somewhere
-}
-
 _check_version_if_library() {
 	LIBNAME=$(sort "$argpath"/remove | tr ' ' '\n' | grep "usr/local/lib" | head -1 | sed 's:.*/::')
 	APPVERSION=$(find /usr/local/lib -type f -name "$LIBNAME" -type f | sed 's:.*.so.::' | tail -1)
@@ -520,16 +519,14 @@ _check_version() {
 		if [ -f "$argpath"/remove ]; then
 			if [ -f "$argpath"/version ]; then
 				_check_version_if_version_file_exists
-			elif [ -f "$argpath"/updater ]; then
-				_check_version_if_an_updater_exists
 			elif [ "$arg" = "$AMCLI" ]; then
 				APPVERSION="$AMVERSION"
-			elif grep -qi "version=" "$argpath"/* 2>/dev/null; then
-				_check_version_if_any_version_reference_is_somewhere
 			elif echo "$arg" | grep -q "ffwa-"; then
 				APPVERSION="WebApp"
 			elif grep -q "usr/local/lib" "$argpath"/remove 2>/dev/null; then
 				_check_version_if_library
+			elif [ -f "$argpath"/updater ] || grep -qi "version=" "$argpath"/*; then
+				_check_version_if_any_version_reference_is_somewhere
 			else
 				APPVERSION="unknown"
 			fi
@@ -546,7 +543,7 @@ _check_version_for_auto_updatable_apps() {
 	for arg in $ARGS; do
 		argpath=$(echo "$ARGPATHS" | grep "/$arg$")
 		if [ -f "$argpath"/updater ]; then
-			_check_version_if_an_updater_exists
+			_check_version_if_any_version_reference_is_somewhere
 			OLDAPPVERSION=$(grep " ◆ $arg	|" "$AMCACHEDIR"/version-args | tr '|' '\n' | sed 's/	//g' | head -2 | tail -1)
 			sed -i "/ ◆ $arg	|/s#$OLDAPPVERSION#$APPVERSION#" "$AMCACHEDIR"/*
 		fi
