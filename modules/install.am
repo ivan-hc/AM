@@ -99,13 +99,27 @@ _check_if_script_installs_a_metapackage() {
 		if grep -q "$metapackage" ./"$arg" 2> /dev/null; then
 			if [ -d "$APPSPATH"/"$metapackage"/tmp ]; then
 				$SUDOCMD "$APPSPATH"/"$metapackage"/remove 2> /dev/null
-			elif [ -d "$APPSPATH"/"$metapackage" ]; then
+			elif [ -d "$APPSPATH"/"$metapackage" ] || command -v "$metapackage" >/dev/null 2>&1; then
 				LASTDIR=$(echo "$metapackage" | tr '[:lower:]' '[:upper:]')
 				echo " ◆ $APPNAME IS PART OF \"$LASTDIR\", ALREADY INSTALLED"
 				return 1
 			fi
 		fi
-	done	
+	done
+	metapkg_error_msg=" 💀 ERROR: \"$pure_arg\" also provides \"SCMD\", already in \$PATH"
+	if [ "$pure_arg" = node ] && command -v npm >/dev/null 2>&1; then
+		echo "$metapkg_error_msg" | tr '[:lower:]' '[:upper:]' | sed 's/SCMD/npm/g'
+		return 1
+	elif [ "$pure_arg" = platform-tools ] || [ "$pure_arg" = adb ] || [ "$pure_arg" = fastboot ]; then
+		if command -v adb >/dev/null 2>&1; then
+			echo "$metapkg_error_msg" | tr '[:lower:]' '[:upper:]' | sed 's/SCMD/adb/g'
+			return 1
+		elif command -v fastboot >/dev/null 2>&1; then
+			echo "$metapkg_error_msg" | tr '[:lower:]' '[:upper:]' | sed 's/SCMD/fastboot/g'
+			return 1
+		fi
+	fi
+	
 }
 
 _check_if_spooky_flag_exists() {
@@ -386,9 +400,7 @@ case "$1" in
 		[ "$AMCLI" = "am" ] && { $SUDOCMD printf "\r" || exit 1; }
 
 		echo "============================================================================"
-		echo ""
-		printf "                  %bSTART OF ALL INSTALLATION PROCESSES\033[0m\n" "${LightBlue}"
-		echo ""
+		printf "\n                  %bSTART OF ALL INSTALLATION PROCESSES\033[0m\n\n" "${LightBlue}"
 		echo "============================================================================"
 		_clean_amcachedir 2>/dev/null
 
@@ -413,6 +425,8 @@ case "$1" in
 			# Various cases that may occur during installation
 			if test -f "$APPSPATH"/"$pure_arg"/remove; then
 				echo " ◆ \"$pure_arg\" is already installed!" | tr '[:lower:]' '[:upper:]'
+			elif command -v "$pure_arg" >/dev/null 2>&1; then
+				echo " 💀 ERROR: \"$pure_arg\" command already exists!"
 			elif echo "$arg" | grep -q "/"; then
 				if test -f "$arg" 2> /dev/null; then
 					_install_local_script
