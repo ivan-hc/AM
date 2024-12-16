@@ -740,6 +740,7 @@ Below you can access the documentation pages related to the use of "AM", complet
   - [How to test an installation script](docs/guides-and-tutorials/template.md#how-to-test-an-installation-script)
   - [How to submit a Pull Request](docs/guides-and-tutorials/template.md#how-to-submit-a-pull-request)
 - [Third-party databases for applications (NeoDB)](docs/guides-and-tutorials/newrepo.md)
+- [BSD, freeBSD and derivative systems: configuration and troubleshooting](docs/guides-and-tutorials/bsd.md)
 
 ------------------------------------------------------------------------
 
