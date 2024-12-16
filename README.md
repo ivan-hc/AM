@@ -68,7 +68,6 @@ To install "AM" you must first install the "core" dependencies from your package
 - "`coreutils`" (contains "`cat`", "`chmod`", "`chown`"...);
 - "`curl`", to check URLs;
 - "`grep`", to check files;
-- "`less`", to read the ever-longer lists;
 - "`sed`", to edit/adapt installed files;
 - "`wget`" to download all programs and update "AM" itself.
 - "`sudo`" or "`doas`", for installing and removing programs at the system level.
@@ -77,6 +76,7 @@ To install "AM" you must first install the "core" dependencies from your package
   <summary>Additionally, you may need these optional dependencies, click here.</summary>
 
 - "`binutils`", contains a series of basic commands, including "`ar`" which extracts .deb packages;
+- "`less`", to read the ever-longer lists;
 - "`unzip`", to extract .zip packages;
 - "`tar`", to extract .tar* packages;
 - "`torsocks`", to connect to the TOR network;

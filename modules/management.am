@@ -7,7 +7,7 @@
 ##############################################################################################
 
 # BACKUP
-function _backup_name() {
+_backup_name() {
 	printf "\n ◆ To set date and time as a name, press ENTER (default)\n ◆ To set the version as a name, press \"1\"\n ◆ To set a custom name, write anything else\n\n"
 	read -r -p " Write your choice here, or leave blank to use \"date/time\": " response
 	case "$response" in
@@ -18,13 +18,13 @@ function _backup_name() {
 			_check_version
 			backupname=$(grep -w " ◆ $app_name	|" "$AMCACHEDIR"/version-args 2>/dev/null | sed 's:.*|	::')
 			;;
-		*)	
+		*)
 			backupname="$(echo "$response" | sed 's/ /_/g')"
 			;;
 	esac
 }
 
-function _backup() {
+_backup() {
 		if [ ! -f "$argpath"/remove ]; then
 		echo " \"$2\" is not a valid argument or is not installed."
 	else
@@ -49,7 +49,7 @@ function _backup() {
 }
 
 # RESTORE
-function _overwrite() {
+_overwrite() {
 	if [ ! -d "$HOME/.am-snapshots/$2" ]; then
 		echo " ERROR: No snapshot for \"$2\" found."
 	elif [ ! -f "$argpath"/remove ]; then
@@ -74,7 +74,7 @@ function _overwrite() {
 }
 
 # DOWNGRADE
-function _downgrade_entries_filter() {
+_downgrade_entries_filter() {
 	grep -vi "^#\|version0=" ./AM-updater | grep "api.github.com" \
 		| tr '=' '\n' | sed 's/^\$(//g' \
 		| tail -1 | sed '1,${
@@ -87,7 +87,7 @@ function _downgrade_entries_filter() {
 		}'
 }
 
-function _downgrade() {
+_downgrade() {
 		# Safety checks
 	if [ ! -f "$argpath"/AM-updater ]; then
 		echo " No AM-updater available for \"$2\", cannot detect any URL!"
@@ -133,7 +133,7 @@ function _downgrade() {
 }
 
 # ICON THEME CHANGER
-function _icon_theme() {
+_icon_theme() {
 	if [ "$AMCLI" = am ] && test -f /usr/local/share/applications/"$arg"*AM.desktop; then
 		$SUDOCMD sed -i "s#Icon=$argpath/icons/#Icon=#g" /usr/local/share/applications/"$arg"*AM.desktop 2>/dev/null
 	else
@@ -143,7 +143,7 @@ function _icon_theme() {
 }
 
 # LAUNCHER
-function _launcher_appimage_integration() {
+_launcher_appimage_integration() {
 	"$arg" --appimage-extract *.desktop 1>/dev/null && mv ./squashfs-root/*.desktop ./"$appimage".desktop
 	"$arg" --appimage-extract .DirIcon 1>/dev/null && mv ./squashfs-root/.DirIcon ./DirIcon
 	COUNT=0
@@ -164,7 +164,7 @@ function _launcher_appimage_integration() {
 	rm -R -f ./squashfs-root ./DirIcon
 }
 
-function _launcher_appimage_bin() {
+_launcher_appimage_bin() {
 	mkdir -p "$BINDIR"
 	if ! echo "$PATH" | grep "$BINDIR" >/dev/null 2>&1; then
 		echo "$DIVIDING_LINE"
@@ -176,7 +176,7 @@ function _launcher_appimage_bin() {
 		appimage_cmd=$(echo "$appimage" | tr '[:upper:]' '[:lower:]')
 		if ! echo "$appimage" | grep -q -i ".appimage"; then
 			[ -n "$BINDIR" ] && printf '#!/bin/sh\n%s' "$arg" >> "$BINDIR"/"$appimage_cmd".appimage \
-			&& chmod a+x "$BINDIR"/"$appimage_cmd".appimage && echo " New command: \"$appimage_cmd.appimage\" in $BINDIR" | _fit
+			&& chmod a+x "$BINDIR"/"$appimage_cmd".appimage && echo "New command: \"$appimage_cmd.appimage\" in $BINDIR" | _fit
 		else
 			[ -n "$BINDIR" ] && printf '#!/bin/sh\n%s' "$arg" >> "$BINDIR"/"$appimage_cmd" \
 			&& chmod a+x "$BINDIR"/"$appimage_cmd" && echo "New command: \"$appimage_cmd\" in $BINDIR" | _fit
@@ -198,11 +198,11 @@ function _launcher_appimage_bin() {
 	fi
 }
 
-function _launcher(){
+_launcher(){
 	_clean_launchers 2>/dev/null 1>/dev/null
-	if ! test -f "$arg"; then
+	if [ ! -f "$arg" ]; then
 		echo "ERROR: \"$arg\" not found" | _fit
-	elif ! strings -d "$arg" 2>/dev/null | grep -F -q 'if you run it with the --appimage-extract option'; then
+	elif ! grep -Eaoq -m 1 'github.com/AppImage/AppImageKit/wiki/FUSE' "$arg" 2>/dev/null; then
 		echo "ERROR: \"$arg\" is NOT an AppImage" | _fit
 	else
 		printf " ◆ File: %s\n" "$arg"
@@ -218,7 +218,7 @@ function _launcher(){
 }
 
 # LOCK/UNLOCK
-function _lock() {
+_lock() {
 		if [ ! -f "$argpath"/AM-updater ]; then
 		echo " \"$AMCLIUPPER\" cannot manage updates for $2, \"AM-updater\" file not found!"
 		return 1
@@ -233,7 +233,7 @@ function _lock() {
 	fi
 }
 
-function _unlock() {
+_unlock() {
 		if ! test -f "$argpath"/AM-LOCK; then
 		echo " \"$2\" cannot be unlocked, \"AM-LOCK\" file not found!"
 		return 1
@@ -249,19 +249,18 @@ function _unlock() {
 }
 
 # NO LIBFUSE
-function _nolibfuse() {
+_nolibfuse() {
 	AMCLIPATH_ORIGIN="$AMCLIPATH"
 	target="$(echo "${2}" | tr '[:lower:]' '[:upper:]')"
 	# safety checks
-		if ! cd "$argpath" 2>/dev/null; then
+	if ! cd "$argpath" 2>/dev/null; then
 		echo " ⚠️ Error: \"$target\" is NOT installed."
 		return 1
 	fi
-	string="$(strings -d "./$2" 2>/dev/null)"
-	if ! echo "$string" | grep -q -- 'run it with the --appimage-extract'; then
+	if ! grep -Eaoq -m 1 'github.com/AppImage/AppImageKit/wiki/FUSE' ./"$arg" 2>/dev/null; then
 		echo " ⚠️ Error: $target is NOT an AppImage."
 		return 1
-	elif ! echo "$string" | grep -q -- 'AppImages require FUSE to run'; then
+	elif file "$arg" 2>/dev/null | grep -qi "static"; then
 		echo " ◆ $target is already a new generation AppImage."
 		return 1
 	elif test -f ./*.zsync; then
@@ -309,7 +308,7 @@ function _nolibfuse() {
 }
 
 # REMOVE
-function _detect_path_to_remove() {
+_detect_path_to_remove() {
 	if [ -d "$APPMAN_APPSPATH"/"$arg" ]; then
 		RMPATH="1"
 	elif [ -d "$APPSPATH"/"$arg" ]; then
@@ -321,7 +320,7 @@ function _detect_path_to_remove() {
 	echo "$DIVIDING_LINE"
 }
 
-function _remove() {
+_remove() {
 	[ "$AMCLI" = am ] && _detect_appman_apps
 	_detect_path_to_remove
 	[ -z "$RMPATH" ] && echo -e " \"${RED}$arg\033[0m\" is not a valid \"APPNAME\", see \"$AMCLI -f\" for more." && return 1
@@ -337,7 +336,7 @@ function _remove() {
 	[ -d "$DATADIR"/icons/hicolor/scalable/apps ] && find "$DATADIR"/icons/hicolor/scalable/apps -xtype l -exec rm {} \;
 }
 
-function _hard_remove() {
+_hard_remove() {
 	[ "$AMCLI" = am ] && _detect_appman_apps
 	_detect_path_to_remove
 	[ -z "$RMPATH" ] && echo -e " \"${RED}$arg\033[0m\" is not a valid \"APPNAME\", see \"$AMCLI -f\" for more." && return 1

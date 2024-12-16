@@ -26,10 +26,13 @@ _check_appimage() {
 	TARGET="$(command -v "$1" 2>/dev/null)"
 	APPIMAGE="$(readlink "$TARGET" 2>/dev/null)"
 	APPIMAGEDIR="$(dirname "$APPIMAGE" 2>/dev/null)"
-	if [ ! -e "$APPIMAGE" ]; then
+	if grep "aisap-am" "$TARGET" >/dev/null 2>&1; then
+		echo " $1 is already sandboxed!"
+		return 1
+	elif [ ! -e "$APPIMAGE" ]; then
 		echo " ERROR: \"$1\" is not installed"
 		return 1
-	elif ! strings -d "$APPIMAGE" | grep -- '--appimage-extract' 1>/dev/null; then
+	elif ! grep -Eaoq -m 1 -- '--appimage-extract' "$APPIMAGE"; then
 		echo " ERROR: \"$1\" is NOT an AppImage"
 		return 1
 	fi
@@ -86,10 +89,6 @@ _check_aisap() {
 		command -v aisap 1>/dev/null || return 1
 		echo " aisap installed successfully!"
 	fi
-	if grep "aisap-am" "$TARGET" >/dev/null 2>&1; then
-		echo " $1 is already sandboxed!"
-		return 1
-	fi
 	if [ -f "$BINDIR"/"$1" ]; then
 		SUDOCMD=""
 	fi
@@ -126,7 +125,7 @@ _generate_sandbox_script() {
 	  eval XDG_DIR="$(xdg-user-dir $DIR 2>/dev/null)"
 	  [ "$XDG_DIR" = "$HOME" ] || [ "$XDG_DIR" = "$HOME/" ] && XDG_DIR=""
 	  eval $DIR="$XDG_DIR"
-	done	
+	done
 	# Use default location if var is not set
 	DESKTOP="${DESKTOP:-~/Desktop}"
 	DOCUMENTS="${DOCUMENTS:-~/Documents}"
@@ -147,7 +146,9 @@ _generate_sandbox_script() {
 	  chmod a+x "$APPEXEC" || exit 1
 	  echo "✔ Patching $APPIMAGEDIR/AM-updater to give permissions back..." \
 	    | fold -sw 77 | sed 's/^/   /g; s/   ✔/ ✔/g'
-	  sed -i 's|chmod a-x|chmod a+x|g' "$APPIMAGEDIR/AM-updater" || exit 1
+	  tmpsedEEE="$(sed 's|chmod a-x|chmod a+x|g' "$APPIMAGEDIR/AM-updater" 2>/dev/null)"
+	  [ -n "$tmpsedEEE" ] && echo "$tmpsedEEE" > "$APPIMAGEDIR/AM-updater" || return 1
+	  unset tmpsedEEE
 	  THISFILE="$(realpath "$0")"
 	  echo "✔ Replacing $THISFILE with a link to the AppImage..." \
 	    | fold -sw 77 | sed 's/^/   /g; s/   ✔/ ✔/g'
@@ -243,7 +244,9 @@ _install_sandbox_script() {
 	tmpscript=$(echo "$tmpscript" | sed "s#DUMMY#$APPIMAGE#g; s#SUDO#$SUDOCMD#g")
 	# Remove exec permission from AppImage and its updater for better safety™
 	chmod a-x "$APPIMAGE" || return 1
-	sed -i 's|chmod a+x|chmod a-x|g' "$APPIMAGEDIR/AM-updater" || return 1
+	tmpsedEEE="$(sed 's|chmod a+x|chmod a-x|g' "$APPIMAGEDIR/AM-updater" 2>/dev/null)"
+	[ -n "$tmpsedEEE" ] && echo "$tmpsedEEE" > "$APPIMAGEDIR/AM-updater" || return 1
+	unset tmpsedEEE
 	# Install the script
 	$SUDOCMD rm -f "$TARGET" || return 1
 	echo "$tmpscript" | $SUDOCMD tee "$TARGET" >/dev/null 2>&1 || return 1
