@@ -4,7 +4,7 @@ Since version 9.4, "AM" is compatible with BSD-based systems.
 
 However, the compatibility of Linux programs on your BSD system must be done manually.
 
-There are several guides on this subject, the one available on the FreeBSD site is an example https://docs.freebsd.org/en/books/handbook/linuxemu, but I will try to adapt [this one](https://unixdigest.com/tutorials/how-to-install-signal-desktop-on-freebsd-using-the-linux-binary-compatibility.html) as much as possible to the use of Debian, which is the most familiar distribution for me.
+There are several guides on this subject, the one available on the FreeBSD site is an example https://docs.freebsd.org/en/books/handbook/linuxemu, but I will try to adapt [this one](https://unixdigest.com/tutorials/how-to-install-signal-desktop-on-freebsd-using-the-linux-binary-compatibility.html) as much as possible to the use of Debian in `debootstrap`, which is the most familiar distribution for me.
 
 ------------------------------------------------------------------------
 ## Getting started
