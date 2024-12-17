@@ -4,7 +4,7 @@ Since version 9.4, "AM" is compatible with BSD-based systems.
 
 However, the compatibility of Linux programs on your BSD system must be done manually.
 
-There are several guides on this subject, but I will try to adapt this one as much as possible to the use of Debian, which is the most familiar distribution for me.
+There are several guides on this subject, the one available on the FreeBSD site is an example https://docs.freebsd.org/en/books/handbook/linuxemu, but I will try to adapt [this one](https://unixdigest.com/tutorials/how-to-install-signal-desktop-on-freebsd-using-the-linux-binary-compatibility.html) as much as possible to the use of Debian, which is the most familiar distribution for me.
 
 ------------------------------------------------------------------------
 ## Getting started
@@ -89,9 +89,7 @@ To install them, enter the chroot again and install the missing dependencies wit
 # chroot /compat/debian /bin/bash
 # apt install {package}
 ```
-*****Source [https://unixdigest.com](https://unixdigest.com/tutorials/how-to-install-signal-desktop-on-freebsd-using-the-linux-binary-compatibility.html)*****
-
-***See also https://docs.freebsd.org/en/books/handbook/linuxemu/***
+The list of packages to add is still to be found. In the meantime I invite you to read what will be added gradually in the "Troubleshoots" section below the tips to make the best work the programs for Linux on BSD, including the packages installable via APT.
 
 ------------------------------------------------------------------------
 ## Troubleshooting
@@ -117,6 +115,17 @@ Run Chromium-based apps with the `--no-sandbox` flag, for example
 ```
 $ brave --no-sandbox
 ```
+
+### FUSE
+AppImages require FUSE to work.
+
+For older implementations (which are still the most popular) install with APT `libfuse2` or `libfuse2t64` (depending on the package made available in the repositories), while for all implementations, even the most recent ones, install `fuse3` and later (the latter brings with it `fusermount`).
+```
+# apt install libfuse2 fuse3
+```
+
+### GTK3
+Some programs, even those not in AppImage format, such as Firefox and Thunderbird, require the GTK3 libraries to run. Install the `libgtk-3-dev` package via APT.
 
 ------------------------------------------------------------------------
 
