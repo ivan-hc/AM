@@ -22,7 +22,7 @@ _convert_to_appman_compatible_script() {
 		cat <<-HEREDOC >> ./"$arg"
 
 		# POST INSTALLATION PATCH FOR ALL LAUNCHERS
-		sed -i "s#Exec=\$APP#Exec=$BINDIR/$APP#g" $DATADIR/applications/*-AM.desktop
+		sed -i "s#Exec=\$APP#Exec=$BINDIR/\$APP#g" $DATADIR/applications/*-AM.desktop
 		sed -i "s#Exec=/usr/bin/#Exec=$BINDIR/#g" $DATADIR/applications/*-AM.desktop
 		sed -i "s#Exec=/opt/#Exec=$HOME/$APPSDIR#g" $DATADIR/applications/*-AM.desktop
 		sed -i "s#Icon=/opt/#Icon=$HOME/$APPSDIR#g" $DATADIR/applications/*-AM.desktop
@@ -166,9 +166,9 @@ _apply_patches() {
 	fi
 	# Patches /usr/local for $HOME equivalent for AppMan
 	if [ "$AMCLI" = "appman" ]; then
-		sed -i -e "s#/usr/local/bin#$BINDIR#g" \
-			-e "s#/usr/local/share#$DATADIR#g" \
-			-e "s#/opt/#$APPSPATH/#g" ./"$arg"
+		sed -i "s#/usr/local/bin#$BINDIR#g" ./"$arg"
+		sed -i "s#/usr/local/share#$DATADIR#g" ./"$arg"
+		sed -i "s#/opt/#$APPSPATH/#g" ./"$arg"
 	else
 		"$SUDOCMD" mkdir -p /usr/local/share/applications /usr/local/bin
 	fi
@@ -210,14 +210,14 @@ _post_installation_processes() {
 		&& wget -q "$AMCATALOGUEICONS"/"$arg".png -O "${LASTDIRPATH}"/icons/"$arg" 2>/dev/null
 	# Patch .desktop to change paths if the app is installed locally
 	if [ "$AMCLI" = "appman" ]; then
-		# Likely not needed anymore: "s#Icon=/opt#Icon=$HOME/$APPSDIR#g"
-		sed -i -e "s#Exec=$arg#Exec=$BINDIR/$arg#g" \
-			-e "s#Exec=\$APP#Exec=$BINDIR/\$APP#g" \
-			-e "s#Exec=/usr/bin/#Exec=$BINDIR/#g" \
-			-e "s#Exec=/opt/#Exec=$BINDIR/#g" "$DATADIR"/applications/*-AM.desktop 2>/dev/null
+		for a in $DATADIR/applications/*-AM.desktop; do
+			sed -i "s#Exec=$arg#Exec=$BINDIR/$arg#g" "$a"
+			sed -i "s#Exec=/usr/bin/#Exec=$BINDIR/#g" "$a"
+			sed -i "s#Exec=/opt/#Exec=$BINDIR/#g" "$a"
+		done
 	fi
+	# Export all icons for hicolor theme usage
 	if echo "$FLAGS" | grep -q -- '--icons'; then
-		# Export all icons for hicolor theme usage
 		_icon_theme_export_to_datadir 2>/dev/null
 	fi
 }
