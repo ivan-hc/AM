@@ -160,7 +160,7 @@ ln -s ../lib/x86_64-linux-gnu/ld-linux-x86-64.so.2 ld-linux-x86-64.so.2
 This change requires a reboot (as does the next point, which is the most important one for AppImages, so... wait and keep read).
 
 ------------------------------------------------------------------------
-## 10. Enable AppImages to use FUSE on BSD without root
+## 10. Allow AppImages to use FUSE without root privileges
 Edit the file /etc/sysctl.conf by adding this line
 ```
 vfs.usermount=1
