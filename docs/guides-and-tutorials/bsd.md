@@ -9,6 +9,22 @@ There are several guides on this subject, the one available on the FreeBSD site 
 I will divide this quick guide highlighting the essential steps
 
 ------------------------------------------------------------------------
+- [1. Enable Linux Compatibility Layout](#1-enable-linux-compatibility-layout)
+- [2. Install Debian layout compatibiliti in BSD](#2-install-debian-layout-compatibiliti-in-bsd)
+- [3. Configure and mount the Linux compatibility layout on BSD](#3-configure-and-mount-the-linux-compatibility-layout-on-bsd)
+- [4. Configure Debian](#4-configure-debian)
+- [5. Chroot Debian](#5-chroot-debian)
+- [6. Update Debian](#6-update-debian)
+- [7. Install needed packages in Debian](#7-install-needed-packages-in-debian)
+- [8. Exit the chroot](#8-exit-the-chroot)
+- [9. Fix ELF interpreter error](#9-fix-elf-interpreter-error)
+- [10. Allow AppImages to use FUSE without root privileges](#10-allow-appimages-to-use-fuse-without-root-privileges)
+
+- [Troubleshooting](#troubleshooting)
+  - [Chromium-based applications](#chromium-based-applications)
+  - [Missing libraries](#missing-libraries)
+
+------------------------------------------------------------------------
 ## 1. Enable Linux Compatibility Layout
 First we need to enable the Linux compatibility layer, to do so we need to run these commands **as root**, no reboot needed:
 ```
@@ -141,6 +157,7 @@ cd /compat/debian/lib64/
 rm ./ld-linux-x86-64.so.2
 ln -s ../lib/x86_64-linux-gnu/ld-linux-x86-64.so.2 ld-linux-x86-64.so.2
 ```
+This change requires a reboot (as does the next point, which is the most important one for AppImages, so... wait and keep read).
 
 ------------------------------------------------------------------------
 ## 10. Enable AppImages to use FUSE on BSD without root
@@ -148,10 +165,7 @@ Edit the file /etc/sysctl.conf by adding this line
 ```
 vfs.usermount=1
 ```
-
-------------------------------------------------------------------------
-## 11. Reboot
-To apply the changes at points 9 and 10 (above), reboot your system. In this guide we have set everything up together.
+This change requires a reboot.
 
 ------------------------------------------------------------------------
 ## Troubleshooting
