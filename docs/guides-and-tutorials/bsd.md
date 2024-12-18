@@ -89,12 +89,28 @@ To install them, enter the chroot again and install the missing dependencies wit
 # chroot /compat/debian /bin/bash
 # apt install {package}
 ```
-The list of packages to add is still to be found. In the meantime I invite you to read what will be added gradually in the "Troubleshoots" section below the tips to make the best work the programs for Linux on BSD, including the packages installable via APT.
+The list of packages to add is still to be found. In the meantime I invite you to read what will be added gradually in the below section "[Troubleshooting](#troubleshooting)", with all the tips to made work the programs for Linux on BSD, including the packages installable via APT.
 
 ------------------------------------------------------------------------
 ## Troubleshooting
 This section lists common problems that may arise. "AM" does not guarantee miracles.
 
+**THIS LIST IS STILL BEING UPDATED!**
+
+------------------------------------------------------------------------
+- [Chromium-based applications](#chromium-based-applications)
+- [ELF interpreter error](#elf-interpreter-error)
+- [FUSE](#fuse)
+- [GTK3](#gtk3)
+
+------------------------------------------------------------------------
+### Chromium-based applications
+Run Chromium-based apps with the `--no-sandbox` flag, for example
+```
+$ brave --no-sandbox
+```
+
+------------------------------------------------------------------------
 ### ELF interpreter error
 If you get the error:
 ```
@@ -110,12 +126,7 @@ Then run again the program installed with "AM"/"AppMan" as the regular user.
 
 If the problem with ld-linux-x86-64.so.2 persists, then reboot FreeBSD before you continue.
 
-### Chromium-based applications
-Run Chromium-based apps with the `--no-sandbox` flag, for example
-```
-$ brave --no-sandbox
-```
-
+------------------------------------------------------------------------
 ### FUSE
 AppImages require FUSE to work.
 
@@ -124,6 +135,7 @@ For older implementations (which are still the most popular) install with APT `l
 # apt install libfuse2 fuse3
 ```
 
+------------------------------------------------------------------------
 ### GTK3
 Some programs, even those not in AppImage format, such as Firefox and Thunderbird, require the GTK3 libraries to run. Install the `libgtk-3-dev` package via APT.
 
