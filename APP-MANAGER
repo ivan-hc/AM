@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="9.4"
+AMVERSION="9.4-1"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -47,7 +47,7 @@ DIVIDING_LINE="-----------------------------------------------------------------
 
 # Prevent the use of "sudo" ("AM")
 if [ -n "${SUDO_USER:-$DOAS_USER}" ]; then
-	printf "\n Please do not use \"sudo\" to execute \"$CLI\", try again.\n\n"
+	printf "\n Please do not use \"sudo\" to execute \"%b\", try again.\n\n" "$CLI"
 	exit 1
 fi
 
@@ -221,7 +221,7 @@ _determine_args() {
 		_detect_appman_apps
 		if [ -d "$APPMAN_APPSPATH" ]; then
 			APPMAN_PATHS=$(find "$APPMAN_APPSPATH" -maxdepth 2 -name 'remove' -print 2>/dev/null | sort -u | sed 's|/remove||g')
-			ARGPATHS=$(echo -e "$ARGPATHS\n$APPMAN_PATHS")
+			ARGPATHS=$(printf "%b\n%b" "$ARGPATHS" "$APPMAN_PATHS")
 			ARGS=$(echo "$ARGPATHS" | xargs -n 1 basename 2>/dev/null)
 		fi
 	fi
@@ -263,8 +263,9 @@ if [ -f "$AMDATADIR"/betatester ]; then
 fi
 
 _betatester_message_on() {
-	[ -f "$AMDATADIR"/betatester ] \
-	&& echo -e "$DIVIDING_LINE\n\"$AMCLIUPPER\" $AMVERSION: DEVELOPER MODE\n$DIVIDING_LINE"
+	if [ -f "$AMDATADIR"/betatester ]; then
+		echo "$DIVIDING_LINE"; echo "\"$AMCLIUPPER\" $AMVERSION: DEVELOPER MODE"; echo "$DIVIDING_LINE"
+	fi
 }
 
 # Apps database in use
@@ -290,12 +291,12 @@ _am_dependences_check() {
 	if [ -n "$missing_deps" ]; then
 		echo "$DIVIDING_LINE"
 		printf " ${RED}💀 ERROR! MISSING ESSENTIAL COMMANDS\033[0m: %s\n\n Install the above and try again! \n" "${missing_deps[*]}"
-		echo -e "$DIVIDING_LINE\n ${Green}List of the $AMCLIUPPER $AMVERSION core dependences\033[0m:\n"
-		echo "$AMDEPENDENCES" | tr ' ' ',' | sed 's/,/, /g' | sed 's/^/ /g'
-		echo -e "\n$DIVIDING_LINE"
-		echo " If this message appears it is because you are missing some dependency"
-		echo " and if its the first time its because something new has been introduced."
-		echo -e "\n See ${LightBlue}https://github.com/ivan-hc/AM#core-dependences\033[0m for more information\n$DIVIDING_LINE"
+		echo "$DIVIDING_LINE"
+		printf "%bList of the %b core dependences\033[0m:\n\n%b\n" "${Green}" "$AMCLIUPPER $AMVERSION" "$AMDEPENDENCES" | _fit
+		echo "$DIVIDING_LINE"
+		printf "If this message appears it is because you are missing some dependency and if its the first time its because something new has been introduced.\n\n" | _fit
+		printf " See %bhttps://github.com/ivan-hc/AM#core-dependences\033[0m for more information\n" "${LightBlue}"
+		echo "$DIVIDING_LINE"
 		exit 1
 	fi
 }
@@ -303,11 +304,9 @@ _am_dependences_check() {
 _check_ubuntu_mess() {
 	if command -v unshare >/dev/null 2>&1 && ! unshare --user -p /bin/true >/dev/null 2>&1; then
 		echo "$DIVIDING_LINE"
-		echo ""
-		echo -e " ${RED}⚠️ WARNING: ACCESS TO USER NAMESPACES IS RESTRICTED! \033[0m"
-		echo ""
+		printf "\n %b⚠️ WARNING: ACCESS TO USER NAMESPACES IS RESTRICTED! \033[0m\n\n" "${RED}"
 		echo " Some apps may not run, you need to enable access to user namespaces, see"
-		echo -e " ${LightBlue}https://github.com/ivan-hc/AM/blob/main/docs/troubleshooting.md#ubuntu-mess\033[0m"
+		printf " %bhttps://github.com/ivan-hc/AM/blob/main/docs/troubleshooting.md#ubuntu-mess\033[0m\n" "${LightBlue}"
 		echo " to know more."
 		echo ""
 		echo "$DIVIDING_LINE"
@@ -320,7 +319,7 @@ _check_ubuntu_mess
 # Function to check online connections (uses github.com by default, as the database and CLI itself are stored/hosted there)
 _online_check() {
 	if ! wget -q --tries=10 --timeout=20 --spider https://github.com; then
-		echo -e "\n $AMCLI is offline, please check your internet connection and try again\n"
+		printf "\n %b is offline, please check your internet connection and try again\n\n" "$AMCLI"
 		exit 0
 	fi
 }
@@ -332,9 +331,7 @@ and any other AppImages helper, it's preferable to use \"only\" the standalone A
 updated release can also be installed via \"$AMCLIUPPER\". But as long as you have the currently installed version, you can't use this CLI."
 
 _blacklisted_file() {
-	echo ""
-	echo -e " ${RED}💀WARNING! Detected \"$blacklisted_file\"\033[0m"
-	echo ""
+	printf "\n %b💀WARNING! Detected \"%b\"\033[0m\n\n" "${RED}" "$blacklisted_file"
 	echo "It will prevent \"$AMCLIUPPER\" from working correctly with AppImages, especially when extracting, integrating and updating them." | _fit
 	echo ""
 	if echo "$blacklisted_file" | grep -q appimagelauncherd; then
@@ -363,8 +360,11 @@ _use_newrepo() {
 	[ -z "$2" ] && echo " USAGE: $AMCLI $1 [ARGUMENT]" && exit 1
 	case $2 in
 	'add')
-		[ -z "$3" ] && echo -e " USAGE:	$AMCLI $1 $2 /path/to/dir\n	$AMCLI $1 $2 {URL}" && exit 1
-		echo "$3" >> "$AMDATADIR/newrepo-lists"
+		if [ -z "$3" ]; then
+			echo " USAGE:	$AMCLI $1 $2 /path/to/dir"; echo "	$AMCLI $1 $2 {URL}"; exit 1
+		else
+			echo "$3" >> "$AMDATADIR/newrepo-lists"
+		fi
 		;;
 	'enable'|'on')
 		[ ! -f "$AMDATADIR/newrepo-lists" ] && echo " ERROR, \"$AMDATADIR/newrepo-lists\" file not found" && exit 1
@@ -375,14 +375,14 @@ _use_newrepo() {
 		[ -f "$AMDATADIR/newrepo-on" ] && mv "$AMDATADIR/newrepo-on" "$AMDATADIR/newrepo-off" && echo " New repo OFF!"
 		;;
 	'info')
-		echo -e " Source: $AMREPO\n Apps: $APPSDB\n List: $APPSLISTDB"
+		printf " Source: %b\n Apps: %b\n List: %b\n" "$AMREPO" "$APPSDB" "$APPSLISTDB"
 		;;
 	'purge')
 		[ -f "$AMDATADIR/newrepo-lists" ] && rm -f "$AMDATADIR"/newrepo* && echo " Removed all 3rd party repositories"
 		;;
 	'select')
 		[ ! -f "$AMDATADIR/newrepo-lists" ] && echo " ERROR, \"$AMDATADIR/newrepo-lists\" file not found" && exit 1
-		echo -e "Select a repo from the list or press CTRL+C to abort:\n$DIVIDING_LINE\n"; sleep 1
+		printf "Select a repo from the list or press CTRL+C to abort:\n%b\n" "$DIVIDING_LINE"; sleep 1
 		select repo in $(sort -u "$AMDATADIR/newrepo-lists" | uniq); do
 			test -n "$repo" && break
 			echo ">>> Invalid Selection"
@@ -407,7 +407,9 @@ _am_newrepo_check() {
 		export MODULES_PATH="$AMPATH/modules"
 		export AMCATALOGUEMARKDOWNS=""
 		export AMCATALOGUEICONS=""
-		[ "$1" != "newrepo" ] && [ "$1" != "neodb" ] && echo -e "$DIVIDING_LINE\n Source: $AMREPO\n$DIVIDING_LINE"
+		if [ "$1" != "newrepo" ] && [ "$1" != "neodb" ]; then
+			echo "$DIVIDING_LINE"; echo " Source: $AMREPO"; echo "$DIVIDING_LINE"
+		fi
 	fi
 }
 
@@ -615,27 +617,27 @@ _update_github_api_key_in_the_updater_files() {
 #				APPMAN MODE
 ################################################################################
 
-APPMAN_MSG="$DIVIDING_LINE\n \"AM\" is running as \"AppMan\", use ${Green}am --system\033[0m to switch it back to \"AM\"\n$DIVIDING_LINE"
-APPMAN_MSG_OFF="$DIVIDING_LINE\n \"AppMan Mode\" disabled! \n$DIVIDING_LINE"
+APPMAN_MSG="$DIVIDING_LINE\n \"AM\" is running as \"AppMan\", use ${Green}am --system\033[0m to switch it back to \"AM\"\n$DIVIDING_LINE\n"
+APPMAN_MSG_OFF="$DIVIDING_LINE\n \"AppMan Mode\" disabled! \n$DIVIDING_LINE\n"
 APPMAN_MSG_THINK="$DIVIDING_LINE\nNOTE: You can also choose to simply use \"--user\" as a flag to install apps locally \
-(options \"-i\", \"-ia\" and \"-e\") instead of going fully into \"AppMan Mode\". \"AM\" can  handle local applications as well.\n$DIVIDING_LINE"
+(options \"-i\", \"-ia\" and \"-e\") instead of going fully into \"AppMan Mode\". \"AM\" can  handle local applications as well.\n$DIVIDING_LINE\n"
 
 _use_appman() {
 	_online_check
 	[ "$CLI" = appman ] && echo " This function only works for AM" && exit 0
-	echo -e "$APPMAN_MSG_THINK" | _fit
+	printf "%b" "$APPMAN_MSG_THINK" | _fit
 	read -r -p " Do you wish to enter \"AppMan Mode\" (y,N)?" yn
 	if ! echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
 		echo "$DIVIDING_LINE"
 	else
 		[ ! -f "$APPMANCONFIG"/appman-mode ] && mkdir -p "$APPMANCONFIG" && touch "$APPMANCONFIG"/appman-mode
-		_appman && echo -e "$APPMAN_MSG"
+		_appman && printf "%b" "$APPMAN_MSG"
 	fi
 }
 
 if [ "$AMCLI" = am ]; then
 	if [ -f "$APPMANCONFIG"/appman-mode ]; then
-		[ ! -f "$APPMANCONFIG"/appman-config ] && echo -e "$APPMAN_MSG"
+		[ ! -f "$APPMANCONFIG"/appman-config ] && printf "%b" "$APPMAN_MSG"
 		_appman
 		AMCLIPATH="$(realpath "$0")"
 	elif [ ! -w "$AMPATH" ]; then
@@ -643,7 +645,7 @@ if [ "$AMCLI" = am ]; then
 		if echo "$yn" | grep -i '^n' >/dev/null 2>&1; then
 			exit 0
 		else
-			echo -e "$DIVIDING_LINE\n \"AppMan Mode\" enabled! \n$DIVIDING_LINE"
+			echo "$DIVIDING_LINE"; echo "\"AppMan Mode\" enabled!"; echo "$DIVIDING_LINE"
 			_use_appman 1>/dev/null
 		fi
 	fi
@@ -751,24 +753,24 @@ _use_clean() {
 ################################################################################
 
 _sync_installation_scripts() {
-	echo -e "$DIVIDING_LINE\n Checking for changes of the installation scripts in the online database..."
+	printf "%b\n Checking for changes of the installation scripts in the online database...\n" "$DIVIDING_LINE"
 	_determine_args
 	for arg in $ARGS; do
 		argpath=$(echo "$ARGPATHS" | grep "/$arg$")
 		if [ -f "$argpath"/AM-updater ]; then
 			mkdir -p "$argpath"/.am-installer
-			if test -f "$argpath/.am-installer"/*; then
-				scriptname=$(ls "$argpath/.am-installer/" | head -1)
+			scriptname=$(ls "$argpath/.am-installer/" | head -1)
+			if [ -n "$scriptname" ]; then
 				CURRENT=$(cat "$argpath"/.am-installer/"$scriptname")
 				SOURCE=$(curl -Ls "$APPSDB"/"$scriptname")
 				if [ "$CURRENT" = "$SOURCE" ]; then
 					echo -ne "\r" 2>/dev/null
 				else
-					echo -e " ◆ Changed https://github.com/ivan-hc/AM/blob/main/programs/$ARCH/$scriptname"
+					printf " ◆ Changed https://github.com/ivan-hc/AM/blob/main/programs/%b/%b\n" "$ARCH" "$scriptname"
 				fi
 			else
 				if curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg"  1>/dev/null; then
-					echo -e " ◆ No installation script for $arg, downloading one..."
+					printf " ◆ No installation script for %b, downloading one...\n" "$arg"
 					mkdir -p "$argpath"/.am-installer
 					wget -q "$APPSDB/$arg" -O "$argpath"/.am-installer/"$arg"
 				fi
@@ -807,14 +809,14 @@ _sync_third_party_lists() {
 }
 
 _sync_databases() {
-	echo -e "$DIVIDING_LINE\n Check and update offline lists of additional databases..."
+	printf "%b\n Check and update offline lists of additional databases...\n" "$DIVIDING_LINE"
 	_sync_appimages_list
 	_sync_third_party_lists
 	_completion_lists
 }
 
 _sync_modules() {
-	echo -e "$DIVIDING_LINE\n Check for updates in modules..."
+	printf "%b\n Check for updates in modules...\n" "$DIVIDING_LINE"
 	MODULES=$(curl -Ls "$AMREPO/APP-MANAGER" | tr '"' '\n' | grep "[a-z]\.am$")
 	for module_name in $MODULES; do
 		cd "$MODULES_PATH" || return 1
@@ -847,11 +849,11 @@ _sync_amcli() {
 	if [ ! "$CURRENT_AM_VERSION" = "$NEW_AM_VERSION" ]; then
 		echo -ne " A new release of \"$AMCLIUPPER\" is available, please wait...\r"
 		echo " ◆ \"$AMCLIUPPER\" IS NOW UPDATED TO THE BRAND NEW \"$NEW_AM_VERSION\" VERSION!"
-		echo -e "\n  Replacement of version \"$CURRENT_AM_VERSION\" currently in use, COMPLETED!"
-		echo -e "\n See https://github.com/ivan-hc/AM/commits/main\n"
+		printf "\n  Replacement of version \"%b\" currently in use, COMPLETED! \n" "$CURRENT_AM_VERSION"
+		printf "\n See https://github.com/ivan-hc/AM/commits/main\n\n"
 	else
 		echo " ◆ \"$AMCLIUPPER\" IS ALREADY UPDATED, CURRENT VERSION \"$CURRENT_AM_VERSION\""
-		echo -e "\n See https://github.com/ivan-hc/AM/commits/$AMBRANCH\n"
+		printf "\n See https://github.com/ivan-hc/AM/commits/%b\n\n" "$AMBRANCH"
 	fi
 }
 
@@ -902,7 +904,7 @@ _update_determine_apps_version_changes() {
 		if cmp --silent -- "$NEWVER" "$OLDVER"; then
 			echo ' Nothing to do here!'
 		else
-			echo -e " The following apps have been updated:\n"
+			printf " The following apps have been updated:\n\n"
 			diff --new-line-format="" --unchanged-line-format="" "$NEWVER" "$OLDVER"
 			echo ""
 		fi
@@ -1129,7 +1131,7 @@ case "$1" in
 	'install-appimage'|'-ia')
 		MODULE="install.am"
 		_online_check
-		[ "$CLI" = am ] && [ -f "$APPMANCONFIG"/appman-mode ] && echo -e "$APPMAN_MSG"
+		[ "$CLI" = am ] && [ -f "$APPMANCONFIG"/appman-mode ] && printf "%b" "$APPMAN_MSG"
 		_use_module "$@"
 		;;
 	'template'|'-t')
@@ -1146,7 +1148,7 @@ case "$1" in
 		_use_force_latest "$@"
 		;;
 	'--system')
-		[ -f "$APPMANCONFIG"/appman-mode ] && rm -f "$APPMANCONFIG"/appman-mode && echo -e "$APPMAN_MSG_OFF"
+		[ -f "$APPMANCONFIG"/appman-mode ] && rm -f "$APPMANCONFIG"/appman-mode && printf "%b" "$APPMAN_MSG_OFF"
 		;;
 	'apikey')
 		_use_apikey "$@"
@@ -1183,7 +1185,7 @@ case "$1" in
 		################################################################################
 
 		_use_help() {
-			[ "$CLI" = am ] && [ -f "$APPMANCONFIG"/appman-mode ] && echo -e "$APPMAN_MSG"
+			[ "$CLI" = am ] && [ -f "$APPMANCONFIG"/appman-mode ] && printf "%b" "$APPMAN_MSG"
 			echo -e "
 			NAME: ${Green}$AMCLIUPPER\033[0m		VERSION: ${Green}$AMVERSION\033[0m
 
