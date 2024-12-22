@@ -1,0 +1,64 @@
+#!/bin/sh
+
+# AM INSTALL SCRIPT VERSION 3.5
+set -u
+APP=fdm
+SITE="freedownloadmanager.org"
+
+# CREATE DIRECTORIES AND ADD REMOVER
+[ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
+printf "#!/bin/sh\nset -e\nrm -f /usr/local/bin/$APP\nrm -R -f /opt/$APP" > ../remove
+printf '\n%s' "rm -f /usr/local/share/applications/$APP-AM.desktop" >> ../remove
+chmod a+x ../remove || exit 1
+
+# DOWNLOAD AND PREPARE THE APP, $version is also used for updates
+version=$(curl -Ls https://www.freedownloadmanager.org/download-fdm-for-linux.htm | grep -oP 'FDM \K[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+[ -n "$version" ] || { echo "Error fetching version"; exit 1; }
+wget -q "https://files2.freedownloadmanager.org/6/latest/freedownloadmanager.deb" || exit 1
+ar x freedownloadmanager.deb || exit 1
+tar -xf data.tar.zst || exit 1
+mv ./opt/freedownloadmanager/* "/opt/$APP" || exit 1
+rm -R -f ./tmp || exit 1
+echo "$version" > "/opt/$APP/version"
+chmod a+x "/opt/$APP/fdm" || exit 1
+
+# LINK TO PATH
+ln -s "/opt/$APP/fdm" "/usr/local/bin/$APP" || exit 1
+
+# SCRIPT TO UPDATE THE PROGRAM
+cat > /opt/$APP/AM-updater << 'EOF'
+#!/bin/sh
+set -u
+APP=freedownloadmanager
+URL="https://www.freedownloadmanager.org/download-fdm-for-linux.htm"
+version0=$(cat "/opt/$APP/version")
+version=$(curl -Ls "$URL" | grep -oP 'FDM \K[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+[ -n "$version" ] || { echo "Error fetching version"; exit 1; }
+if [ "$version" != "$version0" ]; then
+    mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
+    wget -q "https://files2.freedownloadmanager.org/6/latest/freedownloadmanager.deb" || exit 1
+    ar x freedownloadmanager.deb || exit 1
+    tar -xf data.tar.zst || exit 1
+    mv --backup=t ./opt/freedownloadmanager/* "/opt/$APP" || exit 1
+    chmod a+x "/opt/$APP/fdm" || exit 1
+    echo "$version" > "/opt/$APP/version"
+    rm -R -f ./tmp
+    notify-send "$APP is updated to version $version!"
+else
+    echo "Update not needed!"
+fi
+EOF
+chmod a+x /opt/$APP/AM-updater || exit 1
+
+# ICON
+wget -q "https://cdn.icon-icons.com/icons2/3053/PNG/512/free_download_manager_macos_bigsur_icon_190155.png" -O "/opt/$APP/icons/$APP" || exit 1
+
+# LAUNCHER
+echo "[Desktop Entry]
+Name=Free Download Manager
+Exec=$APP
+Terminal=false
+Icon=/opt/$APP/icons/$APP
+StartupWMClass=freedownloadmanager
+Type=Application
+Categories=Network;Utility;" > "/usr/local/share/applications/$APP-AM.desktop" || exit 1
