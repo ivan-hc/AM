@@ -37,6 +37,11 @@ To remove the sandbox just run the command of the AppImage with the flag "--disa
 ```
 $APP --disable-sandbox
 ```
+To disable sandboxes from one or more apps at once use "AM"/"AppMan" instead:
+```
+am --disable-sandbox $APP1 $APP2 $APPN
+appman --disable-sandbox $APP1 $APP2 $APPN
+```
 
 ----------------------------------------------------
 #### Sandboxing example
