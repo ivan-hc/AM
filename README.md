@@ -47,6 +47,7 @@ You can use the command `am -a {PROGRAM}` to view the description and get the so
  - [How to set the path to local apps](#how-to-set-the-path-to-local-apps)
  - [What programs can be installed](#what-programs-can-be-installed)
    - [Supported third-party databases](#supported-third-party-databases)
+   - [How to replace AM database](#how-to-replace-am-database)
 
 [How to update all programs, for real!](#how-to-update-all-programs-for-real)
  - [How to update all installed apps](#how-to-update-all-installed-apps)
@@ -228,6 +229,22 @@ These databases have the task of supporting and enriching the list of applicatio
 Third-party databases can show basic information normally with the option `-a` or `about`, no flag is needed here. However, the name of the package will be shown with an extension equivalent to the flag used to install it. For example `{PROGRAM}` will be `{PROGRAM}.toolpack` if coming from the "Toolpacks" database.
 
 Same thing, you can use `am -i {PROGRAM}.toolpack` or `am -i --user {PROGRAM}.toolpack` to install the program without using the flag.
+
+#### How to replace AM database
+One thing I care a lot about is **continuity**, and as I have seen over the years, not all open source developers are able to maintain a project. This could happen to me in the future. I don't want it to be that way.
+
+Because of this, I have made some essential variables "customizable":
+- `APPSDB`, i.e. the "raw" directory of the architecture in use, containing the installation scripts (default value *https://raw.githubusercontent.com/ivan-hc/AM/main/programs/$ARCH*), this is mainly used in `-i`, `-d` and `-s`/`-u`
+- `APPSDBLIST`, i.e. the list of applications available for that architecture (default value *https://raw.githubusercontent.com/ivan-hc/AM/main/$ARCH-apps*), this is used every time lists are updated, for example in `-l`, `-q` and `-s`/`-u`
+- `AMCATALOGUEMARKDOWNS`, i.e. the pages in .md format from the catalog of applications available in this database (default value *https://portable-linux-apps.github.io/apps*), this is used in `-a`
+- `AMCATALOGUEICONS`, i.e. the icons in .png format available in the catalog of applications available in this database (default value *https://portable-linux-apps.github.io/icons*), this is used in `-i`, in case the installation script fails to get an icon for the application
+- `AMSYNC`, if set to "1" prevents AM from updating itself and updating modules when running `-s` or `-u`
+
+it is enough to `export` the variables above and respect the destination file format (follow the URLs in parentheses) in case you decide to open a new community-driven database that can make up for the lack of support in this repository.
+
+I did this to not tie users to this database and to allow them to use AM and all its features if I, Ivan, am unable to intervene for any reason.
+
+There are many discontinuous projects. Should this become one too, it will not be obsolete.
 
 ------------------------------------------------------------------------
 
