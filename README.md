@@ -376,7 +376,7 @@ Install AppImages from github.com, outside the database. This allows you to inst
 NOTE: Since this is an "install" option, you can add the "`--user`" flag (before "`user/project`") to install apps locally. See "`--user`" at the bottom to learn more.
 
 ------------------------------------------------------------------------
-### `files`, `-f`
+### `files`, `-f`, `-fi`
 
 		am -f
 		am -f --byname
@@ -384,7 +384,7 @@ NOTE: Since this is an "install" option, you can add the "`--user`" flag (before
 
 **Description**:
 
-Shows the list of all installed programs, with sizes. By default apps are sorted by size, use "`--byname`" to sort by name. With the option "`--less`" it shows only the number of installed apps.
+Shows the list of all installed programs, with sizes. By default apps are sorted by size, use "`--byname`" to sort by name. With the option "`--less`" it shows only the number of installed apps. Option "`-fi`" only shows installed apps, not the AppImages integrated with the "`--launcher`" option.
 
 ------------------------------------------------------------------------
 ### `help`, `-h`
