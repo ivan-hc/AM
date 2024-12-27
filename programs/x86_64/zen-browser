@@ -3,8 +3,7 @@
 # AM INSTALL SCRIPT VERSION 3.5
 set -u
 APP=zen-browser
-SITE1=$(curl -Ls https://api.github.com/repos/zen-browser/desktop/releases/latest | sed 's/[()",{} ]/\n/g' | grep -oi "https.*generic.*mage$" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | head -1)
-SITE2=$(curl -Ls https://api.github.com/repos/zen-browser/desktop/releases/latest | sed 's/[()",{} ]/\n/g' | grep -oi "https.*specific.*mage$" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | head -1)
+SITE="zen-browser/desktop"
 
 # CREATE DIRECTORIES AND ADD REMOVER
 [ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
@@ -12,40 +11,14 @@ printf "#!/bin/sh\nset -e\nrm -f /usr/local/bin/$APP\nrm -R -f /opt/$APP" > ../r
 printf '\n%s' "rm -f /usr/local/share/applications/$APP-AM.desktop" >> ../remove
 chmod a+x ../remove || exit 1
 
-# CHOOSE A VERSION
-read -r -p "
- Choose which version of Zen Browser to use:
- 
-	1. Zen Browser Generic
-	Official generic build, targets x86-64 generic.
-	source: https://github.com/zen-browser
-
-	2. Zen Browser Specific
-	Official optimized build, targets x86-64 v3.
-	Only works on CPUs equal or newer than Haswell/Excavator.
-	source: https://github.com/zen-browser
-
- Which version you choose (type a number and press ENTER)?: " RESPONSE
-
- case "$RESPONSE" in
-	1)
-		UPDATER=1
-		version="$SITE1"
-		;;
-
-	2)
-		UPDATER=2
-		version="$SITE2"
-		;;
-
-	*) ../remove && echo "Not a valid number, aborting" && exit 1;;
-esac
- 
 # DOWNLOAD AND PREPARE THE APP, $version is also used for updates
+version=$(curl -Ls https://api.github.com/repos/zen-browser/desktop/releases/latest | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | head -1)
 wget "$version" || exit 1
+# Keep this space in sync with other installation scripts
+# Use tar fx ./*tar* here for example in this line in case a compressed file is downloaded.
 cd ..
 mv ./tmp/*mage ./"$APP"
-mv ./tmp/*.zsync ./"$APP".zsync 2>/dev/null
+# Keep this space in sync with other installation scripts
 rm -R -f ./tmp || exit 1
 echo "$version" > ./version
 chmod a+x ./"$APP" || exit 1
@@ -58,10 +31,9 @@ cat >> ./AM-updater << 'EOF'
 #!/bin/sh
 set -u
 APP=zen-browser
-#SITE1=$(curl -Ls https://api.github.com/repos/zen-browser/desktop/releases/latest | sed 's/[()",{} ]/\n/g' | grep -oi "https.*generic.*mage$" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | head -1)
-#SITE2=$(curl -Ls https://api.github.com/repos/zen-browser/desktop/releases/latest | sed 's/[()",{} ]/\n/g' | grep -oi "https.*specific.*mage$" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | head -1)
+SITE="zen-browser/desktop"
 version0=$(cat "/opt/$APP/version")
-version="REPLACETHIS"
+version=$(curl -Ls https://api.github.com/repos/zen-browser/desktop/releases/latest | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | head -1)
 [ -n "$version" ] || { echo "Error getting link"; exit 1; }
 if command -v appimageupdatetool >/dev/null 2>&1; then
 	cd "/opt/$APP" || exit 1
@@ -82,10 +54,7 @@ else
 	echo "Update not needed!"
 fi
 EOF
-[ "$UPDATER" = 1 ] && { sed -i 's|REPLACETHIS|$SITE1|g; s|#SITE1|SITE1|g' ./AM-updater || exit 1; }
-[ "$UPDATER" = 2 ] && { sed -i 's|REPLACETHIS|$SITE2|g; s|#SITE2|SITE2|g' ./AM-updater || exit 1; }
 chmod a+x ./AM-updater || exit 1
-
 
 # LAUNCHER & ICON
 ./"$APP" --appimage-extract *.desktop 1>/dev/null && mv ./squashfs-root/*.desktop ./"$APP".desktop
