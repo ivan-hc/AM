@@ -630,7 +630,7 @@ Disable the sandbox for the selected app.
 
 **Description**:
 
-Eable notifications during apps update (nulls "`--disable-notifications`").
+Enable notifications during apps update (nulls "`--disable-notifications`").
 
 ------------------------------------------------------------------------
 ### `--force-latest`
