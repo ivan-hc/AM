@@ -1,0 +1,56 @@
+name: "Sync Apps Lists to Another Repo"
+
+on:
+  push:
+    branches: main
+    paths:
+      - 'programs/x86_64/**'
+      - 'programs/i686/**'
+      - 'programs/aarch64/**'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sync-files:
+    name: "Run sync"
+    runs-on: ubuntu-22.04
+    steps:
+      - name: "Checkout source repository"
+        uses: actions/checkout@v4
+
+      - name: "Run lister"
+        run: |
+          cd programs
+          chmod a+x appimage-lister-uniq.sh
+          ./appimage-lister-uniq.sh
+
+      - name: "Clone Target Repository"
+        env:
+          TARGET_REPO_TOKEN: ${{ secrets.TARGET_REPO_TOKEN }}
+          TARGET_OWNER: Portable-Linux-Apps
+          TARGET_REPO: Portable-Linux-Apps
+        run: |
+          git clone "https://x-access-token:$TARGET_REPO_TOKEN@github.com/$TARGET_OWNER/$TARGET_REPO.git" target-repo
+
+      - name: "Copy Files"
+        run: |
+          cp programs/x86_64-appimages programs/i686-appimages programs/aarch64-appimages target-repo/
+
+      - name: "Commit and Push Changes"
+        run: |
+          cd target-repo
+          # You have to create PAT (Personal Access Token) with repo and workflow scopes enabled
+          # Save it as secret in repository where action will run (source) with name 'TARGET_REPO_TOKEN'
+          # Change your email, then should work as expected
+          git config --global user.name "ivan-hc"
+          git config --global user.email "ivan@ivan.hc"
+          git add .
+          if git diff-index --quiet HEAD; then
+            echo "No changes to commit." >> $GITHUB_STEP_SUMMARY
+          else
+            git commit -m "Sync files from source repository"
+            git push && echo "Sync succeeded" >> $GITHUB_STEP_SUMMARY
+          fi
