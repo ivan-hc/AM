@@ -91,19 +91,17 @@ jobs:
       - name: "test ${{ matrix.file }} 🚧"
         run: |
           mkdir -p results
+          script_content=$(curl -Ls https://raw.githubusercontent.com/ivan-hc/AM/main/programs/x86_64/"${{ matrix.file }}")
           pure_arg=$(echo "${{ matrix.file }}" | sed 's/\.appimage//g; s/\^debian-testing-//g; s/\-appimage$//g' | sed 's:.*/::')
-          if [ ! -d /opt/"$pure_arg" ] && [ -z "$(PATH=/usr/local/bin command -v "$pure_arg" 2>/dev/null)" ] && timeout "$TIMEOUT"m am -i "${{ matrix.file }}" --debug; then
+          if [ ! -d /opt/"$pure_arg" ] \
+          && [ -z "$(PATH=/usr/local/bin command -v "$pure_arg" 2>/dev/null)" ] \
+          && ! echo "$script_content" | grep -q "^#.*spooky" \
+          && ! echo "$script_content" | grep -q '"platform-tools"\|"node"\|"kdegames"\|"kdeutils"' \
+          && timeout "$TIMEOUT"m am -i "${{ matrix.file }}" --debug; then
             echo ""
             echo " Structure of the directory in /opt"
             echo ""
-            if curl -Ls https://raw.githubusercontent.com/ivan-hc/AM/main/programs/x86_64-apps \
-               | grep "◆ ${{ matrix.file }} :" \
-               | grep -q '"platform-tools"\|"node"\|"kdegames"\|"kdeutils"'; then
-               metapackage=
-               echo "This is a metapackage"
-            else
-               ls /opt/"$pure_arg"
-            fi
+            ls /opt/"$pure_arg"
             echo ""
             echo "-------------------------------------------------------------"
             echo ""
