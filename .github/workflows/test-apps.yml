@@ -1,61 +1,198 @@
-name: "Apps test 🧪"
+name: "Test random 💯"
 
 env:
   TERM: xterm
 
 on:
+  push:
+    branches: main
+    paths: 'programs/x86_64/**'
+
+  pull_request:
+    branches: main
+    paths: 'programs/x86_64/**'
+
   workflow_dispatch:
-    branches: '**'
+
+  schedule:
+    - cron: '0 23 * * *'
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
+
+permissions:
+  actions: write
+  contents: write
 
 jobs:
-
-  am:
-    name: test all Apps 📝
-    runs-on: ubuntu-latest
+  generate-matrix:
+    name: "build Matrix 🌀"
+    runs-on: ubuntu-22.04
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+      count: ${{ steps.am-install.outputs.count }}
     steps:
-      - uses: actions/checkout@v4
-      - name: test all Apps
+      - name: "Check out repository 🏃"
+        uses: actions/checkout@v4
+
+      - name: "Show stats 📝"
         run: |
-          printf '\tSetting up environment...\n'
-          printf '\n\tCreating directory structure...\n'
+          x64Count=$(find programs/x86_64/ -type f | wc -l)
+          i68Count=$(find programs/i686/ -type f | wc -l)
+          a64Count=$(find programs/aarch64/ -type f | wc -l)
+          echo '### apps' >> $GITHUB_STEP_SUMMARY
+          echo "$x64Count x86_64" >> $GITHUB_STEP_SUMMARY
+          echo "$i68Count i686" >> $GITHUB_STEP_SUMMARY
+          echo "$a64Count aarch64" >> $GITHUB_STEP_SUMMARY
+
+      - name: "Generate Matrix 🏆"
+        id: set-matrix
+        run: |
           mkdir -p results
-          printf '\n\tMaking needed files executable...\n'
-          chmod +x ./INSTALL
-          printf '\n\tInstalling AM...\n'
-          sudo ./INSTALL
-          printf '\n'
-          echo -e "Installed version: $(am version)\n\n"
-          apps=$(cut -d' ' -f2 < /opt/am/x86_64-apps)
-          count=$(echo "${apps}" | wc -l)
-          echo "available apps: $count"
-          for app in ${apps}; do
-            echo '-------------------------------------------------------------'
-            am -f -less
-            echo '-------------------------------------------------------------'
-            am -i $app && echo "OK: $app" >> results/good || \
-            echo "FAIL! $app" >> results/bad
-            echo '-------------------------------------------------------------'
-            am -f --less
-            echo '-------------------------------------------------------------'
-            am -R $app && echo "OK: $app" >> results/removed || \
-            echo "REMOVE! $app" >> results/noremoved
-            echo '-------------------------------------------------------------'
-            am -f --less
-            echo '-------------------------------------------------------------'
+          find programs/x86_64/ -maxdepth 1 -type f -printf "%f\n" | sort > all.list
+          if [[ -f tested.list ]]; then
+            comm -23 all.list tested.list > totest.list
+          else
+            cp all.list totest.list
+          fi
+          FILES=$(shuf -n 100 totest.list || cat totest.list)
+          MATRIX="{\"include\": ["
+          for file in $FILES; do
+            MATRIX+="{\"file\": \"$file\"},"
           done
-          good=$(cat results/good | wc -l)
-          bad=$(cat results/bad | wc -l)
-          removed=$(cat results/removed | wc -l)
-          noremoved=$(cat results/noremoved | wc -l)
-          echo -e "\n\n"
-          echo "all/runed/ok/failed/removed/not"
-          echo "$count/$n/$good/$bad/$removed/$noremoved"
-          echo -e "\n\n"
-          printf '\n\tTest finished\n'
-      - uses: actions/upload-artifact@v4
+          MATRIX="${MATRIX%,}]}"
+          echo "::set-output name=matrix::$MATRIX"
+
+  run-actions:
+    name: "🔨"
+    needs: generate-matrix
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
+    env:
+      TIMEOUT: 10
+    steps:
+      - name: "Check out repository 🏃"
+        uses: actions/checkout@v4
+
+      - name: "Install dependencies 📦️"
+        run: |
+          sudo apt-get -y update
+          sudo apt-get -y install wget curl zsync 2> /dev/null
+
+      - name: "Install AM 🎁"
+        run: |
+          mkdir -p results /usr/local/bin
+          chmod +x ./INSTALL
+          sudo ./INSTALL
+
+      - name: "test ${{ matrix.file }} 🚧"
+        run: |
+          mkdir -p results
+          if timeout "$TIMEOUT"m am -i "${{ matrix.file }}"; then
+            echo ""
+            echo " Structure of the directory ${{ matrix.file }}"
+            echo ""
+            ls /opt/"${{ matrix.file }}"
+            echo ""
+            echo "-------------------------------------------------------------"
+            echo ""
+            echo " Command in \$PATH"
+            echo ""
+            command -v "${{ matrix.file }}"
+            echo ""
+            echo "-------------------------------------------------------------"
+            echo ""
+            echo " Launchers in /usr/local/share/applications"
+            echo ""
+            ls /usr/local/share/applications
+            echo ""
+            echo "-------------------------------------------------------------"
+            am -R "${{ matrix.file }}" && echo "${{ matrix.file }}" > results/results-${{ matrix.file }}
+            else
+              if [[ $? -eq 124 ]]; then
+                echo "### :boom: Timeout $TIMEOUT minutes reached ${{ matrix.file }}!" >> $GITHUB_STEP_SUMMARY
+              else
+                echo "### :skull: FAIL: ${{ matrix.file }}" >> $GITHUB_STEP_SUMMARY
+              fi
+              exit 1
+          fi
+
+      - name: "Upload Test Results ⬆️"
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          name: results
+          name: results-${{ matrix.file }}
+          path: results/results-${{ matrix.file }}
+
+  update-tested-list:
+    name: "save tested.list 🔨"
+    needs: run-actions
+    runs-on: ubuntu-22.04
+    if: always()
+    steps:
+      - name: "Check out repository 🏃"
+        uses: actions/checkout@v4
+
+      - name: "Download Test Results ⬇️"
+        uses: actions/download-artifact@v4
+        with:
           path: results
+          pattern: results-*
+          merge-multiple: true
+      - run: ls -R results
+
+      - name: "Aggregate Results 🏁"
+        run: |
+          mkdir -p results
+          for file in results/*; do
+            cat "$file" >> aggregated.list
+          done
+          cat aggregated.list >> tested.list
+          sort -u tested.list -o tested.list
+          rm -rf results
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git pull
+          git add tested.list
+          git commit -m "update tested.list"
+          git push && echo "### ⭐ tested.list updated" >> $GITHUB_STEP_SUMMARY
+
+  delete-all-artifacts:
+    name: "Delete all artifacts 🧹"
+    runs-on: ubuntu-22.04
+    needs: update-tested-list
+    if: always()
+    steps:
+      - name: "Check out repository 🏃"
+        uses: actions/checkout@v4
+
+      - name: "Delete Artifacts 🙈"
+        env:
+          REPO_NAME: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Fetching and deleting all artifacts for run ID: $RUN_ID"
+          PAGE=1
+          DELETED=0
+          while true; do
+            RESPONSE=$(curl -s -H "Authorization: token $TOKEN" \
+             "https://api.github.com/repos/$REPO_NAME/actions/runs/$RUN_ID/artifacts?per_page=100&page=$PAGE")
+            ARTIFACT_IDS=$(echo "$RESPONSE" | jq -r '.artifacts[].id')
+            if [[ -z "$ARTIFACT_IDS" ]]; then
+              echo "No more artifacts to delete. Total deleted: $DELETED"
+              break
+            fi
+            for ARTIFACT_ID in $ARTIFACT_IDS; do
+              echo "Deleting artifact with ID: $ARTIFACT_ID"
+              curl -X DELETE -s -H "Authorization: token $TOKEN" \
+               "https://api.github.com/repos/$REPO_NAME/actions/artifacts/$ARTIFACT_ID"
+              ((DELETED+=1))
+            done
+            ((PAGE+=1))
+          done
+          echo "Successfully deleted $DELETED artifacts."
+
