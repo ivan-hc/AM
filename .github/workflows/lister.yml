@@ -1,15 +1,13 @@
-name: "Sync Apps Lists to Another Repo"
+name: "Sync Apps List"
 
 on:
   push:
     branches: main
     paths:
-      - 'programs/**'
-      - 'programs/**'
-      - 'programs/**'
-      - '!programs/x86_64/**'
-      - '!programs/i686/**'
-      - '!programs/aarch64/**'
+      - programs/x86_64-apps
+      - programs/i686-apps
+      - programs/aarch64
+
   workflow_dispatch:
 
 concurrency:
@@ -30,18 +28,6 @@ jobs:
           chmod a+x appimage-lister-uniq.sh
           ./appimage-lister-uniq.sh
 
-      - name: "Clone Target Repository"
-        env:
-          TARGET_REPO_TOKEN: ${{ secrets.TARGET_REPO_TOKEN }}
-          TARGET_OWNER: ivan-hc
-          TARGET_REPO: AM
-        run: |
-          git clone "https://x-access-token:$TARGET_REPO_TOKEN@github.com/$TARGET_OWNER/$TARGET_REPO.git" target-repo
-
-      - name: "Copy Files"
-        run: |
-          cp programs/x86_64-appimages programs/i686-appimages programs/aarch64-appimages target-repo/
-
       - name: "Push to Source"
         run: |
           # You have to create PAT (Personal Access Token) with repo and workflow scopes enabled
@@ -55,17 +41,4 @@ jobs:
           else
             git commit -m "Sync files from source repository"
             git push && echo "Sync to Source succeeded" >> $GITHUB_STEP_SUMMARY
-          fi
-
-      - name: "Push to Target"
-        run: |
-          cd target-repo
-          git config --global user.name "ivan-hc"
-          git config --global user.email "ivan@ivan.hc"
-          git add .
-          if git diff-index --quiet HEAD; then
-            echo "No changes to commit." >> $GITHUB_STEP_SUMMARY
-          else
-            git commit -m "Sync files from source repository"
-            git push && echo "Sync to Target Succeeded" >> $GITHUB_STEP_SUMMARY
           fi
