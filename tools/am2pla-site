@@ -174,9 +174,9 @@ function _applications_list_header {
 function _applications_list_body() {
 	for arg in $ARGS; do
 		description=$(cat "$arch"-apps | grep "◆ $arg :" | sed 's/^.*: //' | sed 's/ *$//')
-		echo "| <img src=\"icons/$arg.png\" width=\"48\" height=\"48\"> | [***$arg***](apps/$arg.md) | *$description*..[ *read more* ](apps/$arg.md)*!* | [*blob*](https://github.com/ivan-hc/AM/blob/main/programs/$arch/$arg) **/** [*raw*](https://raw.githubusercontent.com/ivan-hc/AM/main/programs/$arch/$arg) |" >> apps.md
-		sleep 0.005
+		echo "| <img src=\"icons/$arg.png\" width=\"48\" height=\"48\"> | [***$arg***](apps/$arg.md) | *$description*..[ *read more* ](apps/$arg.md)*!* | [*blob*](https://github.com/ivan-hc/AM/blob/main/programs/$arch/$arg) **/** [*raw*](https://raw.githubusercontent.com/ivan-hc/AM/main/programs/$arch/$arg) |" >> body.txt
 	done
+	cat ./body.txt >> apps.md
 }
 
 _applications_list_header
@@ -186,17 +186,10 @@ _footer_apps >> apps.md
 ########################
 # COMPILE APPIMAGES PAGE
 ########################
+
 function _appimages_listing() {
-	curl -s https://codeload.github.com/ivan-hc/AM/tar.gz/main | tar -xz --strip=2 AM-main/programs/"$arch"
-	ARGS=$(awk -v FS="(◆ | : )" '{print $2}' <"$arch-apps")
-	for arg in $ARGS; do
-		if grep -qe "appimage-extract\|mage\$\|tmp\/\*mage" "./$arch/$arg" 1> /dev/null; then
-			if ! grep "◆ $arg :" "$arch-apps" | grep -ie "\"kdegames\"\|\"kdeutils\"" 1> /dev/null; then
-				grep "◆ $arg :" "$arch-apps" >> "$arch-appimages"
-			fi
-		fi
-	done
-	echo -e "$(cat ./"$arch"-appimages | awk -v FS="(◆ | : )" '{print $2}')" > args
+	APPIMAGES_LIST_AM=$(curl -Ls https://raw.githubusercontent.com/ivan-hc/AM/main/programs/x86_64-appimages)
+	echo "$APPIMAGES_LIST_AM" | awk -v FS="(◆ | : )" '{print $2}' > args
 	ARGS=$(cat ./args)
 	APPIMAGES_NUMBER=$(cat ./args | wc -l)
 }
@@ -216,9 +209,7 @@ function _appimages_list_header {
 
 function _appimages_list_body() {
 	for arg in $ARGS; do
-		description=$(cat "$arch"-appimages | grep "◆ $arg :" | sed 's/^.*: //' | sed 's/ *$//')
-		echo "| <img src=\"icons/$arg.png\" width=\"48\" height=\"48\"> | [***$arg***](apps/$arg.md) | *$description*..[ *read more* ](apps/$arg.md)*!* | [*blob*](https://github.com/ivan-hc/AM/blob/main/programs/$arch/$arg) **/** [*raw*](https://raw.githubusercontent.com/ivan-hc/AM/main/programs/$arch/$arg) |" >> appimages.md
-		sleep 0.005
+		grep "apps/"$arg".md" ./body.txt >> appimages.md
 	done
 }
 
@@ -226,7 +217,6 @@ _appimages_listing
 _appimages_list_header
 _appimages_list_body
 _footer_categories >> appimages.md
-#rm -f ./"$arch-appimages"
 
 ######################################
 # COMPILE THE MAIN PAGE OF THE WEBSITE
@@ -263,9 +253,7 @@ function _category_list_header {
 
 function _category_list_body() {
 	for arg in $ARGS; do
-		description=$(cat "$arch"-apps | grep "◆ $arg :" | sed 's/^.*: //' | sed 's/ *$//')
-		echo "| <img src=\"icons/$arg.png\" width=\"48\" height=\"48\"> | [***$arg***](apps/$arg.md) | *$description*..[ *read more* ](apps/$arg.md)*!* | [*blob*](https://github.com/ivan-hc/AM/blob/main/programs/$arch/$arg) **/** [*raw*](https://raw.githubusercontent.com/ivan-hc/AM/main/programs/$arch/$arg) |" >> $category.md
-		sleep 0.005
+		grep "apps/"$arg".md" ./body.txt >> $category.md
 	done
 }
 
@@ -322,4 +310,4 @@ done
 ######################
 # END OF ALL PROCESSES
 ######################
-rm ./args ./index.old ./"$arch"-apps ./"$arch"/* && rmdir ./"$arch"
+rm ./args ./index.old ./"$arch"-apps ./body.txt
