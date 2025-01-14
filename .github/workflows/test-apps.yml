@@ -94,17 +94,20 @@ jobs:
           APP="${{ matrix.file }}"
           script_content=$(curl -Ls https://raw.githubusercontent.com/ivan-hc/AM/main/programs/x86_64/"$APP")
           pure_arg=$(echo "$APP" | sed 's/\.appimage//g; s/\^debian-testing-//g; s/\-appimage$//g' | sed 's:.*/::')
+          _app_install() {
+             if echo "$script_content" | grep -q "^#.*spooky" || [ "$APP" = libfuse2 ]; then
+                echo y | am -i "$@"
+             elif echo "$script_content" | grep -q "^read \|^case " || [ "$APP" = wine ]; then
+                echo 1 | am -i "$@"
+             else
+                am -i "$@"
+             fi
+          }
           if [ ! -d /opt/"$pure_arg" ] \
           && [ "$APP" != code ] \
-          && [ "$APP" != libfuse2 ] \
-          && [ "$APP" != libreoffice ] \
-          && [ "$APP" != mpv ] \
-          && [ "$APP" != npm ] \
-          && [ "$APP" != wine ] \
           && [ -z "$(PATH=/usr/local/bin command -v "$pure_arg" 2>/dev/null)" ] \
-          && ! echo "$script_content" | grep -q "^#.*spooky" \
           && ! echo "$APP" | grep -q "deadbeef" \
-          && timeout "$TIMEOUT"m am -i "${{ matrix.file }}" --debug; then
+          && timeout "$TIMEOUT"m _app_install "${{ matrix.file }}"; then
             echo ""
             echo " Structure of the directory in /opt"
             echo ""
@@ -137,7 +140,7 @@ jobs:
             fi
             echo ""
             echo "-------------------------------------------------------------"
-            am -R "${{ matrix.file }}" && echo "${{ matrix.file }}" > results/results-${{ matrix.file }}
+            am -R "$pure_arg" && echo "${{ matrix.file }}" > results/results-${{ matrix.file }}
             else
               if [[ $? -eq 124 ]]; then
                 echo "### :boom: Timeout $TIMEOUT minutes reached ${{ matrix.file }}!" >> $GITHUB_STEP_SUMMARY
