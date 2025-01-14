@@ -27,7 +27,7 @@ permissions:
 
 jobs:
   generate-matrix:
-    name: "build Matrix 🌀"
+    name: "matrix 🌀"
     runs-on: ubuntu-22.04
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
@@ -41,10 +41,12 @@ jobs:
           x64Count=$(find programs/x86_64/ -type f | wc -l)
           i68Count=$(find programs/i686/ -type f | wc -l)
           a64Count=$(find programs/aarch64/ -type f | wc -l)
-          echo '### apps' >> $GITHUB_STEP_SUMMARY
+          tested=$(wc -l < tested.list) || tested="0"
+          echo "### 🎬 apps" >> $GITHUB_STEP_SUMMARY
           echo "$x64Count x86_64" >> $GITHUB_STEP_SUMMARY
           echo "$i68Count i686" >> $GITHUB_STEP_SUMMARY
           echo "$a64Count aarch64" >> $GITHUB_STEP_SUMMARY
+          echo "tested $tested" >> $GITHUB_STEP_SUMMARY
 
       - name: "Generate Matrix 🏆"
         id: set-matrix
@@ -62,7 +64,7 @@ jobs:
             MATRIX+="{\"file\": \"$file\"},"
           done
           MATRIX="${MATRIX%,}]}"
-          echo "::set-output name=matrix::$MATRIX"
+          echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
 
   run-actions:
     name: "🔨"
@@ -91,45 +93,39 @@ jobs:
       - name: "test ${{ matrix.file }} 🚧"
         run: |
           mkdir -p results
-          APP="${{ matrix.file }}"
-          script_content=$(curl -Ls https://raw.githubusercontent.com/ivan-hc/AM/main/programs/x86_64/"$APP")
-          pure_arg=$(echo "$APP" | sed 's/\.appimage//g; s/\^debian-testing-//g; s/\-appimage$//g' | sed 's:.*/::')
-          _app_install() {
-             if echo "$script_content" | grep -q "^#.*spooky" || [ "$APP" = libfuse2 ]; then
-                echo y | am -i "$@"
-             elif echo "$script_content" | grep -q "^read \|^case " || [ "$APP" = wine ]; then
-                echo 1 | am -i "$@"
-             else
-                am -i "$@"
-             fi
-          }
+          script_content=$(curl -Ls https://raw.githubusercontent.com/ivan-hc/AM/main/programs/x86_64/"${{ matrix.file }}")
+          pure_arg=$(echo "${{ matrix.file }}" | sed 's/\.appimage//g; s/\^debian-testing-//g; s/\-appimage$//g' | sed 's:.*/::')
           if [ ! -d /opt/"$pure_arg" ] \
-          && [ "$APP" != code ] \
+          && [ ${{ matrix.file }} != code ] \
+          && [ ${{ matrix.file }} != libfuse2 ] \
+          && [ ${{ matrix.file }} != libreoffice ] \
+          && [ ${{ matrix.file }} != mpv ] \
+          && [ ${{ matrix.file }} != npm ] \
+          && [ ${{ matrix.file }} != wine ] \
           && [ -z "$(PATH=/usr/local/bin command -v "$pure_arg" 2>/dev/null)" ] \
-          && ! echo "$APP" | grep -q "deadbeef" \
-          && timeout "$TIMEOUT"m _app_install "${{ matrix.file }}"; then
+          && ! echo "$script_content" | grep -q "^#.*spooky" \
+          && ! echo "${{ matrix.file }}" | grep -q "deadbeef" \
+          && timeout "$TIMEOUT"m am -i "${{ matrix.file }}" --debug; then
             echo ""
             echo " Structure of the directory in /opt"
             echo ""
             if test -d /opt/kdegames; then
-               ls /opt/kdegames
+               ls /opt/kdegames || echo "${{ matrix.file }}" > results/failed-${{ matrix.file }}
             elif test -d /opt/kdeutils; then
-               ls /opt/kdeutils
+               ls /opt/kdeutils || echo "${{ matrix.file }}" > results/failed-${{ matrix.file }}
             elif test -d /opt/platform-tools; then
-               ls /opt/platform-tools
-            elif test -d /opt/"$APP"; then
-               ls /opt/"$APP"
-            elif echo "$APP" | grep -q "deadbeef"; then
-               ls /opt/deadbeef
+               ls /opt/platform-tools || echo "${{ matrix.file }}" > results/failed-${{ matrix.file }}
+            elif test -d /opt/"${{ matrix.file }}"; then
+               ls /opt/"${{ matrix.file }}" || echo "${{ matrix.file }}" > results/failed-${{ matrix.file }}
             else
-               ls /opt/"$pure_arg"
+               ls /opt/"$pure_arg" || echo "${{ matrix.file }}" > results/failed-${{ matrix.file }}
             fi
             echo ""
             echo "-------------------------------------------------------------"
             echo ""
             echo " Command in \$PATH"
             echo ""
-            command -v "$pure_arg" || ls /usr/local/bin
+            command -v "$pure_arg" || ls /usr/local/bin || echo "${{ matrix.file }}" > results/failed-${{ matrix.file }}
             echo ""
             echo "-------------------------------------------------------------"
             echo ""
@@ -138,29 +134,38 @@ jobs:
             if test -f /usr/local/share/applications/*AM.desktop 2>/dev/null; then
                ls /usr/local/share/applications | grep "AM.desktop$"
             else
-               ls /usr/local/share/applications
+               ls /usr/local/share/applications || echo "${{ matrix.file }}" > results/failed-${{ matrix.file }}
             fi
             echo ""
             echo "-------------------------------------------------------------"
-            am -R "$pure_arg" && echo "${{ matrix.file }}" > results/results-${{ matrix.file }}
+            am -R "${{ matrix.file }}" && echo "${{ matrix.file }}" > results/results-${{ matrix.file }} || echo "${{ matrix.file }}" > results/failed-${{ matrix.file }}
             else
               if [[ $? -eq 124 ]]; then
-                echo "### :boom: Timeout $TIMEOUT minutes reached ${{ matrix.file }}!" >> $GITHUB_STEP_SUMMARY
+                echo "### 💥 ${{ matrix.file }} timeout!" >> $GITHUB_STEP_SUMMARY
+                echo "${{ matrix.file }}" > results/failed-${{ matrix.file }}
               else
-                echo "### :skull: FAIL: ${{ matrix.file }}" >> $GITHUB_STEP_SUMMARY
+                echo "### 💀 ${{ matrix.file }}" >> $GITHUB_STEP_SUMMARY
+                echo "${{ matrix.file }}" > results/failed-${{ matrix.file }}
               fi
               exit 1
           fi
 
+      - name: "Upload Failed Results ☝️"
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failed-${{ matrix.file }}
+          path: results/failed-${{ matrix.file }}
+
       - name: "Upload Test Results ⬆️"
-        if: always()
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: results-${{ matrix.file }}
           path: results/results-${{ matrix.file }}
 
   update-tested-list:
-    name: "save tested.list 🔨"
+    name: "results 📰"
     needs: run-actions
     runs-on: ubuntu-22.04
     if: always()
@@ -172,28 +177,68 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: results
-          pattern: results-*
           merge-multiple: true
       - run: ls -R results
 
-      - name: "Aggregate Results 🏁"
+      - name: "Git Config"
         run: |
-          mkdir -p results
-          for file in results/*; do
-            cat "$file" >> aggregated.list
-          done
-          cat aggregated.list >> tested.list
-          sort -u tested.list -o tested.list
-          rm -rf results
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git pull
-          git add tested.list
-          git commit -m "update tested.list"
-          git push && echo "### ⭐ tested.list updated" >> $GITHUB_STEP_SUMMARY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: "Aggregate Succeded Results"
+        run: |
+          ls -R results
+          if compgen -G "results/results-*" > /dev/null; then
+            for file in results/results-*; do
+              cat "$file" >> aggregated.list
+            done
+            cat aggregated.list >> tested.list
+            sort -u tested.list -o tested.list
+            git add tested.list
+            git commit -m "update tested.list"
+            git push
+          else
+            echo "Nothing tested succesfully?"
+          fi
+
+      - name: "Aggregate Failed Results"
+        run: |
+          ls -R results
+          if compgen -G "results/failed-*" > /dev/null; then
+            for file in results/failed-*; do
+              cat "$file" >> fail.list
+            done
+            fail=$(wc -l < fail.list)
+            cat fail.list >> failed.list
+            sort -u failed.list -o failed.list
+            git add failed.list
+            git commit -m "update failed.list"
+            git push
+          else
+            echo "Nothing failed? Great!"
+            fail="0"
+          fi
+
+      - name: "Show Results 🏁"
+        if: always()
+        run: |
+          echo "DEBUG:"
+          echo "fail is $fail"
+          echo "failed is $failed"
+          ls
+          echo "DEBUG"
+          tested=$(wc -l < tested.list)
+          count=$(find programs/x86_64/ -type f | wc -l)
+          remaining=$((count - tested))
+          echo "### ⭐ $tested tested" >> $GITHUB_STEP_SUMMARY
+          echo "## 🛅 $remaining to test" >> $GITHUB_STEP_SUMMARY
+          fail=$(wc -l < fail.list 2>/dev/null || echo "0")
+          failed=$(wc -l < failed.list 2>/dev/null || echo "0")
+          echo "😱 $failed fails listed" >> $GITHUB_STEP_SUMMARY
+          echo ":x: $fail failed now" >> $GITHUB_STEP_SUMMARY
 
   delete-all-artifacts:
-    name: "Delete all artifacts 🧹"
+    name: "cleanup 🧹"
     runs-on: ubuntu-22.04
     needs: update-tested-list
     if: always()
@@ -227,4 +272,3 @@ jobs:
             ((PAGE+=1))
           done
           echo "Successfully deleted $DELETED artifacts."
-
