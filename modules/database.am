@@ -117,7 +117,7 @@ _files_header() {
 	echo ""
 	_files_number
 	APPSNUMB="$FILES_NUMBER"
-	if grep -q 'usr/local/lib' "$APPSPATH"/*/remove 2> /dev/null; then
+	if grep -q 'usr/local/lib' "$APPSPATH"/*/remove 2>/dev/null; then
 		LIBNUMB=$(grep -l "usr/local/lib" "$APPSPATH"/*/remove | wc -l | sed 's/ //g')
 		APPSNUMB=$(("$APPSNUMB"-"$LIBNUMB"))
 	fi
@@ -126,7 +126,7 @@ _files_header() {
 	else
 		APPSMESSAGE="YOU HAVE INSTALLED $APPSNUMB PROGRAMS"
 	fi
-	if grep -q 'usr/local/lib' "$APPSPATH"/*/remove 2> /dev/null; then
+	if grep -q 'usr/local/lib' "$APPSPATH"/*/remove 2>/dev/null; then
 		LIBNUMB=$(grep -l "usr/local/lib" "$APPSPATH"/*/remove | wc -l | sed 's/ //g')
 		if [ "$LIBNUMB" = 1 ]; then
 			LIBSMESSAGE="AND $LIBNUMB LIBRARY"
@@ -245,7 +245,7 @@ _files_db() {
 # Functions to create file's table
 _files_files() {
 	cd "$APPSPATH" || exit 1
-	INSTALLED_APPS_BY_SIZE=$(du -sh $INSTALLED_APPS_PATHS 2> /dev/null | sort -rh)
+	INSTALLED_APPS_BY_SIZE=$(du -sh $INSTALLED_APPS_PATHS 2>/dev/null | sort -rh)
 	INSTALLED_APPS=$(echo "$INSTALLED_APPS_BY_SIZE" | xargs -n 1 basename 2>/dev/null)
 	if [ ! -f "$AMCACHEDIR"/version-args ]; then
 		_check_version
@@ -409,7 +409,7 @@ _list() {
 	# Check if github.com is online, if not, the function will read the offline list
 	wget -q --tries=10 --timeout=20 --spider https://github.com && _completion_lists
 	# Check the number of installed apps and libraries
-	LIBNUMBER=$(grep "usr/local/lib" "$APPSPATH"/*/remove 2> /dev/null | wc -l | sed 's/ //g')
+	LIBNUMBER=$(grep -q "usr/local/lib" "$APPSPATH"/*/remove | wc -l | sed 's/ //g')
 	ITEMSNUMBER=$(find "$APPSPATH" -name 'remove' -print 2>/dev/null | sort -u | wc -l | sed 's/ //g')
 	_detect_appman_apps
 	if [ "$AMCLI" = am ]; then
@@ -524,14 +524,10 @@ _query_lists() {
 }
 
 _find_no_order() {
-	while read -r line; do
-		match=1
-		for term in "$@"; do
-			[ -n "$term" ] || continue
-			echo "$line" | grep -qi -- "$term" || { match=0; break; }
-		done
-		[ "$match" -eq 1 ] && echo "$line"
-	done
+	grep -i "$1" | grep -i "$2" | grep -i "$3" | grep -i "$4" | grep -i "$5" \
+	| grep -i "$6" | grep -i "$7" | grep -i "$8" | grep -i "$9" | grep -i "${10}" \
+	| grep -i "${11}" | grep -i "${12}" | grep -i "${13}" | grep -i "${14}" | grep -i "${15}" \
+	| grep -i "${16}" | grep -i "${17}" | grep -i "${18}" | grep -i "${19}" | grep -i "${20}"
 }
 
 ################################################################################
@@ -578,7 +574,7 @@ case "$1" in
 		_list
 		if [ "$2" = --all ]; then
 			_list_third_party
-			LIST=$(sort "$AMDATADIR/$ARCH-apps" "$AMDATADIR/$ARCH-toolpack" | uniq | _pretty_list)
+			LIST=$(sort -u "$AMDATADIR/$ARCH-apps" "$AMDATADIR/$ARCH-toolpack" | _pretty_list)
 			_list_apps_all_msg | less -Ir
 			echo "$DIVIDING_LINE"
 			echo " $(("$AVAILABLE_APPS_NUMBER" + "$AVAILABLE_THIRD_PARTY_NUMBER")) programs in all supported databases"
@@ -607,12 +603,14 @@ case "$1" in
 		;;
 
 	'-q'|'query')
-		if [ -z "$2" ]; then
+		if [ -z "$2" ] || echo "$2" | grep -q -- "^--" && [ -z "$3" ]; then
+			echo ""
 			echo " USAGE: $AMCLI $1 [ARGUMENT]"
 			echo "        $AMCLI $1 --all [ARGUMENT]"
 			echo "        $AMCLI $1 --appimages [ARGUMENT]"
 			echo "        $AMCLI $1 --pkg [ARGUMENT]"
-			echo "        $AMCLI $1 --toolpack [ARGUMENT]"; exit 1
+			echo "        $AMCLI $1 --toolpack [ARGUMENT]"
+			echo ""; exit 1
 		fi
 		wget -q --tries=10 --timeout=20 --spider https://github.com && _completion_lists
 		shift
@@ -620,23 +618,23 @@ case "$1" in
 			shift
 			regex="$(echo "$@" | tr -s ' ' '|')"
 			printf "\n Search results for packages: %s\n\n" "$regex" | tr '[:lower:]' '[:upper:]'
-			sort "$AMDATADIR"/"$ARCH"-* | uniq \
+			sort -u "$AMDATADIR"/"$ARCH"-* \
 				| grep -iE "$regex" --color=always | _pretty_list_compat
 		elif [ "$1" = --all ]; then
 			shift
 			_query_lists "$*"
-			_list_third_party && sort "$AMDATADIR"/"$ARCH"-* | uniq | _find_no_order "$@" | _pretty_list_compat
+			_list_third_party && sort -u  "$AMDATADIR"/"$ARCH"-* | _find_no_order "$@" | _pretty_list_compat
 		elif [ "$1" = --appimages ]; then
 			shift
 			_query_lists "$*"
-			_list_appimages && sort "$AMDATADIR/$ARCH-appimages" | uniq | _find_no_order "$@" | _pretty_list_compat
+			_list_appimages && sort -u "$AMDATADIR/$ARCH-appimages" | _find_no_order "$@" | _pretty_list_compat
 		elif [ "$1" = --toolpack ]; then
 			shift
 			_query_lists "$*"
-			_list_third_party && sort "$AMDATADIR/$ARCH-toolpack" | _find_no_order "$@" | _pretty_list_compat
+			_list_third_party && sort -u "$AMDATADIR/$ARCH-toolpack" | _find_no_order "$@" | _pretty_list_compat
 		else
 			_query_lists "$*"
-			sort "$AMDATADIR"/"$ARCH"-app* | uniq | _find_no_order "$@" | _pretty_list_compat
+			sort -u "$AMDATADIR"/"$ARCH"-app* | _find_no_order "$@" | _pretty_list_compat
 		fi
 		printf '\n'
 		;;
