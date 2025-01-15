@@ -8,9 +8,9 @@ on:
     branches: main
     paths: 'programs/x86_64/**'
 
-  #pull_request:
-  #  branches: main
-  #  paths: 'programs/x86_64/**'
+  pull_request:
+    branches: main
+    paths: 'programs/x86_64/**'
 
   workflow_dispatch:
 
@@ -26,8 +26,67 @@ permissions:
   contents: write
 
 jobs:
+  update-testing-branch:
+    name: "prepare 💤"
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: "Check out repository"
+        uses: actions/checkout@v4
+
+      - name: "Git Config"
+        run: |
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+
+      - name: "Merge main in testing if needed"
+        run: |
+          git fetch origin main
+          git fetch origin testing || echo "Branch 'testing' does not exist, creating a new one."
+          if ! git show-ref --verify --quiet refs/heads/testing; then
+            git checkout -b testing origin/main
+          else
+            git checkout testing
+          fi
+          git fetch origin main
+          if [[ $(git rev-list HEAD...origin/main --count) -gt 0 ]]; then
+            echo "Changes detected between 'main' and 'testing'. Rebasing..."
+            git merge origin/main --no-edit
+            git push origin testing
+          fi
+          if [[ $GITHUB_REF == refs/pull/* ]]; then
+            echo "This is Pull Request. No saving results."
+          fi
+
+  show-stats:
+    name: "stats 📝"
+    runs-on: ubuntu-22.04
+    needs: update-testing-branch
+
+    steps:
+      - name: "Check out repository 🏃"
+        uses: actions/checkout@v4
+        with:
+          ref: testing  # Work on testing branch
+
+      - name: "Show stats 📝"
+        run: |
+          x64Count=$(find programs/x86_64/ -type f | wc -l)
+          i68Count=$(find programs/i686/ -type f | wc -l)
+          a64Count=$(find programs/aarch64/ -type f | wc -l)
+          tested=$(wc -l < tested.list 2>/dev/null || echo 0)
+          failed=$(wc -l < failed.list 2>/dev/null || echo 0)
+          echo "### 🎬 apps" >> $GITHUB_STEP_SUMMARY
+          echo "$x64Count x86_64" >> $GITHUB_STEP_SUMMARY
+          echo "$i68Count i686" >> $GITHUB_STEP_SUMMARY
+          echo "$a64Count aarch64" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔨 tests" >> $GITHUB_STEP_SUMMARY
+          echo " 🏁 $tested" >> $GITHUB_STEP_SUMMARY
+          echo " ❌ $failed" >> $GITHUB_STEP_SUMMARY
+
   generate-matrix:
     name: "matrix 🌀"
+    needs: update-testing-branch
     runs-on: ubuntu-22.04
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
@@ -35,18 +94,8 @@ jobs:
     steps:
       - name: "Check out repository 🏃"
         uses: actions/checkout@v4
-
-      - name: "Show stats 📝"
-        run: |
-          x64Count=$(find programs/x86_64/ -type f | wc -l)
-          i68Count=$(find programs/i686/ -type f | wc -l)
-          a64Count=$(find programs/aarch64/ -type f | wc -l)
-          tested=$(wc -l < tested.list) || tested="0"
-          echo "### 🎬 apps" >> $GITHUB_STEP_SUMMARY
-          echo "$x64Count x86_64" >> $GITHUB_STEP_SUMMARY
-          echo "$i68Count i686" >> $GITHUB_STEP_SUMMARY
-          echo "$a64Count aarch64" >> $GITHUB_STEP_SUMMARY
-          echo "tested $tested" >> $GITHUB_STEP_SUMMARY
+        with:
+          ref: testing
 
       - name: "Generate Matrix 🏆"
         id: set-matrix
@@ -54,9 +103,19 @@ jobs:
           mkdir -p results
           find programs/x86_64/ -maxdepth 1 -type f -printf "%f\n" | sort > all.list
           if [[ -f tested.list ]]; then
-            comm -23 all.list tested.list > totest.list
+            comm -23 all.list tested.list > totest_tmp.list
           else
-            cp all.list totest.list
+            cp all.list totest_tmp.list
+          fi
+          if [[ -f failed.list ]]; then
+            comm -23 totest_tmp.list failed.list > totest.list
+            echo "Excluding failed!"
+          else
+            mv totest_tmp.list totest.list
+          fi
+          if [ ! -f "totest.list" ] && [ ! -s "totest.list" ]; then
+            echo "Everything already tested? Starting over..."
+            rm tested.list && find programs/x86_64/ -maxdepth 1 -type f -printf "%f\n" | sort > totest.list
           fi
           FILES=$(shuf -n 100 totest.list || cat totest.list)
           MATRIX="{\"include\": ["
@@ -78,33 +137,38 @@ jobs:
     steps:
       - name: "Check out repository 🏃"
         uses: actions/checkout@v4
+        with:
+          ref: testing
 
       - name: "Install dependencies 📦️"
         run: |
-          sudo apt-get -y update
-          sudo apt-get -y install wget curl torsocks zsync 2> /dev/null
+          sudo apt-get -y update 2> /dev/null || apt-get -y update
+          sudo apt-get -y install wget curl torsocks zsync 2> /dev/null || apt-get -y install git wget curl torsocks zsync
 
       - name: "Install AM 🎁"
         run: |
           mkdir -p results /usr/local/bin
           chmod +x ./INSTALL
-          sudo ./INSTALL
+          sudo ./INSTALL 2> /dev/null || ./INSTALL
 
       - name: "test ${{ matrix.file }} 🚧"
         run: |
           mkdir -p results
           script_content=$(curl -Ls https://raw.githubusercontent.com/ivan-hc/AM/main/programs/x86_64/"${{ matrix.file }}")
           pure_arg=$(echo "${{ matrix.file }}" | sed 's/\.appimage//g; s/\^debian-testing-//g; s/\-appimage$//g' | sed 's:.*/::')
+          to_failed() {
+            echo "${{ matrix.file }}" > results/ko-${{ matrix.file }}
+          }
           if [ ! -d /opt/"$pure_arg" ] \
             || [ -z "$(PATH=/usr/local/bin command -v "$pure_arg" 2>/dev/null)" ] \
             || ! echo "$script_content" | grep -q "^#.*spooky" \
             || ! echo "${{ matrix.file }}" | grep -q "deadbeef"; then
-             echo "${{ matrix.file }}" > results/failed-${{ matrix.file }}
+             to_failed
           fi
           blacklisted="code libfuse2 libreoffice mpv node npm wine"
           for b in $blacklisted; do
              if [ "$pure_arg" = "$b" ]; then
-                echo "${{ matrix.file }}" > results/failed-${{ matrix.file }}
+                to_failed
              fi
           done
           if timeout "$TIMEOUT"m am -i "${{ matrix.file }}" --debug; then
@@ -112,42 +176,43 @@ jobs:
             echo " Structure of the directory in /opt"
             echo ""
             if test -d /opt/kdegames; then
-               ls /opt/kdegames || echo "${{ matrix.file }}" > results/failed-${{ matrix.file }}
+               ls /opt/kdegames | tee -a results/log-"${{ matrix.file }}"
             elif test -d /opt/kdeutils; then
-               ls /opt/kdeutils || echo "${{ matrix.file }}" > results/failed-${{ matrix.file }}
+               ls /opt/kdeutils | tee -a results/log-"${{ matrix.file }}"
             elif test -d /opt/platform-tools; then
-               ls /opt/platform-tools || echo "${{ matrix.file }}" > results/failed-${{ matrix.file }}
+               ls /opt/platform-tools | tee -a results/log-"${{ matrix.file }}"
             elif test -d /opt/"${{ matrix.file }}"; then
-               ls /opt/"${{ matrix.file }}" || echo "${{ matrix.file }}" > results/failed-${{ matrix.file }}
+               ls /opt/"${{ matrix.file }}" | tee -a results/log-"${{ matrix.file }}"
             else
-               ls /opt/"$pure_arg" || echo "${{ matrix.file }}" > results/failed-${{ matrix.file }}
+               ls /opt/"$pure_arg" | tee -a results/log-"${{ matrix.file }}"
             fi
             echo ""
             echo "-------------------------------------------------------------"
             echo ""
             echo " Command in \$PATH"
             echo ""
-            command -v "$pure_arg" || ls /usr/local/bin || echo "${{ matrix.file }}" > results/failed-${{ matrix.file }}
+            command -v "$pure_arg" | tee -a results/log-"${{ matrix.file }}" || ls /usr/local/bin | tee -a results/log-"${{ matrix.file }}"
             echo ""
             echo "-------------------------------------------------------------"
             echo ""
-            echo " Launchers in /usr/local/share/applications"
+            echo " Launchers in /usr/local/share/applications" | tee -a results/log-"${{ matrix.file }}"
             echo ""
             if test -f /usr/local/share/applications/*AM.desktop 2>/dev/null; then
-               ls /usr/local/share/applications | grep "AM.desktop$"
+               ls /usr/local/share/applications | grep "AM.desktop$" | tee -a results/log-"${{ matrix.file }}"
             else
-               ls /usr/local/share/applications || echo "${{ matrix.file }}" > results/failed-${{ matrix.file }}
+               ls /usr/local/share/applications | tee -a results/log-"${{ matrix.file }}"
             fi
             echo ""
             echo "-------------------------------------------------------------"
-            am -R "${{ matrix.file }}" && echo "${{ matrix.file }}" > results/results-${{ matrix.file }} || echo "${{ matrix.file }}" > results/failed-${{ matrix.file }}
+            am -R "${{ matrix.file }}" && echo "${{ matrix.file }}" > results/ok-${{ matrix.file }} || to_failed
           else
             if [[ $? -eq 124 ]]; then
                echo "### 💥 ${{ matrix.file }} timeout!" >> $GITHUB_STEP_SUMMARY
-               echo "${{ matrix.file }}" > results/failed-${{ matrix.file }}
+               echo "Installation timeout in 10 minutes" >> results/log-"${{ matrix.file }}"
+               to_failed
             else
                echo "### 💀 ${{ matrix.file }}" >> $GITHUB_STEP_SUMMARY
-               echo "${{ matrix.file }}" > results/failed-${{ matrix.file }}
+               to_failed
             fi
             exit 1
           fi
@@ -156,15 +221,22 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: failed-${{ matrix.file }}
-          path: results/failed-${{ matrix.file }}
+          name: ko-${{ matrix.file }}
+          path: results/ko-${{ matrix.file }}
+
+      - name: "Upload Log Results ☝️"
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: log-${{ matrix.file }}
+          path: results/log-${{ matrix.file }}
 
       - name: "Upload Test Results ⬆️"
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: results-${{ matrix.file }}
-          path: results/results-${{ matrix.file }}
+          name: ok-${{ matrix.file }}
+          path: results/ok-${{ matrix.file }}
 
   update-tested-list:
     name: "results 📰"
@@ -174,6 +246,8 @@ jobs:
     steps:
       - name: "Check out repository 🏃"
         uses: actions/checkout@v4
+        with:
+          ref: testing
 
       - name: "Download Test Results ⬇️"
         uses: actions/download-artifact@v4
@@ -187,55 +261,56 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      - name: "Aggregate Succeded Results"
+      - name: "Aggregate and push results"
         run: |
           ls -R results
-          if compgen -G "results/results-*" > /dev/null; then
-            for file in results/results-*; do
+          #git checkout -b testing
+          #git push --set-upstream origin testing
+          if compgen -G "results/ok-*" > /dev/null; then
+            for file in results/ok-*; do
               cat "$file" >> aggregated.list
             done
             cat aggregated.list >> tested.list
             sort -u tested.list -o tested.list
             git add tested.list
-            git commit -m "update tested.list"
-            git push
           else
-            echo "Nothing tested succesfully?"
+            echo "Nothing tested successfully?"
           fi
-
-      - name: "Aggregate Failed Results"
-        run: |
-          ls -R results
-          if compgen -G "results/failed-*" > /dev/null; then
-            for file in results/failed-*; do
+          if compgen -G "results/ko-*" > /dev/null; then
+            for file in results/ko-*; do
               cat "$file" >> fail.list
             done
+            mkdir -p logs
+            cp results/log-* logs/
             fail=$(wc -l < fail.list)
             cat fail.list >> failed.list
             sort -u failed.list -o failed.list
-            git add failed.list
-            git commit -m "update failed.list"
-            git push
+            git add failed.list logs
           else
             echo "Nothing failed? Great!"
             fail="0"
+          fi
+          if git diff --cached --quiet; then
+            echo "No changes to commit?"
+          else
+            if [[ $GITHUB_REF == refs/pull/* ]]; then
+              echo "This is Pull Request. No saving results."
+            else
+              git commit -m "update results"
+              git push origin testing
+            fi
           fi
 
       - name: "Show Results 🏁"
         if: always()
         run: |
-          echo "DEBUG:"
-          echo "fail is $fail"
-          echo "failed is $failed"
-          ls
-          echo "DEBUG"
-          tested=$(wc -l < tested.list)
+          tested=$(wc -l < tested.list 2>/dev/null || echo 0)
+          failed=$(wc -l < failed.list 2>/dev/null || echo 0)
+          fail=$(wc -l < fail.list 2>/dev/null || echo "0")
           count=$(find programs/x86_64/ -type f | wc -l)
           remaining=$((count - tested))
-          echo "### ⭐ $tested tested" >> $GITHUB_STEP_SUMMARY
+          echo "### 🏁 $tested tested" >> $GITHUB_STEP_SUMMARY
           echo "## 🛅 $remaining to test" >> $GITHUB_STEP_SUMMARY
-          fail=$(wc -l < fail.list 2>/dev/null || echo "0")
-          failed=$(wc -l < failed.list 2>/dev/null || echo "0")
           echo "😱 $failed fails listed" >> $GITHUB_STEP_SUMMARY
           echo ":x: $fail failed now" >> $GITHUB_STEP_SUMMARY
 
