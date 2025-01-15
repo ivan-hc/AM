@@ -96,16 +96,18 @@ jobs:
           script_content=$(curl -Ls https://raw.githubusercontent.com/ivan-hc/AM/main/programs/x86_64/"${{ matrix.file }}")
           pure_arg=$(echo "${{ matrix.file }}" | sed 's/\.appimage//g; s/\^debian-testing-//g; s/\-appimage$//g' | sed 's:.*/::')
           if [ ! -d /opt/"$pure_arg" ] \
-          && [ ${{ matrix.file }} != code ] \
-          && [ ${{ matrix.file }} != libfuse2 ] \
-          && [ ${{ matrix.file }} != libreoffice ] \
-          && [ ${{ matrix.file }} != mpv ] \
-          && [ ${{ matrix.file }} != npm ] \
-          && [ ${{ matrix.file }} != wine ] \
-          && [ -z "$(PATH=/usr/local/bin command -v "$pure_arg" 2>/dev/null)" ] \
-          && ! echo "$script_content" | grep -q "^#.*spooky" \
-          && ! echo "${{ matrix.file }}" | grep -q "deadbeef" \
-          && timeout "$TIMEOUT"m am -i "${{ matrix.file }}" --debug; then
+            || [ -z "$(PATH=/usr/local/bin command -v "$pure_arg" 2>/dev/null)" ] \
+            || ! echo "$script_content" | grep -q "^#.*spooky" \
+            || ! echo "${{ matrix.file }}" | grep -q "deadbeef"; then
+             echo "${{ matrix.file }}" > results/failed-${{ matrix.file }}
+          fi
+          blacklisted="code libfuse2 libreoffice mpv node npm wine"
+          for b in $blacklisted; do
+             if [ "$pure_arg" = "$b" ]; then
+                echo "${{ matrix.file }}" > results/failed-${{ matrix.file }}
+             fi
+          done
+          if ! test -f results/failed-${{ matrix.file }} && timeout "$TIMEOUT"m am -i "${{ matrix.file }}" --debug; then
             echo ""
             echo " Structure of the directory in /opt"
             echo ""
@@ -139,15 +141,15 @@ jobs:
             echo ""
             echo "-------------------------------------------------------------"
             am -R "${{ matrix.file }}" && echo "${{ matrix.file }}" > results/results-${{ matrix.file }} || echo "${{ matrix.file }}" > results/failed-${{ matrix.file }}
+          else
+            if [[ $? -eq 124 ]]; then
+               echo "### 💥 ${{ matrix.file }} timeout!" >> $GITHUB_STEP_SUMMARY
+               echo "${{ matrix.file }}" > results/failed-${{ matrix.file }}
             else
-              if [[ $? -eq 124 ]]; then
-                echo "### 💥 ${{ matrix.file }} timeout!" >> $GITHUB_STEP_SUMMARY
-                echo "${{ matrix.file }}" > results/failed-${{ matrix.file }}
-              else
-                echo "### 💀 ${{ matrix.file }}" >> $GITHUB_STEP_SUMMARY
-                echo "${{ matrix.file }}" > results/failed-${{ matrix.file }}
-              fi
-              exit 1
+               echo "### 💀 ${{ matrix.file }}" >> $GITHUB_STEP_SUMMARY
+               echo "${{ matrix.file }}" > results/failed-${{ matrix.file }}
+            fi
+            exit 1
           fi
 
       - name: "Upload Failed Results ☝️"
