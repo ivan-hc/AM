@@ -103,7 +103,12 @@ jobs:
           mkdir -p results
           find programs/x86_64/ -maxdepth 1 -type f -printf "%f\n" | sort > all.list
           if [[ -f tested.list ]]; then
-            comm -23 all.list tested.list > totest_tmp.list
+            if diff -q all.list tested.list; then
+              echo "Everything already tested? Add new app or delete tested.list"
+              exit 99
+            else
+              comm -23 all.list tested.list > totest_tmp.list
+            fi
           else
             cp all.list totest_tmp.list
           fi
@@ -112,10 +117,6 @@ jobs:
             echo "Excluding failed!"
           else
             mv totest_tmp.list totest.list
-          fi
-          if [ ! -f "totest.list" ] && [ ! -s "totest.list" ]; then
-            echo "Everything already tested? Starting over..."
-            rm tested.list && find programs/x86_64/ -maxdepth 1 -type f -printf "%f\n" | sort > totest.list
           fi
           FILES=$(shuf -n 100 totest.list || cat totest.list)
           MATRIX="{\"include\": ["
@@ -153,6 +154,7 @@ jobs:
 
       - name: "test ${{ matrix.file }} 🚧"
         run: |
+          set -uo pipefail
           mkdir -p results
           script_content=$(curl -Ls https://raw.githubusercontent.com/ivan-hc/AM/main/programs/x86_64/"${{ matrix.file }}")
           pure_arg=$(echo "${{ matrix.file }}" | sed 's/\.appimage//g; s/\^debian-testing-//g; s/\-appimage$//g' | sed 's:.*/::')
