@@ -2,31 +2,32 @@
 
 set -e
 
-_away_error() {
-	${1} >/dev/null 2>&1
-}
-
-_away_all() {
-	${1} >/dev/null
-}
-
 # Colors
 RED='\033[0;31m'; LightBlue='\033[1;34m'; Green='\033[0;32m'
 
+# For developers
+AM_BRANCH="main"
+
+# Check dependencies for this script
 _check_dependency() {
-	program="$1"
-	_away_all command -v "$program" || { echo "For Installation to work, install \"$program\" first!" && exit 1; }
+	AMDEPENDENCES="chmod chown curl grep wget"
+	for dependency in $AMDEPENDENCES; do
+		if ! command -v "$dependency" >/dev/null 2>&1; then
+			printf "\n %b💀 ERROR! MISSING ESSENTIAL COMMAND \033[0m: %b\n\n Install the above and try again! \n\n" "${RED}" "$dependency"
+			exit 1
+		fi
+	done
 }
 
-_check_dependency 'wget'
-_check_dependency 'curl'
+_check_dependency
 
 # INSTALL "AM" SYSTEM-WIDE
 _install_am() {
 	CACHEDIR="${XDG_CACHE_HOME:-$HOME/.cache}"
 	mkdir -p "$CACHEDIR" || true
 	rm -f "$CACHEDIR"/INSTALL-AM.sh || true
-	wget -q https://raw.githubusercontent.com/ivan-hc/AM/main/INSTALL -O "$CACHEDIR"/INSTALL-AM.sh && chmod a+x "$CACHEDIR"/INSTALL-AM.sh
+	wget -q "https://raw.githubusercontent.com/ivan-hc/AM/$AM_BRANCH/INSTALL" -O "$CACHEDIR"/INSTALL-AM.sh && chmod a+x "$CACHEDIR"/INSTALL-AM.sh
+	#cp ./INSTALL "$CACHEDIR"/INSTALL-AM.sh && chmod a+x "$CACHEDIR"/INSTALL-AM.sh # for developers
 	if command -v sudo >/dev/null 2>&1; then
 		SUDOCMD="sudo"
 	elif command -v doas >/dev/null 2>&1; then
@@ -58,7 +59,7 @@ _install_appman() {
 			printf '	export PATH="$PATH:$BINDIR"\nfi\n' >> "$ZSHRC"
 		fi
 	fi
-	wget -q https://raw.githubusercontent.com/ivan-hc/AM/main/APP-MANAGER -O "$BINDIR"/appman && chmod a+x "$BINDIR"/appman
+	wget -q "https://raw.githubusercontent.com/ivan-hc/AM/$AM_BRANCH/APP-MANAGER" -O "$BINDIR"/appman && chmod a+x "$BINDIR"/appman
 }
 
 # CHOOSE BETWEEN "AM" AND "APPMAN"

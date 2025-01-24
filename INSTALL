@@ -1,27 +1,28 @@
 #!/bin/sh
 
-_away_error() {
-	${1} >/dev/null 2>&1
-}
-
-_away_all() {
-	${1} >/dev/null
-}
-
-# DETERMINE SYSTEM ARCHITECTURE AND CURRENT USER
-arch=$(uname -m)
-currentuser=$(who | awk '{print $1}')
-
-_check_dependency() {
-    program="$1"
-    _away_all command -v "$program" && return 0 || printf "${RED}WARNING: For Installation to work, install \"$program\" first!\033[0m\n" && exit 1
-}
-
-_check_dependency 'wget'
-_check_dependency 'curl'
-
 # Colors
 RED='\033[0;31m'; LightBlue='\033[1;34m'; Green='\033[0;32m'
+
+# For developers
+AM_BRANCH="main"
+
+# Check dependencies for this script
+_check_dependency() {
+	AMDEPENDENCES="chmod chown curl grep wget"
+	for dependency in $AMDEPENDENCES; do
+		if ! command -v "$dependency" >/dev/null 2>&1; then
+			printf "\n %b💀 ERROR! MISSING ESSENTIAL COMMAND \033[0m: %b\n\n Install the above and try again! \n\n" "${RED}" "$dependency"
+			exit 1
+		fi
+	done
+}
+
+_check_dependency
+
+if [ -z "${SUDO_USER:-$DOAS_USER}" ]; then
+	echo 'Please use sudo or doas'
+	exit 1
+fi
 
 # INSTALL "AM"
 _prepare_am_directory() {
@@ -36,7 +37,7 @@ _prepare_am_directory() {
 	chmod a+x /opt/am/remove || exit 1
 
 	# DOWNLOAD AND LINK THE MAIN SCRIPT
-	wget -q https://raw.githubusercontent.com/ivan-hc/AM/main/APP-MANAGER
+	wget -q "https://raw.githubusercontent.com/ivan-hc/AM/$AM_BRANCH/APP-MANAGER"
 	chmod a+x /opt/am/APP-MANAGER
 	ln -s /opt/am/APP-MANAGER /usr/local/bin/am 2> /dev/null || printf "${RED}WARNING: Couldn't link am to \"/usr/local/bin/am\"!\033[0m\n"
 }
@@ -44,18 +45,18 @@ _prepare_am_directory() {
 _download_am_modules() {
 	# DOWNLOAD MODULES
 	cd /opt/am/modules || exit
-	MODULES=$(curl -Ls https://raw.githubusercontent.com/ivan-hc/AM/main/APP-MANAGER | tr '"' '\n' | grep "[a-z]\.am$")
+	MODULES=$(curl -Ls "https://raw.githubusercontent.com/ivan-hc/AM/$AM_BRANCH/APP-MANAGER" | tr '"' '\n' | grep "[a-z]\.am$")
 	for module_name in $MODULES; do
-		if ! test -f ./"$module_name"; then
+		if [ ! -f ./"$module_name" ]; then
 			echo " ◆ Downloading $module_name..."
-			wget -q "https://raw.githubusercontent.com/ivan-hc/AM/main/modules/$module_name"
+			wget -q "https://raw.githubusercontent.com/ivan-hc/AM/$AM_BRANCH/modules/$module_name"
 			chmod a+x ./"$module_name"
 		fi
 	done
 	cd ..
 
 	# ENABLE NON-ROOT PERMISSIONS TO THE MAIN DIRECTORY FOR THE CURRENT USER
-	chown -R $currentuser /opt/am 2> /dev/null
+	chown -R "${SUDO_USER:-$DOAS_USER}" /opt/am 2>/dev/null
 }
 
 echo '--------------------------------------------------------------------------'

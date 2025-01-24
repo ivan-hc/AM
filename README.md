@@ -47,6 +47,7 @@ You can use the command `am -a {PROGRAM}` to view the description and get the so
  - [How to set the path to local apps](#how-to-set-the-path-to-local-apps)
  - [What programs can be installed](#what-programs-can-be-installed)
    - [Supported third-party databases](#supported-third-party-databases)
+   - [How to replace AM database](#how-to-replace-am-database)
 
 [How to update all programs, for real!](#how-to-update-all-programs-for-real)
  - [How to update all installed apps](#how-to-update-all-installed-apps)
@@ -68,7 +69,6 @@ To install "AM" you must first install the "core" dependencies from your package
 - "`coreutils`" (contains "`cat`", "`chmod`", "`chown`"...);
 - "`curl`", to check URLs;
 - "`grep`", to check files;
-- "`less`", to read the ever-longer lists;
 - "`sed`", to edit/adapt installed files;
 - "`wget`" to download all programs and update "AM" itself.
 - "`sudo`" or "`doas`", for installing and removing programs at the system level.
@@ -77,6 +77,7 @@ To install "AM" you must first install the "core" dependencies from your package
   <summary>Additionally, you may need these optional dependencies, click here.</summary>
 
 - "`binutils`", contains a series of basic commands, including "`ar`" which extracts .deb packages;
+- "`less`", to read the ever-longer lists;
 - "`unzip`", to extract .zip packages;
 - "`tar`", to extract .tar* packages;
 - "`torsocks`", to connect to the TOR network;
@@ -229,6 +230,23 @@ Third-party databases can show basic information normally with the option `-a` o
 
 Same thing, you can use `am -i {PROGRAM}.toolpack` or `am -i --user {PROGRAM}.toolpack` to install the program without using the flag.
 
+#### How to replace AM database
+One thing I care a lot about is **continuity**, and as I have seen over the years, not all open source developers are able to maintain a project. This could happen to me in the future. I don't want it to be that way.
+
+Because of this, I have made some essential variables "customizable":
+- `APPSDB`, i.e. the "raw" directory of the architecture in use, containing the installation scripts (default value *https://raw.githubusercontent.com/ivan-hc/AM/main/programs/$ARCH*), this is mainly used in `-i`, `-d` and `-s`/`-u`
+- `APPSDBLIST`, i.e. the list of applications available for that architecture (default value *https://raw.githubusercontent.com/ivan-hc/AM/main/programs/$ARCH-apps*), this is used every time lists are updated, for example in `-l`, `-q` and `-s`/`-u`
+- `APPIMAGES_LIST`, i.e. the list of AppImages available in the database (default value *https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/main/x86_64-appimages*), used in `-ia` and `-l`/`-q` with the `--appimages` flag
+- `AMCATALOGUEMARKDOWNS`, i.e. the pages in .md format from the catalog of applications available in this database (default value *https://portable-linux-apps.github.io/apps*, add an appname with extension .md to see the content of one file), this is used in `-a`
+- `AMCATALOGUEICONS`, i.e. the icons in .png format available in the catalog of applications available in this database (default value *https://portable-linux-apps.github.io/icons*, add an appname with extension .png to see one file), this is used in `-i`, in case the installation script fails to get an icon for the application
+- `AMSYNC`, if set to "1" prevents AM from updating itself and updating modules when running `-s` or `-u`
+
+it is enough to `export` the variables above and respect the destination file format (follow the URLs in parentheses) in case you decide to open a new community-driven database that can make up for the lack of support in this repository.
+
+I did this to not tie users to this database and to allow them to use AM and all its features if I, Ivan, am unable to intervene for any reason.
+
+There are many discontinuous projects. Should this become one too, it will not be obsolete.
+
 ------------------------------------------------------------------------
 
 | [Back to "Main Index"](#main-index) |
@@ -343,7 +361,7 @@ Download an older or specific app version.
 
 **Description**:
 
-Download one or more installation scripts to your desktop or convert them to local installers for "AppMan".
+Download one or more installation scripts to your desktop or convert them to local installers for "AppMan". To test the scripts, use the "`am -i '/path/to/script'`" command or enter the directory of the script and run the "`am -i ./script`" command, even using dedicated flags, if necessary (see "`-i`").
 
 ------------------------------------------------------------------------
 ### `extra`, `-e`
@@ -358,7 +376,7 @@ Install AppImages from github.com, outside the database. This allows you to inst
 NOTE: Since this is an "install" option, you can add the "`--user`" flag (before "`user/project`") to install apps locally. See "`--user`" at the bottom to learn more.
 
 ------------------------------------------------------------------------
-### `files`, `-f`
+### `files`, `-f`, `-fi`
 
 		am -f
 		am -f --byname
@@ -366,7 +384,7 @@ NOTE: Since this is an "install" option, you can add the "`--user`" flag (before
 
 **Description**:
 
-Shows the list of all installed programs, with sizes. By default apps are sorted by size, use "`--byname`" to sort by name. With the option "`--less`" it shows only the number of installed apps.
+Shows the list of all installed programs, with sizes. By default apps are sorted by size, use "`--byname`" to sort by name. With the option "`--less`" it shows only the number of installed apps. Option "`-fi`" only shows installed apps, not the AppImages integrated with the "`--launcher`" option.
 
 ------------------------------------------------------------------------
 ### `help`, `-h`
@@ -404,24 +422,27 @@ Allow installed apps to use system icon themes. You can specify the name of the 
  		am -i --debug {PROGRAM}
  		am -i --force-latest {PROGRAM}
  		am -i --icons {PROGRAM}
+ 		am -i --sandbox {PROGRAM}
 
 **Description**:
 
-Install one or more programs or libraries from the list. With the "`--debug`" option you can see log messages to debug the script. For more details on "`--force-latest`", see the dedicated option, below. Use the "`--icons`" flag to allow the program to use icon themes. It can also be extended with additional flags (see "`--toolpack`").
+Install one or more programs or libraries from the list. With the "`--debug`" option you can see log messages to debug the script. For more details on "`--force-latest`", see the dedicated option, below. Use the "`--icons`" flag to allow the program to use icon themes. It can also be extended with additional flags (see "`--toolpack`"). The "`--sandbox`" flag allows you to set sandboxes for AppImage packages.
 
 NOTE: Since this is an "install" option, you can add the "`--user`" flag to install apps locally. See "`--user`" at the bottom to learn more.
 
 ------------------------------------------------------------------------
-### `install-appimage`, `-ia`
+### `install-appimage`, `-ia`, `-ias`
 
  		am -ia {PROGRAM}
  		am -ia --debug {PROGRAM}
  		am -ia --force-latest {PROGRAM}
  		am -ia --icons {PROGRAM}
+ 		am -ia --sandbox {PROGRAM}
+ 		am -ias {PROGRAM}
 
 **Description**:
 
-Same as "install" (see above) but for AppImages only.
+Same as "install" (see above) but for AppImages only.  Option "`-ias`" (aka Install AppImage & Sandox) is equivalent to "`-ia --sandbox`", to set sandboxes for AppImage packages.
 
 ------------------------------------------------------------------------
 ### `lock`
@@ -513,6 +534,8 @@ Removes one or more apps without asking.
 
 Run an AppImage in a sandbox using Aisap.
 
+NOTE, "`--sandbox`" can be used as a flag in "`-i`" and "`-ia`" or can be replaced using the option "`-ias`" (aka Install AppImage & Sandox).
+
 ------------------------------------------------------------------------
 ### `sync`, `-s`
 
@@ -529,7 +552,7 @@ Updates this script to the latest version hosted.
 
 **Description**:
 
-Generate a custom installation script.
+Generate a custom installation script. To test the scripts, use the "`am -i '/path/to/script'`" command or enter the directory of the script and run the "`am -i ./script`" command, even using dedicated flags, if necessary (see "`-i`").
 
 ------------------------------------------------------------------------
 ### `unlock`
@@ -549,10 +572,11 @@ Unlock updates for the selected program (nulls "`lock`").
  		am -u --apps --debug
  		am -u {PROGRAM}
  		am -u --debug {PROGRAM}
+ 		am -u --launcher
 
 **Description**:
 
-Update everything. Add "`--apps`" to update only the apps or write only the apps you want to update by adding their names. Add the "`--debug`" flag to view the output of AM-updater scripts.
+Update everything. Add "`--apps`" to update only the apps or write only the apps you want to update by adding their names. Add the "`--debug`" flag to view the output of AM-updater scripts. Add the "`--launcher`" flag to try to update only local AppImages integrated with the "`--launcher`" option (see "`--launcher`").
 
 ------------------------------------------------------------------------
 ### `version`, `-v`
@@ -606,7 +630,7 @@ Disable the sandbox for the selected app.
 
 **Description**:
 
-Eable notifications during apps update (nulls "`--disable-notifications`").
+Enable notifications during apps update (nulls "`--disable-notifications`").
 
 ------------------------------------------------------------------------
 ### `--force-latest`
@@ -625,6 +649,8 @@ Downgrades an installed app from pre-release to "latest".
 **Description**:
 
 Drag/drop one or more AppImages in the terminal and embed them in the apps menu and customize a command to use from the CLI.
+
+NOTE that "`--launcher`" can be used as a flag in "`-u`" to try to update the integrated AppImages (see "`-u`"). This works only if "appimageupdatetool" is installed and delta updates are supported. This flag does not work miracles, I strongly suggest to use options "`-ia`" and "`-e`" instead.
 
 ------------------------------------------------------------------------
 ### `--system`
@@ -702,6 +728,7 @@ Below you can access the documentation pages related to the use of "AM", complet
 ------------------------------------------------------------------------
 - [Install applications](docs/guides-and-tutorials/install.md)
 - [Install only AppImages](docs/guides-and-tutorials/install-appimage.md)
+  - [Install and sandbox AppImages in one go](docs/guides-and-tutorials/install-appimage.md#install-and-sandbox-appimages-in-one-go)
 - [Install AppImages not listed in this database but available in other github repos](docs/guides-and-tutorials/extra.md)
 - [List the installed applications](docs/guides-and-tutorials/files.md)
 - [List and query all the applications available on the database](docs/guides-and-tutorials/list-and-query.md)
@@ -713,6 +740,7 @@ Below you can access the documentation pages related to the use of "AM", complet
   - [How to create a launcher for a local AppImage](docs/guides-and-tutorials/launcher.md#how-to-create-a-launcher-for-a-local-appimage)
   - [How to remove the orphan launchers](docs/guides-and-tutorials/launcher.md#how-to-remove-the-orphan-launchers)
   - [AppImages from external media](docs/guides-and-tutorials/launcher.md#appimages-from-external-media)
+  - [Update scattered AppImages](docs/guides-and-tutorials/launcher.md#update-scattered-appimages)
 - [Sandbox an AppImage](docs/guides-and-tutorials/sandbox.md)
   - [How to enable a sandbox](docs/guides-and-tutorials/sandbox.md#how-to-enable-a-sandbox)
   - [How to disable a sandbox](docs/guides-and-tutorials/sandbox.md#how-to-disable-a-sandbox)
@@ -730,6 +758,7 @@ Below you can access the documentation pages related to the use of "AM", complet
   - [How to test an installation script](docs/guides-and-tutorials/template.md#how-to-test-an-installation-script)
   - [How to submit a Pull Request](docs/guides-and-tutorials/template.md#how-to-submit-a-pull-request)
 - [Third-party databases for applications (NeoDB)](docs/guides-and-tutorials/newrepo.md)
+- [BSD, freeBSD and derivative systems: configuration and troubleshooting](docs/guides-and-tutorials/bsd.md)
 
 ------------------------------------------------------------------------
 
