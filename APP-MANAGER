@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="9.4.1-3"
+AMVERSION="9.4.1-7"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -419,14 +419,68 @@ _am_newrepo_check() {
 
 _am_newrepo_check "$@"
 
-# 3RD PARTY SOURCES
+################################################################################
+#				3RD PARTY SOURCES
+################################################################################
+
+third_party_flags_message=""
+
+# APPBUNDLEHUB
 export appbundle_repo="https://github.com/xplshn/AppBundleHUB"
 appbundle_readme="https://raw.githubusercontent.com/xplshn/dbin-metadata/refs/heads/master/misc/cmd/AM-support/AM.txt"
 
+_sync_appbundle_list() {
+	rm -f "$AMDATADIR/$ARCH-appbundle"
+	[ -n "$appbundle_readme" ] && curl -Ls "$appbundle_readme" | grep -v "\.appimage \|?" | grep "\.appbundle " | cut -d":" -f1 | cut -d"@" -f2 \
+	| sed 's/^| /◆ /g; s/ https$//g; s/ :$//g; s/ | / : /g; s/ |$/./g; s/\.\.$/./g;' | sort > "$AMDATADIR/$ARCH-appbundle" \
+	|| touch "$AMDATADIR/$ARCH-appbundle"
+}
+
+# TOOLPACKS
 toolpack_repo="https://github.com/Azathothas/Toolpacks"
 toolpack_readme="https://bin.pkgforge.dev/${ARCH}/AM.txt"
+[ -n "$toolpack_readme" ] && third_party_flags="$third_party_flags --toolpack"
+[ -n "$toolpack_readme" ] && third_party_flags_message="$third_party_flags_message\n
+${Gold}--toolpack\033[0m
+
+	${LightBlue}$AMCLI -i --toolpack {PROGRAM}\033[0m
+	${LightBlue}am -i --toolpack --user {PROGRAM}\033[0m
+	${LightBlue}$AMCLI -l --toolpack\033[0m
+	${LightBlue}$AMCLI -q --toolpack {KEYWORD}\033[0m
+
+Description: This is a flag to use in \"-i\" to install Toolpack programs, in \"-l\" to list all available \
+Toolpacks, and \"-q\" to search the Toolpack list. Toolpack is a collection of programs external to the \"AM\" \
+database. Visit $toolpack_repo to learn more.
+
+NOTE, for installations you can use \".toolpack\" as the package extension instead of using the flag.
+"
+
+_sync_toolpacks_list() {
+	rm -f "$AMDATADIR/$ARCH-toolpack"
+	[ -n "$toolpack_readme" ] && curl -Ls "$toolpack_readme" | grep -v "\.appimage \|.appbundle \|?" | cut -d":" -f1 | cut -d"@" -f2 \
+	| sed 's/^| /◆ /g; s/ | https$/. To install it use the "--toolpack" flag./g; s/ | / : /g' | sort > "$AMDATADIR/$ARCH-toolpack" \
+	|| touch "$AMDATADIR/$ARCH-toolpack"
+}
+
+################################
+#	ALL THE ABOVE
+################################
+
+export third_party_lists="appbundle toolpack"
+
+_completion_list_third_party() {
+	[ -f "$AMDATADIR"/"$ARCH"-appbundle ] && awk '{print $2}' "$AMDATADIR"/"$ARCH"-appbundle >> "$AMDATADIR"/list
+	[ -f "$AMDATADIR"/"$ARCH"-toolpack ] && awk '{print $2}' "$AMDATADIR"/"$ARCH"-toolpack | sed -e 's/$/.toolpack/' >> "$AMDATADIR"/list
+}
+
+_sync_third_party_lists() {
+	_sync_appbundle_list
+	_sync_toolpacks_list
+}
 
 export awk_name="1" awk_description="2" awk_site="3" awk_dl="4" awk_ver="5" # Numbers to use in "awk" to determine columns
+
+[ -z "$third_party_flags_message" ] && third_party_flags_message="none\n"
 
 ################################################################################
 #				UTILITIES
@@ -437,24 +491,22 @@ available_options="about add apikey backup clean config disable downgrade downlo
 	install install-appimage launcher list lock neodb newrepo nolibfuse off on overwrite purge query remove sandbox \
 	select sync template test unlock update --all --appimages --apps --byname --config --convert --debug \
 	--devmode-disable --devmode-enable --disable-notifications --enable-notifications --force-latest --home --icons \
-	-ias --launcher --less --pkg --rollback --disable-sandbox --sandbox --system --toolpack --user"
+	-ias --launcher --less --pkg --rollback --disable-sandbox --sandbox --system --user $third_party_flags"
 
 _completion_lists() {
 	# Remove existing lists and download new ones
 	curl -Ls "$APPSLISTDB" > "$AMDATADIR/$ARCH-apps"
 	awk -v FS="(◆ | : )" '{print $2}' <"$AMDATADIR"/"$ARCH"-apps > "$AMDATADIR"/list
-	[ -f "$AMDATADIR"/"$ARCH"-appbundle ] && awk '{print $2}' "$AMDATADIR"/"$ARCH"-appbundle >> "$AMDATADIR"/list
-	[ -f "$AMDATADIR"/"$ARCH"-toolpack ] && awk '{print $2}' "$AMDATADIR"/"$ARCH"-toolpack | sed -e 's/$/.toolpack/' >> "$AMDATADIR"/list
+	_completion_list_third_party
 	# Append options to the list
 	for o in $available_options; do
 		echo "$o" >> "$AMDATADIR"/list
 	done
 }
 
-# BASH AND ZSH COMPLETION
+# BASH, FISH AND ZSH COMPLETION
 completion_file="$DATADIR/bash-completion/completions/$AMCLI"
 mkdir -p "$DATADIR/bash-completion/completions" || exit 1
-[ -f "$HOME"/.bash_completion ] && sed -i "/ $AMCLI$/d" "$HOME"/.bash_completion
 if ! grep -o " $AMCLI$" "$completion_file" >/dev/null 2>&1; then
 	echo "complete -W \"\$(cat $AMDATADIR/list 2>/dev/null)\" $AMCLI" >> "$completion_file"
 	if [ -f "${ZDOTDIR:-$HOME}"/.zshrc ] && echo "$SHELL" | grep -q "zsh"; then
@@ -465,6 +517,9 @@ if ! grep -o " $AMCLI$" "$completion_file" >/dev/null 2>&1; then
 		HEREDOC
 	fi
 	echo "Shell completion has been enabled!"
+fi
+if [ -d "$DATADIR"/fish/completions ] || [ -d /etc/fish/completions ] || [ -d /usr/share/fish/completions ]; then
+	command -v fish 1>/dev/null && [ ! -f "$CONFIGDIR"/fish/completions/am.fish ] && mkdir -p "$CONFIGDIR"/fish/completions && echo "complete -c am -f -a \"(cat $DATADIR/AM/list 2>/dev/null)\"" > "$CONFIGDIR"/fish/completions/am.fish
 fi
 
 # VERSION OF THE INSTALLED APPS
@@ -788,25 +843,10 @@ _sync_appimages_list() {
 	curl -Ls "$APPIMAGES_LIST" > "$AMDATADIR/$ARCH-appimages"
 }
 
-_sync_appbundle_list() {
-	rm -f "$AMDATADIR/$ARCH-appbundle"
-	curl -Ls "$appbundle_readme" | grep -v "\.appimage \|?" | grep "\.appbundle " | cut -d":" -f1 | cut -d"@" -f2 | sed 's/^| /◆ /g; s/ https$//g; s/ :$//g; s/ | / : /g; s/ |$/./g; s/\.\.$/./g;' | sort > "$AMDATADIR/$ARCH-appbundle"
-}
-
-_sync_toolpacks_list() {
-	rm -f "$AMDATADIR/$ARCH-toolpack"
-	curl -Ls "$toolpack_readme" | grep -v "\.appimage \|.appbundle \|?" | cut -d":" -f1 | cut -d"@" -f2 | sed 's/^| /◆ /g; s/ | https$/. To install it use the "--toolpack" flag./g; s/ | / : /g' | sort > "$AMDATADIR/$ARCH-toolpack"
-}
-
-_sync_third_party_lists() {
-	_sync_appbundle_list
-	_sync_toolpacks_list
-}
-
 _sync_databases() {
 	printf "%b\n Check and update offline lists of additional databases...\n" "$DIVIDING_LINE"
 	_sync_appimages_list
-	_sync_third_party_lists
+	_sync_third_party_lists 2>/dev/null
 	_completion_lists
 }
 
@@ -1277,7 +1317,7 @@ case "$1" in
 					${LightBlue}$AMCLI -i --icons {PROGRAM}
 					${LightBlue}$AMCLI -i --sandbox {PROGRAM}\033[0m
 
-			Description: Install one or more programs or libraries from the list. With the \"--debug\" option you can see log messages to debug the script. For more details on \"--force-latest\", see the dedicated option, below. Use the \"--icons\" flag to allow the program to use icon themes. It can also be extended with additional flags (see \"--toolpack\"). The \"--sandbox\" flag allows you to set sandboxes for AppImage packages.
+			Description: Install one or more programs or libraries from the list. With the \"--debug\" option you can see log messages to debug the script. For more details on \"--force-latest\", see the dedicated option, below. Use the \"--icons\" flag to allow the program to use icon themes. It can also be extended with additional flags (see third-party flags, at the bottom of this message). The \"--sandbox\" flag allows you to set sandboxes for AppImage packages.
 
 			${Gold}install-appimage, -ia, -ias\033[0m
 
@@ -1300,10 +1340,9 @@ case "$1" in
 
 					${LightBlue}$AMCLI -l
 					${LightBlue}$AMCLI -l --all
-					${LightBlue}$AMCLI -l --appimages
-					${LightBlue}$AMCLI -l --toolpack {KEYWORD}\033[0m
+					${LightBlue}$AMCLI -l --appimages\033[0m
 
-			Description: Shows the list of all the apps available, or just the AppImages. It can also be extended with additional flags, the \"--all\" flag allows you to consult the set of all supported databases (see \"--toolpack\").
+			Description: Shows the list of all the apps available, or just the AppImages. It can also be extended with additional flags, the \"--all\" flag allows you to consult the set of all supported databases (see third-party flags, at the bottom of this message).
 
 			${Gold}newrepo, neodb\033[0m
 
@@ -1332,10 +1371,9 @@ case "$1" in
 					${LightBlue}$AMCLI -q {KEYWORD}
 					${LightBlue}$AMCLI -q --all {KEYWORD}
 					${LightBlue}$AMCLI -q --appimages {KEYWORD}
-					${LightBlue}$AMCLI -q --pkg {PROGRAM1} {PROGRAM2}
-					${LightBlue}$AMCLI -q --toolpack {KEYWORD}\033[0m
+					${LightBlue}$AMCLI -q --pkg {PROGRAM1} {PROGRAM2}[0m
 
-			Description: Search for keywords in the list of available applications, add the \"--appimages\" option to list only the AppImages or add \"--pkg\" to list multiple programs at once. It can also be extended with additional flags, the \"--all\" flag allows you to consult the set of all supported databases (see \"--toolpack\").
+			Description: Search for keywords in the list of available applications, add the \"--appimages\" option to list only the AppImages or add \"--pkg\" to list multiple programs at once. It can also be extended with additional flags, the \"--all\" flag allows you to consult the set of all supported databases (see third-party flags, at the bottom of this message).
 
 			${Gold}remove, -r\033[0m
 
@@ -1441,19 +1479,6 @@ case "$1" in
 
 					${LightBlue}am --system\033[0m
 
-			Description: Switch \"AM\" back to \"AM\" from \"AppMan Mode\" (see \"--user\").
-
-			${Gold}--toolpack\033[0m
-
-					${LightBlue}$AMCLI -i --toolpack {PROGRAM}\033[0m
-					${LightBlue}am -i --toolpack --user {PROGRAM}
-					${LightBlue}$AMCLI -l --toolpack
-					${LightBlue}$AMCLI -q --toolpack {KEYWORD}\033[0m
-
-			Description: This is a flag to use in \"-i\" to install Toolpack programs, in \"-l\" to list all available Toolpacks, and \"-q\" to search the Toolpack list. Toolpack is a collection of programs external to the \"AM\" database. Visit $toolpack_repo to learn more.
-
-			NOTE, for installations you can use \".toolpack\" as the package extension instead of using the flag.
-
 			${Gold}--user\033[0m
 
 					${LightBlue}am --user\033[0m
@@ -1480,16 +1505,21 @@ case "$1" in
 				${LightBlue}am -ia --user --debug {PROGRAM}
 				${LightBlue}am -ia --user --force-latest {PROGRAM}
 				${LightBlue}am -ia --user --icons {PROGRAM}
-				${LightBlue}am -ia --user --debug --force-latest {PROGRAM}
+				${LightBlue}am -ia --user --debug --force-latest {PROGRAM}\033[0m
 				${LightBlue}am -ia --user --debug --force-latest --icons {PROGRAM}\033[0m
 
 			- External AppImages can be installed like this as well, option \"-e\" or \"extra\":
 
-				${LightBlue}am -e --user user/project {APPNAME}
+				${LightBlue}am -e --user user/project {APPNAME}\033[0m
 				${LightBlue}am -e --user user/project {APPNAME} {KEYWORD}\033[0m
 
 			NOTE, \"AM\" 9 or higher is also able to, update and manage apps locally, by default, and without having to switch to \"AppMan Mode\".
 
+			Description: Switch \"AM\" back to \"AM\" from \"AppMan Mode\" (see \"--user\").
+
+			$DIVIDING_LINE
+
+			THIRD-PARTY FLAGS: $third_party_flags_message
 			$DIVIDING_LINE
 
 			 SITES:

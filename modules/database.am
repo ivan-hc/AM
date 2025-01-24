@@ -113,7 +113,9 @@ _about_page() {
 #				FILES
 ################################################################################
 _files_header() {
-	CHECK_SUPPORTED_THIRD_PARTY_APPS="$(find "$APPSPATH"/* -type f -name '*.toolpack' -print -quit 2>/dev/null)"
+	for f in $third_party_lists; do
+		[ -z "$CHECK_SUPPORTED_THIRD_PARTY_APPS" ] && CHECK_SUPPORTED_THIRD_PARTY_APPS="$(find "$APPSPATH"/* -type f -name "*.$f*" -print -quit 2>/dev/null)"
+	done
 	echo ""
 	_files_number
 	APPSNUMB="$FILES_NUMBER"
@@ -388,23 +390,26 @@ _files_launcher() {
 ################################################################################
 #				LIST/QUERY
 ################################################################################
+
+# Functions to beautify lists
 _pretty_list() {
 	# Remove references to URLs, "-a" elements in "-l" and "-q"
-	sed -E 's#(http|https|ftp)://[^ ]*##g; s#(SITE|SOURCE):##g; s/^/\n/g' | _colors | fold -sw 75 | sed 's/^/   /g; s/  ◆ /◆ /g; s/  :/ :/g'
+	sed -E 's#(http|https|ftp)://[^ ]*##g; s#(SITE|SOURCE):##g; s/^/\n/g' | fold -sw 78 | sed 's/^/   /g; s/  ◆ /◆ /g; s/  :/ :/g' | _colors
 }
 
 _pretty_list_compat() {
 	# Remove references to URLs, "-a" elements in "-l" and "-q"
-	sed -E 's#(http|https|ftp)://[^ ]*##g; s#(SITE|SOURCE):##g' | _colors | fold -sw 75 | sed 's/^/   /g; s/  ◆ /◆ /g; s/  :/ :/g'
+	sed -E 's#(http|https|ftp)://[^ ]*##g; s#(SITE|SOURCE):##g' | fold -sw 78 | sed 's/^/   /g; s/  ◆ /◆ /g; s/  :/ :/g' | _colors
 }
 
 _colors() {
-	awk '{
+	awk '/^ ◆ /{
 		printf "%s \033[32m%s\033[0m", $1, $2
 		{$1 = ""; $2 = ""; print $0;}
-	}'
+	}1' | grep -v "^  :" | sed 's/^   /  /g; s/  : / : /g'
 }
 
+#functions to create and handle lists
 _list() {
 	# Check if github.com is online, if not, the function will read the offline list
 	wget -q --tries=10 --timeout=20 --spider https://github.com && _completion_lists
@@ -423,21 +428,23 @@ _list() {
 	fi
 	APPSNUMBER=$(("$ITEMSNUMBER" - "$LIBNUMBER"))
 	# Determine the number of available apps from the list
-	AVAILABLE_APPS_NUMBER=$(grep -v "ffwa-\|\"kdegames\"\|\"kdeutils\"\|\"node\"\|\"platform-tools\"" "$AMDATADIR/$ARCH-apps" | grep -e "$" -c)
+	AVAILABLE_APPS_NUMBER=$(grep -v "ffwa-\|\"kdegames\"\|\"kdeutils\"\|\"node\"\|\"platform-tools\"" "$AMDATADIR/$ARCH-apps" | grep -e "^◆.*$" -c)
 	if ! test -f "$AMDATADIR/$ARCH-appimages"; then
 		_online_check
 		_sync_appimages_list
-		AVAILABLE_APPIMAGES_NUMBER=$(grep -e "$" -c "$AMDATADIR/$ARCH-appimages")
+		AVAILABLE_APPIMAGES_NUMBER=$(grep -e "^◆.*$" -c "$AMDATADIR/$ARCH-appimages")
 	else
-		AVAILABLE_APPIMAGES_NUMBER=$(grep -e "$" -c "$AMDATADIR/$ARCH-appimages")
+		AVAILABLE_APPIMAGES_NUMBER=$(grep -e "^◆.*$" -c "$AMDATADIR/$ARCH-appimages")
 	fi
-	if ! test -f "$AMDATADIR/$ARCH-toolpack"; then
-		_online_check && _sync_third_party_lists && _completion_lists
-	fi
-	if ! test -f "$AMDATADIR/$ARCH-appbundle"; then
-		_online_check && _sync_third_party_lists && _completion_lists
-	fi
-	AVAILABLE_THIRD_PARTY_NUMBER=$(sort "$AMDATADIR/$ARCH-appbundle" "$AMDATADIR/$ARCH-toolpack" | grep -e "$" -c)
+	# Determine the number of third-party apps
+	for t in $third_party_lists; do
+		[ ! -f "$AMDATADIR/$ARCH-$t" ] && _online_check && _sync_third_party_lists && _completion_lists
+	done
+	tp_lists=$(find "$AMDATADIR" -type f -name "$ARCH-*" | grep -v "appimages\|apps")
+	for t in $tp_lists; do
+		[ -z "$TP_LISTS" ] && TP_LISTS=$(sort -u "$t") || TP_LISTS="$TP_LISTS\n$(sort -u "$t")"
+	done
+	[ -n "$third_party_lists" ] && AVAILABLE_THIRD_PARTY_NUMBER=$(printf "%b" "$TP_LISTS" | sort -u | grep -e "^◆.*$" -c)
 	[ -n "$AVAILABLE_THIRD_PARTY_NUMBER" ] && AVAILABLE_TOTAL_APPS_NUMBER=$(("$AVAILABLE_APPS_NUMBER" + "$AVAILABLE_THIRD_PARTY_NUMBER"))
 	# Generate a list of the installed apps with version
 	[ ! -f "$AMCACHEDIR"/version-args ] && _check_version
@@ -462,63 +469,15 @@ _list() {
 	fi
 }
 
-_list_appimages() {
-	wget -q --tries=10 --timeout=20 --spider https://github.com && _sync_appimages_list
-	if ! test -f "$AMDATADIR/$ARCH-appimages"; then
-		_online_check
-		_sync_appimages_list
-	fi
+_list_msg() {
+	printf "\n%b\n\n%b\n\n" "$MESSAGE" "$MESSAGE2"
+	SUBJECT_UPPER=$(echo "$SUBJECT" | tr '[:lower:]' '[:upper:]')
+	[ "$2" != --all ] && printf " To list all installable programs, use the \"%b--all\033[0m\" flag\n\n" "${LightBlue}"
+	printf " LIST OF THE %b" "$SUBJECT_UPPER:"
+	printf "\n%b\n" "$LIST"
 }
 
-_list_third_party() {
-	wget -q --tries=10 --timeout=20 --spider https://github.com && _sync_third_party_lists
-	if ! test -f "$AMDATADIR/$ARCH-toolpack"; then
-		_online_check && _sync_toolpacks_list
-	fi
-	if ! test -f "$AMDATADIR/$ARCH-appbundle"; then
-		_online_check && _sync_appbundle_list
-	fi
-}
-
-_list_msg_head() {
-	echo "" && echo "$MESSAGE" && echo "" && echo "$MESSAGE2" && echo ""
-}
-
-_list_msg_suggest_all() {
-	printf "\n To list all installable programs, use the \"%b--all\033[0m\" flag\n" "${LightBlue}"
-}
-
-_list_msg_footer() {
-	echo "$LIST" && echo ""
-}
-
-_list_third_party_msg() {
-	_list_msg_head
-	echo " $AVAILABLE_THIRD_PARTY_NUMBER PROGRAMS AVAILABLE ON \"TOOLPACKS\" & \"APPBUNDLEHUB\" DATABASES:"
-	_list_msg_suggest_all
-	_list_msg_footer
-}
-
-_list_appimages_msg() {
-	_list_msg_head
-	echo " LIST OF THE $AVAILABLE_APPIMAGES_NUMBER APPIMAGES AVAILABLE IN THE \"AM\" DATABASE:"
-	_list_msg_suggest_all
-	_list_msg_footer
-}
-
-_list_apps_msg() {
-	_list_msg_head
-	echo " LIST OF THE $AVAILABLE_APPS_NUMBER PROGRAMS AVAILABLE IN THE \"AM\" DATABASE:"
-	_list_msg_suggest_all
-	_list_msg_footer
-}
-
-_list_apps_all_msg() {
-	_list_msg_head
-	echo " LIST OF THE $AVAILABLE_TOTAL_APPS_NUMBER PROGRAMS AVAILABLE IN ALL SUPPORTED DATABASES:"
-	_list_msg_footer
-}
-
+# Functions used in "query"
 _query_lists() {
 	printf "\n Search results for \"%s\":\n\n"  "$@" | tr '[:lower:]' '[:upper:]'
 }
@@ -571,34 +530,37 @@ case "$1" in
 		;;
 
 	'-l'|'list')
-		_list
 		if [ "$2" = --all ]; then
-			_list_third_party
-			LIST=$(sort -u "$AMDATADIR/$ARCH-apps" "$AMDATADIR/$ARCH-toolpack" | _pretty_list)
-			_list_apps_all_msg | less -Ir
-			echo "$DIVIDING_LINE"
-			echo " $(("$AVAILABLE_APPS_NUMBER" + "$AVAILABLE_THIRD_PARTY_NUMBER")) programs in all supported databases"
-			echo "$DIVIDING_LINE"
+			wget -q --tries=10 --timeout=20 --spider https://github.com && _sync_databases 1>/dev/null
+			_list
+			SUBJECT="$AVAILABLE_TOTAL_APPS_NUMBER programs available in all supported databases"
+			LIST=$(sort -u "$AMDATADIR"/"$ARCH"-* | grep "^◆ .*$" 2>/dev/null | _pretty_list)
+			_list_msg "$@" | less -Ir
+			printf "%b\n %b\n%b\n" "$DIVIDING_LINE" "$SUBJECT" "$DIVIDING_LINE"
 		elif [ "$2" = --appimages ]; then
-			_list_appimages
-			LIST=$(sort "$AMDATADIR/$ARCH-appimages" | _pretty_list)
-			_list_appimages_msg | less -Ir
-			echo "$DIVIDING_LINE"
-			echo " $AVAILABLE_APPIMAGES_NUMBER AppImages in the \"AM\" database"
-			echo "$DIVIDING_LINE"
+			wget -q --tries=10 --timeout=20 --spider https://github.com && _sync_appimages_list
+			_list
+			SUBJECT="$AVAILABLE_APPIMAGES_NUMBER AppImages available in the \"AM\" database"
+			LIST=$(sort -u "$AMDATADIR"/"$ARCH"-appimages | grep "^◆ .*$" 2>/dev/null | _pretty_list)
+			_list_msg "$@" | less -Ir
+			printf "%b\n %b\n%b\n" "$DIVIDING_LINE" "$SUBJECT" "$DIVIDING_LINE"
 		elif [ "$2" = --toolpack ]; then
-			_list_third_party
-			LIST=$(sort "$AMDATADIR/$ARCH-toolpack" "$AMDATADIR/$ARCH-appbundle" | _pretty_list)
-			_list_third_party_msg | less -Ir
-			echo "$DIVIDING_LINE"
-			echo " $AVAILABLE_THIRD_PARTY_NUMBER programs in the \"Toolpacks\" & \"AppBundleHUB\" databases"
-			echo "$DIVIDING_LINE"
+			wget -q --tries=10 --timeout=20 --spider https://github.com && _sync_third_party_lists 2>/dev/null
+			_list
+			SUBJECT="$AVAILABLE_THIRD_PARTY_NUMBER programs available on third-party databases"
+			tp_lists=$(find "$AMDATADIR" -type f -name "$ARCH-*" | grep -v "appimages\|apps")
+			for t in $tp_lists; do
+				[ -z "$TP_LISTS" ] && TP_LISTS=$(sort -u "$t") || TP_LISTS="$TP_LISTS\n$(sort -u "$t")"
+			done
+			LIST=$(printf "%b" "$TP_LISTS" | sort -u | grep "^◆ .*$" 2>/dev/null | _pretty_list)
+			_list_msg "$@" | less -Ir
+			printf "%b\n %b\n%b\n" "$DIVIDING_LINE" "$SUBJECT" "$DIVIDING_LINE"
 		else
-			LIST=$(sort "$AMDATADIR/$ARCH-apps" | _pretty_list)
-			_list_apps_msg | less -Ir
-			echo "$DIVIDING_LINE"
-			echo " $AVAILABLE_APPS_NUMBER programs in the \"AM\" database"
-			echo "$DIVIDING_LINE"
+			_list
+			SUBJECT="$AVAILABLE_APPS_NUMBER programs available in the \"AM\" database"
+			LIST=$(sort -u "$AMDATADIR"/"$ARCH"-apps | grep "^◆ .*$" 2>/dev/null | _pretty_list)
+			_list_msg "$@" | less -Ir
+			printf "%b\n %b\n%b\n" "$DIVIDING_LINE" "$SUBJECT" "$DIVIDING_LINE"
 		fi
 		;;
 
@@ -609,7 +571,7 @@ case "$1" in
 			echo "        $AMCLI $1 --all [ARGUMENT]"
 			echo "        $AMCLI $1 --appimages [ARGUMENT]"
 			echo "        $AMCLI $1 --pkg [ARGUMENT]"
-			echo "        $AMCLI $1 --toolpack [ARGUMENT]"
+			[ -n "$toolpack_readme" ] && echo "        $AMCLI $1 --toolpack [ARGUMENT]"
 			echo ""; exit 1
 		fi
 		wget -q --tries=10 --timeout=20 --spider https://github.com && _completion_lists
@@ -618,23 +580,23 @@ case "$1" in
 			shift
 			regex="$(echo "$@" | tr -s ' ' '|')"
 			printf "\n Search results for packages: %s\n\n" "$regex" | tr '[:lower:]' '[:upper:]'
-			sort -u "$AMDATADIR"/"$ARCH"-* \
+			sort -u "$AMDATADIR"/"$ARCH"-* 2>/dev/null | grep "^◆ .*$" 2>/dev/null \
 				| grep -iE "$regex" --color=always | _pretty_list_compat
 		elif [ "$1" = --all ]; then
 			shift
 			_query_lists "$*"
-			_list_third_party && sort -u  "$AMDATADIR"/"$ARCH"-* | _find_no_order "$@" | _pretty_list_compat
+			sort -u  "$AMDATADIR"/"$ARCH"-* 2>/dev/null | grep "^◆ .*$" 2>/dev/null | _find_no_order "$@" | _pretty_list_compat
 		elif [ "$1" = --appimages ]; then
 			shift
 			_query_lists "$*"
-			_list_appimages && sort -u "$AMDATADIR/$ARCH-appimages" | _find_no_order "$@" | _pretty_list_compat
+			sort -u "$AMDATADIR/$ARCH-appimages" 2>/dev/null | grep "^◆ .*$" 2>/dev/null | _find_no_order "$@" | _pretty_list_compat
 		elif [ "$1" = --toolpack ]; then
 			shift
 			_query_lists "$*"
-			_list_third_party && sort -u "$AMDATADIR/$ARCH-toolpack" | _find_no_order "$@" | _pretty_list_compat
+			sort -u "$AMDATADIR/$ARCH-toolpack" 2>/dev/null | grep "^◆ .*$" 2>/dev/null | _find_no_order "$@" | _pretty_list_compat
 		else
 			_query_lists "$*"
-			sort -u "$AMDATADIR"/"$ARCH"-app* | _find_no_order "$@" | _pretty_list_compat
+			sort -u "$AMDATADIR"/"$ARCH"-app* 2>/dev/null | grep "^◆ .*$" 2>/dev/null | _find_no_order "$@" | _pretty_list_compat
 		fi
 		printf '\n'
 		;;

@@ -249,7 +249,7 @@ _ending_the_installation() {
 
 _install_arg() {
 	# This function is needed to parse the installation script and then execute it
-	APPNAME=$(echo "\"$arg\"" | sed 's/appbundle.toolpack/appbundle/g' | tr '[:lower:]' '[:upper:]')
+	APPNAME=$(echo "\"$pure_arg\"" | tr '[:lower:]' '[:upper:]')
 	chmod a+x ./"$arg"
 	_check_if_optional_dependences_are_needed || return 1
 	_check_if_script_installs_a_metapackage || return 1
@@ -283,35 +283,14 @@ _install_arg() {
 	_ending_the_installation
 }
 
-#--------------------------------------------------------------------------
+################################################################################
 #			INSTALLATION CASES
-#--------------------------------------------------------------------------
+################################################################################
 
-_3rd_party_apps_handler() {
-	# This function is needed to handle programs from third-party supported databases
-	mkdir -p "$CACHEDIR/extra"
-	if echo "$arg" | grep -q "appbundle$"; then
-		third_party_readme="$appbundle_readme"
-	else
-		third_party_readme="$toolpack_readme"
-	fi
-	awk_version="curl -Ls $third_party_readme | grep -i \"^| $arg \" | tr '|' '\\\n' | cut -c 2- | grep . | awk -F: \"NR==$awk_ver\""
-	third_party_url="curl -Ls $third_party_readme | grep -i \"^| $arg \" | tr '|' '\\\n' | cut -c 2- | grep . | awk -F: \"NR==$awk_dl\""
-	if echo "$arg" | grep -q "appbundle$"; then
-		curl -Ls "$AMREPO"/templates/AM-SAMPLE-AppBundle > "$CACHEDIR/extra/$arg.toolpack" || exit 1
-		sed -i "s#APP=SAMPLE#APP=$arg#g; s#FUNCTION#$awk_version#g; s#wget \"\$version\"#wget \$($third_party_url)#g" "$CACHEDIR/extra/$arg.toolpack"
-		sed -i 's/\.dwfs.appbundle$//g; s/\.appbundle$//g' "$CACHEDIR/extra/$arg.toolpack"
-	elif echo "$arg" | grep -q "nixappimage$"; then
-		curl -Ls "$AMREPO"/templates/AM-SAMPLE-AppImage > "$CACHEDIR/extra/$arg.toolpack" || exit 1
-		sed -i "s#APP=SAMPLE#APP=$arg#g; s#FUNCTION#$awk_version#g; s#wget \"\$version\"#wget \$($third_party_url)#g" "$CACHEDIR/extra/$arg.toolpack"
-		sed -i 's/\.nixappimage$//g' "$CACHEDIR/extra/$arg.toolpack"
-	else
-		curl -Ls "$AMREPO"/templates/AM-SAMPLE-Archive > "$CACHEDIR/extra/$arg.toolpack" || exit 1
-		sed -i "s#APP=SAMPLE#APP=$arg#g; s#FUNCTION#$awk_version#g; s#wget \"\$version\"#wget \$($third_party_url)#g" "$CACHEDIR/extra/$arg.toolpack"
-		sed -e '/\[ -e/ s/^#*/#/' -i "$CACHEDIR/extra/$arg.toolpack" 2>/dev/null
-	fi
-	chmod a+x "$CACHEDIR/extra/$arg.toolpack"
-	arg="$CACHEDIR/extra/$arg.toolpack"
+_determine_pure_arg_name() {
+	pure_arg=$(echo "$arg" | sed 's/\.toolpack//g; s/\.dwfs.appbundle$//g; s/\.appbundle$//g; s/\.nixappimage//g')
+	pure_arg=$(echo "$pure_arg" | sed 's/\.appimage//g; s/\^debian-testing-//g; s/\-appimage$//g' | sed 's:.*/::')
+	echo "$arg" | grep -q -- "-appimage$" && curl -Ls "$APPSDB"/"$arg" | grep -q "APP=.*-appimage$" && pure_arg="$arg"
 }
 
 _install_appimage() {
@@ -352,6 +331,52 @@ _install_normally() {
 	curl -Ls "$APPSDB"/"$arg" > "$AMCACHEDIR"/tmp/"$arg" || return 1
 	cd "$AMCACHEDIR" && mv ./tmp/"$arg" ./"$arg" && rmdir ./tmp || return 1
 	_install_arg
+}
+
+################################################################################
+#			THIRD PARTY DATABASES
+################################################################################
+
+_3rd_party_check() {
+	echo "$@" | grep -q -- "--toolpack" || echo "$arg" | grep -q ".toolpack$" || echo "$arg" | grep -q ".appbundle$"
+}
+
+_3rd_party_apps_handler() {
+	# This function is needed to handle programs from third-party supported databases
+	mkdir -p "$CACHEDIR/extra"
+	if echo "$arg" | grep -q "appbundle$"; then
+		[ -n "$appbundle_readme" ] && third_party_readme="$appbundle_readme"
+	else
+		[ -n "$toolpack_readme" ] && third_party_readme="$toolpack_readme"
+	fi
+	awk_version="curl -Ls $third_party_readme | grep -i \"^| $arg \" | tr '|' '\\\n' | cut -c 2- | grep . | awk -F: \"NR==$awk_ver\""
+	third_party_url="curl -Ls $third_party_readme | grep -i \"^| $arg \" | tr '|' '\\\n' | cut -c 2- | grep . | awk -F: \"NR==$awk_dl\""
+	if echo "$arg" | grep -q "appbundle$"; then
+		curl -Ls "$AMREPO"/templates/AM-SAMPLE-AppBundle > "$CACHEDIR/extra/$arg.toolpack" || exit 1
+		sed -i "s#APP=SAMPLE#APP=$arg#g; s#FUNCTION#$awk_version#g; s#wget \"\$version\"#wget \$($third_party_url)#g" "$CACHEDIR/extra/$arg.toolpack"
+		sed -i 's/\.dwfs.appbundle$//g; s/\.appbundle$//g' "$CACHEDIR/extra/$arg.toolpack"
+	elif echo "$arg" | grep -q "nixappimage$"; then
+		curl -Ls "$AMREPO"/templates/AM-SAMPLE-AppImage > "$CACHEDIR/extra/$arg.toolpack" || exit 1
+		sed -i "s#APP=SAMPLE#APP=$arg#g; s#FUNCTION#$awk_version#g; s#wget \"\$version\"#wget \$($third_party_url)#g" "$CACHEDIR/extra/$arg.toolpack"
+		sed -i 's/\.nixappimage$//g' "$CACHEDIR/extra/$arg.toolpack"
+	else
+		curl -Ls "$AMREPO"/templates/AM-SAMPLE-Archive > "$CACHEDIR/extra/$arg.toolpack" || exit 1
+		sed -i "s#APP=SAMPLE#APP=$arg#g; s#FUNCTION#$awk_version#g; s#wget \"\$version\"#wget \$($third_party_url)#g" "$CACHEDIR/extra/$arg.toolpack"
+		sed -e '/\[ -e/ s/^#*/#/' -i "$CACHEDIR/extra/$arg.toolpack" 2>/dev/null
+	fi
+	chmod a+x "$CACHEDIR/extra/$arg.toolpack"
+	arg="$CACHEDIR/extra/$arg.toolpack"
+}
+
+_install_3rd_party_app() {
+	arg=$(echo "$arg" | sed 's/\.toolpack//g; s/\.appimage//g')
+	if curl -Ls "$appbundle_readme" 2>/dev/null | grep -q "^| $arg " || curl -Ls "$toolpack_readme" 2>/dev/null | grep -q "^| $arg "; then
+		_3rd_party_apps_handler
+		_install_local_script
+	else
+		echo " 💀 ERROR, \"$arg\" does NOT exist in 3rd-party databases:"
+		printf "\nTry without the \"--toolpack\" flag or run \"%b$AMCLIPATH_ORIGIN -l --all\033[0m\" to check all lists.\n" "${Gold}" | fold -sw 72 | sed 's/^/ /g'
+	fi
 }
 
 ################################################################################
@@ -419,10 +444,10 @@ case "$1" in
 			cd "$REALDIR" || return 1
 			# If the "tmp" directory is not removed, the installation failed, so remove the app
 			[ -d "$APPSPATH"/"$arg"/tmp ] && $SUDOCMD "$APPSPATH"/"$arg"/remove 2> /dev/null
+
 			# Check if the app wil be installed with the same name as the argument
-			pure_arg=$(echo "$arg" | sed 's/\.toolpack//g; s/\.dwfs.appbundle$//g; s/\.appbundle$//g; s/\.nixappimage//g')
-			pure_arg=$(echo "$pure_arg" | sed 's/\.appimage//g; s/\^debian-testing-//g; s/\-appimage$//g' | sed 's:.*/::')
-			echo "$arg" | grep -q -- "-appimage$" && curl -Ls "$APPSDB"/"$arg" | grep -q "APP=.*-appimage$" && pure_arg="$arg"
+			_determine_pure_arg_name
+
 			# Test if a symlink is broken
 			[ -n "$BINDIR" ] && find "$BINDIR" -xtype l -name "$pure_arg" -delete 2>/dev/null
 			# Various cases that may occur during installation
@@ -436,14 +461,8 @@ case "$1" in
 				else
 					echo " 💀 ERROR: the file \"$arg\" does NOT exist"
 				fi
-			elif echo "$@" | grep -q -- "--toolpack" || echo "$arg" | grep -q ".toolpack$" || echo "$arg" | grep -q ".appbundle$"; then
-				arg=$(echo "$arg" | sed 's/\.toolpack//g; s/\.appimage//g')
-				if curl -Ls "$appbundle_readme" | grep -q "^| $arg " || curl -Ls "$toolpack_readme" | grep -q "^| $arg "; then
-					_3rd_party_apps_handler
-					_install_local_script
-				else
-					echo "💀 ERROR: \"$arg\" does NOT exist, $(printf "please check the list, run the \"%b$AMCLIPATH_ORIGIN -l --all\033[0m\" command.\n\n" "${Gold}")" | fold -sw 72 | sed 's/^/ /g'
-				fi
+			elif _3rd_party_check "$@"; then
+				_install_3rd_party_app
 			elif curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg" 1>/dev/null; then
 				_install_normally
 			else
