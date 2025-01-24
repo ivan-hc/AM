@@ -426,21 +426,23 @@ _list() {
 	fi
 	APPSNUMBER=$(("$ITEMSNUMBER" - "$LIBNUMBER"))
 	# Determine the number of available apps from the list
-	AVAILABLE_APPS_NUMBER=$(grep -v "ffwa-\|\"kdegames\"\|\"kdeutils\"\|\"node\"\|\"platform-tools\"" "$AMDATADIR/$ARCH-apps" | grep -e "$" -c)
+	AVAILABLE_APPS_NUMBER=$(grep -v "ffwa-\|\"kdegames\"\|\"kdeutils\"\|\"node\"\|\"platform-tools\"" "$AMDATADIR/$ARCH-apps" | grep -e "^◆.*$" -c)
 	if ! test -f "$AMDATADIR/$ARCH-appimages"; then
 		_online_check
 		_sync_appimages_list
-		AVAILABLE_APPIMAGES_NUMBER=$(grep -e "$" -c "$AMDATADIR/$ARCH-appimages")
+		AVAILABLE_APPIMAGES_NUMBER=$(grep -e "^◆.*$" -c "$AMDATADIR/$ARCH-appimages")
 	else
-		AVAILABLE_APPIMAGES_NUMBER=$(grep -e "$" -c "$AMDATADIR/$ARCH-appimages")
+		AVAILABLE_APPIMAGES_NUMBER=$(grep -e "^◆.*$" -c "$AMDATADIR/$ARCH-appimages")
 	fi
-	if ! test -f "$AMDATADIR/$ARCH-toolpack"; then
-		_online_check && _sync_third_party_lists && _completion_lists
-	fi
-	if ! test -f "$AMDATADIR/$ARCH-appbundle"; then
-		_online_check && _sync_third_party_lists && _completion_lists
-	fi
-	AVAILABLE_THIRD_PARTY_NUMBER=$(sort "$AMDATADIR/$ARCH-appbundle" "$AMDATADIR/$ARCH-toolpack" | grep -e "$" -c)
+	# Determine the number of third-party apps
+	for t in $third_party_lists; do
+		[ ! -f "$AMDATADIR/$ARCH-$t" ] && _online_check && _sync_third_party_lists && _completion_lists
+	done
+	tp_lists=$(find "$AMDATADIR" -type f -name "$ARCH-*" | grep -v "appimages\|apps")
+	for t in $tp_lists; do
+		[ -z "$TP_LISTS" ] && TP_LISTS=$(sort -u "$t") || TP_LISTS="$TP_LISTS\n$(sort -u "$t")"
+	done
+	[ -n "$third_party_lists" ] && AVAILABLE_THIRD_PARTY_NUMBER=$(printf "%b" "$TP_LISTS" | sort -u | grep -e "^◆.*$" -c)
 	[ -n "$AVAILABLE_THIRD_PARTY_NUMBER" ] && AVAILABLE_TOTAL_APPS_NUMBER=$(("$AVAILABLE_APPS_NUMBER" + "$AVAILABLE_THIRD_PARTY_NUMBER"))
 	# Generate a list of the installed apps with version
 	[ ! -f "$AMCACHEDIR"/version-args ] && _check_version
@@ -530,14 +532,14 @@ case "$1" in
 			wget -q --tries=10 --timeout=20 --spider https://github.com && _sync_databases 1>/dev/null
 			_list
 			SUBJECT="$AVAILABLE_TOTAL_APPS_NUMBER programs available in all supported databases"
-			LIST=$(sort -u "$AMDATADIR"/"$ARCH"-* | _pretty_list)
+			LIST=$(sort -u "$AMDATADIR"/"$ARCH"-* | grep "^◆ .*$" 2>/dev/null | _pretty_list)
 			_list_msg "$@" | less -Ir
 			printf "%b\n %b\n%b\n" "$DIVIDING_LINE" "$SUBJECT" "$DIVIDING_LINE"
 		elif [ "$2" = --appimages ]; then
 			wget -q --tries=10 --timeout=20 --spider https://github.com && _sync_appimages_list
 			_list
 			SUBJECT="$AVAILABLE_APPIMAGES_NUMBER AppImages available in the \"AM\" database"
-			LIST=$(sort -u "$AMDATADIR"/"$ARCH"-appimages | _pretty_list)
+			LIST=$(sort -u "$AMDATADIR"/"$ARCH"-appimages | grep "^◆ .*$" 2>/dev/null | _pretty_list)
 			_list_msg "$@" | less -Ir
 			printf "%b\n %b\n%b\n" "$DIVIDING_LINE" "$SUBJECT" "$DIVIDING_LINE"
 		elif [ "$2" = --toolpack ]; then
@@ -548,13 +550,13 @@ case "$1" in
 			for t in $tp_lists; do
 				[ -z "$TP_LISTS" ] && TP_LISTS=$(sort -u "$t") || TP_LISTS="$TP_LISTS\n$(sort -u "$t")"
 			done
-			LIST=$(printf "%b" "$TP_LISTS" | sort -u | _pretty_list)
+			LIST=$(printf "%b" "$TP_LISTS" | sort -u | grep "^◆ .*$" 2>/dev/null | _pretty_list)
 			_list_msg "$@" | less -Ir
 			printf "%b\n %b\n%b\n" "$DIVIDING_LINE" "$SUBJECT" "$DIVIDING_LINE"
 		else
 			_list
 			SUBJECT="$AVAILABLE_APPS_NUMBER programs available in the \"AM\" database"
-			LIST=$(sort -u "$AMDATADIR"/"$ARCH"-apps | _pretty_list)
+			LIST=$(sort -u "$AMDATADIR"/"$ARCH"-apps | grep "^◆ .*$" 2>/dev/null | _pretty_list)
 			_list_msg "$@" | less -Ir
 			printf "%b\n %b\n%b\n" "$DIVIDING_LINE" "$SUBJECT" "$DIVIDING_LINE"
 		fi
