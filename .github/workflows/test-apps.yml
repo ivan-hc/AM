@@ -89,6 +89,7 @@ jobs:
     needs: update-testing-branch
     runs-on: ubuntu-22.04
     outputs:
+      skip: ${{ steps.set-matrix.outputs.skip }}
       matrix: ${{ steps.set-matrix.outputs.matrix }}
       count: ${{ steps.am-install.outputs.count }}
     steps:
@@ -104,8 +105,8 @@ jobs:
           find programs/x86_64/ -maxdepth 1 -type f -printf "%f\n" | sort > all.list
           if [[ -f tested.list ]]; then
             if diff -q all.list tested.list; then
-              echo "Everything already tested? Add new app or delete tested.list"
-              exit 99
+              echo "skip=true" >> $GITHUB_OUTPUT
+              exit 0
             else
               comm -23 all.list tested.list > totest_tmp.list
             fi
@@ -115,6 +116,10 @@ jobs:
           if [[ -f failed.list ]]; then
             comm -23 totest_tmp.list failed.list > totest.list
             echo "Excluding failed!"
+            if [ ! -s totest.list ]; then
+              echo "skip=true" >> $GITHUB_OUTPUT
+              exit 0
+            fi
           else
             mv totest_tmp.list totest.list
           fi
@@ -130,6 +135,7 @@ jobs:
     name: "🔨"
     needs: generate-matrix
     runs-on: ubuntu-22.04
+    if: ${{ needs.generate-matrix.outputs.skip != 'true' }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
@@ -242,7 +248,7 @@ jobs:
     name: "results 📰"
     needs: run-actions
     runs-on: ubuntu-22.04
-    if: always()
+    if: ${{ needs.generate-matrix.outputs.skip != 'true' }}
     steps:
       - name: "Check out repository 🏃"
         uses: actions/checkout@v4
@@ -318,7 +324,7 @@ jobs:
     name: "cleanup 🧹"
     runs-on: ubuntu-22.04
     needs: update-tested-list
-    if: always()
+    if: ${{ needs.generate-matrix.outputs.skip != 'true' }}
     steps:
       - name: "Check out repository 🏃"
         uses: actions/checkout@v4
@@ -349,3 +355,12 @@ jobs:
             ((PAGE+=1))
           done
           echo "Successfully deleted $DELETED artifacts."
+
+  already-tested:
+    name: "tested"
+    runs-on: ubuntu-22.04
+    needs: generate-matrix
+    if: ${{ needs.generate-matrix.outputs.skip == 'true' }}
+    steps:
+      - name: "Mark as Successful"
+        run: echo "All apps already tested..." >> $GITHUB_STEP_SUMMARY
