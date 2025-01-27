@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+
+##########################################################################
+# THIS MODULE CONTAINS YAD GUI FOR AM
+##########################################################################
+
+version="0.02"
+echo "$version"
+
+check_yad() {
+	if ! command -v yad >/dev/null 2>&1; then
+		echo "ERROR! yad is missing! Install it..."
+	fi
+}
+
+check_yad
+
+am_install() {
+  "$(am -i $@)"
+}
+
+am -l | sed -n '3,$p' | grep ":" | cut -d' ' -f2-23 | cut -d' ' -f1 | tail -n +2 | sed 's/^/FALSE /' | tr '\n' ' ' | sed 's/ $//' > /tmp/instalable-yad-list
+INSTALLABLE=$(cat /tmp/instalable-yad-list)
+am -l | sed -n '3,$p' | grep ":" | cut -d' ' -f2-23 | cut -d' ' -f1 | tail -n +2 | tr '\n' '!' > /tmp/instalable-completion
+INSTALLABLE_COMPLETION=$(cat /tmp/instalable-completion)
+am -f | awk 'NR>=4 {if (NF==0) exit; print $2,$4,$6,$8,$9}' | sort | tail -n +2 > /tmp/installed-info
+APPSLIST=$(cat /tmp/installed-info | tail -n +2 )
+cat /tmp/installed-info | awk 'NR>=2 {print $1}' | sed 's/^/FALSE /' | tr '\n' ' ' | sed 's/ $//' > /tmp/am-removable
+REMOVABLE=$(cat /tmp/am-removable)
+am -l | sed -n '3,$p' | grep ":" | cut -d' ' -f2-23 | tail -n +2 | cut -d' ' -f1,3- > /tmp/available-list
+
+create_list() {
+  args=()
+	while IFS= read -r line; do
+		name=$(echo "$line" | cut -d ' ' -f1)  # First row (appname)
+		desc=$(echo "$line" | cut -d ' ' -f2-) # Everything from second column (about)
+		desc=$(echo "$desc" | sed 's/&/\&amp;/g') # & → &amp;
+		args+=("FALSE" "$name" "$desc") # Add arguments to fields
+	done < /tmp/available-list
+  yad --list --checklist --scrollable --column install --column app --column about "${args[@]}"
+}
+
+run_list() {
+  yad --list --scrollable  --width=740 --height=800 --column app --column version --column type --column size --column iB $APPSLIST
+}
+
+run_install() {
+  yad --form --separator=' ' --field='available!Choose app to install':CE --align=right $INSTALLABLE_COMPLETION
+}
+
+run_remove() {
+  yad --list --checklist --scrollable --width=740 --height=800 --column remove --column name $REMOVABLE
+}
+
+export INSTALLABLE
+export INSTALLABLE_COMPLETION
+export APPSLIST
+export REMOVABLE
+export -f run_list
+export -f run_install
+export -f run_remove
+export -f create_list
+yad --form \
+ --title="AM GUI" \
+ --separator=' ' \
+ --cycle-read \
+ --field="📋 Installed":BTN "bash -c run_list" \
+ --field="📥 Install":BTN "bash -c run_install" \
+ --field="📥 Install apps":BTN "bash -c create_list" \
+ --field="🗑️ Uninstall":BTN "bash -c run_remove" \
+ --field="ℹ️ About yad":BTN "yad --about" \
+ --field="ℹ️ About GUI":BTN "echo --about" \
+ --field="❌ Close":BTN "echo --close"
+
+exit 0
