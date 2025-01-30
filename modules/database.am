@@ -8,47 +8,7 @@
 #				ABOUT
 ################################################################################
 
-_about_status() {
-	if [ -f "$argpath/remove" ]; then
-		app_status="installed\033[0m"
-		if test -f "$argpath"/.am-installer/*; then
-			scriptname=$(basename -- "$(find "$argpath"/.am-installer/* | head -1)" | sed 's/appbundle.toolpack$/appbundle/g')
-			if [ "$app_name" != "$scriptname" ]; then
-				app_status="installed\033[0m, but replaced by ${Green}$scriptname\033[0m\n\n Note, run ${RED}$AMCLI -a $scriptname\033[0m instead"
-				if test -f "$argpath"/.am-installer/*appbundle* && ! grep -q "◆ $arg : " "$AMDATADIR/$ARCH-apps" && grep -q "◆ $arg.dwfs.appbundle : " "$AMDATADIR"/"$ARCH"-*; then
-					app_status="installed\033[0m\n\n Real package name: ${Gold}$arg.dwfs.appbundle\033[0m"
-				elif [ "$package_name" = "$scriptname" ]; then
-					app_status="installed\033[0m, as ${Green}$app_name\033[0m"
-				fi
-			fi
-		fi
-	else
-		app_status="not installed\n"
-	fi
-	if echo "$arg" | grep -q -- "-appimage$\|^debian-testing-" && ! test -f "$argpath"/.am-installer/"$arg"; then
-		app_status="not installed\n"
-	fi
-	if ! grep -q "◆ $arg : " "$AMDATADIR/$ARCH-apps" && grep -q "◆ $arg.dwfs.appbundle : " "$AMDATADIR"/"$ARCH"-*; then
-		if ! echo "$app_status" | grep -q "^installed"; then
-			app_status="not installed\n\n Real package name: ${Gold}$arg.dwfs.appbundle\033[0m\n"
-		fi
-	fi
-}
-
-_about_status_if_metapackages() {
-	METAPACKAGES="kdegames kdeutils node platform-tools"
-	for m in $METAPACKAGES; do
-		metaargpath=$(echo "$ARGPATHS" | grep "/$m$")
-		if grep -q "◆ $arg : .*\"$m\"" "$AMDATADIR/$ARCH-apps"; then
-			if test -f "$metaargpath/remove"; then
-				app_status="installed\033[0m, as part of ${Green}$m\033[0m\n\n NOTE, run ${RED}$AMCLI -a $m\033[0m instead"
-				app_name="$m"
-			fi
-		elif [ "$arg" = "$m" ] && [ -d "$metaargpath" ]; then
-			app_status="installed\033[0m" || app_status="not installed\n"
-		fi
-	done
-}
+AMCATALOGUEMARKDOWNS="${AMCATALOGUEMARKDOWNS:-https://portable-linux-apps.github.io/apps}"
 
 _about_description_for_third_party() {
 	if echo "$appname" | grep -q ".appbundle$"; then
@@ -66,7 +26,7 @@ _about_description_for_third_party() {
 
 _about_description() {
 	if curl -o /dev/null -sIf "$markdown_url"; then
-		markdown_page=$(curl -Ls "$markdown_url" | sed '1,${ /^\s*#/ d; /^\s*!/ d; /\[Applications]/d; /\ --- /d; /\ | - | /d; /\!\[/d; }' | sed '$!N;s/^\s*\n\s*$//;P;D')
+		markdown_page=$(curl -Ls "$markdown_url" | grep -v -- "^#\|^.*| \[Applications\|^.*| \-\|^.*\!\[")
 		echo "$markdown_page"
 	elif grep -q "^◆ $package_name " "$AMDATADIR"/"$ARCH"-*; then
 		appname=$(echo "$package_name" | sed 's/\.toolpack//g')
@@ -86,15 +46,51 @@ _about_description() {
 }
 
 _about_page() {
-	_determine_args
 	package_name=$(echo "$arg" | sed 's/.appbundle.toolpack/.appbundle/g')
-	app_name=$(echo "$arg" | sed 's/-appimage//g; s/debian-testing-//g; s/\.toolpack//g; s/\.dwfs.appbundle//g; s/\.appbundle//g; s/\.nixappimage//g')
+	app_name=$(echo "$arg" | sed 's/-appimage//g; s/\.toolpack//g; s/\.dwfs.appbundle//g; s/\.appbundle//g; s/\.nixappimage//g')
 	argpath=$(echo "$ARGPATHS" | grep "/$app_name$")
 	markdown_url="$AMCATALOGUEMARKDOWNS/${arg}.md"
 	printf " PACKAGE: %b%b\033[0m\n" "${Green}" "$package_name"
 	argpath=$(echo "$ARGPATHS" | grep "/$app_name$")
-	_about_status
-	_about_status_if_metapackages
+	# Determine status of the app
+	if [ -f "$argpath/remove" ]; then
+		app_status="installed\033[0m"
+		if test -f "$argpath"/.am-installer/*; then
+			scriptname=$(basename -- "$(find "$argpath"/.am-installer/* | head -1)" | sed 's/appbundle.toolpack$/appbundle/g')
+			if [ "$app_name" != "$scriptname" ]; then
+				app_status="installed\033[0m, but replaced by ${Green}$scriptname\033[0m\n\n Note, run ${RED}$AMCLI -a $scriptname\033[0m instead"
+				if test -f "$argpath"/.am-installer/*appbundle* && ! grep -q "◆ $arg : " "$AMDATADIR/$ARCH-apps" && grep -q "◆ $arg.dwfs.appbundle : " "$AMDATADIR"/"$ARCH"-*; then
+					app_status="installed\033[0m\n\n Real package name: ${Gold}$arg.dwfs.appbundle\033[0m"
+				elif [ "$package_name" = "$scriptname" ]; then
+					app_status="installed\033[0m, as ${Green}$app_name\033[0m"
+				fi
+			fi
+		fi
+	else
+		app_status="not installed\n"
+	fi
+	if echo "$arg" | grep -q -- "-appimage$" && ! test -f "$argpath"/.am-installer/"$arg"; then
+		app_status="not installed\n"
+	fi
+	if ! grep -q "◆ $arg : " "$AMDATADIR/$ARCH-apps" && grep -q "◆ $arg.dwfs.appbundle : " "$AMDATADIR"/"$ARCH"-*; then
+		if ! echo "$app_status" | grep -q "^installed"; then
+			app_status="not installed\n\n Real package name: ${Gold}$arg.dwfs.appbundle\033[0m\n"
+		fi
+	fi
+	# Determine if the referenced app is a metapackage or part of it
+	METAPACKAGES="kdegames kdeutils node platform-tools"
+	for m in $METAPACKAGES; do
+		metaargpath=$(echo "$ARGPATHS" | grep "/$m$")
+		if grep -q "◆ $arg : .*\"$m\"" "$AMDATADIR/$ARCH-apps"; then
+			if test -f "$metaargpath/remove"; then
+				app_status="installed\033[0m, as part of ${Green}$m\033[0m\n\n NOTE, run ${RED}$AMCLI -a $m\033[0m instead"
+				app_name="$m"
+			fi
+		elif [ "$arg" = "$m" ] && [ -d "$metaargpath" ]; then
+			app_status="installed\033[0m" || app_status="not installed\n"
+		fi
+	done
+	# Create the page
 	if echo "$app_status" | grep -q "^installed"; then
 		printf " STATUS: %b\n" "${LightBlue}$app_status"
 		disk_usage=$(du -sm "$argpath" 2>/dev/null | cut -f1)
@@ -498,6 +494,7 @@ case "$1" in
 		[ -z "$2" ] && echo " USAGE: $AMCLI $1 [ARGUMENT]" && exit 1
 		_online_check
 		_sync_third_party_lists
+		_determine_args
 		echo "$DIVIDING_LINE"
 		rm -f "$AMCACHEDIR"/version-args && _check_version
 		entries="$(echo "$@" | cut -f2- -d ' ')" # Removes first argument
