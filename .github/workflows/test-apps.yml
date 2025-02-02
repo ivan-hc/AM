@@ -164,9 +164,6 @@ jobs:
           mkdir -p results
           script_content=$(curl -Ls https://raw.githubusercontent.com/ivan-hc/AM/main/programs/x86_64/"${{ matrix.file }}")
           pure_arg=$(echo "${{ matrix.file }}" | sed 's/\.appimage//g; s/\^debian-testing-//g; s/\-appimage$//g' | sed 's:.*/::')
-          to_failed() {
-            echo "${{ matrix.file }}" > results/ko-${{ matrix.file }}
-          }
           if timeout "$TIMEOUT"m am -i "${{ matrix.file }}" --debug 2>&1 | tee -a results/log-"${{ matrix.file }}"; then
             echo ""
             echo " Structure of the directory in /opt"
@@ -210,15 +207,15 @@ jobs:
             fi
             echo ""
             echo "-------------------------------------------------------------"
-            am -R "${{ matrix.file }}" && echo "${{ matrix.file }}" > results/ok-${{ matrix.file }} || [ "OK" =1 ] && echo "${{ matrix.file }}" > results/ok-${{ matrix.file }} || to_failed
+            am -R "${{ matrix.file }}" && echo "${{ matrix.file }}" > results/ok-${{ matrix.file }} || [ "OK" =1 ] && echo "${{ matrix.file }}" > results/ok-${{ matrix.file }} || echo "${{ matrix.file }}" > results/ko-${{ matrix.file }}
           else
             if [[ $? -eq 124 ]]; then
                echo "### 💥 ${{ matrix.file }} timeout!" >> $GITHUB_STEP_SUMMARY
                echo "Installation timeout in 10 minutes" >> results/log-"${{ matrix.file }}"
-               to_failed
+               echo "${{ matrix.file }}" > results/ko-${{ matrix.file }}
             else
                echo "### 💀 ${{ matrix.file }}" >> $GITHUB_STEP_SUMMARY
-               to_failed
+               echo "${{ matrix.file }}" > results/ko-${{ matrix.file }}
             fi
             exit 1
           fi
