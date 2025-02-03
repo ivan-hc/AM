@@ -950,6 +950,11 @@ _update_torsocks_handler() {
 			sed -i 's/^#AllowOutboundLocalhost 1/AllowOutboundLocalhost 1/g' "$AMDATADIR"/torsocks.conf
 			[ -f "$AMDATADIR"/torsocks.conf ] && export TORSOCKS_CONF_FILE="$AMDATADIR"/torsocks.conf
 			sleep 1
+			GH_API_ALLOWED=$(torsocks curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/ivan-hc/AM/releases/latest | sed 's/[()",{} ]/\n/g' | grep "^ivan-hc" | head -1)
+			if [ -z "$GH_API_ALLOWED" ]; then
+				printf " ✖ %b update failed, please restart %btor.service\033[0m to fix! \n" "$APPNAME" "${Green}"
+				exit 1
+			fi
 		fi
 	fi
 }
@@ -984,7 +989,8 @@ _update_run_updater() {
 		fi
 	fi
 	end=$(date +%s)
-	echo " ◆ $APPNAME is updated, $((end - start)) seconds elapsed!"
+	timelapsed=$((end - start))
+	[ "$timelapsed" = 1 ] && echo " ◆ $APPNAME is updated, $timelapsed second elapsed!" || echo " ◆ $APPNAME is updated, $timelapsed seconds elapsed!"
 	[ -n "$debug_update" ] && echo "$DIVIDING_LINE"
 }
 
