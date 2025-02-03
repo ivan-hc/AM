@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="9.4.2-1"
+AMVERSION="9.4.3"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -942,11 +942,28 @@ _update_determine_apps_version_changes() {
 	fi
 }
 
+_update_torsocks_handler() {
+	torsocks_congif_file=$(find /etc -type f -name torsocks.conf 2>/dev/null)
+	if [ -n "$torsocks_congif_file" ]; then
+		if grep -q "^#AllowOutboundLocalhost 1" "$torsocks_congif_file" && command -v appimageupdatetool 1>/dev/null; then
+			[ ! -f "$AMDATADIR"/torsocks.conf ] && cat "$torsocks_congif_file" > "$AMDATADIR"/torsocks.conf
+			sed -i 's/^#AllowOutboundLocalhost 1/AllowOutboundLocalhost 1/g' "$AMDATADIR"/torsocks.conf
+			[ -f "$AMDATADIR"/torsocks.conf ] && export TORSOCKS_CONF_FILE="$AMDATADIR"/torsocks.conf
+			GH_API_ALLOWED=$(torsocks curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/ivan-hc/AM/releases/latest | sed 's/[()",{} ]/\n/g' | grep "^ivan-hc" | head -1)
+			if [ -z "$GH_API_ALLOWED" ]; then
+				printf " ✖ %b update failed, please restart %btor.service\033[0m to fix! \n" "$APPNAME" "${Green}"
+				exit 1
+			fi
+		fi
+	fi
+}
+
 _update_run_updater() {
 	if grep -q "api.github.com" "$argpath"/AM-updater; then
 		GH_API_ALLOWED=$(curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/ivan-hc/AM/releases/latest | sed 's/[()",{} ]/\n/g' | grep "^ivan-hc" | head -1)
 		if [ -z "$GH_API_ALLOWED" ]; then
 			if command -v torsocks 1>/dev/null; then
+				_update_torsocks_handler
 				if [ -z "$debug_update" ]; then
 					torsocks "$argpath"/AM-updater >/dev/null 2>&1
 				else
@@ -971,7 +988,8 @@ _update_run_updater() {
 		fi
 	fi
 	end=$(date +%s)
-	echo " ◆ $APPNAME is updated, $((end - start)) seconds elapsed!"
+	timelapsed=$((end - start))
+	[ "$timelapsed" = 1 ] && echo " ◆ $APPNAME is updated, $timelapsed second elapsed!" || echo " ◆ $APPNAME is updated, $timelapsed seconds elapsed!"
 	[ -n "$debug_update" ] && echo "$DIVIDING_LINE"
 }
 
@@ -995,6 +1013,7 @@ _update_all_apps() {
 		fi
 	done
 	wait
+	rm -f "$AMDATADIR"/torsocks.conf
 	_update_determine_apps_version_changes
 	rm -Rf "$APPSPATH"/*/tmp
 	[ -d "$APPMAN_APPSPATH" ] && rm -Rf "$APPMAN_APPSPATH"/*/tmp
@@ -1075,6 +1094,7 @@ _use_update() {
 			fi
 		done
 		wait
+		rm -f "$AMDATADIR"/torsocks.conf
 		exit 0
 	fi
 }
