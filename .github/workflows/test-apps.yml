@@ -43,18 +43,21 @@ jobs:
 
       - name: "Merge main in testing if needed"
         run: |
-          git fetch --all --prune
-          if git show-ref --verify --quiet refs/heads/testing; then
-            git checkout testing
-          else
+          git fetch origin main
+          git fetch origin testing || echo "Branch 'testing' does not exist, creating a new one."
+          if ! git show-ref --verify --quiet refs/heads/testing; then
             git checkout -b testing origin/main
+          else
+            git checkout testing
+          fi
+          git fetch origin main
+          if [[ $(git rev-list HEAD...origin/main --count) -gt 0 ]]; then
+            echo "Changes detected between 'main' and 'testing'. Rebasing..."
+            git merge origin/main --no-edit
             git push origin testing
           fi
           if [[ $GITHUB_REF == refs/pull/* ]]; then
-            echo "This is Pull Request. No saving results." >> $GITHUB_STEP_SUMMARY
-          else
-            git merge origin/main --no-edit || echo "❌ Merge conflict! Manual intervention required." >> $GITHUB_STEP_SUMMARY
-            git push origin testing || echo "❌ Push failed! Check permissions or conflicts. >> $GITHUB_STEP_SUMMARY
+            echo "This is Pull Request. No saving results."
           fi
 
   show-stats:
