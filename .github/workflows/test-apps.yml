@@ -6,7 +6,9 @@ env:
 on:
   push:
     branches: main
-    paths: 'programs/x86_64/**'
+    paths:
+      - 'programs/x86_64/**'
+      - .github/workflows/test-apps.yml
 
   #pull_request:
   #  branches: main
@@ -50,7 +52,7 @@ jobs:
           fi
           git fetch origin main
           if [[ $(git rev-list HEAD...origin/main --count) -gt 0 ]]; then
-            echo "Changes detected between 'main' and 'testing'. Rebasing..."
+            echo "Changes detected between 'main' and 'testing'. Merging..."
             git merge origin/main --no-edit
             git push origin testing
           fi
@@ -64,18 +66,34 @@ jobs:
     needs: update-testing-branch
 
     steps:
-      - name: "Check out repository 🏃"
+      - name: "Check out main branch (for programs count) 🏃"
         uses: actions/checkout@v4
         with:
-          ref: testing  # Work on testing branch
+          ref: main  # Work on main branch
 
-      - name: "Show stats 📝"
+      - name: "Count programs 📊"
         run: |
           x64Count=$(find programs/x86_64/ -type f | wc -l)
           i68Count=$(find programs/i686/ -type f | wc -l)
           a64Count=$(find programs/aarch64/ -type f | wc -l)
+          echo "x64Count=$x64Count" >> $GITHUB_ENV
+          echo "i68Count=$i68Count" >> $GITHUB_ENV
+          echo "a64Count=$a64Count" >> $GITHUB_ENV
+
+      - name: "Check out testing branch (for tested & failed) 🏃"
+        uses: actions/checkout@v4
+        with:
+          ref: testing  # Work on testing branch
+
+      - name: "Count tested & failed 📊"
+        run: |
           tested=$(wc -l < tested.list 2>/dev/null || echo 0)
           failed=$(wc -l < failed.list 2>/dev/null || echo 0)
+          echo "x86_64: $x64Count"
+          echo "i686: $i68Count"
+          echo "aarch64: $a64Count"
+          echo "🏁 Tested: $tested"
+          echo "❌ Failed: $failed"
           echo "### 🎬 apps" >> $GITHUB_STEP_SUMMARY
           echo "$x64Count x86_64" >> $GITHUB_STEP_SUMMARY
           echo "$i68Count i686" >> $GITHUB_STEP_SUMMARY
@@ -105,18 +123,22 @@ jobs:
           find programs/x86_64/ -maxdepth 1 -type f -printf "%f\n" | sort > all.list
           if [[ -f tested.list ]]; then
             if diff -q all.list tested.list; then
+              echo "Everything tested" >> $GITHUB_STEP_SUMMARY
               echo "skip=true" >> $GITHUB_OUTPUT
               exit 0
             else
               comm -23 all.list tested.list > totest_tmp.list
             fi
           else
+            echo "First run!" >> $GITHUB_STEP_SUMMARY
             cp all.list totest_tmp.list
           fi
           if [[ -f failed.list ]]; then
             comm -23 totest_tmp.list failed.list > totest.list
-            echo "Excluding failed!"
+            echo "Excluding failed:" >> $GITHUB_STEP_SUMMARY
+            cat failed.list >> $GITHUB_STEP_SUMMARY
             if [ ! -s totest.list ]; then
+              echo " 🏁 Nothing to test 🏁" >> $GITHUB_STEP_SUMMARY
               echo "skip=true" >> $GITHUB_OUTPUT
               exit 0
             fi
@@ -140,7 +162,7 @@ jobs:
       fail-fast: false
       matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
     env:
-      TIMEOUT: 10
+      TIMEOUT: 23
     steps:
       - name: "Check out repository 🏃"
         uses: actions/checkout@v4
@@ -164,9 +186,6 @@ jobs:
           mkdir -p results
           script_content=$(curl -Ls https://raw.githubusercontent.com/ivan-hc/AM/main/programs/x86_64/"${{ matrix.file }}")
           pure_arg=$(echo "${{ matrix.file }}" | sed 's/\.appimage//g; s/\^debian-testing-//g; s/\-appimage$//g' | sed 's:.*/::')
-          to_failed() {
-            echo "${{ matrix.file }}" > results/ko-${{ matrix.file }}
-          }
           if timeout "$TIMEOUT"m am -i "${{ matrix.file }}" --debug 2>&1 | tee -a results/log-"${{ matrix.file }}"; then
             echo ""
             echo " Structure of the directory in /opt"
@@ -183,12 +202,10 @@ jobs:
                echo /opt/avidemux | tee -a results/log-"${{ matrix.file }}"
             elif [[ "$pure_arg" =~ (bat-extras|code|deadbeef*|libfuse2|libreoffice|microsoft-edge*|mpv|node|npm|swift|wine) ]]; then
                echo "App not installed, this is a Known error related to GitHub Actions" | tee -a results/log-"${{ matrix.file }}"
-               OK="1"
             elif test -d /opt/"$pure_arg"*; then
                ls /opt/"$pure_arg"* | tee -a results/log-"${{ matrix.file }}"
             elif echo "$script_content" | grep -q "spooky"; then
                echo "App not installed because marked as \"spooky\", require to be tested manually" | tee -a results/log-"${{ matrix.file }}"
-               OK="1"
             else
                ls /opt/"${{ matrix.file }}" | tee -a results/log-"${{ matrix.file }}"
             fi
@@ -210,34 +227,32 @@ jobs:
             fi
             echo ""
             echo "-------------------------------------------------------------"
-            am -R "${{ matrix.file }}" && echo "${{ matrix.file }}" > results/ok-${{ matrix.file }} || [ "OK" =1 ] && echo "${{ matrix.file }}" > results/ok-${{ matrix.file }} || to_failed
+            am -R "${{ matrix.file }}" && echo "${{ matrix.file }}" >> results/ok-${{ matrix.file }} || echo "${{ matrix.file }}" >> results/log-${{ matrix.file }}
           else
             if [[ $? -eq 124 ]]; then
                echo "### 💥 ${{ matrix.file }} timeout!" >> $GITHUB_STEP_SUMMARY
-               echo "Installation timeout in 10 minutes" >> results/log-"${{ matrix.file }}"
-               to_failed
+               echo "Installation timeout in 23 minutes" >> results/log-"${{ matrix.file }}"
+               echo "${{ matrix.file }}" >> results/log-${{ matrix.file }}
             else
                echo "### 💀 ${{ matrix.file }}" >> $GITHUB_STEP_SUMMARY
-               to_failed
+               echo "${{ matrix.file }}" >> results/log-${{ matrix.file }}
             fi
             exit 1
           fi
 
-      - name: "Upload Failed Results ☝️"
+      - name: "Rename Failed Results ☝️"
+        if: failure()
+        run: |
+          mv results/log-${{ matrix.file }} results/ko-${{ matrix.file }}
+
+      - name: "Upload KO Results ☝️"
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: ko-${{ matrix.file }}
           path: results/ko-${{ matrix.file }}
 
-      - name: "Upload Log Results ☝️"
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: log-${{ matrix.file }}
-          path: results/log-${{ matrix.file }}
-
-      - name: "Upload Test Results ⬆️"
+      - name: "Upload OK Results ⬆️"
         if: success()
         uses: actions/upload-artifact@v4
         with:
@@ -248,7 +263,7 @@ jobs:
     name: "results 📰"
     needs: run-actions
     runs-on: ubuntu-22.04
-    if: ${{ needs.generate-matrix.outputs.skip != 'true' }}
+    if: always()
     steps:
       - name: "Check out repository 🏃"
         uses: actions/checkout@v4
@@ -256,20 +271,23 @@ jobs:
           ref: testing
 
       - name: "Download Test Results ⬇️"
+        if: success()
         uses: actions/download-artifact@v4
         with:
           path: results
           merge-multiple: true
-      - run: ls -R results
+      - run: ls -R results || echo "Nothing tested"
 
       - name: "Git Config"
+        if: always()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
       - name: "Aggregate and push results"
+        if: always()
         run: |
-          ls -R results
+          ls -R results || echo "Nothing tested"
           #git checkout -b testing
           #git push --set-upstream origin testing
           if compgen -G "results/ok-*" > /dev/null; then
@@ -284,17 +302,16 @@ jobs:
           fi
           if compgen -G "results/ko-*" > /dev/null; then
             for file in results/ko-*; do
-              cat "$file" >> fail.list
+              echo "$file" | cut -d'-' -f2- >> fail.list
             done
             mkdir -p logs
-            cp results/log-* logs/
+            cp results/ko-* logs/
             fail=$(wc -l < fail.list)
             cat fail.list >> failed.list
             sort -u failed.list -o failed.list
             git add failed.list logs
           else
             echo "Nothing failed? Great!"
-            fail="0"
           fi
           if git diff --cached --quiet; then
             echo "No changes to commit?"
@@ -319,12 +336,16 @@ jobs:
           echo "## 🛅 $remaining to test" >> $GITHUB_STEP_SUMMARY
           echo "😱 $failed fails listed" >> $GITHUB_STEP_SUMMARY
           echo ":x: $fail failed now" >> $GITHUB_STEP_SUMMARY
+          if [[ -f fail.list ]]; then
+            echo "💀" >> $GITHUB_STEP_SUMMARY
+            cat fail.list >> $GITHUB_STEP_SUMMARY
+          fi
 
   delete-all-artifacts:
     name: "cleanup 🧹"
     runs-on: ubuntu-22.04
     needs: update-tested-list
-    if: ${{ needs.generate-matrix.outputs.skip != 'true' }}
+    if: always()
     steps:
       - name: "Check out repository 🏃"
         uses: actions/checkout@v4
@@ -357,7 +378,7 @@ jobs:
           echo "Successfully deleted $DELETED artifacts."
 
   already-tested:
-    name: "tested"
+    name: "all tested"
     runs-on: ubuntu-22.04
     needs: generate-matrix
     if: ${{ needs.generate-matrix.outputs.skip == 'true' }}
