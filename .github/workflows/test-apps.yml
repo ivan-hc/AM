@@ -15,6 +15,12 @@ on:
   #  paths: 'programs/x86_64/**'
 
   workflow_dispatch:
+    inputs:
+      reset_stats:
+        description: "RESET stats"
+        required: true
+        default: "false"
+        type: boolean
 
   schedule:
     - cron: '0 23 * * *'
@@ -36,28 +42,45 @@ jobs:
       - name: "Check out repository"
         uses: actions/checkout@v4
 
+      - name: "Prevent merging on PR"
+        run: |
+          if [[ $GITHUB_REF == refs/pull/* ]]; then
+            echo "This is a Pull Request. No merging."
+            exit 0
+          fi
+
       - name: "Git Config"
         run: |
-          git config user.name "GitHub Actions Bot"
-          git config user.email "actions@github.com"
+          git config user.name "github-actions[bot]"
+          git config user.email "noreply@github.com"
 
-      - name: "Merge main in testing if needed"
+      - name: "Update testing branch"
         run: |
           git fetch origin main
-          git fetch origin testing || echo "Branch 'testing' does not exist, creating a new one."
-          if ! git show-ref --verify --quiet refs/heads/testing; then
-            git checkout -b testing origin/main
+          git fetch origin testing || echo "Branch 'testing' does not exist."
+          if ! git ls-remote --exit-code --heads origin testing; then
+            echo "Creating remote 'testing' branch from 'main'..."
+            git push origin main:testing
           else
-            git checkout testing
-          fi
-          git fetch origin main
-          if [[ $(git rev-list HEAD...origin/main --count) -gt 0 ]]; then
-            echo "Changes detected between 'main' and 'testing'. Merging..."
-            git merge origin/main --no-edit
-            git push origin testing
-          fi
-          if [[ $GITHUB_REF == refs/pull/* ]]; then
-            echo "This is Pull Request. No saving results."
+            if [[ "${{ github.event.inputs.reset_stats }}" != "true" ]]; then
+              echo "Resetting remote 'testing' branch to 'main', preserving test files..."
+              git fetch origin testing
+              git checkout origin/testing
+              mkdir -p backup
+              cp -r tested.list failed.list logs backup/ 2>/dev/null || true
+              git reset --hard origin/main
+              mv backup/tested.list backup/failed.list backup/logs . 2>/dev/null || true
+              rm -rf backup
+              git add .
+              git commit -m "update results"
+            else
+              echo "Resetting remote 'testing' branch to 'main', Resetting stats"
+              echo "Resetting stats" >> $GITHUB_STEP_SUMMARY
+              git fetch origin testing
+              git checkout origin/testing
+              git reset --hard origin/main
+            fi
+            git push --force origin HEAD:testing
           fi
 
   show-stats:
@@ -135,7 +158,7 @@ jobs:
           fi
           if [[ -f failed.list ]]; then
             comm -23 totest_tmp.list failed.list > totest.list
-            echo "Excluding failed:" >> $GITHUB_STEP_SUMMARY
+            echo "### Excluding failed:" >> $GITHUB_STEP_SUMMARY
             cat failed.list >> $GITHUB_STEP_SUMMARY
             if [ ! -s totest.list ]; then
               echo " 🏁 Nothing to test 🏁" >> $GITHUB_STEP_SUMMARY
@@ -145,7 +168,7 @@ jobs:
           else
             mv totest_tmp.list totest.list
           fi
-          FILES=$(shuf -n 100 totest.list || cat totest.list)
+          FILES=$(shuf -n 100 totest.list | sort || cat totest.list | sort)
           MATRIX="{\"include\": ["
           for file in $FILES; do
             MATRIX+="{\"file\": \"$file\"},"
@@ -282,7 +305,7 @@ jobs:
         if: always()
         run: |
           git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.email "noreply@github.com"
 
       - name: "Aggregate and push results"
         if: always()
@@ -313,14 +336,23 @@ jobs:
           else
             echo "Nothing failed? Great!"
           fi
+          LAST_COMMIT_MSG=$(git log -1 --pretty=%B)
           if git diff --cached --quiet; then
             echo "No changes to commit?"
           else
             if [[ $GITHUB_REF == refs/pull/* ]]; then
               echo "This is Pull Request. No saving results."
-            else
+            elif [[ "${{ github.event.inputs.reset_stats }}" == "true" ]]; then
+              echo "stats resetted"
               git commit -m "update results"
               git push origin testing
+            elif [[ "$LAST_COMMIT_MSG" == "update results" ]]; then
+              echo "Last commit is 'update results'."
+              git commit --amend -m "update results"
+              git push --force origin testing
+            else
+              git commit -m "update results"
+              git push --force origin testing
             fi
           fi
 
@@ -331,7 +363,10 @@ jobs:
           failed=$(wc -l < failed.list 2>/dev/null || echo 0)
           fail=$(wc -l < fail.list 2>/dev/null || echo "0")
           count=$(find programs/x86_64/ -type f | wc -l)
-          remaining=$((count - tested))
+          remaining=$((count - tested - failed - fail))
+          if (( remaining < 0 )); then
+            remaining=0
+          fi
           echo "### 🏁 $tested tested" >> $GITHUB_STEP_SUMMARY
           echo "## 🛅 $remaining to test" >> $GITHUB_STEP_SUMMARY
           echo "😱 $failed fails listed" >> $GITHUB_STEP_SUMMARY
@@ -378,7 +413,7 @@ jobs:
           echo "Successfully deleted $DELETED artifacts."
 
   already-tested:
-    name: "all tested"
+    name: "all 🏁"
     runs-on: ubuntu-22.04
     needs: generate-matrix
     if: ${{ needs.generate-matrix.outputs.skip == 'true' }}
