@@ -11,8 +11,11 @@ on:
       - .github/workflows/test-apps.yml
 
   #pull_request:
+  #  if: github.event.pull_request.head.repo.full_name != github.repository
   #  branches: main
-  #  paths: 'programs/x86_64/**'
+  #  paths:
+  #    - 'programs/x86_64/**'
+  #    - .github/workflows/test-apps.yml
 
   workflow_dispatch:
     inputs:
@@ -34,59 +37,102 @@ permissions:
   contents: write
 
 jobs:
-  update-testing-branch:
+  rebase-testing-branch:
     name: "prepare 💤"
     runs-on: ubuntu-22.04
-
     steps:
-      - name: "Check out repository"
+      - name: "Checkout repository"
         uses: actions/checkout@v4
-
-      - name: "Prevent merging on PR"
-        run: |
-          if [[ $GITHUB_REF == refs/pull/* ]]; then
-            echo "This is a Pull Request. No merging."
-            exit 0
-          fi
+        with:
+          fetch-depth: 0
 
       - name: "Git Config"
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "noreply@github.com"
+          git config --global user.name "ivan-hc"
+          git config --global user.email "noreply@github.com"
 
-      - name: "Update testing branch"
+      - name: "Check if histories differ"
+        id: check_history
         run: |
-          git fetch origin main
-          git fetch origin testing || echo "Branch 'testing' does not exist."
+          git fetch origin main testing || echo "Branch 'testing' does not exist."
           if ! git ls-remote --exit-code --heads origin testing; then
             echo "Creating remote 'testing' branch from 'main'..."
             git push origin main:testing
+            echo "RESET_REQUIRED=true" >> $GITHUB_ENV
           else
-            if [[ "${{ github.event.inputs.reset_stats }}" != "true" ]]; then
-              echo "Resetting remote 'testing' branch to 'main', preserving test files..."
-              git fetch origin testing
-              git checkout origin/testing
-              mkdir -p backup
-              cp -r tested.list failed.list logs backup/ 2>/dev/null || true
-              git reset --hard origin/main
-              mv backup/tested.list backup/failed.list backup/logs . 2>/dev/null || true
-              rm -rf backup
-              git add .
-              git commit -m "update results"
+            if git merge-base --is-ancestor origin/main origin/testing; then
+              echo "Histories are compatible, rebase only."
+              echo "RESET_REQUIRED=false" >> $GITHUB_ENV
             else
-              echo "Resetting remote 'testing' branch to 'main', Resetting stats"
-              echo "Resetting stats" >> $GITHUB_STEP_SUMMARY
-              git fetch origin testing
-              git checkout origin/testing
-              git reset --hard origin/main
+              echo "Histories are different, reset needed."
+              echo "RESET_REQUIRED=true" >> $GITHUB_ENV
             fi
-            git push --force origin HEAD:testing
           fi
+
+      - name: "Reset testing branch if needed"
+        if: env.RESET_REQUIRED == 'true'
+        run: |
+          echo "Resetting testing branch..."
+          git checkout -B testing origin/testing || git checkout -B testing origin/main
+          if [[ "${{ github.event.inputs.reset_stats }}" != "true" ]]; then
+            echo "Preserving test files..."
+            mkdir -p backup
+            cp -r tested.list failed.list logs backup/ 2>/dev/null || true
+            git reset --hard origin/main
+            mv backup/tested.list backup/failed.list backup/logs . 2>/dev/null || true
+            rm -rf backup
+            git add .
+            git commit -m "update results"
+          else
+            echo "Resetting stats..."
+            echo "Resetting stats" >> $GITHUB_STEP_SUMMARY
+            git reset --hard origin/main
+          fi
+          git push --force origin HEAD:testing
+
+      - name: "Check if testing differs from main"
+        id: check_diff
+        run: |
+          git fetch origin main testing
+          if git diff --quiet origin/main..origin/testing; then
+            echo "No difference between testing and main. Exiting."
+            echo "skip=true" >> $GITHUB_ENV
+          else
+            echo "skip=false" >> $GITHUB_ENV
+          fi
+
+      - name: "Get last commit from testing"
+        id: last_commit
+        if: env.skip == 'false'
+        run: |
+          LAST_COMMIT=$(git log origin/testing --format=%H -n 1)
+          echo "Last commit: $LAST_COMMIT"
+          echo "LAST_COMMIT=$LAST_COMMIT" >> $GITHUB_ENV
+
+      - name: "Rebase testing on main"
+        if: env.skip == 'false'
+        run: |
+          git checkout testing
+          git rebase origin/main
+
+      - name: "Reapply last commit"
+        if: env.skip == 'false'
+        run: |
+          if [[ "$LAST_COMMIT" == 'update results' ]]; then
+            git cherry-pick $LAST_COMMIT
+          elif [[ "$LAST_COMMIT" != 'update results' ]]; then
+            echo "Commit from main branch?"
+          fi
+
+      - name: Push changes back to testing
+        if: env.skip == 'false'
+        run: |
+          git push origin testing --force
 
   show-stats:
     name: "stats 📝"
     runs-on: ubuntu-22.04
-    needs: update-testing-branch
+    needs: rebase-testing-branch
 
     steps:
       - name: "Check out main branch (for programs count) 🏃"
@@ -127,7 +173,7 @@ jobs:
 
   generate-matrix:
     name: "matrix 🌀"
-    needs: update-testing-branch
+    needs: rebase-testing-branch
     runs-on: ubuntu-22.04
     outputs:
       skip: ${{ steps.set-matrix.outputs.skip }}
@@ -304,8 +350,8 @@ jobs:
       - name: "Git Config"
         if: always()
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "noreply@github.com"
+          git config --global user.name "ivan-hc"
+          git config --global user.email "noreply@github.com"
 
       - name: "Aggregate and push results"
         if: always()
