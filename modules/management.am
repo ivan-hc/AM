@@ -275,23 +275,36 @@ _nolibfuse() {
 		fi
 	fi
 
-	appimagetool="https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-$ARCH.AppImage"
-	printf " ...downloading appimagetool\r"
-	wget -q "$appimagetool" -O ./appimagetool || return 1
-	chmod a+x ./appimagetool
+	# If appimagetool is not installed, download it
+	if ! command -v appimagetool 1>/dev/null; then
+		_online_check
+		printf " ...downloading appimagetool\r"
+		wget -q "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-$ARCH.AppImage" -O ./appimagetool || return 1
+		chmod a+x ./appimagetool
+	fi
+
+	# Extract the AppImage
 	printf " ...extracting the AppImage\r"
 	./"$2" --appimage-extract >/dev/null 2>&1 && chmod 0755 ./squashfs-root
+
+	# Convert the AppImage to a new generation one
 	printf " ...trying to convert in new generation AppImage\r"
-	PATH="$PATH:$PWD" ARCH="$(uname -m)" ./appimagetool -n ./squashfs-root >/dev/null 2>&1
+	if [ -f ./appimagetool ]; then
+		PATH="$PATH:$PWD" ARCH="$(uname -m)" ./appimagetool -n ./squashfs-root >/dev/null 2>&1
+	elif command -v appimagetool 1>/dev/null; then
+		ARCH="$(uname -m)" appimagetool -n ./squashfs-root >/dev/null 2>&1
+	fi
+
+	# Test if the AppImage has been created
 	if ! test -f ./*.AppImage; then
 		echo " 💀Error when trying to convert $target. Operation Aborted."
-		rm -R -f ./appimagetool ./squashfs-root
+		rm -Rf ./appimagetool ./squashfs-root
 		return 1
 	fi
 
 	mv ./"$2" ./"$2".old && mv ./*.AppImage ./"$2" || return 1
 	echo " ◆ $target has been converted to a new generation AppImage."
-	rm -rf ./appimagetool ./squashfs-root ./*.zsync
+	rm -Rf ./appimagetool ./squashfs-root ./*.zsync
 	if [ -f ./AM-updater ] && ! grep -q 'nolibfuse' ./AM-updater; then
 		sed -i "s/^else/	echo y | $AMCLIPATH_ORIGIN nolibfuse \"\$APP\"\n	notify-send \"\$APP has been converted too\!\"\nelse/g" ./AM-updater 2>/dev/null
 		echo " The next update may replace this AppImage with a Type2 one"
@@ -439,7 +452,6 @@ case "$1" in
 
 	'nolibfuse')
 		# Convert old AppImages to a new standard and get rid of libfuse2 dependency
-		_online_check
 		_determine_args
 		entries="$(echo "$@" | cut -f2- -d ' ')"
 		for arg in $entries; do
