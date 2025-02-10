@@ -5,8 +5,9 @@ for arch in $DIRS; do
 	rm -f "$arch-appimages"
 	ARGS=$(awk -v FS="(◆ | : )" '{print $2}' <"$arch-apps")
 	for arg in $ARGS; do
-		if grep -qe "appimage-extract\|mage\$\|tmp/\*mage" "./$arch/$arg" 1> /dev/null; then
-			if ! grep "◆ $arg :" "$arch-apps" | grep -ie "\"kdegames\"\|\"kdeutils\"" 1> /dev/null; then
+		if grep -qe "appimage-extract\|mage\$\|tmp/\*mage" "./$arch/$arg" 1>/dev/null \
+		&& ! grep -qe "flatimage\|rimage\|gameimage"; then
+			if ! grep "◆ $arg :" "$arch-apps" | grep -ie "\"kdegames\"\|\"kdeutils\"" 1>/dev/null; then
 				grep "◆ $arg :" "$arch-apps" >> "$arch-appimages"
 			fi
 		fi
