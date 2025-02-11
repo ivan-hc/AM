@@ -1,0 +1,182 @@
+name: "autotrigger"
+
+on:
+  push:
+    branches:
+      - main
+
+  repository_dispatch:
+    types: [autotrigger]
+
+  workflow_dispatch:
+    inputs:
+      input_amcheck:
+        description: "Check variables in 250 apps"
+        required: true
+        default: false
+        type: boolean
+      input_lister:
+        description: "Sync AppImages listing"
+        required: true
+        default: false
+        type: boolean
+      input_apps:
+        description: "Test random 💯"
+        required: true
+        default: false
+        type: boolean
+      input_clean:
+        description: "Clean main"
+        required: true
+        default: false
+        type: boolean
+
+jobs:
+  decide-jobs:
+    name: "Decide what to run"
+    if: github.event_name == 'push'
+    runs-on: ubuntu-22.04
+    outputs:
+      run_lister: ${{ steps.decide.outputs.run_lister }}
+      run_amcheck: ${{ steps.decide.outputs.run_amcheck }}
+      run_apps: ${{ steps.decide.outputs.run_apps }}
+      run_clean: ${{ steps.decide.outputs.run_clean }}
+      changed_files: ${{ steps.decide.outputs.changed_files }}
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@v4
+
+      - name: "Check modified files"
+        id: decide
+        run: |
+          echo "Checking modified files..."
+          CHANGED_FILES=$(git diff --name-only --relative ${{ github.event.before }} ${{ github.event.after }})
+          # Log files for debugging
+          echo "Changed files:"
+          echo "$CHANGED_FILES"
+          # Save to an output variable for use in other jobs
+          echo "changed_files<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGED_FILES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          # Decision logic
+          RUN_APPS=false
+          RUN_CLEAN=false
+          RUN_AMCHECK=false
+          RUN_LISTER=false
+          for FILE in $CHANGED_FILES; do
+            case "$FILE" in
+              programs/x86_64-apps|programs/i686-apps|programs/aarch64-apps)
+                RUN_LISTER=true
+                RUN_AMCHECK=true
+                RUN_APPS=true
+                RUN_CLEAN=true
+                ;;
+              .github/wworkflows/+)
+                echo "yml? Nothing important yet"
+                #TODO: yaml check?
+                ;;
+              AM-INSTALLER|APP-MANAGER|modules/*)
+                echo "sh? Nothing important yet"
+                #TODO: shellcheck?
+                ;;
+              *.md)
+                echo "md? Nothing important yet"
+                #TODO: markdown linter?
+                ;;
+              '*')
+                RUN_AMCHECK=true
+                RUN_CLEAN=true
+                ;;
+            esac
+          done
+
+          echo "run_lister=$RUN_LISTER" >> $GITHUB_OUTPUT
+          echo "run_amcheck=$RUN_AMCHECK" >> $GITHUB_OUTPUT
+          echo "run_apps=$RUN_APPS" >> $GITHUB_OUTPUT
+          echo "run_clean=$RUN_CLEAN" >> $GITHUB_OUTPUT
+
+          echo "Decided jobs: Lister=$RUN_LISTER, Amcheck=$RUN_AMCHECK, Apps=$RUN_APPS, Clean=$RUN_CLEAN"
+
+  check-variables:
+    name: "trigger 250 dispatch"
+    if: (github.event.inputs.input_amcheck == 'true' || needs.decide.outputs.run_amcheck == 'true')
+    runs-on: ubuntu-22.04
+    steps:
+      - name: "trigger 250 dispatch"
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          repository: ${{ github.repository_owner }}/amcheck
+          token: ${{ secrets.TOKEN }}
+          event-type: check
+
+      - name: "Set name"
+        id: check
+        run: |
+          RUN_NAME="trigger 250 dispatch"
+          echo "RUN_NAME=$RUN_NAME" >> $GITHUB_OUTPUT
+
+  lister-sync:
+    name: "trigger Lister dispatch"
+    if: (github.event.inputs.input_lister == 'true' || needs.decide.outputs.run_lister == 'true')
+    runs-on: ubuntu-22.04
+    steps:
+      - name: "trigger Lister dispatch"
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          repository: ${{ github.repository_owner }}/amcheck
+          token: ${{ secrets.TOKEN }}
+          event-type: lister
+
+      - name: "Set name"
+        id: lister
+        run: |
+          RUN_NAME="trigger Lister dispatch"
+          echo "RUN_NAME=$RUN_NAME" >> $GITHUB_OUTPUT
+
+  test-apps:
+    name: "trigger 💯 dispatch"
+    if: (github.event.inputs.input_apps == 'true' || needs.decide.outputs.run_apps == 'true')
+    runs-on: ubuntu-22.04
+    steps:
+      - name: "trigger 💯 dispatch"
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          repository: ${{ github.repository_owner }}/amcheck
+          token: ${{ secrets.TOKEN }}
+          event-type: apps
+
+      - name: "Set name"
+        id: apps
+        run: |
+          RUN_NAME="trigger 💯 dispatch"
+          echo "RUN_NAME=$RUN_NAME" >> $GITHUB_OUTPUT
+
+  main-clean:
+    name: "trigger Clean dispatch"
+    if: (github.event.inputs.input_clean == 'true' || needs.decide.outputs.run_clean == 'true')
+    runs-on: ubuntu-22.04
+    steps:
+      - name: "trigger Clean dispatch"
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          repository: ${{ github.repository_owner }}/amcheck
+          token: ${{ secrets.TOKEN }}
+          event-type: clean
+
+      - name: "Set name"
+        id: clean
+        run: |
+          RUN_NAME="trigger Clean dispatch"
+          echo "RUN_NAME=$RUN_NAME" >> $GITHUB_OUTPUT
+
+  rename:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: "Rename"
+        run: |
+          echo "${{ env.RUN_NAME }}"
+          echo "#TODO"
+          #curl -X PATCH -H "Authorization: Bearer ${{ secrets.TOKEN }}" \
+          #-H "Accept: application/vnd.github.v3+json" \
+          #https://api.github.com/repos/${{ github.repository_owner }}/${{ github.repository }}/actions/runs/${{ github.run_id }} \
+          #-d "{\"name\": \"running: ${{ env.RUN_NAME }}\"}"
