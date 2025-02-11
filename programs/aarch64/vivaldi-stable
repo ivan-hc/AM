@@ -1,73 +1,77 @@
 #!/bin/sh
 
+# AM INSTALL SCRIPT VERSION 3.5
+set -u
 APP=vivaldi-stable
-SITE="https://vivaldi.com"
+SITE="ivan-hc/Vivaldi-appimage"
 
-# CREATE THE FOLDER
-mkdir /opt/$APP
-cd /opt/$APP
+# CREATE DIRECTORIES AND ADD REMOVER
+[ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
+printf "#!/bin/sh\nset -e\nrm -f /usr/local/bin/$APP\nrm -R -f /opt/$APP" > ../remove
+printf '\n%s' "rm -f /usr/local/share/applications/$APP-AM.desktop" >> ../remove
+chmod a+x ../remove || exit 1
 
-# ADD THE REMOVER
-echo '#!/bin/sh' >> /opt/$APP/remove
-echo "rm -R -f /usr/local/share/applications/$APP-AM.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
-chmod a+x /opt/$APP/remove
-
-# DOWNLOAD THE ARCHIVE
-mkdir tmp
-cd ./tmp
-
-version=$(echo "https://repo.vivaldi.com/snapshot/deb/pool/main/$(curl -Ls https://repo.vivaldi.com/snapshot/deb/pool/main/ | grep $APP | grep arm64 | tail -1 | grep -o -P '(?<=href=").*(?=">vivaldi)')")
-wget $version
-echo "$version" >> /opt/$APP/version
-ar x ./*deb
-tar fx ./data.tar.xz
+# DOWNLOAD AND PREPARE THE APP, $version is also used for updates
+version=$(curl -Ls https://api.github.com/repos/ivan-hc/Vivaldi-appimage/releases/latest | sed 's/[()",{} ]/\n/g' | grep -oi "https.*stable.*aarch64.*mage$" | head -1)
+wget "$version" || exit 1
+# Keep this space in sync with other installation scripts
+# Use tar fx ./*tar* here for example in this line in case a compressed file is downloaded.
 cd ..
-mv ./tmp/opt/*/* ./
-mv ./tmp/etc .
-cp ./tmp/usr/share/applications/* ./$APP.desktop
-mv ./tmp/usr .
-rm -R -f ./tmp
+mv ./tmp/*mage ./"$APP"
+# Keep this space in sync with other installation scripts
+rm -R -f ./tmp || exit 1
+echo "$version" > ./version
+chmod a+x ./"$APP" || exit 1
 
-# LINK
-ln -s /opt/$APP/vivaldi /usr/local/bin/$APP
+# LINK TO PATH
+ln -s "/opt/$APP/$APP" "/usr/local/bin/$APP"
 
 # SCRIPT TO UPDATE THE PROGRAM
-cat >> /opt/$APP/AM-updater << 'EOF'
-#!/usr/bin/env bash
+cat >> ./AM-updater << 'EOF'
+#!/bin/sh
+set -u
 APP=vivaldi-stable
-version0=$(cat /opt/$APP/version)
-version=$(echo "https://repo.vivaldi.com/snapshot/deb/pool/main/$(curl -Ls https://repo.vivaldi.com/snapshot/deb/pool/main/ | grep $APP | grep arm64 | tail -1 | grep -o -P '(?<=href=").*(?=">vivaldi)')")
-if [ $version = $version0 ]; then
-  echo "Update not needed!"
+SITE="ivan-hc/Vivaldi-appimage"
+version0=$(cat "/opt/$APP/version")
+version=$(curl -Ls https://api.github.com/repos/ivan-hc/Vivaldi-appimage/releases/latest | sed 's/[()",{} ]/\n/g' | grep -oi "https.*stable.*aarch64.*mage$" | head -1)
+[ -n "$version" ] || { echo "Error getting link"; exit 1; }
+if command -v appimageupdatetool >/dev/null 2>&1; then
+	cd "/opt/$APP" || exit 1
+	appimageupdatetool -Or ./"$APP" && chmod a+x ./"$APP" && echo "$version" > ./version && exit 0
+fi
+if [ "$version" != "$version0" ]; then
+	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
+	notify-send "A new version of $APP is available, please wait"
+	wget "$version" || exit 1
+	# Use tar fx ./*tar* here for example in this line in case a compressed file is downloaded.
+	cd ..
+	mv --backup=t ./tmp/*mage ./"$APP"
+	chmod a+x ./"$APP" || exit 1
+	echo "$version" > ./version
+	rm -R -f ./*zs-old ./*.part ./tmp ./*~
+	notify-send "$APP is updated!"
 else
-  notify-send "A new version of $APP is available, please wait"
-  mkdir /opt/$APP/tmp
-  cd /opt/$APP/tmp
-  wget $version
-  ar x ./*deb
-  tar fx ./data.tar.xz
-  cd ..
-  rm ./version
-  echo $version >> ./version
-  mv --backup=t ./tmp/opt/*/* ./
-  mv --backup=t ./tmp/etc .
-  mv --backup=t ./tmp/usr .
-  chmod a+x /opt/$APP/$APP
-  rm -R -f ./tmp ./*~
-  notify-send "$APP is updated!"
+	echo "Update not needed!"
 fi
 EOF
-chmod a+x /opt/$APP/AM-updater
+chmod a+x ./AM-updater || exit 1
 
-# ENABLE CODEC HTML5
-sed -i '/^  DOWNLOAD/s/ -T[0-9]\+//' ./update-ffmpeg 2> /dev/null
-./update-ffmpeg 2> /dev/null
-
-# LAUNCHER
-sed -i "s#Exec=/usr/bin/#Exec=#g" $APP.desktop
-sed -i "s#Icon=vivaldi#Icon=/opt/$APP/icons/$APP#g" $APP.desktop
-mv ./$APP.desktop /usr/local/share/applications/$APP-AM.desktop 2> /dev/null
-
-# ICON
-mkdir icons
-cp ./*256.png ./icons/$APP
+# LAUNCHER & ICON
+./"$APP" --appimage-extract *.desktop 1>/dev/null && mv ./squashfs-root/*.desktop ./"$APP".desktop
+./"$APP" --appimage-extract .DirIcon 1>/dev/null && mv ./squashfs-root/.DirIcon ./DirIcon
+COUNT=0
+while [ "$COUNT" -lt 10 ]; do # Tries to get the actual icon/desktop if it is a symlink to another symlink
+	if [ -L ./"$APP".desktop ]; then
+		LINKPATH="$(readlink ./"$APP".desktop | sed 's|^\./||' 2>/dev/null)"
+		./"$APP" --appimage-extract "$LINKPATH" 1>/dev/null && mv ./squashfs-root/"$LINKPATH" ./"$APP".desktop
+	fi
+	if [ -L ./DirIcon ]; then
+		LINKPATH="$(readlink ./DirIcon | sed 's|^\./||' 2>/dev/null)"
+		./"$APP" --appimage-extract "$LINKPATH" 1>/dev/null && mv ./squashfs-root/"$LINKPATH" ./DirIcon
+	fi
+	[ ! -L ./"$APP".desktop ] && [ ! -L ./DirIcon ] && break
+	COUNT=$((COUNT + 1))
+done
+sed -i "s#Exec=[^ ]*#Exec=$APP#g; s#Icon=.*#Icon=/opt/$APP/icons/$APP#g" ./"$APP".desktop
+mv ./"$APP".desktop /usr/local/share/applications/"$APP"-AM.desktop && mv ./DirIcon ./icons/"$APP" 1>/dev/null
+rm -R -f ./squashfs-root
