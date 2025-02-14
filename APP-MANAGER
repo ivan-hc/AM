@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="9.4.3"
+AMVERSION="9.4.4"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -481,9 +481,9 @@ export awk_name="1" awk_description="2" awk_site="3" awk_dl="4" awk_ver="5" # Nu
 ################################################################################
 
 # COMPLETION LIST
-available_options="about add apikey backup clean config disable downgrade download enable extra files home icons info \
+available_options="about add apikey backup clean config disable downgrade download enable extra files hide home icons info \
 	install install-appimage launcher list lock neodb newrepo nolibfuse off on overwrite purge query remove sandbox \
-	select sync template test unlock update --all --appimages --apps --byname --config --convert --debug \
+	select sync template test unhide unlock update --all --appimages --apps --byname --config --convert --debug \
 	--devmode-disable --devmode-enable --disable-notifications --enable-notifications --force-latest --home --icons \
 	-ias --launcher --less --pkg --rollback --disable-sandbox --sandbox --system --user $third_party_flags"
 
@@ -799,6 +799,29 @@ _use_clean() {
 	_clean_all_tmp_directories_from_appspath
 	_clean_launchers 2>/dev/null
 	_clean_old_modules
+}
+
+################################################################################
+#				HIDE/UNHIDE
+################################################################################
+
+_use_hide_unhide() {
+	entries="$(echo "$@" | cut -f2- -d ' ')"
+	if [ "$1" = hide ]; then
+		for arg in $entries; do
+			argpath=$(echo "$ARGPATHS" | grep "/$arg$")
+			[ -f "$argpath/remove" ] && mv "$argpath/remove" "$argpath/remove.old" \
+			&& echo "✔ $argpath has been hidden" || echo "✖ Can't hide \"$arg\", app already hidden or non-existent"
+		done
+	else
+		for arg in $entries; do
+			[ "$AMCLI" = am ] && [ -f "/opt/$arg/remove.old" ] && mv "/opt/$arg/remove.old" "/opt/$arg/remove" \
+			&& echo "✔ /opt/$arg can be managed again"
+			[ -n "$APPMAN_APPSPATH" ] && [ -f "$APPMAN_APPSPATH/$arg/remove.old" ] && mv "$APPMAN_APPSPATH/$arg/remove.old" "$APPMAN_APPSPATH/$arg/remove" \
+			&& echo "✔ $APPMAN_APPSPATH/$arg can be managed again"
+		done
+		_clean_amcachedir
+	fi
 }
 
 ################################################################################
@@ -1208,6 +1231,10 @@ case "$1" in
 	'clean'|'-c')
 		_use_clean
 		;;
+	'hide'|'unhide')
+		_determine_args
+		_use_hide_unhide "$@"
+		;;
 	'newrepo'|'neodb')
 		_use_newrepo "$@"
 		;;
@@ -1309,6 +1336,12 @@ case "$1" in
 					${LightBlue}$AMCLI -h\033[0m
 
 			Description: Prints this message.
+
+			${Gold}hide\033[0m
+
+					${LightBlue}$AMCLI hide {PROGRAM}\033[0m
+
+			Description: Prevents an installed application from being shown or managed by \"$AMCLI\".
 
 			${Gold}home, -H, --home\033[0m
 
@@ -1420,6 +1453,12 @@ case "$1" in
 					${LightBlue}$AMCLI -t {PROGRAM}\033[0m
 
 			Description: Generate a custom installation script. To test the scripts, use the \"${LightBlue}$AMCLI -i '/path/to/script'\033[0m\" command or enter the directory of the script and run the \"${LightBlue}$AMCLI -i ./script\033[0m\" command, even using dedicated flags, if necessary (see \"-i\").
+
+			${Gold}unhide\033[0m
+
+					${LightBlue}$AMCLI unhide {PROGRAM}\033[0m
+
+			Description: Allow a hidden app to be shown and managed again (nulls \"hide\").
 
 			${Gold}unlock\033[0m
 
