@@ -396,6 +396,15 @@ Shows the list of all installed programs, with sizes. By default apps are sorted
 Prints this message.
 
 ------------------------------------------------------------------------
+### hide
+ 
+ 		am hide {PROGRAM}
+ 
+**Description**:
+ 
+Prevents an installed application from being shown or managed by "am"/"appman".
+ 
+------------------------------------------------------------------------
 ### `home`, `-H`, `--home`
 
 		am -H {PROGRAM}
@@ -553,6 +562,15 @@ Updates this script to the latest version hosted.
 **Description**:
 
 Generate a custom installation script. To test the scripts, use the "`am -i '/path/to/script'`" command or enter the directory of the script and run the "`am -i ./script`" command, even using dedicated flags, if necessary (see "`-i`").
+
+------------------------------------------------------------------------
+### unhide
+ 
+ 		am unhide {PROGRAM}
+ 
+**Description**:
+
+Allow a hidden app to be shown and managed again (nulls "`hide`").
 
 ------------------------------------------------------------------------
 ### `unlock`
