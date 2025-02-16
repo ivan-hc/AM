@@ -46,7 +46,6 @@ You can use the command `am -a {PROGRAM}` to view the description and get the so
  - [How are apps installed](#how-are-apps-installed)
  - [How to set the path to local apps](#how-to-set-the-path-to-local-apps)
  - [What programs can be installed](#what-programs-can-be-installed)
-   - [Supported third-party databases](#supported-third-party-databases)
    - [How to replace AM database](#how-to-replace-am-database)
 
 [How to update all programs, for real!](#how-to-update-all-programs-for-real)
@@ -214,21 +213,6 @@ NOTE: by modifying the contents of `~/.config/appman`, you will only change the 
 The database aims to be a reference point where you can download all the AppImage packages scattered around the web, otherwise unobtainable, as you would expect from any package manager, through specific installation scripts for each application, as happens with the AUR PKGBUILDs, on Arch Linux. You can see all of them [here](https://github.com/ivan-hc/AM/tree/main/programs), divided by architecture.
 
 You can view basic information, site links and sources using the related command `am -a {PROGRAM}`, or visit [**portable-linux-apps.github.io/apps**](https://portable-linux-apps.github.io/apps).
-
-#### Supported third-party databases
-Another feature of "AM" is extensibility, thanks to the management of applications from external databases through the use of dedicated "flags" to be used during the installation process (option `-i` or `install`), the creation of lists (`-l` or `list`) and searches (`-q` or `query`)
-```
-                am -i --{FLAG} {PROGRAM}
-                am -i --{FLAG} --user {PROGRAM}
-                am -l --{FLAG}
-                am -q --{FLAG} {KEYWORD}
-```
-These databases have the task of supporting and enriching the list of applications that can be installed via "AM". Here are the ones currently supported:
-- "[Toolpacks](https://github.com/Azathothas/Toolpacks)", the flag to use is `--toolpack`
-
-Third-party databases can show basic information normally with the option `-a` or `about`, no flag is needed here. However, the name of the package will be shown with an extension equivalent to the flag used to install it. For example `{PROGRAM}` will be `{PROGRAM}.toolpack` if coming from the "Toolpacks" database.
-
-Same thing, you can use `am -i {PROGRAM}.toolpack` or `am -i --user {PROGRAM}.toolpack` to install the program without using the flag.
 
 #### How to replace AM database
 One thing I care a lot about is **continuity**, and as I have seen over the years, not all open source developers are able to maintain a project. This could happen to me in the future. I don't want it to be that way.
@@ -435,7 +419,7 @@ Allow installed apps to use system icon themes. You can specify the name of the 
 
 **Description**:
 
-Install one or more programs or libraries from the list. With the "`--debug`" option you can see log messages to debug the script. For more details on "`--force-latest`", see the dedicated option, below. Use the "`--icons`" flag to allow the program to use icon themes. It can also be extended with additional flags (see "`--toolpack`"). The "`--sandbox`" flag allows you to set sandboxes for AppImage packages.
+Install one or more programs or libraries from the list. With the "`--debug`" option you can see log messages to debug the script. For more details on "`--force-latest`", see the dedicated option, below. Use the "`--icons`" flag to allow the program to use icon themes. The "`--sandbox`" flag allows you to set sandboxes for AppImage packages.
 
 NOTE: Since this is an "install" option, you can add the "`--user`" flag to install apps locally. See "`--user`" at the bottom to learn more.
 
@@ -466,12 +450,11 @@ Prevent an application being updated, if it has an"AM-updater" script.
 ### `list`, `-l`
 
                 am -l
-                am -l --all
                 am -l --appimages
 
 **Description**:
 
-Shows the list of all the apps available, or just the AppImages. It can also be extended with additional flags, the "`--all`" flag allows you to consult the set of all supported databases (see "`--toolpack`").
+Shows the list of all the apps available, or just the AppImages. It can also be extended with additional flags.
 
 ------------------------------------------------------------------------
 ### `newrepo`, `neodb`
@@ -508,13 +491,12 @@ Overwrite apps with snapshots saved previously (see "-b").
 ### `query`, `-q`
 
                 am -q {KEYWORD}
-                am -q --all {KEYWORD}
                 am -q --appimages {KEYWORD}
                 am -q --pkg {PROGRAM1} {PROGRAM2}
 
 **Description**:
 
-Search for keywords in the list of available applications, add the "`--appimages`" option to list only the AppImages or add "`--pkg`" to list multiple programs at once. It can also be extended with additional flags, the "`--all`" flag allows you to consult the set of all supported databases (see "`--toolpack`").
+Search for keywords in the list of available applications, add the "`--appimages`" option to list only the AppImages or add "`--pkg`" to list multiple programs at once. It can also be extended with additional flags.
 
 ------------------------------------------------------------------------
 ### `remove`, `-r`
@@ -680,20 +662,6 @@ NOTE that "`--launcher`" can be used as a flag in "`-u`" to try to update the in
 Switch "AM" back to "AM" from "AppMan Mode" (see "`--user`").
 
 ------------------------------------------------------------------------
-### `--toolpack`
-
-                am -i --toolpack {PROGRAM}
-                am -i --toolpack --user {PROGRAM}
-                am -l --toolpack
-                am -q --toolpack {KEYWORD}
- 
-**Description**:
-
-This is a flag to use in "`-i`" to install Toolpack programs, in "`-l`" to list all available Toolpacks, and "`-q`" to search the Toolpack list. Toolpack is a collection of programs external to the "AM" database. Visit https://github.com/Azathothas/Toolpacks to learn more.
-
-NOTE, for installations you can use "`.toolpack`" as the package extension instead of using the flag.
-
-------------------------------------------------------------------------
 ### `--user`, `appman`
 
 		am --user
@@ -828,9 +796,6 @@ Below you can access documentation pages for common issues and frequently asked 
 - *[appimagetool](https://github.com/AppImage/appimagetool), get rid of libfuse2 from your AppImages*
 - *[pkg2appimage](https://github.com/AppImage/pkg2appimage), create AppImages on the fly from existing .deb packages*
 - *[repology](https://github.com/repology), the encyclopedia of all software versions*
-
-#### Partner projects, i.e. those that actively contribute to this project
-- *[Toolpacks](https://github.com/Azathothas/Toolpacks), Largest Collection of Multi-Platform Pre-Compiled Static Binaries*
 
 #### My other projects
 - *[AppImaGen](https://github.com/ivan-hc/AppImaGen), easily create AppImages from Ubuntu PPAs or Debian using pkg2appimage and appimagetool*
