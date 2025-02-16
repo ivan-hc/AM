@@ -138,7 +138,10 @@ edition="EDITION"
 release=$(wget -q https://www.libreoffice.org/download/release-notes/ -O - | tr '>' '\n' | grep -i "^LibreOffice [0-9]*" | grep " Release" | tr ' ' '\n' | grep "^[0-9]" | RELEASE)
 version=$(wget -q https://appimages.libreitalia.org/ -O - | tr '"' '\n' | grep -oi "libreoffice-.*appimage$" | grep -v ">\|LibreOffice-fresh\|LibreOffice-still" | sort -t- -k1,1V -k2,2V -k3,3V -k4,4V | grep "$edition" | grep "$release" | tail -1 )
 [ -n "$version" ] || { echo "Error getting link"; exit 1; }
-if [ "$version" != "$version0" ] || [ -e /opt/"$APP"/*.zsync ]; then
+if command -v appimageupdatetool >/dev/null 2>&1; then
+	cd "/opt/$APP" || exit 1
+	appimageupdatetool -Or ./"$APP" && chmod a+x ./"$APP" && echo "$version" > ./version && exit 0
+elif [ "$version" != "$version0" ] || [ -e /opt/"$APP"/*.zsync ]; then
 	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
 	[ -e /opt/"$APP"/*.zsync ] || notify-send "A new version of $APP is available, please wait"
 	[ -e /opt/"$APP"/*.zsync ] && wget "https://appimages.libreitalia.org/$version.zsync" 2>/dev/null || { wget "https://appimages.libreitalia.org/$version" || exit 1; }
