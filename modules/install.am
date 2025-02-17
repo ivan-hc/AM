@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 #############################################################################
 # THIS MODULE IS USED TO INSTALL APPS FROM THE DATABASE OR FROM LOCAL SCRIPTS
@@ -352,6 +352,24 @@ _3rd_party_apps_handler() {
 	fi
 	awk_version="curl -Ls $third_party_readme | grep -i \"^| $arg \" | tr '|' '\\\n' | cut -c 2- | grep . | awk -F: \"NR==$awk_ver\""
 	third_party_url="curl -Ls $third_party_readme | grep -i \"^| $arg \" | tr '|' '\\\n' | cut -c 2- | grep . | awk -F: \"NR==$awk_dl\""
+	# Determine if a Toolpack has multiple variants
+	if [ "$third_party_readme" = "$toolpack_readme" ]; then
+		toolpack_readme=$(curl -Ls "$toolpack_readme")
+		tpnumber=$(echo "$toolpack_readme" | grep "^| $arg |" | wc -l | sed 's/ //g')
+		echo "$tpnumber"
+		if [ "$tpnumber" -ge "1" ]; then
+			about_site=$(echo "$toolpack_readme" | grep "^| $arg " | awk -F'|' '{print $4}' | uniq)
+			printf "\n Detected multiple variants of this program, choose one or press CTRL+C to abort:\n\n"
+			sleep 1
+			select d in $about_site; do
+				test -n "$d" && break
+				echo ">>> Invalid Selection"
+			done
+			awk_version="curl -Ls $third_party_readme | grep -i \"$d\" | tr '|' '\\\n' | cut -c 2- | grep . | awk -F: \"NR==$awk_ver\""
+			third_party_url="curl -Ls $third_party_readme | grep -i \"$d\" | tr '|' '\\\n' | cut -c 2- | grep . | awk -F: \"NR==$awk_dl\""
+		fi
+	fi
+	# Create the installation script
 	if echo "$arg" | grep -q "appbundle$"; then
 		curl -Ls "$AMREPO"/templates/AM-SAMPLE-AppBundle > "$CACHEDIR/extra/$arg.toolpack" || exit 1
 		sed -i "s#APP=SAMPLE#APP=$arg#g; s#FUNCTION#$awk_version#g; s#wget \"\$version\"#wget \$($third_party_url)#g" "$CACHEDIR/extra/$arg.toolpack"
