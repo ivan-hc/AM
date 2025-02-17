@@ -21,7 +21,17 @@ _about_description_for_third_party() {
 	appname_arg=$(curl -Ls "$readme_source" 2>/dev/null | grep -i "^| $appname " | tr '|' '\n' | cut -c 2- | grep .)
 	about_description=$(echo "$appname_arg" | awk -F: "NR==$awk_description")
 	about_site=$(echo "$appname_arg" | awk -F: "NR==$awk_site")
-	[ "$readme_source" = "$toolpack_readme" ] && [ -n "$about_description" ] && printf "\n%b\n\nSOURCE: %b\n\nDATABASE: %b\n" "$about_description" "$about_site" "$repo_source"
+	if [ "$readme_source" = "$toolpack_readme" ]; then
+		toolpack_readme=$(curl -Ls "$toolpack_readme")
+		tpnumber=$(echo "$toolpack_readme" | grep "^| $appname |" | wc -l | sed 's/ //g')
+		if [ "$tpnumber" -ge "1" ]; then
+			[ "$tpnumber" != 1 ] && printf "\nAvailable families: %b\n" "$tpnumber"
+			about_description=$(echo "$toolpack_readme" | grep "^| $appname " | awk -F'|' '{print $3}' | uniq)
+			about_site=$(echo "$toolpack_readme" | grep "^| $appname " | awk -F'|' '{print $4}' | uniq)
+		fi
+	fi
+	[ -n "$about_description" ] && printf "\n%b\n\nSOURCE: %b\n\nDATABASE: %b\n" "$about_description" "$about_site" "$repo_source" \
+	|| printf "\n\nDATABASE: %b\n" "$toolpack_repo"
 }
 
 _about_description() {
