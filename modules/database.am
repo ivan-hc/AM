@@ -491,11 +491,16 @@ _query_lists() {
 	printf "\n Search results for \"%s\":\n\n"  "$@" | tr '[:lower:]' '[:upper:]'
 }
 
+_query_no_results() {
+	printf "No search results" && [ -z "$query_all" ] && printf ", please retry this query using the \"%b--all\033[0m\" flag\n" "${LightBlue}"
+}
+
 _find_no_order() {
 	grep -i -- "$1" | grep -i -- "$2" | grep -i -- "$3" | grep -i -- "$4" | grep -i -- "$5" \
 	| grep -i -- "$6" | grep -i -- "$7" | grep -i -- "$8" | grep -i -- "$9" | grep -i -- "${10}" \
 	| grep -i -- "${11}" | grep -i -- "${12}" | grep -i -- "${13}" | grep -i -- "${14}" | grep -i -- "${15}" \
-	| grep -i -- "${16}" | grep -i -- "${17}" | grep -i -- "${18}" | grep -i -- "${19}" | grep -i -- "${20}"
+	| grep -i -- "${16}" | grep -i -- "${17}" | grep -i -- "${18}" | grep -i -- "${19}" | grep -i -- "${20}" \
+	|| _query_no_results
 }
 
 ################################################################################
@@ -593,6 +598,7 @@ case "$1" in
 				| grep -iE "$regex" --color=always | _pretty_list_compat
 		elif [ "$1" = --all ]; then
 			shift
+			query_all="1"
 			wget -q --tries=10 --timeout=20 --spider https://github.com && _sync_databases 1>/dev/null
 			_query_lists "$*"
 			sort -u  "$AMDATADIR"/"$ARCH"-* 2>/dev/null | grep "^◆ .*$" 2>/dev/null | _find_no_order "$@" | _pretty_list_compat
