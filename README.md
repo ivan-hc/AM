@@ -342,7 +342,7 @@ Removes all the unnecessary files and folders.
 
 **Description**:
 
-Set a dedicated `$XDD_CONFIG_HOME` for one or more AppImages.
+Set a dedicated $XDD_CONFIG_HOME for one or more AppImages.
 
 ------------------------------------------------------------------------
 ### `downgrade`, `--rollback`
@@ -371,9 +371,7 @@ Download one or more installation scripts to your desktop or convert them to loc
 
 **Description**:
 
-Install AppImages from github.com, outside the database. This allows you to install, update and manage them all like the others. Where "`user/project`" can be the whole URL to the github repository, give a name to the program so that it can be used from the command line. Optionally, add an "univoque" keyword if multiple AppImages are listed.
-
-NOTE: Since this is an "install" option, you can add the "`--user`" flag (before "`user/project`") to install apps locally. See "`--user`" at the bottom to learn more.
+Install AppImages from github.com, outside the database. This allows you to install, update and manage them all like the others. Where "user/project" can be the whole URL to the github repository, give a name to the program so that it can be used from the command line. Optionally, add an "univoque" keyword if multiple AppImages are listed.
 
 ------------------------------------------------------------------------
 ### `files`, `-f`, `-fi`
@@ -396,14 +394,14 @@ Shows the list of all installed programs, with sizes. By default apps are sorted
 Prints this message.
 
 ------------------------------------------------------------------------
-### hide
- 
- 		am hide {PROGRAM}
- 
+### `hide`
+
+		am hide {PROGRAM}
+
 **Description**:
- 
-Prevents an installed application from being shown or managed by "am"/"appman".
- 
+
+Prevents an installed application from being shown or managed by "am".
+
 ------------------------------------------------------------------------
 ### `home`, `-H`, `--home`
 
@@ -421,17 +419,16 @@ Set a dedicated $HOME directory for one or more AppImages.
 
 **Description**:
 
-Allow installed apps to use system icon themes. You can specify the name of the apps to change or use the "`--all`" flag to change all of them at once. This will remove the icon path from the .desktop file and add the symbolic link of all available icons in the `~/.local/share/icons/hicolor/scalable/apps` directory. The "`--icons`" 
- option can be used as "flag" in the "`-i`" and "`-ia`" options.
+Allow installed apps to use system icon themes. You can specify the name of the apps to change or use the "`--all`" flag to change all of them at once. This will remove the icon path from the .desktop file and add the symbolic link of all available icons in the `~/.local/share/icons/hicolor/scalable/apps` directory. The "`--icons`" option can be used as "flag" in the "`-i`" and "`-ia`" options.
 
 ------------------------------------------------------------------------
 ### `install`, `-i`
 
- 		am -i {PROGRAM}
- 		am -i --debug {PROGRAM}
- 		am -i --force-latest {PROGRAM}
- 		am -i --icons {PROGRAM}
- 		am -i --sandbox {PROGRAM}
+		am -i {PROGRAM}
+		am -i --debug {PROGRAM}
+		am -i --force-latest {PROGRAM}
+		am -i --icons {PROGRAM}
+		am -i --sandbox {PROGRAM}
 
 **Description**:
 
@@ -442,12 +439,12 @@ NOTE: Since this is an "install" option, you can add the "`--user`" flag to inst
 ------------------------------------------------------------------------
 ### `install-appimage`, `-ia`, `-ias`
 
- 		am -ia {PROGRAM}
- 		am -ia --debug {PROGRAM}
- 		am -ia --force-latest {PROGRAM}
- 		am -ia --icons {PROGRAM}
- 		am -ia --sandbox {PROGRAM}
- 		am -ias {PROGRAM}
+		am -ia {PROGRAM}
+		am -ia --debug {PROGRAM}
+		am -ia --force-latest {PROGRAM}
+		am -ia --icons {PROGRAM}
+		am -ia --sandbox {PROGRAM}
+		am -ias {PROGRAM}
 
 **Description**:
 
@@ -465,9 +462,9 @@ Prevent an application being updated, if it has an"AM-updater" script.
 ------------------------------------------------------------------------
 ### `list`, `-l`
 
-                am -l
-                am -l --all
-                am -l --appimages
+		am -l
+		am -l --all
+		am -l --appimages
 
 **Description**:
 
@@ -502,19 +499,19 @@ Convert old AppImages and get rid of "libfuse2" dependence.
 
 **Description**:
 
-Overwrite apps with snapshots saved previously (see "-b").
+Overwrite apps with snapshots saved previously (see "`-b`").
 
 ------------------------------------------------------------------------
 ### `query`, `-q`
 
-                am -q {KEYWORD}
-                am -q --all {KEYWORD}
-                am -q --appimages {KEYWORD}
-                am -q --pkg {PROGRAM1} {PROGRAM2}
+		am -q {KEYWORD}
+		am -q --all {KEYWORD}
+		am -q --appimages {KEYWORD}
+		am -q --pkg {PROGRAM1} {PROGRAM2}
 
 **Description**:
 
-Search for keywords in the list of available applications, add the "`--appimages`" option to list only the AppImages or add "`--pkg`" to list multiple programs at once. It can also be extended with additional flags, the "`--all`" flag allows you to consult the set of all supported databases.
+Search for keywords in the list of available applications, add the "`--appimages`" option to list only the AppImages or add "`--pkg`" to list multiple programs at once. The "`--all`" flag allows you to consult the set of all supported databases.
 
 ------------------------------------------------------------------------
 ### `remove`, `-r`
@@ -564,10 +561,10 @@ Updates this script to the latest version hosted.
 Generate a custom installation script. To test the scripts, use the "`am -i '/path/to/script'`" command or enter the directory of the script and run the "`am -i ./script`" command, even using dedicated flags, if necessary (see "`-i`").
 
 ------------------------------------------------------------------------
-### unhide
- 
- 		am unhide {PROGRAM}
- 
+### `unhide`
+
+		am unhide {PROGRAM}
+
 **Description**:
 
 Allow a hidden app to be shown and managed again (nulls "`hide`").
@@ -584,13 +581,13 @@ Unlock updates for the selected program (nulls "`lock`").
 ------------------------------------------------------------------------
 ### `update`, `-u`, `-U`
 
- 		am -u
- 		am -u --apps
- 		am -u --debug
- 		am -u --apps --debug
- 		am -u {PROGRAM}
- 		am -u --debug {PROGRAM}
- 		am -u --launcher
+		am -u
+		am -u --apps
+		am -u --debug
+		am -u --apps --debug
+		am -u {PROGRAM}
+		am -u --debug {PROGRAM}
+		am -u --launcher
 
 **Description**:
 
@@ -680,21 +677,7 @@ NOTE that "`--launcher`" can be used as a flag in "`-u`" to try to update the in
 Switch "AM" back to "AM" from "AppMan Mode" (see "`--user`").
 
 ------------------------------------------------------------------------
-### `--toolpack`
-
-                am -i --toolpack {PROGRAM}
-                am -i --toolpack --user {PROGRAM}
-                am -l --toolpack
-                am -q --toolpack {KEYWORD}
- 
-**Description**:
-
-This is a flag to use in "`-i`" to install Toolpack programs, in "`-l`" to list all available Toolpacks, and "`-q`" to search the Toolpack list. Toolpack is a collection of programs external to the "AM" database. Visit https://github.com/pkgforge/soarpkgs to learn more.
-
-NOTE, for installations you can use "`.toolpack`" as the package extension instead of using the flag.
-
-------------------------------------------------------------------------
-### `--user`, `appman`
+### `--user`
 
 		am --user
 
@@ -706,31 +689,48 @@ The "`--user`" option can also be used just as a "flag" for installation options
 
 - Use it to install applications locally, option "`-i`" or "`install`":
 
-		am -i --user {PROGRAM}
+	am -i --user {PROGRAM}
 
-- Also suboptions of "`-i`" can work with this flag:
+- Also suboptions of "-i" can work with this flag:
 
- 		am -i --user --debug {PROGRAM}
- 		am -i --user --force-latest {PROGRAM}
- 		am -i --user --icons {PROGRAM}
- 		am -i --user --debug --force-latest {PROGRAM}
- 		am -i --user --debug --force-latest --icons {PROGRAM}
+	am -i --user --debug {PROGRAM}
+	am -i --user --force-latest {PROGRAM}
+	am -i --user --icons {PROGRAM}
+	am -i --user --debug --force-latest {PROGRAM}
+	am -i --user --debug --force-latest --icons {PROGRAM}
 
 - Same for AppImages only, option "`-ia`" or "`install-appimage`":
 
-	 	am -ia --user {PROGRAM}
-	 	am -ia --user --debug {PROGRAM}
- 		am -ia --user --force-latest {PROGRAM}
-	 	am -ia --user --icons {PROGRAM}
-	 	am -ia --user --debug --force-latest {PROGRAM}
-	 	am -ia --user --debug --force-latest --icons {PROGRAM}
+	am -ia --user {PROGRAM}
+	am -ia --user --debug {PROGRAM}
+	am -ia --user --force-latest {PROGRAM}
+	am -ia --user --icons {PROGRAM}
+	am -ia --user --debug --force-latest {PROGRAM}
+	am -ia --user --debug --force-latest --icons {PROGRAM}
 
 - External AppImages can be installed like this as well, option "`-e`" or "`extra`":
 
-		am -e --user user/project {APPNAME}
-		am -e --user user/project {APPNAME} {KEYWORD}
+	am -e --user user/project {APPNAME}
+	am -e --user user/project {APPNAME} {KEYWORD}
 
 NOTE, "AM" 9 or higher is also able to, update and manage apps locally, by default, and without having to switch to "AppMan Mode".
+
+------------------------------------------------------------------------
+
+## THIRD-PARTY FLAGS: 
+
+------------------------------------------------------------------------
+### `--toolpack`
+
+	am -i --toolpack {PROGRAM}
+	am -i --toolpack --user {PROGRAM}
+	am -l --toolpack
+
+**Description**:
+
+This is a flag to use in "`-i`" and "`-l`" to install/list Toolpack programs from https://github.com/pkgforge/soarpkgs (ex toolpacks). You can also use it in "`-q`" as a keyword.
+
+NOTE, for installations you can use ".toolpack" as the package extension instead of using the flag.
 
 </details>
 
