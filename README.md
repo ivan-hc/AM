@@ -342,7 +342,7 @@ Removes all the unnecessary files and folders.
 
 **Description**:
 
-Set a dedicated $XDD_CONFIG_HOME for one or more AppImages.
+Set a dedicated `$XDD_CONFIG_HOME` for one or more AppImages.
 
 ------------------------------------------------------------------------
 ### `downgrade`, `--rollback`
@@ -371,7 +371,9 @@ Download one or more installation scripts to your desktop or convert them to loc
 
 **Description**:
 
-Install AppImages from github.com, outside the database. This allows you to install, update and manage them all like the others. Where "user/project" can be the whole URL to the github repository, give a name to the program so that it can be used from the command line. Optionally, add an "univoque" keyword if multiple AppImages are listed.
+Install AppImages from github.com, outside the database. This allows you to install, update and manage them all like the others. Where "`user/project`" can be the whole URL to the github repository, give a name to the program so that it can be used from the command line. Optionally, add an "univoque" keyword if multiple AppImages are listed.
+
+NOTE: Since this is an "install" option, you can add the "`--user`" flag (before "`user/project`") to install apps locally. See "`--user`" at the bottom to learn more.
 
 ------------------------------------------------------------------------
 ### `files`, `-f`, `-fi`
