@@ -224,7 +224,7 @@ Another feature of "AM" is extensibility, thanks to the management of applicatio
                 am -q --{FLAG} {KEYWORD}
 ```
 These databases have the task of supporting and enriching the list of applications that can be installed via "AM". Here are the ones currently supported:
-- "[Toolpacks](https://github.com/Azathothas/Toolpacks)", the flag to use is `--toolpack`
+- "[Toolpacks](https://github.com/pkgforge/soarpkgs)", the flag to use is `--toolpack`
 
 Third-party databases can show basic information normally with the option `-a` or `about`, no flag is needed here. However, the name of the package will be shown with an extension equivalent to the flag used to install it. For example `{PROGRAM}` will be `{PROGRAM}.toolpack` if coming from the "Toolpacks" database.
 
@@ -689,7 +689,7 @@ Switch "AM" back to "AM" from "AppMan Mode" (see "`--user`").
  
 **Description**:
 
-This is a flag to use in "`-i`" to install Toolpack programs, in "`-l`" to list all available Toolpacks, and "`-q`" to search the Toolpack list. Toolpack is a collection of programs external to the "AM" database. Visit https://github.com/Azathothas/Toolpacks to learn more.
+This is a flag to use in "`-i`" to install Toolpack programs, in "`-l`" to list all available Toolpacks, and "`-q`" to search the Toolpack list. Toolpack is a collection of programs external to the "AM" database. Visit https://github.com/pkgforge/soarpkgs to learn more.
 
 NOTE, for installations you can use "`.toolpack`" as the package extension instead of using the flag.
 
@@ -830,7 +830,7 @@ Below you can access documentation pages for common issues and frequently asked 
 - *[repology](https://github.com/repology), the encyclopedia of all software versions*
 
 #### Partner projects, i.e. those that actively contribute to this project
-- *[Toolpacks](https://github.com/Azathothas/Toolpacks), Largest Collection of Multi-Platform Pre-Compiled Static Binaries*
+- *[Toolpacks](https://github.com/pkgforge/soarpkgs), Largest Collection of Multi-Platform Pre-Compiled Static Binaries*
 
 #### My other projects
 - *[AppImaGen](https://github.com/ivan-hc/AppImaGen), easily create AppImages from Ubuntu PPAs or Debian using pkg2appimage and appimagetool*
