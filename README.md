@@ -691,29 +691,29 @@ The "`--user`" option can also be used just as a "flag" for installation options
 
 - Use it to install applications locally, option "`-i`" or "`install`":
 
-	am -i --user {PROGRAM}
+		am -i --user {PROGRAM}
 
 - Also suboptions of "-i" can work with this flag:
 
-	am -i --user --debug {PROGRAM}
-	am -i --user --force-latest {PROGRAM}
-	am -i --user --icons {PROGRAM}
-	am -i --user --debug --force-latest {PROGRAM}
-	am -i --user --debug --force-latest --icons {PROGRAM}
+		am -i --user --debug {PROGRAM}
+		am -i --user --force-latest {PROGRAM}
+		am -i --user --icons {PROGRAM}
+		am -i --user --debug --force-latest {PROGRAM}
+		am -i --user --debug --force-latest --icons {PROGRAM}
 
 - Same for AppImages only, option "`-ia`" or "`install-appimage`":
 
-	am -ia --user {PROGRAM}
-	am -ia --user --debug {PROGRAM}
-	am -ia --user --force-latest {PROGRAM}
-	am -ia --user --icons {PROGRAM}
-	am -ia --user --debug --force-latest {PROGRAM}
-	am -ia --user --debug --force-latest --icons {PROGRAM}
+		am -ia --user {PROGRAM}
+		am -ia --user --debug {PROGRAM}
+		am -ia --user --force-latest {PROGRAM}
+		am -ia --user --icons {PROGRAM}
+		am -ia --user --debug --force-latest {PROGRAM}
+		am -ia --user --debug --force-latest --icons {PROGRAM}
 
 - External AppImages can be installed like this as well, option "`-e`" or "`extra`":
 
-	am -e --user user/project {APPNAME}
-	am -e --user user/project {APPNAME} {KEYWORD}
+		am -e --user user/project {APPNAME}
+		am -e --user user/project {APPNAME} {KEYWORD}
 
 NOTE, "AM" 9 or higher is also able to, update and manage apps locally, by default, and without having to switch to "AppMan Mode".
 
