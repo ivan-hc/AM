@@ -354,6 +354,11 @@ _3rd_party_apps_handler() {
 	third_party_url="curl -Ls $third_party_readme | grep -i \"^| $arg \" | tr '|' '\\\n' | cut -c 2- | grep . | awk -F: \"NR==$awk_dl\""
 	# Determine if a Toolpack has multiple variants
 	if [ "$third_party_readme" = "$toolpack_readme" ]; then
+		if ! command -v oras >/dev/null 2>&1; then
+			echo " 💀 ERROR: now \"Toolpacks\" depend on \"oras\""
+			printf "\n Please run \"%b -i oras\" first\n" "$CLI"
+			return 1
+		fi
 		toolpack_readme=$(curl -Ls "$toolpack_readme")
 		tpnumber=$(echo "$toolpack_readme" | grep "^| $arg |" | wc -l | sed 's/ //g')
 		if [ "$tpnumber" != 1 ]; then
@@ -384,16 +389,16 @@ _3rd_party_apps_handler() {
 	fi
 	chmod a+x "$CACHEDIR/extra/$arg.toolpack"
 	arg="$CACHEDIR/extra/$arg.toolpack"
+	_install_local_script
 }
 
 _install_3rd_party_app() {
 	arg=$(echo "$arg" | sed 's/\.toolpack//g; s/\.appimage//g')
 	if curl -Ls "$appbundle_readme" 2>/dev/null | grep -q "^| $arg " || curl -Ls "$toolpack_readme" 2>/dev/null | grep -q "^| $arg "; then
 		_3rd_party_apps_handler
-		_install_local_script
 	else
-		echo " 💀 ERROR, \"$arg\" does NOT exist in 3rd-party databases:"
-		printf "\nTry without the \"--toolpack\" flag or run \"%b$AMCLIPATH_ORIGIN -l --all\033[0m\" to check all lists.\n" "${Gold}" | fold -sw 72 | sed 's/^/ /g'
+		echo " 💀 ERROR, \"$arg\" does NOT exist in 3rd-party databases"
+		printf "\n Try again but WITHOUT the \"--toolpack\" flag\n"
 	fi
 }
 
