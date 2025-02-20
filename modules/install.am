@@ -337,7 +337,18 @@ _remove_extensions_from_appname() {
 }
 
 _3rd_party_check() {
-	echo "$@" | grep -q -- "--toolpack" || echo "$arg" | grep -q ".toolpack$" || echo "$arg" | grep -q ".appbundle$"
+	for tp_list in $third_party_lists; do
+		echo "$@" | grep -q -- "--$tp_list" || echo "$arg" | grep -q ".$tp_list$"
+	done
+}
+
+_3rd_party_curl_detect_item() {
+	for tp_list in $third_party_lists; do
+		tprepo_readme="${tp_list}_readme"
+		if [ -n "${!tprepo_readme}" ]; then
+			curl -Ls "${!tprepo_readme}" 2>/dev/null | grep -q "^| $arg "
+		fi
+	done
 }
 
 _3rd_party_apps_handler() {
@@ -350,7 +361,7 @@ _3rd_party_apps_handler() {
 	fi
 	awk_version="curl -Ls $third_party_readme | grep -i \"^| $arg \" | tr '|' '\\\n' | cut -c 2- | grep . | awk -F: \"NR==$awk_ver\""
 	third_party_url="curl -Ls $third_party_readme | grep -i \"^| $arg \" | tr '|' '\\\n' | cut -c 2- | grep . | awk -F: \"NR==$awk_dl\""
-	# Determine if a Toolpack has multiple variants
+	# Determine if a third-party app has multiple variants
 	if [ "$third_party_readme" = "$toolpack_readme" ]; then
 		tpnumber=$(curl -Ls "$toolpack_readme" | grep "^| $arg |" | wc -l | sed 's/ //g')
 		if [ "$tpnumber" != 1 ]; then
@@ -385,7 +396,6 @@ _3rd_party_apps_handler() {
 	if echo "$arg" | grep -q "appbundle$"; then
 		curl -Ls "$AMREPO"/templates/AM-SAMPLE-AppBundle > "$CACHEDIR/extra/$arg.toolpack" || exit 1
 		sed -i "s#APP=SAMPLE#APP=$arg#g; s#FUNCTION#$awk_version#g; s#wget \"\$version\"#wget \$($third_party_url)#g" "$CACHEDIR/extra/$arg.toolpack"
-		sed -i 's/\.dwfs.appbundle$//g; s/\.appbundle$//g' "$CACHEDIR/extra/$arg.toolpack"
 	else
 		curl -Ls "$AMREPO"/templates/AM-SAMPLE-Archive > "$CACHEDIR/extra/$arg.toolpack" || exit 1
 		sed -i "s#APP=SAMPLE#APP=$arg#g; s#FUNCTION#$awk_version#g; s#wget \"\$version\"#wget \$($third_party_url)#g" "$CACHEDIR/extra/$arg.toolpack"
@@ -396,8 +406,10 @@ _3rd_party_apps_handler() {
 }
 
 _install_3rd_party_app() {
-	arg=$(echo "$arg" | sed 's/\.toolpack//g')
-	if curl -Ls "$appbundle_readme" 2>/dev/null | grep -q "^| $arg " || curl -Ls "$toolpack_readme" 2>/dev/null | grep -q "^| $arg "; then
+	for tp_list in $third_party_lists; do
+		arg=$(echo "$arg" | sed "s/\.$tp_list$//g")
+	done
+	if _3rd_party_curl_detect_item; then
 		_3rd_party_apps_handler
 		_install_local_script
 	else
