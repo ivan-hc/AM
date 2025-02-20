@@ -357,18 +357,19 @@ _3rd_party_apps_handler() {
 		tpnumber=$(curl -Ls "$toolpack_readme" | grep "^| $arg |" | wc -l | sed 's/ //g')
 		if [ "$tpnumber" != 1 ]; then
 			about_site=$(curl -Ls "$toolpack_readme" | grep "^| $arg " | awk -F'|' '{print $4}' | uniq)
-			printf " Detected multiple variants, choose one or press CTRL+C to abort:\n\n"
+			printf " Detected multiple variants, choose one or press ZERO to abort:\n\n"
 			sleep 1
 			select d in $about_site; do
 				if [ -n "$d" ]; then
 					url_content=$(curl -Ls "$third_party_readme" | grep -i "$d" | tr '|' '\n' | cut -c 2- | grep . | awk -F: "NR==$awk_dl")
-					if curl --output /dev/null --silent --head --fail "$url_content" 1>/dev/null; then
-						echo ">>> Failed to fetch valid content. Please select onother one."
-					else
+					if ! curl --output /dev/null --silent --head --fail "$url_content" 1>/dev/null; then
 						break
+					else
+						echo " >>> Failed to fetch valid content. Please select onother one."
 					fi
 				else
-					echo ">>> Invalid selection. Please choose a valid option."
+					printf "\n Invalid selection. INSTALLATION ABORTED! \n"
+					return 1
 				fi
 			done
 			awk_version="curl -Ls $third_party_readme | grep -i \"$d\" | tr '|' '\\\n' | cut -c 2- | grep . | awk -F: \"NR==$awk_ver\""
