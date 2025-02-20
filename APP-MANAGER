@@ -419,6 +419,10 @@ _am_newrepo_check "$@"
 
 third_party_flags_message=""
 
+_third_party_lsts_filter() {
+	grep -v -- "---\|^| appname" | awk -F'|' '{print $2, $3}' | sed 's/^/◆/g; s/   / : /g; s/ $//g'
+}
+
 #################################
 #	APPBUNDLEHUB		
 #################################
@@ -427,8 +431,7 @@ appbundle_readme="https://raw.githubusercontent.com/xplshn/dbin-metadata/master/
 
 _sync_appbundle_list() {
 	rm -f "$AMDATADIR/$ARCH-appbundle"
-	[ -n "$appbundle_readme" ] && curl -Ls "$appbundle_readme" | grep -v "\.appimage \|?" | grep "\.appbundle " | cut -d":" -f1 | cut -d"@" -f2 \
-	| sed 's/^| /◆ /g; s/ https$//g; s/ :$//g; s/ | / : /g; s/ |$/./g; s/\.\.$/./g;' | sort > "$AMDATADIR/$ARCH-appbundle" \
+	[ -n "$appbundle_readme" ] && curl -Ls "$appbundle_readme" | grep -v "\.appimage \|?" | grep "\.appbundle " | cut -d":" -f1 | cut -d"@" -f2 | sed 's/^| /◆ /g; s/ https$//g; s/ :$//g; s/ | / : /g; s/ |$/./g; s/\.\.$/./g;' | sort > "$AMDATADIR/$ARCH-appbundle" \
 	|| touch "$AMDATADIR/$ARCH-appbundle"
 }
 
@@ -452,8 +455,7 @@ NOTE, for installations you can use \".toolpack\" as the package extension inste
 
 _sync_toolpacks_list() {
 	rm -f "$AMDATADIR/$ARCH-toolpack"
-	[ -n "$toolpack_readme" ] && curl -Ls "$toolpack_readme" | grep -v -- "---\|^| appname" | cut -d":" -f1 | cut -d"@" -f2 \
-	| sed 's/^| /◆ /g; s/#[^ ]*//; s/ | https$/. To install it use the "--toolpack" flag./g; s/ | / : /g' | sort > "$AMDATADIR/$ARCH-toolpack" \
+	[ -n "$toolpack_readme" ] && curl -Ls "$toolpack_readme" | _third_party_lsts_filter | sed 's/$/. To install it use the --toolpack flag or the .toolpack extension./g' | sort > "$AMDATADIR/$ARCH-toolpack" \
 	|| touch "$AMDATADIR/$ARCH-toolpack"
 }
 
@@ -464,8 +466,7 @@ export third_party_lists="appbundle toolpack"
 
 _completion_list_third_party() {
 	[ -f "$AMDATADIR"/"$ARCH"-appbundle ] && awk '{print $2}' "$AMDATADIR"/"$ARCH"-appbundle >> "$AMDATADIR"/list
-	[ -f "$AMDATADIR"/"$ARCH"-toolpack ] && awk '{print $2}' "$AMDATADIR"/"$ARCH"-toolpack >> "$AMDATADIR"/list
-	[ -f "$AMDATADIR"/"$ARCH"-toolpack ] && awk '{print $2}' "$AMDATADIR"/"$ARCH"-toolpack | sed -e 's/$/.toolpack/' >> "$AMDATADIR"/list
+	[ -f "$AMDATADIR"/"$ARCH"-toolpack ] && awk '{print $2}' "$AMDATADIR"/"$ARCH"-toolpack >> "$AMDATADIR"/list && awk '{print $2}' "$AMDATADIR"/"$ARCH"-toolpack | sed -e 's/$/.toolpack/' >> "$AMDATADIR"/list
 }
 
 _files_db_third_party() {
