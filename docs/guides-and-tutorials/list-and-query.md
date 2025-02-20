@@ -10,20 +10,26 @@ By default, only apps available on this repository are shown
 ```
 am -l
 ```
-https://github.com/user-attachments/assets/f020316f-711c-4086-8ba8-d611f7c7a03d
+
+https://github.com/user-attachments/assets/8862ffc4-0c4f-434d-8a5c-9c6da283cd7c
 
 To see only the AppImages from this list, use the `--appimages` flag
 ```
 am -l --appimages
 ```
-https://github.com/user-attachments/assets/7c52d373-78ae-4f8e-b053-d212ae84b55a
+
+https://github.com/user-attachments/assets/06de5e75-a7e4-49c1-8a1a-a5ce7265502d
 
 To see all the programs available in all the supported databases, use the `--all` flag instead
 ```
 am -l --all
 ```
 
+https://github.com/user-attachments/assets/e629d1c3-97d7-4147-ac77-05ab19c8675c
+
 As you may have guessed, the lists are very long. However, you can use the `-q` or `query` option to search them, using the same flags. See below.
+
+To view only the list of a third-party database, use the dedicated flag (run `am -h` and see the bottom of the message to see all third-party flags).
 
 ### Query
 Option `-q` or `query` shows search results from the lists above.
@@ -42,6 +48,8 @@ If followed by `--appimages`, the search results will be only for the available 
 If followed by `--pkg`, all keywords will be listed also if not on the same line. This is good if you are looking for multiple packages among the ones available in the "AM" database.
 
 If sollowed by `all`, the search results will be from all supported databases.
+
+NOTE, third-party flags from `-l` and `-i` can be used as a keyword after the `--all` flag.
 
 ------------------------------------------------------------------------
 
