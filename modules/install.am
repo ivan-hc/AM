@@ -354,55 +354,60 @@ _3rd_party_curl_detect_item() {
 _3rd_party_apps_handler() {
 	# This function is needed to handle programs from third-party supported databases
 	mkdir -p "$CACHEDIR/extra"
-	if echo "$arg" | grep -q "appbundle$"; then
-		[ -n "$appbundle_readme" ] && third_party_readme="$appbundle_readme"
+	if echo "$arg_origin" | grep -q "\."; then
+		tp_extension=$(echo "$arg_origin" | sed 's:.*\.::')
 	else
-		[ -n "$toolpack_readme" ] && third_party_readme="$toolpack_readme"
+		for tp_list in $third_party_lists; do
+			if echo "$FLAGS" | grep -q -- "$tp_list"; then
+				tp_extension=$(echo "$FLAGS" | tr '-' '\n' | grep -- "$tp_list" | head -1 | sed 's/ //g')
+			fi
+		done
 	fi
+	tprepo_readme="${tp_extension}_readme"
+	third_party_readme="${!tprepo_readme}"
+	tprepo_missing_file_msg="${tp_extension}_missing_file_msg"
+	tp_missing_file_msg="${!tprepo_missing_file_msg}"
 	awk_version="curl -Ls $third_party_readme | grep -i \"^| $arg \" | tr '|' '\\\n' | cut -c 2- | grep . | awk -F: \"NR==$awk_ver\""
 	third_party_url="curl -Ls $third_party_readme | grep -i \"^| $arg \" | tr '|' '\\\n' | cut -c 2- | grep . | awk -F: \"NR==$awk_dl\""
 	# Determine if a third-party app has multiple variants
-	if [ "$third_party_readme" = "$toolpack_readme" ]; then
-		tpnumber=$(curl -Ls "$toolpack_readme" | grep "^| $arg |" | wc -l | sed 's/ //g')
-		if [ "$tpnumber" != 1 ]; then
-			tp_missing_file_msg="\nIt appears that the selected file is not available.\n\nThis happens due to pkgforge's mirror Issue.\nLearn more: https://docs.pkgforge.dev/repositories/bincache/cache\n\nAlternatively, install \"soar\" or \"dbin\" and use those.\n\n"
-			about_site=$(curl -Ls "$toolpack_readme" | grep "^| $arg " | awk -F'|' '{print $4}' | uniq)
-			printf " Detected multiple variants, choose one or press ZERO to abort:\n\n"
-			sleep 1
-			select d in $about_site; do
-				if [ -n "$d" ]; then
-					url_content=$(curl -Ls "$third_party_readme" | grep -i "$d" | tr '|' '\n' | cut -c 2- | grep . | awk -F: "NR==$awk_dl" | sed 's/ //g')
-					if ! curl --output /dev/null --silent --head --fail "$url_content" 1>/dev/null; then
-						printf "%bPlease select another item or press \"ZERO\".\n\n" "$tp_missing_file_msg" | _fit
-					else
-						break
-					fi
+	tpnumber=$(curl -Ls "$third_party_readme" | grep "^| $arg |" | wc -l | sed 's/ //g')
+	if [ "$tpnumber" != 1 ]; then
+		about_site=$(curl -Ls "$third_party_readme" | grep "^| $arg " | awk -F'|' '{print $4}' | uniq)
+		printf " Detected multiple variants, choose one or press ZERO to abort:\n\n"
+		sleep 1
+		select d in $about_site; do
+			if [ -n "$d" ]; then
+				url_content=$(curl -Ls "$third_party_readme" | grep -i "$d" | tr '|' '\n' | cut -c 2- | grep . | awk -F: "NR==$awk_dl" | sed 's/ //g')
+				if ! curl --output /dev/null --silent --head --fail "$url_content" 1>/dev/null; then
+					printf "%bPlease select another item or press \"ZERO\".\n\n" "$tp_missing_file_msg" | _fit
 				else
-					printf "\n Invalid selection. INSTALLATION ABORTED! \n"
-					return 1
+					break
 				fi
-			done
-			awk_version="curl -Ls $third_party_readme | grep -i \"$d\" | tr '|' '\\\n' | cut -c 2- | grep . | awk -F: \"NR==$awk_ver\""
-			third_party_url="curl -Ls $third_party_readme | grep -i \"$d\" | tr '|' '\\\n' | cut -c 2- | grep . | awk -F: \"NR==$awk_dl\""
-		else
-			url_content=$(curl -Ls "$third_party_readme" | grep -i "^| $arg " | tr '|' '\n' | cut -c 2- | grep . | awk -F: "NR==$awk_dl" | sed 's/ //g')
-			if ! curl --output /dev/null --silent --head --fail "$url_content" 1>/dev/null; then
-				printf "%b" "$tp_missing_file_msg" | _fit
+			else
+				printf "\n Invalid selection. INSTALLATION ABORTED! \n"
 				return 1
 			fi
+		done
+		awk_version="curl -Ls $third_party_readme | grep -i \"$d\" | tr '|' '\\\n' | cut -c 2- | grep . | awk -F: \"NR==$awk_ver\""
+		third_party_url="curl -Ls $third_party_readme | grep -i \"$d\" | tr '|' '\\\n' | cut -c 2- | grep . | awk -F: \"NR==$awk_dl\""
+	else
+		url_content=$(curl -Ls "$third_party_readme" | grep -i "^| $arg " | tr '|' '\n' | cut -c 2- | grep . | awk -F: "NR==$awk_dl" | sed 's/ //g')
+		if ! curl --output /dev/null --silent --head --fail "$url_content" 1>/dev/null; then
+			printf "%b" "$tp_missing_file_msg" | _fit
+			return 1
 		fi
 	fi
 	# Create the installation script
 	if echo "$arg" | grep -q "appbundle$"; then
-		curl -Ls "$AMREPO"/templates/AM-SAMPLE-AppBundle > "$CACHEDIR/extra/$arg.toolpack" || exit 1
-		sed -i "s#APP=SAMPLE#APP=$arg#g; s#FUNCTION#$awk_version#g; s#wget \"\$version\"#wget \$($third_party_url)#g" "$CACHEDIR/extra/$arg.toolpack"
+		curl -Ls "$AMREPO"/templates/AM-SAMPLE-AppBundle > "$CACHEDIR/extra/$arg.$tp_extension" || exit 1
+		sed -i "s#APP=SAMPLE#APP=$arg#g; s#FUNCTION#$awk_version#g; s#wget \"\$version\"#wget \$($third_party_url)#g" "$CACHEDIR/extra/$arg.$tp_extension"
 	else
-		curl -Ls "$AMREPO"/templates/AM-SAMPLE-Archive > "$CACHEDIR/extra/$arg.toolpack" || exit 1
-		sed -i "s#APP=SAMPLE#APP=$arg#g; s#FUNCTION#$awk_version#g; s#wget \"\$version\"#wget \$($third_party_url)#g" "$CACHEDIR/extra/$arg.toolpack"
-		sed -e '/\[ -e/ s/^#*/#/' -i "$CACHEDIR/extra/$arg.toolpack" 2>/dev/null
+		curl -Ls "$AMREPO"/templates/AM-SAMPLE-Archive > "$CACHEDIR/extra/$arg.$tp_extension" || exit 1
+		sed -i "s#APP=SAMPLE#APP=$arg#g; s#FUNCTION#$awk_version#g; s#wget \"\$version\"#wget \$($third_party_url)#g" "$CACHEDIR/extra/$arg.$tp_extension"
+		sed -e '/\[ -e/ s/^#*/#/' -i "$CACHEDIR/extra/$arg.$tp_extension" 2>/dev/null
 	fi
-	chmod a+x "$CACHEDIR/extra/$arg.toolpack"
-	arg="$CACHEDIR/extra/$arg.toolpack"
+	chmod a+x "$CACHEDIR/extra/$arg.$tp_extension"
+	arg="$CACHEDIR/extra/$arg.$tp_extension"
 }
 
 _install_3rd_party_app() {
@@ -485,6 +490,7 @@ case "$1" in
 			[ -d "$APPSPATH"/"$arg"/tmp ] && $SUDOCMD "$APPSPATH"/"$arg"/remove 2> /dev/null
 
 			# Check if the app wil be installed with the same name as the argument
+			arg_origin="$arg"
 			pure_arg=$(echo "$arg" | sed 's/\-appimage$//g' | sed 's:.*/::')
 			_remove_extensions_from_appname
 			echo "$arg" | grep -q -- "-appimage$" && curl -Ls "$APPSDB"/"$arg" | grep -q "APP=.*-appimage$" && pure_arg="$arg"
