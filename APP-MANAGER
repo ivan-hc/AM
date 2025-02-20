@@ -430,22 +430,12 @@ export appbundle_repo="https://github.com/xplshn/AppBundleHUB"
 appbundle_readme="https://raw.githubusercontent.com/xplshn/dbin-metadata/master/misc/cmd/AM-support/AM.txt"
 #[ -n "$appbundle_readme" ] && third_party_flags="$third_party_flags --appbundle"
 
-_sync_appbundle_list() {
-	[ -n "$appbundle_readme" ] && curl -Ls "$appbundle_readme" | grep -v "\.appimage \|?" | grep "\.appbundle " | cut -d":" -f1 | cut -d"@" -f2 | sed 's/^| /◆ /g; s/ https$//g; s/ :$//g; s/ | / : /g; s/ |$/./g; s/\.\.$/./g;' | sort > "$AMDATADIR/$ARCH-appbundle" \
-	|| touch "$AMDATADIR/$ARCH-appbundle"
-}
-
 #################################
 #	TOOLPACKS/SOARPKGS
 #################################
 export toolpack_repo="https://github.com/pkgforge/soarpkgs (ex toolpacks)"
 toolpack_readme="https://raw.githubusercontent.com/ivan-hc/am-extras/main/soarpkgs-toolpacks/${ARCH}.md"
 [ -n "$toolpack_readme" ] && third_party_flags="$third_party_flags --toolpack"
-
-_sync_toolpack_list() {
-	[ -n "$toolpack_readme" ] && curl -Ls "$toolpack_readme" | _third_party_lsts_filter | sed 's/$/. To install it use the --toolpack flag or the .toolpack extension./g' | sort > "$AMDATADIR/$ARCH-toolpack" \
-	|| touch "$AMDATADIR/$ARCH-toolpack"
-}
 
 #################################
 #	ALL THE ABOVE
@@ -466,7 +456,13 @@ _remove_known_third_party_extensions() {
 
 _sync_third_party_lists() {
 	for tp_list in $third_party_lists; do
-		rm -f "$AMDATADIR"/"$ARCH"-"$tp_list" && _sync_"$tp_list"_list
+		rm -f "$AMDATADIR"/"$ARCH"-"$tp_list"
+		tprepo_readme="${tp_list}_readme"
+		if [ -n "${!tprepo_readme}" ]; then
+			curl -Ls "${!tprepo_readme}" | _third_party_lsts_filter \
+			| sed "s/$/. To install it use the --$tp_list flag or the .$tp_list extension./g" | sort > "$AMDATADIR"/"$ARCH"-"$tp_list" \
+			|| touch "$AMDATADIR"/"$ARCH"-"$tp_list"
+		fi
 	done
 }
 
