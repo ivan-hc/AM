@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 #############################################################################
 # THIS MODULE IS USED TO INSTALL APPS FROM THE DATABASE OR FROM LOCAL SCRIPTS
@@ -288,12 +288,6 @@ _install_arg() {
 #			INSTALLATION CASES
 ################################################################################
 
-_determine_pure_arg_name() {
-	pure_arg=$(echo "$arg" | sed 's/\.toolpack//g; s/\.dwfs.appbundle$//g; s/\.appbundle$//g; s/\.nixappimage//g')
-	pure_arg=$(echo "$pure_arg" | sed 's/\.appimage//g; s/\-appimage$//g' | sed 's:.*/::')
-	echo "$arg" | grep -q -- "-appimage$" && curl -Ls "$APPSDB"/"$arg" | grep -q "APP=.*-appimage$" && pure_arg="$arg"
-}
-
 _install_appimage() {
 	# This function is ment to select and install only AppImages
 	rm -f "$AMCACHEDIR"/install-args
@@ -320,7 +314,7 @@ _install_local_script() {
 	path2arg="$arg"
 	arg=$(echo "$path2arg" | sed 's:.*/::')
 	mkdir -p "$AMCACHEDIR"/tmp && rm -f "$AMCACHEDIR"/tmp/* || return 1
-	cp "$path2arg" "$AMCACHEDIR"/tmp/"$arg" && cd "$AMCACHEDIR" && mv ./tmp/"$arg" ./"$arg" && rmdir ./tmp || return 1
+	cp "$path2arg" "$AMCACHEDIR"/tmp/"$arg" 2>/dev/null && cd "$AMCACHEDIR" && mv ./tmp/"$arg" ./"$arg" && rmdir ./tmp || return 1
 	if ! test -d "$APPSPATH"/"$arg"; then
 		_install_arg
 	fi
@@ -338,45 +332,95 @@ _install_normally() {
 #			THIRD PARTY DATABASES
 ################################################################################
 
+_remove_extensions_from_appname() {
+	pure_arg=$(echo "$pure_arg" | _remove_known_third_party_extensions)
+}
+
 _3rd_party_check() {
-	echo "$@" | grep -q -- "--toolpack" || echo "$arg" | grep -q ".toolpack$" || echo "$arg" | grep -q ".appbundle$"
+	for tp_list in $third_party_lists; do
+		echo "$@" | grep -q -- "--$tp_list" || echo "$arg" | grep -q ".$tp_list$"
+	done
+}
+
+_3rd_party_curl_detect_item() {
+	for tp_list in $third_party_lists; do
+		tprepo_readme="${tp_list}_readme"
+		if [ -n "${!tprepo_readme}" ]; then
+			curl -Ls "${!tprepo_readme}" 2>/dev/null | grep -q "^| $arg "
+		fi
+	done
 }
 
 _3rd_party_apps_handler() {
 	# This function is needed to handle programs from third-party supported databases
 	mkdir -p "$CACHEDIR/extra"
-	if echo "$arg" | grep -q "appbundle$"; then
-		[ -n "$appbundle_readme" ] && third_party_readme="$appbundle_readme"
+	if echo "$arg_origin" | grep -q "\."; then
+		tp_extension=$(echo "$arg_origin" | sed 's:.*\.::')
 	else
-		[ -n "$toolpack_readme" ] && third_party_readme="$toolpack_readme"
+		for tp_list in $third_party_lists; do
+			if echo "$FLAGS" | grep -q -- "$tp_list"; then
+				tp_extension=$(echo "$FLAGS" | tr '-' '\n' | grep -- "$tp_list" | head -1 | sed 's/ //g')
+			fi
+		done
 	fi
+	tprepo_readme="${tp_extension}_readme"
+	third_party_readme="${!tprepo_readme}"
+	tprepo_missing_file_msg="${tp_extension}_missing_file_msg"
+	tp_missing_file_msg="${!tprepo_missing_file_msg}"
+	[ -z "$tp_missing_file_msg" ] && tp_missing_file_msg="It appears that the selected item is not available:\n\nINSTALLATION ABORTED! \n"
 	awk_version="curl -Ls $third_party_readme | grep -i \"^| $arg \" | tr '|' '\\\n' | cut -c 2- | grep . | awk -F: \"NR==$awk_ver\""
 	third_party_url="curl -Ls $third_party_readme | grep -i \"^| $arg \" | tr '|' '\\\n' | cut -c 2- | grep . | awk -F: \"NR==$awk_dl\""
-	if echo "$arg" | grep -q "appbundle$"; then
-		curl -Ls "$AMREPO"/templates/AM-SAMPLE-AppBundle > "$CACHEDIR/extra/$arg.toolpack" || exit 1
-		sed -i "s#APP=SAMPLE#APP=$arg#g; s#FUNCTION#$awk_version#g; s#wget \"\$version\"#wget \$($third_party_url)#g" "$CACHEDIR/extra/$arg.toolpack"
-		sed -i 's/\.dwfs.appbundle$//g; s/\.appbundle$//g' "$CACHEDIR/extra/$arg.toolpack"
-	elif echo "$arg" | grep -q "nixappimage$"; then
-		curl -Ls "$AMREPO"/templates/AM-SAMPLE-AppImage > "$CACHEDIR/extra/$arg.toolpack" || exit 1
-		sed -i "s#APP=SAMPLE#APP=$arg#g; s#FUNCTION#$awk_version#g; s#wget \"\$version\"#wget \$($third_party_url)#g" "$CACHEDIR/extra/$arg.toolpack"
-		sed -i 's/\.nixappimage$//g' "$CACHEDIR/extra/$arg.toolpack"
+	# Determine if a third-party app has multiple variants
+	tpnumber=$(curl -Ls "$third_party_readme" | grep "^| $arg |" | wc -l | sed 's/ //g')
+	if [ "$tpnumber" != 1 ]; then
+		about_site=$(curl -Ls "$third_party_readme" | grep "^| $arg " | awk -F'|' '{print $4}' | uniq)
+		printf " Detected multiple variants, choose one or press ZERO to abort:\n\n"
+		sleep 1
+		select d in $about_site; do
+			if [ -n "$d" ]; then
+				url_content=$(curl -Ls "$third_party_readme" | grep -i "$d" | tr '|' '\n' | cut -c 2- | grep . | awk -F: "NR==$awk_dl" | sed 's/ //g')
+				if ! curl --output /dev/null --silent --head --fail "$url_content" 1>/dev/null; then
+					printf "%bPlease select another item or press \"ZERO\".\n\n" "$tp_missing_file_msg" | _fit
+				else
+					break
+				fi
+			else
+				printf "\n Invalid selection. INSTALLATION ABORTED! \n"
+				return 1
+			fi
+		done
+		awk_version="curl -Ls $third_party_readme | grep -i \"$d\" | tr '|' '\\\n' | cut -c 2- | grep . | awk -F: \"NR==$awk_ver\""
+		third_party_url="curl -Ls $third_party_readme | grep -i \"$d\" | tr '|' '\\\n' | cut -c 2- | grep . | awk -F: \"NR==$awk_dl\""
 	else
-		curl -Ls "$AMREPO"/templates/AM-SAMPLE-Archive > "$CACHEDIR/extra/$arg.toolpack" || exit 1
-		sed -i "s#APP=SAMPLE#APP=$arg#g; s#FUNCTION#$awk_version#g; s#wget \"\$version\"#wget \$($third_party_url)#g" "$CACHEDIR/extra/$arg.toolpack"
-		sed -e '/\[ -e/ s/^#*/#/' -i "$CACHEDIR/extra/$arg.toolpack" 2>/dev/null
+		url_content=$(curl -Ls "$third_party_readme" | grep -i "^| $arg " | tr '|' '\n' | cut -c 2- | grep . | awk -F: "NR==$awk_dl" | sed 's/ //g')
+		if ! curl --output /dev/null --silent --head --fail "$url_content" 1>/dev/null; then
+			printf "%b" "$tp_missing_file_msg" | _fit
+			return 1
+		fi
 	fi
-	chmod a+x "$CACHEDIR/extra/$arg.toolpack"
-	arg="$CACHEDIR/extra/$arg.toolpack"
+	# Create the installation script
+	if [ "$tp_extension" = appbundle ]; then
+		curl -Ls "$AMREPO"/templates/AM-SAMPLE-AppBundle > "$CACHEDIR/extra/$arg.$tp_extension" || exit 1
+		sed -i "s#APP=SAMPLE#APP=$arg#g; s#FUNCTION#$awk_version#g; s#wget \"\$version\"#wget \$($third_party_url)#g" "$CACHEDIR/extra/$arg.$tp_extension"
+	else
+		curl -Ls "$AMREPO"/templates/AM-SAMPLE-Archive > "$CACHEDIR/extra/$arg.$tp_extension" || exit 1
+		sed -i "s#APP=SAMPLE#APP=$arg#g; s#FUNCTION#$awk_version#g; s#wget \"\$version\"#wget \$($third_party_url)#g" "$CACHEDIR/extra/$arg.$tp_extension"
+		sed -e '/\[ -e/ s/^#*/#/' -i "$CACHEDIR/extra/$arg.$tp_extension" 2>/dev/null
+	fi
+	chmod a+x "$CACHEDIR/extra/$arg.$tp_extension"
+	arg="$CACHEDIR/extra/$arg.$tp_extension"
 }
 
 _install_3rd_party_app() {
-	arg=$(echo "$arg" | sed 's/\.toolpack//g; s/\.appimage//g')
-	if curl -Ls "$appbundle_readme" 2>/dev/null | grep -q "^| $arg " || curl -Ls "$toolpack_readme" 2>/dev/null | grep -q "^| $arg "; then
+	for tp_list in $third_party_lists; do
+		arg=$(echo "$arg" | sed "s/\.$tp_list$//g")
+	done
+	if _3rd_party_curl_detect_item; then
 		_3rd_party_apps_handler
 		_install_local_script
 	else
-		echo " 💀 ERROR, \"$arg\" does NOT exist in 3rd-party databases:"
-		printf "\nTry without the \"--toolpack\" flag or run \"%b$AMCLIPATH_ORIGIN -l --all\033[0m\" to check all lists.\n" "${Gold}" | fold -sw 72 | sed 's/^/ /g'
+		echo " 💀 ERROR, \"$arg\" does NOT exist in 3rd-party databases"
+		printf "\n Try again but WITHOUT the third-party flag\n"
 	fi
 }
 
@@ -447,7 +491,10 @@ case "$1" in
 			[ -d "$APPSPATH"/"$arg"/tmp ] && $SUDOCMD "$APPSPATH"/"$arg"/remove 2> /dev/null
 
 			# Check if the app wil be installed with the same name as the argument
-			_determine_pure_arg_name
+			arg_origin="$arg"
+			pure_arg=$(echo "$arg" | sed 's/\-appimage$//g' | sed 's:.*/::')
+			_remove_extensions_from_appname
+			echo "$arg" | grep -q -- "-appimage$" && curl -Ls "$APPSDB"/"$arg" | grep -q "APP=.*-appimage$" && pure_arg="$arg"
 
 			# Test if a symlink is broken
 			[ -n "$BINDIR" ] && find "$BINDIR" -xtype l -name "$pure_arg" -delete 2>/dev/null

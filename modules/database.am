@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 ############################################################################################
 # THIS MODULE INCLUDES ALL THE ACTIONS INTENDED FOR THE MANAGEMENT OF LISTS AND SINGLE PAGES
@@ -10,18 +10,54 @@
 
 AMCATALOGUEMARKDOWNS="${AMCATALOGUEMARKDOWNS:-https://portable-linux-apps.github.io/apps}"
 
+_about_remove_extension() {
+	tparg=$(echo "$arg" | _remove_known_third_party_extensions)
+}
+
+_about_check() {
+	! grep -q "^◆ $arg \|^◆ $tparg " "$AMDATADIR"/"$ARCH"-*
+}
+
 _about_description_for_third_party() {
-	if echo "$appname" | grep -q ".appbundle$"; then
-		readme_source="$appbundle_readme"
-		repo_source="$appbundle_repo"
-	elif echo "$arg" | grep -q ".toolpack$"; then
-		readme_source="$toolpack_readme"
-		repo_source="$toolpack_repo"
+	if echo "$appname" | grep -q "\."; then
+		tp_extension=$(echo "$appname" | sed 's:.*\.::')
+	elif echo "$arg" | grep -q "\."; then
+		tp_extension=$(echo "$arg" | sed 's:.*\.::')
 	fi
-	appname_arg=$(curl -Ls "$readme_source" 2>/dev/null | grep -i "^| $appname " | tr '|' '\n' | cut -c 2- | grep .)
-	about_description=$(echo "$appname_arg" | awk -F: "NR==$awk_description")
-	about_site=$(echo "$appname_arg" | awk -F: "NR==$awk_site")
-	printf "\n%b\n\nSOURCE: %b\n\nDATABASE: %b\n" "$about_description" "$about_site" "$repo_source"
+	if [ -n "$tp_extension" ]; then
+		tprepo_readme="${tp_extension}_readme"
+		readme_source="${!tprepo_readme}"
+		tprepo_repo="${tp_extension}_repo"
+		repo_source="${!tprepo_repo}"
+		appname_arg=$(curl -Ls "$readme_source" 2>/dev/null | grep -i "^| $appname " | tr '|' '\n' | cut -c 2- | grep .)
+		about_description=$(echo "$appname_arg" | awk -F: "NR==$awk_description")
+		about_site=$(echo "$appname_arg" | awk -F: "NR==$awk_site")
+
+		third_party_readme=$(curl -Ls "$readme_source")
+		tpnumber=$(echo "$third_party_readme" | grep "^| $appname |" | wc -l | sed 's/ //g')
+		if [ "$tpnumber" -ge "1" ]; then
+			[ "$tpnumber" != 1 ] && printf "\nAvailable families: %b\n" "$tpnumber"
+			if echo "$app_status" | grep -q "^installed"; then
+				[ -f "$argpath/$appname" ] && printf "\nBinary info: " && file "$argpath/$appname"
+			fi
+			about_description=$(echo "$third_party_readme" | grep "^| $appname " | awk -F'|' '{print $3}' | uniq)
+			if echo "$about_description" | grep -q "\[[a-z]"; then
+				about_description=$(echo "$about_description" | sed 's/\[/\n\[/g')
+				about_families=$(echo "$about_description" | grep "\[" | uniq | xargs)
+				about_a_description=$(echo "$about_description" | grep -v "\[" | uniq | sed 's/ $//g; s/$/./g')
+				about_description="$about_families\n\n$about_a_description\n"
+			fi
+			about_site=$(echo "$third_party_readme" | grep "^| $appname " | awk -F'|' '{print $4}' | uniq)
+		fi
+	fi
+
+	if [ -n "$about_description" ]; then
+		printf "\n%b\n\nSOURCE: %b\n\nDATABASE: %b\n" "$about_description" "$about_site" "$repo_source"
+	else
+		[ -n "$repo_source" ] && printf "\n\nDATABASE: %b\n" "$repo_source" || printf "\nAvailable in an third-party database (requires an extension).\n"
+	fi
+	about_description=""
+	repo_source=""
 }
 
 _about_description() {
@@ -29,16 +65,10 @@ _about_description() {
 		markdown_page=$(curl -Ls "$markdown_url" | grep -v -- "^#\|^.*| \[Applications\|^.*| \-\|^.*\!\[")
 		echo "$markdown_page"
 	elif grep -q "^◆ $package_name " "$AMDATADIR"/"$ARCH"-*; then
-		appname=$(echo "$package_name" | sed 's/\.toolpack//g')
+		appname="$package_name"
 		_about_description_for_third_party
 	elif grep -q "^◆ $app_name " "$AMDATADIR"/"$ARCH"-*; then
-		appname=$(echo "$app_name" | sed 's/\.toolpack//g')
-		_about_description_for_third_party
-	elif grep -q "^◆ $app_name.nixappimage " "$AMDATADIR"/"$ARCH"-*; then
-		appname=$(echo "$app_name.nixappimage" | sed 's/\.toolpack//g')
-		_about_description_for_third_party
-	elif grep -q "^◆ $app_name.dwfs.appbundle " "$AMDATADIR"/"$ARCH"-*; then
-		appname=$(echo "$app_name.dwfs.appbundle" | sed 's/\.toolpack//g')
+		appname="$app_name"
 		_about_description_for_third_party
 	else
 		printf ' "%s" IS NOT A VALID ARGUMENT\n' "$package_name"
@@ -46,8 +76,8 @@ _about_description() {
 }
 
 _about_page() {
-	package_name=$(echo "$arg" | sed 's/.appbundle.toolpack/.appbundle/g')
-	app_name=$(echo "$arg" | sed 's/-appimage//g; s/\.toolpack//g; s/\.dwfs.appbundle//g; s/\.appbundle//g; s/\.nixappimage//g')
+	package_name="$arg"
+	app_name=$(echo "$arg" | sed 's/-appimage//g' | _remove_known_third_party_extensions)
 	argpath=$(echo "$ARGPATHS" | grep "/$app_name$")
 	markdown_url="$AMCATALOGUEMARKDOWNS/${arg}.md"
 	printf " PACKAGE: %b%b\033[0m\n" "${Green}" "$package_name"
@@ -56,12 +86,10 @@ _about_page() {
 	if [ -f "$argpath/remove" ]; then
 		app_status="installed\033[0m"
 		if test -f "$argpath"/.am-installer/*; then
-			scriptname=$(basename -- "$(find "$argpath"/.am-installer/* | head -1)" | sed 's/appbundle.toolpack$/appbundle/g')
+			scriptname=$(basename -- "$(find "$argpath"/.am-installer/* | head -1)")
 			if [ "$app_name" != "$scriptname" ]; then
 				app_status="installed\033[0m, but replaced by ${Green}$scriptname\033[0m\n\n Note, run ${RED}$AMCLI -a $scriptname\033[0m instead"
-				if test -f "$argpath"/.am-installer/*appbundle* && ! grep -q "◆ $arg : " "$AMDATADIR/$ARCH-apps" && grep -q "◆ $arg.dwfs.appbundle : " "$AMDATADIR"/"$ARCH"-*; then
-					app_status="installed\033[0m\n\n Real package name: ${Gold}$arg.dwfs.appbundle\033[0m"
-				elif [ "$package_name" = "$scriptname" ]; then
+				if [ "$package_name" = "$scriptname" ]; then
 					app_status="installed\033[0m, as ${Green}$app_name\033[0m"
 				fi
 			fi
@@ -71,11 +99,6 @@ _about_page() {
 	fi
 	if echo "$arg" | grep -q -- "-appimage$" && ! test -f "$argpath"/.am-installer/"$arg"; then
 		app_status="not installed\n"
-	fi
-	if ! grep -q "◆ $arg : " "$AMDATADIR/$ARCH-apps" && grep -q "◆ $arg.dwfs.appbundle : " "$AMDATADIR"/"$ARCH"-*; then
-		if ! echo "$app_status" | grep -q "^installed"; then
-			app_status="not installed\n\n Real package name: ${Gold}$arg.dwfs.appbundle\033[0m\n"
-		fi
 	fi
 	# Determine if the referenced app is a metapackage or part of it
 	METAPACKAGES="kdegames kdeutils node platform-tools"
@@ -224,10 +247,8 @@ _files_sizes() {
 
 # Function to determine file's database
 _files_db() {
-	if test -f "$APPSPATH"/"$arg"/.am-installer/*.appbundle*; then
-		DB="appbundlehub"
-	elif test -f "$APPSPATH"/"$arg"/.am-installer/*toolpack; then
-		DB="toolpacks"
+	if test -f "$APPSPATH"/"$arg"/.am-installer/*.*; then
+		_files_db_third_party
 	elif [ "$arg" = am ]; then
 		DB="am"
 	elif test -f "$CACHEDIR"/extra/"$arg" || test -f "$APPSPATH"/"$arg"/.am-installer/"$arg" && ! grep -q "^APP=" "$APPSPATH"/"$arg"/.am-installer/"$arg"; then
@@ -478,11 +499,16 @@ _query_lists() {
 	printf "\n Search results for \"%s\":\n\n"  "$@" | tr '[:lower:]' '[:upper:]'
 }
 
+_query_no_results() {
+	printf "No search results" && [ -z "$query_all" ] && printf ", please retry this query using the \"%b--all\033[0m\" flag\n" "${LightBlue}"
+}
+
 _find_no_order() {
-	grep -i "$1" | grep -i "$2" | grep -i "$3" | grep -i "$4" | grep -i "$5" \
-	| grep -i "$6" | grep -i "$7" | grep -i "$8" | grep -i "$9" | grep -i "${10}" \
-	| grep -i "${11}" | grep -i "${12}" | grep -i "${13}" | grep -i "${14}" | grep -i "${15}" \
-	| grep -i "${16}" | grep -i "${17}" | grep -i "${18}" | grep -i "${19}" | grep -i "${20}"
+	grep -i -- "$1" | grep -i -- "$2" | grep -i -- "$3" | grep -i -- "$4" | grep -i -- "$5" \
+	| grep -i -- "$6" | grep -i -- "$7" | grep -i -- "$8" | grep -i -- "$9" | grep -i -- "${10}" \
+	| grep -i -- "${11}" | grep -i -- "${12}" | grep -i -- "${13}" | grep -i -- "${14}" | grep -i -- "${15}" \
+	| grep -i -- "${16}" | grep -i -- "${17}" | grep -i -- "${18}" | grep -i -- "${19}" | grep -i -- "${20}" \
+	|| _query_no_results
 }
 
 ################################################################################
@@ -499,8 +525,8 @@ case "$1" in
 		rm -f "$AMCACHEDIR"/version-args && _check_version
 		entries="$(echo "$@" | cut -f2- -d ' ')" # Removes first argument
 		for arg in $entries; do
-			tparg=$(echo "$arg" | sed 's/\.toolpack//g; s/\.appimage//g; s/\.dwfs.appbundle$//g; s/\.appbundle$//g; s/\.nixappimage//g')
-			if ! grep -q "^◆ $arg \|^◆ $arg.toolpack \|^◆ $arg.dwfs.appbundle \|^◆ $tparg " "$AMDATADIR"/"$ARCH"-*; then
+			_about_remove_extension
+			if _about_check "$@"; then
 				printf " ERROR: %b not found\033[0m\n" "${RED}\"$arg\""
 			else
 				_about_page "$arg"
@@ -527,38 +553,45 @@ case "$1" in
 		;;
 
 	'-l'|'list')
-		if [ "$2" = --all ]; then
+		case $2 in
+		'')
+			_list
+			SUBJECT="$AVAILABLE_APPS_NUMBER programs available in the \"AM\" database"
+			LIST=$(sort -u "$AMDATADIR"/"$ARCH"-apps | grep "^◆ .*$" 2>/dev/null | _pretty_list)
+			_list_msg "$@" | less -Ir
+			printf "%b\n %b\n%b\n" "$DIVIDING_LINE" "$SUBJECT" "$DIVIDING_LINE"
+			;;
+		'--all')
 			wget -q --tries=10 --timeout=20 --spider https://github.com && _sync_databases 1>/dev/null
 			_list
 			SUBJECT="$AVAILABLE_TOTAL_APPS_NUMBER programs available in all supported databases"
 			LIST=$(sort -u "$AMDATADIR"/"$ARCH"-* | grep "^◆ .*$" 2>/dev/null | _pretty_list)
 			_list_msg "$@" | less -Ir
 			printf "%b\n %b\n%b\n" "$DIVIDING_LINE" "$SUBJECT" "$DIVIDING_LINE"
-		elif [ "$2" = --appimages ]; then
+			;;
+		'--appimages')
 			wget -q --tries=10 --timeout=20 --spider https://github.com && _sync_appimages_list
 			_list
 			SUBJECT="$AVAILABLE_APPIMAGES_NUMBER AppImages available in the \"AM\" database"
 			LIST=$(sort -u "$AMDATADIR"/"$ARCH"-appimages | grep "^◆ .*$" 2>/dev/null | _pretty_list)
 			_list_msg "$@" | less -Ir
 			printf "%b\n %b\n%b\n" "$DIVIDING_LINE" "$SUBJECT" "$DIVIDING_LINE"
-		elif [ "$2" = --toolpack ]; then
-			wget -q --tries=10 --timeout=20 --spider https://github.com && _sync_third_party_lists 2>/dev/null
-			_list
-			SUBJECT="$AVAILABLE_THIRD_PARTY_NUMBER programs available on third-party databases"
-			tp_lists=$(find "$AMDATADIR" -type f -name "$ARCH-*" | grep -v "appimages\|apps")
-			for t in $tp_lists; do
-				[ -z "$TP_LISTS" ] && TP_LISTS=$(sort -u "$t") || TP_LISTS="$TP_LISTS\n$(sort -u "$t")"
-			done
-			LIST=$(printf "%b" "$TP_LISTS" | sort -u | grep "^◆ .*$" 2>/dev/null | _pretty_list)
-			_list_msg "$@" | less -Ir
-			printf "%b\n %b\n%b\n" "$DIVIDING_LINE" "$SUBJECT" "$DIVIDING_LINE"
-		else
-			_list
-			SUBJECT="$AVAILABLE_APPS_NUMBER programs available in the \"AM\" database"
-			LIST=$(sort -u "$AMDATADIR"/"$ARCH"-apps | grep "^◆ .*$" 2>/dev/null | _pretty_list)
-			_list_msg "$@" | less -Ir
-			printf "%b\n %b\n%b\n" "$DIVIDING_LINE" "$SUBJECT" "$DIVIDING_LINE"
-		fi
+			;;
+		*)	
+			if echo "$third_party_flags" | grep -q -- "$2"; then
+				wget -q --tries=10 --timeout=20 --spider https://github.com && _sync_third_party_lists 2>/dev/null
+				_list
+				tplist_name=$(echo "$2" | tr '-' '\n ' | grep .)
+				[ -f "$AMDATADIR"/"$ARCH"-"$tplist_name" ] && TPNUMBER_HERE=$(sort -u "$AMDATADIR"/"$ARCH"-"$tplist_name" | wc -l)
+				SUBJECT="$TPNUMBER_HERE programs available on ${tplist_name^}s database"
+				LIST=$(sort -u "$AMDATADIR"/"$ARCH"-"$tplist_name" | grep "^◆ .*$" 2>/dev/null | _pretty_list)
+				_list_msg "$@" | less -Ir
+				printf "%b\n %b\n%b\n" "$DIVIDING_LINE" "$SUBJECT" "$DIVIDING_LINE"
+			else
+				printf "\n Unknown flag, run \"-h\" to see supported third-party flags.\n\n"
+			fi
+			;;
+		esac
 		;;
 
 	'-q'|'query')
@@ -568,7 +601,6 @@ case "$1" in
 			echo "        $AMCLI $1 --all [ARGUMENT]"
 			echo "        $AMCLI $1 --appimages [ARGUMENT]"
 			echo "        $AMCLI $1 --pkg [ARGUMENT]"
-			[ -n "$toolpack_readme" ] && echo "        $AMCLI $1 --toolpack [ARGUMENT]"
 			echo ""; exit 1
 		fi
 		wget -q --tries=10 --timeout=20 --spider https://github.com && _completion_lists
@@ -581,6 +613,7 @@ case "$1" in
 				| grep -iE "$regex" --color=always | _pretty_list_compat
 		elif [ "$1" = --all ]; then
 			shift
+			query_all="1"
 			wget -q --tries=10 --timeout=20 --spider https://github.com && _sync_databases 1>/dev/null
 			_query_lists "$*"
 			sort -u  "$AMDATADIR"/"$ARCH"-* 2>/dev/null | grep "^◆ .*$" 2>/dev/null | _find_no_order "$@" | _pretty_list_compat
@@ -589,11 +622,6 @@ case "$1" in
 			wget -q --tries=10 --timeout=20 --spider https://github.com && _sync_appimages_list
 			_query_lists "$*"
 			sort -u "$AMDATADIR/$ARCH-appimages" 2>/dev/null | grep "^◆ .*$" 2>/dev/null | _find_no_order "$@" | _pretty_list_compat
-		elif [ "$1" = --toolpack ]; then
-			shift
-			wget -q --tries=10 --timeout=20 --spider https://github.com && _sync_third_party_lists 2>/dev/null
-			_query_lists "$*"
-			sort -u "$AMDATADIR/$ARCH-toolpack" 2>/dev/null | grep "^◆ .*$" 2>/dev/null | _find_no_order "$@" | _pretty_list_compat
 		else
 			_query_lists "$*"
 			LISTS=$(find "$AMDATADIR" -type f -name "$ARCH-app*" 2>/dev/null | grep -v appimage | xargs)
