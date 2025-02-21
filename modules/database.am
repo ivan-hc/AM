@@ -15,34 +15,49 @@ _about_remove_extension() {
 }
 
 _about_check() {
-	! grep -q "^◆ $arg \|^◆ $arg.toolpack \|^◆ $arg.dwfs.appbundle \|^◆ $tparg " "$AMDATADIR"/"$ARCH"-*
+	! grep -q "^◆ $arg \|^◆ $tparg " "$AMDATADIR"/"$ARCH"-*
 }
 
 _about_description_for_third_party() {
-	if echo "$appname" | grep -q ".appbundle$"; then
-		readme_source="$appbundle_readme"
-		repo_source="$appbundle_repo"
-	elif echo "$arg" | grep -q ".toolpack$"; then
-		readme_source="$toolpack_readme"
-		repo_source="$toolpack_repo"
+	if echo "$appname" | grep -q "\."; then
+		tp_extension=$(echo "$appname" | sed 's:.*\.::')
+	elif echo "$arg" | grep -q "\."; then
+		tp_extension=$(echo "$arg" | sed 's:.*\.::')
 	fi
-	appname_arg=$(curl -Ls "$readme_source" 2>/dev/null | grep -i "^| $appname " | tr '|' '\n' | cut -c 2- | grep .)
-	about_description=$(echo "$appname_arg" | awk -F: "NR==$awk_description")
-	about_site=$(echo "$appname_arg" | awk -F: "NR==$awk_site")
-	if [ "$readme_source" = "$toolpack_readme" ]; then
-		toolpack_readme=$(curl -Ls "$toolpack_readme")
-		tpnumber=$(echo "$toolpack_readme" | grep "^| $appname |" | wc -l | sed 's/ //g')
+	if [ -n "$tp_extension" ]; then
+		tprepo_readme="${tp_extension}_readme"
+		readme_source="${!tprepo_readme}"
+		tprepo_repo="${tp_extension}_repo"
+		repo_source="${!tprepo_repo}"
+		appname_arg=$(curl -Ls "$readme_source" 2>/dev/null | grep -i "^| $appname " | tr '|' '\n' | cut -c 2- | grep .)
+		about_description=$(echo "$appname_arg" | awk -F: "NR==$awk_description")
+		about_site=$(echo "$appname_arg" | awk -F: "NR==$awk_site")
+
+		third_party_readme=$(curl -Ls "$readme_source")
+		tpnumber=$(echo "$third_party_readme" | grep "^| $appname |" | wc -l | sed 's/ //g')
 		if [ "$tpnumber" -ge "1" ]; then
 			[ "$tpnumber" != 1 ] && printf "\nAvailable families: %b\n" "$tpnumber"
 			if echo "$app_status" | grep -q "^installed"; then
 				[ -f "$argpath/$appname" ] && printf "\nBinary info: " && file "$argpath/$appname"
 			fi
-			about_description=$(echo "$toolpack_readme" | grep "^| $appname " | awk -F'|' '{print $3}' | uniq)
-			about_site=$(echo "$toolpack_readme" | grep "^| $appname " | awk -F'|' '{print $4}' | uniq)
+			about_description=$(echo "$third_party_readme" | grep "^| $appname " | awk -F'|' '{print $3}' | uniq)
+			if echo "$about_description" | grep -q "\[[a-z]"; then
+				about_description=$(echo "$about_description" | sed 's/\[/\n\[/g')
+				about_families=$(echo "$about_description" | grep "\[" | uniq | xargs)
+				about_a_description=$(echo "$about_description" | grep -v "\[" | uniq | sed 's/ $//g; s/$/./g')
+				about_description="$about_families\n\n$about_a_description\n"
+			fi
+			about_site=$(echo "$third_party_readme" | grep "^| $appname " | awk -F'|' '{print $4}' | uniq)
 		fi
 	fi
-	[ -n "$about_description" ] && printf "\n%b\n\nSOURCE: %b\n\nDATABASE: %b\n" "$about_description" "$about_site" "$repo_source" \
-	|| printf "\n\nDATABASE: %b\n" "$toolpack_repo"
+
+	if [ -n "$about_description" ]; then
+		printf "\n%b\n\nSOURCE: %b\n\nDATABASE: %b\n" "$about_description" "$about_site" "$repo_source"
+	else
+		[ -n "$repo_source" ] && printf "\n\nDATABASE: %b\n" "$repo_source" || printf "\nAvailable in an third-party database (requires an extension).\n"
+	fi
+	about_description=""
+	repo_source=""
 }
 
 _about_description() {
