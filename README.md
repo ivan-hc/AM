@@ -221,14 +221,18 @@ Another feature of "AM" is extensibility, thanks to the management of applicatio
                 am -i --{FLAG} {PROGRAM}
                 am -i --{FLAG} --user {PROGRAM}
                 am -l --{FLAG}
-                am -q --{FLAG} {KEYWORD}
 ```
-These databases have the task of supporting and enriching the list of applications that can be installed via "AM". Here are the ones currently supported:
-- "[Toolpacks](https://github.com/pkgforge/soarpkgs)", the flag to use is `--toolpack`
+These databases have the task of supporting and enriching the list of applications that can be installed via "AM".
 
-Third-party databases can show basic information normally with the option `-a` or `about`, no flag is needed here. However, the name of the package will be shown with an extension equivalent to the flag used to install it. For example `{PROGRAM}` will be `{PROGRAM}.toolpack` if coming from the "Toolpacks" database.
+**To see the full list of flags, scroll to the bottom of the `-h` or `help` message.**
 
-Same thing, you can use `am -i {PROGRAM}.toolpack` or `am -i --user {PROGRAM}.toolpack` to install the program without using the flag.
+Alternatively, perform searches (option `-q` or `query`) using the flag `--all` to identify the application.
+
+Each application from external databases also has an identifying extension that corresponds to the database from which it comes.
+
+Third-party databases can show basic information normally with the option `-a` or `about`, no flag is needed here. However, the name of the package will be shown with an extension equivalent to the flag used to install it. For example `{PROGRAM}` will be `{PROGRAM}.{FLAG}` if coming from the "`{FLAG}`" database.
+
+Same thing, you can use `am -i {PROGRAM}.{FLAG}` or `am -i --user {PROGRAM}.{FLAG}` to install the program without using the flag.
 
 #### How to replace AM database
 One thing I care a lot about is **continuity**, and as I have seen over the years, not all open source developers are able to maintain a project. This could happen to me in the future. I don't want it to be that way.
@@ -722,17 +726,16 @@ NOTE, "AM" 9 or higher is also able to, update and manage apps locally, by defau
 ## THIRD-PARTY FLAGS: 
 
 ------------------------------------------------------------------------
-### `--toolpack`
 
-	am -i --toolpack {PROGRAM}
-	am -i --toolpack --user {PROGRAM}
-	am -l --toolpack
+All flags intended for third-party databases are listed at the bottom of the `-h` or `help` message, their description and synopsis will be something like this:
+
+		am -i --{FLAG} {PROGRAM}
+		am -i --{FLAG} --user {PROGRAM}
+		am -l --{FLAG}
 
 **Description**:
 
-This is a flag to use in "`-i`" and "`-l`" to install/list Toolpack programs from https://github.com/pkgforge/soarpkgs (ex toolpacks). You can also use it in "`-q`" as a keyword.
-
-NOTE, for installations you can use ".toolpack" as the package extension instead of using the flag.
+This is a flag to use in "`-i`" and "`-l`" to install/list `{FLAG}`s from *https://site.name/source/repository*. You can also use it in "`-q`" as a keyword. For installations you can use .`{FLAG}` as the package extension instead of using the flag.
 
 </details>
 
