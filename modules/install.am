@@ -332,14 +332,17 @@ _install_normally() {
 #			THIRD PARTY DATABASES
 ################################################################################
 
+for tp_list in $third_party_lists; do
+	[ -n "$tp_flags" ] && tp_flags="$tp_flags\|--$tp_list" || tp_flags="--$tp_list"
+	[ -n "$tp_extensions" ] && tp_extensions="$tp_extensions\|\.$tp_list$" || tp_extensions="\.$tp_list$"
+done
+
 _remove_extensions_from_appname() {
 	pure_arg=$(echo "$pure_arg" | _remove_known_third_party_extensions)
 }
 
 _3rd_party_check() {
-	for tp_list in $third_party_lists; do
-		echo "$@" | grep -q -- "--$tp_list" || echo "$arg" | grep -q ".$tp_list$"
-	done
+	echo "$@" | grep -q -- "$tp_flags" || echo "$arg" | grep -q "$tp_extensions"
 }
 
 _3rd_party_curl_detect_item() {
@@ -412,9 +415,7 @@ _3rd_party_apps_handler() {
 }
 
 _install_3rd_party_app() {
-	for tp_list in $third_party_lists; do
-		arg=$(echo "$arg" | sed "s/\.$tp_list$//g")
-	done
+	arg=$(echo "$arg" | _remove_known_third_party_extensions)
 	if _3rd_party_curl_detect_item; then
 		_3rd_party_apps_handler
 		_install_local_script
