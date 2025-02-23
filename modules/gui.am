@@ -20,15 +20,25 @@ am_install() {
 	"$("$AMCLI" -i $@)"
 }
 
-"$AMCLI" -l | sed -n '3,$p' | grep ":" | cut -d' ' -f2-23 | cut -d' ' -f1 | tail -n +2 | sed 's/^/FALSE /' | tr '\n' ' ' | sed 's/ $//' > /tmp/instalable-yad-list
-INSTALLABLE=$(cat /tmp/instalable-yad-list)
-"$AMCLI" -l | sed -n '3,$p' | grep ":" | cut -d' ' -f2-23 | cut -d' ' -f1 | tail -n +2 | tr '\n' '!' > /tmp/instalable-completion
-INSTALLABLE_COMPLETION=$(cat /tmp/instalable-completion)
+################################################################################################################################################################
+#		LISTS
+################################################################################################################################################################
+
+# List of installed programs (option -f)
 "$AMCLI" -f | awk 'NR>=4 {if (NF==0) exit; print $2,$4,$6,$8,$9}' | tail -n +2 > /tmp/installed-info
 APPSLIST=$(cat /tmp/installed-info | tail -n +2 )
+
+# List of removable applications
 cat /tmp/installed-info | awk 'NR>=2 {print $1}' | sed 's/^/FALSE /' | tr '\n' ' ' | sed 's/ $//' > /tmp/am-removable
 REMOVABLE=$(cat /tmp/am-removable)
-"$AMCLI" -l | sed -n '3,$p' | grep ":" | cut -d' ' -f2-23 | tail -n +2 | cut -d' ' -f1,3- > /tmp/available-list
+
+# List of available applications
+exec_list=$("$AMCLI" -l | sed -n '3,$p' | grep ":" | cut -d' ' -f2-23)
+echo "$exec_list" | cut -d' ' -f1 | tail -n +2 | sed 's/^/FALSE /' | tr '\n' ' ' | sed 's/ $//' > /tmp/instalable-yad-list
+INSTALLABLE=$(cat /tmp/instalable-yad-list)
+echo "$exec_list" | cut -d' ' -f1 | tail -n +2 | tr '\n' '!' > /tmp/instalable-completion
+INSTALLABLE_COMPLETION=$(cat /tmp/instalable-completion)
+echo "$exec_list" | tail -n +2 | cut -d' ' -f1,3- > /tmp/available-list
 
 create_list() {
 	args=()
@@ -41,6 +51,9 @@ create_list() {
 	yad --list --checklist --scrollable --column install --column app --column about "${args[@]}"
 }
 
+################################################################################################################################################################
+#		ACTIONS
+################################################################################################################################################################
 run_list() {
 	yad --list --scrollable --width=740 --height=800 --column app --column version --column type --column size --column iB $APPSLIST
 }
