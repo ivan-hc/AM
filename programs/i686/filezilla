@@ -1,0 +1,84 @@
+#!/bin/sh
+
+# AM INSTALL SCRIPT VERSION 3.5
+set -u
+APP=filezilla
+SITE="https://filezilla-project.org"
+
+# CREATE DIRECTORIES AND ADD REMOVER
+[ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
+printf "#!/bin/sh\nset -e\nrm -f /usr/local/bin/$APP\nrm -R -f /opt/$APP" > ../remove
+printf '\n%s' "rm -f /usr/local/share/applications/$APP-AM.desktop" >> ../remove
+chmod a+x ../remove || exit 1
+
+# DOWNLOAD AND PREPARE THE APP, $version is also used for updates
+version=$(curl -Ls -A "User-Agent: Mozilla/5.0 (X11; Linux)" https://filezilla-project.org/download.php?platform=linux32 | tr '">< ' '\n' | grep -i "^http.*filezilla.*linux.*tar" | head -1)
+wget "$version" || exit 1
+[ -e ./*7z ] && 7z x ./*7z && rm -f ./*7z
+[ -e ./*tar.* ] && tar fx ./*tar.* && rm -f ./*tar.*
+[ -e ./*zip ] && unzip -qq ./*zip 1>/dev/null && rm -f ./*zip
+cd ..
+if [ -d ./tmp/* 2>/dev/null ]; then mv ./tmp/*/* ./; else mv ./tmp/* ./"$APP" 2>/dev/null || mv ./tmp/* ./; fi
+rm -R -f ./tmp || exit 1
+echo "$version" > ./version
+chmod a+x ./bin/$APP || exit 1
+
+# LINK TO PATH
+echo '#!/bin/sh
+HERE="$(dirname "$(readlink -f "${0}")")"
+export PATH="${HERE}"/bin/:"${PATH}"
+export LD_LIBRARY_PATH="${HERE}"/lib/:"${LD_LIBRARY_PATH}"
+export XDG_DATA_DIRS="${HERE}"/usr/share/:"${HERE}"/usr/share/filezilla/:"${XDG_DATA_DIRS}"
+exec "${HERE}"/bin/filezilla' > ./"$APP"
+chmod a+x ./"$APP"
+ln -s "/opt/$APP/$APP" "/usr/local/bin/$APP"
+
+# SCRIPT TO UPDATE THE PROGRAM
+cat >> ./AM-updater << 'EOF'
+#!/bin/sh
+set -u
+APP=filezilla
+SITE="https://filezilla-project.org"
+version0=$(cat "/opt/$APP/version")
+version=$(curl -Ls -A "User-Agent: Mozilla/5.0 (X11; Linux)" https://filezilla-project.org/download.php?platform=linux32 | tr '">< ' '\n' | grep -i "^http.*filezilla.*linux.*tar" | head -1)
+[ -n "$version" ] || { echo "Error getting link"; exit 1; }
+if [ "$version" != "$version0" ]; then
+	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
+	notify-send "A new version of $APP is available, please wait"
+	wget "$version" || exit 1
+	[ -e ./*7z ] && 7z x ./*7z && rm -f ./*7z
+	[ -e ./*tar.* ] && tar fx ./*tar.* && rm -f ./*tar.*
+	[ -e ./*zip ] && unzip -qq ./*zip 1>/dev/null && rm -f ./*zip
+	cd ..
+	if [ -d ./tmp/* 2>/dev/null ]; then mv --backup=t ./tmp/*/* ./; else mv --backup=t ./tmp/* ./"$APP" 2>/dev/null || mv --backup=t ./tmp/* ./; fi
+	chmod a+x ./bin/"$APP" || exit 1
+	echo "$version" > ./version
+	rm -R -f ./tmp ./*~
+	notify-send "$APP is updated!"
+else
+	echo "Update not needed!"
+fi
+EOF
+chmod a+x ./AM-updater || exit 1
+
+# ICON
+mkdir -p icons
+wget https://portable-linux-apps.github.io/icons/filezilla.png -O ./icons/"$APP" 2> /dev/null
+
+# LAUNCHER
+echo "[Desktop Entry]
+Name=FileZilla
+GenericName=FTP client
+GenericName[da]=FTP-klient
+GenericName[de]=FTP-Client
+GenericName[fr]=Client FTP
+Comment=Download and upload files via FTP, FTPS and SFTP
+Comment[da]=Download og upload filer via FTP, FTPS og SFTP
+Comment[de]=Dateien über FTP, FTPS und SFTP übertragen
+Comment[fr]=Transférer des fichiers via FTP, FTPS et SFTP
+Exec=filezilla
+Terminal=false
+Icon=/opt/$APP/icons/$APP
+Type=Application
+Categories=Network;FileTransfer;
+Version=1.0" > /usr/local/share/applications/"$APP"-AM.desktop
