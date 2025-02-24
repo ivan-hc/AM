@@ -1,0 +1,310 @@
+#!/usr/bin/env bash
+
+# This is a script I use to create and update the application list on https://portable-linux-apps.github.io/
+# Once created, the page will appear like this: https://portable-linux-apps.github.io/apps.html
+# First of all, we need to create a file containing all the arguments that this script must read
+
+AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
+arch="x86_64"
+
+# ENTER THE DESKTOP DIRECTORY
+cd "$(xdg-user-dir DESKTOP)" || exit 1
+
+# GET THE NAMES OF ALL APPLICATION
+cp "$HOME"/.local/share/AM/"$arch"-apps "$arch"-apps && echo -e "$(cat ./"$arch"-apps | awk -v FS="(◆ | : )" '{print $2}')" >> args
+
+# GET THE EXACT NUMBER OF AVAILABLE APPS
+ARGS=$(cat ./args)
+APPS_NUMBER=$(grep -v "ffwa-\|\"kdegames\"\|\"kdeutils\"\|\"node\"\|\"platform-tools\"" "$arch"-apps | grep -e "$" -c)
+ITEMS_NUMBER=$(grep "ffwa-\|\"kdegames\"\|\"kdeutils\"\|\"node\"\|\"platform-tools\"" "$arch"-apps | grep -e "$" -c)
+CATEGORIES="android audio \
+	comic command-line communication \
+	disk \
+	education \
+	file-manager finance \
+	game gnome graphic \
+	internet \
+	kde \
+	office \
+	password \
+	steam system-monitor \
+	video \
+	web-app web-browser wine"
+
+##########################################################
+# UPDATE THE JSON FILE FOR FURTER ELECTRON-BASED FRONTENDS
+##########################################################
+
+function _update_json() {
+	echo "[" > apps.json
+	for arg in $ARGS; do
+		description=$(grep "◆ $arg :" "$arch"-apps | sed 's/"/\\"/g; s/^.*: //')
+		printf "  {\n    \"packageName\": \"%b\",\n    \"description\": \"%b..\",\n    \"icon\": \"https://portable-linux-apps.github.io/icons/%b.png\"\n  },\n" "$arg" "$description" "$arg" >> apps.json
+	done
+	sed -i '$s/,$//' apps.json
+	echo "]" >> apps.json
+}
+
+_update_json
+
+################################################
+# COMMON FUNCTIONS NEEDED TO COMPILE OTHER PAGES
+################################################
+
+function _home_button {
+	echo ""
+	echo "| [Home](index.md) |"
+	echo "| --- |"
+	echo ""
+}
+
+function _table_head() {
+	echo "-----------------"
+	echo ""
+	echo "*NOTE, the installer scripts in the \"INSTALLER\" column are intended for use via \"AM\", and are therefore dedicated to a system-wide \
+	installation of applications (in /opt), and all that \"AppMan\" does is convert those scripts for local installation, changing the paths. \
+	**They are listed here for reading purposes only**!*"
+	echo ""
+	echo "*Should you decide to run them manually, the only way to remove the application is to run \
+	the command \"\`sudo /opt/appname/remove\`\", where \"appname\" is the name of the application directory containing the \"remove\" script. \
+	Likewise, you can also update applications by running the \"AM-updater\" script in the same directory.*"
+	echo ""
+	echo "*The \"AM\" project allow the autonomy of installed apps, regardless of the presence of \"AM\" itself in the system. However, it is strongly \
+	recommended to use \"AM\" and \"AppMan\" to take full advantage of all the benefits you could get from an application installed in this way.*"
+	echo ""
+	echo "*If you are here just to download apps manually, click on the program name and check the URL(s) on the application page. This site does not \
+	provide direct links, for security reasons, but it does provide the exact sources and references where you can find them!*"
+	echo ""
+	echo "*Transparency and credibility are the focus of this catalog. Happy exploring!*"
+	echo ""
+	echo "-----------------"
+	echo ""
+	echo "| ICON | PACKAGE NAME | DESCRIPTION | INSTALLER |"
+	echo "| --- | --- | --- | --- |"
+}
+
+function _categories_buttons() {
+	echo ""
+	echo "#### *Categories*"
+	echo ""
+	#- ***[SAMPLE](https://portable-linux-apps.github.io/SAMPLE.html)*** \
+	echo "***[AppImages](appimages.md)*** \
+		$(for c in $CATEGORIES; do printf " - ***[$c]($c.md)***"; done)"
+	echo ""
+}
+
+function _categories_buttons_on_footer() {
+	echo ""
+	echo "| [Back to Home](index.md) | [Back to Applications](apps.md)"
+	echo "| --- | --- |"
+	echo ""
+}
+
+function _back_to_apps_button() {
+	echo ""
+	echo "| [Back to Applications](apps.md) |"
+	echo "| --- |"
+	echo ""
+}
+
+function _footer_up() {
+	echo ""
+	echo ""
+	echo "---"
+	echo ""
+	echo "You can improve these pages via a [pull request](https://github.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/pulls) \
+	to this site's [GitHub repository](https://github.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io),  \
+	or report any problems related to the installation scripts in the '[issue](https://github.com/ivan-hc/AM/issues)' \
+	section of the main database, at [https://github.com/ivan-hc/AM](https://github.com/ivan-hc/AM)."
+	echo ""
+	echo "***PORTABLE-LINUX-APPS.github.io is my gift to the Linux community and was made with love for GNU/Linux and the Open Source philosophy.***"
+	echo ""
+	echo "---"
+}
+
+function _footer_down() {
+	echo "--------"
+	echo ""
+	echo "# Contacts"
+	echo "- **Ivan-HC** *on* [**GitHub**](https://github.com/ivan-hc)"
+	echo "- **AM-Ivan** *on* [**Reddit**](https://www.reddit.com/u/am-ivan)"
+	echo ""
+	echo "###### *You can support me and my work on [**ko-fi.com**](https://ko-fi.com/IvanAlexHC) and \
+	[**PayPal.me**](https://paypal.me/IvanAlexHC). Thank you!*"
+	echo ""
+	echo "--------"
+	echo ""
+	echo "*© 2020-present Ivan Alessandro Sala aka '"'Ivan-HC'"'* - I'm here just for fun!"
+	echo ""
+	echo ""
+}
+
+function _footer_apps() {
+	_footer_up
+	_home_button
+	_footer_down
+}
+
+function _footer_categories() {
+	_footer_up
+	_categories_buttons_on_footer
+	_footer_down
+}
+
+###############################
+# COMPILE THE APPLICATIONS LIST
+###############################
+
+function _applications_list_header {
+	echo "# APPLICATIONS" > apps.md
+	_home_button >> apps.md
+	echo "#### Here are listed all **$APPS_NUMBER** unique applications, AppImage packages and command line utilities managed by [AM](https://github.com/ivan-hc/AM) \
+	and [AppMan](https://github.com/ivan-hc/AppMan) for the x86_64 architecture, plus **$ITEMS_NUMBER** more entries and items to help you install apps more easily." >> apps.md
+	echo "" >> apps.md
+	echo "*Use your browser's built-in search tool to easily navigate to this page or use the tags below.*" >> apps.md
+	echo "" >> apps.md
+	_categories_buttons >> apps.md
+	_table_head >> apps.md
+}
+
+function _applications_list_body() {
+	for arg in $ARGS; do
+		description=$(grep "◆ $arg :" "$arch"-apps | sed 's/^.*: //; s/ *$//')
+		echo "| <img loading=\"lazy\" src=\"icons/$arg.png\" width=\"48\" height=\"48\"> | [***$arg***](apps/$arg.md) | *$description*..[ *read more* ](apps/$arg.md)*!* | [*blob*](https://github.com/ivan-hc/AM/blob/main/programs/$arch/$arg) **/** [*raw*](https://raw.githubusercontent.com/ivan-hc/AM/main/programs/$arch/$arg) |" >> body.txt &
+	done
+	wait
+	sort -u ./body.txt >> apps.md
+}
+
+_applications_list_header
+_applications_list_body
+_footer_apps >> apps.md
+
+########################
+# COMPILE APPIMAGES PAGE
+########################
+
+function _appimages_listing() {
+	APPIMAGES_LIST_AM=$(curl -Ls https://raw.githubusercontent.com/ivan-hc/AM/main/programs/x86_64-appimages)
+	echo "$APPIMAGES_LIST_AM" | awk -v FS="(◆ | : )" '{print $2}' > args
+	ARGS=$(cat ./args)
+	APPIMAGES_NUMBER=$(cat ./args | wc -l)
+}
+
+function _appimages_list_header {
+	echo "# APPIMAGES" > appimages.md
+	_home_button >> appimages.md
+	echo "#### Here are listed the **$APPIMAGES_NUMBER** unique Appimages managed by [AM](https://github.com/ivan-hc/AM) \
+	and [AppMan](https://github.com/ivan-hc/AppMan) for the x86_64 architecture." >> appimages.md
+	echo "" >> appimages.md
+	echo "*Use your browser's built-in search tool to easily navigate to this page or use the tags below.*" >> appimages.md
+	echo "" >> appimages.md
+	_back_to_apps_button >> appimages.md
+	_categories_buttons >> appimages.md
+	_table_head >> appimages.md
+}
+
+function _appimages_list_body() {
+	for arg in $ARGS; do
+		grep "apps/$arg.md" ./body.txt >> appimages.md
+	done
+}
+
+_appimages_listing
+_appimages_list_header
+_appimages_list_body
+_footer_categories >> appimages.md
+
+######################################
+# COMPILE THE MAIN PAGE OF THE WEBSITE
+######################################
+
+ST_APPS_NUMBER=$(($APPS_NUMBER-$APPIMAGES_NUMBER))
+function _compile_the_homepage() {
+	wget -q https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/main/index.md -O index.old
+	sed -n '1,10p' ./index.old > ./index.md
+	echo "#### *This site lists **$APPS_NUMBER** unique apps (**$APPIMAGES_NUMBER** Appimage packages and **$ST_APPS_NUMBER** standalone/portable programs), plus **$ITEMS_NUMBER** items.*" >> ./index.md
+	sed -n '12,19p' ./index.old >> ./index.md
+	_categories_buttons >> ./index.md
+	sed -n '25,20000p' ./index.old >> ./index.md
+}
+
+_compile_the_homepage
+
+##################
+# OTHER CATEGORIES
+##################
+
+function _category_list_header {
+	echo "# $(echo "$category" | tr a-z A-Z)" > "$category".md
+	_home_button >> "$category".md
+	echo "#### Here are listed **$APPS_NUMBER** programs and **$ITEMS_NUMBER** items for this category and managed by [AM](https://github.com/ivan-hc/AM) \
+	and [AppMan](https://github.com/ivan-hc/AppMan) for the x86_64 architecture." >> "$category".md
+	echo "" >> "$category".md
+	echo "*Use your browser's built-in search tool to easily navigate to this page or use the tags below.*" >> "$category".md
+	echo "" >> "$category".md
+	_back_to_apps_button >> "$category".md
+	_categories_buttons >> "$category".md
+	_table_head >> "$category".md
+}
+
+function _category_list_body() {
+	for arg in $ARGS; do
+		grep "apps/"$arg".md" ./body.txt >> $category.md
+	done
+}
+
+for category in $CATEGORIES; do
+	if [ "$category" = android ]; then
+		grep -i "$category\| adb \|fastboot\|phone\|platform-tools" ./"$arch"-apps >> "$arch-$category"
+	elif [ "$category" = audio ]; then
+		grep -i "$category\|music\|midi\|mp3\|sound" ./"$arch"-apps >> "$arch-$category"
+	elif [ "$category" = comic ]; then
+		grep -i "$category\|manga\|epub\|anime" ./"$arch"-apps >> "$arch-$category"
+	elif [ "$category" = command-line ]; then
+		grep -i "$category\|command line\| cli \|terminal\|fastboot\| npm \| bash \| shell \| dash \| zsh " ./"$arch"-apps >> "$arch-$category"
+	elif [ "$category" = communication ]; then
+		grep -i "$category\|voip\|facebook\|messenger\|whatsapp\|mastodon\|skype\|chat\|social network\|zoom\|conferenc\|discord" ./"$arch"-apps >> "$arch-$category"
+	elif [ "$category" = disk ]; then
+		grep -i "$category\|partition\|usb" ./"$arch"-apps >> "$arch-$category"
+	elif [ "$category" = education ]; then
+		grep -i "$category\| edu\|science\|learn\|study\|teach\|translat\|geo\|child\| book\|ebook\|space simulator\|planet\|astronom" ./"$arch"-apps | grep -vi "game\|manga\|anime" >> "$arch-$category"
+	elif [ "$category" = file-manager ]; then
+		grep -i "$category\|file manager\|file browse\|browse.*file\|file explore" ./"$arch"-apps >> "$arch-$category"
+	elif [ "$category" = finance ]; then
+		grep -i "$category\|wallet\|money\|economy\|economic" ./"$arch"-apps >> "$arch-$category"
+	elif [ "$category" = game ]; then
+		grep -i "$category\|arcade\|steam\|wine\|strateg\|solitaire\|poker\|chess\|puzzle\|pinball\|adventure\|playstation\|xbox\|nintendo\|minecraft" ./"$arch"-apps >> "$arch-$category"
+	elif [ "$category" = graphic ]; then
+		grep -i "$category\|picture\|screensh\|gimp\|photo\|svg\|png\|autocad\|blender\|modeling\|paint\|pixel\|wallpaper" ./"$arch"-apps >> "$arch-$category"
+	elif [ "$category" = internet ]; then
+		grep -i "$category\|web browser\|browser web\|firefox\|chrome\|youtube\|torrent\|p2p\|chat\|whatsapp\|mastodon\|telegram\|skype" ./"$arch"-apps >> "$arch-$category"
+	elif [ "$category" = office ]; then
+		grep -i "$category\|document\|book\|pdf\|docx\|reader\|spreadsheet\| word \| excel " ./"$arch"-apps >> "$arch-$category"
+	elif [ "$category" = password ]; then
+		grep -i "$category" ./"$arch"-apps >> "$arch-$category"
+	elif [ "$category" = system-monitor ]; then
+		grep -i "$category\|system monitor\|task manager\|system resource" ./"$arch"-apps >> "$arch-$category"
+	elif [ "$category" = video ]; then
+		grep -i "$category\|stream\|media player\|film\|movie\|netflix\|youtube\|iptv" ./"$arch"-apps >> "$arch-$category"
+	elif [ "$category" = web-app ]; then
+		grep -i "$category\|webapp\|web app\|ffwa" ./"$arch"-apps >> "$arch-$category"
+	elif [ "$category" = web-browser ]; then
+		grep -i "$category\|web browser\|browser web\|browser.*web\|browser.*chrome\|brave.*browser\|chrome.*browser\|chromium.*browser\|firefox.*web browser\|vivaldi\|thorium\|mercury\|librewolf" ./"$arch"-apps  >> "$arch-$category"
+	else
+		grep -i "$category" ./"$arch"-apps  >> "$arch-$category"
+	fi
+	echo -e "$(cat ./"$arch-$category" | awk -v FS="(◆ | : )" '{print $2}')" > args
+	ARGS=$(cat ./args)
+	APPS_NUMBER=$(grep -v "ffwa-\|\"kdegames\"\|\"kdeutils\"\|\"node\"\|\"platform-tools\"" "$arch-$category" | grep -e "$" -c)
+	ITEMS_NUMBER=$(grep "ffwa-\|\"kdegames\"\|\"kdeutils\"\|\"node\"\|\"platform-tools\"" "$arch-$category" | grep -e "$" -c)
+	_category_list_header
+	_category_list_body
+	_footer_categories >> "$category".md
+	rm -f ./"$arch-$category"
+done
+
+######################
+# END OF ALL PROCESSES
+######################
+rm ./args ./index.old ./"$arch"-apps ./body.txt

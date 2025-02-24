@@ -1,0 +1,127 @@
+#!/bin/sh
+
+# AM INSTALL SCRIPT VERSION 3.5
+set -u
+APP=kdeutils
+SITE="ivan-hc/KDE-utils-appimage"
+
+# CREATE DIRECTORIES AND ADD REMOVER
+[ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
+printf "#!/bin/sh\nset -e\nrm -f /usr/local/bin/$APP\nrm -R -f /opt/$APP" > ../remove
+printf '\n%s' "rm -f /usr/local/share/applications/$APP-*-AM.desktop" >> ../remove
+chmod a+x ../remove || exit 1
+
+# DOWNLOAD AND PREPARE THE APP, $version is also used for updates
+version=$(curl -Ls https://api.github.com/repos/ivan-hc/KDE-utils-appimage/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | head -1)
+wget "$version" || exit 1
+#wget "$version.zsync" 2> /dev/null # Comment out this line if you want to use zsync
+# Use tar fx ./*tar* here for example in this line in case a compressed file is downloaded.
+cd ..
+mv ./tmp/*mage ./"$APP"
+mv ./tmp/*.zsync ./"$APP".zsync 2>/dev/null
+rm -R -f ./tmp || exit 1
+echo "$version" > ./version
+chmod a+x ./"$APP" || exit 1
+
+# LINK TO PATH
+ln -s "/opt/$APP/$APP" "/usr/local/bin/$APP"
+
+# SCRIPT TO UPDATE THE PROGRAM
+cat >> ./AM-updater << 'EOF'
+#!/bin/sh
+set -u
+APP=kdeutils
+SITE="ivan-hc/KDE-utils-appimage"
+version0=$(cat "/opt/$APP/version")
+version=$(curl -Ls https://api.github.com/repos/ivan-hc/KDE-utils-appimage/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | head -1)
+[ -n "$version" ] || { echo "Error getting link"; exit 1; }
+if [ "$version" != "$version0" ] || [ -e /opt/"$APP"/*.zsync ]; then
+	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
+	[ -e ../*.zsync ] || notify-send "A new version of $APP is available, please wait"
+	[ -e ../*.zsync ] && wget "$version.zsync" 2>/dev/null || { wget "$version" || exit 1; }
+	# Use tar fx ./*tar* here for example in this line in case a compressed file is downloaded.
+	cd ..
+	mv ./tmp/*.zsync ./"$APP".zsync 2>/dev/null || mv --backup=t ./tmp/*mage ./"$APP"
+	[ -e ./*.zsync ] && { zsync ./"$APP".zsync || notify-send -u critical "zsync failed to update $APP"; }
+	chmod a+x ./"$APP" || exit 1
+	echo "$version" > ./version
+	rm -R -f ./*zs-old ./*.part ./tmp ./*~
+	notify-send "$APP is updated!"
+else
+	echo "Update not needed!"
+fi
+EOF
+chmod a+x ./AM-updater || exit 1
+
+# LAUNCHERS AND ICONS
+./kdeutils --appimage-extract ".junest/usr/share/icons/hicolor/128x128/apps/*" > /dev/null
+./kdeutils --appimage-extract ".junest/usr/share/icons/hicolor/scalable/apps/*" > /dev/null
+./kdeutils --appimage-extract ".junest/usr/share/applications/*" > /dev/null
+cp ./squashfs-root/.junest/usr/share/icons/hicolor/128x128/apps/*ark* /opt/"$APP"/icons/ 2>/dev/null
+cp ./squashfs-root/.junest/usr/share/icons/hicolor/128x128/apps/*filelight* /opt/"$APP"/icons/ 2>/dev/null
+cp ./squashfs-root/.junest/usr/share/icons/hicolor/scalable/apps/*francis* /opt/"$APP"/icons/ 2>/dev/null
+cp ./squashfs-root/.junest/usr/share/icons/hicolor/scalable/apps/*isoimagewriter* /opt/"$APP"/icons/ 2>/dev/null
+cp ./squashfs-root/.junest/usr/share/icons/hicolor/scalable/apps/*kalm* /opt/"$APP"/icons/ 2>/dev/null
+cp ./squashfs-root/.junest/usr/share/icons/hicolor/128x128/apps/*kate* /opt/"$APP"/icons/ 2>/dev/null
+cp ./squashfs-root/.junest/usr/share/icons/hicolor/128x128/apps/*kbackup* /opt/"$APP"/icons/ 2>/dev/null
+cp ./squashfs-root/.junest/usr/share/icons/hicolor/128x128/apps/*kcalc* /opt/"$APP"/icons/ 2>/dev/null
+cp ./squashfs-root/.junest/usr/share/icons/hicolor/128x128/apps/*kcharselect* /opt/"$APP"/icons/ 2>/dev/null
+cp ./squashfs-root/.junest/usr/share/icons/hicolor/scalable/apps/*kclock* /opt/"$APP"/icons/kclock 2>/dev/null
+cp ./squashfs-root/.junest/usr/share/icons/hicolor/128x128/apps/*kdebugsettings* /opt/"$APP"/icons/ 2>/dev/null
+cp ./squashfs-root/.junest/usr/share/icons/hicolor/128x128/apps/*kdf* /opt/"$APP"/icons/ 2>/dev/null
+cp ./squashfs-root/.junest/usr/share/icons/hicolor/128x128/apps/*kdialog* /opt/"$APP"/icons/ 2>/dev/null
+cp ./squashfs-root/.junest/usr/share/icons/hicolor/128x128/apps/*keditbookmarks* /opt/"$APP"/icons/ 2>/dev/null
+cp ./squashfs-root/.junest/usr/share/icons/hicolor/scalable/apps/*keysmith* /opt/"$APP"/icons/ 2>/dev/null
+cp ./squashfs-root/.junest/usr/share/icons/hicolor/128x128/apps/*kfind* /opt/"$APP"/icons/ 2>/dev/null
+cp ./squashfs-root/.junest/usr/share/icons/hicolor/128x128/apps/*kgpg* /opt/"$APP"/icons/ 2>/dev/null
+cp ./squashfs-root/.junest/usr/share/icons/hicolor/scalable/apps/*kongress* /opt/"$APP"/icons/ 2>/dev/null
+cp ./squashfs-root/.junest/usr/share/icons/hicolor/scalable/apps/*krecorder* /opt/"$APP"/icons/ 2>/dev/null
+cp ./squashfs-root/.junest/usr/share/icons/hicolor/48x48/apps/*kteatime* /opt/"$APP"/icons/ 2>/dev/null
+cp ./squashfs-root/.junest/usr/share/icons/hicolor/128x128/apps/*ktimer* /opt/"$APP"/icons/ 2>/dev/null
+cp ./squashfs-root/.junest/usr/share/icons/hicolor/scalable/apps/*ktrip* /opt/"$APP"/icons/ 2>/dev/null
+cp ./squashfs-root/.junest/usr/share/icons/hicolor/scalable/apps/*kweather* /opt/"$APP"/icons/ 2>/dev/null
+cp ./squashfs-root/.junest/usr/share/icons/hicolor/128x128/apps/*kwrite* /opt/"$APP"/icons/ 2>/dev/null
+cp ./squashfs-root/.junest/usr/share/icons/hicolor/scalable/apps/*skanpage* /opt/"$APP"/icons/ 2>/dev/null
+cp ./squashfs-root/.junest/usr/share/icons/hicolor/128x128/apps/*sweeper* /opt/"$APP"/icons/ 2>/dev/null
+cp ./squashfs-root/.junest/usr/share/icons/hicolor/scalable/apps/*telly-skout* /opt/"$APP"/icons/ 2>/dev/null
+cd /opt/"$APP"/icons
+for file in *.png; do mv -- "$file" "${file%%.png}"; done
+for file in *.svg; do mv -- "$file" "${file%%.svg}"; done
+cd ..
+
+mkdir /opt/"$APP"/launchers
+cp ./squashfs-root/.junest/usr/share/applications/*ark* /opt/"$APP"/launchers/ 2>/dev/null
+cp ./squashfs-root/.junest/usr/share/applications/*filelight* /opt/"$APP"/launchers/ 2>/dev/null
+cp ./squashfs-root/.junest/usr/share/applications/*francis* /opt/"$APP"/launchers/ 2>/dev/null
+cp ./squashfs-root/.junest/usr/share/applications/*isoimagewriter* /opt/"$APP"/launchers/ 2>/dev/null
+cp ./squashfs-root/.junest/usr/share/applications/*kalm* /opt/"$APP"/launchers/ 2>/dev/null
+cp ./squashfs-root/.junest/usr/share/applications/*kate* /opt/"$APP"/launchers/ 2>/dev/null
+cp ./squashfs-root/.junest/usr/share/applications/*kbackup* /opt/"$APP"/launchers/ 2>/dev/null
+cp ./squashfs-root/.junest/usr/share/applications/*kcalc* /opt/"$APP"/launchers/ 2>/dev/null
+cp ./squashfs-root/.junest/usr/share/applications/*kcharselect* /opt/"$APP"/launchers/ 2>/dev/null
+cp ./squashfs-root/.junest/usr/share/applications/*kclock* /opt/"$APP"/launchers/ 2>/dev/null
+cp ./squashfs-root/.junest/usr/share/applications/*kdebugsettings* /opt/"$APP"/launchers/ 2>/dev/null
+cp ./squashfs-root/.junest/usr/share/applications/*kdf* /opt/"$APP"/launchers/ 2>/dev/null
+cp ./squashfs-root/.junest/usr/share/applications/*kdialog* /opt/"$APP"/launchers/ 2>/dev/null
+cp ./squashfs-root/.junest/usr/share/applications/*keditbookmarks* /opt/"$APP"/launchers/ 2>/dev/null
+cp ./squashfs-root/.junest/usr/share/applications/*keysmith* /opt/"$APP"/launchers/ 2>/dev/null
+cp ./squashfs-root/.junest/usr/share/applications/*kfind* /opt/"$APP"/launchers/ 2>/dev/null
+cp ./squashfs-root/.junest/usr/share/applications/*kgpg* /opt/"$APP"/launchers/ 2>/dev/null
+cp ./squashfs-root/.junest/usr/share/applications/*kongress* /opt/"$APP"/launchers/ 2>/dev/null
+cp ./squashfs-root/.junest/usr/share/applications/*krecorder* /opt/"$APP"/launchers/ 2>/dev/null
+cp ./squashfs-root/.junest/usr/share/applications/*kteatime* /opt/"$APP"/launchers/ 2>/dev/null
+cp ./squashfs-root/.junest/usr/share/applications/*ktimer* /opt/"$APP"/launchers/ 2>/dev/null
+cp ./squashfs-root/.junest/usr/share/applications/*ktrip* /opt/"$APP"/launchers/ 2>/dev/null
+cp ./squashfs-root/.junest/usr/share/applications/*kweather* /opt/"$APP"/launchers/ 2>/dev/null
+cp ./squashfs-root/.junest/usr/share/applications/*kwrite* /opt/"$APP"/launchers/ 2>/dev/null
+cp ./squashfs-root/.junest/usr/share/applications/*skanpage* /opt/"$APP"/launchers/ 2>/dev/null
+cp ./squashfs-root/.junest/usr/share/applications/*sweeper* /opt/"$APP"/launchers/ 2>/dev/null
+cp ./squashfs-root/.junest/usr/share/applications/*telly-skout* /opt/"$APP"/launchers/ 2>/dev/null
+cd /opt/"$APP"/launchers
+for f in *; do mv "$f" "$APP-${f%.desktop}-AM.desktop"; done
+sed -i "s#Exec=#Exec=/opt/$APP/$APP #g" /opt/"$APP"/launchers/*.desktop
+sed -i "s#Icon=#Icon=/opt/$APP/icons/#g" /opt/"$APP"/launchers/*.desktop
+cp /opt/"$APP"/launchers/*.desktop /usr/local/share/applications/
+
+rm -R -f /opt/"$APP"/launchers
+rm -R -f /opt/"$APP"/squashfs-root
