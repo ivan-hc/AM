@@ -1,11 +1,8 @@
 #!/usr/bin/env bash
 
 ##########################################################################
-# THIS MODULE CONTAINS YAD GUI FOR AM
+# THIS MODULE PROVIDES ADDITIONAL GRAPHICAL USER INTERFACE THANKS TO YAD #
 ##########################################################################
-
-version="0.02"
-echo "$version"
 
 check_yad() {
 	if ! command -v yad >/dev/null 2>&1; then
@@ -16,8 +13,59 @@ check_yad() {
 
 check_yad
 
+_am_list_all() {
+  "$AMCLI" -l --all
+}
+
+_filter_only_with_diamond() {
+  grep "◆"
+}
+
+_cut_all_before_second_whitespace() {
+  cut -d' ' -f2-
+}
+
+_cut_all_before_third_whitespace() {
+  cut -d' ' -f3-
+}
+
+_convert_colon_to_tab() {
+  sed -e 's/ : /\t/g'
+}
+
+_get_version_args_from_cache() {
+  sort "$AMCACHEDIR"/version-args 2>/dev/null
+}
+
 am_install() {
 	"$("$AMCLI" -i $@)"
+}
+
+am_remove() {
+	"$("$AMCLI" -R $@)"
+}
+
+about_gui() {
+	yad --about \
+	 --pname="GUI for AM" \
+	 --image="" \
+	 --pversion="0.03 Alpha" \
+	 --copyright=" 2025, zenobit" \
+	 --comments="Testing Alpha release
+
+Using YAD to create simple and usable
+Graphical User Interface for
+AM: Application Manager
+for linux
+
+AM website:
+https://github.com/ivan-hc/am
+
+GUI:" \
+	 --license="GPL3" \
+	 --authors="zenobit <osowoso@disroot.org>" \
+	 --website="https://github.com/osowoso/am/tree/yad" \
+	 --website-label="repo"
 }
 
 ################################################################################################################################################################
@@ -48,22 +96,26 @@ create_list() {
 		desc=$(echo "$desc" | sed 's/&/\&amp;/g') # & → &amp;
 		args+=("FALSE" "$name" "$desc") # Add arguments to fields
 	done < /tmp/available-list
-	yad --list --checklist --scrollable --column install --column app --column about "${args[@]}"
+	yad --list --checklist --column install --column app --column about "${args[@]}" > /tmp/am-toinstall
+	am -i $(cat /tmp/am-toinstall | cut -d'|' -f2)
 }
 
 ################################################################################################################################################################
 #		ACTIONS
 ################################################################################################################################################################
 run_list() {
-	yad --list --scrollable --width=740 --height=800 --column app --column version --column type --column size --column iB $APPSLIST
+	yad --list --width=740 --height=800 --column app --column version --column type --column size --column iB $APPSLIST > /tmp/am-installed
+	yad --image dialog-question --title Alert --button=yes:0 --button=no:1 --text "Remove $(cat /tmp/am-installed | cut -d'|' -f1)?" && am -r $(cat /tmp/am-installed | cut -d'|' -f1)
 }
 
 run_install() {
-	yad --form --separator=' ' --field='available!Choose app to install':CE --align=right $INSTALLABLE_COMPLETION
+	yad --form --separator=' ' --field='available!Choose app to install':CE --align=right $INSTALLABLE_COMPLETION > /tmp/am-toinstall
+	am -i $(cat /tmp/am-toinstall)
 }
 
 run_remove() {
-	yad --list --checklist --scrollable --width=740 --height=800 --column remove --column name $REMOVABLE
+	yad --list --checklist --width=740 --height=800 --column remove --column name $REMOVABLE > /tmp/am-toremove
+	yad --image dialog-question --title Alert --button=yes:0 --button=no:1 --text "Remove $(cat /tmp/am-toremove | cut -d'|' -f2)?" && am -r $(cat /tmp/am-toremove | cut -d'|' -f2)
 }
 
 export INSTALLABLE
@@ -74,16 +126,17 @@ export -f run_list
 export -f run_install
 export -f run_remove
 export -f create_list
+export -f about_gui
+
 yad --form \
  --title="AM GUI" \
+ --align=center \
  --separator=' ' \
  --cycle-read \
  --field="📋 Installed":BTN "bash -c run_list" \
  --field="📥 Install":BTN "bash -c run_install" \
  --field="📥 Install apps":BTN "bash -c create_list" \
  --field="🗑️ Uninstall":BTN "bash -c run_remove" \
- --field="ℹ️ About yad":BTN "yad --about" \
- --field="ℹ️ About GUI":BTN "echo --about" \
- --field="❌ Close":BTN "echo --close"
-
+ --field="ℹ️ About GUI":BTN "bash -c about_gui" \
+ --button="yad-quit"
 exit 0
