@@ -52,11 +52,12 @@ fi
 EOF
 chmod a+x ./AM-updater || exit 1
 
-# LAUNCHER & ICON
-RIM_ALLOW_ROOT=1 RIM_NO_NVIDIA_CHECK=1 HOME="/tmp/integ_files-$$" ./"$APP" rim-dinteg -a "$APP" 2>/dev/null
-cp -r /tmp/integ_files-$$/.local/share ./ 1>/dev/null
-mv ./share/applications/* ./"$APP".desktop 1>/dev/null
+# LAUNCHER & ICON\n
+./"$APP" --runtime-extract
+desktop_files=$(find ./RunDir -type f -wholename *applications*.desktop)
+for d in $desktop_files; do grep -q "^Exec=.*$APP" "$d" && mv "$d" ./"$APP".desktop; done
+icon_file=$(grep "^Icon=" ./*.desktop | head -1 | cut -c 6-)
+mv "$(find ./RunDir -name "$icon_file.*png" -exec ls -S {} + | head -1)" ./icons/"$APP" || mv "$(find ./RunDir -name "$icon_file.*svg" -exec ls -S {} + | head -1)" ./icons/"$APP"
 sed -i "s#Exec=[^ ]*#Exec=$APP#g; s#Icon=.*#Icon=/opt/$APP/icons/$APP#g" ./"$APP".desktop
-ICON=$(find ./share/icons -type f -exec ls -S {} + | head -1)
-mv ./"$APP".desktop /usr/local/share/applications/"$APP"-AM.desktop && mv "$ICON" ./icons/"$APP" 1>/dev/null
-rm -Rf ./share
+mv ./"$APP".desktop /usr/local/share/applications/"$APP"-AM.desktop
+rm -Rf ./RunDir
