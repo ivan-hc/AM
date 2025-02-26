@@ -52,8 +52,12 @@ fi
 EOF
 chmod a+x ./AM-updater || exit 1
 
-# LAUNCHER & ICON
-./"$APP" --pbundle_desktop | base64 -d > ./"$APP".desktop
-./"$APP" --pbundle_pngIcon | base64 -d > ./DirIcon
+# LAUNCHER & ICON\n
+./"$APP" --runtime-extract
+desktop_files=$(find ./RunDir -type f -wholename *applications*.desktop)
+for d in $desktop_files; do grep -q "^Exec=.*$APP" "$d" && mv "$d" ./"$APP".desktop; done
+icon_file=$(grep "^Icon=" ./*.desktop | head -1 | cut -c 6-)
+mv "$(find ./RunDir -name "$icon_file.*png" -exec ls -S {} + | head -1)" ./icons/"$APP" || mv "$(find ./RunDir -name "$icon_file.*svg" -exec ls -S {} + | head -1)" ./icons/"$APP"
 sed -i "s#Exec=[^ ]*#Exec=$APP#g; s#Icon=.*#Icon=/opt/$APP/icons/$APP#g" ./"$APP".desktop
-mv ./"$APP".desktop /usr/local/share/applications/"$APP"-AM.desktop && mv ./DirIcon ./icons/"$APP" 1>/dev/null
+mv ./"$APP".desktop /usr/local/share/applications/"$APP"-AM.desktop
+rm -Rf ./RunDir
