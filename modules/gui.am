@@ -75,23 +75,28 @@ GUI:" \
 # To run standalone
 if [ -z "$AMCLI" ]; then
 	AMCLI=am
+	AMCACHEDIR="/home/$USER/.cache/am"
 fi
 
 # List of installed programs (option -f)
-"$AMCLI" -f | awk 'NR>=4 {if (NF==0) exit; print $2,$4,$6,$8,$9}' | tail -n +2 > /tmp/installed-info
-APPSLIST=$(cat /tmp/installed-info | tail -n +2 )
+"$AMCLI" -f | awk 'NR>=4 {if (NF==0) exit; print $2,$4,$6,$8,$9}' | \
+ tail -n +2 > "$AMCACHEDIR/installed-info"
+APPSLIST=$(cat "$AMCACHEDIR/installed-info" | tail -n +2 )
 
 # List of removable applications
-cat /tmp/installed-info | awk 'NR>=2 {print $1}' | sed 's/^/FALSE /' | tr '\n' ' ' | sed 's/ $//' > /tmp/am-removable
-REMOVABLE=$(cat /tmp/am-removable)
+cat "$AMCACHEDIR/installed-info" | awk 'NR>=2 {print $1}' | sed 's/^/FALSE /' | \
+ tr '\n' ' ' | sed 's/ $//' > "$AMCACHEDIR/am-removable"
+REMOVABLE=$(cat "$AMCACHEDIR/am-removable")
 
 # List of available applications
 exec_list=$("$AMCLI" -l | sed -n '3,$p' | grep ":" | cut -d' ' -f2-23)
-echo "$exec_list" | cut -d' ' -f1 | tail -n +2 | sed 's/^/FALSE /' | tr '\n' ' ' | sed 's/ $//' > /tmp/instalable-yad-list
-INSTALLABLE=$(cat /tmp/instalable-yad-list)
-echo "$exec_list" | cut -d' ' -f1 | tail -n +2 | tr '\n' '!' > /tmp/instalable-completion
-INSTALLABLE_COMPLETION=$(cat /tmp/instalable-completion)
-echo "$exec_list" | tail -n +2 | cut -d' ' -f1,3- > /tmp/available-list
+echo "$exec_list" | cut -d' ' -f1 | tail -n +2 | sed 's/^/FALSE /' | \
+ tr '\n' ' ' | sed 's/ $//' > "$AMCACHEDIR/instalable-yad-list"
+INSTALLABLE=$(cat "$AMCACHEDIR/instalable-yad-list")
+echo "$exec_list" | cut -d' ' -f1 | tail -n +2 | \
+ tr '\n' '!' > "$AMCACHEDIR/instalable-completion"
+INSTALLABLE_COMPLETION=$(cat "$AMCACHEDIR/instalable-completion")
+echo "$exec_list" | tail -n +2 | cut -d' ' -f1,3- > "$AMCACHEDIR/available-list"
 
 create_list() {
 	args=()
@@ -100,32 +105,70 @@ create_list() {
 		desc=$(echo "$line" | cut -d ' ' -f2-) # Everything from second column (about)
 		desc=$(echo "$desc" | sed 's/&/\&amp;/g') # & → &amp;
 		args+=("FALSE" "$name" "$desc") # Add arguments to fields
-	done < /tmp/available-list
-	yad --list --checklist --column install --column app --column about "${args[@]}" > /tmp/am-toinstall
-	am -i $(cat /tmp/am-toinstall | cut -d'|' -f2)
+	done < "$AMCACHEDIR/available-list"
+	yad --list \
+	 --checklist \
+	 --column install \
+	 --column app \
+	 --column about "${args[@]}" > "$AMCACHEDIR/am-toinstall"
+	am -i $(cat "$AMCACHEDIR/am-toinstall" | cut -d'|' -f2)
 }
 
 ################################################################################################################################################################
 #		ACTIONS
 ################################################################################################################################################################
+
 run_list() {
-	yad --list --width=740 --height=800 --column app --column version --column type --column size --column iB $APPSLIST > /tmp/am-installed
-	yad --image dialog-question --title Alert --button=yes:0 --button=no:1 --text "Remove $(cat /tmp/am-installed | cut -d'|' -f1)?" && "$AMCLI" -r $(cat /tmp/am-installed | cut -d'|' -f1)
+	yad --list \
+	 --width=740 \
+	 --height=800 \
+	 --column app \
+	 --column version \
+	 --column type \
+	 --column size \
+	 --column iB \
+	 $APPSLIST > "$AMCACHEDIR/am-installed"
+
+	yad --image dialog-question \
+	 --title Alert \
+	 --button=yes:0 \
+	 --button=no:1 \
+	 --text "Remove $(cat "$AMCACHEDIR/am-installed" | cut -d'|' -f1)?" && \
+	 "$AMCLI" -r $(cat "$AMCACHEDIR/am-installed" | cut -d'|' -f1)
 }
 
 run_install() {
-	yad --form --separator=' ' --field='available!Choose app to install':CE --align=right $INSTALLABLE_COMPLETION > /tmp/am-toinstall && "$AMCLI" -i $(cat /tmp/am-toinstall)
+	yad --form \
+	 --separator=' ' \
+	 --field='available!Choose app to install':CE \
+	 --align=right $INSTALLABLE_COMPLETION > "$AMCACHEDIR/am-toinstall" && \
+	 "$AMCLI" -i $(cat "$AMCACHEDIR/am-toinstall") && \
+	 rm -f "$AMCACHEDIR/am-toinstall"
 }
 
 run_remove() {
-	yad --list --checklist --width=740 --height=800 --column remove --column name $REMOVABLE > /tmp/am-toremove
-	yad --image dialog-question --title Alert --button=yes:0 --button=no:1 --text "Remove $(cat /tmp/am-toremove | cut -d'|' -f2)?" && "$AMCLI" -r $(cat /tmp/am-toremove | cut -d'|' -f2)
+	yad --list \
+	 --checklist \
+	 --width=740 \
+	 --height=800 \
+	 --column remove \
+	 --column name $REMOVABLE > "$AMCACHEDIR/am-toremove"
+
+	yad --image dialog-question \
+	 --title Alert \
+	 --button=yes:0 \
+	 --button=no:1 \
+	 --text "Remove $(cat "$AMCACHEDIR/am-toremove" | cut -d'|' -f2)?" && \
+	 "$AMCLI" -r $(cat "$AMCACHEDIR/am-toremove" | cut -d'|' -f2) && \
+	 rm -f "$AMCACHEDIR/am-toremove"
 }
 
 export INSTALLABLE
 export INSTALLABLE_COMPLETION
 export APPSLIST
 export REMOVABLE
+export AMCLI
+export AMCACHEDIR
 export -f run_list
 export -f run_install
 export -f run_remove
