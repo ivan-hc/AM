@@ -6,37 +6,37 @@
 ##########################################################################
 
 check_yad() {
-	if ! command -v yad >/dev/null 2>&1; then
-		echo "ERROR! yad is missing! Install it..."
-		exit 1
-	fi
+  if ! command -v yad >/dev/null 2>&1; then
+    echo "ERROR! yad is missing! Install it..."
+    exit 1
+  fi
 }
 
 check_yad
 
 _am_list_all() {
-	"$AMCLI" -l --all
+  "$AMCLI" -l --all
 }
 
 am_install() {
-	"$AMCLI" -i "$@"
+  "$AMCLI" -i "$@"
 }
 
 am_remove() {
-	"$AMCLI" -r "$@"
+  "$AMCLI" -r "$@"
 }
 
 am_remove_no_ask() {
-	"$AMCLI" -R "$@"
+  "$AMCLI" -R "$@"
 }
 
 about_gui() {
-	yad --about \
-		--pname="GUI for AM" \
-		--image="" \
-		--pversion="0.03 Alpha" \
-		--copyright=" 2025, zenobit" \
-		--comments="Testing Alpha release
+  yad --about \
+   --pname="GUI for AM" \
+   --image="" \
+   --pversion="0.03 Alpha" \
+   --copyright=" 2025, zenobit" \
+   --comments="Testing Alpha release
 
 Using YAD to create simple and usable
 Graphical User Interface for
@@ -47,119 +47,120 @@ AM website:
 https://github.com/ivan-hc/am
 
 GUI:" \
-		--license="GPL3" \
-		--authors="zenobit <osowoso@disroot.org>" \
-		--website="https://github.com/osowoso/am/tree/yad" \
-		--website-label="repo"
+   --license="GPL3" \
+   --authors="zenobit <osowoso@disroot.org>" \
+   --website="https://github.com/osowoso/am/tree/yad" \
+   --website-label="repo"
 }
 
 ################################################################################################################################################################
-#		LISTS
+#   LISTS
 ################################################################################################################################################################
 
 # To run standalone
 if [ -z "$AMCLI" ]; then
-	AMCLI=am
-	AMCACHEDIR="/home/$USER/.cache/am"
+  AMCLI=am
+  AMCACHEDIR="/home/$USER/.cache/am"
 fi
 
 # List of installed programs (option -f)
-"$AMCLI" -f | awk 'NR>=4 {if (NF==0) exit; print $2,$4,$6,$8,$10,$11}' |
-	tail -n +2 >"$AMCACHEDIR/installed-info"
+"$AMCLI" -f | awk 'NR>=4 {if (NF==0) exit; print $2,$4,$6,$8,$10,$11}' | tail -n +2 >"$AMCACHEDIR/installed-info"
 APPSLIST=$(tail -n +2 <"$AMCACHEDIR/installed-info")
+
 # List of removable applications
-awk 'NR>=2 {print $1}' <"$AMCACHEDIR/installed-info" | sed 's/^/FALSE /' |
-	tr '\n' ' ' | sed 's/ $//' >"$AMCACHEDIR/am-removable"
+awk 'NR>=2 {print $1}' <"$AMCACHEDIR/installed-info" | sed 's/^/FALSE /' | tr '\n' ' ' | sed 's/ $//' >"$AMCACHEDIR/am-removable"
 REMOVABLE=$(<"$AMCACHEDIR/am-removable")
+
 # List of available applications
 exec_list=$("$AMCLI" -l | sed -n '3,$p' | grep ":" | cut -d' ' -f2-23)
+
 # List of installable applications for YAD
-echo "$exec_list" | awk -F ' ' '{print $1}' | tail -n +2 | sed 's/^/FALSE /' |
-	tr '\n' ' ' | sed 's/ $//' >"$AMCACHEDIR/instalable-yad-list"
+echo "$exec_list" | awk -F ' ' '{print $1}' | tail -n +2 | sed 's/^/FALSE /' | tr '\n' ' ' | sed 's/ $//' >"$AMCACHEDIR/instalable-yad-list"
 INSTALLABLE=$(<"$AMCACHEDIR/instalable-yad-list")
+
 # List of installable completion
-echo "$exec_list" | awk -F ' ' '{print $1}' | tail -n +2 |
-	tr '\n' '!' >"$AMCACHEDIR/instalable-completion"
+echo "$exec_list" | awk -F ' ' '{print $1}' | tail -n +2 | tr '\n' '!' >"$AMCACHEDIR/instalable-completion"
 INSTALLABLE_COMPLETION=$(<"$AMCACHEDIR/instalable-completion")
+
 # List of available
 echo "$exec_list" | tail -n +2 | cut -d' ' -f1,3- >"$AMCACHEDIR/available-list"
 
 ################################################################################################################################################################
-#		ACTIONS
+#   ACTIONS
 ################################################################################################################################################################
 
 list_installed_for_removing() {
-	# shellcheck disable=SC2086
-	yad --list \
-		--width=740 \
-		--height=800 \
-		--column app \
-		--column=DB \
-		--column version \
-		--column type \
-		--column size \
-		--column iB $APPSLIST | awk -F '|' '{print $1}' >"$AMCACHEDIR/am-toremove"
-	if [ -s "$AMCACHEDIR/am-toremove" ]; then
-		yad --image dialog-question \
-			--title Alert \
-			--button=yes:0 \
-			--button=no:1 \
-			--text "Remove $(<"$AMCACHEDIR/am-toremove")?"
-		# shellcheck disable=SC2046
-		"$AMCLI" -r $(<"$AMCACHEDIR/am-toremove")
-	fi
+  # shellcheck disable=SC2086
+  yad --list \
+   --width=740 \
+   --height=800 \
+   --column app \
+   --column=DB \
+   --column version \
+   --column type \
+   --column size \
+   --column iB $APPSLIST | awk -F '|' '{print $1}' >"$AMCACHEDIR/am-toremove"
+  if [ -s "$AMCACHEDIR/am-toremove" ]; then
+    yad --image dialog-question \
+     --title Alert \
+     --button=yes:0 \
+     --button=no:1 \
+     --text "Remove $(<"$AMCACHEDIR/am-toremove")?"
+    # shellcheck disable=SC2046
+    "$AMCLI" -r $(<"$AMCACHEDIR/am-toremove")
+  fi
 }
 
 install_app() {
-	# shellcheck disable=SC2086
-	yad --form \
-		--separator=' ' \
-		--field='available!Choose app to install':CE \
-		--align=right $INSTALLABLE_COMPLETION | awk -F '|' '{print $1}' >"$AMCACHEDIR/am-toinstall"
-	if [ -s "$AMCACHEDIR/am-toinstall" ]; then
-		# shellcheck disable=SC2046
-		"$AMCLI" -i $(<"$AMCACHEDIR/am-toinstall") && REMOVABLE+=$(<"$AMCACHEDIR/am-toinstall")
-	fi
+  # shellcheck disable=SC2086
+  yad --form \
+   --separator=' ' \
+   --field='available!Choose app to install':CE \
+   --align=right $INSTALLABLE_COMPLETION | awk -F '|' '{print $1}' >"$AMCACHEDIR/am-toinstall"
+  if [ -s "$AMCACHEDIR/am-toinstall" ]; then
+    # shellcheck disable=SC2046
+    "$AMCLI" -i $(<"$AMCACHEDIR/am-toinstall") && REMOVABLE+=$(<"$AMCACHEDIR/am-toinstall")
+  fi
 }
 
 install_apps() {
-	args=()
-	while IFS= read -r line; do
-		name=${line%% *}                # First world (appname)
-		desc=${line#* }                 # Everything from second column (about)
-		desc=${desc//&/&amp;}           # Change & to &amp;
-		args+=("FALSE" "$name" "$desc") # Add arguments to fields
-	done <"$AMCACHEDIR/available-list"
-	yad --list \
-		--width=750 \
-		--height=800 \
-		--checklist \
-		--column install \
-		--column app \
-		--column about "${args[@]}" >"$AMCACHEDIR/am-toinstall"
-	if [ -s "$AMCACHEDIR/am-toinstall" ]; then
-		# shellcheck disable=SC2046
-		"$AMCLI" -i $(awk -F '|' '{print $2}' "$AMCACHEDIR/am-toinstall") && REMOVABLE+=$(<"$AMCACHEDIR/am-toinstall")
-	fi
+  args=()
+  while IFS= read -r line; do
+    name=${line%% *}                # First world (appname)
+    desc=${line#* }                 # Everything from second column (about)
+    desc=${desc//&/&amp;}           # Change & to &amp;
+    args+=("FALSE" "$name" "$desc") # Add arguments to fields
+  done <"$AMCACHEDIR/available-list"
+  yad --list \
+   --width=750 \
+   --height=800 \
+   --checklist \
+   --column install \
+   --column app \
+   --column about "${args[@]}" >"$AMCACHEDIR/am-toinstall"
+  if [ -s "$AMCACHEDIR/am-toinstall" ]; then
+    # shellcheck disable=SC2046
+    "$AMCLI" -i $(awk -F '|' '{print $2}' "$AMCACHEDIR/am-toinstall") && REMOVABLE+=$(<"$AMCACHEDIR/am-toinstall")
+  fi
 }
 
 remove_apps() {
-	# shellcheck disable=SC2086
-	yad --list \
-		--checklist \
-		--width=740 \
-		--height=800 \
-		--column remove \
-		--column name $REMOVABLE | awk -F '|' '{print $2}' >"$AMCACHEDIR/am-toremove"
-	if [ -s "$AMCACHEDIR/am-toremove" ]; then
-		yad --image dialog-question \
-			--title Alert \
-			--button=yes:0 \
-			--button=no:1 \
-			--text "Remove $(<"$AMCACHEDIR/am-toremove")?"
-		# shellcheck disable=SC2046
-		"$AMCLI" -r $(<"$AMCACHEDIR/am-toremove") && REMOVABLE=$(echo "$REMOVABLE" | grep -vwFf "$AMCACHEDIR/am-toremove")
-	fi
+  # shellcheck disable=SC2086
+  yad --list \
+   --checklist \
+   --width=740 \
+   --height=800 \
+   --column remove \
+   --column name $REMOVABLE | awk -F '|' '{print $2}' >"$AMCACHEDIR/am-toremove"
+  if [ -s "$AMCACHEDIR/am-toremove" ]; then
+    yad --image dialog-question \
+     --title Alert \
+     --button=yes:0 \
+     --button=no:1 \
+     --text "Remove $(<"$AMCACHEDIR/am-toremove")?"
+    # shellcheck disable=SC2046
+    "$AMCLI" -r $(<"$AMCACHEDIR/am-toremove") && REMOVABLE=$(echo "$REMOVABLE" | grep -vwFf "$AMCACHEDIR/am-toremove")
+  fi
 }
 
 export INSTALLABLE
@@ -175,14 +176,14 @@ export -f install_apps
 export -f about_gui
 
 yad --form \
-	--title="AM GUI" \
-	--align=center \
-	--separator=' ' \
-	--cycle-read \
-	--field="📋 Installed!!List installed Apps and remove App(s)":BTN "bash -c list_installed_for_removing" \
-	--field="📥 Install!!Install one app":BTN "bash -c install_app" \
-	--field="📥 Install apps!!Install more apps":BTN "bash -c install_apps" \
-	--field="🗑️ Uninstall!!Uninstall App(s)":FBTN "bash -c remove_apps" \
-	--field="ℹ️ About GUI!!Show info about GUI":BTN "bash -c about_gui" \
-	--button="yad-quit!!Exit GUI"
+ --title="AM GUI" \
+ --align=center \
+ --separator=' ' \
+ --cycle-read \
+ --field="📋 Installed!!List installed Apps and remove App(s)":BTN "bash -c list_installed_for_removing" \
+ --field="📥 Install!!Install one app":BTN "bash -c install_app" \
+ --field="📥 Install apps!!Install more apps":BTN "bash -c install_apps" \
+ --field="🗑️ Uninstall!!Uninstall App(s)":FBTN "bash -c remove_apps" \
+ --field="ℹ️ About GUI!!Show info about GUI":BTN "bash -c about_gui" \
+ --button="yad-quit!!Exit GUI"
 exit 0
