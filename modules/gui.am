@@ -19,7 +19,7 @@ about_gui() {
   yad --about \
    --pname="GUI for AM" \
    --image="" \
-   --pversion="0.03 Alpha" \
+   --pversion="0.04 Alpha" \
    --copyright=" 2025, zenobit" \
    --comments="Testing Alpha release
 
@@ -52,8 +52,10 @@ if [ -z "$GUIcacheDIR" ]; then
 fi
 
 # List of installed programs (option -f)
-"$AMCLI" -f | awk 'NR>=4 {if (NF==0) exit; print $2,$4,$6,$8,$10,$11}' | tail -n +2 >"$GUIcacheDIR/installed-info"
-APPSLIST=$(tail -n +2 <"$GUIcacheDIR/installed-info")
+list_installed() {
+  "$AMCLI" -f | awk 'NR>=4 {if (NF==0) exit; print $2,$4,$6,$8,$9}' | tail -n +2 >"$GUIcacheDIR/installed-info"
+  APPSLIST=$(tail -n +2 <"$GUIcacheDIR/installed-info")
+}
 
 # List of removable applications
 awk 'NR>=2 {print $1}' <"$GUIcacheDIR/installed-info" | sed 's/^/FALSE /' | tr '\n' ' ' | sed 's/ $//' >"$GUIcacheDIR/am-removable"
@@ -99,12 +101,12 @@ am_remove_no_ask() {
 
 # List installed apps with details
 list_installed_for_removing() {
+  list_installed
   # shellcheck disable=SC2086
   yad --list \
    --width=740 \
    --height=800 \
    --column app \
-   --column=DB \
    --column version \
    --column type \
    --column size \
@@ -180,12 +182,9 @@ install_app() {
   if [[ $(awk '{print $8}' "$GUIcacheDIR/am-toinstall") == 'TRUE' ]]; then
     InstallCommand+=' --debug'
   fi
-  #if [ -s "$GUIcacheDIR/am-toinstall" ]; then
-  if [[ $(awk '{print $9}' "$GUIcacheDIR/am-toinstall") == * ]]; then
+  if [[ $(awk '{print $9}' "$GUIcacheDIR/am-toinstall") == '*' ]]; then
     # shellcheck disable=SC2046,2086
-    "$AMCLI" ${InstallCommand} $(awk '{print $9}' "$GUIcacheDIR/am-toinstall") && REMOVABLE+=$(awk '{print $9}' "$GUIcacheDIR/am-toinstall")
-  else
-    echo "Nothing choosed"
+    "$AMCLI" ${InstallCommand} $(awk '{print $9}' "$GUIcacheDIR/am-toinstall") && list_installed
   fi
 }
 
@@ -207,7 +206,7 @@ install_apps() {
    --column about "${args[@]}" >"$GUIcacheDIR/am-toinstall"
   if [ -s "$GUIcacheDIR/am-toinstall" ]; then
     # shellcheck disable=SC2046
-    "$AMCLI" -i $(awk -F '|' '{print $2}' "$GUIcacheDIR/am-toinstall") && REMOVABLE+=$(<"$GUIcacheDIR/am-toinstall")
+    "$AMCLI" -i $(awk -F '|' '{print $2}' "$GUIcacheDIR/am-toinstall") && list_installed
   fi
 }
 
@@ -227,7 +226,7 @@ remove_apps() {
      --button=no:1 \
      --text "Remove $(<"$GUIcacheDIR/am-toremove")?"
     # shellcheck disable=SC2046
-    "$AMCLI" -r $(<"$GUIcacheDIR/am-toremove") && REMOVABLE=$(echo "$REMOVABLE" | grep -vwFf "$GUIcacheDIR/am-toremove")
+    "$AMCLI" -r $(<"$GUIcacheDIR/am-toremove") && list_installed
   fi
 }
 
@@ -251,8 +250,10 @@ export -f install_app
 export -f remove_apps
 export -f install_apps
 export -f about_gui
+export -f list_installed
 
 # Show main menu
+# TODO: appman count
 yad --form \
  --title="AM GUI" \
  --align=center \
@@ -261,12 +262,12 @@ yad --form \
  --columns=3 \
  --field="AM:$(am -f --less | head -1)":LBL "" \
  --field="Appman:$(am -f --less | tail -2)":LBL "" \
- --field="ℹ️ About GUI!!Show info about GUI":BTN "bash -c about_gui" \
  --field=" ":LBL "" \
- --field="📥 Install!!Install one app":BTN "bash -c install_app" \
- --field="📥 Install apps!!Install more apps":BTN "bash -c install_apps" \
+ --field="📥 Install!!Install one app":FBTN "bash -c install_app" \
+ --field="📥 Install apps!!Install more apps":FBTN "bash -c install_apps" \
  --field=" ":LBL "" \
- --field="📋 Installed!!List installed Apps and remove App":BTN "bash -c list_installed_for_removing" \
- --field="🗑️ Uninstall!!Uninstall App(s)":FBTN "bash -c remove_apps" \
+ --field="📋 Installed!!List installed Apps and remove App":FBTN "bash -c list_installed_for_removing" \
+ --field="🗑️ Remove!!Uninstall App(s)":FBTN "bash -c remove_apps" \
+ --button="About!ℹ️!Info about GUI":"bash -c about_gui" \
  --button="yad-quit!!Exit GUI"
 exit 0
