@@ -46,30 +46,33 @@ GUI:" \
 # To run standalone
 if [ -z "$AMCLI" ]; then
   AMCLI=am
-  AMCACHEDIR="/home/$USER/.cache/am"
+fi
+if [ -z "$GUIcacheDIR" ]; then
+  GUIcacheDIR="/home/$USER/.cache/am-gui"
+  mkdir -p "$GUIcacheDIR"
 fi
 
 # List of installed programs (option -f)
-"$AMCLI" -f | awk 'NR>=4 {if (NF==0) exit; print $2,$4,$6,$8,$10,$11}' | tail -n +2 >"$AMCACHEDIR/installed-info"
-APPSLIST=$(tail -n +2 <"$AMCACHEDIR/installed-info")
+"$AMCLI" -f | awk 'NR>=4 {if (NF==0) exit; print $2,$4,$6,$8,$10,$11}' | tail -n +2 >"$GUIcacheDIR/installed-info"
+APPSLIST=$(tail -n +2 <"$GUIcacheDIR/installed-info")
 
 # List of removable applications
-awk 'NR>=2 {print $1}' <"$AMCACHEDIR/installed-info" | sed 's/^/FALSE /' | tr '\n' ' ' | sed 's/ $//' >"$AMCACHEDIR/am-removable"
-REMOVABLE=$(<"$AMCACHEDIR/am-removable")
+awk 'NR>=2 {print $1}' <"$GUIcacheDIR/installed-info" | sed 's/^/FALSE /' | tr '\n' ' ' | sed 's/ $//' >"$GUIcacheDIR/am-removable"
+REMOVABLE=$(<"$GUIcacheDIR/am-removable")
 
 # List of available applications
 exec_list=$("$AMCLI" -l | sed -n '3,$p' | grep ":" | cut -d' ' -f2-23)
 
 # List of installable applications for YAD
-echo "$exec_list" | awk -F ' ' '{print $1}' | tail -n +2 | sed 's/^/FALSE /' | tr '\n' ' ' | sed 's/ $//' >"$AMCACHEDIR/instalable-yad-list"
-INSTALLABLE=$(<"$AMCACHEDIR/instalable-yad-list")
+echo "$exec_list" | awk -F ' ' '{print $1}' | tail -n +2 | sed 's/^/FALSE /' | tr '\n' ' ' | sed 's/ $//' >"$GUIcacheDIR/instalable-yad-list"
+INSTALLABLE=$(<"$GUIcacheDIR/instalable-yad-list")
 
 # List of installable completion
-echo "$exec_list" | awk -F ' ' '{print $1}' | tail -n +2 | tr '\n' '!' >"$AMCACHEDIR/instalable-completion"
-INSTALLABLE_COMPLETION=$(<"$AMCACHEDIR/instalable-completion")
+echo "$exec_list" | awk -F ' ' '{print $1}' | tail -n +2 | tr '\n' '!' >"$GUIcacheDIR/instalable-completion"
+INSTALLABLE_COMPLETION=$(<"$GUIcacheDIR/instalable-completion")
 
 # List of available
-echo "$exec_list" | tail -n +2 | cut -d' ' -f1,3- >"$AMCACHEDIR/available-list"
+echo "$exec_list" | tail -n +2 | cut -d' ' -f1,3- >"$GUIcacheDIR/available-list"
 
 ################################################################################################################################################################
 #   ACTIONS
@@ -106,15 +109,15 @@ list_installed_for_removing() {
    --column version \
    --column type \
    --column size \
-   --column iB $APPSLIST | awk -F '|' '{print $1}' >"$AMCACHEDIR/am-toremove"
-  if [ -s "$AMCACHEDIR/am-toremove" ]; then
+   --column iB $APPSLIST | awk -F '|' '{print $1}' >"$GUIcacheDIR/am-toremove"
+  if [ -s "$GUIcacheDIR/am-toremove" ]; then
     yad --image dialog-question \
      --title Alert \
      --button=yes:0 \
      --button=no:1 \
-     --text "Remove $(<"$AMCACHEDIR/am-toremove")?"
+     --text "Remove $(<"$GUIcacheDIR/am-toremove")?"
     # shellcheck disable=SC2046
-    "$AMCLI" -r $(<"$AMCACHEDIR/am-toremove")
+    "$AMCLI" -r $(<"$GUIcacheDIR/am-toremove")
   fi
 }
 
@@ -124,10 +127,10 @@ install_app() {
   yad --form \
    --separator=' ' \
    --field='available!Choose app to install':CE \
-   --align=right $INSTALLABLE_COMPLETION | awk -F '|' '{print $1}' >"$AMCACHEDIR/am-toinstall"
-  if [ -s "$AMCACHEDIR/am-toinstall" ]; then
+   --align=right $INSTALLABLE_COMPLETION | awk -F '|' '{print $1}' >"$GUIcacheDIR/am-toinstall"
+  if [ -s "$GUIcacheDIR/am-toinstall" ]; then
     # shellcheck disable=SC2046
-    "$AMCLI" -i $(<"$AMCACHEDIR/am-toinstall") && REMOVABLE+=$(<"$AMCACHEDIR/am-toinstall")
+    "$AMCLI" -i $(<"$GUIcacheDIR/am-toinstall") && REMOVABLE+=$(<"$GUIcacheDIR/am-toinstall")
   fi
 }
 
@@ -139,17 +142,17 @@ install_apps() {
     desc=${line#* }                 # Everything from second column (about)
     desc=${desc//&/&amp;}           # Change & to &amp;
     args+=("FALSE" "$name" "$desc") # Add arguments to fields
-  done <"$AMCACHEDIR/available-list"
+  done <"$GUIcacheDIR/available-list"
   yad --list \
    --width=750 \
    --height=800 \
    --checklist \
    --column install \
    --column app \
-   --column about "${args[@]}" >"$AMCACHEDIR/am-toinstall"
-  if [ -s "$AMCACHEDIR/am-toinstall" ]; then
+   --column about "${args[@]}" >"$GUIcacheDIR/am-toinstall"
+  if [ -s "$GUIcacheDIR/am-toinstall" ]; then
     # shellcheck disable=SC2046
-    "$AMCLI" -i $(awk -F '|' '{print $2}' "$AMCACHEDIR/am-toinstall") && REMOVABLE+=$(<"$AMCACHEDIR/am-toinstall")
+    "$AMCLI" -i $(awk -F '|' '{print $2}' "$GUIcacheDIR/am-toinstall") && REMOVABLE+=$(<"$GUIcacheDIR/am-toinstall")
   fi
 }
 
@@ -161,15 +164,15 @@ remove_apps() {
    --width=740 \
    --height=800 \
    --column remove \
-   --column name $REMOVABLE | awk -F '|' '{print $2}' >"$AMCACHEDIR/am-toremove"
-  if [ -s "$AMCACHEDIR/am-toremove" ]; then
+   --column name $REMOVABLE | awk -F '|' '{print $2}' >"$GUIcacheDIR/am-toremove"
+  if [ -s "$GUIcacheDIR/am-toremove" ]; then
     yad --image dialog-question \
      --title Alert \
      --button=yes:0 \
      --button=no:1 \
-     --text "Remove $(<"$AMCACHEDIR/am-toremove")?"
+     --text "Remove $(<"$GUIcacheDIR/am-toremove")?"
     # shellcheck disable=SC2046
-    "$AMCLI" -r $(<"$AMCACHEDIR/am-toremove") && REMOVABLE=$(echo "$REMOVABLE" | grep -vwFf "$AMCACHEDIR/am-toremove")
+    "$AMCLI" -r $(<"$GUIcacheDIR/am-toremove") && REMOVABLE=$(echo "$REMOVABLE" | grep -vwFf "$GUIcacheDIR/am-toremove")
   fi
 }
 
@@ -179,7 +182,7 @@ export INSTALLABLE_COMPLETION
 export APPSLIST
 export REMOVABLE
 export AMCLI
-export AMCACHEDIR
+export GUIcacheDIR
 export -f list_installed_for_removing
 export -f install_app
 export -f remove_apps
