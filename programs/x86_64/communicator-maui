@@ -12,7 +12,11 @@ printf '\n%s' "rm -f /usr/local/share/applications/$APP-AM.desktop" >> ../remove
 chmod a+x ../remove || exit 1
 
 # DOWNLOAD AND PREPARE THE APP, $version is also used for updates
-version=$(curl -Ls https://api.github.com/repos/Nitrux/maui-appimages-storage/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | grep -i "communicator" | head -1)
+appname=$(echo "$APP" | sed -- 's/-maui$//g')
+maui_url="https://download.kde.org/stable/maui/$appname/"
+maui_ver=$(curl -Ls "$maui_url" | tr '">< ' '\n' | grep -i "^[0-9].*[0-9]/$" | uniq)
+maui_apps=$(for a in $maui_ver; do maui_app=$(curl -Ls "$maui_url$a" | tr '"><  ' '\n' | grep -i "amd64.*appimage" | tail -1); [ -n "$maui_app" ] && echo "$maui_url$a$maui_app"; done)
+version=$(echo "$maui_apps" | tail -1)
 wget "$version" || exit 1
 #wget "$version.zsync" 2> /dev/null # Comment out this line if you want to use zsync
 # Use tar fx ./*tar* here for example in this line in case a compressed file is downloaded.
@@ -33,7 +37,11 @@ set -u
 APP=communicator-maui
 SITE="Nitrux/maui-appimages-storage"
 version0=$(cat "/opt/$APP/version")
-version=$(curl -Ls https://api.github.com/repos/Nitrux/maui-appimages-storage/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | grep -i "communicator" | head -1)
+appname=$(echo "$APP" | sed -- 's/-maui$//g')
+maui_url="https://download.kde.org/stable/maui/$appname/"
+maui_ver=$(curl -Ls "$maui_url" | tr '">< ' '\n' | grep -i "^[0-9].*[0-9]/$" | uniq)
+maui_apps=$(for a in $maui_ver; do maui_app=$(curl -Ls "$maui_url$a" | tr '"><  ' '\n' | grep -i "amd64.*appimage" | tail -1); [ -n "$maui_app" ] && echo "$maui_url$a$maui_app"; done)
+version=$(echo "$maui_apps" | tail -1)
 [ -n "$version" ] || { echo "Error getting link"; exit 1; }
 if [ "$version" != "$version0" ] || [ -e /opt/"$APP"/*.zsync ]; then
 	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
