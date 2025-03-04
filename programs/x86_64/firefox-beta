@@ -1,0 +1,45 @@
+#!/bin/sh
+
+APP=firefox-beta
+
+# CREATE THE DIRECTORY
+mkdir -p /opt/"$APP"
+cd /opt/"$APP"
+
+# ADD THE REMOVER
+echo '#!/bin/sh' >> /opt/"$APP"/remove
+echo "rm -R -f /opt/$APP /usr/local/share/applications/$APP-AM.desktop /usr/local/bin/$APP" >> /opt/"$APP"/remove
+chmod a+x /opt/"$APP"/remove
+
+# DOWNLOAD THE ARCHIVE
+mkdir -p tmp
+cd ./tmp
+
+LANGUAGE=$(curl -Ls https://raw.githubusercontent.com/linuxmint/mdm/master/config/locale.alias | grep -i "$LANG" | grep -o '^\S*')
+CODE=$(curl -Ls https://releases.mozilla.org/pub/firefox/releases/latest/README.txt | cut -d ':' -f2 | grep -i $LANGUAGE | cut -d '=' -f2)
+wget "https://download.mozilla.org/?product=$APP-latest&os=linux64&lang=$CODE" --trust-server-names
+
+[ -e ./*tar.* ] && tar fx ./*tar.* && rm -f ./*tar.*
+cd ..
+mv ./tmp/firefox/* ./
+rm -R ./tmp
+
+# LINK TO PATH
+ln -s "/opt/$APP/firefox" "/usr/local/bin/$APP"
+
+# LAUNCHER
+echo "[Desktop Entry]
+Name=Firefox Beta
+Comment=Web Browser
+Exec=/opt/$APP/firefox %u
+Terminal=false
+Type=Application
+Icon=/opt/$APP/browser/chrome/icons/default/default128.png
+Categories=Network;WebBrowser;
+MimeType=text/html;text/xml;application/xhtml+xml;application/xml;application/vnd.mozilla.xul+xml;application/rss+xml;application/rdf+xml;image/gif;image/jpeg;image/png;x-scheme-handler/http;x-scheme-handler/https;
+StartupNotify=true
+Actions=Private;
+
+[Desktop Action Private]
+Exec=/opt/$APP/firefox --private-window %u
+Name=Open in private mode" > /usr/local/share/applications/"$APP"-AM.desktop
