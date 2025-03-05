@@ -45,6 +45,7 @@ You can use the command `am -a {PROGRAM}` to view the description and get the so
 - [Using "GIT" (only system-wide installation)](#using-git-only-system-wide-installation)
 - [Using a one-line command (only system-wide installation)](#using-a-one-line-command-only-system-wide-installation)
 
+   - [Whati is AppMan?](#what-is-appman)
    - [AM installation structure](#am-installation-structure)
    - [Uninstall](#uninstall)
    - [How are apps installed](#how-are-apps-installed)
