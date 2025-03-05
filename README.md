@@ -41,13 +41,17 @@ You can use the command `am -a {PROGRAM}` to view the description and get the so
 
 [Installation](#installation)
 
- - [AM installation structure](#am-installation-structure)
- - [Uninstall](#uninstall)
- - [How are apps installed](#how-are-apps-installed)
- - [How to set the path to local apps](#how-to-set-the-path-to-local-apps)
- - [What programs can be installed](#what-programs-can-be-installed)
-   - [Supported third-party databases](#supported-third-party-databases)
-   - [How to replace AM database](#how-to-replace-am-database)
+- [Using the "AM-installer" script to choose between local and system-wide installation](#using-the-am-installer-script-to-choose-between-local-and-system-wide-installation)
+- [Using "GIT" (only system-wide installation)](#using-git-only-system-wide-installation)
+- [Using one-line command (only system-wide installation)](#using-one-line-command-only-system-wide-installation)
+
+   - [AM installation structure](#am-installation-structure)
+   - [Uninstall](#uninstall)
+   - [How are apps installed](#how-are-apps-installed)
+   - [How to set the path to local apps](#how-to-set-the-path-to-local-apps)
+   - [What programs can be installed](#what-programs-can-be-installed)
+     - [Supported third-party databases](#supported-third-party-databases)
+     - [How to replace AM database](#how-to-replace-am-database)
 
 [How to update all programs, for real!](#how-to-update-all-programs-for-real)
  - [How to update all installed apps](#how-to-update-all-installed-apps)
@@ -86,7 +90,7 @@ To install "AM" you must first install the "core" dependencies from your package
 </details>
 
 ------------------------------------------------------------------------
-### Quick installation
+### Using the "AM-installer" script to choose between local and system-wide installation
 The "AM-INSTALLER" script allows you to choose "[AppMan](#what-is-appman)" instead of "AM", briefly explaining the differences between the two.
 
 Copy/paste the following one line command to download and run the "[AM-INSTALLER](https://github.com/ivan-hc/AM/blob/main/AM-INSTALLER)" script
@@ -107,7 +111,7 @@ Run `am -h` or jump to "**[Usage](#usage)**" to see all the available options.
 ### Other installation methods
 As already said, the "AM-INSTALLER" script in the previous paragraph helps you choosing between "[AppMan](#what-is-appman)" and "AM", briefly explaining the differences. However, installing "AM" can be much simpler than that. All "AM-INSTALLER" does when you select "1" is to download and run another script, named "[INSTALL](https://github.com/ivan-hc/AM/blob/main/INSTALL)". That said, you can easily install "AM" without "intermediaries".
 
-#### Using "GIT"
+#### Using "GIT" (only system-wide installation)
 Copy/paste the following commands
 ```
 git clone https://github.com/ivan-hc/AM.git
@@ -116,7 +120,7 @@ chmod a+x INSTALL
 sudo ./INSTALL
 ```
 
-#### Using "Wget"
+#### Using one-line command (only system-wide installation)
 Copy/paste the following one line command command
 ```
 wget https://raw.githubusercontent.com/ivan-hc/AM/main/INSTALL && chmod a+x ./INSTALL && sudo ./INSTALL
