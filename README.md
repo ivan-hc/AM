@@ -91,7 +91,7 @@ To install "AM" you must first install the "core" dependencies from your package
 </details>
 
 ------------------------------------------------------------------------
-### Using the "AM-installer" script to choose between local and system-wide installation
+## Using the "AM-installer" script to choose between local and system-wide installation
 The "AM-INSTALLER" script allows you to choose "[AppMan](#what-is-appman)" instead of "AM", briefly explaining the differences between the two.
 
 Copy/paste the following one line command to download and run the "[AM-INSTALLER](https://github.com/ivan-hc/AM/blob/main/AM-INSTALLER)" script
@@ -109,7 +109,7 @@ Type "1" to install "AM", "2" to install "[AppMan](#what-is-appman)". Any other 
 Run `am -h` or jump to "**[Usage](#usage)**" to see all the available options.
 
 ------------------------------------------------------------------------
-#### Using "GIT" (only system-wide installation)
+## Using "GIT" (only system-wide installation)
 Copy/paste the following commands
 ```
 git clone https://github.com/ivan-hc/AM.git
@@ -119,7 +119,7 @@ sudo ./INSTALL
 ```
 
 ------------------------------------------------------------------------
-#### Using a one-line command (only system-wide installation)
+## Using a one-line command (only system-wide installation)
 Copy/paste the following one line command command
 ```
 wget https://raw.githubusercontent.com/ivan-hc/AM/main/INSTALL && chmod a+x ./INSTALL && sudo ./INSTALL
