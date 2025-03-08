@@ -1,0 +1,32 @@
+#!/bin/sh
+
+LIB=libfuse2
+ARCH=$(uname -m)
+
+# USE THIS SCRIPT WITH ROOT PRIVILEGES
+if command -v sudo >/dev/null 2>&1; then
+	SUDO_CMD="sudo"
+elif command -v doas >/dev/null 2>&1; then
+	SUDO_CMD="doas"
+else
+	echo 'ERROR: No sudo or doas found'
+	exit 1
+fi
+
+"$SUDO_CMD" printf "\r"
+
+# CREATE DIRECTORIES AND ADD REMOVER
+[ -n "$LIB" ] && mkdir -p "/opt/$LIB/tmp" && cd "/opt/$LIB/tmp" || exit 1
+printf "#!/bin/sh\nset -e\n$SUDO_CMD rm -f /usr/local/lib/libfuse*\nrm -R -f /opt/$LIB" > ../remove
+chmod a+x ../remove || exit 1
+
+# DOWNLOAD AND PREPARE THE LIBRARY
+LIBFUSE2_DEB=$(curl -Ls http://ftp.debian.org/debian/pool/main/f/fuse/ | grep -Po '(?<=href=")[^"]*' | sort | grep -v exp | grep amd64 | grep "libfuse2_" | tail -1)
+wget http://ftp.debian.org/debian/pool/main/f/fuse/"$LIBFUSE2_DEB" || exit 1
+ar x ./*.deb && tar fx ./data.tar.xz || exit 1
+cd .. || exit 1
+"$SUDO_CMD" mkdir -p /usr/local/lib || exit 1
+"$SUDO_CMD" mv ./tmp/lib/*/libfuse* /usr/local/lib/ && rm -R -f ./tmp || exit 1
+
+# CONFIGURE DYNAMIC LINKER RUN-TIME BINDINGS
+"$SUDO_CMD" ldconfig

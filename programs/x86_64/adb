@@ -1,0 +1,71 @@
+#!/bin/sh
+
+# AM INSTALL SCRIPT VERSION 3.5
+set -u
+APP=platform-tools
+SITE="https://developer.android.com"
+
+# CREATE DIRECTORIES AND ADD REMOVER
+[ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
+cat >> ../remove << 'EOF'
+#!/bin/sh
+set -e
+rm -f /usr/local/bin/adb
+rm -f /usr/local/bin/etc1tool
+rm -f /usr/local/bin/fastboot
+rm -f /usr/local/bin/hprof-conv
+rm -f /usr/local/bin/make_f2fs
+rm -f /usr/local/bin/make_f2fs_casefold
+rm -f /usr/local/bin/mke2fs
+rm -f /usr/local/bin/sqlite3
+rm -R -f /opt/platform-tools
+EOF
+chmod a+x ../remove || exit 1
+
+# DOWNLOAD AND PREPARE THE APP, $version is also used for updates
+version=$(curl -Ls https://developer.android.com/tools/releases/platform-tools | grep -Po '(?<=data-text=")[^"]*' | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
+wget https://dl.google.com/android/repository/platform-tools-latest-linux.zip || exit 1
+unzip -qq ./*zip 1>/dev/null && rm -f ./*zip || exit 1
+cd ..
+if [ -d ./tmp/* 2>/dev/null ]; then mv ./tmp/*/* ./; else mv ./tmp/* ./"$APP" 2>/dev/null || mv ./tmp/* ./; fi
+rm -R -f ./tmp || exit 1
+echo "$version" > ./version
+chmod a+x ./etc1tool ./fastboot ./hprof-conv ./make_f2fs \
+./make_f2fs_casefold ./mke2fs ./sqlite3 || exit 1
+
+# LINK TO PATH
+ln -s /opt/"$APP"/adb				 /usr/local/bin/adb
+ln -s /opt/"$APP"/etc1tool			 /usr/local/bin/etc1tool
+ln -s /opt/"$APP"/fastboot			 /usr/local/bin/fastboot
+ln -s /opt/"$APP"/hprof-conv		 /usr/local/bin/hprof-conv
+ln -s /opt/"$APP"/make_f2fs			 /usr/local/bin/make_f2fs
+ln -s /opt/"$APP"/make_f2fs_casefold /usr/local/bin/make_f2fs_casefold
+ln -s /opt/"$APP"/mke2fs 			 /usr/local/bin/mke2fs
+ln -s /opt/"$APP"/sqlite3 			 /usr/local/bin/sqlite3
+
+# SCRIPT TO UPDATE THE PROGRAM
+cat >> ./AM-updater << 'EOF'
+#!/bin/sh
+set -u
+APP=platform-tools
+SITE="https://developer.android.com/tools/releases/platform-tools"
+version0=$(cat /opt/$APP/version)
+version=$(curl -Ls https://developer.android.com/tools/releases/platform-tools | grep -Po '(?<=data-text=")[^"]*' | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
+[ -n "$version" ] || { echo "Error getting link"; exit 1; }
+if [ "$version" != "$version0" ]; then
+	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
+	notify-send "A new version of $APP is available, please wait"
+	wget https://dl.google.com/android/repository/platform-tools-latest-linux.zip || exit 1
+	unzip -qq ./*zip 1>/dev/null && rm -f ./*zip || exit 1
+	cd ..
+	if [ -d ./tmp/* 2>/dev/null ]; then mv --backup=t ./tmp/*/* ./; else mv --backup=t ./tmp/* ./"$APP" 2>/dev/null || mv --backup=t ./tmp/* ./; fi
+	chmod a+x ./etc1tool ./fastboot ./hprof-conv ./make_f2fs \
+	./make_f2fs_casefold ./mke2fs ./sqlite3 || exit 1
+	echo "$version" > ./version
+	rm -R -f ./tmp ./*~
+	notify-send "$APP is updated!"
+else
+	echo "Update not needed!"
+fi
+EOF
+chmod a+x ./AM-updater || exit 1
