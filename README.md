@@ -523,6 +523,15 @@ Overwrite apps with snapshots saved previously (see "`-b`").
 Search for keywords in the list of available applications, add the "`--appimages`" option to list only the AppImages or add "`--pkg`" to list multiple programs at once. The "`--all`" flag allows you to consult the set of all supported databases.
 
 ------------------------------------------------------------------------
+### `reinstall`
+
+ 		am reinstall
+
+**Description**:
+
+Reinstall only programs whose installation script has been modified in AM's online database.
+
+------------------------------------------------------------------------
 ### `remove`, `-r`
 
 		am -r {PROGRAM}

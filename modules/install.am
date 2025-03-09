@@ -591,4 +591,30 @@ case "$1" in
 		|| "$AMCLIPATH_ORIGIN" -i "$CACHEDIR/extra/$EXTERNAL_APP_NAME"
 		exit 1
 		;;
+
+	'reinstall')
+		printf "%b\n Checking for changes of the installation scripts in the online database...\n%b\n" "$DIVIDING_LINE" "$DIVIDING_LINE"
+		_determine_args
+		for arg in $ARGS; do
+			argpath=$(echo "$ARGPATHS" | grep "/$arg$")
+			if [ -f "$argpath"/AM-updater ]; then
+				mkdir -p "$argpath"/.am-installer
+				scriptname=$(ls "$argpath/.am-installer/" | head -1)
+				if [ -n "$scriptname" ]; then
+					CURRENT=$(cat "$argpath"/.am-installer/"$scriptname")
+					SOURCE=$(curl -Ls "$APPSDB"/"$scriptname")
+					if [ "$CURRENT" != "$SOURCE" ]; then
+						reinstall_true=1
+						"$AMCLIPATH_ORIGIN" -R "$arg"
+						if [ "$AMCLI" = "am" ] && ! echo "$argpath" | grep -q "^/opt"; then
+							"$AMCLIPATH_ORIGIN" -i --user "$scriptname"
+						else
+							"$AMCLIPATH_ORIGIN" -i "$scriptname"
+						fi
+					fi
+				fi
+			fi
+		done
+		[ -n "$reinstall_true" ] && printf " App removal and reinstallation complete! \n%b\n" "$DIVIDING_LINE" || printf " Nothing to do here! \n%b\n" "$DIVIDING_LINE"
+		;;
 esac
