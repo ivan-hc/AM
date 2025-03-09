@@ -525,12 +525,11 @@ Search for keywords in the list of available applications, add the "`--appimages
 ------------------------------------------------------------------------
 ### `reinstall`
 
- 		am reinstall {PROGRAM}
- 		am reinstall --all
+ 		am reinstall
 
 **Description**:
 
-Check for changes in the original scripts, and based on that, update the AM-updater script (if it exists) to upgrade the installed application to the correct version. The "`--all`" flag allows you to perform this check in bulk.
+Reinstall only programs whose installation script has been modified in AM's online database.
 
 ------------------------------------------------------------------------
 ### `remove`, `-r`
