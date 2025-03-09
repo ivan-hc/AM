@@ -523,6 +523,16 @@ Overwrite apps with snapshots saved previously (see "`-b`").
 Search for keywords in the list of available applications, add the "`--appimages`" option to list only the AppImages or add "`--pkg`" to list multiple programs at once. The "`--all`" flag allows you to consult the set of all supported databases.
 
 ------------------------------------------------------------------------
+### `reinstall`
+
+ 		am reinstall {PROGRAM}
+ 		am reinstall --all
+
+**Description**:
+
+Check for changes in the original scripts, and based on that, update the AM-updater script (if it exists) to upgrade the installed application to the correct version. The "`--all`" flag allows you to perform this check in bulk.
+
+------------------------------------------------------------------------
 ### `remove`, `-r`
 
 		am -r {PROGRAM}
