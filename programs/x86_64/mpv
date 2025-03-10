@@ -1,0 +1,98 @@
+#!/bin/sh
+
+# AM INSTALL SCRIPT VERSION 3.5
+APP=mpv
+SITE1="pkgforge-dev/mpv-AppImage"
+SITE2="ivan-hc/MPV-appimage"
+
+# CREATE DIRECTORIES AND ADD REMOVER
+[ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
+printf "#!/bin/sh\nrm -f /usr/local/bin/$APP\nrm -R -f /opt/$APP" > ../remove
+printf '\n%s' "rm -f /usr/local/share/applications/$APP-AM.desktop" >> ../remove
+chmod a+x ../remove || exit 1
+
+# CHOOSE A VERSION
+read -r -p "
+ Choose which version of mpv AppImage to use:
+
+ 1. mpv AppImage built with all dependencies, makes it able to work on
+    any linux system, even musl ones.
+
+    Source: https://github.com/pkgforge-dev/mpv-AppImage
+
+ 2. mpv Archimage, this AppImage is made on top of JuNest (Archlinux).
+
+    Source: https://github.com/ivan-hc/MPV-appimage
+
+ Which version you choose (type a number and press ENTER)?" response
+case "$response" in
+	1) rm -f /opt/"$APP"/version
+	UPDATER=1
+	version=$(curl -Ls https://api.github.com/repos/"$SITE1"/releases | sed 's/[()",{} ]/\n/g' | grep -io 'https.*mpv.*86_64.*mage$' | head -1)
+	wget "$version"
+	echo "$version" >> /opt/$APP/version;;
+	2) rm -f /opt/"$APP"/version
+	version=$(curl -Ls https://api.github.com/repos/"$SITE2"/releases | sed 's/[()",{} ]/\n/g' | grep -io 'https.*continuous.*mpv.*86_64.*mage$' | head -1)
+	UPDATER=2
+	wget "$version"
+	echo "$version" >> /opt/$APP/version;;
+	*) /opt/"$APP"/remove && exit;;
+esac
+cd ..
+mv ./tmp/*mage ./"$APP"
+rm -R -f ./tmp || exit 1
+chmod a+x ./"$APP" || exit 1
+
+# LINK
+ln -s "/opt/$APP/$APP" "/usr/local/bin/$APP"
+
+# SCRIPT TO UPDATE THE PROGRAM
+cat >> ./AM-updater << 'EOF'
+#!/bin/sh
+set -u
+APP=mpv
+if [ -z "$APP" ]; then exit 1; fi
+version0=$(cat "/opt/$APP/version")
+version=$(curl -Ls https://api.github.com/repos/$SITE/releases | sed 's/[()",{} ]/\n/g' | grep -io 'https.*mpv.*86_64.*mage$' | head -1)
+[ -n "$version" ] || { echo "Error getting link"; exit 1; }
+if [ "$version" != "$version0" ]; then
+	notify-send "A new version of $APP is available, please wait"
+	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
+	wget "$version" || exit 1
+	cd ..
+	mv --backup=t ./tmp/*mage ./"$APP" || exit 1
+	echo "$version" > ./version
+	rm -R -f ./tmp ./*~
+	chmod a+x ./"$APP" || exit 1
+	notify-send "$APP is updated!"
+else
+	echo "Update not needed!"
+fi
+EOF
+if [ "$UPDATER" = "1" ]; then
+	sed -i 's#$SITE#pkgforge-dev/mpv-AppImage#g' /opt/"$APP"/AM-updater
+elif [ "$UPDATER" = "2" ]; then
+	sed -i 's#$SITE#ivan-hc/MPV-appimage#g' /opt/"$APP"/AM-updater
+fi
+chmod a+x ./AM-updater || exit 1
+
+# LAUNCHER & ICON
+cd "/opt/$APP" || exit 1
+./"$APP" --appimage-extract *.desktop 1>/dev/null && mv ./squashfs-root/*.desktop ./"$APP".desktop
+./"$APP" --appimage-extract .DirIcon 1>/dev/null && mv ./squashfs-root/.DirIcon ./DirIcon
+COUNT=0
+while [ "$COUNT" -lt 10 ]; do # Tries to get the actual icon/desktop if it is a symlink to another symlink
+	if [ -L ./"$APP".desktop ]; then
+		LINKPATH=$(readlink ./"$APP".desktop)
+		./"$APP" --appimage-extract "$LINKPATH" 1>/dev/null && mv ./squashfs-root/"$LINKPATH" ./"$APP".desktop
+	fi
+	if [ -L ./DirIcon ]; then
+		LINKPATH=$(readlink ./DirIcon)
+		./"$APP" --appimage-extract "$LINKPATH" 1>/dev/null && mv ./squashfs-root/"$LINKPATH" ./DirIcon
+	fi
+	[ ! -L ./"$APP".desktop ] && [ ! -L ./DirIcon ] && break
+	COUNT=$((COUNT + 1))
+done
+sed -i "s#Exec=[^ ]*#Exec=$APP#g; s#Icon=.*#Icon=/opt/$APP/icons/$APP#g" ./"$APP".desktop
+mv ./"$APP".desktop /usr/local/share/applications/"$APP"-AM.desktop && mv ./DirIcon ./icons/"$APP" 1>/dev/null
+rm -R -f ./squashfs-root

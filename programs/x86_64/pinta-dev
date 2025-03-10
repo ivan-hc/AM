@@ -1,0 +1,303 @@
+#!/bin/sh
+
+# AM INSTALL SCRIPT VERSION 3.5
+set -u
+APP=pinta-dev
+SITE="PintaProject/Pinta"
+
+# CREATE DIRECTORIES AND ADD REMOVER
+[ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
+printf "#!/bin/sh\nset -e\nrm -f /usr/local/bin/$APP\nrm -R -f /opt/$APP" > ../remove
+printf '\n%s' "rm -f /usr/local/share/applications/$APP-AM.desktop" >> ../remove
+chmod a+x ../remove || exit 1
+
+# DOWNLOAD AND PREPARE THE APP, $version is also used for updates
+version=$(curl -Ls https://api.github.com/repos/PintaProject/Pinta/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | grep -i "dev-preview-builds.*Pinta.*zip$" | head -1)
+wget "$version" || exit 1
+[ -e ./*7z ] && 7z x ./*7z && rm -f ./*7z
+[ -e ./*tar.* ] && tar fx ./*tar.* && rm -f ./*tar.*
+[ -e ./*zip ] && unzip -qq ./*zip 1>/dev/null && rm -f ./*zip
+cd ..
+if [ -d ./tmp/* 2>/dev/null ]; then mv ./tmp/*/* ./; else mv ./tmp/* ./"$APP" 2>/dev/null || mv ./tmp/* ./; fi
+rm -R -f ./tmp || exit 1
+echo "$version" > ./version
+chmod a+x ./Pinta || exit 1
+
+# LINK TO PATH
+ln -s "/opt/$APP/Pinta" "/usr/local/bin/$APP"
+
+# SCRIPT TO UPDATE THE PROGRAM
+cat >> ./AM-updater << 'EOF'
+#!/bin/sh
+set -u
+APP=pinta-dev
+SITE="PintaProject/Pinta"
+version0=$(cat "/opt/$APP/version")
+version=$(curl -Ls https://api.github.com/repos/PintaProject/Pinta/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | grep -i "dev-preview-builds.*Pinta.*zip$" | head -1)
+[ -n "$version" ] || { echo "Error getting link"; exit 1; }
+if [ "$version" != "$version0" ]; then
+	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
+	notify-send "A new version of $APP is available, please wait"
+	wget "$version" || exit 1
+	[ -e ./*7z ] && 7z x ./*7z && rm -f ./*7z
+	[ -e ./*tar.* ] && tar fx ./*tar.* && rm -f ./*tar.*
+	[ -e ./*zip ] && unzip -qq ./*zip 1>/dev/null && rm -f ./*zip
+	cd ..
+	if [ -d ./tmp/* 2>/dev/null ]; then mv --backup=t ./tmp/*/* ./; else mv --backup=t ./tmp/* ./"$APP" 2>/dev/null || mv --backup=t ./tmp/* ./; fi
+	chmod a+x ./Pinta || exit 1
+	echo "$version" > ./version
+	rm -R -f ./tmp ./*~
+	notify-send "$APP is updated!"
+else
+	echo "Update not needed!"
+fi
+EOF
+chmod a+x ./AM-updater || exit 1
+
+# ICON
+mkdir -p icons
+wget https://raw.githubusercontent.com/PintaProject/Pinta/refs/heads/master/Pinta.Resources/icons/hicolor/scalable/apps/pinta.svg -O ./icons/"$APP" 2> /dev/null
+
+# LAUNCHER
+echo "[Desktop Entry]
+Version=1.0
+Name=Pinta
+Name[af]=Pinta
+Name[ast]=Pinta
+Name[az]=Pinta
+Name[be]=Pinta
+Name[bg]=Pinta
+Name[bn]=Pinta
+Name[br]=Pinta
+Name[ca]=Pinta
+Name[cs]=Pinta
+Name[da]=Pinta
+Name[de]=Pinta
+Name[el]=Επεξεργασία εικόνας Pinta
+Name[en_AU]=Pinta
+Name[en_CA]=Pinta
+Name[en_GB]=Pinta
+Name[eo]=Pinta
+Name[es]=Pinta
+Name[eu]=Pinta
+Name[fa]=پینتا
+Name[fi]=Pinta
+Name[fr]=Pinta
+Name[gl]=Pinta
+Name[he]=פינטה
+Name[hu]=Pinta
+Name[id]=Pinta
+Name[it]=Pinta
+Name[ja]=Pinta
+Name[kab]=Pinta
+Name[lt]=Pinta
+Name[ms]=Pinta
+Name[nl]=Pinta
+Name[oc]=Pinta
+Name[pl]=Pinta
+Name[pt]=Pinta
+Name[pt_BR]=Pinta
+Name[ro]=Pinta
+Name[ru]=Pinta
+Name[si]=Pinta
+Name[sk]=Pinta
+Name[sl]=Pinta
+Name[sr]=Пинта
+Name[sv]=Pinta
+Name[th]=พินทา
+Name[tr]=Pinta
+Name[uk]=Pinta
+Name[vi]=Pinta
+Name[zh_CN]=Pinta
+Name[zh_TW]=Pinta
+Comment=Easily create and edit images
+Comment[af]=Maklikly te skep en wysig beelde
+Comment[ast]=Crear y editar imaxes de mou fácil
+Comment[be]=Стварайце і рэдагуйце відарысы
+Comment[bg]=Създавайте и редактирайте изображения с лекота
+Comment[bn]=সহজে ছবি তৈরি এবং সম্পাদন করুন
+Comment[br]=Krouiñ ha kempenn skeudennoù ent aes
+Comment[ca]=Creeu i editeu imatges de forma senzilla
+Comment[cs]=Snadné vytváření a úprava obrázků
+Comment[da]=Skab og redigér let billeder
+Comment[de]=Bilder einfach erstellen und bearbeiten
+Comment[el]=Δημιουργήστε και επεξεργαστείτε εικόνες εύκολα
+Comment[en_AU]=Easily create and edit images
+Comment[en_CA]=Easily create and edit images
+Comment[en_GB]=Easily create and edit images
+Comment[eo]=Facile krei kaj redakti bildojn
+Comment[es]=Cree y edite imágenes fácilmente
+Comment[eu]=Easily create and edit images
+Comment[fa]=ایجاد و ویرایش تصاویر به آسانی
+Comment[fi]=Luo ja muokkaa kuvia vaivatta
+Comment[fr]=Créer et modifier facilement des images
+Comment[gl]=Cree e edite imaxes fácilmente
+Comment[he]=ליצור ולערוך תמונות בקלות
+Comment[hu]=Készíts és szerkessz képeket könnyedén
+Comment[id]=Mudahnya membuat dan menyunting gambar
+Comment[it]=Crea e modifica immagini facilmente
+Comment[ja]=簡単に画像を作成したり編集を行います
+Comment[kab]=Snulfu-d u ẓreg tugniwin s sshala
+Comment[ko]=쉽게 이미지를 생성하고 편집하세요.
+Comment[ms]=Cipta dan sunting imej dengan mudah
+Comment[nl]=Maak en bewerk afbeeldingen op eenvoudige wijze
+Comment[oc]=Crear e modificar aisidament d'imatges
+Comment[pl]=Łatwe tworzenie i edycja grafiki
+Comment[pt]=Crie e edite imagens com facilidade
+Comment[pt_BR]=Crie e edite imagens facilmente
+Comment[ro]=Creați și editați imagini cu ușurință
+Comment[ru]=Простое создание и редактирование изображений
+Comment[sk]=Jednoduchá tvorba a úprava obrázkov
+Comment[sl]=Enostavno ustvarjanje in urejanje slik
+Comment[sr]=С лакоћом правите и уређујте слике
+Comment[sv]=Skapa och redigera bilder enkelt
+Comment[th]=สร้างและแก้ไขได้โดยง่าย
+Comment[tr]=Resimleri kolayca oluşturun ve düzenleyin
+Comment[uk]=Проста програма для створення та редагування зображень
+Comment[vi]=Dễ dàng tạo và chỉnh sửa hình ảnh
+Comment[zh_CN]=轻松创建和编辑图像
+Comment[zh_HK]=輕鬆建立和編輯圖片
+Comment[zh_TW]=輕鬆建立和編輯圖片
+GenericName=Image Editor
+GenericName[af]=Beeld Redakteur
+GenericName[ar]=محرر صور
+GenericName[ast]=Editor d'imaxes
+GenericName[az]=Şəkil Redaktoru
+GenericName[be]=Рэдактар відарысаў
+GenericName[bg]=Редактор на изображения
+GenericName[bn]=চিত্র সম্পাদক
+GenericName[br]=Embanner skeudennoù
+GenericName[ca]=Editor d’imatges
+GenericName[cs]=Editor obrázků
+GenericName[da]=Billedredigeringsprogram
+GenericName[de]=Bildbearbeitung
+GenericName[el]=Επεξεργασία εικόνας
+GenericName[en_AU]=Image Editor
+GenericName[en_CA]=Image Editor
+GenericName[en_GB]=Image Editor
+GenericName[eo]=Bildredaktilo
+GenericName[es]=Editor de imágenes
+GenericName[eu]=Image Editor
+GenericName[fa]=ویرایشگر تصویر
+GenericName[fi]=Kuvankäsittely
+GenericName[fr]=Éditeur d'images
+GenericName[gl]=Editor de imaxes
+GenericName[he]=עורך תמונות
+GenericName[hu]=Képszerkesztő
+GenericName[id]=Penyunting Gambar
+GenericName[it]=Editor di immagini
+GenericName[ja]=画像エディター
+GenericName[kab]=Amaẓrag n tugna
+GenericName[ko]=이미지 편집기
+GenericName[ms]=Penyunting Imej
+GenericName[my]=Image Editor
+GenericName[nl]=Afbeeldingsbewerker
+GenericName[oc]=Editor d'imatge
+GenericName[pl]=Program graficzny
+GenericName[pt]=Editor de imagens
+GenericName[pt_BR]=Editor de imagem
+GenericName[ro]=Editor imagini
+GenericName[ru]=Графический редактор
+GenericName[sk]=Editor obrázkov
+GenericName[sl]=Urejevalnik slik
+GenericName[sr]=Уређивач слика
+GenericName[sv]=Bildredigerare
+GenericName[th]=เครื่องมือแก้ไขภาพ
+GenericName[tr]=Görüntü Düzenleyici
+GenericName[uk]=Редактор зображень
+GenericName[vi]=Trình biên soạn ảnh
+GenericName[zh_CN]=图像编辑器
+GenericName[zh_HK]=影像編輯器
+GenericName[zh_TW]=圖像編輯器
+X-GNOME-FullName=Pinta Image Editor
+X-GNOME-FullName[af]=Pinta Beeld Redakteur
+X-GNOME-FullName[ast]=Editor d'imaxes Pinta
+X-GNOME-FullName[az]=Pinta Şəkil Redaktoru
+X-GNOME-FullName[be]=Рэдактар відарысаў Pinta
+X-GNOME-FullName[bg]=Редактор на изображения Pinta
+X-GNOME-FullName[bn]=Pinta ছবি সম্পাদক
+X-GNOME-FullName[br]=Pinta Embanner skeudennoù
+X-GNOME-FullName[ca]=Editor d’imatges Pinta
+X-GNOME-FullName[cs]=Grafický editor Pinta
+X-GNOME-FullName[da]=Pinta billedredigeringsprogram
+X-GNOME-FullName[de]=Pinta-Bildbearbeitung
+X-GNOME-FullName[el]=Επεξεργασία εικόνας Pinta
+X-GNOME-FullName[en_AU]=Pinta Image Editor
+X-GNOME-FullName[en_CA]=Pinta Image Editor
+X-GNOME-FullName[en_GB]=Pinta Image Editor
+X-GNOME-FullName[eo]=Bildredaktilo Pinta
+X-GNOME-FullName[es]=Editor de imágenes Pinta
+X-GNOME-FullName[eu]=Pinta Image Editor
+X-GNOME-FullName[fa]=ویرایشگر تصویری پینتا
+X-GNOME-FullName[fi]=Pinta-kuvankäsittely
+X-GNOME-FullName[fr]=Éditeur d'images Pinta
+X-GNOME-FullName[gl]=Editor de imaxes Pinta
+X-GNOME-FullName[he]=עורך התמונות פינטה
+X-GNOME-FullName[hu]=Pinta képszerkesztő
+X-GNOME-FullName[id]=Pinta Penyunting Gambar
+X-GNOME-FullName[it]=Pinta: Editor di immagini
+X-GNOME-FullName[ja]=Pinta 画像エディター
+X-GNOME-FullName[kab]=Amaẓrag n tugna n Pinta
+X-GNOME-FullName[ms]=Penyunting Imej Pinta
+X-GNOME-FullName[nl]=Pinta-afbeeldingsbewerker
+X-GNOME-FullName[oc]=Editor d'imatge Pinta
+X-GNOME-FullName[pl]=Program graficzny Pinta
+X-GNOME-FullName[pt]=Editor de imagens Pinta
+X-GNOME-FullName[pt_BR]=Editor de imagem Pinta
+X-GNOME-FullName[ro]=Editorul de imagini Pinta
+X-GNOME-FullName[ru]=Редактор изображений Pinta
+X-GNOME-FullName[sk]=Pinta editor obrázkov
+X-GNOME-FullName[sl]=Urejevalnik slik Pinta
+X-GNOME-FullName[sr]=Уређивач слика Пинта
+X-GNOME-FullName[sv]=Pinta Bildredigerare
+X-GNOME-FullName[th]=เครื่องมือแก้ไขภาพพินทา
+X-GNOME-FullName[tr]=Pinta Resim Düzenleyici
+X-GNOME-FullName[uk]=Редактор зображень Pinta
+X-GNOME-FullName[vi]=Trình xử lý ảnh Pinta
+X-GNOME-FullName[zh_CN]=Pinta 图片编辑器
+X-GNOME-FullName[zh_HK]=Pinta 圖片編輯器
+X-GNOME-FullName[zh_TW]=Pinta 圖片編輯器
+Exec=$APP
+Icon=/opt/$APP/icons/$APP
+StartupNotify=false
+StartupWMClass=Pinta
+Terminal=false
+Type=Application
+Categories=Graphics;2DGraphics;RasterGraphics;GTK;
+Keywords=draw;drawing;paint;painting;graphics;raster;2d;
+Keywords[af]=draw;tekening;verf;skildery;grafieke;raster;2d;
+Keywords[be]=draw;drawing;paint;painting;graphics;raster;2d;
+Keywords[ca]=dibuixa;dibuixant;pinta;pintant;gràfics;ràster;2d;
+Keywords[cs]=kreslení;kreslení;malování;malování;grafika;rastr;2d;
+Keywords[da]=tegne;tegning;maling;maling;maleri;grafik;raster;2d;
+Keywords[de]=zeichnen;zeichnen;zeichnen;malen;malen;Grafik;Raster;2d;
+Keywords[en_AU]=draw;drawing;paint;painting;graphics;raster;2d;
+Keywords[en_CA]=draw;drawing;paint;painting;graphics;raster;2d;
+Keywords[en_GB]=draw;drawing;paint;painting;graphics;raster;2d;
+Keywords[es]=dibujar;dibujo;pintar;pintura;gráficos;trama;2d;
+Keywords[eu]=marraztu;marrazkia;margotu;margoa;grafikoak;rasterra;2d;
+Keywords[fi]=draw;drawing;paint;painting;graphics;raster;2d;kuva;piirros;maalaus;grafiikka;rasteri;
+Keywords[fr]=dessiner;dessin;peinture;peinture;graphiques;trame;2d;
+Keywords[gl]=debuxar;debuxo;pintar;pintura;gráficos;raster;2d;
+Keywords[he]=ציור;איור;צייר;ציורים;צביעה;צבע;גרפיקה;לצבוע;לצייר;דו־ממד;דו-ממד;דו־מימד;דו-מימד;לאייר;
+Keywords[id]=gambar,menggambar,cat,mencat,grafik,raster;2d;
+Keywords[it]=disegna;disegno;dipingi;dipinto;grafica;raster;2d
+Keywords[ja]=描画;ペイント;グラフィックス;ラスター;2d;
+Keywords[ms]=lukis;lukisan;cat;grafik;raster;2d;
+Keywords[nl]=tekenen;tekening;schilderen;schilderij;grafiek;rooster;raster;2d;
+Keywords[pl]=draw;drawing;paint;painting;graphics;raster;2d;rysowanie;rysunek;obraz;grafika;rastrowa;
+Keywords[pt]=desenho;desenhar;pinta;pintar;gráficos;raster;2d;
+Keywords[pt_BR]=desenhar;desenhando;pintar;pintando;gráficos;raster;2d
+Keywords[ru]=draw;drawing;paint;painting;graphics;raster;2d;рисовать;рисунок;пейнт;живопись;графика;растр;
+Keywords[sk]=kresliť;kreslenie;maľovať;maľovanie;grafika;raster;2d
+Keywords[sl]=riši;risanje;slika;slikanje;grafika;raster;2d
+Keywords[sr]=цртај;цртање;цртеж;цртање;графика;2д;draw;drawing;paint;painting;graphics;raster;2d;
+Keywords[sv]=rita;teckning;måla;målning;grafik;raster;2d;
+Keywords[tr]=çizim;çizmek;boya;resim;grafik;raster;2d;
+Keywords[uk]=draw;drawing;paint;painting;graphics;raster;2d;малювати;малювання;пейнт;графіка;растр;двовимірне;плоске;
+Keywords[zh_CN]=draw;drawing;paint;painting;graphics;raster;2d;绘制;绘图;绘画;图形;光栅;
+Keywords[zh_TW]=draw;drawing;paint;painting;graphics;raster;2d;
+MimeType=image/bmp;image/gif;image/jpeg;image/jpg;image/pjpeg;image/png;image/svg+xml;image/tiff;image/x-bmp;image/x-gray;image/x-icb;image/x-ico;image/x-png;image/x-portable-anymap;image/x-portable-bitmap;image/x-portable-graymap;image/x-portable-pixmap;image/x-xbitmap;image/x-xpixmap;image/x-pcx;image/x-targa;image/x-tga;image/openraster;
+X-Flatpak-RenamedFrom=pinta.desktop;
+X-Flatpak=com.github.PintaProject.Pinta
+PrefersNonDefaultGPU=false" > /usr/local/share/applications/"$APP"-AM.desktop

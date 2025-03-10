@@ -1,0 +1,29 @@
+---
+name: 🐶 YAML check 🧪
+on:
+  push:
+    branches: '**'
+    path: .github/workflows/*.yml
+  pull_request:
+    branches: '**'
+    path: .github/workflows/*.yml
+  workflow_dispatch:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  yamllint:
+    name: yaml lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: haya14busa/action-cond@v1
+        id: reporter
+        with:
+          cond: ${{ github.event_name == 'pull_request' }}
+      - uses: reviewdog/action-yamllint@v1
+        with:
+          reporter: ${{ steps.reporter.outputs.value }}
+          github_token: ${{ secrets.github_token }}
+          yamllint_flags: '-d relaxed .github/'
+          level: error

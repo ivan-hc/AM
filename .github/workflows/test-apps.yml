@@ -1,0 +1,466 @@
+name: "Test random 💯"
+
+env:
+  TERM: xterm
+
+on:
+  push:
+    branches: main
+    paths:
+      - 'programs/x86_64/**'
+      - .github/workflows/test-apps.yml
+
+  #pull_request:
+  #  if: github.event.pull_request.head.repo.full_name != github.repository
+  #  branches: main
+  #  paths:
+  #    - 'programs/x86_64/**'
+  #    - .github/workflows/test-apps.yml
+
+  workflow_dispatch:
+    inputs:
+      reset_stats:
+        description: "RESET stats"
+        required: true
+        default: "false"
+        type: boolean
+
+  schedule:
+    - cron: '0 23 * * *'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  actions: write
+  contents: write
+
+jobs:
+  rebase-testing-branch:
+    name: "prepare 💤"
+    runs-on: ubuntu-22.04
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: "Git Config"
+        run: |
+          git config --global user.name "ivan-hc"
+          git config --global user.email "noreply@github.com"
+
+      - name: "Check if histories differ"
+        id: check_history
+        run: |
+          git fetch origin main testing || echo "Branch 'testing' does not exist."
+          if ! git ls-remote --exit-code --heads origin testing; then
+            echo "Creating remote 'testing' branch from 'main'..."
+            git push origin main:testing
+            echo "RESET_REQUIRED=true" >> $GITHUB_ENV
+          else
+            if git merge-base --is-ancestor origin/main origin/testing; then
+              echo "Histories are compatible, rebase only."
+              echo "RESET_REQUIRED=false" >> $GITHUB_ENV
+            else
+              echo "Histories are different, reset needed."
+              echo "RESET_REQUIRED=true" >> $GITHUB_ENV
+            fi
+          fi
+
+      - name: "Reset testing branch if needed"
+        if: env.RESET_REQUIRED == 'true'
+        run: |
+          echo "Resetting testing branch..."
+          git checkout -B testing origin/testing || git checkout -B testing origin/main
+          if [[ "${{ github.event.inputs.reset_stats }}" != "true" ]]; then
+            echo "Preserving test files..."
+            mkdir -p backup
+            cp -r tested.list failed.list logs backup/ 2>/dev/null || true
+            git reset --hard origin/main
+            mv backup/tested.list backup/failed.list backup/logs . 2>/dev/null || true
+            rm -rf backup
+            git add .
+            git commit -m "update results"
+          else
+            echo "Resetting stats..."
+            echo "Resetting stats" >> $GITHUB_STEP_SUMMARY
+            git reset --hard origin/main
+          fi
+          git push --force origin HEAD:testing
+
+      - name: "Check if testing differs from main"
+        id: check_diff
+        run: |
+          git fetch origin main testing
+          if git diff --quiet origin/main..origin/testing; then
+            echo "No difference between testing and main. Exiting."
+            echo "skip=true" >> $GITHUB_ENV
+          else
+            echo "skip=false" >> $GITHUB_ENV
+          fi
+
+      - name: "Get last commit from testing"
+        id: last_commit
+        if: env.skip == 'false'
+        run: |
+          LAST_COMMIT=$(git log origin/testing --format=%H -n 1)
+          echo "Last commit: $LAST_COMMIT"
+          echo "LAST_COMMIT=$LAST_COMMIT" >> $GITHUB_ENV
+
+      - name: "Rebase testing on main"
+        if: env.skip == 'false'
+        run: |
+          git checkout testing
+          git rebase origin/main
+
+      - name: "Reapply last commit"
+        if: env.skip == 'false'
+        run: |
+          if [[ "$LAST_COMMIT" == 'update results' ]]; then
+            git cherry-pick $LAST_COMMIT
+          elif [[ "$LAST_COMMIT" != 'update results' ]]; then
+            echo "Commit from main branch?"
+          fi
+
+      - name: Push changes back to testing
+        if: env.skip == 'false'
+        run: |
+          git push origin testing --force
+
+  show-stats:
+    name: "stats 📝"
+    runs-on: ubuntu-22.04
+    needs: rebase-testing-branch
+
+    steps:
+      - name: "Check out main branch (for programs count) 🏃"
+        uses: actions/checkout@v4
+        with:
+          ref: main  # Work on main branch
+
+      - name: "Count programs 📊"
+        run: |
+          x64Count=$(find programs/x86_64/ -type f | wc -l)
+          i68Count=$(find programs/i686/ -type f | wc -l)
+          a64Count=$(find programs/aarch64/ -type f | wc -l)
+          echo "x64Count=$x64Count" >> $GITHUB_ENV
+          echo "i68Count=$i68Count" >> $GITHUB_ENV
+          echo "a64Count=$a64Count" >> $GITHUB_ENV
+
+      - name: "Check out testing branch (for tested & failed) 🏃"
+        uses: actions/checkout@v4
+        with:
+          ref: testing  # Work on testing branch
+
+      - name: "Count tested & failed 📊"
+        run: |
+          tested=$(wc -l < tested.list 2>/dev/null || echo 0)
+          failed=$(wc -l < failed.list 2>/dev/null || echo 0)
+          echo "x86_64: $x64Count"
+          echo "i686: $i68Count"
+          echo "aarch64: $a64Count"
+          echo "🏁 Tested: $tested"
+          echo "❌ Failed: $failed"
+          echo "### 🎬 apps" >> $GITHUB_STEP_SUMMARY
+          echo "$x64Count x86_64" >> $GITHUB_STEP_SUMMARY
+          echo "$i68Count i686" >> $GITHUB_STEP_SUMMARY
+          echo "$a64Count aarch64" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔨 tests" >> $GITHUB_STEP_SUMMARY
+          echo " 🏁 $tested" >> $GITHUB_STEP_SUMMARY
+          echo " ❌ $failed" >> $GITHUB_STEP_SUMMARY
+
+  generate-matrix:
+    name: "matrix 🌀"
+    needs: rebase-testing-branch
+    runs-on: ubuntu-22.04
+    outputs:
+      skip: ${{ steps.set-matrix.outputs.skip }}
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+      count: ${{ steps.am-install.outputs.count }}
+    steps:
+      - name: "Check out repository 🏃"
+        uses: actions/checkout@v4
+        with:
+          ref: testing
+
+      - name: "Generate Matrix 🏆"
+        id: set-matrix
+        run: |
+          mkdir -p results
+          find programs/x86_64/ -maxdepth 1 -type f -printf "%f\n" | sort > all.list
+          if [[ -f tested.list ]]; then
+            if diff -q all.list tested.list; then
+              echo "Everything tested" >> $GITHUB_STEP_SUMMARY
+              echo "skip=true" >> $GITHUB_OUTPUT
+              exit 0
+            else
+              comm -23 all.list tested.list > totest_tmp.list
+            fi
+          else
+            echo "First run!" >> $GITHUB_STEP_SUMMARY
+            cp all.list totest_tmp.list
+          fi
+          if [[ -f failed.list ]]; then
+            comm -23 totest_tmp.list failed.list > totest.list
+            echo "### Excluding failed:" >> $GITHUB_STEP_SUMMARY
+            cat failed.list >> $GITHUB_STEP_SUMMARY
+            if [ ! -s totest.list ]; then
+              echo " 🏁 Nothing to test 🏁" >> $GITHUB_STEP_SUMMARY
+              echo "skip=true" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+          else
+            mv totest_tmp.list totest.list
+          fi
+          FILES=$(shuf -n 100 totest.list | sort || cat totest.list | sort)
+          MATRIX="{\"include\": ["
+          for file in $FILES; do
+            MATRIX+="{\"file\": \"$file\"},"
+          done
+          MATRIX="${MATRIX%,}]}"
+          echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
+
+  run-actions:
+    name: "🔨"
+    needs: generate-matrix
+    runs-on: ubuntu-22.04
+    if: ${{ needs.generate-matrix.outputs.skip != 'true' }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
+    env:
+      TIMEOUT: 23
+    steps:
+      - name: "Check out repository 🏃"
+        uses: actions/checkout@v4
+        with:
+          ref: testing
+
+      - name: "Install dependencies 📦️"
+        run: |
+          sudo apt-get -y update 2> /dev/null || apt-get -y update
+          sudo apt-get -y install wget curl torsocks zsync 2> /dev/null || apt-get -y install git wget curl torsocks zsync
+
+      - name: "Install AM 🎁"
+        run: |
+          mkdir -p results /usr/local/bin
+          chmod +x ./INSTALL
+          sudo ./INSTALL 2> /dev/null || ./INSTALL
+
+      - name: "test ${{ matrix.file }} 🚧"
+        run: |
+          set -uo pipefail
+          mkdir -p results
+          script_content=$(curl -Ls https://raw.githubusercontent.com/ivan-hc/AM/main/programs/x86_64/"${{ matrix.file }}")
+          pure_arg=$(echo "${{ matrix.file }}" | sed 's/\.appimage//g; s/\^debian-testing-//g; s/\-appimage$//g' | sed 's:.*/::')
+          if timeout "$TIMEOUT"m am -i "${{ matrix.file }}" --debug 2>&1 | tee -a results/log-"${{ matrix.file }}"; then
+            echo ""
+            echo " Structure of the directory in /opt"
+            echo ""
+            if test -d /opt/kdegames; then
+               ls /opt/kdegames | tee -a results/log-"${{ matrix.file }}"
+            elif test -d /opt/kdeutils; then
+               ls /opt/kdeutils | tee -a results/log-"${{ matrix.file }}"
+            elif test -d /opt/platform-tools; then
+               ls /opt/platform-tools | tee -a results/log-"${{ matrix.file }}"
+            elif test -d /opt/"$pure_arg"; then
+               ls /opt/"$pure_arg" | tee -a results/log-"${{ matrix.file }}"
+            elif [[ "$pure_arg" =~ (bat-extras|code|deadbeef*|kvrt|libfuse2|libreoffice|microsoft-edge*|mpv|node|npm|oras|suyu|swift|wine) ]]; then
+               echo "App not installed, this is a Known error related to GitHub Actions" | tee -a results/log-"${{ matrix.file }}"
+            elif test -d /opt/"$pure_arg"*; then
+               ls /opt/"$pure_arg"* | tee -a results/log-"${{ matrix.file }}"
+            elif echo "$script_content" | grep -q "spooky"; then
+               echo "App not installed because marked as \"spooky\", require to be tested manually" | tee -a results/log-"${{ matrix.file }}"
+            else
+               ls /opt/"${{ matrix.file }}" | tee -a results/log-"${{ matrix.file }}"
+            fi
+            echo ""
+            echo "-------------------------------------------------------------"
+            echo ""
+            echo " Command in \$PATH"
+            echo ""
+            command -v "$pure_arg" | tee -a results/log-"${{ matrix.file }}" || ls /usr/local/bin | tee -a results/log-"${{ matrix.file }}"
+            echo ""
+            echo "-------------------------------------------------------------"
+            echo ""
+            echo " Launchers in /usr/local/share/applications" | tee -a results/log-"${{ matrix.file }}"
+            echo ""
+            if test -f /usr/local/share/applications/*AM.desktop 2>/dev/null; then
+               ls /usr/local/share/applications | grep "AM.desktop$" | tee -a results/log-"${{ matrix.file }}"
+            else
+               ls /usr/local/share/applications | tee -a results/log-"${{ matrix.file }}"
+            fi
+            echo ""
+            echo "-------------------------------------------------------------"
+            am -R "${{ matrix.file }}" && echo "${{ matrix.file }}" >> results/ok-${{ matrix.file }} || echo "${{ matrix.file }}" >> results/log-${{ matrix.file }}
+          else
+            if [[ $? -eq 124 ]]; then
+               echo "### 💥 ${{ matrix.file }} timeout!" >> $GITHUB_STEP_SUMMARY
+               echo "Installation timeout in 23 minutes" >> results/log-"${{ matrix.file }}"
+               echo "${{ matrix.file }}" >> results/log-${{ matrix.file }}
+            else
+               echo "### 💀 ${{ matrix.file }}" >> $GITHUB_STEP_SUMMARY
+               echo "${{ matrix.file }}" >> results/log-${{ matrix.file }}
+            fi
+            exit 1
+          fi
+
+      - name: "Rename Failed Results ☝️"
+        if: failure()
+        run: |
+          mv results/log-${{ matrix.file }} results/ko-${{ matrix.file }}
+
+      - name: "Upload KO Results ☝️"
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ko-${{ matrix.file }}
+          path: results/ko-${{ matrix.file }}
+
+      - name: "Upload OK Results ⬆️"
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ok-${{ matrix.file }}
+          path: results/ok-${{ matrix.file }}
+
+  update-tested-list:
+    name: "results 📰"
+    needs: run-actions
+    runs-on: ubuntu-22.04
+    if: always()
+    steps:
+      - name: "Check out repository 🏃"
+        uses: actions/checkout@v4
+        with:
+          ref: testing
+
+      - name: "Download Test Results ⬇️"
+        if: success()
+        uses: actions/download-artifact@v4
+        with:
+          path: results
+          merge-multiple: true
+      - run: ls -R results || echo "Nothing tested"
+
+      - name: "Git Config"
+        if: always()
+        run: |
+          git config --global user.name "ivan-hc"
+          git config --global user.email "noreply@github.com"
+
+      - name: "Aggregate and push results"
+        if: always()
+        run: |
+          ls -R results || echo "Nothing tested"
+          #git checkout -b testing
+          #git push --set-upstream origin testing
+          if compgen -G "results/ok-*" > /dev/null; then
+            for file in results/ok-*; do
+              cat "$file" >> aggregated.list
+            done
+            cat aggregated.list >> tested.list
+            sort -u tested.list -o tested.list
+            git add tested.list
+          else
+            echo "Nothing tested successfully?"
+          fi
+          if compgen -G "results/ko-*" > /dev/null; then
+            for file in results/ko-*; do
+              echo "$file" | cut -d'-' -f2- >> fail.list
+            done
+            mkdir -p logs
+            cp results/ko-* logs/
+            fail=$(wc -l < fail.list)
+            cat fail.list >> failed.list
+            sort -u failed.list -o failed.list
+            git add failed.list logs
+          else
+            echo "Nothing failed? Great!"
+          fi
+          LAST_COMMIT_MSG=$(git log -1 --pretty=%B)
+          if git diff --cached --quiet; then
+            echo "No changes to commit?"
+          else
+            if [[ $GITHUB_REF == refs/pull/* ]]; then
+              echo "This is Pull Request. No saving results."
+            elif [[ "${{ github.event.inputs.reset_stats }}" == "true" ]]; then
+              echo "stats resetted"
+              git commit -m "update results"
+              git push origin testing
+            elif [[ "$LAST_COMMIT_MSG" == "update results" ]]; then
+              echo "Last commit is 'update results'."
+              git commit --amend -m "update results"
+              git push --force origin testing
+            else
+              git commit -m "update results"
+              git push --force origin testing
+            fi
+          fi
+
+      - name: "Show Results 🏁"
+        if: always()
+        run: |
+          tested=$(wc -l < tested.list 2>/dev/null || echo 0)
+          failed=$(wc -l < failed.list 2>/dev/null || echo 0)
+          fail=$(wc -l < fail.list 2>/dev/null || echo "0")
+          count=$(find programs/x86_64/ -type f | wc -l)
+          remaining=$((count - tested - failed - fail))
+          if (( remaining < 0 )); then
+            remaining=0
+          fi
+          echo "### 🏁 $tested tested" >> $GITHUB_STEP_SUMMARY
+          echo "## 🛅 $remaining to test" >> $GITHUB_STEP_SUMMARY
+          echo "😱 $failed fails listed" >> $GITHUB_STEP_SUMMARY
+          echo ":x: $fail failed now" >> $GITHUB_STEP_SUMMARY
+          if [[ -f fail.list ]]; then
+            echo "💀" >> $GITHUB_STEP_SUMMARY
+            cat fail.list >> $GITHUB_STEP_SUMMARY
+          fi
+
+  delete-all-artifacts:
+    name: "cleanup 🧹"
+    runs-on: ubuntu-22.04
+    needs: update-tested-list
+    if: always()
+    steps:
+      - name: "Check out repository 🏃"
+        uses: actions/checkout@v4
+
+      - name: "Delete Artifacts 🙈"
+        env:
+          REPO_NAME: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Fetching and deleting all artifacts for run ID: $RUN_ID"
+          PAGE=1
+          DELETED=0
+          while true; do
+            RESPONSE=$(curl -s -H "Authorization: token $TOKEN" \
+             "https://api.github.com/repos/$REPO_NAME/actions/runs/$RUN_ID/artifacts?per_page=100&page=$PAGE")
+            ARTIFACT_IDS=$(echo "$RESPONSE" | jq -r '.artifacts[].id')
+            if [[ -z "$ARTIFACT_IDS" ]]; then
+              echo "No more artifacts to delete. Total deleted: $DELETED"
+              break
+            fi
+            for ARTIFACT_ID in $ARTIFACT_IDS; do
+              echo "Deleting artifact with ID: $ARTIFACT_ID"
+              curl -X DELETE -s -H "Authorization: token $TOKEN" \
+               "https://api.github.com/repos/$REPO_NAME/actions/artifacts/$ARTIFACT_ID"
+              ((DELETED+=1))
+            done
+            ((PAGE+=1))
+          done
+          echo "Successfully deleted $DELETED artifacts."
+
+  already-tested:
+    name: "all 🏁"
+    runs-on: ubuntu-22.04
+    needs: generate-matrix
+    if: ${{ needs.generate-matrix.outputs.skip == 'true' }}
+    steps:
+      - name: "Mark as Successful"
+        run: echo "All apps already tested..." >> $GITHUB_STEP_SUMMARY
