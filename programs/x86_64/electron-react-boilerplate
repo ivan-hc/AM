@@ -14,11 +14,11 @@ chmod a+x ../remove || exit 1
 # DOWNLOAD AND PREPARE THE APP, $version is also used for updates
 version=$(curl -Ls https://api.github.com/repos/electron-react-boilerplate/electron-react-boilerplate/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | head -1)
 wget "$version" || exit 1
-#wget "$version.zsync" 2> /dev/null # Comment out this line if you want to use zsync
+# Keep this space in sync with other installation scripts
 # Use tar fx ./*tar* here for example in this line in case a compressed file is downloaded.
 cd ..
 mv ./tmp/*mage ./"$APP"
-mv ./tmp/*.zsync ./"$APP".zsync 2>/dev/null
+# Keep this space in sync with other installation scripts
 rm -R -f ./tmp || exit 1
 echo "$version" > ./version
 chmod a+x ./"$APP" || exit 1
@@ -35,14 +35,17 @@ SITE="electron-react-boilerplate/electron-react-boilerplate"
 version0=$(cat "/opt/$APP/version")
 version=$(curl -Ls https://api.github.com/repos/electron-react-boilerplate/electron-react-boilerplate/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | head -1)
 [ -n "$version" ] || { echo "Error getting link"; exit 1; }
-if [ "$version" != "$version0" ] || [ -e /opt/"$APP"/*.zsync ]; then
+if command -v appimageupdatetool >/dev/null 2>&1; then
+	cd "/opt/$APP" || exit 1
+	appimageupdatetool -Or ./"$APP" && chmod a+x ./"$APP" && echo "$version" > ./version && exit 0
+fi
+if [ "$version" != "$version0" ]; then
 	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
-	[ -e ../*.zsync ] || notify-send "A new version of $APP is available, please wait"
-	[ -e ../*.zsync ] && wget "$version.zsync" 2>/dev/null || { wget "$version" || exit 1; }
+	notify-send "A new version of $APP is available, please wait"
+	wget "$version" || exit 1
 	# Use tar fx ./*tar* here for example in this line in case a compressed file is downloaded.
 	cd ..
-	mv ./tmp/*.zsync ./"$APP".zsync 2>/dev/null || mv --backup=t ./tmp/*mage ./"$APP"
-	[ -e ./*.zsync ] && { zsync ./"$APP".zsync || notify-send -u critical "zsync failed to update $APP"; }
+	mv --backup=t ./tmp/*mage ./"$APP"
 	chmod a+x ./"$APP" || exit 1
 	echo "$version" > ./version
 	rm -R -f ./*zs-old ./*.part ./tmp ./*~

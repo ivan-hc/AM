@@ -16,17 +16,14 @@ chmod a+x "/opt/$APP/remove"
 # DOWNLOAD AND PREPARE THE APP
 # $version is also used for updates
 
-printf "%s\n" "$(curl -Ls https://api.github.com/repos/"$SITE"/releases \
-	| grep browser_download_url | cut -d '"' -f 4)" | tr ' ' '\n' | grep -i appimage | grep -v zsync >> ./wine-args
+printf "%s\n" "$(curl -Ls https://api.github.com/repos/mmtrt/WINE_AppImage/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$")" >> ./wine-args
 printf "Select a URL from this menu (read carefully) or press CTRL+C to abort:\n-----------------------------------------------------------------------\n"; sleep 1;
 	select version in $(cat ./wine-args | sort -u | uniq); do test -n "$version" && break; echo ">>> Invalid Selection"; done
 wget "$version"
-wget "$version.zsync" 2> /dev/null
 echo "$version" >> /opt/$APP/version
 # Use tar fx ./*tar* for example in this line in case a compressed file is downloaded.
 cd ..
 mv ./tmp/*mage ./"$APP"
-mv ./tmp/*.zsync ./"$APP".zsync 2> /dev/null
 chmod a+x "/opt/$APP/$APP"
 rm -R -f ./tmp
 
@@ -44,14 +41,17 @@ version0=$(cat "/opt/$APP/version")
 tag=$(echo "$version0" | tr '/' '\n' | tail -2 | head -1)
 version=$(curl -Ls https://api.github.com/repos/mmtrt/WINE_AppImage/releases | grep browser_download_url | grep -i "download/$tag/$app" | grep -i appimage | cut -d '"' -f 4 | head -1)
 [ -n "$version" ] || { echo "Error getting link"; exit 1; }
-if [ "$version" != "$version0" ] || [ -e /opt/"$APP"/*.zsync ]; then
+if command -v appimageupdatetool >/dev/null 2>&1; then
+	cd "/opt/$APP" || exit 1
+	appimageupdatetool -Or ./"$APP" && chmod a+x ./"$APP" && echo "$version" > ./version && exit 0
+fi
+if [ "$version" != "$version0" ]; then
 	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
-	[ -e ../*.zsync ] || notify-send "A new version of $APP is available, please wait"
-	[ -e ../*.zsync ] && wget "$version.zsync" 2>/dev/null || { wget "$version" || exit 1; }
+	notify-send "A new version of $APP is available, please wait"
+	wget "$version" || exit 1
 	# Use tar fx ./*tar* here for example in this line in case a compressed file is downloaded.
 	cd ..
-	mv ./tmp/*.zsync ./"$APP".zsync 2>/dev/null || mv --backup=t ./tmp/*mage ./"$APP"
-	[ -e ./*.zsync ] && { zsync ./"$APP".zsync || notify-send -u critical "zsync failed to update $APP"; }
+	mv --backup=t ./tmp/*mage ./"$APP"
 	chmod a+x ./"$APP" || exit 1
 	echo "$version" > ./version
 	rm -R -f ./*zs-old ./*.part ./tmp ./*~
