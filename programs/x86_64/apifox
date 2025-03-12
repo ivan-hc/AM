@@ -14,12 +14,14 @@ chmod a+x ../remove || exit 1
 # DOWNLOAD AND PREPARE THE APP, $version is also used for updates
 version=$(wget -q https://repology.org/project/apifox/related -O - | grep "version-newest" | head -1 | tr '>' '\n' | grep "[0-9]" | sed 's#</span##g')
 wget "https://cdn.apifox.cn/download/Apifox-linux-latest.zip" || exit 1
+# Keep this space in sync with other installation scripts
 [ -e ./*zip ] && unzip -qq ./*zip 1>/dev/null && rm -f ./*zip
 cd ..
 mv ./tmp/*mage ./"$APP" || exit 1
+# Keep this space in sync with other installation scripts
 rm -R -f ./tmp || exit 1
 echo "$version" > ./version
-chmod a+x ./$APP || exit 1
+chmod a+x ./"$APP" || exit 1
 
 # LINK TO PATH
 ln -s "/opt/$APP/$APP" "/usr/local/bin/$APP"
@@ -33,6 +35,10 @@ SITE="https://apifox.com"
 version0=$(cat "/opt/$APP/version")
 version=$(wget -q https://repology.org/project/apifox/related -O - | grep "version-newest" | head -1 | tr '>' '\n' | grep "[0-9]" | sed 's#</span##g')
 [ -n "$version" ] || { echo "Error getting link"; exit 1; }
+if command -v appimageupdatetool >/dev/null 2>&1; then
+	cd "/opt/$APP" || exit 1
+	appimageupdatetool -Or ./"$APP" && chmod a+x ./"$APP" && echo "$version" > ./version && exit 0
+fi
 if [ "$version" != "$version0" ]; then
 	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
 	notify-send "A new version of $APP is available, please wait"

@@ -1,10 +1,9 @@
 #!/bin/sh
 
-# AM INSTALL SCRIPT VERSION 3.
-
+# AM INSTALL SCRIPT VERSION 3.5
 set -u
 APP=cursor
-SITE="https://repology.org/project/cursor/versions"
+SITE="https://www.cursor.com"
 
 # CREATE DIRECTORIES AND ADD REMOVER
 [ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
@@ -12,15 +11,16 @@ printf "#!/bin/sh\nset -e\nrm -f /usr/local/bin/$APP\nrm -R -f /opt/$APP" > ../r
 printf '\n%s' "rm -f /usr/local/share/applications/$APP-AM.desktop" >> ../remove
 chmod a+x ../remove || exit 1
 
-# DOWNLOAD AND PREPARE THE APP
-# $version is also used for updates
-
-version=$(wget -q "$SITE" -O - | grep "newest version" | head -1 | grep -o -P '(?<=">).*(?=</a)' | sed 's/^.*>//')
-wget https://downloader.cursor.sh/linux/appImage/x64 -O $APP.AppImage || exit 1
-echo "$version" > "/opt/$APP/version"
+# DOWNLOAD AND PREPARE THE APP, $version is also used for updates
+version=$(wget -q https://repology.org/project/cursor/versions -O - | grep -i "new.*version" | head -1 | tr '><' '\n' | grep "^[0-9]")
+wget "https://downloader.cursor.sh/linux/appImage/x64" || exit 1
+# Keep this space in sync with other installation scripts
+# Use tar fx ./*tar* here for example in this line in case a compressed file is downloaded.
 cd ..
-mv --backup=t ./tmp/*mage ./"$APP"
+mv ./tmp/* ./"$APP"
+# Keep this space in sync with other installation scripts
 rm -R -f ./tmp || exit 1
+echo "$version" > ./version
 chmod a+x ./"$APP" || exit 1
 
 # LINK TO PATH
@@ -29,21 +29,26 @@ ln -s "/opt/$APP/$APP" "/usr/local/bin/$APP"
 # SCRIPT TO UPDATE THE PROGRAM
 cat >> ./AM-updater << 'EOF'
 #!/bin/sh
+set -u
 APP=cursor
-SITE="https://repology.org/project/cursor/versions"
-version0=$(cat /opt/$APP/version)
-version=$(wget -q "$SITE" -O - | grep "newest version" | head -1 | grep -o -P '(?<=">).*(?=</a)' | sed 's/^.*>//')
+SITE="https://www.cursor.com"
+version0=$(cat "/opt/$APP/version")
+version=$(wget -q https://repology.org/project/cursor/versions -O - | grep -i "new.*version" | head -1 | tr '><' '\n' | grep "^[0-9]")
 [ -n "$version" ] || { echo "Error getting link"; exit 1; }
+if command -v appimageupdatetool >/dev/null 2>&1; then
+	cd "/opt/$APP" || exit 1
+	appimageupdatetool -Or ./"$APP" && chmod a+x ./"$APP" && echo "$version" > ./version && exit 0
+fi
 if [ "$version" != "$version0" ]; then
-	notify-send "A new version of $APP is available, please wait"
 	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
-	wget https://downloader.cursor.sh/linux/appImage/x64 -O $APP.AppImage || exit 1
-	echo "$version" > "/opt/$APP/version"
+	notify-send "A new version of $APP is available, please wait"
+	wget "https://downloader.cursor.sh/linux/appImage/x64" || exit 1
+	# Use tar fx ./*tar* here for example in this line in case a compressed file is downloaded.
 	cd ..
-	mv --backup=t ./tmp/*mage ./"$APP" || exit 1
-	echo "$version" > ./version
-	rm -R -f ./tmp ./*~
+	mv --backup=t ./tmp/* ./"$APP"
 	chmod a+x ./"$APP" || exit 1
+	echo "$version" > ./version
+	rm -R -f ./*zs-old ./*.part ./tmp ./*~
 	notify-send "$APP is updated!"
 else
 	echo "Update not needed!"
@@ -52,14 +57,21 @@ EOF
 chmod a+x ./AM-updater || exit 1
 
 # LAUNCHER & ICON
-./"$APP" --appimage-extract .DirIcon 1>/dev/null && mv ./squashfs-root/.DirIcon ./DirIcon
 ./"$APP" --appimage-extract *.desktop 1>/dev/null && mv ./squashfs-root/*.desktop ./"$APP".desktop
-./"$APP" --appimage-extract share/applications/*.desktop 1>/dev/null && mv ./squashfs-root/share/applications/*.desktop ./"$APP".desktop
-./"$APP" --appimage-extract usr/share/applications/*.desktop 1>/dev/null && mv ./squashfs-root/usr/share/applications/*.desktop ./"$APP".desktop
-if [ -L ./DirIcon ]; then
-	LINKPATH=$(readlink ./DirIcon)
-	./"$APP" --appimage-extract "$LINKPATH" && mv ./squashfs-root/"$LINKPATH" ./DirIcon
-fi
+./"$APP" --appimage-extract .DirIcon 1>/dev/null && mv ./squashfs-root/.DirIcon ./DirIcon
+COUNT=0
+while [ "$COUNT" -lt 10 ]; do # Tries to get the actual icon/desktop if it is a symlink to another symlink
+	if [ -L ./"$APP".desktop ]; then
+		LINKPATH="$(readlink ./"$APP".desktop | sed 's|^\./||' 2>/dev/null)"
+		./"$APP" --appimage-extract "$LINKPATH" 1>/dev/null && mv ./squashfs-root/"$LINKPATH" ./"$APP".desktop
+	fi
+	if [ -L ./DirIcon ]; then
+		LINKPATH="$(readlink ./DirIcon | sed 's|^\./||' 2>/dev/null)"
+		./"$APP" --appimage-extract "$LINKPATH" 1>/dev/null && mv ./squashfs-root/"$LINKPATH" ./DirIcon
+	fi
+	[ ! -L ./"$APP".desktop ] && [ ! -L ./DirIcon ] && break
+	COUNT=$((COUNT + 1))
+done
 sed -i "s#Exec=[^ ]*#Exec=$APP#g; s#Icon=.*#Icon=/opt/$APP/icons/$APP#g" ./"$APP".desktop
-mv ./"$APP".desktop /usr/local/share/applications/"$APP"-AM.desktop && mv ./DirIcon ./icons/"$APP" 2>/dev/null
+mv ./"$APP".desktop /usr/local/share/applications/"$APP"-AM.desktop && mv ./DirIcon ./icons/"$APP" 1>/dev/null
 rm -R -f ./squashfs-root
