@@ -1,83 +1,77 @@
 #!/bin/sh
 
+# AM INSTALL SCRIPT VERSION 3.5
+set -u
 APP=zmninja
-APPNAME=zmNinja
+SITE="ZoneMinder/zmNinja"
 
-CATEGORIES=$(curl -L -s https://raw.githubusercontent.com/AppImage/appimage.github.io/master/apps/$APPNAME.md | grep -E -i categories | cut -c 17-)
-ICONURL="https://appimage.github.io/database/$(curl -L -s https://raw.githubusercontent.com/AppImage/appimage.github.io/master/apps/$APPNAME.md | grep -E -i icons | sed -n 2p | cut -c 5-)"
-REPO="ZoneMinder/zmNinja"
-USER=$(echo $REPO | sed 's:/[^/]*$::')
-REPO2=$(echo $REPO | sed 's:.*/::')
-FILENAMEEXTENTION="arm64.AppImage"
-URL=https://github.com/$REPO/releases/latest
-COMMENT=$(curl -L -s https://raw.githubusercontent.com/AppImage/appimage.github.io/master/apps/$APPNAME.md | grep "Comment:" | cut -c 14-)
+# CREATE DIRECTORIES AND ADD REMOVER
+[ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
+printf "#!/bin/sh\nset -e\nrm -f /usr/local/bin/$APP\nrm -R -f /opt/$APP" > ../remove
+printf '\n%s' "rm -f /usr/local/share/applications/$APP-AM.desktop" >> ../remove
+chmod a+x ../remove || exit 1
 
-# CREATE THE FOLDER
-mkdir /opt/$APP
-cd /opt/$APP
-
-# ADD THE REMOVER
-echo '#!/bin/sh' >> /opt/$APP/remove
-echo "rm -R -f /usr/local/share/applications/$APP-AM.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
-chmod a+x /opt/$APP/remove
-
-# DOWNLOAD THE APPIMAGE
-mkdir tmp
-cd ./tmp
-
-wget https://github.com/$(wget https://github.com/$REPO/releases/latest | grep -E '/.*/.*'$FILENAMEEXTENTION'' -o);
-
-version=$(curl -Ls https://api.github.com/repos/$REPO/releases/latest | grep -E tag_name | awk -F '[""]' '{print $4}')
-echo "$version" >> /opt/$APP/version
-
+# DOWNLOAD AND PREPARE THE APP, $version is also used for updates
+version=$(curl -Ls https://api.github.com/repos/ZoneMinder/zmNinja/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -i "arm64" | head -1)
+wget "$version" || exit 1
+# Keep this space in sync with other installation scripts
+# Use tar fx ./*tar* here for example in this line in case a compressed file is downloaded.
 cd ..
-mv ./tmp/*mage ./$APP
-chmod a+x /opt/$APP/$APP
-rmdir ./tmp
+mv ./tmp/*mage ./"$APP"
+# Keep this space in sync with other installation scripts
+rm -R -f ./tmp || exit 1
+echo "$version" > ./version
+chmod a+x ./"$APP" || exit 1
 
-# LINK
-ln -s /opt/$APP/$APP /usr/local/bin/$APP
+# LINK TO PATH
+ln -s "/opt/$APP/$APP" "/usr/local/bin/$APP"
 
 # SCRIPT TO UPDATE THE PROGRAM
-cat >> /opt/$APP/AM-updater << 'EOF'
-#!/usr/bin/env bash
+cat >> ./AM-updater << 'EOF'
+#!/bin/sh
+set -u
 APP=zmninja
-version0=$(cat /opt/$APP/version)
-url=https://github.com/FUNCTION2/FUNCTION3/releases/latest
-if curl -L -s $url | grep -ioF "$version0"; then
-  echo "Update not needed!"
+SITE="ZoneMinder/zmNinja"
+version0=$(cat "/opt/$APP/version")
+version=$(curl -Ls https://api.github.com/repos/ZoneMinder/zmNinja/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -i "arm64" | head -1)
+[ -n "$version" ] || { echo "Error getting link"; exit 1; }
+if command -v appimageupdatetool >/dev/null 2>&1; then
+	cd "/opt/$APP" || exit 1
+	appimageupdatetool -Or ./"$APP" && chmod a+x ./"$APP" && echo "$version" > ./version && exit 0
+fi
+if [ "$version" != "$version0" ]; then
+	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
+	notify-send "A new version of $APP is available, please wait"
+	wget "$version" || exit 1
+	# Use tar fx ./*tar* here for example in this line in case a compressed file is downloaded.
+	cd ..
+	mv --backup=t ./tmp/*mage ./"$APP"
+	chmod a+x ./"$APP" || exit 1
+	echo "$version" > ./version
+	rm -R -f ./*zs-old ./*.part ./tmp ./*~
+	notify-send "$APP is updated!"
 else
-  notify-send "A new version of $APP is available, please wait"
-  mkdir /opt/$APP/tmp
-  cd /opt/$APP/tmp
-  URL=https://github.com/FUNCTION2/FUNCTION3/releases/latest
-  wget https://github.com/$(wget https://github.com/FUNCTION2/FUNCTION3/releases/latest | grep -E '/.*/.*'FUNCTION4'' -o);
-  version=$(curl -Ls https://api.github.com/repos/FUNCTION2/FUNCTION3/releases/latest | grep -E tag_name | awk -F '[""]' '{print $4}')
-  cd ..
-  if test -f ./tmp/*mage; then rm ./version
-  fi
-  echo $version >> ./version
-  mv --backup=t ./tmp/*mage ./$APP
-  chmod a+x /opt/$APP/$APP
-  rm -R -f ./tmp ./*~
+	echo "Update not needed!"
 fi
 EOF
-sed -i s/FUNCTION2/$USER/g /opt/$APP/AM-updater
-sed -i s/FUNCTION3/$REPO2/g /opt/$APP/AM-updater
-sed -i s/FUNCTION4/$FILENAMEEXTENTION/g /opt/$APP/AM-updater
-chmod a+x /opt/$APP/AM-updater
+chmod a+x ./AM-updater || exit 1
 
-# LAUNCHER
-rm -f /usr/local/share/applications/$APP-AM.desktop
-echo "[Desktop Entry]
-Name=$APPNAME
-Exec=$APP
-Icon=/opt/$APP/icons/$APP
-Type=Application
-Terminal=false
-Categories=$CATEGORIES;
-Comment=$COMMENT" >> /usr/local/share/applications/$APP-AM.desktop
-
-# ICON
-mkdir ./icons
-wget $ICONURL -O /opt/$APP/icons/$APP
+# LAUNCHER & ICON
+./"$APP" --appimage-extract *.desktop 1>/dev/null && mv ./squashfs-root/*.desktop ./"$APP".desktop
+./"$APP" --appimage-extract .DirIcon 1>/dev/null && mv ./squashfs-root/.DirIcon ./DirIcon
+COUNT=0
+while [ "$COUNT" -lt 10 ]; do # Tries to get the actual icon/desktop if it is a symlink to another symlink
+	if [ -L ./"$APP".desktop ]; then
+		LINKPATH="$(readlink ./"$APP".desktop | sed 's|^\./||' 2>/dev/null)"
+		./"$APP" --appimage-extract "$LINKPATH" 1>/dev/null && mv ./squashfs-root/"$LINKPATH" ./"$APP".desktop
+	fi
+	if [ -L ./DirIcon ]; then
+		LINKPATH="$(readlink ./DirIcon | sed 's|^\./||' 2>/dev/null)"
+		./"$APP" --appimage-extract "$LINKPATH" 1>/dev/null && mv ./squashfs-root/"$LINKPATH" ./DirIcon
+	fi
+	[ ! -L ./"$APP".desktop ] && [ ! -L ./DirIcon ] && break
+	COUNT=$((COUNT + 1))
+done
+sed -i "s#Exec=[^ ]*#Exec=$APP#g; s#Icon=.*#Icon=/opt/$APP/icons/$APP#g" ./"$APP".desktop
+mv ./"$APP".desktop /usr/local/share/applications/"$APP"-AM.desktop && mv ./DirIcon ./icons/"$APP" 1>/dev/null
+rm -R -f ./squashfs-root
