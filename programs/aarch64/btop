@@ -1,58 +1,55 @@
 #!/bin/sh
 
+# AM INSTALL SCRIPT VERSION 3. 
+set -u
 APP=btop
-REPO="aristocratos/btop"
+SITE="aristocratos/btop"
 
-# CREATE DIRECTORIES
-if [ -z "$APP" ]; then exit 1; fi
-mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
+# CREATE DIRECTORIES AND ADD REMOVER
+[ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
+printf "#!/bin/sh\nset -e\nrm -f /usr/local/bin/$APP\nrm -R -f /opt/$APP" > ../remove
+#printf '\n%s' "rm -f /usr/local/share/applications/$APP-AM.desktop" >> ../remove
+chmod a+x ../remove || exit 1
 
-# ADD THE REMOVER
-echo "#!/bin/sh
-rm -f /usr/local/share/applications/$APP-AM.desktop /usr/local/bin/$APP
-rm -R -f /opt/$APP" >> "/opt/$APP/remove"
-chmod a+x "/opt/$APP/remove"
-
-# DOWNLOAD AND PREPARE THE APP
-# $version is also used for updates
-
-version=$(curl -Ls https://api.github.com/repos/"$REPO"/releases/latest | grep browser_download_url | grep aarch64 | cut -d '"' -f 4 | head -1)
-wget "$version"
-tar xf ./*.tbz
+# DOWNLOAD AND PREPARE THE APP, $version is also used for updates
+version=$(curl -Ls https://api.github.com/repos/aristocratos/btop/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*" | grep -i "aarch64" | head -1)
+wget "$version" || exit 1
+[ -e ./*7z ] && 7z x ./*7z && rm -f ./*7z
+[ -e ./*tbz ] && tar fx ./*tbz && rm -f ./*tbz
+[ -e ./*zip ] && unzip -qq ./*zip 1>/dev/null && rm -f ./*zip
 cd ..
-echo "$version" >> ./version
-mv ./tmp/*/* ./
-ln -s ./bin/btop ./"$APP"
-chmod a+x ./bin/btop
-rm -R -f ./tmp
+if [ -d ./tmp/* 2>/dev/null ]; then mv ./tmp/*/* ./; else mv ./tmp/* ./"$APP" 2>/dev/null || mv ./tmp/* ./; fi
+rm -R -f ./tmp || exit 1
+echo "$version" > ./version
+chmod a+x ./bin/btop || exit 1
 
-# LINK
-ln -s "/opt/$APP/$APP" "/usr/local/bin/$APP"
+# LINK TO PATH
+ln -s "/opt/$APP/bin/btop" "/usr/local/bin/$APP"
 
 # SCRIPT TO UPDATE THE PROGRAM
-cat >> /opt/$APP/AM-updater << 'EOF'
+cat >> ./AM-updater << 'EOF'
 #!/bin/sh
+set -u
 APP=btop
-REPO="aristocratos/btop"
-version0=$(cat /opt/$APP/version)
-version=$(curl -Ls https://api.github.com/repos/"$REPO"/releases/latest | grep browser_download_url | grep aarch64 | cut -d '"' -f 4 | head -1)
-if [ "$version" = "$version0" ]; then
-	echo "Update not needed!" || exit 0
-else
+SITE="aristocratos/btop"
+version0=$(cat "/opt/$APP/version")
+version=$(curl -Ls https://api.github.com/repos/aristocratos/btop/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*" | grep -i "aarch64" | head -1)
+[ -n "$version" ] || { echo "Error getting link"; exit 1; }
+if [ "$version" != "$version0" ]; then
+	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
 	notify-send "A new version of $APP is available, please wait"
-	mkdir /opt/$APP/tmp && cd /opt/$APP/tmp || exit 1
-	wget "$version"
-	tar xf ./*.tbz
+	wget "$version" || exit 1
+	[ -e ./*7z ] && 7z x ./*7z && rm -f ./*7z
+	[ -e ./*tbz ] && tar fx ./*tbz && rm -f ./*tbz
+	[ -e ./*zip ] && unzip -qq ./*zip 1>/dev/null && rm -f ./*zip
 	cd ..
-	rm ./version
-  	echo "$version" >> ./version
-  	mv --backup=t ./tmp/*/* ./
-	chmod a+x ./bin/btop
-  	rm -R -f ./tmp ./*~
+	if [ -d ./tmp/* 2>/dev/null ]; then mv --backup=t ./tmp/*/* ./; else mv --backup=t ./tmp/* ./"$APP" 2>/dev/null || mv --backup=t ./tmp/* ./; fi
+	chmod a+x ./bin/btop || exit 1
+	echo "$version" > ./version
+	rm -R -f ./tmp ./*~
 	notify-send "$APP is updated!"
+else
+	echo "Update not needed!"
 fi
 EOF
-chmod a+x "/opt/$APP/AM-updater"
-
-# LAUNCHER & ICON
-mv ./*.desktop /usr/local/share/applications/"$APP"-AM.desktop && mv ./*mg/*.svg ./icons/btop 2>/dev/null #btop already ships the files
+chmod a+x ./AM-updater || exit 1
