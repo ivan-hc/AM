@@ -246,47 +246,55 @@ jobs:
           set -uo pipefail
           mkdir -p results
           script_content=$(curl -Ls https://raw.githubusercontent.com/ivan-hc/AM/main/programs/x86_64/"${{ matrix.file }}")
-          pure_arg=$(echo "${{ matrix.file }}" | sed 's/\.appimage//g; s/\^debian-testing-//g; s/\-appimage$//g' | sed 's:.*/::')
+          pure_arg=$(echo "${{ matrix.file }}" | sed 's/\-appimage$//g' | sed 's:.*/::')
           if timeout "$TIMEOUT"m am -i "${{ matrix.file }}" --debug 2>&1 | tee -a results/log-"${{ matrix.file }}"; then
-            echo ""
-            echo " Structure of the directory in /opt"
-            echo ""
-            if test -d /opt/kdegames; then
-               ls /opt/kdegames | tee -a results/log-"${{ matrix.file }}"
-            elif test -d /opt/kdeutils; then
-               ls /opt/kdeutils | tee -a results/log-"${{ matrix.file }}"
-            elif test -d /opt/platform-tools; then
-               ls /opt/platform-tools | tee -a results/log-"${{ matrix.file }}"
-            elif test -d /opt/"$pure_arg"; then
-               ls /opt/"$pure_arg" | tee -a results/log-"${{ matrix.file }}"
-            elif [[ "$pure_arg" =~ (bat-extras|code|deadbeef*|kvrt|libfuse2|libreoffice|microsoft-edge*|mpv|node|npm|oras|suyu|swift|wine) ]]; then
-               echo "App not installed, this is a Known error related to GitHub Actions" | tee -a results/log-"${{ matrix.file }}"
-            elif test -d /opt/"$pure_arg"*; then
-               ls /opt/"$pure_arg"* | tee -a results/log-"${{ matrix.file }}"
+            if [[ "$pure_arg" =~ (bat-extras|code|deadbeef*|kvrt|libfuse2|libreoffice|microsoft-edge*|mpv|node|npm|oras|suyu|swift|wine) ]]; then
+              echo "App not installed, this is a Known error related to GitHub Actions" | tee -a results/log-"${{ matrix.file }}"
             elif echo "$script_content" | grep -q "spooky"; then
-               echo "App not installed because marked as \"spooky\", require to be tested manually" | tee -a results/log-"${{ matrix.file }}"
+                 echo "App not installed because marked as \"spooky\", require to be tested manually" | tee -a results/log-"${{ matrix.file }}"
             else
-               ls /opt/"${{ matrix.file }}" | tee -a results/log-"${{ matrix.file }}"
+              LASTDIR=$(ls -td /opt/* | head -1 | sed 's:.*/::')
+              if ! test -f /opt/"$LASTDIR"/remove; then
+                sudo systemctl restart tor.service || systemctl restart tor.service
+                wait
+                am -i "${{ matrix.file }}" --debug 2>&1
+              fi
+              echo ""
+              echo " Structure of the directory in /opt"
+              echo ""
+              if test -d /opt/kdegames; then
+                 ls /opt/kdegames | tee -a results/log-"${{ matrix.file }}"
+              elif test -d /opt/kdeutils; then
+                 ls /opt/kdeutils | tee -a results/log-"${{ matrix.file }}"
+              elif test -d /opt/platform-tools; then
+                 ls /opt/platform-tools | tee -a results/log-"${{ matrix.file }}"
+              elif test -d /opt/"$pure_arg"; then
+                 ls /opt/"$pure_arg" | tee -a results/log-"${{ matrix.file }}"
+              elif test -d /opt/"$pure_arg"*; then
+                 ls /opt/"$pure_arg"* | tee -a results/log-"${{ matrix.file }}"
+              else
+                 ls /opt/"${{ matrix.file }}" | tee -a results/log-"${{ matrix.file }}"
+              fi
+              echo ""
+              echo "-------------------------------------------------------------"
+              echo ""
+              echo " Command in \$PATH"
+              echo ""
+              command -v "$pure_arg" | tee -a results/log-"${{ matrix.file }}" || ls /usr/local/bin | tee -a results/log-"${{ matrix.file }}"
+              echo ""
+              echo "-------------------------------------------------------------"
+              echo ""
+              echo " Launchers in /usr/local/share/applications" | tee -a results/log-"${{ matrix.file }}"
+              echo ""
+              if test -f /usr/local/share/applications/*AM.desktop 2>/dev/null; then
+                 ls /usr/local/share/applications | grep "AM.desktop$" | tee -a results/log-"${{ matrix.file }}"
+              else
+                 ls /usr/local/share/applications | tee -a results/log-"${{ matrix.file }}"
+              fi
+              echo ""
+              echo "-------------------------------------------------------------"
+              am -R "${{ matrix.file }}" && echo "${{ matrix.file }}" >> results/ok-${{ matrix.file }} || echo "${{ matrix.file }}" >> results/log-${{ matrix.file }}
             fi
-            echo ""
-            echo "-------------------------------------------------------------"
-            echo ""
-            echo " Command in \$PATH"
-            echo ""
-            command -v "$pure_arg" | tee -a results/log-"${{ matrix.file }}" || ls /usr/local/bin | tee -a results/log-"${{ matrix.file }}"
-            echo ""
-            echo "-------------------------------------------------------------"
-            echo ""
-            echo " Launchers in /usr/local/share/applications" | tee -a results/log-"${{ matrix.file }}"
-            echo ""
-            if test -f /usr/local/share/applications/*AM.desktop 2>/dev/null; then
-               ls /usr/local/share/applications | grep "AM.desktop$" | tee -a results/log-"${{ matrix.file }}"
-            else
-               ls /usr/local/share/applications | tee -a results/log-"${{ matrix.file }}"
-            fi
-            echo ""
-            echo "-------------------------------------------------------------"
-            am -R "${{ matrix.file }}" && echo "${{ matrix.file }}" >> results/ok-${{ matrix.file }} || echo "${{ matrix.file }}" >> results/log-${{ matrix.file }}
           else
             if [[ $? -eq 124 ]]; then
                echo "### 💥 ${{ matrix.file }} timeout!" >> $GITHUB_STEP_SUMMARY
