@@ -256,24 +256,21 @@ jobs:
               LASTDIR=$(ls -td /opt/* | head -1 | sed 's:.*/::')
               if ! test -f /opt/"$LASTDIR"/remove; then
                 sudo systemctl restart tor.service || systemctl restart tor.service
-                wait
-                am -i "${{ matrix.file }}" --debug 2>&1
+                am -i "${{ matrix.file }}" --debug 2>&1 | tee -a results/log-"${{ matrix.file }}"
+                LASTDIR=$(ls -td /opt/* | head -1 | sed 's:.*/::')
+                if ! test -f /opt/"$LASTDIR"/remove; then
+                  sudo systemctl restart tor.service || systemctl restart tor.service
+                  torsocks am -i "${{ matrix.file }}" --debug 2>&1 | tee -a results/log-"${{ matrix.file }}"
+                  LASTDIR=$(ls -td /opt/* | head -1 | sed 's:.*/::')
+                fi
               fi
               echo ""
               echo " Structure of the directory in /opt"
               echo ""
-              if test -d /opt/kdegames; then
-                 ls /opt/kdegames | tee -a results/log-"${{ matrix.file }}"
-              elif test -d /opt/kdeutils; then
-                 ls /opt/kdeutils | tee -a results/log-"${{ matrix.file }}"
-              elif test -d /opt/platform-tools; then
-                 ls /opt/platform-tools | tee -a results/log-"${{ matrix.file }}"
-              elif test -d /opt/"$pure_arg"; then
-                 ls /opt/"$pure_arg" | tee -a results/log-"${{ matrix.file }}"
-              elif test -d /opt/"$pure_arg"*; then
-                 ls /opt/"$pure_arg"* | tee -a results/log-"${{ matrix.file }}"
+              if test -f /opt/"$LASTDIR"/remove; then
+                 ls /opt/"$LASTDIR" | tee -a results/log-"${{ matrix.file }}"
               else
-                 ls /opt/"${{ matrix.file }}" | tee -a results/log-"${{ matrix.file }}"
+                 WTF | tee -a results/log-"${{ matrix.file }}"
               fi
               echo ""
               echo "-------------------------------------------------------------"
