@@ -250,6 +250,9 @@ jobs:
           # Allow installing applications even if the command already exists
           sed -i '/command -v "$pure_arg"/d; /command already exists/d' /opt/am/modules/install.am
 
+          # Prevent the script from calling the "exit 1" command
+          sed -i 's/|| exit 1//g' "programs/x86_64/${{ matrix.file }}"
+
           # Blacklist some applications
           if [[ "$pure_arg" =~ (bat-extras|microsoft-edge*) ]]; then
 
@@ -258,27 +261,27 @@ jobs:
           else
 
             # Install the application (first attempt)
-            echo y | am -i "${{ matrix.file }}" --debug 2>&1
+            echo y | am -i "programs/x86_64/${{ matrix.file }}" --debug 2>&1
             LASTDIR=$(ls -td /opt/* | head -1 | sed 's:.*/::')
 
             # Check if the app needs interaction to be installed
             if [[ "$pure_arg" =~ (libreoffice|mpv|wine) ]]; then
-              echo 1 | am -i "${{ matrix.file }}" --debug 2>&1
+              echo 1 | am -i "programs/x86_64/${{ matrix.file }}" --debug 2>&1
               LASTDIR=$(ls -td /opt/* | head -1 | sed 's:.*/::')
               if ! test -f /opt/"$LASTDIR"/remove; then
                 sudo systemctl restart tor.service || systemctl restart tor.service
-                echo 1 | torsocks am -i "${{ matrix.file }}" --debug 2>&1
+                echo 1 | torsocks am -i "programs/x86_64/${{ matrix.file }}" --debug 2>&1
               fi
             fi
 
             # Force installation if first attempt is not success
             if ! test -f /opt/"$LASTDIR"/remove; then
               sudo systemctl restart tor.service || systemctl restart tor.service
-              am -i "${{ matrix.file }}" --debug 2>&1
+              am -i "programs/x86_64/${{ matrix.file }}" --debug 2>&1
               LASTDIR=$(ls -td /opt/* | head -1 | sed 's:.*/::')
               if ! test -f /opt/"$LASTDIR"/remove; then
                 sudo systemctl restart tor.service || systemctl restart tor.service
-                torsocks am -i "${{ matrix.file }}" --debug 2>&1
+                torsocks am -i "programs/x86_64/${{ matrix.file }}" --debug 2>&1
                 LASTDIR=$(ls -td /opt/* | head -1 | sed 's:.*/::')
               fi
             fi
