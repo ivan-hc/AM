@@ -220,8 +220,6 @@ jobs:
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
-    env:
-      TIMEOUT: 50
     steps:
       - name: "Check out repository 🏃"
         uses: actions/checkout@v4
@@ -251,53 +249,55 @@ jobs:
 
           # Allow installing applications even if the command already exists
           sed -i '/command -v "$pure_arg"/d; /command already exists/d' /opt/am/modules/install.am
-          
-          if timeout "$TIMEOUT"m echo y | am -i "${{ matrix.file }}" --debug 2>&1 | tee -a results/log-"${{ matrix.file }}"; then
 
-            # Blacklist some applications
-            if [[ "$pure_arg" =~ (bat-extras|microsoft-edge*) ]]; then
+          # Blacklist some applications
+          if [[ "$pure_arg" =~ (bat-extras|microsoft-edge*) ]]; then
 
-              echo "This app is blacklisted due to known errors related to GitHub Actions" | tee -a results/log-"${{ matrix.file }}"
+            echo "This app is blacklisted due to known errors related to GitHub Actions" | tee -a results/log-"${{ matrix.file }}"
 
-            else
+          else
 
-              # Check if the app needs interaction to be installed
-              if [[ "$pure_arg" =~ (libreoffice|mpv|wine) ]]; then
-                echo 1 | am -i "${{ matrix.file }}" --debug 2>&1
-                LASTDIR=$(ls -td /opt/* | head -1 | sed 's:.*/::')
-                if ! test -f /opt/"$LASTDIR"/remove; then
-                  sudo systemctl restart tor.service || systemctl restart tor.service
-                  echo 1 | torsocks am -i "${{ matrix.file }}" --debug 2>&1
-                fi
-              fi
+            # Install the application (first attempt)
+            echo y | am -i "${{ matrix.file }}" --debug 2>&1
+            LASTDIR=$(ls -td /opt/* | head -1 | sed 's:.*/::')
 
-              # Force installation if first attempt is not success
+            # Check if the app needs interaction to be installed
+            if [[ "$pure_arg" =~ (libreoffice|mpv|wine) ]]; then
+              echo 1 | am -i "${{ matrix.file }}" --debug 2>&1
               LASTDIR=$(ls -td /opt/* | head -1 | sed 's:.*/::')
               if ! test -f /opt/"$LASTDIR"/remove; then
                 sudo systemctl restart tor.service || systemctl restart tor.service
-                am -i "${{ matrix.file }}" --debug 2>&1
-                LASTDIR=$(ls -td /opt/* | head -1 | sed 's:.*/::')
-                if ! test -f /opt/"$LASTDIR"/remove; then
-                  sudo systemctl restart tor.service || systemctl restart tor.service
-                  torsocks am -i "${{ matrix.file }}" --debug 2>&1
-                  LASTDIR=$(ls -td /opt/* | head -1 | sed 's:.*/::')
-                fi
+                echo 1 | torsocks am -i "${{ matrix.file }}" --debug 2>&1
               fi
+            fi
 
-              if [ "$LASTDIR" = am ]; then
-                exit 1
+            # Force installation if first attempt is not success
+            if ! test -f /opt/"$LASTDIR"/remove; then
+              sudo systemctl restart tor.service || systemctl restart tor.service
+              am -i "${{ matrix.file }}" --debug 2>&1
+              LASTDIR=$(ls -td /opt/* | head -1 | sed 's:.*/::')
+              if ! test -f /opt/"$LASTDIR"/remove; then
+                sudo systemctl restart tor.service || systemctl restart tor.service
+                torsocks am -i "${{ matrix.file }}" --debug 2>&1
+                LASTDIR=$(ls -td /opt/* | head -1 | sed 's:.*/::')
               fi
+            fi
+
+            # If the last modified directory is /opt/am, the installation has failed
+            if [ "$LASTDIR" = am ]; then
+              echo "### 💀 ${{ matrix.file }}" >> $GITHUB_STEP_SUMMARY
+              echo "${{ matrix.file }}" >> results/log-${{ matrix.file }}
+              exit 1
+
+            # If the last modified directory contains a file named "remove", check the installed files
+            elif test -f /opt/"$LASTDIR"/remove; then
 
               printf "\n-------------------------------------------------------------\n\n"
 
               # Check structure of directories in /opt
               echo " Structure of the directory in /opt"
               echo ""
-              if test -f /opt/"$LASTDIR"/remove; then
-                 ls /opt/"$LASTDIR" | tee -a results/log-"${{ matrix.file }}"
-              else
-                 exit 1
-              fi
+              ls /opt/"$LASTDIR" | tee -a results/log-"${{ matrix.file }}"
 
               printf "\n-------------------------------------------------------------\n\n"
 
@@ -322,19 +322,12 @@ jobs:
               # Remove the application
               am -R "$LASTDIR" && echo "${{ matrix.file }}" >> results/ok-${{ matrix.file }} || echo "${{ matrix.file }}" >> results/log-${{ matrix.file }}
 
-            fi
-          else
-
-            # Determine timeout
-            if [[ $? -eq 124 ]]; then
-               echo "### 💥 ${{ matrix.file }} timeout!" >> $GITHUB_STEP_SUMMARY
-               echo "Installation timeout in 50 minutes" >> results/log-"${{ matrix.file }}"
-               echo "${{ matrix.file }}" >> results/log-${{ matrix.file }}
+            # Any other result is a failure
             else
-               echo "### 💀 ${{ matrix.file }}" >> $GITHUB_STEP_SUMMARY
-               echo "${{ matrix.file }}" >> results/log-${{ matrix.file }}
+              echo "### 💀 ${{ matrix.file }}" >> $GITHUB_STEP_SUMMARY
+              echo "${{ matrix.file }}" >> results/log-${{ matrix.file }}
+              exit 1
             fi
-            exit 1
           fi
 
       - name: "Rename Failed Results ☝️"
