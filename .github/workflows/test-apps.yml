@@ -244,14 +244,13 @@ jobs:
           set -uo pipefail
           mkdir -p results
 
-          #script_content=$(curl -Ls https://raw.githubusercontent.com/ivan-hc/AM/main/programs/x86_64/"${{ matrix.file }}")
+          # Define the content of the script
+          script_content=$(cat programs/x86_64/${{ matrix.file }})
+          # Define the pure name of the app
           pure_arg=$(echo "${{ matrix.file }}" | sed 's/\-appimage$//g' | sed 's:.*/::')
 
           # Allow installing applications even if the command already exists
           sed -i '/command -v "$pure_arg"/d; /command already exists/d' /opt/am/modules/install.am
-
-          # Prevent the script from calling the "exit 1" command
-          #sed -i 's/|| exit 1//g' "programs/x86_64/${{ matrix.file }}"
 
           # Special patches
           if [ "$pure_arg" = bat-extras ]; then
@@ -314,8 +313,10 @@ jobs:
             echo ""
             if test -f /usr/local/share/applications/*AM.desktop 2>/dev/null; then
                ls /usr/local/share/applications | grep "AM.desktop$" | tee -a results/log-"${{ matrix.file }}"
+            elif echo "$script_content" | grep -q -- '^./"$APP" --appimage-extract.*./"$APP".desktop$'
+               ls /usr/local/share/applications | grep "AM.desktop$" | tee -a results/log-"${{ matrix.file }}"
             else
-               ls /usr/local/share/applications | tee -a results/log-"${{ matrix.file }}"
+               echo "No .desktop file available" | tee -a results/log-"${{ matrix.file }}"
             fi
 
             printf "\n-------------------------------------------------------------\n\n"
