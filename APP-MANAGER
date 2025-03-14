@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="9.6"
+AMVERSION="9.6-1"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -869,7 +869,7 @@ _sync_installation_scripts() {
 		if [ -f "$argpath"/AM-updater ]; then
 			mkdir -p "$argpath"/.am-installer
 			scriptname=$(ls "$argpath/.am-installer/" | head -1)
-			if [ -n "$scriptname" ]; then
+			if [ -n "$scriptname" ] && grep -q "^◆ $scriptname :" "$AMDATADIR/$ARCH-apps"; then
 				CURRENT=$(cat "$argpath"/.am-installer/"$scriptname")
 				SOURCE=$(curl -Ls "$APPSDB"/"$scriptname")
 				if [ "$CURRENT" = "$SOURCE" ]; then
@@ -879,12 +879,13 @@ _sync_installation_scripts() {
 					to_reinstall_true=1
 				fi
 			else
-				if curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg"  1>/dev/null; then
+				if [ -z "$scriptname" ] && curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg"  1>/dev/null; then
 					printf " ◆ No installation script for %b, downloading one...\n" "$arg"
 					mkdir -p "$argpath"/.am-installer
 					wget -q "$APPSDB/$arg" -O "$argpath"/.am-installer/"$arg"
 				fi
 			fi
+			scriptname=""
 		fi
 	done
 	[ -n "$to_reinstall_true" ] && printf "\n To fix the above, just run \"%b%b reinstall\033[0m\", without arguments\n" "${Green}" "$AMCLI"
@@ -947,8 +948,8 @@ _sync_amcli() {
 _use_sync() {
 	_online_check
 	_betatester_message_on
-	_sync_installation_scripts
 	_sync_databases
+	_sync_installation_scripts
 	if [ "$(realpath "$0")" != "/usr/bin/am" ] && [ "$AMSYNC" != 1 ]; then
 		_sync_modules
 		_sync_amcli
