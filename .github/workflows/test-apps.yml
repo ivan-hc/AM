@@ -229,7 +229,7 @@ jobs:
       - name: "Cache dependencies"
         uses: awalsh128/cache-apt-pkgs-action@latest
         with:
-          packages: wget curl torsocks zsync proxychains4
+          packages: wget curl torsocks zsync
           version: 1.0
 
       - name: "Install AM 🎁"
@@ -260,31 +260,41 @@ jobs:
             sed -i 's/_check_if_script_installs_a_metapackage || return 1//g' /opt/am/modules/install.am
           fi
           
-          # Install the application
-          if [[ "$pure_arg" =~ (libreoffice|mpv|wine) ]]; then
-            echo 1 | proxychains4 -q -f /etc/proxychains4.conf am -i "programs/x86_64/${{ matrix.file }}" --debug 2>&1
-          else
-            echo y | proxychains4 -q -f /etc/proxychains4.conf am -i "programs/x86_64/${{ matrix.file }}" --debug 2>&1
-          fi
-
-          # Check the last modified directory is /opt
-
+          # Install the application (first attempt)
+          echo y | am -i "programs/x86_64/${{ matrix.file }}" --debug 2>&1 || sudo systemctl restart tor.service || systemctl restart tor.service
           LASTDIR=$(ls -td /opt/* | head -1 | sed 's:.*/::')
 
+          # Check if the app needs interaction to be installed
+          if [[ "$pure_arg" =~ (libreoffice|mpv|wine) ]]; then
+            echo 1 | am -i "programs/x86_64/${{ matrix.file }}" --debug 2>&1 || sudo systemctl restart tor.service || systemctl restart tor.service
+            LASTDIR=$(ls -td /opt/* | head -1 | sed 's:.*/::')
+            if ! test -f /opt/"$LASTDIR"/remove; then
+              echo 1 | torsocks am -i "programs/x86_64/${{ matrix.file }}" --debug 2>&1
+            fi
+          fi
+
+          # Force installation if first attempt is not success
+          if ! test -f /opt/"$LASTDIR"/remove; then
+            am -i "programs/x86_64/${{ matrix.file }}" --debug 2>&1 || sudo systemctl restart tor.service || systemctl restart tor.service
+            LASTDIR=$(ls -td /opt/* | head -1 | sed 's:.*/::')
+            if ! test -f /opt/"$LASTDIR"/remove; then
+              torsocks am -i "programs/x86_64/${{ matrix.file }}" --debug 2>&1
+              LASTDIR=$(ls -td /opt/* | head -1 | sed 's:.*/::')
+            fi
+          fi
+
           # If the last modified directory is /opt/am, the installation has failed
-
           if [ "$LASTDIR" = am ]; then
-
             echo "### 💀 ${{ matrix.file }}" >> $GITHUB_STEP_SUMMARY
             echo "${{ matrix.file }}" >> results/log-${{ matrix.file }}
             exit 1
 
           # If the last modified directory contains a file named "remove", check the installed files
-
           elif test -f /opt/"$LASTDIR"/remove; then
 
             printf "\n-------------------------------------------------------------\n\n"
 
+            # Check structure of directories in /opt
             echo " Structure of the directory in /opt"
             echo ""
             ls /opt/"$LASTDIR" | tee -a results/log-"${{ matrix.file }}"
@@ -315,13 +325,10 @@ jobs:
             am -R "$LASTDIR" && echo "${{ matrix.file }}" >> results/ok-${{ matrix.file }} || echo "${{ matrix.file }}" >> results/log-${{ matrix.file }}
 
           # Any other result is a failure
-
           else
-
             echo "### 💀 ${{ matrix.file }}" >> $GITHUB_STEP_SUMMARY
             echo "${{ matrix.file }}" >> results/log-${{ matrix.file }}
             exit 1
-
           fi
 
       - name: "Rename Failed Results ☝️"
