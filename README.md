@@ -54,6 +54,8 @@ You can use the command `am -a {PROGRAM}` to view the description and get the so
      - [Supported third-party databases](#supported-third-party-databases)
      - [How to replace AM database](#how-to-replace-am-database)
 
+   - [Do you own a repository for AppImages external to this database? Follow these instructions!](#do-you-own-a-repository-for-appimages-external-to-this-database-follow-these-instructions)
+
 [How to update all programs, for real!](#how-to-update-all-programs-for-real)
  - [How to update all installed apps](#how-to-update-all-installed-apps)
  - [How to update everything using Topgrade](#how-to-update-everything-using-topgrade)
@@ -253,6 +255,29 @@ it is enough to `export` the variables above and respect the destination file fo
 I did this to not tie users to this database and to allow them to use AM and all its features if I, Ivan, am unable to intervene for any reason.
 
 There are many discontinuous projects. Should this become one too, it will not be obsolete.
+
+------------------------------------------------------------------------
+### Do you own a repository for AppImages external to this database? Follow these instructions!
+If you have a github repository where you build and publish AppImage packages and if for any reason your application is not in this database, add the following instructions:
+
+> To install and update my AppImage using "[AM](https://github.com/ivan-hc/AM)", simply run the following command:
+> ```
+> am -e https://github.com/user/project appname keyword
+> ```
+> if you want to install and update it locally, run
+> ```
+> am -e --user https://github.com/user/project appname keyword
+> ```
+> ...or if you use [AppMan](https://github.com/ivan-hc/AppMan)
+> ```
+> appman -e https://github.com/user/project appname keyword
+> ```
+
+Replace `appname` with the name of the application that will also be used via command line... `keyword` is optional, depending on whether you have more than one AppImage in the "releases" section of your repository.
+
+Of course, replace `user/project` with your username and the repository name.
+
+For more details on how the `-e` or `extra` option works, see [here](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/extra.md).
 
 ------------------------------------------------------------------------
 
