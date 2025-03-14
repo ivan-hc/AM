@@ -8,7 +8,7 @@ on:
     branches: main
     paths:
       - 'programs/x86_64/**'
-      #- .github/workflows/test-apps.yml
+      - .github/workflows/test-apps.yml
 
   workflow_dispatch:
     inputs:
@@ -253,81 +253,78 @@ jobs:
           # Prevent the script from calling the "exit 1" command
           sed -i 's/|| exit 1//g' "programs/x86_64/${{ matrix.file }}"
 
-          # Blacklist some applications
-          if [[ "$pure_arg" =~ (bat-extras|microsoft-edge*) ]]; then
+          # Special patches
+          if [ "$pure_arg" = bat-extras ]; then
+            sed -i 's/if ! command/if command/g' "programs/x86_64/${{ matrix.file }}"
+          fi
+          
+          # Install the application (first attempt)
+          echo y | am -i "programs/x86_64/${{ matrix.file }}" --debug 2>&1 || sudo systemctl restart tor.service || systemctl restart tor.service
+          LASTDIR=$(ls -td /opt/* | head -1 | sed 's:.*/::')
 
-            echo "This app is blacklisted due to known errors related to GitHub Actions" | tee -a results/log-"${{ matrix.file }}"
-
-          else
-
-            # Install the application (first attempt)
-            echo y | am -i "programs/x86_64/${{ matrix.file }}" --debug 2>&1 || sudo systemctl restart tor.service || systemctl restart tor.service
+          # Check if the app needs interaction to be installed
+          if [[ "$pure_arg" =~ (libreoffice|mpv|wine) ]]; then
+            echo 1 | am -i "programs/x86_64/${{ matrix.file }}" --debug 2>&1 || sudo systemctl restart tor.service || systemctl restart tor.service
             LASTDIR=$(ls -td /opt/* | head -1 | sed 's:.*/::')
-
-            # Check if the app needs interaction to be installed
-            if [[ "$pure_arg" =~ (libreoffice|mpv|wine) ]]; then
-              echo 1 | am -i "programs/x86_64/${{ matrix.file }}" --debug 2>&1 || sudo systemctl restart tor.service || systemctl restart tor.service
-              LASTDIR=$(ls -td /opt/* | head -1 | sed 's:.*/::')
-              if ! test -f /opt/"$LASTDIR"/remove; then
-                echo 1 | torsocks am -i "programs/x86_64/${{ matrix.file }}" --debug 2>&1
-              fi
-            fi
-
-            # Force installation if first attempt is not success
             if ! test -f /opt/"$LASTDIR"/remove; then
-              am -i "programs/x86_64/${{ matrix.file }}" --debug 2>&1 || sudo systemctl restart tor.service || systemctl restart tor.service
+              echo 1 | torsocks am -i "programs/x86_64/${{ matrix.file }}" --debug 2>&1
+            fi
+          fi
+
+          # Force installation if first attempt is not success
+          if ! test -f /opt/"$LASTDIR"/remove; then
+            am -i "programs/x86_64/${{ matrix.file }}" --debug 2>&1 || sudo systemctl restart tor.service || systemctl restart tor.service
+            LASTDIR=$(ls -td /opt/* | head -1 | sed 's:.*/::')
+            if ! test -f /opt/"$LASTDIR"/remove; then
+              torsocks am -i "programs/x86_64/${{ matrix.file }}" --debug 2>&1
               LASTDIR=$(ls -td /opt/* | head -1 | sed 's:.*/::')
-              if ! test -f /opt/"$LASTDIR"/remove; then
-                torsocks am -i "programs/x86_64/${{ matrix.file }}" --debug 2>&1
-                LASTDIR=$(ls -td /opt/* | head -1 | sed 's:.*/::')
-              fi
             fi
+          fi
 
-            # If the last modified directory is /opt/am, the installation has failed
-            if [ "$LASTDIR" = am ]; then
-              echo "### 💀 ${{ matrix.file }}" >> $GITHUB_STEP_SUMMARY
-              echo "${{ matrix.file }}" >> results/log-${{ matrix.file }}
-              exit 1
+          # If the last modified directory is /opt/am, the installation has failed
+          if [ "$LASTDIR" = am ]; then
+            echo "### 💀 ${{ matrix.file }}" >> $GITHUB_STEP_SUMMARY
+            echo "${{ matrix.file }}" >> results/log-${{ matrix.file }}
+            exit 1
 
-            # If the last modified directory contains a file named "remove", check the installed files
-            elif test -f /opt/"$LASTDIR"/remove; then
+          # If the last modified directory contains a file named "remove", check the installed files
+          elif test -f /opt/"$LASTDIR"/remove; then
 
-              printf "\n-------------------------------------------------------------\n\n"
+            printf "\n-------------------------------------------------------------\n\n"
 
-              # Check structure of directories in /opt
-              echo " Structure of the directory in /opt"
-              echo ""
-              ls /opt/"$LASTDIR" | tee -a results/log-"${{ matrix.file }}"
+            # Check structure of directories in /opt
+            echo " Structure of the directory in /opt"
+            echo ""
+            ls /opt/"$LASTDIR" | tee -a results/log-"${{ matrix.file }}"
 
-              printf "\n-------------------------------------------------------------\n\n"
+            printf "\n-------------------------------------------------------------\n\n"
 
-              # Check the command in /usr/local/bin
-              echo " Command in \$PATH"
-              echo ""
-              command -v "$pure_arg" | tee -a results/log-"${{ matrix.file }}" || command -v "$LASTDIR" | tee -a results/log-"${{ matrix.file }}" || ls /usr/local/bin | tee -a results/log-"${{ matrix.file }}"
+            # Check the command in /usr/local/bin
+            echo " Command in \$PATH"
+            echo ""
+            command -v "$pure_arg" | tee -a results/log-"${{ matrix.file }}" || command -v "$LASTDIR" | tee -a results/log-"${{ matrix.file }}" || ls /usr/local/bin | tee -a results/log-"${{ matrix.file }}"
 
-              printf "\n-------------------------------------------------------------\n\n"
+            printf "\n-------------------------------------------------------------\n\n"
 
-              # Check launchers in /usr/local/share/applications
-              echo " Launchers in /usr/local/share/applications" | tee -a results/log-"${{ matrix.file }}"
-              echo ""
-              if test -f /usr/local/share/applications/*AM.desktop 2>/dev/null; then
-                 ls /usr/local/share/applications | grep "AM.desktop$" | tee -a results/log-"${{ matrix.file }}"
-              else
-                 ls /usr/local/share/applications | tee -a results/log-"${{ matrix.file }}"
-              fi
-
-              printf "\n-------------------------------------------------------------\n\n"
-
-              # Remove the application
-              am -R "$LASTDIR" && echo "${{ matrix.file }}" >> results/ok-${{ matrix.file }} || echo "${{ matrix.file }}" >> results/log-${{ matrix.file }}
-
-            # Any other result is a failure
+            # Check launchers in /usr/local/share/applications
+            echo " Launchers in /usr/local/share/applications" | tee -a results/log-"${{ matrix.file }}"
+            echo ""
+            if test -f /usr/local/share/applications/*AM.desktop 2>/dev/null; then
+               ls /usr/local/share/applications | grep "AM.desktop$" | tee -a results/log-"${{ matrix.file }}"
             else
-              echo "### 💀 ${{ matrix.file }}" >> $GITHUB_STEP_SUMMARY
-              echo "${{ matrix.file }}" >> results/log-${{ matrix.file }}
-              exit 1
+               ls /usr/local/share/applications | tee -a results/log-"${{ matrix.file }}"
             fi
+
+            printf "\n-------------------------------------------------------------\n\n"
+
+            # Remove the application
+            am -R "$LASTDIR" && echo "${{ matrix.file }}" >> results/ok-${{ matrix.file }} || echo "${{ matrix.file }}" >> results/log-${{ matrix.file }}
+
+          # Any other result is a failure
+          else
+            echo "### 💀 ${{ matrix.file }}" >> $GITHUB_STEP_SUMMARY
+            echo "${{ matrix.file }}" >> results/log-${{ matrix.file }}
+            exit 1
           fi
 
       - name: "Rename Failed Results ☝️"
