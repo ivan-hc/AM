@@ -205,8 +205,14 @@ _post_installation_processes() {
 		$SUDOCMD chown -R "$USER" "${LASTDIRPATH}" 2>/dev/null
 	fi
 	# Check for AM-updater script sothat CLI can manage updates
-	[ -f "${LASTDIRPATH}"/AM-updater ] && mkdir "${LASTDIRPATH}"/.am-installer 2>/dev/null \
-		&& curl -Ls "$APPSDB"/"$arg" > "${LASTDIRPATH}"/.am-installer/"$arg"
+	if [ -f "${LASTDIRPATH}"/AM-updater ]; then
+		mkdir "${LASTDIRPATH}"/.am-installer 2>/dev/null
+		if [ -z "$EXTRA_TRUE" ]; then
+			curl -Ls "$APPSDB"/"$arg" > "${LASTDIRPATH}"/.am-installer/"$arg"
+		else
+			touch "${LASTDIRPATH}"/.am-installer/"$arg".extra
+		fi
+	fi
 	find "${LASTDIRPATH}"/icons/* -xtype l -delete 2>/dev/null # Removes broken links
 	# If you have a broken or missing icon in your "icons" directory, download one from the catalog
 	[ -z "$(ls -A "${LASTDIRPATH}"/icons 2>/dev/null)" ] \
@@ -580,8 +586,8 @@ case "$1" in
 		sed -i "s#FUNCTION)#$FUNCTION)#g" "$CACHEDIR/extra/$EXTERNAL_APP_NAME"
 		[ -n "$APP_KEYWORD" ] && sed -i "s# head -1# grep -i \"$APP_KEYWORD\" | head -1#g" "$CACHEDIR/extra/$EXTERNAL_APP_NAME"
 		chmod a+x "$CACHEDIR/extra/$EXTERNAL_APP_NAME"
-		[ "$AMCLI" = "am" ] && [ "$2" = "--user" ] && "$AMCLIPATH_ORIGIN" -i --user "$CACHEDIR/extra/$EXTERNAL_APP_NAME" \
-		|| "$AMCLIPATH_ORIGIN" -i "$CACHEDIR/extra/$EXTERNAL_APP_NAME"
+		[ "$AMCLI" = "am" ] && [ "$2" = "--user" ] && EXTRA_TRUE=1 "$AMCLIPATH_ORIGIN" -i --user "$CACHEDIR/extra/$EXTERNAL_APP_NAME" \
+		|| EXTRA_TRUE=1 "$AMCLIPATH_ORIGIN" -i "$CACHEDIR/extra/$EXTERNAL_APP_NAME"
 		exit 1
 		;;
 
