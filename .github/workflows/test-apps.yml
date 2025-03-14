@@ -260,28 +260,23 @@ jobs:
             sed -i 's/_check_if_script_installs_a_metapackage || return 1//g' /opt/am/modules/install.am
           fi
           
-          # Install the application (first attempt)
-          echo y | am -i "programs/x86_64/${{ matrix.file }}" --debug 2>&1 || sudo systemctl restart tor.service || systemctl restart tor.service
-          LASTDIR=$(ls -td /opt/* | head -1 | sed 's:.*/::')
+          # Install the application
 
-          # Check if the app needs interaction to be installed
           if [[ "$pure_arg" =~ (libreoffice|mpv|wine) ]]; then
-            echo 1 | am -i "programs/x86_64/${{ matrix.file }}" --debug 2>&1 || sudo systemctl restart tor.service || systemctl restart tor.service
-            LASTDIR=$(ls -td /opt/* | head -1 | sed 's:.*/::')
-            if ! test -f /opt/"$LASTDIR"/remove; then
-              echo 1 | torsocks am -i "programs/x86_64/${{ matrix.file }}" --debug 2>&1
-            fi
+
+            echo 1 | am -i "programs/x86_64/${{ matrix.file }}" --debug 2>&1
+
+          elif [[ "$pure_arg" =~ (suyu|kvrt) ]]; then
+
+            echo y | torsocks am -i "programs/x86_64/${{ matrix.file }}" --debug 2>&1
+
+          else
+
+            echo y | am -i "programs/x86_64/${{ matrix.file }}" --debug 2>&1
+
           fi
 
-          # Force installation if first attempt is not success
-          if ! test -f /opt/"$LASTDIR"/remove; then
-            am -i "programs/x86_64/${{ matrix.file }}" --debug 2>&1 || sudo systemctl restart tor.service || systemctl restart tor.service
-            LASTDIR=$(ls -td /opt/* | head -1 | sed 's:.*/::')
-            if ! test -f /opt/"$LASTDIR"/remove; then
-              torsocks am -i "programs/x86_64/${{ matrix.file }}" --debug 2>&1
-              LASTDIR=$(ls -td /opt/* | head -1 | sed 's:.*/::')
-            fi
-          fi
+          LASTDIR=$(ls -td /opt/* | head -1 | sed 's:.*/::')
 
           # If the last modified directory is /opt/am, the installation has failed
           if [ "$LASTDIR" = am ]; then
