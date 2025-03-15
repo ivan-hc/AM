@@ -262,7 +262,11 @@ jobs:
           
           # Install the application
 
-          if [[ "$pure_arg" =~ (libreoffice|mpv|wine) ]]; then
+          if [ "$pure_arg" = suyu ]; then
+
+            blacklisted=1
+
+          elif [[ "$pure_arg" =~ (libreoffice|mpv|wine) ]]; then
 
             echo 1 | am -i "programs/x86_64/${{ matrix.file }}" --debug 2>&1 || sudo systemctl restart tor.service && echo 1 | am -i "programs/x86_64/${{ matrix.file }}" --debug 2>&1 || systemctl restart tor.service && echo 1 | am -i "programs/x86_64/${{ matrix.file }}" --debug 2>&1
 
@@ -274,8 +278,12 @@ jobs:
 
           LASTDIR=$(ls -td /opt/* | head -1 | sed 's:.*/::')
 
+          # If an application is blacklisted, ignore it
+          if [ -n "$blacklisted" ]; then
+            echo "This application cannot be installed on github actions" | tee -a results/log-"${{ matrix.file }}"
+
           # If the last modified directory is /opt/am, the installation has failed
-          if [ "$LASTDIR" = am ]; then
+          elif [ "$LASTDIR" = am ]; then
             echo "### 💀 ${{ matrix.file }}" >> $GITHUB_STEP_SUMMARY
             echo "${{ matrix.file }}" >> results/log-${{ matrix.file }}
             exit 1
