@@ -591,6 +591,7 @@ jobs:
         with:
           name: ko-${{ matrix.file }}
           path: programs/x86_64/results/ko-${{ matrix.file }}
+          retention-days: 1
 
       - name: "Upload OK Results ⬆️"
         if: success()
@@ -598,6 +599,7 @@ jobs:
         with:
           name: ok-${{ matrix.file }}
           path: programs/x86_64/results/ok-${{ matrix.file }}
+          retention-days: 1
 
   update-results:
     name: "results 📰"
@@ -729,43 +731,43 @@ jobs:
             git push --force-with-lease && echo "sync successfull" >> $GITHUB_STEP_SUMMARY || (git diff && git status)
           fi
 
-  delete-all-artifacts:
-    name: "cleanup 🧹"
-    runs-on: ubuntu-22.04
-    needs: update-results
-    if: always()
-    steps:
-      - name: "Check out repository 🏃"
-        uses: actions/checkout@v4
-
-      - name: "Delete Artifacts 🙈"
-        env:
-          REPO_NAME: ${{ github.repository }}
-          RUN_ID: ${{ github.run_id }}
-          TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          echo "Fetching and deleting all artifacts for run ID: $RUN_ID"
-          PAGE=1
-          DELETED=0
-          while true; do
-            RESPONSE=$(curl -s -H "Authorization: token $TOKEN" \
-             "https://api.github.com/repos/$REPO_NAME/actions/runs/$RUN_ID/artifacts?per_page=1000&page=$PAGE")
-            ARTIFACT_IDS=$(echo "$RESPONSE" | jq -r '.artifacts[].id')
-            if [[ -z "$ARTIFACT_IDS" ]]; then
-              echo "No more artifacts to delete. Total deleted: $DELETED"
-              break
-            fi
-            for ARTIFACT_ID in $ARTIFACT_IDS; do
-              echo "Deleting artifact with ID: $ARTIFACT_ID"
-              curl -X DELETE -s -H "Authorization: token $TOKEN" \
-               "https://api.github.com/repos/$REPO_NAME/actions/artifacts/$ARTIFACT_ID"
-              ((DELETED+=1))
-            done
-            ((PAGE+=1))
-          done
-          echo "Successfully deleted $DELETED artifacts."
-          echo "Git clean"
-          git clean -f
+  # delete-all-artifacts:
+  #   name: "cleanup 🧹"
+  #   runs-on: ubuntu-22.04
+  #   needs: update-results
+  #   if: always()
+  #   steps:
+  #     - name: "Check out repository 🏃"
+  #       uses: actions/checkout@v4
+  #
+  #     - name: "Delete Artifacts 🙈"
+  #       env:
+  #         REPO_NAME: ${{ github.repository }}
+  #         RUN_ID: ${{ github.run_id }}
+  #         TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #       run: |
+  #         echo "Fetching and deleting all artifacts for run ID: $RUN_ID"
+  #         PAGE=1
+  #         DELETED=0
+  #         while true; do
+  #           RESPONSE=$(curl -s -H "Authorization: token $TOKEN" \
+  #            "https://api.github.com/repos/$REPO_NAME/actions/runs/$RUN_ID/artifacts?per_page=1000&page=$PAGE")
+  #           ARTIFACT_IDS=$(echo "$RESPONSE" | jq -r '.artifacts[].id')
+  #           if [[ -z "$ARTIFACT_IDS" ]]; then
+  #             echo "No more artifacts to delete. Total deleted: $DELETED"
+  #             break
+  #           fi
+  #           for ARTIFACT_ID in $ARTIFACT_IDS; do
+  #             echo "Deleting artifact with ID: $ARTIFACT_ID"
+  #             curl -X DELETE -s -H "Authorization: token $TOKEN" \
+  #              "https://api.github.com/repos/$REPO_NAME/actions/artifacts/$ARTIFACT_ID"
+  #             ((DELETED+=1))
+  #           done
+  #           ((PAGE+=1))
+  #         done
+  #         echo "Successfully deleted $DELETED artifacts."
+  #         echo "Git clean"
+  #         git clean -f
 
   already-tested:
     name: "all 🏁"
