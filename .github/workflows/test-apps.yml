@@ -308,33 +308,6 @@ jobs:
             echo "SITE=\"$SITE\"" | tee -a results/out-"${{ matrix.file }}"
           fi
 
-      - name: "download ${{ matrix.file }} 🚧"
-        working-directory: programs/x86_64
-        run: |
-          if grep -q "^version=" "${{ matrix.file }}" 2>/dev/null; then
-            echo 'if 1'
-            version=$(eval echo "$(grep -i '^version=' "${{ matrix.file }}" 2>/dev/null | head -1 | sed 's/version=//g')")
-            if [ -z "$version" ]; then
-              echo 'if 2'
-              sed -i 's/curl -Ls/torsocks curl -Ls/g' "${{ matrix.file }}"
-              version=$(eval echo "$(grep -i '^version=' "${{ matrix.file }}" 2>/dev/null | head -1 | sed 's/version=//g')")
-              if [ -z "$version" ]; then
-                echo 'if 3'
-                sudo systemctl restart tor.service && wait || systemctl restart tor.service && wait
-                wait
-                version=$(eval echo "$(grep -i '^version=' "${{ matrix.file }}" 2>/dev/null | head -1 | sed 's/version=//g')")
-              fi
-            fi
-            echo 'including download'
-            if [ -n "$version" ]; then
-              echo "downVer=\"$version\"" 2>/dev/null | tee -a results/out-"${{ matrix.file }}"
-            else
-              echo "Needs more investigation"
-            fi
-          else
-            echo "what happend?"
-          fi
-
       - name: "test ${{ matrix.file }} 🚧"
         id: test
         working-directory: programs/x86_64
@@ -595,10 +568,6 @@ jobs:
             if [ -z "$size" ]; then
               size=$(cat "$LogFile" | grep 'size' | cut -d'=' -f2)
               echo "size is $size"
-            fi
-            if [ -z "$version" ]; then
-              version=$(cat "$LogFile" | grep 'version' | cut -d'=' -f2)
-              echo "version is $version"
             fi
             KoFile="results/ko-$appname"
             if [[ -f "$KoFile" ]]; then
