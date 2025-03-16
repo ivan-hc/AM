@@ -593,17 +593,20 @@ case "$1" in
 
 	'reinstall')
 		_completion_lists
-		printf "%b\n Checking for changes of the installation scripts in the online database...\n%b\n" "$DIVIDING_LINE" "$DIVIDING_LINE"
-		_determine_args
-		for arg in $ARGS; do
-			argpath=$(echo "$ARGPATHS" | grep "/$arg$")
-			if [ -f "$argpath"/AM-updater ]; then
-				mkdir -p "$argpath"/.am-installer
-				scriptname=$(ls "$argpath/.am-installer/" | head -1)
-				if [ -n "$scriptname" ] && grep -q "^◆ $scriptname :" "$AMDATADIR/$ARCH-apps"; then
-					CURRENT=$(cat "$argpath"/.am-installer/"$scriptname")
-					SOURCE=$(curl -Ls "$APPSDB"/"$scriptname")
-					if [ -n "$SOURCE" ] && [ "$CURRENT" != "$SOURCE" ]; then
+		case $2 in
+		'--all')
+			echo "$DIVIDING_LINE"
+			read -r -p " Do you wish reinstall everything? (N/y): " yn
+			if ! echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
+				printf "%b\n ABORTED! \n%b\n" "$DIVIDING_LINE" "$DIVIDING_LINE"
+			else
+				printf "%b\n Reinstalling everything...\n%b\n" "$DIVIDING_LINE" "$DIVIDING_LINE"
+				_determine_args
+				for arg in $ARGS; do
+					argpath=$(echo "$ARGPATHS" | grep "/$arg$")
+					[ -d "$argpath"/.am-installer ] && scriptname=$(ls "$argpath/.am-installer/" | head -1)
+					[ -z "$scriptname" ] && scriptname="$arg"
+					if [ "$arg" != am ]; then
 						reinstall_true=1
 						"$AMCLIPATH_ORIGIN" -R "$arg"
 						if [ "$AMCLI" = "am" ] && ! echo "$argpath" | grep -q "^/opt"; then
@@ -612,11 +615,37 @@ case "$1" in
 							"$AMCLIPATH_ORIGIN" -i "$scriptname"
 						fi
 					fi
-					SOURCE=""
-				fi
-				scriptname=""
+					scriptname=""
+				done
 			fi
-		done
+			;;
+		*)
+			printf "%b\n Checking for changes of the installation scripts in the online database...\n%b\n" "$DIVIDING_LINE" "$DIVIDING_LINE"
+			_determine_args
+			for arg in $ARGS; do
+				argpath=$(echo "$ARGPATHS" | grep "/$arg$")
+				if [ -f "$argpath"/AM-updater ]; then
+					mkdir -p "$argpath"/.am-installer
+					scriptname=$(ls "$argpath/.am-installer/" | head -1)
+					if [ -n "$scriptname" ] && grep -q "^◆ $scriptname :" "$AMDATADIR/$ARCH-apps"; then
+						CURRENT=$(cat "$argpath"/.am-installer/"$scriptname")
+						SOURCE=$(curl -Ls "$APPSDB"/"$scriptname")
+						if [ -n "$SOURCE" ] && [ "$CURRENT" != "$SOURCE" ]; then
+							reinstall_true=1
+							"$AMCLIPATH_ORIGIN" -R "$arg"
+							if [ "$AMCLI" = "am" ] && ! echo "$argpath" | grep -q "^/opt"; then
+								"$AMCLIPATH_ORIGIN" -i --user "$scriptname"
+							else
+								"$AMCLIPATH_ORIGIN" -i "$scriptname"
+							fi
+						fi
+						SOURCE=""
+					fi
+					scriptname=""
+				fi
+			done
+			;;
+		esac
 		[ -n "$reinstall_true" ] && printf " App removal and reinstallation complete! \n%b\n" "$DIVIDING_LINE" || printf " Nothing to do here! \n%b\n" "$DIVIDING_LINE"
 		;;
 esac
