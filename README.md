@@ -551,10 +551,11 @@ Search for keywords in the list of available applications, add the "`--appimages
 ### `reinstall`
 
  		am reinstall
+ 		am reinstall --all
 
 **Description**:
 
-Reinstall only programs whose installation script has been modified in AM's online database.
+Reinstall only programs whose installation script has been modified in AM's online database. Use the "`--all`" flag to reinstall everything instead.
 
 ------------------------------------------------------------------------
 ### `remove`, `-r`
