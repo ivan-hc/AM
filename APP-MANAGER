@@ -658,7 +658,16 @@ _use_apikey() {
 	case $2 in
 	'del'|'delete'|'remove')
 		[ -f "$ghapikey_file" ] || { echo " ✖ No file named $ghapikey_file has been found"; exit 1; }
+		# Remove token references from all updater files before deleting the token file
+		updater_files=("$APPSPATH"/*/AM-updater)
+		for f in "${updater_files[@]}"; do
+			if [ -f "$f" ] && grep -q "https://api.github.com" "$f"; then
+				# Remove the Authorization header from the file
+				sed -i 's# --header "Authorization: token [^"]*"##g' "$f"
+			fi
+		done
 		rm -f "$ghapikey_file" && echo " ✔ $ghapikey_file has been removed"
+		echo " ✔ Authorization headers removed from updater files"
 		exit 0
 	esac
 	_online_check
