@@ -499,6 +499,7 @@ Prevent an application being updated, if it has an"AM-updater" script.
 		am -l
 		am -l --all
 		am -l --appimages
+  		am -l --portable
 
 **Description**:
 
@@ -541,11 +542,12 @@ Overwrite apps with snapshots saved previously (see "`-b`").
 		am -q {KEYWORD}
 		am -q --all {KEYWORD}
 		am -q --appimages {KEYWORD}
+		am -q --portable {KEYWORD}
 		am -q --pkg {PROGRAM1} {PROGRAM2}
 
 **Description**:
 
-Search for keywords in the list of available applications, add the "`--appimages`" option to list only the AppImages or add "`--pkg`" to list multiple programs at once. The "`--all`" flag allows you to consult the set of all supported databases.
+Search for keywords in the list of available applications, add the "`--appimages`" option to list only the AppImages, "`--portable`" option to list only the portable apps or add "`--pkg`" to list multiple programs at once. The "`--all`" flag allows you to consult the set of all supported databases.
 
 ------------------------------------------------------------------------
 ### `reinstall`
