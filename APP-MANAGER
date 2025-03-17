@@ -654,57 +654,78 @@ ghapikey_file="$AMDATADIR/ghapikey.txt"
 # Set header authorization if GitHub API key file exists
 [ -f "$ghapikey_file" ] && HeaderAuthWithGITPAT=" --header \"Authorization: token $(<"$ghapikey_file")\" "
 
+# Function to validate GitHub API tokens
+_validate_github_token() {
+    local token="$1"
+    local quiet="${2:-false}"  # Optional parameter to suppress output
+    
+    # Check HTTP status code for proper validation
+    local HTTP_STATUS
+    HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --header "Authorization: token $token" "https://api.github.com/repos/ivan-hc/AM/releases")
+    
+    if [[ "$HTTP_STATUS" == "200" ]]; then
+        [[ "$quiet" != "true" ]] && echo "Validation successful!"
+        return 0
+    elif [[ "$HTTP_STATUS" == "401" || "$HTTP_STATUS" == "403" ]]; then
+        [[ "$quiet" != "true" ]] && echo "ERROR: Invalid token or insufficient permissions!"
+        return 1
+    else
+        [[ "$quiet" != "true" ]] && echo "ERROR: Unexpected response (HTTP $HTTP_STATUS)"
+        return 2
+    fi
+}
+
 _use_apikey() {
-	case $2 in
-	'del'|'delete'|'remove')
-		[ -f "$ghapikey_file" ] || { echo " ✖ No file named $ghapikey_file has been found"; exit 1; }
-		# Remove token references from all updater files before deleting the token file
-		updater_files=("$APPSPATH"/*/AM-updater)
-		for f in "${updater_files[@]}"; do
-			if [ -f "$f" ] && grep -q "https://api.github.com" "$f"; then
-				# Remove the Authorization header from the file
-				sed -i 's# --header "Authorization: token [^"]*"##g' "$f"
-			fi
-		done
-		rm -f "$ghapikey_file" && echo " ✔ $ghapikey_file has been removed"
-		echo " ✔ Authorization headers removed from updater files"
-		exit 0
-	esac
-	_online_check
-	if [[ "$2" =~ ^(gh[ps]_[a-zA-Z0-9]{36}|github_pat_[a-zA-Z0-9]{22}_[a-zA-Z0-9]{59})$ ]]; then
-		# Check HTTP status code for proper validation
-		HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --header "Authorization: token $2" "https://api.github.com/repos/ivan-hc/AM/releases")
-		
-		if [[ "$HTTP_STATUS" == "200" ]]; then
-			echo "$2" > "$ghapikey_file"
-			echo "Validation successful!"
-		elif [[ "$HTTP_STATUS" == "401" || "$HTTP_STATUS" == "403" ]]; then
-			echo "ERROR: Invalid token or insufficient permissions!"
-		else
-			echo "ERROR: Unexpected response (HTTP $HTTP_STATUS)"
-		fi
-	else
-		echo "ERROR: Wrong expression, validation failed!"
-	fi
+    case $2 in
+    'del'|'delete'|'remove')
+        [ -f "$ghapikey_file" ] || { echo " ✖ No file named $ghapikey_file has been found"; exit 1; }
+        # Remove token references from all updater files before deleting the token file
+        updater_files=("$APPSPATH"/*/AM-updater)
+        for f in "${updater_files[@]}"; do
+            if [ -f "$f" ] && grep -q "https://api.github.com" "$f"; then
+                # Remove the Authorization header from the file
+                sed -i 's# --header "Authorization: token [^"]*"##g' "$f"
+            fi
+        done
+        rm -f "$ghapikey_file" && echo " ✔ $ghapikey_file has been removed"
+        echo " ✔ Authorization headers removed from updater files"
+        exit 0
+    esac
+    _online_check
+    if [[ "$2" =~ ^(gh[ps]_[a-zA-Z0-9]{36}|github_pat_[a-zA-Z0-9]{22}_[a-zA-Z0-9]{59})$ ]]; then
+        # Validate the token
+        if _validate_github_token "$2"; then
+            echo "$2" > "$ghapikey_file"
+        fi
+    else
+        echo "ERROR: Wrong expression, validation failed!"
+    fi
 }
 
 _update_github_api_key_in_the_updater_files() {
-	if [ -f "$ghapikey_file" ]; then
-		ghapikey=$(<"$ghapikey_file")
-		updater_files=("$APPSPATH"/*/AM-updater) # Assuming AM-updater is one level deeper
-		for f in "${updater_files[@]}"; do
-			if [ -f "$f" ] && grep -q "https://api.github.com" "$f"; then
-				# Check if the file already contains a valid API key
-				if ! grep -qE "(gh[ps]_[a-zA-Z0-9]{36}|github_pat_[a-zA-Z0-9]{22}_[a-zA-Z0-9]{59})" "$f"; then
-					# Insert HeaderAuthWithGITPAT before the GitHub API URL
-					sed -i "s#https://api.github.com#$HeaderAuthWithGITPAT https://api.github.com#g" "$f"
-				else
-					# Replace existing API key with the one from ghapikey.txt
-					sed -i "s#\(gh[ps]_[a-zA-Z0-9]\{36\}\|github_pat_[a-zA-Z0-9]\{22\}_[a-zA-Z0-9]\{59\}\)#$ghapikey#g" "$f"
-				fi
-			fi
-		done
-    	fi
+    if [ -f "$ghapikey_file" ]; then
+        ghapikey=$(<"$ghapikey_file")
+        
+        # Validate the stored token quietly before attempting to update files
+        if ! _validate_github_token "$ghapikey" "true"; then
+            echo " ⚠️ Warning: Stored GitHub API token is invalid or expired"
+            return 1
+        fi
+        
+        updater_files=("$APPSPATH"/*/AM-updater) # Assuming AM-updater is one level deeper
+        for f in "${updater_files[@]}"; do
+            if [ -f "$f" ] && grep -q "https://api.github.com" "$f"; then
+                # Check if the file already contains a valid API key
+                if ! grep -qE "(gh[ps]_[a-zA-Z0-9]{36}|github_pat_[a-zA-Z0-9]{22}_[a-zA-Z0-9]{59})" "$f"; then
+                    # Insert HeaderAuthWithGITPAT before the GitHub API URL
+                    sed -i "s#https://api.github.com#$HeaderAuthWithGITPAT https://api.github.com#g" "$f"
+                else
+                    # Replace existing API key with the one from ghapikey.txt
+                    sed -i "s#\(gh[ps]_[a-zA-Z0-9]\{36\}\|github_pat_[a-zA-Z0-9]\{22\}_[a-zA-Z0-9]\{59\}\)#$ghapikey#g" "$f"
+                fi
+            fi
+        done
+    fi
 }
 
 ################################################################################################################################################################
