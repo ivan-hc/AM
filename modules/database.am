@@ -459,11 +459,18 @@ _list() {
 	else
 		AVAILABLE_APPIMAGES_NUMBER=$(grep -e "^◆.*$" -c "$AMDATADIR/$ARCH-appimages")
 	fi
+	if ! test -f "$AMDATADIR/$ARCH-portable"; then
+		_online_check
+		_sync_portable_list
+		AVAILABLE_PORTABLE_NUMBER=$(grep -e "^◆.*$" -c "$AMDATADIR/$ARCH-portable")
+	else
+		AVAILABLE_PORTABLE_NUMBER=$(grep -e "^◆.*$" -c "$AMDATADIR/$ARCH-portable")
+	fi
 	# Determine the number of third-party apps
 	for t in $third_party_lists; do
 		[ ! -f "$AMDATADIR/$ARCH-$t" ] && _online_check && _sync_third_party_lists && _completion_lists
 	done
-	tp_lists=$(find "$AMDATADIR" -type f -name "$ARCH-*" | grep -v "appimages\|apps")
+	tp_lists=$(find "$AMDATADIR" -type f -name "$ARCH-*" | grep -v "appimages\|portable\|apps")
 	for t in $tp_lists; do
 		[ -z "$TP_LISTS" ] && TP_LISTS=$(sort -u "$t") || TP_LISTS="$TP_LISTS\n$(sort -u "$t")"
 	done
@@ -583,6 +590,14 @@ case "$1" in
 			_list_msg "$@" | less -Ir
 			printf "%b\n %b\n%b\n" "$DIVIDING_LINE" "$SUBJECT" "$DIVIDING_LINE"
 			;;
+		'--portable')
+			wget -q --tries=10 --timeout=20 --spider https://github.com && _sync_portable_list
+			_list
+			SUBJECT="$AVAILABLE_PORTABLE_NUMBER portable programs available in the \"AM\" database"
+			LIST=$(sort -u "$AMDATADIR"/"$ARCH"-portable | grep "^◆ .*$" 2>/dev/null | _pretty_list)
+			_list_msg "$@" | less -Ir
+			printf "%b\n %b\n%b\n" "$DIVIDING_LINE" "$SUBJECT" "$DIVIDING_LINE"
+			;;
 		*)	
 			if echo "$third_party_flags" | tr ' ' '\n' | grep -q -- "$2$"; then
 				wget -q --tries=10 --timeout=20 --spider https://github.com && _sync_third_party_lists 2>/dev/null
@@ -606,6 +621,7 @@ case "$1" in
 			echo " USAGE: $AMCLI $1 [ARGUMENT]"
 			echo "        $AMCLI $1 --all [ARGUMENT]"
 			echo "        $AMCLI $1 --appimages [ARGUMENT]"
+			echo "        $AMCLI $1 --portable [ARGUMENT]"
 			echo "        $AMCLI $1 --pkg [ARGUMENT]"
 			echo ""; exit 1
 		fi
@@ -628,6 +644,11 @@ case "$1" in
 			wget -q --tries=10 --timeout=20 --spider https://github.com && _sync_appimages_list
 			_query_lists "$*"
 			sort -u "$AMDATADIR/$ARCH-appimages" 2>/dev/null | grep "^◆ .*$" 2>/dev/null | _find_no_order "$@" | _pretty_list_compat
+		elif [ "$1" = --portable ]; then
+			shift
+			wget -q --tries=10 --timeout=20 --spider https://github.com && _sync_portable_list
+			_query_lists "$*"
+			sort -u "$AMDATADIR/$ARCH-portable" 2>/dev/null | grep "^◆ .*$" 2>/dev/null | _find_no_order "$@" | _pretty_list_compat
 		else
 			_query_lists "$*"
 			LISTS=$(find "$AMDATADIR" -type f -name "$ARCH-app*" 2>/dev/null | grep -v appimage | xargs)
