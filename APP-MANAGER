@@ -662,9 +662,17 @@ _use_apikey() {
 		exit 0
 	esac
 	if [[ "$2" =~ ^(gh[ps]_[a-zA-Z0-9]{36}|github_pat_[a-zA-Z0-9]{22}_[a-zA-Z0-9]{59})$ ]]; then
-		test_apikey_output_with_wget=$(curl -Ls --header "Authorization: token $2" 'https://api.github.com/repos/ivan-hc/AM/releases' | head -1)
-		[ -n "$test_apikey_output_with_wget" ] && echo "$2" > "$ghapikey_file" \
-			&& echo "Validation successful!" || echo "ERROR: This is not a valid key!"
+		# Check HTTP status code for proper validation
+		HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --header "Authorization: token $2" "https://api.github.com/repos/ivan-hc/AM/releases")
+		
+		if [[ "$HTTP_STATUS" == "200" ]]; then
+			echo "$2" > "$ghapikey_file"
+			echo "Validation successful!"
+		elif [[ "$HTTP_STATUS" == "401" || "$HTTP_STATUS" == "403" ]]; then
+			echo "ERROR: Invalid token or insufficient permissions!"
+		else
+			echo "ERROR: Unexpected response (HTTP $HTTP_STATUS)"
+		fi
 	else
 		echo "ERROR: Wrong expression, validation failed!"
 	fi
