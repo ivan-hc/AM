@@ -1,29 +1,48 @@
 #!/bin/sh
 
 # AM INSTALL SCRIPT VERSION 3.5
-set -u
 APP=gimp
-SITE="ivan-hc/GIMP-appimage"
+SITE1="https://www.gimp.org"
+SITE2="ivan-hc/GIMP-appimage"
 
 # CREATE DIRECTORIES AND ADD REMOVER
 [ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
-printf "#!/bin/sh\nset -e\nrm -f /usr/local/bin/$APP\nrm -R -f /opt/$APP" > ../remove
+printf "#!/bin/sh\nrm -f /usr/local/bin/$APP\nrm -R -f /opt/$APP" > ../remove
 printf '\n%s' "rm -f /usr/local/share/applications/$APP-AM.desktop" >> ../remove
 chmod a+x ../remove || exit 1
 
-# DOWNLOAD AND PREPARE THE APP, $version is also used for updates
-version=$(curl -Ls https://api.github.com/repos/ivan-hc/GIMP-appimage/releases/latest | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | head -1)
-wget "$version" || exit 1
-# Keep this space in sync with other installation scripts
-# Use tar fx ./*tar* here for example in this line in case a compressed file is downloaded.
+# CHOOSE A VERSION
+read -r -p "
+ Choose which version of GIMP AppImage to use:
+
+ 1. Official AppImage
+
+    Source: https://www.gimp.org
+
+ 2. Unofficial Archimage based on JuNest (Arch Linux)
+
+    Source: https://github.com/ivan-hc/GIMP-appimage
+
+ Which version you choose (type a number and press ENTER)?" response
+case "$response" in
+	1) rm -f /opt/"$APP"/version
+	UPDATER=1
+	version="https:$(curl -Ls https://www.gimp.org/downloads/ | tr '">< ' '\n' | grep -i "download.*x86_64.*appimage$" | head -1)"
+	wget "$version"
+	echo "$version" >> /opt/$APP/version;;
+	2) rm -f /opt/"$APP"/version
+	version=$(curl -Ls https://api.github.com/repos/ivan-hc/GIMP-appimage/releases/latest | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | head -1)
+	UPDATER=2
+	wget "$version"
+	echo "$version" >> /opt/$APP/version;;
+	*) /opt/"$APP"/remove && exit;;
+esac
 cd ..
 mv ./tmp/*mage ./"$APP"
-# Keep this space in sync with other installation scripts
 rm -R -f ./tmp || exit 1
-echo "$version" > ./version
 chmod a+x ./"$APP" || exit 1
 
-# LINK TO PATH
+# LINK
 ln -s "/opt/$APP/$APP" "/usr/local/bin/$APP"
 
 # SCRIPT TO UPDATE THE PROGRAM
@@ -31,9 +50,21 @@ cat >> ./AM-updater << 'EOF'
 #!/bin/sh
 set -u
 APP=gimp
+if [ -z "$APP" ]; then exit 1; fi
+EOF
+if [ "$UPDATER" = 1 ]; then
+cat >> ./AM-updater << 'EOF'
+SITE="https://www.gimp.org"
+version="https:$(curl -Ls https://www.gimp.org/downloads/ | tr '">< ' '\n' | grep -i "download.*x86_64.*appimage$" | head -1)"
+EOF
+else
+cat >> ./AM-updater << 'EOF'
 SITE="ivan-hc/GIMP-appimage"
-version0=$(cat "/opt/$APP/version")
 version=$(curl -Ls https://api.github.com/repos/ivan-hc/GIMP-appimage/releases/latest | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | head -1)
+EOF
+fi
+cat >> ./AM-updater << 'EOF'
+version0=$(cat "/opt/$APP/version")
 [ -n "$version" ] || { echo "Error getting link"; exit 1; }
 if command -v appimageupdatetool >/dev/null 2>&1; then
 	cd "/opt/$APP" || exit 1
@@ -57,16 +88,17 @@ EOF
 chmod a+x ./AM-updater || exit 1
 
 # LAUNCHER & ICON
+cd "/opt/$APP" || exit 1
 ./"$APP" --appimage-extract *.desktop 1>/dev/null && mv ./squashfs-root/*.desktop ./"$APP".desktop
 ./"$APP" --appimage-extract .DirIcon 1>/dev/null && mv ./squashfs-root/.DirIcon ./DirIcon
 COUNT=0
 while [ "$COUNT" -lt 10 ]; do # Tries to get the actual icon/desktop if it is a symlink to another symlink
 	if [ -L ./"$APP".desktop ]; then
-		LINKPATH="$(readlink ./"$APP".desktop | sed 's|^\./||' 2>/dev/null)"
+		LINKPATH=$(readlink ./"$APP".desktop)
 		./"$APP" --appimage-extract "$LINKPATH" 1>/dev/null && mv ./squashfs-root/"$LINKPATH" ./"$APP".desktop
 	fi
 	if [ -L ./DirIcon ]; then
-		LINKPATH="$(readlink ./DirIcon | sed 's|^\./||' 2>/dev/null)"
+		LINKPATH=$(readlink ./DirIcon)
 		./"$APP" --appimage-extract "$LINKPATH" 1>/dev/null && mv ./squashfs-root/"$LINKPATH" ./DirIcon
 	fi
 	[ ! -L ./"$APP".desktop ] && [ ! -L ./DirIcon ] && break
