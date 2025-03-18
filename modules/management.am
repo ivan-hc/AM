@@ -59,11 +59,15 @@ _overwrite() {
 		if ! echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
 			printf "\n OPERATION ABORTED! \n\n"
 		else
-			printf "\n Please, select a snapshot or press CTRL+C to abort:\n\n"
+			printf "\n Please, select a snapshot or press ZERO to abort:\n\n"
 			sleep 1
 			select d in "$HOME/.am-snapshots/$2"/*; do
-				test -n "$d" && break
-				echo ">>> Invalid Selection"
+				if [ -n "$d" ]; then
+					break
+				else
+					printf "\n Invalid selection. ABORTED! \n"
+					return 1
+				fi
 			done
 			cp -r --backup=t "$d"/* "$argpath"/
 			rm -R -f ./tmp "$argpath"/*~
@@ -80,6 +84,7 @@ _downgrade_entries_filter() {
 		| tail -1 | sed '1,${
 		s/version=$(//g
 		s/head -1)/head -100/g
+		s/tail -1)/head -100/g
 		s#$REPO#'"$REPO"'#g
 		s#releases/latest#releases#g
 		s#releases #releases?per_page=100 #g
@@ -110,12 +115,16 @@ _downgrade() {
 	echo "$DIVIDING_LINE"
 	echo "You have chosen to roll back \"$2\"."
 	echo "$DIVIDING_LINE"
-	echo "Select a URL from this menu (read carefully) or press CTRL+C to abort:"
+	echo "Select a URL from this menu (read carefully) or press ZERO to abort:"
 	echo "$DIVIDING_LINE"
 	sleep 1
 	select d in $urls; do
-		test -n "$d" && break
-		echo ">>> Invalid Selection"
+		if [ -n "$d" ]; then
+			break
+		else
+			printf "\n Invalid selection. ABORTED! \n"
+			return 1
+		fi
 	done
 	cp ./AM-updater ./AM-rollback
 	sed -i 's/version0/#version0/g' ./AM-rollback
