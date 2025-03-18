@@ -11,7 +11,7 @@
 AMCATALOGUEMARKDOWNS="${AMCATALOGUEMARKDOWNS:-https://portable-linux-apps.github.io/apps}"
 
 _about_remove_extension() {
-	tparg=$(echo "$arg" | _remove_known_third_party_extensions)
+	tparg=$(echo "$arg" | _remove_known_third_party_extensions | sed 's/.extra$//g')
 }
 
 _about_check() {
@@ -25,17 +25,22 @@ _about_description_for_third_party() {
 		tp_extension=$(echo "$arg" | sed 's:.*\.::')
 	fi
 	if [ -n "$tp_extension" ]; then
-		tprepo_readme="${tp_extension}_readme"
-		readme_source="${!tprepo_readme}"
-		tprepo_repo="${tp_extension}_repo"
-		repo_source="${!tprepo_repo}"
-		appname_arg=$(curl -Ls "$readme_source" 2>/dev/null | grep -i "^| $appname | .* | http.* | http.* | .* |$" | tr '|' '\n' | cut -c 2- | grep .)
-		about_description=$(echo "$appname_arg" | awk -F: "NR==$awk_description")
-		about_site=$(echo "$appname_arg" | awk -F: "NR==$awk_site")
+		if [ "$tp_extension" = extra ]; then
+			about_description="AppImage installed with the \"-e\" option, no description available."
+			about_site=$(grep -i "^version=" "$argpath"/AM-updater | tr ' ' '\n' | grep -i "^http" | sed 's#api.github.com#github.com#g; s#repos/##g; s#/releases/.*##g; s#/releases$##g')
+		else
+			tprepo_readme="${tp_extension}_readme"
+			readme_source="${!tprepo_readme}"
+			tprepo_repo="${tp_extension}_repo"
+			repo_source="${!tprepo_repo}"
+			appname_arg=$(curl -Ls "$readme_source" 2>/dev/null | grep -i "^| $appname | .* | http.* | http.* | .* |$" | tr '|' '\n' | cut -c 2- | grep .)
+			about_description=$(echo "$appname_arg" | awk -F: "NR==$awk_description")
+			about_site=$(echo "$appname_arg" | awk -F: "NR==$awk_site")
+			third_party_readme=$(curl -Ls "$readme_source")
+			tpnumber=$(echo "$third_party_readme" | grep "^| $appname | .* | http.* | http.* | .* |$" | wc -l | sed 's/ //g')
+		fi
 
-		third_party_readme=$(curl -Ls "$readme_source")
-		tpnumber=$(echo "$third_party_readme" | grep "^| $appname | .* | http.* | http.* | .* |$" | wc -l | sed 's/ //g')
-		if [ "$tpnumber" -ge "1" ]; then
+		if [ -n "$tpnumber" ] && [ "$tpnumber" -ge "1" ]; then
 			[ "$tpnumber" != 1 ] && printf "\nAvailable families: %b\n" "$tpnumber"
 			if echo "$app_status" | grep -q "^installed"; then
 				[ -f "$argpath/$appname" ] && printf "\nBinary info: %b\n" "$(file "$argpath/$appname")" | fold -sw 78
@@ -51,7 +56,9 @@ _about_description_for_third_party() {
 		fi
 	fi
 
-	if [ -n "$about_description" ]; then
+	if [ "$tp_extension" = extra ]; then
+		printf "\n%b\n\nSOURCE: %b\n" "$about_description" "$about_site"
+	elif [ -n "$about_description" ]; then
 		printf "\n%b\n\nSOURCE: \n%b\n\nDATABASE: %b\n" "$about_description" "$about_site" "$repo_source"
 	else
 		[ -n "$repo_source" ] && printf "\n\nDATABASE: %b\n" "$repo_source" || printf "\nAvailable in an third-party database (requires an extension).\n"
@@ -77,7 +84,7 @@ _about_description() {
 
 _about_page() {
 	package_name="$arg"
-	app_name=$(echo "$arg" | sed 's/-appimage//g' | _remove_known_third_party_extensions)
+	app_name=$(echo "$arg" | sed 's/-appimage//g' | _remove_known_third_party_extensions | sed 's/.extra$//g')
 	argpath=$(echo "$ARGPATHS" | grep "/$app_name$")
 	markdown_url="$AMCATALOGUEMARKDOWNS/${arg}.md"
 	printf " PACKAGE: %b%b\033[0m\n" "${Green}" "$package_name"
