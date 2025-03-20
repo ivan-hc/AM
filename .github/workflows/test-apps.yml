@@ -340,15 +340,15 @@ jobs:
           
             if [[ "$pure_arg" =~ (gimp|libreoffice|mpv|wine) ]]; then
 
-              echo 1 | am -i "${{ matrix.file }}" --debug 2>&1 || sudo systemctl restart tor.service && wait && echo 1 | am -i "${{ matrix.file }}" --debug 2>&1 || systemctl restart tor.service && wait && echo 1 | am -i "${{ matrix.file }}" --debug 2>&1
+              echo 1 | am -i "${{ matrix.file }}" --debug 2>&1 || sudo systemctl restart tor.service && wait && echo 1 | torsocks am -i "${{ matrix.file }}" --debug 2>&1 || systemctl restart tor.service && wait && echo 1 | torsocks am -i "${{ matrix.file }}" --debug 2>&1
 
             elif [[ "$pure_arg" =~ (bat-extras) ]]; then
 
-              echo y | am -i bat "${{ matrix.file }}" --debug 2>&1 || sudo systemctl restart tor.service && wait && echo y | am -i bat "${{ matrix.file }}" --debug 2>&1 || systemctl restart tor.service && wait && echo y | am -i bat "${{ matrix.file }}" --debug 2>&1
+              echo y | am -i bat "${{ matrix.file }}" --debug 2>&1 || sudo systemctl restart tor.service && wait && echo y | torsocks am -i bat "${{ matrix.file }}" --debug 2>&1 || systemctl restart tor.service && wait && echo y | torsocks am -i bat "${{ matrix.file }}" --debug 2>&1
 
             else
 
-              echo y | am -i "${{ matrix.file }}" --debug 2>&1 || sudo systemctl restart tor.service && wait && echo y | am -i "${{ matrix.file }}" --debug 2>&1 || systemctl restart tor.service && wait && echo y | am -i "${{ matrix.file }}" --debug 2>&1
+              echo y | am -i "${{ matrix.file }}" --debug 2>&1 || sudo systemctl restart tor.service && wait && echo y | torsocks am -i "${{ matrix.file }}" --debug 2>&1 || systemctl restart tor.service && wait && echo y | torsocks am -i "${{ matrix.file }}" --debug 2>&1
 
             fi
 
@@ -397,102 +397,6 @@ jobs:
 
             # Any other result is a failure
             else
-              exit 9
-            fi
-          fi
-
-      - name: "${{ matrix.file }} second try"
-        if: failure()
-        working-directory: programs/x86_64
-        run: |
-          set -uo pipefail
-          sudo systemctl restart tor.service && wait || systemctl restart tor.service && wait
-          sleep 10
-          mkdir -p results
-          echo "Second try" >> $GITHUB_STEP_SUMMARY
-          # Define the content of the script
-          script_content=$(cat ${{ matrix.file }})
-          # Define the pure name of the app
-          pure_arg=$(echo "${{ matrix.file }}" | sed 's/\-appimage$//g' | sed 's:.*/::')
-
-          # Allow installing applications even if the command already exists
-          sed -i '/command -v "$pure_arg"/d; /command already exists/d' /opt/am/modules/install.am
-
-          # Special patches
-          if [[ "$pure_arg" =~ (node|npm) ]]; then
-            sed -i 's/_check_if_script_installs_a_metapackage || return 1//g' /opt/am/modules/install.am
-          fi
-
-          # Install the application
-
-          if [[ "$pure_arg" =~ (kvrt|suyu) ]]; then
-
-            echo "This application cannot be installed on github actions" | tee -a results/log-"${{ matrix.file }}"
-            echo "${{ matrix.file }}" >> results/ok-${{ matrix.file }}
-
-          else
-          
-            if [[ "$pure_arg" =~ (gimp|libreoffice|mpv|wine) ]]; then
-
-              echo 1 | am -i "${{ matrix.file }}" --debug 2>&1 || sudo systemctl restart tor.service && wait && echo 1 | am -i "${{ matrix.file }}" --debug 2>&1 || systemctl restart tor.service && wait && echo 1 | am -i "${{ matrix.file }}" --debug 2>&1
-
-            elif [[ "$pure_arg" =~ (bat-extras) ]]; then
-
-              echo y | am -i bat "${{ matrix.file }}" --debug 2>&1 || sudo systemctl restart tor.service && wait && echo y | am -i bat "${{ matrix.file }}" --debug 2>&1 || systemctl restart tor.service && wait && echo y | am -i bat "${{ matrix.file }}" --debug 2>&1
-
-            else
-
-              echo y | am -i "${{ matrix.file }}" --debug 2>&1 || sudo systemctl restart tor.service && wait && echo y | am -i "${{ matrix.file }}" --debug 2>&1 || systemctl restart tor.service && wait && echo y | am -i "${{ matrix.file }}" --debug 2>&1
-
-            fi
-
-            LASTDIR=$(ls -td /opt/* | head -1 | sed 's:.*/::')
-
-            # If an application is blacklisted, ignore it
-            if [ "$LASTDIR" = am ]; then
-              echo "### 💀 ${{ matrix.file }}" >> $GITHUB_STEP_SUMMARY
-              echo "${{ matrix.file }}" >> results/log-${{ matrix.file }}
-              exit 1
-
-            # If the last modified directory contains a file named "remove", check the installed files
-            elif test -f /opt/"$LASTDIR"/remove; then
-
-              printf "\n-------------------------------------------------------------\n\n"
-
-              # Check structure of directories in /opt
-              echo " Structure of the directory in /opt"
-              echo ""
-              ls /opt/"$LASTDIR" | tee -a results/log-"${{ matrix.file }}"
-
-              printf "\n-------------------------------------------------------------\n\n"
-
-              # Check the command in /usr/local/bin
-              echo " Command in \$PATH"
-              echo ""
-              command -v "$pure_arg" | tee -a results/log-"${{ matrix.file }}" || command -v "$LASTDIR" | tee -a results/log-"${{ matrix.file }}" || ls /usr/local/bin | tee -a results/log-"${{ matrix.file }}"
-
-              printf "\n-------------------------------------------------------------\n\n"
-
-              # Check launchers in /usr/local/share/applications
-              echo " Launchers in /usr/local/share/applications" | tee -a results/log-"${{ matrix.file }}"
-              echo ""
-              if test -f /usr/local/share/applications/*AM.desktop 2>/dev/null; then
-                 ls /usr/local/share/applications | grep "AM.desktop$" | tee -a results/log-"${{ matrix.file }}"
-              elif echo "$script_content" | grep -q -- '^./"$APP" --appimage-extract.*./"$APP".desktop$'; then
-                 ls /usr/local/share/applications | grep "AM.desktop$" | tee -a results/log-"${{ matrix.file }}"
-              else
-                 echo "No .desktop file available" | tee -a results/log-"${{ matrix.file }}"
-              fi
-
-              printf "\n-------------------------------------------------------------\n\n"
-
-              # Remove the application
-              am -R "$LASTDIR" && echo "${{ matrix.file }}" >> results/ok-${{ matrix.file }} || echo "${{ matrix.file }}" >> results/log-${{ matrix.file }}
-
-            # Any other result is a failure
-            else
-              echo "### 💀 ${{ matrix.file }}" >> $GITHUB_STEP_SUMMARY
-              echo "${{ matrix.file }}" >> results/ko-${{ matrix.file }}
               exit 1
             fi
           fi
