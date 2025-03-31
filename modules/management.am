@@ -210,9 +210,9 @@ _launcher_appimage_bin() {
 _launcher(){
 	_clean_launchers 2>/dev/null 1>/dev/null
 	if [ ! -f "$arg" ]; then
-		echo "ERROR: \"$arg\" not found" | _fit
-	elif ! grep -Eaoq -m 1 'github.com/AppImage/AppImageKit/wiki/FUSE' "$arg" 2>/dev/null; then
-		echo "ERROR: \"$arg\" is NOT an AppImage" | _fit
+		printf "%b\n ERROR: \"%b\" not found\n%b\n" "$DIVIDING_LINE" "$arg" "$DIVIDING_LINE" | _fit
+	elif ! head -c10 "$arg" 2>/dev/null | grep -qa '^.ELF....AI$' 2>/dev/null; then
+		printf "%b\n ERROR: \"%b\" is NOT an AppImage\n%b\n" "$DIVIDING_LINE" "$arg" "$DIVIDING_LINE" | _fit
 	else
 		printf " ◆ File: %s\n" "$arg"
 		appimage=$(basename -- "$arg")
@@ -262,15 +262,17 @@ _nolibfuse() {
 	AMCLIPATH_ORIGIN="$AMCLIPATH"
 	target="$(echo "${2}" | tr '[:lower:]' '[:upper:]')"
 	# safety checks
-	if ! cd "$argpath" 2>/dev/null; then
-		echo " ⚠️ Error: \"$target\" is NOT installed."
+	if [ ! -d "$argpath" ]; then
+		printf "%b\n ⚠️ ERROR: \"%b\" is NOT installed\n%b\n" "$DIVIDING_LINE" "$target" "$DIVIDING_LINE"
 		return 1
+	else
+		cd "$argpath" || return 1
 	fi
-	if ! grep -Eaoq -m 1 'github.com/AppImage/AppImageKit/wiki/FUSE' ./"$arg" 2>/dev/null; then
-		echo " ⚠️ Error: $target is NOT an AppImage."
+	if ! head -c10 ./"$arg" 2>/dev/null | grep -qa '^.ELF....AI$' 2>/dev/null; then
+		printf "%b\n ⚠️ ERROR: \"%b\" is NOT an AppImage\n%b\n" "$DIVIDING_LINE" "$target" "$DIVIDING_LINE"
 		return 1
 	elif file "$arg" 2>/dev/null | grep -qi "static"; then
-		echo " ◆ $target is already a new generation AppImage."
+		printf "%b\n ◆ \"%b\" is already a new generation AppImage.\n%b\n" "$DIVIDING_LINE" "$target" "$DIVIDING_LINE"
 		return 1
 	elif test -f ./*.zsync; then
 		echo "$DIVIDING_LINE"
