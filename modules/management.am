@@ -169,8 +169,28 @@ _launcher_appimage_integration() {
 			[ ! -L ./"$appimage".desktop ] && [ ! -L ./DirIcon ] && break
 			COUNT=$((COUNT + 1))
 		done
+	elif command -v 7z >/dev/null 2>&1; then
+		7z x -osquashfs-root "$arg" 1>/dev/null
+		mv ./squashfs-root/*.desktop ./"$appimage".desktop
+		mv ./squashfs-root/.DirIcon ./DirIcon || test -f ./squashfs-root/*.png && mv ./squashfs-root/*.png ./DirIcon || test -f ./squashfs-root/*.svg && mv ./squashfs-root/*.svg ./DirIcon
+		COUNT=0
+		while [ "$COUNT" -lt 10 ]; do
+			if [ -L ./"$appimage".desktop ]; then
+				LINKPATH="$(readlink ./"$appimage".desktop | sed 's|^\./||' 2>/dev/null)"
+				mv ./squashfs-root/"$LINKPATH" ./"$appimage".desktop
+			fi
+			if [ -L ./DirIcon ]; then
+				LINKPATH="$(readlink ./DirIcon | sed 's|^\./||' 2>/dev/null)"
+				mv ./squashfs-root/"$LINKPATH" ./DirIcon 1>/dev/null
+			fi
+			[ ! -L ./"$appimage".desktop ] && [ ! -L ./DirIcon ] && break
+			COUNT=$((COUNT + 1))
+		done
+		icon_name=$(grep "^Icon=" ./"$appimage".desktop | head -1 | sed 's/^Icon=//g')
+		sed -i 's/.svg$//g; s/.png$//g' ./"$appimage".desktop
+		mv ./DirIcon "$DATADIR"/icons/"$icon_name" 1>/dev/null
 	else
-		echo "WARNING: for security reasons, old type 1 AppImages are forbidden!" | _fit
+		echo "WARNING: cannot extract old type 1 AppImages, install \"7z\" for this." | _fit
 	fi
 	if [ -d ./squashfs-root ]; then
 		sed -i "s#Exec=[^ ]*#Exec=\"$arg\"#g" ./"$appimage".desktop
