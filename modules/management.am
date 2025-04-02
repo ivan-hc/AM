@@ -153,27 +153,33 @@ _icon_theme() {
 
 # LAUNCHER
 _launcher_appimage_integration() {
-	"$arg" --appimage-extract *.desktop 1>/dev/null && mv ./squashfs-root/*.desktop ./"$appimage".desktop
-	"$arg" --appimage-extract .DirIcon 1>/dev/null && mv ./squashfs-root/.DirIcon ./DirIcon
-	COUNT=0
-	while [ "$COUNT" -lt 10 ]; do # Tries to get the actual icon/desktop if it is a symlink to another symlink
-		if [ -L ./"$appimage".desktop ]; then
-			LINKPATH="$(readlink ./"$appimage".desktop | sed 's|^\./||' 2>/dev/null)"
-			"$arg" --appimage-extract "$LINKPATH" 1>/dev/null && mv ./squashfs-root/"$LINKPATH" ./"$appimage".desktop
-		fi
-		if [ -L ./DirIcon ]; then
-			LINKPATH="$(readlink ./DirIcon | sed 's|^\./||' 2>/dev/null)"
-			"$arg" --appimage-extract "$LINKPATH" 1>/dev/null && mv ./squashfs-root/"$LINKPATH" "$DATADIR"/icons/ 1>/dev/null
-		fi
-		[ ! -L ./"$appimage".desktop ] && [ ! -L ./DirIcon ] && break
-		COUNT=$((COUNT + 1))
-	done
-	sed -i "s#Exec=[^ ]*#Exec=\"$arg\"#g" ./"$appimage".desktop
-	mv ./"$appimage".desktop "$DATADIR"/applications/AppImages/"$appimage"-AM.desktop
-	rm -R -f ./squashfs-root ./DirIcon
+	if grep -Eaoq -m 1 "appimage-extract" "$arg"; then
+		"$arg" --appimage-extract *.desktop 1>/dev/null && mv ./squashfs-root/*.desktop ./"$appimage".desktop
+		"$arg" --appimage-extract .DirIcon 1>/dev/null && mv ./squashfs-root/.DirIcon ./DirIcon
+		COUNT=0
+		while [ "$COUNT" -lt 10 ]; do # Tries to get the actual icon/desktop if it is a symlink to another symlink
+			if [ -L ./"$appimage".desktop ]; then
+				LINKPATH="$(readlink ./"$appimage".desktop | sed 's|^\./||' 2>/dev/null)"
+				"$arg" --appimage-extract "$LINKPATH" 1>/dev/null && mv ./squashfs-root/"$LINKPATH" ./"$appimage".desktop
+			fi
+			if [ -L ./DirIcon ]; then
+				LINKPATH="$(readlink ./DirIcon | sed 's|^\./||' 2>/dev/null)"
+				"$arg" --appimage-extract "$LINKPATH" 1>/dev/null && mv ./squashfs-root/"$LINKPATH" "$DATADIR"/icons/ 1>/dev/null
+			fi
+			[ ! -L ./"$appimage".desktop ] && [ ! -L ./DirIcon ] && break
+			COUNT=$((COUNT + 1))
+		done
+	else
+		echo "WARNING: for security reasons, old type 1 AppImages are forbidden!" | _fit
+	fi
+	if [ -d ./squashfs-root ]; then
+		sed -i "s#Exec=[^ ]*#Exec=\"$arg\"#g" ./"$appimage".desktop
+		mv ./"$appimage".desktop "$DATADIR"/applications/AppImages/"$appimage"-AM.desktop
+	fi
 }
 
 _launcher_appimage_bin() {
+	rm -R -f ./squashfs-root ./DirIcon
 	mkdir -p "$BINDIR"
 	if ! echo "$PATH" | grep "$BINDIR" >/dev/null 2>&1; then
 		echo "$DIVIDING_LINE"
@@ -222,7 +228,7 @@ _launcher(){
 		cd "$(dirname "$arg")" || return
 
 		_launcher_appimage_integration 2>/dev/null
-		_launcher_appimage_bin
+		[ -d ./squashfs-root ] && _launcher_appimage_bin
 	fi
 }
 
@@ -261,21 +267,21 @@ _unlock() {
 _nolibfuse() {
 	AMCLIPATH_ORIGIN="$AMCLIPATH"
 	target="$(echo "${2}" | tr '[:lower:]' '[:upper:]')"
+	echo "$DIVIDING_LINE"
 	# safety checks
 	if [ ! -d "$argpath" ]; then
-		printf "%b\n ⚠️ ERROR: \"%b\" is NOT installed\n%b\n" "$DIVIDING_LINE" "$target" "$DIVIDING_LINE"
+		printf " 💀Error, \"%b\" is NOT installed\n" "$target"
 		return 1
 	else
 		cd "$argpath" || return 1
 	fi
 	if ! head -c10 ./"$arg" 2>/dev/null | grep -qa '^.ELF....AI$' 2>/dev/null; then
-		printf "%b\n ⚠️ ERROR: \"%b\" is NOT an AppImage\n%b\n" "$DIVIDING_LINE" "$target" "$DIVIDING_LINE"
+		printf " 💀Error, \"%b\" is NOT an AppImage\n" "$target"
 		return 1
 	elif file "$arg" 2>/dev/null | grep -qi "static"; then
-		printf "%b\n ◆ \"%b\" is already a new generation AppImage.\n%b\n" "$DIVIDING_LINE" "$target" "$DIVIDING_LINE"
+		printf " ◆ \"%b\" is already a new generation AppImage.\n" "$target"
 		return 1
 	elif test -f ./*.zsync; then
-		echo "$DIVIDING_LINE"
 		echo " Warning! Your AppImage uses \"zsync\" to update."
 		echo " The .zsync file will be removed and will no longer work"
 		echo " your \"AM-updater\" will likely still be able to update the AppImage"
@@ -296,7 +302,9 @@ _nolibfuse() {
 
 	# Extract the AppImage
 	printf " ...extracting the AppImage\r"
-	./"$2" --appimage-extract >/dev/null 2>&1 && chmod 0755 ./squashfs-root
+	if grep -Eaoq -m 1 "appimage-extract" "$2"; then
+		./"$2" --appimage-extract >/dev/null 2>&1 && chmod 0755 ./squashfs-root
+	fi
 
 	# Convert the AppImage to a new generation one
 	printf " ...trying to convert in new generation AppImage\r"
@@ -471,6 +479,7 @@ case "$1" in
 			_remove_info_files
 			shift
 		done
+		echo "$DIVIDING_LINE"
 		;;
 
 	'overwrite'|'-o')
