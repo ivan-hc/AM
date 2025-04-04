@@ -374,7 +374,7 @@ Removes all the unnecessary files and folders.
 
 **Description**:
 
-Set a dedicated `$XDD_CONFIG_HOME` for one or more AppImages.
+Set a dedicated `$XDG_CONFIG_HOME` for one or more AppImages.
 
 ------------------------------------------------------------------------
 ### `downgrade`, `--rollback`
@@ -444,6 +444,15 @@ Prevents an installed application from being shown or managed by "am".
 **Description**:
 
 Set a dedicated $HOME directory for one or more AppImages.
+
+------------------------------------------------------------------------
+### `-HC`, `-CH`
+
+		am -HC {PROGRAM}
+
+**Description**:
+
+Set dedicated $HOME and $XDG_CONFIG_HOME directories for one or more AppImages.
 
 ------------------------------------------------------------------------
 ### `icons`, `--icons`
