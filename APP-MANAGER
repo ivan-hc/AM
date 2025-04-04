@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="9.6.1-5"
+AMVERSION="9.6.1-6"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -896,6 +896,42 @@ _use_hide_unhide() {
 }
 
 ################################################################################################################################################################
+#				ISOLATE
+################################################################################################################################################################
+
+_use_isolate() {
+	echo "$DIVIDING_LINE"
+	entries="$(echo "$@" | cut -f2- -d ' ')"
+	for arg in $entries; do
+		argpath=$(echo "$ARGPATHS" | grep "/$arg$")
+		if [ -z "$argpath" ]; then
+			printf " ERROR: \"%b\" is not installed\n" "$arg"
+		elif [ -f "$argpath"/"$arg" ] && ! head -c10 "$argpath"/"$arg" 2>/dev/null | grep -qa '^.ELF....AI$'; then
+			printf " ERROR: \"%b\" is NOT an AppImage\n" "$arg"
+		else
+			if echo "$1" | grep -q -- "C\|config$"; then
+				if [ -d "$argpath"/"$arg".config ]; then
+					echo " ERROR: \"$arg\" already contains a config dir"
+				else
+					mkdir "$argpath"/"$arg".config || return 1
+					echo " \$XDG_CONFIG_HOME set to \"$APPIMAGE.config\" for \"$arg\""
+				fi
+			fi
+			if echo "$1" | grep -q -- "H\|home$"; then
+				if [ -d "$argpath"/"$arg".home ]; then
+					echo " ERROR: \"$arg\" already contains a home dir"
+				else
+					mkdir "$argpath"/"$arg".home || return 1
+					echo " \$HOME set to \"$APPIMAGE.home\" for \"$arg\""
+				fi
+			fi
+		fi
+		echo "$DIVIDING_LINE"
+		argpath=""
+	done
+}
+
+################################################################################################################################################################
 #				SYNC
 ################################################################################################################################################################
 
@@ -1275,10 +1311,7 @@ case "$1" in
 		MODULE="management.am"
 		_use_module "$@"
 		;;
-	'config'|'-C'|'--config'|\
-	'home'|'-H'|'--home'|\
-	'sandbox'|'--sandbox'|\
-	'--disable-sandbox')
+	'sandbox'|'--sandbox'|'--disable-sandbox')
 		MODULE="sandboxes.am"
 		_use_module "$@"
 		;;
@@ -1316,6 +1349,10 @@ case "$1" in
 		;;
 	'clean'|'-c')
 		_use_clean
+		;;
+	'config'|'-C'|'--config'|'home'|'-H'|'--home'|'-HC'|'-CH'|'HC'|'CH')
+		_determine_args
+		_use_isolate "$@"
 		;;
 	'hide'|'unhide')
 		_determine_args
@@ -1387,7 +1424,7 @@ case "$1" in
 
 					${LightBlue}$AMCLI -C {PROGRAM}\033[0m
 
-			Description: Set a dedicated \$XDD_CONFIG_HOME for one or more AppImages.
+			Description: Set a dedicated \$XDG_CONFIG_HOME for one or more AppImages.
 
 			${Gold}downgrade, --rollback\033[0m
 
@@ -1434,6 +1471,12 @@ case "$1" in
 					${LightBlue}$AMCLI -H {PROGRAM}\033[0m
 
 			Description: Set a dedicated \$HOME directory for one or more AppImages.
+
+			${Gold}-HC, -CH\033[0m
+
+					${LightBlue}$AMCLI -HC {PROGRAM}\033[0m
+
+			Description: Set dedicated \$HOME and \$XDG_CONFIG_HOME directories for one or more AppImages.
 
 			${Gold}icons, --icons\033[0m
 
