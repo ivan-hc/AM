@@ -6,7 +6,10 @@
 # OPTIONS: BACKUP/RESTORE, DOWNGRADE, LAUNCHER, LOCK/UNLOCK, NOLIBFUSE, REMOVE
 ##############################################################################################
 
-# BACKUP
+################################################################################################################################################################
+#				BACKUP
+################################################################################################################################################################
+
 _backup_name() {
 	printf "\n ◆ To set date and time as a name, press ENTER (default)\n ◆ To set the version as a name, press \"1\"\n ◆ To set a custom name, write anything else\n\n"
 	read -r -p " Write your choice here, or leave blank to use \"date/time\": " response
@@ -48,7 +51,10 @@ _backup() {
 	echo "$DIVIDING_LINE"
 }
 
-# RESTORE
+################################################################################################################################################################
+#				RESTORE
+################################################################################################################################################################
+
 _overwrite() {
 	if [ ! -d "$HOME/.am-snapshots/$2" ]; then
 		echo " ERROR: No snapshot for \"$2\" found."
@@ -77,7 +83,40 @@ _overwrite() {
 	echo "$DIVIDING_LINE"
 }
 
-# DOWNGRADE
+################################################################################################################################################################
+#				CONFIG/HOME
+################################################################################################################################################################
+
+_isolate_appimage() {
+	_determine_args
+	if [ -z "$argpath" ]; then
+		printf " ERROR: \"%b\" is not installed\n" "$arg"
+	elif [ -f "$argpath"/"$arg" ] && ! head -c10 "$argpath"/"$arg" 2>/dev/null | grep -qa '^.ELF....AI$'; then
+		printf " ERROR: \"%b\" is NOT an AppImage\n" "$arg"
+	else
+		if echo "$1" | grep -q -- "C\|config$"; then
+			if [ -d "$argpath"/"$arg".config ]; then
+				echo " ERROR: \"$arg\" already contains a config dir"
+			else
+				mkdir "$argpath"/"$arg".config || return 1
+				echo " \$XDG_CONFIG_HOME set to \"$APPIMAGE.config\" for \"$arg\""
+			fi
+		fi
+		if echo "$1" | grep -q -- "H\|home$"; then
+			if [ -d "$argpath"/"$arg".home ]; then
+				echo " ERROR: \"$arg\" already contains a home dir"
+			else
+				mkdir "$argpath"/"$arg".home || return 1
+				echo " \$HOME set to \"$APPIMAGE.home\" for \"$arg\""
+			fi
+		fi
+	fi
+}
+
+################################################################################################################################################################
+#				DOWNGRADE
+################################################################################################################################################################
+
 _downgrade_entries_filter() {
 	grep -vi "^#\|version0=" ./AM-updater | grep "api.github.com" \
 		| tr '=' '\n' | sed 's/^\$(//g' \
@@ -141,7 +180,10 @@ _downgrade() {
 	echo "ROLLBACK SUCCESSFUL!"
 }
 
-# ICON THEME CHANGER
+################################################################################################################################################################
+#				ICON THEME CHANGER
+################################################################################################################################################################
+
 _icon_theme() {
 	if [ "$AMCLI" = am ] && test -f /usr/local/share/applications/"$arg"*AM.desktop; then
 		$SUDOCMD sed -i "s#Icon=$argpath/icons/#Icon=#g" /usr/local/share/applications/"$arg"*AM.desktop 2>/dev/null
@@ -151,7 +193,10 @@ _icon_theme() {
 	_icon_theme_export_to_datadir 2>/dev/null
 }
 
-# LAUNCHER
+################################################################################################################################################################
+#				LAUNCHER
+################################################################################################################################################################
+
 _launcher_appimage_integration() {
 	if grep -Eaoq -m 1 "appimage-extract" "$arg"; then
 		"$arg" --appimage-extract *.desktop 1>/dev/null && mv ./squashfs-root/*.desktop ./"$appimage".desktop
@@ -252,7 +297,10 @@ _launcher(){
 	fi
 }
 
-# LOCK/UNLOCK
+################################################################################################################################################################
+#				LOCK/UNLOCK
+################################################################################################################################################################
+
 _lock() {
 		if [ ! -f "$argpath"/AM-updater ]; then
 		echo " \"$AMCLIUPPER\" cannot manage updates for $2, \"AM-updater\" file not found!"
@@ -283,7 +331,10 @@ _unlock() {
 	fi
 }
 
-# NO LIBFUSE
+################################################################################################################################################################
+#				NO LIBFUSE
+################################################################################################################################################################
+
 _nolibfuse() {
 	AMCLIPATH_ORIGIN="$AMCLIPATH"
 	target="$(echo "${2}" | tr '[:lower:]' '[:upper:]')"
@@ -365,7 +416,10 @@ _nolibfuse() {
 	fi
 }
 
-# REMOVE
+################################################################################################################################################################
+#				REMOVE
+################################################################################################################################################################
+
 _detect_path_to_remove() {
 	if [ -f "$APPMAN_APPSPATH"/"$arg"/remove ]; then
 		RMPATH="1"
@@ -405,9 +459,9 @@ _hard_remove() {
 	[ -d "$DATADIR"/icons/hicolor/scalable/apps ] && find "$DATADIR"/icons/hicolor/scalable/apps -xtype l -exec rm {} \;
 }
 
-###########################################################################
-# OPTIONS AVAILABLE IN THIS MODULE
-###########################################################################
+################################################################################################################################################################
+#	OPTIONS AVAILABLE IN THIS MODULE
+################################################################################################################################################################
 
 # Main logic
 [ -z "$2" ] && echo " USAGE: $AMCLI $1 [ARGUMENT]" && exit 1
@@ -420,6 +474,19 @@ case "$1" in
 			argpath=$(echo "$ARGPATHS" | grep "/$arg$")
 			_backup "${@}"
 			shift
+		done
+		;;
+
+	'config'|'-C'|'--config'|'home'|'-H'|'--home'|'-HC'|'-CH'|'HC'|'CH')
+		# Set dedicated $HOME and $XDG_CONFIG_HOME directories for one or more AppImages.
+		_determine_args
+		echo "$DIVIDING_LINE"
+		entries="$(echo "$@" | cut -f2- -d ' ')"
+		for arg in $entries; do
+			argpath=$(echo "$ARGPATHS" | grep "/$arg$")
+			_isolate_appimage "${@}"
+			echo "$DIVIDING_LINE"
+			argpath=""
 		done
 		;;
 

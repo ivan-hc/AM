@@ -896,42 +896,6 @@ _use_hide_unhide() {
 }
 
 ################################################################################################################################################################
-#				ISOLATE
-################################################################################################################################################################
-
-_use_isolate() {
-	echo "$DIVIDING_LINE"
-	entries="$(echo "$@" | cut -f2- -d ' ')"
-	for arg in $entries; do
-		argpath=$(echo "$ARGPATHS" | grep "/$arg$")
-		if [ -z "$argpath" ]; then
-			printf " ERROR: \"%b\" is not installed\n" "$arg"
-		elif [ -f "$argpath"/"$arg" ] && ! head -c10 "$argpath"/"$arg" 2>/dev/null | grep -qa '^.ELF....AI$'; then
-			printf " ERROR: \"%b\" is NOT an AppImage\n" "$arg"
-		else
-			if echo "$1" | grep -q -- "C\|config$"; then
-				if [ -d "$argpath"/"$arg".config ]; then
-					echo " ERROR: \"$arg\" already contains a config dir"
-				else
-					mkdir "$argpath"/"$arg".config || return 1
-					echo " \$XDG_CONFIG_HOME set to \"$APPIMAGE.config\" for \"$arg\""
-				fi
-			fi
-			if echo "$1" | grep -q -- "H\|home$"; then
-				if [ -d "$argpath"/"$arg".home ]; then
-					echo " ERROR: \"$arg\" already contains a home dir"
-				else
-					mkdir "$argpath"/"$arg".home || return 1
-					echo " \$HOME set to \"$APPIMAGE.home\" for \"$arg\""
-				fi
-			fi
-		fi
-		echo "$DIVIDING_LINE"
-		argpath=""
-	done
-}
-
-################################################################################################################################################################
 #				SYNC
 ################################################################################################################################################################
 
@@ -1301,6 +1265,7 @@ case "$1" in
 		if [ -t 1 ]; then _use_module "$@"; else _use_module "$@" | sed -e 's/\x1b\[[0-9;]*m//g'; fi
 		;;
 	'backup'|'-b'|\
+	'config'|'-C'|'--config'|'home'|'-H'|'--home'|'-HC'|'-CH'|'HC'|'CH'|\
 	'downgrade'|'--rollback'|\
 	'icons'|'--icons'|\
 	'launcher'|'--launcher'|\
@@ -1349,10 +1314,6 @@ case "$1" in
 		;;
 	'clean'|'-c')
 		_use_clean
-		;;
-	'config'|'-C'|'--config'|'home'|'-H'|'--home'|'-HC'|'-CH'|'HC'|'CH')
-		_determine_args
-		_use_isolate "$@"
 		;;
 	'hide'|'unhide')
 		_determine_args
