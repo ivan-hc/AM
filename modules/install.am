@@ -228,6 +228,7 @@ _post_installation_processes() {
 
 _ending_the_installation() {
 	LASTDIR=$(ls -td "$APPSPATH"/* | head -1 | sed 's:.*/::')
+	[ -f "${LASTDIRPATH}"/AM-updater ] && sed -i 's/api.gh.pkgforge.dev/api.github.com/g' "${LASTDIRPATH}"/AM-updater 2>/dev/null
 	if [ -f "${LASTDIRPATH}"/remove ]; then
 		if test -d "${LASTDIRPATH}"/tmp; then
 			echo " 💀 ERROR DURING INSTALLATION, REMOVED $APPNAME!"
@@ -259,20 +260,15 @@ _install_arg() {
 	_check_if_spooky_flag_exists || return 1
 	_check_kind_of_installation_script || return 1
 	_apply_patches
-	# Determine if Torsocks is needed
-	if command -v torsocks 1>/dev/null; then
-		TORSOCKS="1"
-	fi
+	# Determine if the app is hosted on github
 	if grep -q "api.github.com" ./"$arg"; then
 		GH_API_ALLOWED=$(curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/ivan-hc/AM/releases/latest | sed 's/[()",{} ]/\n/g' | grep "^ivan-hc" | head -1)
-		[ -z "$GH_API_ALLOWED" ] && [ -z "$TORSOCKS" ] && printf "💀 Cannot install \"%b\", you have reached GitHub API limit.\n\nInstall \"torsocks\" from your system package manager and retry! \n" "$arg" | fold -sw 72 | sed 's/^/   /g; s/   ✖/✖/g' && return 0
+		if [ -z "$GH_API_ALLOWED" ]; then
+			sed -i 's/api.github.com/api.gh.pkgforge.dev/g' ./"$arg"
+		fi
 	fi
 	# Install script
-	if grep -q "api.github.com" ./"$arg" && [ -z "$GH_API_ALLOWED" ] && [ -n "$TORSOCKS" ]; then
-		$SUDOCMD torsocks ./"$arg"
-	else
-		$SUDOCMD ./"$arg"
-	fi
+	$SUDOCMD ./"$arg"
 	echo ""
 	_post_installation_processes
 	_ending_the_installation
