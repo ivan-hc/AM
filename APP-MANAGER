@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="9.6.2-3"
+AMVERSION="9.6.2-4"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -1048,9 +1048,23 @@ _update_determine_apps_version_changes() {
 
 [ -z "$ALT_GH" ] && ALT_GH="api.gh.pkgforge.dev"
 
+_update_determine_gh_apps_number() {
+	for arg in $ARGS; do
+		argpath=$(echo "$ARGPATHS" | grep "/$arg$")
+		if [ -f "$argpath"/AM-updater ] && grep -q "api.github.com" "$argpath"/AM-updater; then
+			[ -n "$GH_APPS" ] && GH_APPS=$(printf "%b\n%b\n" "$GH_APPS" "$arg") || GH_APPS="$arg"
+		fi
+	done
+	wait
+	[ -z "$GH_APPS" ] && GH_APPS_NUMBER="" || GH_APPS_NUMBER=$(echo "$GH_APPS" | wc -l | sed 's/ //g')
+	if [ -n "$GH_APPS_NUMBER" ]; then
+		GH_API_REMAINING=$(curl -Ls "https://api.github.com/rate_limit" | tr '{,' '\n' | grep -i remaining | tail -1 | grep -Eo "[0-9]*")
+		GH_API_ALLOWED=$(("$GH_API_REMAINING"-"$GH_APPS_NUMBER"))
+	fi
+}
+
 _update_run_updater() {
 	if grep -q "api.github.com" "$argpath"/AM-updater; then
-		GH_API_ALLOWED=$(curl -Ls "https://api.github.com/rate_limit" | tr '{,' '\n' | grep -i remaining | tail -1 | grep -Eo "[0-9]*")
 		if [ "$GH_API_ALLOWED" -le 10 ]; then
 			sed -i "s#api.github.com#$ALT_GH#g" "$argpath"/AM-updater
 		fi
@@ -1132,6 +1146,9 @@ _use_update() {
 	if echo "$FLAGS" | grep -q -- "--debug"; then
 		debug_update="1"
 	fi
+
+	_update_determine_gh_apps_number
+
 	if [ -z "$ENTRIES" ]; then
 		_clean_amcachedir
 		_update_list_updatable_apps
