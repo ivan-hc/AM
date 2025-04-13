@@ -10,7 +10,7 @@ SUDOCMD_ORIGIN="$SUDOCMD"
 # Get xdg variables for _configure_dirs_access
 for DIR in DESKTOP DOCUMENTS DOWNLOAD GAMES MUSIC PICTURES VIDEOS; do
 	eval XDG_DIR="$(xdg-user-dir $DIR 2>/dev/null)"
-	[ "$XDG_DIR" = "$HOME" ] || [ "$XDG_DIR" = "$HOME/" ] && XDG_DIR=""
+	[ "$(realpath "$XDG_DIR")" = "$HOME" ] && XDG_DIR=""
 	eval $DIR="$XDG_DIR"
 done
 DESKTOP="$(echo "${DESKTOP:-~/Desktop}" | sed "s|$HOME|~|g")"
@@ -105,7 +105,7 @@ _generate_sandbox_script() {
 	# get xdg user dirs, unset if var = $HOME
 	for DIR in DESKTOP DOCUMENTS DOWNLOAD GAMES MUSIC PICTURES VIDEOS; do
 	  eval XDG_DIR="$(xdg-user-dir $DIR 2>/dev/null)"
-	  [ "$XDG_DIR" = "$HOME" ] || [ "$XDG_DIR" = "$HOME/" ] && XDG_DIR=""
+	  [ "$(realpath "$XDG_DIR")" = "$HOME" ] && XDG_DIR=""
 	  eval $DIR="$XDG_DIR"
 	done
 	# Use default location if var is not set
@@ -143,7 +143,7 @@ _generate_sandbox_script() {
 	[ -z "$APPNAME" ] && exit 1
 	# Start at sandboxed home
 	# Edit below this to add or remove access to parts of the system
-	exec aisap --trust-once --level 2 \
+	exec aisap --trust-once --level 1 \
 	--data-dir "$SANDBOXDIR/$APPNAME" \
 	--add-file "$DATADIR/${APPDATA:-$APPNAME}":rw \
 	--add-file "$DATADIR"/themes \
@@ -157,7 +157,6 @@ _generate_sandbox_script() {
 	--add-file "$CONFIGDIR"/qt6ct \
 	--add-file "$CONFIGDIR"/Kvantum \
 	--add-file "$HOME"/.local/lib \
-	--add-file /usr/share \
 	--rm-file /NOPATH \
 	--rm-file "$DESKTOP" \
 	--rm-file "$DOCUMENTS" \
@@ -202,9 +201,9 @@ _configure_dirs_access() {
 		echo "  Also aisap might not let $1 start when such paths are given"
 		printf '\033[33m%s\n' "  Type the path to the directory"
 		read -r -p "  Example: /media/external-drive or ~/Backups: " NEWDIR
+		NEWDIR="$(realpath "$NEWDIR")"
 		case "$NEWDIR" in
-			'$HOME'|'$HOME/'|"$HOME"|"$HOME/"|"/"|"~"|"~/"|"/home"|"/home/"|\
-			"$DATADIR"|'$XDG_DATA_HOME'|"$CONFIGDIR"|'$XDG_CONFIG_HOME'|"$BINDIR")
+			"/"|"/home"|"$HOME"|"$DATADIR"|"$CONFIGDIR"|"$BINDIR")
 				notify-send -u critical "DO YOU WANT THE FBI TO GET YA?"
 				printf '\033[31m\n'
 				read -r -p "  SPOOKY LOCATION! ARE YOU SURE? IF SO TYPE \"YES\": " YES
