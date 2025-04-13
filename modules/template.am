@@ -188,6 +188,10 @@ _template_if_github() {
 	COMMENT=$(curl $HeaderAuthWithGITPAT https://api.github.com/repos/"$RESPONSE" 2>/dev/null | grep description | sed 's/"description": "//' | sed 's/",//' | cut -c 3-)
 	CURL_COMMAND_REF="curl -Ls https://api.github.com/repos"
 	CURL_COMMAND_REF_PREVIEW="curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos"
+	GH_API_ALLOWED=$(curl -Ls "https://api.github.com/rate_limit" | tr '{,' '\n' | grep -i remaining | tail -1 | grep -Eo "[0-9]*")
+	if [ "$GH_API_ALLOWED" -le 10 ]; then
+		CURL_COMMAND_REF_PREVIEW="curl -Ls https://$ALT_GH/repos"
+	fi
 }
 
 _template_if_codeberg() {
@@ -222,17 +226,10 @@ _template_if_git_repo() {
 	echo "$DIVIDING_LINE"
 }
 
-_template_test_github_url_if_torsocks_exists() {
+_template_test_github_url() {
 	echo ""
 	GHURLPREVIEW=$(eval "$GHURLPREVIEW_COMMAND")
-	if [ -z "$GHURLPREVIEW" ]; then
-		if command -v torsocks 1>/dev/null; then
-			GHURLPREVIEW="torsocks $GHURLPREVIEW_COMMAND"
-			eval "$GHURLPREVIEW"
-		fi
-	else
-		echo "$GHURLPREVIEW"
-	fi
+	echo "$GHURLPREVIEW"
 }
 
 _template_then_git_repo() {
@@ -251,10 +248,10 @@ _template_then_git_repo() {
 	if ! echo "$yn" | grep -qi "^n"; then
 		if [ "$templatetype" = 0 ]; then
 			GHURLPREVIEW_COMMAND="$CURL_COMMAND_REF_PREVIEW/$RESPONSE/releases$setlatest | sed 's/[()\",{} ]/\n/g' | grep -oi \"https.*mage$\" | grep -vi \"i386\|i686\|aarch64\|arm64\|armv7l\" | head -1"
-			_template_test_github_url_if_torsocks_exists
+			_template_test_github_url
 		elif [ "$templatetype" = 2 ]; then
 			GHURLPREVIEW_COMMAND="$CURL_COMMAND_REF_PREVIEW/$RESPONSE/releases$setlatest | sed 's/[()\",{} ]/\n/g' | grep -oi \"https.*\" | grep -vi \"i386\|i686\|aarch64\|arm64\|armv7l\" | head -1"
-			_template_test_github_url_if_torsocks_exists
+			_template_test_github_url
 		fi
 		echo -e "\n The URL above is an example of what both\n the install and update scripts will point to.\n"
 	fi
@@ -270,10 +267,10 @@ _template_then_git_repo() {
 			if ! echo "$yn" | grep -qi "^n"; then
 				if [ "$templatetype" = 0 ]; then
 					GHURLPREVIEW_COMMAND="$CURL_COMMAND_REF_PREVIEW/$RESPONSE/releases$setlatest | sed 's/[()\",{} ]/\n/g' | grep -oi \"https.*mage$\" | grep -vi \"i386\|i686\|aarch64\|arm64\|armv7l\" | grep -i \"$response\" | head -1"
-					_template_test_github_url_if_torsocks_exists
+					_template_test_github_url
 				elif [ "$templatetype" = 2 ]; then
 					GHURLPREVIEW_COMMAND="$CURL_COMMAND_REF_PREVIEW/$RESPONSE/releases$setlatest | sed 's/[()\",{} ]/\n/g' | grep -oi \"https.*\" | grep -vi \"i386\|i686\|aarch64\|arm64\|armv7l\" | grep -i \"$response\" | head -1"
-					_template_test_github_url_if_torsocks_exists
+					_template_test_github_url
 				fi
 				echo -e "\n The URL above is an example of what both\n the install and update scripts will point to.\n"
 			fi
@@ -287,10 +284,10 @@ _template_then_git_repo() {
 			if ! echo "$yn" | grep -qi "^n"; then
 				if [ "$templatetype" = 0 ]; then
 					GHURLPREVIEW_COMMAND="$CURL_COMMAND_REF_PREVIEW/$RESPONSE/releases$setlatest | sed 's/[()\",{} ]/\n/g' | grep -oi \"https.*mage$\" | grep -vi \"i386\|i686\|aarch64\|arm64\|armv7l\" | grep -v \"$response\" | head -1"
-					_template_test_github_url_if_torsocks_exists
+					_template_test_github_url
 				elif [ "$templatetype" = 2 ]; then
 					GHURLPREVIEW_COMMAND="$CURL_COMMAND_REF_PREVIEW/$RESPONSE/releases$setlatest | sed 's/[()\",{} ]/\n/g' | grep -oi \"https.*\" | grep -vi \"i386\|i686\|aarch64\|arm64\|armv7l\" | grep -v \"$response\" | head -1"
-					_template_test_github_url_if_torsocks_exists
+					_template_test_github_url
 				fi
 				echo -e "\n The URL above is an example of what both\n the install and update scripts will point to.\n"
 			fi

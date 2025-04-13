@@ -1,29 +1,49 @@
 #!/bin/sh
 
 # AM INSTALL SCRIPT VERSION 3.5
-set -u
 APP=appimageupdatetool
-SITE="AppImage/AppImageUpdate"
+SITE1="pkgforge-dev/AppImageUpdate"
+SITE2="AppImage/AppImageUpdate"
 
 # CREATE DIRECTORIES AND ADD REMOVER
 [ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
-printf "#!/bin/sh\nset -e\nrm -f /usr/local/bin/$APP\nrm -R -f /opt/$APP" > ../remove
+printf "#!/bin/sh\nrm -f /usr/local/bin/$APP\nrm -R -f /opt/$APP" > ../remove
 printf '\n%s' "rm -f /usr/local/share/applications/$APP-AM.desktop" >> ../remove
 chmod a+x ../remove || exit 1
 
-# DOWNLOAD AND PREPARE THE APP, $version is also used for updates
-version=$(curl -Ls https://api.github.com/repos/AppImage/AppImageUpdate/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -i "aarch64\|arm64" | grep -i "appimageupdatetool" | head -1)
-wget "$version" || exit 1
-# Keep this space in sync with other installation scripts
-# Use tar fx ./*tar* here for example in this line in case a compressed file is downloaded.
+# CHOOSE A VERSION
+read -r -p "
+ Choose which version of appimageupdatetool AppImage to use:
+
+ 1. Fork with rate-limit-bypass & misc QOL changes, it works
+    on more distros than the official release (recommended)
+
+    Source: https://github.com/pkgforge-dev/AppImageUpdate
+
+ 2. Official release
+
+    Source: https://github.com/AppImage/AppImageUpdate
+
+ Which version you choose (type a number and press ENTER)?" response
+case "$response" in
+	1) rm -f /opt/"$APP"/version
+	UPDATER=1
+	version=$(curl -Ls https://api.github.com/repos/"$SITE1"/releases | sed 's/[()",{} ]/\n/g' | grep -io 'https.*appimageupdatetool.*mage$' | grep -i "aarch64\|arm64" | head -1)
+	wget "$version"
+	echo "$version" >> /opt/$APP/version;;
+	2) rm -f /opt/"$APP"/version
+	version=$(curl -Ls https://api.github.com/repos/"$SITE2"/releases | sed 's/[()",{} ]/\n/g' | grep -io 'https.*appimageupdatetool.*mage$' | grep -i "aarch64\|arm64" | head -1)
+	UPDATER=2
+	wget "$version"
+	echo "$version" >> /opt/$APP/version;;
+	*) /opt/"$APP"/remove && exit;;
+esac
 cd ..
 mv ./tmp/*mage ./"$APP"
-# Keep this space in sync with other installation scripts
 rm -R -f ./tmp || exit 1
-echo "$version" > ./version
 chmod a+x ./"$APP" || exit 1
 
-# LINK TO PATH
+# LINK
 ln -s "/opt/$APP/$APP" "/usr/local/bin/$APP"
 
 # SCRIPT TO UPDATE THE PROGRAM
@@ -31,9 +51,9 @@ cat >> ./AM-updater << 'EOF'
 #!/bin/sh
 set -u
 APP=appimageupdatetool
-SITE="AppImage/AppImageUpdate"
+if [ -z "$APP" ]; then exit 1; fi
 version0=$(cat "/opt/$APP/version")
-version=$(curl -Ls https://api.github.com/repos/AppImage/AppImageUpdate/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -i "aarch64\|arm64" | grep -i "appimageupdatetool" | head -1)
+version=$(curl -Ls https://api.github.com/repos/$SITE/releases | sed 's/[()",{} ]/\n/g' | grep -io 'https.*appimageupdatetool.*mage$' | grep -i "aarch64\|arm64" | head -1)
 [ -n "$version" ] || { echo "Error getting link"; exit 1; }
 if command -v appimageupdatetool >/dev/null 2>&1; then
 	cd "/opt/$APP" || exit 1
@@ -54,5 +74,10 @@ else
 	echo "Update not needed!"
 fi
 EOF
+if [ "$UPDATER" = "1" ]; then
+	sed -i 's#$SITE#pkgforge-dev/AppImageUpdate#g' /opt/"$APP"/AM-updater
+elif [ "$UPDATER" = "2" ]; then
+	sed -i 's#$SITE#AppImage/AppImageUpdate#g' /opt/"$APP"/AM-updater
+fi
 chmod a+x ./AM-updater || exit 1
 
