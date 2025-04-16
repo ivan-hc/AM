@@ -11,7 +11,7 @@
 ################################################################################################################################################################
 
 _backup_name() {
-	printf "\n ◆ To set date and time as a name, press ENTER (default)\n ◆ To set the version as a name, press \"1\"\n ◆ To set a custom name, write anything else\n\n"
+	printf $"\n ◆ To set date and time as a name, press ENTER (default)\n ◆ To set the version as a name, press \"1\"\n ◆ To set a custom name, write anything else\n\n"
 	read -r -p " Write your choice here, or leave blank to use \"date/time\": " response
 	case "$response" in
 		'')
@@ -29,23 +29,23 @@ _backup_name() {
 
 _backup() {
 		if [ ! -f "$argpath"/remove ]; then
-		echo " \"$2\" is not a valid argument or is not installed."
+		echo $" \"$2\" is not a valid argument or is not installed."
 	else
 		read -r -p " Do you wish to backup the current version of $2? (y/N) " yn
 		if ! echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
-			printf "\n OPERATION ABORTED!\n\n"
+			printf $"\n OPERATION ABORTED!\n\n"
 		else
 			mkdir -p "$HOME/.am-snapshots/$2"
 			app_name="$2"
 			_backup_name
 			if test -d "$HOME/.am-snapshots/$2/$backupname"; then
-				echo " 💀 ERROR: \"$2/$backupname\" already exists, ABORTED!"
+				echo $" 💀 ERROR: \"$2/$backupname\" already exists, ABORTED!"
 				echo "$DIVIDING_LINE"
 				return 1
 			else
 				cp -r "$argpath" "$HOME/.am-snapshots/$2/$backupname"
 			fi
-			echo " SAVED in $HOME/.am-snapshots/$2/$backupname"
+			echo $" SAVED in $HOME/.am-snapshots/$2/$backupname"
 		fi
 	fi
 	echo "$DIVIDING_LINE"
@@ -57,27 +57,27 @@ _backup() {
 
 _overwrite() {
 	if [ ! -d "$HOME/.am-snapshots/$2" ]; then
-		echo " ERROR: No snapshot for \"$2\" found."
+		echo $" ERROR: No snapshot for \"$2\" found."
 	elif [ ! -f "$argpath"/remove ]; then
-		echo " \"$2\" is not a valid argument or is not installed."
+		echo $" \"$2\" is not a valid argument or is not installed."
 	else
 		read -r -p " Do you wish to overwrite $2 with an older version? (y,N) " yn
 		if ! echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
-			printf "\n OPERATION ABORTED! \n\n"
+			printf $"\n OPERATION ABORTED! \n\n"
 		else
-			printf "\n Please, select a snapshot or press ZERO to abort:\n\n"
+			printf $"\n Please, select a snapshot or press ZERO to abort:\n\n"
 			sleep 1
 			select d in "$HOME/.am-snapshots/$2"/*; do
 				if [ -n "$d" ]; then
 					break
 				else
-					printf "\n Invalid selection. ABORTED! \n"
+					printf $"\n Invalid selection. ABORTED! \n"
 					return 1
 				fi
 			done
 			cp -r --backup=t "$d"/* "$argpath"/
 			rm -R -f ./tmp "$argpath"/*~
-			echo " RESTORE COMPLETED SUCCESSFULLY!"
+			echo $" RESTORE COMPLETED SUCCESSFULLY!"
 		fi
 	fi
 	echo "$DIVIDING_LINE"
@@ -90,24 +90,24 @@ _overwrite() {
 _isolate_appimage() {
 	_determine_args
 	if [ -z "$argpath" ]; then
-		printf " ✖ ERROR: \"%b\" is not installed\n" "$arg"
+		printf $" ✖ ERROR: \"%b\" is not installed\n" "$arg"
 	elif [ -f "$argpath"/"$arg" ] && ! head -c10 "$argpath"/"$arg" 2>/dev/null | grep -qa '^.ELF....AI$'; then
-		printf " ✖ ERROR: \"%b\" is NOT an AppImage\n" "$arg"
+		printf $" ✖ ERROR: \"%b\" is NOT an AppImage\n" "$arg"
 	else
 		if echo "$1" | grep -q -- "C\|config$"; then
 			if [ -d "$argpath"/"$arg".config ]; then
-				echo "✖ ERROR: \"$arg\" already contains a config dir" | _fit
+				echo $"✖ ERROR: \"$arg\" already contains a config dir" | _fit
 			else
 				mkdir "$argpath"/"$arg".config || return 1
-				echo "✔ \$XDG_CONFIG_HOME set to \"$argpath.config\" for \"$arg\"" | _fit
+				echo $"✔ \$XDG_CONFIG_HOME set to \"$argpath.config\" for \"$arg\"" | _fit
 			fi
 		fi
 		if echo "$1" | grep -q -- "H\|home$"; then
 			if [ -d "$argpath"/"$arg".home ]; then
-				echo "✖ ERROR: \"$arg\" already contains a home dir" | _fit
+				echo $"✖ ERROR: \"$arg\" already contains a home dir" | _fit
 			else
 				mkdir "$argpath"/"$arg".home || return 1
-				echo "✔ \$HOME set to \"$argpath.home\" for \"$arg\"" | _fit
+				echo $"✔ \$HOME set to \"$argpath.home\" for \"$arg\"" | _fit
 			fi
 		fi
 	fi
@@ -134,34 +134,34 @@ _downgrade_entries_filter() {
 _downgrade() {
 		# Safety checks
 	if [ ! -f "$argpath"/AM-updater ]; then
-		echo " No AM-updater available for \"$2\", cannot detect any URL!"
+		echo $" No AM-updater available for \"$2\", cannot detect any URL!"
 		return 1
 	elif [ -f "$argpath"/"$2"-rollback ]; then
 		cd "$argpath" || return 1
 		./"$2"-rollback || return 1
 		return 0
 	elif ! grep -q "api.github.com" "$argpath"/AM-updater; then
-		echo " The option \"$1\" only works for https://github.com"
+		echo $" The option \"$1\" only works for https://github.com"
 		return 1
 	fi
 	cd "$argpath" || return 1
 	entries_list=$(_downgrade_entries_filter)
 	urls="$(eval "$entries_list" 2>/dev/null | grep -vi "zsync$")"
 	if ! echo "$urls" | grep -q "[0-9]"; then
-		echo " ERROR: No valid links found, sorry!"
+		echo $" ERROR: No valid links found, sorry!"
 		exit 1
 	fi
 	echo "$DIVIDING_LINE"
-	echo "You have chosen to roll back \"$2\"."
+	echo $"You have chosen to roll back \"$2\"."
 	echo "$DIVIDING_LINE"
-	echo "Select a URL from this menu (read carefully) or press ZERO to abort:"
+	echo $"Select a URL from this menu (read carefully) or press ZERO to abort:"
 	echo "$DIVIDING_LINE"
 	sleep 1
 	select d in $urls; do
 		if [ -n "$d" ]; then
 			break
 		else
-			printf "\n Invalid selection. ABORTED! \n"
+			printf $"\n Invalid selection. ABORTED! \n"
 			return 1
 		fi
 	done
@@ -177,7 +177,7 @@ _downgrade() {
 	./AM-rollback && rm -f ./AM-rollback || return 1
 	mv ./"$2".zsync.old ./"$2".zsync 2>/dev/null
 	echo "$d" > ./version
-	echo "ROLLBACK SUCCESSFUL!"
+	echo $"ROLLBACK SUCCESSFUL!"
 }
 
 ################################################################################################################################################################
@@ -235,7 +235,7 @@ _launcher_appimage_integration() {
 		sed -i 's/.svg$//g; s/.png$//g' ./"$appimage".desktop
 		mv ./DirIcon "$DATADIR"/icons/"$icon_name" 1>/dev/null
 	else
-		echo "WARNING: cannot extract old type 1 AppImages, install \"7z\" and retry." | _fit
+		echo $"WARNING: cannot extract old type 1 AppImages, install \"7z\" and retry." | _fit
 	fi
 	if [ -d ./squashfs-root ]; then
 		sed -i "s#Exec=[^ ]*#Exec=\"$arg\"#g" ./"$appimage".desktop
@@ -248,7 +248,7 @@ _launcher_appimage_bin() {
 	mkdir -p "$BINDIR"
 	if ! echo "$PATH" | grep "$BINDIR" >/dev/null 2>&1; then
 		echo "$DIVIDING_LINE"
-		echo "WARNING: \"$BINDIR\" is not in PATH, apps may not run from command line." | _fit
+		echo $"WARNING: \"$BINDIR\" is not in PATH, apps may not run from command line." | _fit
 		echo "$DIVIDING_LINE"
 	fi
 	read -r -p " Write a custom command to launch the app, or leave blank: " response
@@ -256,22 +256,22 @@ _launcher_appimage_bin() {
 		appimage_cmd=$(echo "$appimage" | tr '[:upper:]' '[:lower:]')
 		if ! echo "$appimage" | grep -q -i ".appimage"; then
 			[ -n "$BINDIR" ] && printf '#!/bin/sh\n%s' "$arg" >> "$BINDIR"/"$appimage_cmd".appimage \
-			&& chmod a+x "$BINDIR"/"$appimage_cmd".appimage && echo "New command: \"$appimage_cmd.appimage\" in $BINDIR" | _fit
+			&& chmod a+x "$BINDIR"/"$appimage_cmd".appimage && echo $"New command: \"$appimage_cmd.appimage\" in $BINDIR" | _fit
 		else
 			[ -n "$BINDIR" ] && printf '#!/bin/sh\n%s' "$arg" >> "$BINDIR"/"$appimage_cmd" \
-			&& chmod a+x "$BINDIR"/"$appimage_cmd" && echo "New command: \"$appimage_cmd\" in $BINDIR" | _fit
+			&& chmod a+x "$BINDIR"/"$appimage_cmd" && echo $"New command: \"$appimage_cmd\" in $BINDIR" | _fit
 		fi
 	elif command -v "$response" 1>/dev/null; then
 		if test -f "$BINDIR"/"$response"; then
-			echo "WARNING, \"$BINDIR/$response\" already exists!" | _fit
+			echo $"WARNING, \"$BINDIR/$response\" already exists!" | _fit
 			read -r -p " Do you Want to override it? (y,N) " yn
 			if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
 				ln -sf "$arg" "$BINDIR"/"$response"
 			else
-				echo " You have chosen not to assign a command."
+				echo $" You have chosen not to assign a command."
 			fi
 		else
-			echo "ERROR: the \"$response\" command alredy exists, retry!" | _fit
+			echo $"ERROR: the \"$response\" command alredy exists, retry!" | _fit
 		fi
 	else
 		[ -n "$BINDIR" ] && ln -sf "$arg" "$BINDIR"/"$response"
@@ -281,11 +281,11 @@ _launcher_appimage_bin() {
 _launcher(){
 	_clean_launchers 2>/dev/null 1>/dev/null
 	if [ ! -f "$arg" ]; then
-		printf "%b\n ERROR: \"%b\" not found\n%b\n" "$DIVIDING_LINE" "$arg" "$DIVIDING_LINE" | _fit
+		printf $"%b\n ERROR: \"%b\" not found\n%b\n" "$DIVIDING_LINE" "$arg" "$DIVIDING_LINE" | _fit
 	elif ! head -c10 "$arg" 2>/dev/null | grep -qa '^.ELF....AI$' 2>/dev/null; then
-		printf "%b\n ERROR: \"%b\" is NOT an AppImage\n%b\n" "$DIVIDING_LINE" "$arg" "$DIVIDING_LINE" | _fit
+		printf $"%b\n ERROR: \"%b\" is NOT an AppImage\n%b\n" "$DIVIDING_LINE" "$arg" "$DIVIDING_LINE" | _fit
 	else
-		printf " ◆ File: %s\n" "$arg"
+		printf $" ◆ File: %s\n" "$arg"
 		appimage=$(basename -- "$arg")
 		mkdir -p "$DATADIR"/applications/AppImages
 		mkdir -p "$DATADIR"/icons
@@ -303,31 +303,31 @@ _launcher(){
 
 _lock() {
 		if [ ! -f "$argpath"/AM-updater ]; then
-		echo " \"$AMCLIUPPER\" cannot manage updates for $2, \"AM-updater\" file not found!"
+		echo $" \"$AMCLIUPPER\" cannot manage updates for $2, \"AM-updater\" file not found!"
 		return 1
 	fi
 	read -r -p " Do you wish to keep $2 at its current version? (y/N) " yn
 	if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
 		mv "$argpath"/AM-updater "$argpath"/AM-LOCK 1>/dev/null
-		echo " $2 has been locked at current version!"
+		echo $" $2 has been locked at current version!"
 	else
-		echo " Operation aborted!"
+		echo $" Operation aborted!"
 		return 1
 	fi
 }
 
 _unlock() {
 		if ! test -f "$argpath"/AM-LOCK; then
-		echo " \"$2\" cannot be unlocked, \"AM-LOCK\" file not found!"
+		echo $" \"$2\" cannot be unlocked, \"AM-LOCK\" file not found!"
 		return 1
 	fi
 	read -r -p " Do you wish to unlock updates for $2? (Y/n) " yn
 	if echo "$yn" | grep -i '^n' >/dev/null 2>&1; then
-		echo " $2 is still locked at current version!"
+		echo $" $2 is still locked at current version!"
 		return 1
 	else
 		mv "$argpath"/AM-LOCK "$argpath"/AM-updater 1>/dev/null
-		echo " \"$2\" can now receive updates!"
+		echo $" \"$2\" can now receive updates!"
 	fi
 }
 
@@ -341,22 +341,22 @@ _nolibfuse() {
 	echo "$DIVIDING_LINE"
 	# safety checks
 	if [ ! -d "$argpath" ]; then
-		printf " 💀Error, \"%b\" is NOT installed\n" "$target"
+		printf $" 💀Error, \"%b\" is NOT installed\n" "$target"
 		return 1
 	else
 		cd "$argpath" || return 1
 	fi
 	if ! head -c10 ./"$arg" 2>/dev/null | grep -qa '^.ELF....AI$' 2>/dev/null; then
-		printf " 💀Error, \"%b\" is NOT an AppImage\n" "$target"
+		printf $" 💀Error, \"%b\" is NOT an AppImage\n" "$target"
 		return 1
 	elif file "$arg" 2>/dev/null | grep -qi "static"; then
-		printf " ◆ \"%b\" is already a new generation AppImage.\n" "$target"
+		printf $" ◆ \"%b\" is already a new generation AppImage.\n" "$target"
 		return 1
 	elif test -f ./*.zsync; then
-		echo " Warning! Your AppImage uses \"zsync\" to update."
-		echo " The .zsync file will be removed and will no longer work"
-		echo " your \"AM-updater\" will likely still be able to update the AppImage"
-		echo " by comparing the old vs new version url, but it is not guaranteed"
+		echo $" Warning! Your AppImage uses \"zsync\" to update."
+		echo $" The .zsync file will be removed and will no longer work"
+		echo $" your \"AM-updater\" will likely still be able to update the AppImage"
+		echo $" by comparing the old vs new version url, but it is not guaranteed"
 		read -r -p " Do you want to proceede anyway? (N/y) " yn
 		if ! echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
 				return 1
@@ -366,13 +366,13 @@ _nolibfuse() {
 	# If appimagetool is not installed, download it
 	if ! command -v appimagetool 1>/dev/null; then
 		_online_check
-		printf " ...downloading appimagetool\r"
+		printf $" ...downloading appimagetool\r"
 		wget -q "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-$ARCH.AppImage" -O ./appimagetool || return 1
 		chmod a+x ./appimagetool
 	fi
 
 	# Extract the AppImage
-	printf " ...extracting the AppImage\r"
+	printf $" ...extracting the AppImage\r"
 	if grep -Eaoq -m 1 "appimage-extract" "$2"; then
 		./"$2" --appimage-extract >/dev/null 2>&1 && chmod 0755 ./squashfs-root
 	#elif command -v 7z >/dev/null 2>&1; then
@@ -381,11 +381,11 @@ _nolibfuse() {
 	#	find ./squashfs-root -type f -exec chmod +x {} \;
 	#	wait
 	#else
-	#	echo "WARNING: cannot extract old type 1 AppImages, install \"7z\" and retry." | _fit
+	#	echo $"WARNING: cannot extract old type 1 AppImages, install \"7z\" and retry." | _fit
 	fi
 
 	# Convert the AppImage to a new generation one
-	printf " ...trying to convert in new generation AppImage\r"
+	printf $" ...trying to convert in new generation AppImage\r"
 	if [ -f ./appimagetool ]; then
 		PATH="$PATH:$PWD" ARCH="$(uname -m)" ./appimagetool -n ./squashfs-root >/dev/null 2>&1
 	elif command -v appimagetool 1>/dev/null; then
@@ -394,20 +394,20 @@ _nolibfuse() {
 
 	# Test if the AppImage has been created
 	if ! test -f ./*.AppImage; then
-		echo " 💀Error when trying to convert $target. Operation Aborted."
+		echo $" 💀Error when trying to convert $target. Operation Aborted."
 		rm -Rf ./appimagetool ./squashfs-root
 		return 1
 	fi
 
 	mv ./"$2" ./"$2".old && mv ./*.AppImage ./"$2" || return 1
-	echo " ◆ $target has been converted to a new generation AppImage."
+	echo $" ◆ $target has been converted to a new generation AppImage."
 	rm -Rf ./appimagetool ./squashfs-root ./*.zsync
 	if [ -f ./AM-updater ] && ! grep -q 'nolibfuse' ./AM-updater; then
 		sed -i "s/^else/	echo y | $AMCLIPATH_ORIGIN nolibfuse \"\$APP\"\n	notify-send \"\$APP has been converted too\!\"\nelse/g" ./AM-updater 2>/dev/null
-		echo " The next update may replace this AppImage with a Type2 one"
-		echo " so I added this command to the bottom of the \"AM-updater\" script!"
+		echo $" The next update may replace this AppImage with a Type2 one"
+		echo $" so I added this command to the bottom of the \"AM-updater\" script!"
 	fi
-	echo " Contact the upstream developers to make them officially upgrade!"
+	echo $" Contact the upstream developers to make them officially upgrade!"
 	read -r -p " Do you wish to remove the old libfuse2 AppImage? (Y/n) " yn
 	if echo "$yn" | grep -i '^n' >/dev/null 2>&1; then
 		return 1
@@ -435,15 +435,15 @@ _detect_path_to_remove() {
 _remove() {
 	[ "$AMCLI" = am ] && _detect_appman_apps
 	_detect_path_to_remove
-	[ -z "$RMPATH" ] && echo -e " \"${RED}$arg\033[0m\" is not a valid \"APPNAME\", see \"$AMCLI -f\" for more." && return 1
+	[ -z "$RMPATH" ] && echo -e $" \"${RED}$arg\033[0m\" is not a valid \"APPNAME\", see \"$AMCLI -f\" for more." && return 1
 	read -r -p " ◆ Do you wish to remove \"$arg\"? (Y/n) " yn
 	if echo "$yn" | grep -i '^n' >/dev/null 2>&1; then
-		echo -e " \"${LightBlue}$arg\033[0m\" has not been removed!"
+		echo -e $" \"${LightBlue}$arg\033[0m\" has not been removed!"
 	else
 		[ "$AMCLI" = am ] && "$APPMAN_APPSPATH"/"$arg"/remove 2>/dev/null || $SUDOCMD "$APPSPATH"/"$arg"/remove 2>/dev/null || return 1
 		_clean_amcachedir
 		sleep 0.1
-		echo -e " \"${Green}$arg\033[0m\" has been removed!"
+		echo -e $" \"${Green}$arg\033[0m\" has been removed!"
 	fi
 	[ -d "$DATADIR"/icons/hicolor/scalable/apps ] && find "$DATADIR"/icons/hicolor/scalable/apps -xtype l -exec rm {} \;
 }
@@ -451,11 +451,11 @@ _remove() {
 _hard_remove() {
 	[ "$AMCLI" = am ] && _detect_appman_apps
 	_detect_path_to_remove
-	[ -z "$RMPATH" ] && echo -e " \"${RED}$arg\033[0m\" is not a valid \"APPNAME\", see \"$AMCLI -f\" for more." && return 1
+	[ -z "$RMPATH" ] && echo -e $" \"${RED}$arg\033[0m\" is not a valid \"APPNAME\", see \"$AMCLI -f\" for more." && return 1
 	[ "$AMCLI" = am ] && "$APPMAN_APPSPATH"/"$arg"/remove 2>/dev/null || $SUDOCMD "$APPSPATH"/"$arg"/remove 2>/dev/null || return 1
 	_clean_amcachedir
 	sleep 0.1
-	echo -e " \"${Green}$arg\033[0m\" has been removed!"
+	echo -e $" \"${Green}$arg\033[0m\" has been removed!"
 	[ -d "$DATADIR"/icons/hicolor/scalable/apps ] && find "$DATADIR"/icons/hicolor/scalable/apps -xtype l -exec rm {} \;
 }
 
@@ -464,7 +464,7 @@ _hard_remove() {
 ################################################################################################################################################################
 
 # Main logic
-[ -z "$2" ] && echo " USAGE: $AMCLI $1 [ARGUMENT]" && exit 1
+[ -z "$2" ] && echo $" USAGE: $AMCLI $1 [ARGUMENT]" && exit 1
 case "$1" in
 	'backup'|'-b')
 		# Do a snapshot of an installed app
@@ -519,9 +519,9 @@ case "$1" in
 				argpath=$(echo "$ARGPATHS" | grep "/$arg$")
 				_icon_theme "${@}"
 			done
-			echo " ✔ Success!"
+			echo $" ✔ Success!"
 		else
-			echo " ✖ Aborted!"
+			echo $" ✖ Aborted!"
 		fi
 		;;
 
@@ -532,7 +532,7 @@ case "$1" in
 			entries="$(echo "$@" | cut -f3- -d ' ')"
 			echo "$DIVIDING_LINE"
 			_update_launchers
-			printf "%b\n ◆ Updates check finished! \n" "$DIVIDING_LINE"
+			printf $"%b\n ◆ Updates check finished! \n" "$DIVIDING_LINE"
 		fi
 		for arg in $entries; do
 			echo "$DIVIDING_LINE"

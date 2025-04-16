@@ -23,6 +23,10 @@ if uname | grep -q "BSD\|DragonFly\|DynFi\|FreeNAS\|helloSystem\|OPNsense\|pfSen
 	export TERM
 fi
 
+# Use translations
+export TEXTDOMAIN=am
+export TEXTDOMAINDIR=/usr/share/locale
+
 # XDG Variables
 export BINDIR="${XDG_BIN_HOME:-$HOME/.local/bin}"
 export DATADIR="${XDG_DATA_HOME:-$HOME/.local/share}"
@@ -43,7 +47,7 @@ DIVIDING_LINE="-----------------------------------------------------------------
 
 # Prevent the use of "sudo" ("AM")
 if [ "$(id -u)" = 0 ] && [ -n "${SUDO_USER:-$DOAS_USER}" ]; then
-	printf "\n Please do not use \"sudo\" to execute \"%b\", try again.\n\n" "$CLI"
+	printf $"\n Please do not use \"sudo\" to execute \"%b\", try again.\n\n" "$CLI"
 	exit 1
 fi
 
@@ -76,7 +80,7 @@ _fit() {
 less() {
 	if ! command less "$@" 2>/dev/null; then
 		while read -r line; do echo "$line"; done
-		echo "Install 'less' if you want to scroll this list"
+		echo $"Install 'less' if you want to scroll this list"
 	fi
 }
 
@@ -93,9 +97,9 @@ sed() {
 				echo "$tmpsedYYY" > "$1"
 				unset tmpsedYYY
 			else
-				>&2 echo " 💀 ERROR: Your version of sed does not support '-i' flag"
-				>&2 echo " without extension, we tried to workaround and failed"
-				>&2 echo " Please install gsed"
+				>&2 echo $" 💀 ERROR: Your version of sed does not support '-i' flag"
+				>&2 echo $" without extension, we tried to workaround and failed"
+				>&2 echo $" Please install gsed"
 				unset tmpsedYYY
 				return 1
 			fi
@@ -123,7 +127,7 @@ if you wish to later change the location, first remove all the programs and then
 _appman_check() {
 	if [ ! -f "$APPMANCONFIG"/appman-config ]; then
 		echo "$DIVIDING_LINE"
-		[ "$AMCLI" = am ] && echo ">>> Configure AppMan" || echo ">>> Thank you for choosing AppMan!"
+		[ "$AMCLI" = am ] && echo $">>> Configure AppMan" || echo $">>> Thank you for choosing AppMan!"
 		echo "$DIVIDING_LINE"
 		echo "$APPMAN_SETUP_MSG" | _fit
 		echo "$DIVIDING_LINE"
@@ -135,20 +139,20 @@ _appman_check() {
 		fi
 		if echo "$location" | grep "$BINDIR" >/dev/null 2>&1; then
 			echo "$DIVIDING_LINE"
-			echo " 💀 ERROR, you can't install applications in \"$BINDIR\""
-			echo " $BINDIR is normally used for executables, Please choose a different path and retry!"
+			echo $" 💀 ERROR, you can't install applications in \"$BINDIR\""
+			echo $" $BINDIR is normally used for executables, Please choose a different path and retry!"
 			echo "$DIVIDING_LINE"
 			exit  1
 		elif ! mkdir -p "$location" 2>/dev/null || [ ! -w "$location" ]; then
-			echo " 💀 ERROR: You don't have write access to $location or it is invalid"
+			echo $" 💀 ERROR: You don't have write access to $location or it is invalid"
 			exit 1
 		fi
 		mkdir -p "$APPMANCONFIG" || exit 1
 		echo "${location%/}" > "$APPMANCONFIG"/appman-config || exit 1
 		echo "$DIVIDING_LINE"
-		echo " You are ready! Start installing your favorite apps locally!"
-		echo " All apps will be installed in $location"
-		echo " In case of problems, use the option \"-h\"."
+		echo $" You are ready! Start installing your favorite apps locally!"
+		echo $" All apps will be installed in $location"
+		echo $" In case of problems, use the option \"-h\"."
 		echo "$DIVIDING_LINE"
 	fi
 }
@@ -169,11 +173,11 @@ _appman() {
 	AMPATH="$APPSDIR/$AMCLI"
 	_create_cache_dir
 	if [ ! -w "$APPSPATH" ]; then
-		echo "ERROR: You don't have write access to $APPSPATH" | _fit
+		echo $"ERROR: You don't have write access to $APPSPATH" | _fit
 		exit 1
 	elif ! echo "$PATH" | grep "$BINDIR" >/dev/null 2>&1; then
 		echo "$DIVIDING_LINE"
-		printf "%b ⚠️ WARNING\033[0m: \"%b%b\033[0m\" is not in PATH, local apps may not run.\n" "${RED}" "${LightBlue}" "$BINDIR"
+		printf $"%b ⚠️ WARNING\033[0m: \"%b%b\033[0m\" is not in PATH, local apps may not run.\n" "${RED}" "${LightBlue}" "$BINDIR"
 	fi
 	MODULES_PATH="$AMPATH/modules"
 	mkdir -p "$MODULES_PATH" || exit 1
@@ -188,7 +192,7 @@ _am() {
 	elif command -v doas >/dev/null 2>&1; then
 		export SUDOCMD="doas"
 	else
-		echo 'ERROR: No sudo or doas found'
+		echo $'ERROR: No sudo or doas found'
 		exit 1
 	fi
 	APPSPATH="/opt"
@@ -267,7 +271,7 @@ fi
 
 _betatester_message_on() {
 	if [ -f "$AMDATADIR"/betatester ]; then
-		echo "$DIVIDING_LINE"; echo "\"$AMCLIUPPER\" $AMVERSION: DEVELOPER MODE"; echo "$DIVIDING_LINE"
+		echo "$DIVIDING_LINE"; echo $"\"$AMCLIUPPER\" $AMVERSION: DEVELOPER MODE"; echo "$DIVIDING_LINE"
 	fi
 }
 
@@ -297,12 +301,12 @@ _am_dependences_check() {
 	# Exit if any essential command is missing
 	if [ -n "$missing_deps" ]; then
 		echo "$DIVIDING_LINE"
-		printf " ${RED}💀 ERROR! MISSING ESSENTIAL COMMANDS\033[0m: %s\n\n Install the above and try again! \n" "${missing_deps[*]}"
+		printf $" ${RED}💀 ERROR! MISSING ESSENTIAL COMMANDS\033[0m: %s\n\n Install the above and try again! \n" "${missing_deps[*]}"
 		echo "$DIVIDING_LINE"
-		printf "%bList of the %b core dependences\033[0m:\n\n%b\n" "${Green}" "$AMCLIUPPER $AMVERSION" "$AMDEPENDENCES" | _fit
+		printf $"%bList of the %b core dependences\033[0m:\n\n%b\n" "${Green}" "$AMCLIUPPER $AMVERSION" "$AMDEPENDENCES" | _fit
 		echo "$DIVIDING_LINE"
-		printf "If this message appears it is because you are missing some dependency and if its the first time its because something new has been introduced.\n\n" | _fit
-		printf " See %bhttps://github.com/ivan-hc/AM#core-dependences\033[0m for more information\n" "${LightBlue}"
+		printf $"If this message appears it is because you are missing some dependency and if its the first time its because something new has been introduced.\n\n" | _fit
+		printf $" See %bhttps://github.com/ivan-hc/AM#core-dependences\033[0m for more information\n" "${LightBlue}"
 		echo "$DIVIDING_LINE"
 		exit 1
 	fi
@@ -311,10 +315,10 @@ _am_dependences_check() {
 _check_ubuntu_mess() {
 	if command -v unshare >/dev/null 2>&1 && ! unshare --user -p /bin/true >/dev/null 2>&1; then
 		echo "$DIVIDING_LINE"
-		printf "\n %b⚠️ WARNING: ACCESS TO USER NAMESPACES IS RESTRICTED! \033[0m\n\n" "${RED}"
-		echo " Some apps may not run, you need to enable access to user namespaces, see"
+		printf $"\n %b⚠️ WARNING: ACCESS TO USER NAMESPACES IS RESTRICTED! \033[0m\n\n" "${RED}"
+		echo $" Some apps may not run, you need to enable access to user namespaces, see"
 		printf " %bhttps://github.com/ivan-hc/AM/blob/main/docs/troubleshooting.md#ubuntu-mess\033[0m\n" "${LightBlue}"
-		echo " to know more."
+		echo $" to know more."
 		echo ""
 		echo "$DIVIDING_LINE"
 	fi
@@ -326,7 +330,7 @@ _check_ubuntu_mess
 # Function to check online connections (uses github.com by default, as the database and CLI itself are stored/hosted there)
 _online_check() {
 	if ! wget -q --tries=10 --timeout=20 --spider https://github.com; then
-		printf "\n %b is offline, please check your internet connection and try again\n\n" "$AMCLI"
+		printf $"\n %b is offline, please check your internet connection and try again\n\n" "$AMCLI"
 		exit 0
 	fi
 }
@@ -338,14 +342,14 @@ and any other AppImages helper, it's preferable to use \"only\" the standalone A
 updated release can also be installed via \"$AMCLIUPPER\". But as long as you have the currently installed version, you can't use this CLI."
 
 _blacklisted_file() {
-	printf "\n %b💀WARNING! Detected \"%b\"\033[0m\n\n" "${RED}" "$blacklisted_file"
-	echo "It will prevent \"$AMCLIUPPER\" from working correctly with AppImages, especially when extracting, integrating and updating them." | _fit
+	printf $"\n %b💀WARNING! Detected \"%b\"\033[0m\n\n" "${RED}" "$blacklisted_file"
+	echo $"It will prevent \"$AMCLIUPPER\" from working correctly with AppImages, especially when extracting, integrating and updating them." | _fit
 	echo ""
 	if echo "$blacklisted_file" | grep -q appimagelauncherd; then
 		echo "$appimagelauncher_msg" | _fit
-		echo "" && echo " Please remove \"AppImageLauncher\", reboot and retry!"
+		echo "" && echo $" Please remove \"AppImageLauncher\", reboot and retry!"
 	else
-		echo " Please remove \"$blacklisted_file\", reboot and retry!"
+		echo $" Please remove \"$blacklisted_file\", reboot and retry!"
 	fi
 	echo ""
 	exit 0
@@ -364,35 +368,35 @@ fi
 ################################################################################################################################################################
 
 _use_newrepo() {
-	[ -z "$2" ] && echo " USAGE: $AMCLI $1 [ARGUMENT]" && exit 1
+	[ -z "$2" ] && echo $" USAGE: $AMCLI $1 [ARGUMENT]" && exit 1
 	case $2 in
 	'add')
 		if [ -z "$3" ]; then
-			echo " USAGE:	$AMCLI $1 $2 /path/to/dir"; echo "	$AMCLI $1 $2 {URL}"; exit 1
+			echo $" USAGE:	$AMCLI $1 $2 /path/to/dir"; echo "	$AMCLI $1 $2 {URL}"; exit 1
 		else
 			echo "$3" >> "$AMDATADIR/newrepo-lists"
 		fi
 		;;
 	'enable'|'on')
-		[ ! -f "$AMDATADIR/newrepo-lists" ] && echo " ERROR, \"$AMDATADIR/newrepo-lists\" file not found" && exit 1
-		[ -f "$AMDATADIR/newrepo-off" ] && mv "$AMDATADIR/newrepo-off" "$AMDATADIR/newrepo-on" && echo " New repo ON!"
+		[ ! -f "$AMDATADIR/newrepo-lists" ] && echo $" ERROR, \"$AMDATADIR/newrepo-lists\" file not found" && exit 1
+		[ -f "$AMDATADIR/newrepo-off" ] && mv "$AMDATADIR/newrepo-off" "$AMDATADIR/newrepo-on" && echo $" New repo ON!"
 		;;
 	'disable'|'off')
-		[ ! -f "$AMDATADIR/newrepo-lists" ] && echo " ERROR, \"$AMDATADIR/newrepo-lists\" file not found" && exit 1
-		[ -f "$AMDATADIR/newrepo-on" ] && mv "$AMDATADIR/newrepo-on" "$AMDATADIR/newrepo-off" && echo " New repo OFF!"
+		[ ! -f "$AMDATADIR/newrepo-lists" ] && echo $" ERROR, \"$AMDATADIR/newrepo-lists\" file not found" && exit 1
+		[ -f "$AMDATADIR/newrepo-on" ] && mv "$AMDATADIR/newrepo-on" "$AMDATADIR/newrepo-off" && echo $" New repo OFF!"
 		;;
 	'info')
-		printf " Source: %b\n Apps: %b\n List: %b\n" "$AMREPO" "$APPSDB" "$APPSLISTDB"
+		printf $" Source: %b\n Apps: %b\n List: %b\n" "$AMREPO" "$APPSDB" "$APPSLISTDB"
 		;;
 	'purge')
-		[ -f "$AMDATADIR/newrepo-lists" ] && rm -f "$AMDATADIR"/newrepo* && echo " Removed all 3rd party repositories"
+		[ -f "$AMDATADIR/newrepo-lists" ] && rm -f "$AMDATADIR"/newrepo* && echo $" Removed all 3rd party repositories"
 		;;
 	'select')
-		[ ! -f "$AMDATADIR/newrepo-lists" ] && echo " ERROR, \"$AMDATADIR/newrepo-lists\" file not found" && exit 1
-		printf "Select a repo from the list or press CTRL+C to abort:\n%b\n" "$DIVIDING_LINE"; sleep 1
+		[ ! -f "$AMDATADIR/newrepo-lists" ] && echo $" ERROR, \"$AMDATADIR/newrepo-lists\" file not found" && exit 1
+		printf $"Select a repo from the list or press CTRL+C to abort:\n%b\n" "$DIVIDING_LINE"; sleep 1
 		select repo in $(sort -u "$AMDATADIR/newrepo-lists" | uniq); do
 			test -n "$repo" && break
-			echo ">>> Invalid Selection"
+			echo $">>> Invalid Selection"
 		done
 		echo "$repo" > "$AMDATADIR/newrepo-on"
 		;;
@@ -413,7 +417,7 @@ _am_newrepo_check() {
 		export APPSLISTDB="$AMREPO/programs/$ARCH-apps"
 		export MODULES_PATH="$AMPATH/modules"
 		if [ "$1" != "newrepo" ] && [ "$1" != "neodb" ]; then
-			echo "$DIVIDING_LINE"; echo " Source: $AMREPO"; echo "$DIVIDING_LINE"
+			echo "$DIVIDING_LINE"; echo $" Source: $AMREPO"; echo "$DIVIDING_LINE"
 		fi
 	fi
 }
@@ -534,7 +538,7 @@ if ! grep -o " $AMCLI$" "$completion_file" >/dev/null 2>&1; then
 		source "$completion_file"
 		HEREDOC
 	fi
-	echo "Shell completion has been enabled!"
+	echo $"Shell completion has been enabled!"
 fi
 if [ -d "$DATADIR"/fish/completions ] || [ -d /etc/fish/completions ] || [ -d /usr/share/fish/completions ]; then
 	command -v fish 1>/dev/null && [ ! -f "$CONFIGDIR"/fish/completions/am.fish ] && mkdir -p "$CONFIGDIR"/fish/completions && echo "complete -c am -f -a \"(cat $DATADIR/AM/list 2>/dev/null)\"" > "$CONFIGDIR"/fish/completions/am.fish
@@ -665,13 +669,13 @@ _validate_github_token() {
 	HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --header "Authorization: token $token" "https://api.github.com/repos/ivan-hc/AM/releases")
 
 	if [ "$HTTP_STATUS" = "200" ]; then
-		[ "$quiet" != "true" ] && echo "Validation successful!"
+		[ "$quiet" != "true" ] && echo $"Validation successful!"
 		return 0
 	elif [ "$HTTP_STATUS" = "401" ] || [ "$HTTP_STATUS" = "403" ]; then
-		[ "$quiet" != "true" ] && echo "ERROR: Invalid token or insufficient permissions!"
+		[ "$quiet" != "true" ] && echo $"ERROR: Invalid token or insufficient permissions!"
 		return 1
 	else
-		[ "$quiet" != "true" ] && echo "ERROR: Unexpected response (HTTP $HTTP_STATUS)"
+		[ "$quiet" != "true" ] && echo $"ERROR: Unexpected response (HTTP $HTTP_STATUS)"
 		return 2
 	fi
 }
@@ -679,7 +683,7 @@ _validate_github_token() {
 _use_apikey() {
 	case $2 in
 	'del'|'delete'|'remove')
-		[ -f "$ghapikey_file" ] || { echo " ✖ No file named $ghapikey_file has been found"; exit 1; }
+		[ -f "$ghapikey_file" ] || { echo $" ✖ No file named $ghapikey_file has been found"; exit 1; }
 		# Remove token references from all updater files before deleting the token file
 		for arg in $ARGS; do
 		argpath=$(echo "$ARGPATHS" | grep "/$arg$")
@@ -688,8 +692,8 @@ _use_apikey() {
 				sed -i 's# --header "Authorization: token [^"]*"##g' "$argpath"/AM-updater
 			fi
 		done
-		rm -f "$ghapikey_file" && echo " ✔ $ghapikey_file has been removed"
-		echo " ✔ Authorization headers removed from updater files"
+		rm -f "$ghapikey_file" && echo $" ✔ $ghapikey_file has been removed"
+		echo $" ✔ Authorization headers removed from updater files"
 		exit 0
 	esac
 	_online_check
@@ -699,7 +703,7 @@ _use_apikey() {
 			echo "$2" > "$ghapikey_file"
 		fi
 	else
-		echo "ERROR: Wrong expression, validation failed!"
+		echo $"ERROR: Wrong expression, validation failed!"
 	fi
 }
 
@@ -710,13 +714,13 @@ _update_github_api_key_in_the_updater_files() {
 		# Validate the stored token quietly before attempting to update files
 		if ! _validate_github_token "$ghapikey" "true"; then
 			echo "$DIVIDING_LINE"
-			echo " ⚠️ Warning: Stored GitHub API token is invalid or expired"
+			echo $" ⚠️ Warning: Stored GitHub API token is invalid or expired"
 			echo ""
-			echo " Please either:"
-			echo "   1. Generate a new token and add it with: $AMCLI apikey YOUR_NEW_TOKEN"
-			echo "   2. Remove the invalid token with: $AMCLI apikey del"
+			echo $" Please either:"
+			echo $"   1. Generate a new token and add it with: $AMCLI apikey YOUR_NEW_TOKEN"
+			echo $"   2. Remove the invalid token with: $AMCLI apikey del"
 			echo ""
-			echo " For instructions on creating GitHub tokens, see:"
+			echo $" For instructions on creating GitHub tokens, see:"
 			echo " https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token"
 			echo "$DIVIDING_LINE"
 			exit 1
@@ -749,7 +753,7 @@ APPMAN_MSG_THINK="$DIVIDING_LINE\nNOTE: You can also choose to simply use \"--us
 
 _use_appman() {
 	_online_check
-	[ "$CLI" = appman ] && echo " This function only works for AM" && exit 0
+	[ "$CLI" = appman ] && echo $" This function only works for AM" && exit 0
 	printf "%b" "$APPMAN_MSG_THINK" | _fit
 	read -r -p " Do you wish to enter \"AppMan Mode\" (y,N)?" yn
 	if ! echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
@@ -770,7 +774,7 @@ if [ "$AMCLI" = am ]; then
 		if echo "$yn" | grep -i '^n' >/dev/null 2>&1; then
 			exit 0
 		else
-			echo "$DIVIDING_LINE"; echo "\"AppMan Mode\" enabled!"; echo "$DIVIDING_LINE"
+			echo "$DIVIDING_LINE"; echo $"\"AppMan Mode\" enabled!"; echo "$DIVIDING_LINE"
 			_use_appman 1>/dev/null
 		fi
 	fi
@@ -782,14 +786,14 @@ fi
 
 _clean_amcachedir_message() {
 	_clean_amcachedir
-	[ "$AMCLI" = am ] && [ -d "$CACHEDIR"/am ] && echo " ✔ Clear the contents of $CACHEDIR/am"
-	[ -d "$CACHEDIR"/appman ] && echo " ✔ Clear the contents of $CACHEDIR/appman"
+	[ "$AMCLI" = am ] && [ -d "$CACHEDIR"/am ] && echo $" ✔ Clear the contents of $CACHEDIR/am"
+	[ -d "$CACHEDIR"/appman ] && echo $" ✔ Clear the contents of $CACHEDIR/appman"
 }
 
 _clean_all_home_cache_directories_of_appimages() {
 	for arg in $ARGPATHS; do
 		if test -d "$arg"/*.home/.cache; then
-			rm -Rf "$arg"/*/*.home/.cache/* && echo " ✔ Clear the contents of $arg/*.home/.cache"
+			rm -Rf "$arg"/*/*.home/.cache/* && echo $" ✔ Clear the contents of $arg/*.home/.cache"
 		fi
 	done
 }
@@ -798,7 +802,7 @@ _clean_all_tmp_directories_from_appspath() {
 	_determine_args
 	for arg in $ARGPATHS; do
 		if [ -d "$arg"/tmp ]; then
-			rm -Rf "$arg"/tmp && echo " ✔ Removed $arg/tmp"
+			rm -Rf "$arg"/tmp && echo $" ✔ Removed $arg/tmp"
 		fi
 	done
 }
@@ -825,8 +829,8 @@ _clean_launchers() {
 				fi
 				if [ -n "$mountpoint" ] && [ ! -d "$mountpoint" ]; then
 					echo "$mountpoint" >> "$AMCACHEDIR"/mountpoints
-					echo " ✖ ERROR: cannot remove \"$(basename "$var")\""
-					echo "   related AppImage is located in an unmounted path of $unmounted_point"
+					echo $" ✖ ERROR: cannot remove \"$(basename "$var")\""
+					echo $"   related AppImage is located in an unmounted path of $unmounted_point"
 				else
 					rm -f "$var"
 					[ -n "$BINDIR" ] && [ -n "$launcher2del" ] && rm -f "$BINDIR"/"$launcher2del"*
@@ -841,7 +845,7 @@ _clean_launchers() {
 		fi
 		[ -z "$mountpoint_enabled" ] && [ -n "$BINDIR" ] && cd "$BINDIR" && find . -xtype l -delete
 		rm -f "$AMCACHEDIR"/mountpoints
-		echo ' ✔ Removed orphaned launchers produced with the "--launcher" option'
+		echo $' ✔ Removed orphaned launchers produced with the "--launcher" option'
 		rmdir "$DATADIR"/applications/AppImages
 	else
 		[ -n "$BINDIR" ] && cd "$BINDIR" && find . -xtype l -delete
@@ -854,13 +858,13 @@ _clean_old_modules() {
 	for m in "$MODULES_PATH"/*; do
 		if [[ "${MODULES}" != *"$(basename -- "$m")"* ]];then
 			rm -f "$m" 2>/dev/null
-			echo " ✔ Removed obsolete module named \"$(basename -- "$m")\""
+			echo $" ✔ Removed obsolete module named \"$(basename -- "$m")\""
 		fi
 	done
 }
 
 _use_clean() {
-	echo " Cleaning temporary files and folders..." && sleep 0.1
+	echo $" Cleaning temporary files and folders..." && sleep 0.1
 	i=100 && while [ "$i" -ge 0 ]; do
 		printf " %03d\r" "$i" && sleep 0.0001 && i=$((i - 1))
 	done
@@ -883,14 +887,14 @@ _use_hide_unhide() {
 		for arg in $entries; do
 			argpath=$(echo "$ARGPATHS" | grep "/$arg$")
 			[ -f "$argpath/remove" ] && mv "$argpath/remove" "$argpath/remove.old" \
-			&& echo "✔ $argpath has been hidden" || echo "✖ Can't hide \"$arg\", app already hidden or non-existent"
+			&& echo $"✔ $argpath has been hidden" || echo $"✖ Can't hide \"$arg\", app already hidden or non-existent"
 		done
 	else
 		for arg in $entries; do
 			[ "$AMCLI" = am ] && [ -f "/opt/$arg/remove.old" ] && mv "/opt/$arg/remove.old" "/opt/$arg/remove" \
-			&& echo "✔ /opt/$arg can be managed again"
+			&& echo $"✔ /opt/$arg can be managed again"
 			[ -n "$APPMAN_APPSPATH" ] && [ -f "$APPMAN_APPSPATH/$arg/remove.old" ] && mv "$APPMAN_APPSPATH/$arg/remove.old" "$APPMAN_APPSPATH/$arg/remove" \
-			&& echo "✔ $APPMAN_APPSPATH/$arg can be managed again"
+			&& echo $"✔ $APPMAN_APPSPATH/$arg can be managed again"
 		done
 		_clean_amcachedir
 	fi
@@ -901,7 +905,7 @@ _use_hide_unhide() {
 ################################################################################################################################################################
 
 _sync_installation_scripts() {
-	printf "%b\n Checking for changes of the installation scripts in the online database...\n" "$DIVIDING_LINE"
+	printf $"%b\n Checking for changes of the installation scripts in the online database...\n" "$DIVIDING_LINE"
 	_determine_args
 	for arg in $ARGS; do
 		argpath=$(echo "$ARGPATHS" | grep "/$arg$")
@@ -914,12 +918,12 @@ _sync_installation_scripts() {
 				if [ "$CURRENT" = "$SOURCE" ]; then
 					echo -ne "\r" 2>/dev/null
 				else
-					printf " ◆ %b%b\033[0m has changed, you may need to reinstall it, see\n   https://github.com/ivan-hc/AM/blob/main/programs/%b/%b\n" "${RED}" "$scriptname" "$ARCH" "$scriptname"
+					printf $" ◆ %b%b\033[0m has changed, you may need to reinstall it, see\n   https://github.com/ivan-hc/AM/blob/main/programs/%b/%b\n" "${RED}" "$scriptname" "$ARCH" "$scriptname"
 					to_reinstall_true=1
 				fi
 			else
 				if [ -z "$scriptname" ] && curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg"  1>/dev/null; then
-					printf " ◆ No installation script for %b, downloading one...\n" "$arg"
+					printf $" ◆ No installation script for %b, downloading one...\n" "$arg"
 					mkdir -p "$argpath"/.am-installer
 					wget -q "$APPSDB/$arg" -O "$argpath"/.am-installer/"$arg"
 				fi
@@ -928,7 +932,7 @@ _sync_installation_scripts() {
 			scriptname=""
 		fi
 	done
-	[ -n "$to_reinstall_true" ] && printf "\n To fix the above, just run \"%b%b reinstall\033[0m\", without arguments\n" "${Green}" "$AMCLI"
+	[ -n "$to_reinstall_true" ] && printf $"\n To fix the above, just run \"%b%b reinstall\033[0m\", without arguments\n" "${Green}" "$AMCLI"
 }
 
 _sync_appimages_list() {
@@ -942,7 +946,7 @@ _sync_portable_list() {
 }
 
 _sync_databases() {
-	printf "%b\n Check and update offline lists of additional databases...\n" "$DIVIDING_LINE"
+	printf $"%b\n Check and update offline lists of additional databases...\n" "$DIVIDING_LINE"
 	_sync_appimages_list
 	_sync_portable_list
 	_sync_third_party_lists 2>/dev/null
@@ -950,12 +954,12 @@ _sync_databases() {
 }
 
 _sync_modules() {
-	printf "%b\n Check for updates in modules...\n" "$DIVIDING_LINE"
+	printf $"%b\n Check for updates in modules...\n" "$DIVIDING_LINE"
 	MODULES=$(curl -Ls "$AMREPO/APP-MANAGER" | tr '"' '\n' | grep "[a-z]\.am$")
 	for module_name in $MODULES; do
 		cd "$MODULES_PATH" || return 1
 		if ! test -f ./"$module_name"; then
-			echo " ◆ Downloading $module_name (not previously installed)..."
+			echo $" ◆ Downloading $module_name (not previously installed)..."
 			curl -Os "$MODULES_SOURCE/$module_name" 2>/dev/null
 			chmod a+x ./"$MODULENAME"
 		fi
@@ -964,7 +968,7 @@ _sync_modules() {
 		if [ "$CURRENT" = "$SOURCE" ]; then
 			echo -ne "\r" 2>/dev/null
 		else
-			echo " ◆ Updating $module_name..."
+			echo $" ◆ Updating $module_name..."
 			curl -Ls "$MODULES_SOURCE/$module_name" > ./"$module_name" 2>/dev/null
 		fi
 	done
@@ -974,20 +978,20 @@ _sync_modules() {
 _sync_amcli() {
 	echo "$DIVIDING_LINE"
 	CURRENT_AM_VERSION="$AMVERSION"
-	echo -ne "\n ◆ SYNCHRONIZING \"$AMCLIUPPER\" VERSION \"$CURRENT_AM_VERSION\"...\r" && sleep 0.25
+	echo -ne $"\n ◆ SYNCHRONIZING \"$AMCLIUPPER\" VERSION \"$CURRENT_AM_VERSION\"...\r" && sleep 0.25
 	_clean_amcachedir 1>/dev/null
 	cd "$AMCACHEDIR" || return 1
 	curl -Ls "$AMREPO"/APP-MANAGER > ./APP-MANAGER && chmod a+x ./APP-MANAGER
 	echo y | mv ./APP-MANAGER "$(realpath "$0")"
 	NEW_AM_VERSION=$("$AMCLIPATH" -v)
 	if [ ! "$CURRENT_AM_VERSION" = "$NEW_AM_VERSION" ]; then
-		echo -ne " A new release of \"$AMCLIUPPER\" is available, please wait...\r"
-		echo " ◆ \"$AMCLIUPPER\" IS NOW UPDATED TO THE BRAND NEW \"$NEW_AM_VERSION\" VERSION!"
-		printf "\n  Replacement of version \"%b\" currently in use, COMPLETED! \n" "$CURRENT_AM_VERSION"
-		printf "\n See https://github.com/ivan-hc/AM/commits/main\n\n"
+		echo -ne $" A new release of \"$AMCLIUPPER\" is available, please wait...\r"
+		echo $" ◆ \"$AMCLIUPPER\" IS NOW UPDATED TO THE BRAND NEW \"$NEW_AM_VERSION\" VERSION!"
+		printf $"\n  Replacement of version \"%b\" currently in use, COMPLETED! \n" "$CURRENT_AM_VERSION"
+		printf $"\n See https://github.com/ivan-hc/AM/commits/main\n\n"
 	else
-		echo " ◆ \"$AMCLIUPPER\" IS ALREADY UPDATED, CURRENT VERSION \"$CURRENT_AM_VERSION\""
-		printf "\n See https://github.com/ivan-hc/AM/commits/%b\n\n" "$AMBRANCH"
+		echo $" ◆ \"$AMCLIUPPER\" IS ALREADY UPDATED, CURRENT VERSION \"$CURRENT_AM_VERSION\""
+		printf $"\n See https://github.com/ivan-hc/AM/commits/%b\n\n" "$AMBRANCH"
 	fi
 }
 
@@ -1008,9 +1012,9 @@ _use_sync() {
 ################################################################################################################################################################
 
 _update_updatable_apps_msg_head() {
-	printf " \"%b\" CAN MANAGE UPDATES FOR THE FOLLOWING PROGRAMS:\n%b\n\n" "$AMCLIUPPER" "$DIVIDING_LINE"
-	[ -f "$AMCACHEDIR/updatable-args-list" ] && grep "◆" "$AMCACHEDIR/updatable-args-list" | sort || echo " None"
-	printf "\n All self-updatable programs are excluded\n"
+	printf $" \"%b\" CAN MANAGE UPDATES FOR THE FOLLOWING PROGRAMS:\n%b\n\n" "$AMCLIUPPER" "$DIVIDING_LINE"
+	[ -f "$AMCACHEDIR/updatable-args-list" ] && grep "◆" "$AMCACHEDIR/updatable-args-list" | sort || echo $" None"
+	printf $"\n All self-updatable programs are excluded\n"
 	echo "$DIVIDING_LINE"
 }
 
@@ -1036,14 +1040,14 @@ _update_determine_apps_version_changes() {
 		OLDVER="$AMCACHEDIR/updatable-args-list-old"
 		NEWVER="$AMCACHEDIR/updatable-args-list"
 		if cmp --silent -- "$NEWVER" "$OLDVER"; then
-			echo ' Nothing to do here!'
+			echo $' Nothing to do here!'
 		else
-			printf " The following apps have been updated:\n\n"
+			printf $" The following apps have been updated:\n\n"
 			diff "$OLDVER" "$NEWVER" | grep "^>" | sed 's/^> //g'
 			echo ""
 		fi
 	else
-		echo ' No apps to update here!'
+		echo $' No apps to update here!'
 	fi
 }
 
@@ -1078,7 +1082,7 @@ _update_run_updater() {
 	sed -i "s#$ALT_GH#api.github.com#g" "$argpath"/AM-updater 2>/dev/null
 	end=$(date +%s)
 	timelapsed=$((end - start))
-	[ "$timelapsed" = 1 ] && echo " ◆ $APPNAME is updated, $timelapsed second elapsed!" || echo " ◆ $APPNAME is updated, $timelapsed seconds elapsed!"
+	[ "$timelapsed" = 1 ] && echo $" ◆ $APPNAME is updated, $timelapsed second elapsed!" || echo $" ◆ $APPNAME is updated, $timelapsed seconds elapsed!"
 	[ -n "$debug_update" ] && echo "$DIVIDING_LINE"
 }
 
@@ -1088,7 +1092,7 @@ _update_app() {
 	if [ -w "$argpath"/AM-updater ]; then
 		_update_run_updater &
 	else
-		echo " ✖ $APPNAME is read-only, cannot update it!"
+		echo $" ✖ $APPNAME is read-only, cannot update it!"
 	fi
 }
 
@@ -1121,14 +1125,14 @@ _update_launchers() {
 		update_launchers_error_message=" 💀 ERROR! Missing command \"${RED}appimageupdatetool\033[0m\", install it and retry!"
 		printf "%b\n%b\n%b\n" "$DIVIDING_LINE" "$update_launchers_error_message" "$DIVIDING_LINE"
 	else
-		echo " ◆ Update local AppImages integrated manually"
+		echo $" ◆ Update local AppImages integrated manually"
 		for var in "$DATADIR"/applications/AppImages/*.desktop; do
 			appimage_full_path=$(awk -F'=| ' '/Exec=/{print $2; exit}' "$var" | sed 's/"//g; s/\s.*$//')
 			appimagename=$(basename -- "$appimage_full_path")
 			appimage_path=$(echo "$appimage_full_path" | sed -E 's|/[^/]+$|/|; s/\/*$//g')
 			printf "%b\n File: %b%b\033[0m\n Path: %b" "$DIVIDING_LINE" "${Green}" "$appimagename" "$appimage_path"
 			if [ ! -f "$appimage_full_path" ]; then
-				echo "(unmounted)" | _fit
+				echo $"(unmounted)" | _fit
 			else
 				printf "\n\n"
 				appimageupdatetool -Or "$appimage_full_path"
@@ -1153,7 +1157,7 @@ _use_update() {
 	if [ -z "$ENTRIES" ]; then
 		_clean_amcachedir
 		_update_list_updatable_apps
-		printf "%b\n >> START OF ALL PROCESSES << \n%b\n" "$DIVIDING_LINE" "$DIVIDING_LINE"
+		printf $"%b\n >> START OF ALL PROCESSES << \n%b\n" "$DIVIDING_LINE" "$DIVIDING_LINE"
 		if echo "$FLAGS" | grep -q -- "--apps"; then
 			_update_updatable_apps_msg_head
 			_update_all_apps
@@ -1163,11 +1167,11 @@ _use_update() {
 			_update_updatable_apps_msg_head
 			_update_all_apps
 			_use_sync
-			printf " >> END OF ALL PROCESSES << \n%b\n" "$DIVIDING_LINE"
+			printf $" >> END OF ALL PROCESSES << \n%b\n" "$DIVIDING_LINE"
 			sleep 0.2
 			exit 0
 		fi
-		printf "%b\n >> END OF ALL PROCESSES << \n%b\n" "$DIVIDING_LINE" "$DIVIDING_LINE"
+		printf $"%b\n >> END OF ALL PROCESSES << \n%b\n" "$DIVIDING_LINE" "$DIVIDING_LINE"
 		sleep 0.2
 		exit 0
 	else
@@ -1179,11 +1183,11 @@ _use_update() {
 				cd "$argpath" 2>/dev/null || exit 1
 				_update_app
 			elif [ ! -d "$argpath" ]; then
-				echo " ✖ ERROR: \"$(echo "$arg" | tr '[:lower:]' '[:upper:]')\" does not exists!"
+				echo $" ✖ ERROR: \"$(echo "$arg" | tr '[:lower:]' '[:upper:]')\" does not exists!"
 			else
 				UPDATERS=$(cd "$argpath" 2>/dev/null && find . -name "*update*" -print 2>/dev/null)
 				[ -n "$UPDATERS" ] && arg_autoupdatable=", it may have its update system"
-				echo " ✖ Cannot manage updates for \"$(echo "$arg" | tr '[:lower:]' '[:upper:]')\"$arg_autoupdatable"
+				echo $" ✖ Cannot manage updates for \"$(echo "$arg" | tr '[:lower:]' '[:upper:]')\"$arg_autoupdatable"
 			fi
 		done
 		wait
@@ -1198,13 +1202,13 @@ _use_force_latest() {
   	for arg in $ENTRIES; do
 	  	argpath=$(echo "$ARGPATHS" | grep "/$arg$")
 	  	if [ ! -d "$argpath" ]; then
-			echo " ERROR: \"$arg\" is not installed, see \"-f\""
+			echo $" ERROR: \"$arg\" is not installed, see \"-f\""
 		elif [ ! -f "$argpath"/AM-updater ]; then
-			echo " ERROR: \"$AMCLI\" cannot manage updates for \"$arg\""
+			echo $" ERROR: \"$AMCLI\" cannot manage updates for \"$arg\""
 		elif ! grep -q "api.github.com" "$argpath"/AM-updater; then
-			echo " ERROR: \"$arg\" source is not on Github"
+			echo $" ERROR: \"$arg\" source is not on Github"
 		elif ! grep -q "/releases | " "$argpath"/AM-updater; then
-			echo " ERROR: \"$arg\" does not redirect to a generic \"releases\""
+			echo $" ERROR: \"$arg\" does not redirect to a generic \"releases\""
 		else
 			sed -i 's#/releases | #/releases/latest | #g' "$argpath"/AM-updater
 			APPNAME=$(echo "$arg" | tr '[:lower:]' '[:upper:]')
@@ -1224,7 +1228,7 @@ _use_module() {
 	if [ ! -f "$MODULES_PATH/$MODULE" ]; then
 		_online_check
 		if ! wget -q "$MODULES_SOURCE/$MODULE" -O "$MODULES_PATH/$MODULE"; then
-			echo " Module not found, run \"$AMCLI -s\" to update \"$AMCLIUPPER\""
+			echo $" Module not found, run \"$AMCLI -s\" to update \"$AMCLIUPPER\""
 			exit 1
 		fi
 		chmod a+x "$MODULES_PATH/$MODULE"
@@ -1236,10 +1240,10 @@ _use_module() {
 case "$1" in
 	'')
 		echo "$DIVIDING_LINE"
-		echo " USAGE: $AMCLI [OPTION]"
-		echo "        $AMCLI [OPTION] [ARGUMENT]"
+		echo $" USAGE: $AMCLI [OPTION]"
+		echo $"        $AMCLI [OPTION] [ARGUMENT]"
 		echo ""
-		echo " Run the \"$AMCLI -h\" command to find out more"
+		echo $" Run the \"$AMCLI -h\" command to find out more"
 		echo "$DIVIDING_LINE"
 		exit 0
 		;;
@@ -1332,7 +1336,7 @@ case "$1" in
 
 		_use_help() {
 			[ "$CLI" = am ] && [ -f "$APPMANCONFIG"/appman-mode ] && printf "%b" "$APPMAN_MSG"
-			echo -e "
+			echo -e $"
 			NAME: ${Green}$AMCLIUPPER\033[0m		VERSION: ${Green}$AMVERSION\033[0m
 
 			SYNOPSIS:	${LightBlue}$AMCLI {OPTION}\033[0m
@@ -1675,7 +1679,7 @@ case "$1" in
 		;;
 	*)
 		echo "$DIVIDING_LINE"
-		echo "ERROR: unknown option \"$1\", run the \"$AMCLI -h\" command to find out more" | _fit
+		echo $"ERROR: unknown option \"$1\", run the \"$AMCLI -h\" command to find out more" | _fit
 		echo "$DIVIDING_LINE"
 		;;
 esac
