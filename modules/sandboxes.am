@@ -27,13 +27,13 @@ _check_appimage() {
 	APPIMAGE="$(readlink "$TARGET" 2>/dev/null)"
 	APPIMAGEDIR="$(dirname "$APPIMAGE" 2>/dev/null)"
 	if grep "aisap-am" "$TARGET" >/dev/null 2>&1; then
-		printf "%b\n \"%b\" is already sandboxed!\n%b\n" "$DIVIDING_LINE" "$1" "$DIVIDING_LINE"
+		printf $"%b\n \"%b\" is already sandboxed!\n%b\n" "$DIVIDING_LINE" "$1" "$DIVIDING_LINE"
 		return 1
 	elif [ ! -e "$APPIMAGE" ]; then
-		printf "%b\n ERROR: \"%b\" is not installed\n%b\n" "$DIVIDING_LINE" "$1" "$DIVIDING_LINE"
+		printf $"%b\n ERROR: \"%b\" is not installed\n%b\n" "$DIVIDING_LINE" "$1" "$DIVIDING_LINE"
 		return 1
 	elif ! head -c10 "$APPIMAGE" 2>/dev/null | grep -qa '^.ELF....AI$'; then
-		printf "%b\n ERROR: \"%b\" is NOT an AppImage\n%b\n" "$DIVIDING_LINE" "$1" "$DIVIDING_LINE"
+		printf $"%b\n ERROR: \"%b\" is NOT an AppImage\n%b\n" "$DIVIDING_LINE" "$1" "$DIVIDING_LINE"
 		return 1
 	fi
 }
@@ -41,7 +41,7 @@ _check_appimage() {
 _disable_sandbox() {
 	TARGET="$(command -v "$1")"
 	if ! grep "aisap-am sandboxing script" "$TARGET" >/dev/null 2>&1; then
-		echo " ERROR: Not a sandboxed AppImage, aborting"
+		echo $" ERROR: Not a sandboxed AppImage, aborting"
 		return 1
 	fi
 	"$1" --disable-sandbox
@@ -49,13 +49,13 @@ _disable_sandbox() {
 
 _check_aisap() {
 	if [ "$1" = "aisap" ]; then
-		echo " Error: You can't sandbox aisap"
+		echo $" Error: You can't sandbox aisap"
 		return 1
 	elif ! command -v aisap 1>/dev/null; then
-		printf '\n%s\n\n' " Error: You need aisap for this script work"
+		printf $'\n%s\n\n' " Error: You need aisap for this script work"
 		read -r -p " ◆ DO YOU WISH TO INSTALL AISAP? Install size <5 MiB? (Y/n) " yn
 		if echo "$yn" | grep -i '^n' >/dev/null 2>&1; then
-			echo " OPERATION ABORTED!"
+			echo $" OPERATION ABORTED!"
 			return 1
 		fi
 		if [ "$CLI" = am ] && [ -f "$APPMANCONFIG"/appman-config ]; then
@@ -69,7 +69,7 @@ _check_aisap() {
 			"$AMCLIPATH_ORIGIN" -i aisap >/dev/null 2>&1
 		fi
 		command -v aisap 1>/dev/null || return 1
-		echo " aisap installed successfully!"
+		echo $" aisap installed successfully!"
 	fi
 	if [ -f "$BINDIR"/"$1" ]; then
 		SUDOCMD=""
@@ -78,7 +78,7 @@ _check_aisap() {
 
 _generate_sandbox_script() {
 	echo "$DIVIDING_LINE"
-	printf '\n%s\n' " Making aisap sandbox script for \"$1\"..."
+	printf $'\n%s\n' " Making aisap sandbox script for \"$1\"..."
 	tmpscript="$(cat <<-'HEREDOC'
 	#!/bin/sh
 	# aisap-am sandboxing script, aisap: https://github.com/mgord9518/aisap
@@ -89,7 +89,7 @@ _generate_sandbox_script() {
 
 	# Dependency check
 	if ! command -v aisap 1>/dev/null; then
-	  echo "You need aisap for this to work"
+	  echo $"You need aisap for this to work"
 	  notify-send -u critical "Sandbox error: Missing aisap dependency!"
 	  exit 1
 	fi
@@ -123,19 +123,19 @@ _generate_sandbox_script() {
 	if [ "$1" = "--disable-sandbox" ]; then
 	  APPIMAGEDIR="${APPEXEC%/*}"
 	  echo ""
-	  echo "✔ Giving exec permissions back to $APPEXEC..." \
+	  echo $"✔ Giving exec permissions back to $APPEXEC..." \
 	    | fold -sw 77 | sed 's/^/   /g; s/   ✔/ ✔/g'
 	  chmod a+x "$APPEXEC" || exit 1
-	  echo "✔ Patching $APPIMAGEDIR/AM-updater to give permissions back..." \
+	  echo $"✔ Patching $APPIMAGEDIR/AM-updater to give permissions back..." \
 	    | fold -sw 77 | sed 's/^/   /g; s/   ✔/ ✔/g'
 	  tmpsedEEE="$(sed 's|chmod a-x|chmod a+x|g' "$APPIMAGEDIR/AM-updater" 2>/dev/null)"
 	  [ -n "$tmpsedEEE" ] && echo "$tmpsedEEE" > "$APPIMAGEDIR/AM-updater" || return 1
 	  unset tmpsedEEE
 	  THISFILE="$(realpath "$0")"
-	  echo "✔ Replacing $THISFILE with a link to the AppImage..." \
+	  echo $"✔ Replacing $THISFILE with a link to the AppImage..." \
 	    | fold -sw 77 | sed 's/^/   /g; s/   ✔/ ✔/g'
 	  SUDO ln -sf "$APPEXEC" "$THISFILE" || exit 1
-	  printf '\033[32m\n%s\n\033[0m\n' "✔ $APPEXEC successfully unsandboxed!" \
+	  printf $'\033[32m\n%s\n\033[0m\n' "✔ $APPEXEC successfully unsandboxed!" \
 	    | fold -sw 77 | sed 's/^/   /g; s/   ✔/ ✔/g'
 	  exit 0
 	fi
@@ -197,9 +197,9 @@ _configure_dirs_access() {
 	printf '\033[31m'
 	read -r -p " Allow $1 access to a specific directory? (y/N) " yn
 	if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
-		echo "  WARNING: Giving access to all of $HOME or / and similar is not safe"
-		echo "  Also aisap might not let $1 start when such paths are given"
-		printf '\033[33m%s\n' "  Type the path to the directory"
+		echo $"  WARNING: Giving access to all of $HOME or / and similar is not safe"
+		echo $"  Also aisap might not let $1 start when such paths are given"
+		printf $'\033[33m%s\n' "  Type the path to the directory"
 		read -r -p "  Example: /media/external-drive or ~/Backups: " NEWDIR
 		NEWDIR="$(realpath "$NEWDIR")"
 		case "$NEWDIR" in
@@ -207,18 +207,18 @@ _configure_dirs_access() {
 				notify-send -u critical "DO YOU WANT THE FBI TO GET YA?"
 				printf '\033[31m\n'
 				read -r -p "  SPOOKY LOCATION! ARE YOU SURE? IF SO TYPE \"YES\": " YES
-				[ "$YES" != "YES" ] && echo " That's not \"YES\", aborting" && return 1
+				[ "$YES" != "YES" ] && echo $" That's not \"YES\", aborting" && return 1
 				;;
 			'')
-				printf '\033[31m\n%s\n\n' " No path given, aborting"
+				printf $'\033[31m\n%s\n\n' " No path given, aborting"
 				return 1
 				;;
 		esac
-		echo "  Giving access to \"$NEWDIR\"..."
+		echo $"  Giving access to \"$NEWDIR\"..."
 		tmpscript=$(echo "$tmpscript" \
 			| sed "s#--rm-file /NOPATH#--add-file \"$NEWDIR\":rw#g")
 	fi
-	printf '\n\033[32m%s\n' " User directories access configured successfully!"
+	printf $'\n\033[32m%s\n' " User directories access configured successfully!"
 }
 
 _install_sandbox_script() {
@@ -233,20 +233,20 @@ _install_sandbox_script() {
 	echo "$tmpscript" | $SUDOCMD tee "$TARGET" >/dev/null 2>&1 || return 1
 	$SUDOCMD chmod a+x "$TARGET"
 	SANDBOXDIR="${SANDBOXDIR:-$HOME/.local/am-sandboxes}"
-	printf '\033[32m\n%s\n\033[0m' " \"$1\" successfully sandboxed!"
-	printf '\n%s\n' " $1 will be sandboxed in \"$SANDBOXDIR\""
-	printf '%s\n\n' " once launched"
-	printf '%s\n' " Set the \$SANDBOXDIR env variable to move the location"
-	printf '\n%s' ' Use '
+	printf $'\033[32m\n%s\n\033[0m' " \"$1\" successfully sandboxed!"
+	printf $'\n%s\n' " $1 will be sandboxed in \"$SANDBOXDIR\""
+	printf $'%s\n\n' " once launched"
+	printf $'%s\n' " Set the \$SANDBOXDIR env variable to move the location"
+	printf $'\n%s' ' Use '
 	printf '\033[33m%s' '--disable-sandbox'
-	printf '\033[0m%s\033[33m\n' " to revert the changes, in this case that is:"
+	printf $'\033[0m%s\033[33m\n' " to revert the changes, in this case that is:"
 	printf '\033[33m%s\033[0m' " $1 --disable-sandbox"
-	printf '%s\033[33m%s\n\033[0m\n' " or " "$AMCLI --disable-sandbox $1"
+	printf $'%s\033[33m%s\n\033[0m\n' " or " "$AMCLI --disable-sandbox $1"
 	SUDOCMD="$SUDOCMD_ORIGIN"
 }
 
 # Main logic
-[ -z "$2" ] && echo " USAGE: $AMCLI $1 [ARGUMENT]" && exit 1
+[ -z "$2" ] && echo $" USAGE: $AMCLI $1 [ARGUMENT]" && exit 1
 case "$1" in
 	'--sandbox')
 		shift
