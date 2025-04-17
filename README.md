@@ -54,6 +54,8 @@ You can use the command `am -a {PROGRAM}` to view the description and get the so
      - [Supported third-party databases](#supported-third-party-databases)
      - [How to replace AM database](#how-to-replace-am-database)
 
+   - [Do you own a repository for AppImages external to this database? Follow these instructions!](#do-you-own-a-repository-for-appimages-external-to-this-database-follow-these-instructions)
+
 [How to update all programs, for real!](#how-to-update-all-programs-for-real)
  - [How to update all installed apps](#how-to-update-all-installed-apps)
  - [How to update everything using Topgrade](#how-to-update-everything-using-topgrade)
@@ -85,7 +87,6 @@ To install "AM" you must first install the "core" dependencies from your package
 - "`less`", to read the ever-longer lists;
 - "`unzip`", to extract .zip packages;
 - "`tar`", to extract .tar* packages;
-- "`torsocks`", to connect to the TOR network;
 - "`zsync`", required by very few programs and AppImages (although it is mentioned in all installation scripts, it is often disabled because the managed .zsync files are often broken, especially for apps hosted on github.com).
 
 </details>
@@ -255,6 +256,29 @@ I did this to not tie users to this database and to allow them to use AM and all
 There are many discontinuous projects. Should this become one too, it will not be obsolete.
 
 ------------------------------------------------------------------------
+### Do you own a repository for AppImages external to this database? Follow these instructions!
+If you have a github repository where you build and publish AppImage packages and if for any reason your application is not in this database, add the following instructions:
+
+> To install and update my AppImage using "[AM](https://github.com/ivan-hc/AM)", simply run the following command:
+> ```
+> am -e https://github.com/user/project appname keyword
+> ```
+> if you want to install and update it locally, run
+> ```
+> am -e --user https://github.com/user/project appname keyword
+> ```
+> ...or if you use [AppMan](https://github.com/ivan-hc/AppMan)
+> ```
+> appman -e https://github.com/user/project appname keyword
+> ```
+
+Replace `appname` with the name of the application that will also be used via command line... `keyword` is optional, depending on whether you have more than one AppImage in the "releases" section of your repository.
+
+Of course, replace `user/project` with your username and the repository name.
+
+For more details on how the `-e` or `extra` option works, see [here](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/extra.md).
+
+------------------------------------------------------------------------
 
 | [Back to "Main Index"](#main-index) |
 | - |
@@ -349,7 +373,7 @@ Removes all the unnecessary files and folders.
 
 **Description**:
 
-Set a dedicated `$XDD_CONFIG_HOME` for one or more AppImages.
+Set a dedicated `$XDG_CONFIG_HOME` for one or more AppImages.
 
 ------------------------------------------------------------------------
 ### `downgrade`, `--rollback`
@@ -421,6 +445,15 @@ Prevents an installed application from being shown or managed by "am".
 Set a dedicated $HOME directory for one or more AppImages.
 
 ------------------------------------------------------------------------
+### `-HC`, `-CH`
+
+		am -HC {PROGRAM}
+
+**Description**:
+
+Set dedicated $HOME and $XDG_CONFIG_HOME directories for one or more AppImages.
+
+------------------------------------------------------------------------
 ### `icons`, `--icons`
 
 		am --icons {PROGRAM}
@@ -474,6 +507,7 @@ Prevent an application being updated, if it has an"AM-updater" script.
 		am -l
 		am -l --all
 		am -l --appimages
+  		am -l --portable
 
 **Description**:
 
@@ -516,11 +550,24 @@ Overwrite apps with snapshots saved previously (see "`-b`").
 		am -q {KEYWORD}
 		am -q --all {KEYWORD}
 		am -q --appimages {KEYWORD}
+		am -q --portable {KEYWORD}
 		am -q --pkg {PROGRAM1} {PROGRAM2}
 
 **Description**:
 
-Search for keywords in the list of available applications, add the "`--appimages`" option to list only the AppImages or add "`--pkg`" to list multiple programs at once. The "`--all`" flag allows you to consult the set of all supported databases.
+Search for keywords in the list of available applications, add the "`--appimages`" option to list only the AppImages, "`--portable`" option to list only the portable apps or add "`--pkg`" to list multiple programs at once. The "`--all`" flag allows you to consult the set of all supported databases.
+
+------------------------------------------------------------------------
+### `reinstall`
+
+ 		am reinstall
+ 		am reinstall --all
+
+**Description**:
+
+Reinstall only programs whose installation script has been modified in AM's online database. Use the "`--all`" flag to reinstall everything instead.
+
+NOTE, this only works with the "AM" database. Apps installed with the "`-e`" option and custom scripts created with the "`-t`" option are not supported.
 
 ------------------------------------------------------------------------
 ### `remove`, `-r`

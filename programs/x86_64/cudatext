@@ -2,8 +2,8 @@
 
 # AM INSTALL SCRIPT VERSION 3.5
 set -u
-APP=chromium-latest
-SITE="https://www.chromium.org"
+APP=cudatext
+SITE="https://cudatext.github.io"
 
 # CREATE DIRECTORIES AND ADD REMOVER
 [ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
@@ -12,8 +12,8 @@ printf '\n%s' "rm -f /usr/local/share/applications/$APP-AM.desktop" >> ../remove
 chmod a+x ../remove || exit 1
 
 # DOWNLOAD AND PREPARE THE APP, $version is also used for updates
-version=$(curl -s "https://commondatastorage.googleapis.com/chromium-browser-snapshots/Linux_x64/LAST_CHANGE")
-wget "https://commondatastorage.googleapis.com/chromium-browser-snapshots/Linux_x64/$version/chrome-linux.zip" || exit 1
+version=$(curl -Ls https://sourceforge.net/projects/cudatext/files/release/ | tr '">< ' '\n' | grep -i "^https.*projects.*cudatext.*release.*[0-9].*download" | head -1 | tr '/' '\n' | grep "^[0-9]")
+wget "$(curl -Ls "https://sourceforge.net/projects/cudatext/files/release/$version/" | tr '">< ' '\n' | grep -i "^http.*projects.*files.*release.*linux.*qt.*amd64.*tar.xz/download$" | sort -u | tail -1)" -O cudatext.tar.xz || exit 1
 [ -e ./*7z ] && 7z x ./*7z && rm -f ./*7z
 [ -e ./*tar.* ] && tar fx ./*tar.* && rm -f ./*tar.*
 [ -e ./*zip ] && unzip -qq ./*zip 1>/dev/null && rm -f ./*zip
@@ -21,30 +21,30 @@ cd ..
 if [ -d ./tmp/* 2>/dev/null ]; then mv ./tmp/*/* ./; else mv ./tmp/* ./"$APP" 2>/dev/null || mv ./tmp/* ./; fi
 rm -R -f ./tmp || exit 1
 echo "$version" > ./version
-chmod a+x ./chrome || exit 1
+chmod a+x ./$APP || exit 1
 
 # LINK TO PATH
-ln -s "/opt/$APP/chrome" "/usr/local/bin/$APP"
+ln -s "/opt/$APP/$APP" "/usr/local/bin/$APP"
 
 # SCRIPT TO UPDATE THE PROGRAM
 cat >> ./AM-updater << 'EOF'
 #!/bin/sh
 set -u
-APP=chromium-latest
-SITE="https://www.chromium.org"
+APP=cudatext
+SITE="https://cudatext.github.io"
 version0=$(cat "/opt/$APP/version")
-version=$(curl -s "https://commondatastorage.googleapis.com/chromium-browser-snapshots/Linux_x64/LAST_CHANGE")
+version=$(curl -Ls https://sourceforge.net/projects/cudatext/files/release/ | tr '">< ' '\n' | grep -i "^https.*projects.*cudatext.*release.*[0-9].*download" | head -1 | tr '/' '\n' | grep "^[0-9]")
 [ -n "$version" ] || { echo "Error getting link"; exit 1; }
 if [ "$version" != "$version0" ]; then
 	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
 	notify-send "A new version of $APP is available, please wait"
-	wget "https://commondatastorage.googleapis.com/chromium-browser-snapshots/Linux_x64/$version/chrome-linux.zip" || exit 1
+	wget "$(curl -Ls "https://sourceforge.net/projects/cudatext/files/release/$version/" | tr '">< ' '\n' | grep -i "^http.*projects.*files.*release.*linux.*qt.*amd64.*tar.xz/download$" | sort -u | tail -1)" -O cudatext.tar.xz || exit 1
 	[ -e ./*7z ] && 7z x ./*7z && rm -f ./*7z
 	[ -e ./*tar.* ] && tar fx ./*tar.* && rm -f ./*tar.*
 	[ -e ./*zip ] && unzip -qq ./*zip 1>/dev/null && rm -f ./*zip
 	cd ..
 	if [ -d ./tmp/* 2>/dev/null ]; then mv --backup=t ./tmp/*/* ./; else mv --backup=t ./tmp/* ./"$APP" 2>/dev/null || mv --backup=t ./tmp/* ./; fi
-	chmod a+x ./chrome || exit 1
+	chmod a+x ./"$APP" || exit 1
 	echo "$version" > ./version
 	rm -R -f ./tmp ./*~
 	notify-send "$APP is updated!"
@@ -56,26 +56,17 @@ chmod a+x ./AM-updater || exit 1
 
 # ICON
 mkdir -p icons
-cp ./*48.png ./icons/"$APP" 2> /dev/null
+wget https://portable-linux-apps.github.io/icons/cudatext.png -O ./icons/"$APP" 2> /dev/null
 
 # LAUNCHER
 echo "[Desktop Entry]
-Version=1.0
-Name=Chromium Latest Snapshot
-GenericName=Web Browser
-Comment=Access the Internet
-Exec=$APP %U
+Name=CudaText
+GenericName=Text Editor
+Comment=Text and code editor. Syntax highlighting for 250+ languages. Supports all major encodings. Multi-carets and multi-selections. UI with tabs and sidebar. Search and replace with regex.
+Exec=$APP
 Terminal=false
-Icon=/opt/$APP/icons/$APP
 Type=Application
-Categories=Network;WebBrowser;
-MimeType=application/pdf;application/rdf+xml;application/rss+xml;application/xhtml+xml;application/xhtml_xml;application/xml;image/gif;image/jpeg;image/png;image/webp;text/html;text/xml;x-scheme-handler/ftp;x-scheme-handler/http;x-scheme-handler/https;
-Actions=new-window;new-private-window;
-
-[Desktop Action new-window]
-Name=New Window
-Exec=$APP %U
-
-[Desktop Action new-private-window]
-Name=New Incognito Window
-Exec=$APP --incognito %U" > /usr/local/share/applications/"$APP"-AM.desktop
+StartupNotify=true
+MimeType=text/plain;
+Categories=Development;TextEditor;
+Icon=/opt/$APP/icons/$APP" > /usr/local/share/applications/"$APP"-AM.desktop

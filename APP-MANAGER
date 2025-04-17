@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="9.5-5"
+AMVERSION="9.7"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -42,7 +42,7 @@ LightBlue='\033[1;34m'
 DIVIDING_LINE="-----------------------------------------------------------------------------"
 
 # Prevent the use of "sudo" ("AM")
-if [ -n "${SUDO_USER:-$DOAS_USER}" ]; then
+if [ "$(id -u)" = 0 ] && [ -n "${SUDO_USER:-$DOAS_USER}" ]; then
 	printf "\n Please do not use \"sudo\" to execute \"%b\", try again.\n\n" "$CLI"
 	exit 1
 fi
@@ -210,9 +210,9 @@ else
 fi
 
 _detect_appman_apps() {
-	[ -f "$APPMANCONFIG/appman-config" ] && APPMAN_APPSPATH=$(<"$APPMANCONFIG/appman-config")
+	[ -f "$APPMANCONFIG/appman-config" ] && APPMAN_APPSPATH=$(sort "$APPMANCONFIG/appman-config")
 	if ! echo "$APPMAN_APPSPATH" | grep -q "^/"; then
-		[ -f "$APPMANCONFIG/appman-config" ] && APPMAN_APPSPATH="$HOME/$(<"$APPMANCONFIG/appman-config")"
+		[ -f "$APPMANCONFIG/appman-config" ] && APPMAN_APPSPATH="$HOME/$(sort "$APPMANCONFIG/appman-config")"
 	fi
 }
 
@@ -403,9 +403,9 @@ _am_newrepo_check() {
 	# Determine if the CLI uses the "main" branch of https://github.com/ivan-hc/AM or an alternative one
 	if [ -f "$AMDATADIR/newrepo-on" ]; then
 		if grep -q "^http" "$AMDATADIR/newrepo-on"; then
-			AMREPO=$(<"$AMDATADIR/newrepo-on")
+			AMREPO=$(sort "$AMDATADIR/newrepo-on")
 		elif grep -q "^/" "$AMDATADIR/newrepo-on"; then
-			AMREPO="file://$(<"$AMDATADIR/newrepo-on")"
+			AMREPO="file://$(sort "$AMDATADIR/newrepo-on")"
 		fi
 		AMBRANCH=$(basename "$AMREPO")
 		export APPSDB="$AMREPO/programs/$ARCH"
@@ -423,22 +423,11 @@ _am_newrepo_check "$@"
 #				3RD PARTY SOURCES
 ################################################################################################################################################################
 
-# APPBUNDLEHUB		
-#export appbundle_repo="https://github.com/xplshn/AppBundleHUB"
-#export appbundle_readme="https://raw.githubusercontent.com/ivan-hc/am-extras/main/appbundlehub/${ARCH}.md"
-#[ -n "$appbundle_readme" ] && third_party_flags="$third_party_flags --appbundle"
-
-# SOARPKGS
-export soarpkg_repo="https://github.com/pkgforge/soarpkgs"
-export soarpkg_readme="https://raw.githubusercontent.com/ivan-hc/am-extras/main/soarpkgs/${ARCH}.md"
-[ -n "$soarpkg_readme" ] && third_party_flags="$third_party_flags --soarpkg"
-export soarpkg_missing_file_msg="\nIt appears that the selected file is not available.\n\nThis happens due to pkgforge's mirror Issue.\nLearn more: https://docs.pkgforge.dev/repositories/bincache/cache\n\nAlternatively, install \"soar\" or \"dbin\" and use those.\n\n"
-
-# TOOLPACKS/SOARPKGS
-export toolpack_repo="https://github.com/pkgforge/soarpkgs (ex toolpacks)"
-export toolpack_readme="https://raw.githubusercontent.com/ivan-hc/am-extras/main/soarpkgs-toolpacks/${ARCH}.md"
-[ -n "$toolpack_readme" ] && third_party_flags="$third_party_flags --toolpack"
-export toolpack_missing_file_msg="\nIt appears that the selected file is not available.\n\nThis happens due to pkgforge's mirror Issue.\nLearn more: https://docs.pkgforge.dev/repositories/bincache/cache\n\nAlternatively, install \"soar\" or \"dbin\" and use those.\n\n"
+[ -z "$AM_EXTRA_SOURCES" ] && AM_EXTRA_SOURCES="https://raw.githubusercontent.com/ivan-hc/am-extras/main/am-extras"
+if [ ! -f "$AMDATADIR"/am-extras ]; then
+	wget -q --tries=10 --timeout=20 --spider https://github.com && curl -Ls "$AM_EXTRA_SOURCES" > "$AMDATADIR"/am-extras
+fi
+[ -f "$AMDATADIR"/am-extras ] && source "$AMDATADIR"/am-extras
 
 #################################
 #	ALL THE ABOVE
@@ -462,6 +451,7 @@ _third_party_lsts_filter() {
 }
 
 _sync_third_party_lists() {
+	curl -Ls "$AM_EXTRA_SOURCES" > "$AMDATADIR"/am-extras
 	for tp_list in $third_party_lists; do
 		rm -f "$AMDATADIR"/"$ARCH"-"$tp_list"
 		tprepo_readme="${tp_list}_readme"
@@ -507,10 +497,10 @@ fi
 
 # COMPLETION LIST
 available_options="about add apikey backup clean config disable downgrade download enable extra files hide home icons info \
-	install install-appimage launcher list lock neodb newrepo nolibfuse off on overwrite purge query remove sandbox \
+	install install-appimage launcher list lock neodb newrepo nolibfuse off on overwrite purge query reinstall remove sandbox \
 	select sync template test unhide unlock update --all --appimages --apps --byname --config --convert --debug \
 	--devmode-disable --devmode-enable --disable-notifications --enable-notifications --force-latest --home --icons \
-	-ias --launcher --less --pkg --rollback --disable-sandbox --sandbox --system --user $third_party_flags"
+	-ias --launcher --less --pkg --portable --rollback --disable-sandbox --sandbox --system --user $third_party_flags"
 
 _completion_lists() {
 	# Remove existing lists and download new ones
@@ -522,7 +512,7 @@ _completion_lists() {
 		echo "$o" >> "$AMDATADIR"/list
 	done
 	# Detecl valid lists
-	valid_lists="apps$\|appimages$"
+	valid_lists="apps$\|appimages$\|portable$"
 	for tp_list in $third_party_lists; do
 		valid_lists="$valid_lists\|$tp_list$"
 	done
@@ -662,19 +652,51 @@ _remove_info_files() {
 
 ghapikey_file="$AMDATADIR/ghapikey.txt"
 # Set header authorization if GitHub API key file exists
-[ -f "$ghapikey_file" ] && HeaderAuthWithGITPAT=" --header \"Authorization: token $(<"$ghapikey_file")\" "
+[ -f "$ghapikey_file" ] && HeaderAuthWithGITPAT=" --header \"Authorization: token $(sort "$ghapikey_file")\" "
+
+# Function to validate GitHub API tokens
+_validate_github_token() {
+	local token="$1"
+	local quiet="${2:-false}"  # Optional parameter to suppress output
+
+	# Check HTTP status code for proper validation
+	local HTTP_STATUS
+	HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --header "Authorization: token $token" "https://api.github.com/repos/ivan-hc/AM/releases")
+
+	if [ "$HTTP_STATUS" = "200" ]; then
+		[ "$quiet" != "true" ] && echo "Validation successful!"
+		return 0
+	elif [ "$HTTP_STATUS" = "401" ] || [ "$HTTP_STATUS" = "403" ]; then
+		[ "$quiet" != "true" ] && echo "ERROR: Invalid token or insufficient permissions!"
+		return 1
+	else
+		[ "$quiet" != "true" ] && echo "ERROR: Unexpected response (HTTP $HTTP_STATUS)"
+		return 2
+	fi
+}
 
 _use_apikey() {
 	case $2 in
 	'del'|'delete'|'remove')
 		[ -f "$ghapikey_file" ] || { echo " ✖ No file named $ghapikey_file has been found"; exit 1; }
+		# Remove token references from all updater files before deleting the token file
+		for arg in $ARGS; do
+		argpath=$(echo "$ARGPATHS" | grep "/$arg$")
+			if [ -f "$argpath"/AM-updater ] && grep -q "https://api.github.com" "$argpath"/AM-updater; then
+				# Remove the Authorization header from the file
+				sed -i 's# --header "Authorization: token [^"]*"##g' "$argpath"/AM-updater
+			fi
+		done
 		rm -f "$ghapikey_file" && echo " ✔ $ghapikey_file has been removed"
+		echo " ✔ Authorization headers removed from updater files"
 		exit 0
 	esac
+	_online_check
 	if [[ "$2" =~ ^(gh[ps]_[a-zA-Z0-9]{36}|github_pat_[a-zA-Z0-9]{22}_[a-zA-Z0-9]{59})$ ]]; then
-		test_apikey_output_with_wget=$(curl -Ls --header "Authorization: token $2" 'https://api.github.com/repos/ivan-hc/AM/releases' | head -1)
-		[ -n "$test_apikey_output_with_wget" ] && echo "$2" > "$ghapikey_file" \
-			&& echo "Validation successful!" || echo "ERROR: This is not a valid key!"
+		# Validate the token
+		if _validate_github_token "$2"; then
+			echo "$2" > "$ghapikey_file"
+		fi
 	else
 		echo "ERROR: Wrong expression, validation failed!"
 	fi
@@ -682,21 +704,37 @@ _use_apikey() {
 
 _update_github_api_key_in_the_updater_files() {
 	if [ -f "$ghapikey_file" ]; then
-		ghapikey=$(<"$ghapikey_file")
-		updater_files=("$APPSPATH"/*/AM-updater) # Assuming AM-updater is one level deeper
-		for f in "${updater_files[@]}"; do
-			if [ -f "$f" ] && grep -q "https://api.github.com" "$f"; then
+		ghapikey=$(sort "$ghapikey_file")
+
+		# Validate the stored token quietly before attempting to update files
+		if ! _validate_github_token "$ghapikey" "true"; then
+			echo "$DIVIDING_LINE"
+			echo " ⚠️ Warning: Stored GitHub API token is invalid or expired"
+			echo ""
+			echo " Please either:"
+			echo "   1. Generate a new token and add it with: $AMCLI apikey YOUR_NEW_TOKEN"
+			echo "   2. Remove the invalid token with: $AMCLI apikey del"
+			echo ""
+			echo " For instructions on creating GitHub tokens, see:"
+			echo " https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token"
+			echo "$DIVIDING_LINE"
+			exit 1
+		fi
+
+		for arg in $ARGS; do
+		argpath=$(echo "$ARGPATHS" | grep "/$arg$")
+			if [ -f "$argpath"/AM-updater ] && grep -q "https://api.github.com" "$argpath"/AM-updater; then
 				# Check if the file already contains a valid API key
-				if ! grep -qE "(gh[ps]_[a-zA-Z0-9]{36}|github_pat_[a-zA-Z0-9]{22}_[a-zA-Z0-9]{59})" "$f"; then
+				if ! grep -qE "(gh[ps]_[a-zA-Z0-9]{36}|github_pat_[a-zA-Z0-9]{22}_[a-zA-Z0-9]{59})" "$argpath"/AM-updater; then
 					# Insert HeaderAuthWithGITPAT before the GitHub API URL
-					sed -i "s#https://api.github.com#$HeaderAuthWithGITPAT https://api.github.com#g" "$f"
+					sed -i "s#https://api.github.com#$HeaderAuthWithGITPAT https://api.github.com#g" "$argpath"/AM-updater
 				else
 					# Replace existing API key with the one from ghapikey.txt
-					sed -i "s#\(gh[ps]_[a-zA-Z0-9]\{36\}\|github_pat_[a-zA-Z0-9]\{22\}_[a-zA-Z0-9]\{59\}\)#$ghapikey#g" "$f"
+					sed -i "s#\(gh[ps]_[a-zA-Z0-9]\{36\}\|github_pat_[a-zA-Z0-9]\{22\}_[a-zA-Z0-9]\{59\}\)#$ghapikey#g" "$argpath"/AM-updater
 				fi
 			fi
 		done
-    	fi
+	fi
 }
 
 ################################################################################################################################################################
@@ -869,23 +907,27 @@ _sync_installation_scripts() {
 		if [ -f "$argpath"/AM-updater ]; then
 			mkdir -p "$argpath"/.am-installer
 			scriptname=$(ls "$argpath/.am-installer/" | head -1)
-			if [ -n "$scriptname" ]; then
+			if [ -n "$scriptname" ] && grep -q "^◆ $scriptname :" "$AMDATADIR/$ARCH-apps"; then
 				CURRENT=$(cat "$argpath"/.am-installer/"$scriptname")
 				SOURCE=$(curl -Ls "$APPSDB"/"$scriptname")
 				if [ "$CURRENT" = "$SOURCE" ]; then
 					echo -ne "\r" 2>/dev/null
 				else
 					printf " ◆ %b%b\033[0m has changed, you may need to reinstall it, see\n   https://github.com/ivan-hc/AM/blob/main/programs/%b/%b\n" "${RED}" "$scriptname" "$ARCH" "$scriptname"
+					to_reinstall_true=1
 				fi
 			else
-				if curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg"  1>/dev/null; then
+				if [ -z "$scriptname" ] && curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg"  1>/dev/null; then
 					printf " ◆ No installation script for %b, downloading one...\n" "$arg"
 					mkdir -p "$argpath"/.am-installer
 					wget -q "$APPSDB/$arg" -O "$argpath"/.am-installer/"$arg"
 				fi
+				SOURCE=""
 			fi
+			scriptname=""
 		fi
 	done
+	[ -n "$to_reinstall_true" ] && printf "\n To fix the above, just run \"%b%b reinstall\033[0m\", without arguments\n" "${Green}" "$AMCLI"
 }
 
 _sync_appimages_list() {
@@ -893,9 +935,15 @@ _sync_appimages_list() {
 	curl -Ls "$APPIMAGES_LIST" > "$AMDATADIR/$ARCH-appimages"
 }
 
+_sync_portable_list() {
+	PORTABLE_LIST="${PORTABLE_LIST:-$AMREPO/programs/$ARCH-portable}"
+	curl -Ls "$PORTABLE_LIST" > "$AMDATADIR/$ARCH-portable"
+}
+
 _sync_databases() {
 	printf "%b\n Check and update offline lists of additional databases...\n" "$DIVIDING_LINE"
 	_sync_appimages_list
+	_sync_portable_list
 	_sync_third_party_lists 2>/dev/null
 	_completion_lists
 }
@@ -945,8 +993,8 @@ _sync_amcli() {
 _use_sync() {
 	_online_check
 	_betatester_message_on
-	_sync_installation_scripts
 	_sync_databases
+	_sync_installation_scripts
 	if [ "$(realpath "$0")" != "/usr/bin/am" ] && [ "$AMSYNC" != 1 ]; then
 		_sync_modules
 		_sync_amcli
@@ -998,51 +1046,35 @@ _update_determine_apps_version_changes() {
 	fi
 }
 
-_update_torsocks_handler() {
-	torsocks_congif_file=$(find /etc -type f -name torsocks.conf 2>/dev/null)
-	if [ -n "$torsocks_congif_file" ]; then
-		if grep -q "^#AllowOutboundLocalhost 1" "$torsocks_congif_file" && command -v appimageupdatetool 1>/dev/null; then
-			[ ! -f "$AMDATADIR"/torsocks.conf ] && cat "$torsocks_congif_file" > "$AMDATADIR"/torsocks.conf
-			sed -i 's/^#AllowOutboundLocalhost 1/AllowOutboundLocalhost 1/g' "$AMDATADIR"/torsocks.conf
-			[ -f "$AMDATADIR"/torsocks.conf ] && export TORSOCKS_CONF_FILE="$AMDATADIR"/torsocks.conf
-			GH_API_ALLOWED=$(torsocks curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/ivan-hc/AM/releases/latest | sed 's/[()",{} ]/\n/g' | grep "^ivan-hc" | head -1)
-			if [ -z "$GH_API_ALLOWED" ]; then
-				printf " ✖ %b update failed, please restart %btor.service\033[0m to fix! \n" "$APPNAME" "${Green}"
-				exit 1
-			fi
+[ -z "$ALT_GH" ] && ALT_GH="api.gh.pkgforge.dev"
+
+_update_determine_gh_apps_number() {
+	for arg in $ARGS; do
+		argpath=$(echo "$ARGPATHS" | grep "/$arg$")
+		if [ -f "$argpath"/AM-updater ] && grep -q "api.github.com" "$argpath"/AM-updater; then
+			[ -n "$GH_APPS" ] && GH_APPS=$(printf "%b\n%b\n" "$GH_APPS" "$arg") || GH_APPS="$arg"
 		fi
+	done
+	wait
+	[ -z "$GH_APPS" ] && GH_APPS_NUMBER="" || GH_APPS_NUMBER=$(echo "$GH_APPS" | wc -l | sed 's/ //g')
+	if [ -n "$GH_APPS_NUMBER" ]; then
+		GH_API_REMAINING=$(curl -Ls "https://api.github.com/rate_limit" | tr '{,' '\n' | grep -i remaining | tail -1 | grep -Eo "[0-9]*")
+		GH_API_ALLOWED=$(("$GH_API_REMAINING"-"$GH_APPS_NUMBER"))
 	fi
 }
 
 _update_run_updater() {
 	if grep -q "api.github.com" "$argpath"/AM-updater; then
-		GH_API_ALLOWED=$(curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos/ivan-hc/AM/releases/latest | sed 's/[()",{} ]/\n/g' | grep "^ivan-hc" | head -1)
-		if [ -z "$GH_API_ALLOWED" ]; then
-			if command -v torsocks 1>/dev/null; then
-				_update_torsocks_handler
-				if [ -z "$debug_update" ]; then
-					torsocks "$argpath"/AM-updater >/dev/null 2>&1
-				else
-					torsocks "$argpath"/AM-updater
-				fi
-			else
-				echo " ✖ $APPNAME cannot be updated, you have reached GitHub API limit. Install \"torsocks\" from your system package manager and retry!" \
-				| fold -sw 72 | sed 's/^/   /g; s/   ✖/✖/g'
-			fi
-		else
-			if [ -z "$debug_update" ]; then
-				"$argpath"/AM-updater >/dev/null 2>&1
-			else
-				"$argpath"/AM-updater
-			fi
-		fi
-	else
-		if [ -z "$debug_update" ]; then
-			"$argpath"/AM-updater >/dev/null 2>&1
-		else
-			"$argpath"/AM-updater
+		if [ "$GH_API_ALLOWED" -le 5 ]; then
+			sed -i "s#api.github.com#$ALT_GH#g" "$argpath"/AM-updater
 		fi
 	fi
+	if [ -z "$debug_update" ]; then
+		"$argpath"/AM-updater >/dev/null 2>&1
+	else
+		"$argpath"/AM-updater
+	fi
+	sed -i "s#$ALT_GH#api.github.com#g" "$argpath"/AM-updater 2>/dev/null
 	end=$(date +%s)
 	timelapsed=$((end - start))
 	[ "$timelapsed" = 1 ] && echo " ◆ $APPNAME is updated, $timelapsed second elapsed!" || echo " ◆ $APPNAME is updated, $timelapsed seconds elapsed!"
@@ -1069,9 +1101,8 @@ _update_all_apps() {
 		fi
 	done
 	wait
-	rm -f "$AMDATADIR"/torsocks.conf
 	_update_determine_apps_version_changes
-	rm -Rf "$APPSPATH"/*/tmp
+	_clean_all_tmp_directories_from_appspath >/dev/null
 	[ -d "$APPMAN_APPSPATH" ] && rm -Rf "$APPMAN_APPSPATH"/*/tmp
 }
 
@@ -1115,6 +1146,9 @@ _use_update() {
 	if echo "$FLAGS" | grep -q -- "--debug"; then
 		debug_update="1"
 	fi
+
+	_update_determine_gh_apps_number
+
 	if [ -z "$ENTRIES" ]; then
 		_clean_amcachedir
 		_update_list_updatable_apps
@@ -1152,7 +1186,6 @@ _use_update() {
 			fi
 		done
 		wait
-		rm -f "$AMDATADIR"/torsocks.conf
 		exit 0
 	fi
 }
@@ -1201,6 +1234,7 @@ _use_module() {
 
 case "$1" in
 	'')
+		echo "$DIVIDING_LINE"
 		echo " USAGE: $AMCLI [OPTION]"
 		echo "        $AMCLI [OPTION] [ARGUMENT]"
 		echo ""
@@ -1208,6 +1242,7 @@ case "$1" in
 		echo "   or try AM with GUI (Alpha version!)"
 		echo " Run the \"$AMCLI --gui\" command"
 		echo "   and help us catch the bugs please"
+		echo "$DIVIDING_LINE"
 		exit 0
 		;;
 	'--gui')
@@ -1222,6 +1257,7 @@ case "$1" in
 		if [ -t 1 ]; then _use_module "$@"; else _use_module "$@" | sed -e 's/\x1b\[[0-9;]*m//g'; fi
 		;;
 	'backup'|'-b'|\
+	'config'|'-C'|'--config'|'home'|'-H'|'--home'|'-HC'|'-CH'|'HC'|'CH'|\
 	'downgrade'|'--rollback'|\
 	'icons'|'--icons'|\
 	'launcher'|'--launcher'|\
@@ -1232,17 +1268,15 @@ case "$1" in
 		MODULE="management.am"
 		_use_module "$@"
 		;;
-	'config'|'-C'|'--config'|\
-	'home'|'-H'|'--home'|\
-	'sandbox'|'--sandbox'|\
-	'--disable-sandbox')
+	'sandbox'|'--sandbox'|'--disable-sandbox')
 		MODULE="sandboxes.am"
 		_use_module "$@"
 		;;
 	'download'|'-d'|\
 	'extra'|'-e'|\
 	'install'|'-i'|'-ias'|\
-	'install-appimage'|'-ia')
+	'install-appimage'|'-ia'|\
+	'reinstall')
 		MODULE="install.am"
 		_online_check
 		[ "$CLI" = am ] && [ -f "$APPMANCONFIG"/appman-mode ] && printf "%b" "$APPMAN_MSG"
@@ -1349,7 +1383,7 @@ case "$1" in
 
 					${LightBlue}$AMCLI -C {PROGRAM}\033[0m
 
-			Description: Set a dedicated \$XDD_CONFIG_HOME for one or more AppImages.
+			Description: Set a dedicated \$XDG_CONFIG_HOME for one or more AppImages.
 
 			${Gold}downgrade, --rollback\033[0m
 
@@ -1397,6 +1431,12 @@ case "$1" in
 
 			Description: Set a dedicated \$HOME directory for one or more AppImages.
 
+			${Gold}-HC, -CH\033[0m
+
+					${LightBlue}$AMCLI -HC {PROGRAM}\033[0m
+
+			Description: Set dedicated \$HOME and \$XDG_CONFIG_HOME directories for one or more AppImages.
+
 			${Gold}icons, --icons\033[0m
 
 					${LightBlue}$AMCLI --icons {PROGRAM}
@@ -1433,9 +1473,10 @@ case "$1" in
 
 			${Gold}list, -l\033[0m
 
-					${LightBlue}$AMCLI -l
-					${LightBlue}$AMCLI -l --all
+					${LightBlue}$AMCLI -l\033[0m
+					${LightBlue}$AMCLI -l --all\033[0m
 					${LightBlue}$AMCLI -l --appimages\033[0m
+					${LightBlue}$AMCLI -l --portable\033[0m
 
 			Description: Shows the list of all the apps available, or just the AppImages. It can also be extended with additional flags, the \"--all\" flag allows you to consult the set of all supported databases (see third-party flags, at the bottom of this message).
 
@@ -1466,9 +1507,19 @@ case "$1" in
 					${LightBlue}$AMCLI -q {KEYWORD}
 					${LightBlue}$AMCLI -q --all {KEYWORD}
 					${LightBlue}$AMCLI -q --appimages {KEYWORD}
+					${LightBlue}$AMCLI -q --portable {KEYWORD}
 					${LightBlue}$AMCLI -q --pkg {PROGRAM1} {PROGRAM2}\033[0m
 
-			Description: Search for keywords in the list of available applications, add the \"--appimages\" option to list only the AppImages or add \"--pkg\" to list multiple programs at once. The \"--all\" flag allows you to consult the set of all supported databases.
+			Description: Search for keywords in the list of available applications, add the \"--appimages\" option to list only the AppImages, \"--portable\" option to list only the portable apps or add \"--pkg\" to list multiple programs at once. The \"--all\" flag allows you to consult the set of all supported databases.
+
+			${Gold}reinstall\033[0m
+
+					${LightBlue}$AMCLI reinstall\033[0m
+					${LightBlue}$AMCLI reinstall --all\033[0m
+
+			Description: Reinstall only programs whose installation script has been modified in AM's online database. Use the \"--all\" flaf to reinstall everything instead.
+
+			NOTE, this only works with the \"AM\" database. Apps installed with the \"-e\" option and custom scripts created with the \"-t\" option are not supported.
 
 			${Gold}remove, -r\033[0m
 
@@ -1635,7 +1686,9 @@ case "$1" in
 		if [ -t 1 ]; then _use_help; else _use_help | sed -e 's/\x1b\[[0-9;]*m//g'; fi
 		;;
 	*)
-		exec "$AMCLIPATH"
+		echo "$DIVIDING_LINE"
+		echo "ERROR: unknown option \"$1\", run the \"$AMCLI -h\" command to find out more" | _fit
+		echo "$DIVIDING_LINE"
 		;;
 esac
 

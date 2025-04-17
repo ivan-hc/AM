@@ -10,7 +10,7 @@ SUDOCMD_ORIGIN="$SUDOCMD"
 # Get xdg variables for _configure_dirs_access
 for DIR in DESKTOP DOCUMENTS DOWNLOAD GAMES MUSIC PICTURES VIDEOS; do
 	eval XDG_DIR="$(xdg-user-dir $DIR 2>/dev/null)"
-	[ "$XDG_DIR" = "$HOME" ] || [ "$XDG_DIR" = "$HOME/" ] && XDG_DIR=""
+	[ "$(realpath "$XDG_DIR")" = "$HOME" ] && XDG_DIR=""
 	eval $DIR="$XDG_DIR"
 done
 DESKTOP="$(echo "${DESKTOP:-~/Desktop}" | sed "s|$HOME|~|g")"
@@ -27,33 +27,15 @@ _check_appimage() {
 	APPIMAGE="$(readlink "$TARGET" 2>/dev/null)"
 	APPIMAGEDIR="$(dirname "$APPIMAGE" 2>/dev/null)"
 	if grep "aisap-am" "$TARGET" >/dev/null 2>&1; then
-		echo " $1 is already sandboxed!"
+		printf "%b\n \"%b\" is already sandboxed!\n%b\n" "$DIVIDING_LINE" "$1" "$DIVIDING_LINE"
 		return 1
 	elif [ ! -e "$APPIMAGE" ]; then
-		echo " ERROR: \"$1\" is not installed"
+		printf "%b\n ERROR: \"%b\" is not installed\n%b\n" "$DIVIDING_LINE" "$1" "$DIVIDING_LINE"
 		return 1
-	elif ! grep -Eaoq -m 1 'github.com/AppImage/AppImageKit/wiki/FUSE' "$APPIMAGE"; then
-		echo " ERROR: \"$1\" is NOT an AppImage"
-		return 1
-	fi
-}
-
-_home() {
-	if [ -d "$APPIMAGE.home" ]; then
-		echo " ERROR: \"$1\" already contains a home dir"
+	elif ! head -c10 "$APPIMAGE" 2>/dev/null | grep -qa '^.ELF....AI$'; then
+		printf "%b\n ERROR: \"%b\" is NOT an AppImage\n%b\n" "$DIVIDING_LINE" "$1" "$DIVIDING_LINE"
 		return 1
 	fi
-	mkdir "$APPIMAGE.home" || return 1
-	echo " \$HOME set to \"$APPIMAGE.home\" for \"$1\""
-}
-
-_config() {
-	if [ -d "$APPIMAGE.config" ]; then
-		echo " ERROR: \"$1\" already contains a config dir"
-		return 1
-	fi
-	mkdir "$APPIMAGE.config" || return 1
-	echo " \$XDG_CONFIG_HOME set to \"$APPIMAGE.config\" for \"$1\""
 }
 
 _disable_sandbox() {
@@ -123,7 +105,7 @@ _generate_sandbox_script() {
 	# get xdg user dirs, unset if var = $HOME
 	for DIR in DESKTOP DOCUMENTS DOWNLOAD GAMES MUSIC PICTURES VIDEOS; do
 	  eval XDG_DIR="$(xdg-user-dir $DIR 2>/dev/null)"
-	  [ "$XDG_DIR" = "$HOME" ] || [ "$XDG_DIR" = "$HOME/" ] && XDG_DIR=""
+	  [ "$(realpath "$XDG_DIR")" = "$HOME" ] && XDG_DIR=""
 	  eval $DIR="$XDG_DIR"
 	done
 	# Use default location if var is not set
@@ -161,7 +143,7 @@ _generate_sandbox_script() {
 	[ -z "$APPNAME" ] && exit 1
 	# Start at sandboxed home
 	# Edit below this to add or remove access to parts of the system
-	exec aisap --trust-once --level 2 \
+	exec aisap --trust-once --level 1 \
 	--data-dir "$SANDBOXDIR/$APPNAME" \
 	--add-file "$DATADIR/${APPDATA:-$APPNAME}":rw \
 	--add-file "$DATADIR"/themes \
@@ -175,7 +157,6 @@ _generate_sandbox_script() {
 	--add-file "$CONFIGDIR"/qt6ct \
 	--add-file "$CONFIGDIR"/Kvantum \
 	--add-file "$HOME"/.local/lib \
-	--add-file /usr/share \
 	--rm-file /NOPATH \
 	--rm-file "$DESKTOP" \
 	--rm-file "$DOCUMENTS" \
@@ -220,9 +201,9 @@ _configure_dirs_access() {
 		echo "  Also aisap might not let $1 start when such paths are given"
 		printf '\033[33m%s\n' "  Type the path to the directory"
 		read -r -p "  Example: /media/external-drive or ~/Backups: " NEWDIR
+		NEWDIR="$(realpath "$NEWDIR")"
 		case "$NEWDIR" in
-			'$HOME'|'$HOME/'|"$HOME"|"$HOME/"|"/"|"~"|"~/"|"/home"|"/home/"|\
-			"$DATADIR"|'$XDG_DATA_HOME'|"$CONFIGDIR"|'$XDG_CONFIG_HOME'|"$BINDIR")
+			"/"|"/home"|"$HOME"|"$DATADIR"|"$CONFIGDIR"|"$BINDIR")
 				notify-send -u critical "DO YOU WANT THE FBI TO GET YA?"
 				printf '\033[31m\n'
 				read -r -p "  SPOOKY LOCATION! ARE YOU SURE? IF SO TYPE \"YES\": " YES
@@ -283,22 +264,6 @@ case "$1" in
 		while [ "$#" -gt 0 ]; do
 			echo "$DIVIDING_LINE"
 			_disable_sandbox "${@}"
-			shift
-		done
-		;;
-
-	'-H'|'--home')
-		shift
-		while [ "$#" -gt 0 ]; do
-			_check_appimage "${@}" && _home "${@}"
-			shift
-		done
-		;;
-
-	'-C'|'--config')
-		shift
-		while [ "$#" -gt 0 ]; do
-			_check_appimage "${@}" && _config "${@}"
 			shift
 		done
 		;;

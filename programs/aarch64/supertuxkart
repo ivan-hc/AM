@@ -1,71 +1,160 @@
 #!/bin/sh
 
+# AM INSTALL SCRIPT VERSION 3. 
+set -u
 APP=supertuxkart
-REPO="supertuxkart/stk-code"
+SITE="supertuxkart/stk-code"
 
-# CREATE THE FOLDER
-mkdir /opt/$APP
-cd /opt/$APP
+# CREATE DIRECTORIES AND ADD REMOVER
+[ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
+printf "#!/bin/sh\nset -e\nrm -f /usr/local/bin/$APP\nrm -R -f /opt/$APP" > ../remove
+printf '\n%s' "rm -f /usr/local/share/applications/$APP-AM.desktop" >> ../remove
+chmod a+x ../remove || exit 1
 
-# ADD THE REMOVER
-echo '#!/bin/sh' >> /opt/$APP/remove
-echo "rm -R -f /usr/local/share/applications/$APP-AM.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/$APP/remove
-chmod a+x /opt/$APP/remove
-
-# DOWNLOAD THE ARCHIVE
-mkdir tmp
-cd ./tmp
-
-version=$(curl -Ls https://api.github.com/repos/$REPO/releases | grep browser_download_url | echo "$(if grep -i linux-arm64.tar.xz; then echo linux-arm64.tar.xz; else echo linux-aarch64.tar.xz; fi)" | cut -d '"' -f 4 | head -1)
-wget $version
-echo "$version" >> /opt/$APP/version
+# DOWNLOAD AND PREPARE THE APP, $version is also used for updates
+version=$(curl -Ls https://api.github.com/repos/supertuxkart/stk-code/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*linux.*tar.xz$" | grep -i "aarch64\|arm64" | head -1)
+wget "$version" || exit 1
+[ -e ./*7z ] && 7z x ./*7z && rm -f ./*7z
+[ -e ./*tar.* ] && tar fx ./*tar.* && rm -f ./*tar.*
+[ -e ./*zip ] && unzip -qq ./*zip 1>/dev/null && rm -f ./*zip
 cd ..
-tar fx ./tmp/*tar.xz -C ./tmp/ && rm -R ./tmp/*tar.xz && mv ./tmp/Super*/* . && mv ./run_game.sh ./$APP && cp ./data/*512.png . && cp ./data/*.desktop .
-rm -R -f ./tmp
+if [ -d ./tmp/* 2>/dev/null ]; then mv ./tmp/*/* ./; else mv ./tmp/* ./"$APP" 2>/dev/null || mv ./tmp/* ./; fi
+rm -R -f ./tmp || exit 1
+echo "$version" > ./version
+chmod a+x ./run_game.sh || exit 1
 
-# LINK
-ln -s /opt/$APP/$APP /usr/local/bin/$APP
+# LINK TO PATH
+ln -s "/opt/$APP/run_game.sh" "/usr/local/bin/$APP"
 
 # SCRIPT TO UPDATE THE PROGRAM
-cat >> /opt/$APP/AM-updater << 'EOF'
-#!/usr/bin/env bash
+cat >> ./AM-updater << 'EOF'
+#!/bin/sh
+set -u
 APP=supertuxkart
-REPO="supertuxkart/stk-code"
-version0=$(cat /opt/$APP/version)
-version=$(curl -Ls https://api.github.com/repos/$REPO/releases | grep browser_download_url | echo "$(if grep -i linux-arm64.tar.xz; then echo linux-arm64.tar.xz; else echo linux-aarch64.tar.xz; fi)" | cut -d '"' -f 4 | head -1)
-if [ $version = $version0 ]; then
-  echo "Update not needed!"
+SITE="supertuxkart/stk-code"
+version0=$(cat "/opt/$APP/version")
+version=$(curl -Ls https://api.github.com/repos/supertuxkart/stk-code/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*linux.*tar.xz$" | grep -i "aarch64\|arm64" | head -1)
+[ -n "$version" ] || { echo "Error getting link"; exit 1; }
+if [ "$version" != "$version0" ]; then
+	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
+	notify-send "A new version of $APP is available, please wait"
+	wget "$version" || exit 1
+	[ -e ./*7z ] && 7z x ./*7z && rm -f ./*7z
+	[ -e ./*tar.* ] && tar fx ./*tar.* && rm -f ./*tar.*
+	[ -e ./*zip ] && unzip -qq ./*zip 1>/dev/null && rm -f ./*zip
+	cd ..
+	if [ -d ./tmp/* 2>/dev/null ]; then mv --backup=t ./tmp/*/* ./; else mv --backup=t ./tmp/* ./"$APP" 2>/dev/null || mv --backup=t ./tmp/* ./; fi
+	chmod a+x ./run_game.sh || exit 1
+	echo "$version" > ./version
+	rm -R -f ./tmp ./*~
+	notify-send "$APP is updated!"
 else
-  notify-send "A new version of $APP is available, please wait"
-  mkdir /opt/$APP/tmp
-  cd /opt/$APP/tmp
-  wget $version
-  cd ..
-  tar fx ./tmp/*tar.xz -C ./tmp/ && rm -R ./tmp/*tar.xz && mv ./tmp/Super*/* . && mv ./run_game.sh ./$APP && cp ./data/*512.png . && cp ./data/*.desktop .
-  rm ./version
-  echo $version >> ./version
-  rm -R -f ./tmp ./*~
-  notify-send "$APP is updated!"
+	echo "Update not needed!"
 fi
 EOF
-chmod a+x /opt/$APP/AM-updater
+chmod a+x ./AM-updater || exit 1
 
-# LAUNCHER & ICON
-app=$(echo $APP | cut -c -3)
-cd /opt/$APP
-mv ./*.desktop ./$APP.desktop 2>/dev/null
-CHANGEEXEC=$(cat ./$APP.desktop | grep Exec= | tr ' ' '\n' | tr '=' '\n' | tr '/' '\n' | grep $app | head -1)
-sed -i "s#$CHANGEEXEC#$APP#g" ./$APP.desktop
-sed -i "s#Exec=/bin/#Exec=#g" ./$APP.desktop
-sed -i "s#Exec=/usr/bin/#Exec=#g" ./$APP.desktop
-CHANGEICON=$(cat ./$APP.desktop | grep Icon= | head -1)
-sed -i "s#$CHANGEICON#Icon=/opt/$APP/icons/$APP#g" ./$APP.desktop
+# ICON
+mkdir -p icons
+cp ./data/*512.png ./icons/"$APP" 2> /dev/null
 
-mkdir icons
-mv ./*.svg ./icons/$APP 2>/dev/null
-mv ./*.png ./icons/$APP 2>/dev/null
-mv ./*$app*.png ./icons/$APP 2>/dev/null
-mv ./*128*.png ./icons/$APP 2>/dev/null
-mv ./*256*.png ./icons/$APP 2>/dev/null
-
-mv ./$APP.desktop /usr/local/share/applications/$APP-AM.desktop
+# LAUNCHER
+echo "[Desktop Entry]
+Name=SuperTuxKart
+Icon=/opt/$APP/icons/$APP
+#I18N: Generic name in desktop file entry, summary in AppData and short description in Google Play
+GenericName[ar]=لعبة سباق سيارات ثلاثية الأبعاد مفتوحة المصدر
+GenericName[be]=3D-гульня для гонак на картах з адкрытым зыходным кодам
+GenericName[bg]=3-измерна състезателна игра с колички, с отворен код
+GenericName[ca]=Un joc de curses de karts en 3D de codi obert.
+GenericName[cs]=3D open source závodní hra motokár
+GenericName[da]=Et 3D-kartracerspil i open source
+GenericName[de]=Ein Open-Source 3D-Kart-Rennspiel
+GenericName[el]=Ενα 3D ανοιχτού κώδικα παιχνίδι  αγώνων με κάρτ 
+GenericName[eo]=3D-a malfermitkoda karta vetkurad-ludo
+GenericName[es]=Un juego de carreras de karts en 3D de código abierto.
+GenericName[eu]=Kart lasterketetako 3D jolas librea
+GenericName[fi]=Avoimen lähdekoodin kolmiulotteinen kilpa-ajopeli
+GenericName[fil]=Isang 3D at open-source na kart racing game.
+GenericName[fr]=Un jeu libre de course de karts en 3D
+GenericName[gd]=Geama rèisidh chartaichean 3D le bun-tùs fosgailte
+GenericName[gl]=Un xogo de carreiras de karts en 3D e de código aberto.
+GenericName[he]=משחק מֵרוצי מכוניות בתלת־ממד ובקוד פתוח
+GenericName[hu]=Egy 3D-s, nyílt forráskódú gokartverseny játék
+GenericName[id]=Sebuah permainan balap kart 3D sumber-terbuka
+GenericName[it]=Un gioco open-source 3D di corse su kart
+GenericName[ja]=オープンソースな3Dレーシングカートゲーム
+GenericName[ko]=3D 오픈소스 카트 경주 게임
+GenericName[mk]=3D open-source тркачка картинг игра
+GenericName[ml]=ഒരു സ്വതന്ത്ര 3D കാർട്ട് റേസിംഗ് ഗെയിം
+GenericName[nl]=Een open source 3D kartracespel
+GenericName[nn]=Eit racerspel i 3D med open kjeldekode
+GenericName[oc]=Un jòc de corsa de kart liure en 3D
+GenericName[pl]=Trójwymiarowe wyścigi gokartów open-source
+GenericName[pt]=Um jogo 3D de karting com mascotes de aplicativos open source.
+GenericName[pt_BR]=Corridas de kart em 3D e código aberto
+GenericName[ro]=Un joc de curse 3D open-source
+GenericName[ru]=Свободная трёхмерная гоночная игра на машинках
+GenericName[rue]=3х-мірна возикова перебігова бавка
+GenericName[sk]=3D open-source závodná hra v štýle arkády
+GenericName[sl]=3D odprtokodna dirkalna igra
+GenericName[sr]=Игра тркања колицима слободног кода
+GenericName[sv]=Ett 3D-racingspel med öppen källkod
+GenericName[th]=เกมแข่งรถโอเพ่นซอร์ส 3 มิติ
+GenericName[tr]=3D açık kaynaklı kart yarış oyunu
+GenericName[zh_CN]=一个三维开源赛车游戏
+GenericName[zh_HK]=3D 開源卡丁車賽車遊戲
+GenericName[zh_TW]=3D 開源卡丁車賽車遊戲
+GenericName=A 3D open-source kart racing game
+Exec=supertuxkart
+Terminal=false
+StartupNotify=false
+Type=Application
+Categories=Game;ArcadeGame;
+#I18N: Keywords in desktop entry, translators please keep it separated with semicolons
+Keywords[ar]=بطريق؛لعبة؛سباق؛
+Keywords[be]=tux;game;race;тукс;такс;гульня;гонка;футбол;
+Keywords[bg]=тъкс;кола;коли;количка;колички;състезание;състезания
+Keywords[ca]=tux;joc;cursa;
+Keywords[cs]=tux;hra;závod;
+Keywords[da]=tux;spil;racerløb;
+Keywords[de]=tux;spiel;rennen;
+Keywords[el]=tux;παιχνίδι;αγώνας;
+Keywords[eo]=tukso;ludo;vetkuro;
+Keywords[es]=tux;juego;carreras;
+Keywords[fi]=tux;game;race;peli;ralli;kilpa-ajo;autopeli;
+Keywords[fil]=tux;game;race;
+Keywords[fr]=tux;jeu;course;
+Keywords[gd]=tux;game;race;geama;rèis;rèiseadh;
+Keywords[gl]=tux;xogo;carreira;
+Keywords[he]=tux;game;race;טקס;טאקס;טוקס;משחק;מרוץ;מרוצים;מירוץ;מירוצים;
+Keywords[hr]=tux;igra;utrka
+Keywords[hu]=tux;játék;verseny;
+Keywords[id]=tux;permainan;balapan;
+Keywords[it]=tux;gioco;gara;
+Keywords[ja]=tux;game;race;
+Keywords[ko]=턱스;게임;경주
+Keywords[mk]=тукс;игра;трка;
+Keywords[ml]=ടക്സ്;ഗെയിം;റേസ്;
+Keywords[nl]=tux;game;race;spel;kart;super;auto;parcours;
+Keywords[nn]=tux;spel;billøp;racerspel;
+Keywords[oc]=tux;game;race;corsa;jòc;
+Keywords[pl]=tux;gra;wyścigi;
+Keywords[pt]=tux;jogo;corrida
+Keywords[pt_BR]=tux;jogo;corrida;
+Keywords[ro]=tux;joc;cursa
+Keywords[ru]=такс;игра;гонка;
+Keywords[rue]=tux;бавка;гонитва;
+Keywords[sk]=tučniak;hra;závody;
+Keywords[sl]=tuks;igra;dirka;
+Keywords[sr]=такс;игра;трка;тукс;игрица;
+Keywords[sv]=tux;spel;tävla;
+Keywords[th]=tux;game;race;
+Keywords[tr]=tux;oyun;yarış;
+Keywords[tt]=tux;game;race;
+Keywords[uk]=пінгвін;гра;перегони;
+Keywords[zh_CN]=企鹅、游戏、赛车
+Keywords[zh_HK]=tux;game;race;
+Keywords[zh_TW]=tux;game;race;
+Keywords=tux;game;race;
+PrefersNonDefaultGPU=true" > /usr/local/share/applications/"$APP"-AM.desktop

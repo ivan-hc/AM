@@ -14,10 +14,11 @@ chmod a+x ../remove || exit 1
 # DOWNLOAD AND PREPARE THE APP, $version is also used for updates
 version=$(curl -Ls https://www.artix.com/downloads/artixlauncher/ | grep -i "version" | head -1 | tr " " "\n" | grep -E -o "([0-9]{1,}\.)+[0-9]{1,}")
 wget "https://launch.artix.com/latest/Artix_Games_Launcher-x86_64.AppImage" || exit 1
+# Keep this space in sync with other installation scripts
 # Use tar fx ./*tar* here for example in this line in case a compressed file is downloaded.
 cd ..
 mv ./tmp/*mage ./"$APP"
-mv ./tmp/*.zsync ./"$APP".zsync 2>/dev/null
+# Keep this space in sync with other installation scripts
 rm -R -f ./tmp || exit 1
 echo "$version" > ./version
 chmod a+x ./"$APP" || exit 1
@@ -34,8 +35,13 @@ SITE="https://www.artix.com"
 version0=$(cat "/opt/$APP/version")
 version=$(curl -Ls https://www.artix.com/downloads/artixlauncher/ | grep -i "version" | head -1 | tr " " "\n" | grep -E -o "([0-9]{1,}\.)+[0-9]{1,}")
 [ -n "$version" ] || { echo "Error getting link"; exit 1; }
-if [ "$version" != "$version0" ] || [ -e /opt/"$APP"/*.zsync ]; then
+if command -v appimageupdatetool >/dev/null 2>&1; then
+	cd "/opt/$APP" || exit 1
+	appimageupdatetool -Or ./"$APP" && chmod a+x ./"$APP" && echo "$version" > ./version && exit 0
+fi
+if [ "$version" != "$version0" ]; then
 	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
+	notify-send "A new version of $APP is available, please wait"
 	wget "https://launch.artix.com/latest/Artix_Games_Launcher-x86_64.AppImage" || exit 1
 	# Use tar fx ./*tar* here for example in this line in case a compressed file is downloaded.
 	cd ..

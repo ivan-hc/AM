@@ -57,34 +57,21 @@ EOF
 chmod a+x ./AM-updater || exit 1
 
 # LAUNCHER & ICON
-#./"$APP" --appimage-extract *.desktop 1>/dev/null && mv ./squashfs-root/*.desktop ./"$APP".desktop
+./"$APP" --appimage-extract *.desktop 1>/dev/null && mv ./squashfs-root/*.desktop ./"$APP".desktop
 ./"$APP" --appimage-extract .DirIcon 1>/dev/null && mv ./squashfs-root/.DirIcon ./DirIcon
 COUNT=0
 while [ "$COUNT" -lt 10 ]; do # Tries to get the actual icon/desktop if it is a symlink to another symlink
-	#if [ -L ./"$APP".desktop ]; then
-	#	LINKPATH="$(readlink ./"$APP".desktop | sed 's|^\./||' 2>/dev/null)"
-		#./"$APP" --appimage-extract "$LINKPATH" 1>/dev/null && mv ./squashfs-root/"$LINKPATH" ./"$APP".desktop
-	#fi
+	if [ -L ./"$APP".desktop ]; then
+		LINKPATH="$(readlink ./"$APP".desktop | sed 's|^\./||' 2>/dev/null)"
+		./"$APP" --appimage-extract "$LINKPATH" 1>/dev/null && mv ./squashfs-root/"$LINKPATH" ./"$APP".desktop
+	fi
 	if [ -L ./DirIcon ]; then
 		LINKPATH="$(readlink ./DirIcon | sed 's|^\./||' 2>/dev/null)"
 		./"$APP" --appimage-extract "$LINKPATH" 1>/dev/null && mv ./squashfs-root/"$LINKPATH" ./DirIcon
 	fi
-	#[ ! -L ./"$APP".desktop ] && [ ! -L ./DirIcon ] && break
-	[ ! -L ./DirIcon ] && break
+	[ ! -L ./"$APP".desktop ] && [ ! -L ./DirIcon ] && break
 	COUNT=$((COUNT + 1))
 done
-echo "[Desktop Entry]
-Comment=A decentralized, Tor-based, P2P Monero exchange network.
-Exec=$APP %u
-GenericName[en_US]=Monero Exchange
-GenericName=Monero Exchange
-Icon=/opt/$APP/icons/$APP
-Categories=Office;Finance;Java;P2P;
-Name[en_US]=Haveno
-Name=Haveno
-Terminal=false
-Type=Application
-MimeType=
-X-AppImage-Name=Haveno
-StartupWMClass=Haveno" > /usr/local/share/applications/"$APP"-AM.desktop && mv ./DirIcon ./icons/"$APP" 1>/dev/null
+sed -i "s#Exec=[^ ].*#Exec=$APP %u#g; s#Icon=.*#Icon=/opt/$APP/icons/$APP#g" ./"$APP".desktop
+mv ./"$APP".desktop /usr/local/share/applications/"$APP"-AM.desktop && mv ./DirIcon ./icons/"$APP" 1>/dev/null
 rm -R -f ./squashfs-root

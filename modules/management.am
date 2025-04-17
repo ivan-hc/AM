@@ -3,10 +3,13 @@
 ##############################################################################################
 # THIS MODULE INCLUDES ALL THE ACTIONS INTENDED TO MANAGE THE APPS INSTALLED FROM THE DATABASE
 # AND ONE OPTION IS FOR LOCAL APPIMAGES INSTEAD
-# OPTIONS: BACKUP/RESTORE, DOWNGRADE, LAUNCHER, LOCK/UNLOCK, NOLIBFUSE, REMOVE
+# OPTIONS: BACKUP/RESTORE, CONFIG/HOME, DOWNGRADE, LAUNCHER, LOCK/UNLOCK, NOLIBFUSE, REMOVE
 ##############################################################################################
 
-# BACKUP
+################################################################################################################################################################
+#				BACKUP
+################################################################################################################################################################
+
 _backup_name() {
 	printf "\n ◆ To set date and time as a name, press ENTER (default)\n ◆ To set the version as a name, press \"1\"\n ◆ To set a custom name, write anything else\n\n"
 	read -r -p " Write your choice here, or leave blank to use \"date/time\": " response
@@ -48,7 +51,10 @@ _backup() {
 	echo "$DIVIDING_LINE"
 }
 
-# RESTORE
+################################################################################################################################################################
+#				RESTORE
+################################################################################################################################################################
+
 _overwrite() {
 	if [ ! -d "$HOME/.am-snapshots/$2" ]; then
 		echo " ERROR: No snapshot for \"$2\" found."
@@ -59,11 +65,15 @@ _overwrite() {
 		if ! echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
 			printf "\n OPERATION ABORTED! \n\n"
 		else
-			printf "\n Please, select a snapshot or press CTRL+C to abort:\n\n"
+			printf "\n Please, select a snapshot or press ZERO to abort:\n\n"
 			sleep 1
 			select d in "$HOME/.am-snapshots/$2"/*; do
-				test -n "$d" && break
-				echo ">>> Invalid Selection"
+				if [ -n "$d" ]; then
+					break
+				else
+					printf "\n Invalid selection. ABORTED! \n"
+					return 1
+				fi
 			done
 			cp -r --backup=t "$d"/* "$argpath"/
 			rm -R -f ./tmp "$argpath"/*~
@@ -73,13 +83,47 @@ _overwrite() {
 	echo "$DIVIDING_LINE"
 }
 
-# DOWNGRADE
+################################################################################################################################################################
+#				CONFIG/HOME
+################################################################################################################################################################
+
+_isolate_appimage() {
+	_determine_args
+	if [ -z "$argpath" ]; then
+		printf " ✖ ERROR: \"%b\" is not installed\n" "$arg"
+	elif [ -f "$argpath"/"$arg" ] && ! head -c10 "$argpath"/"$arg" 2>/dev/null | grep -qa '^.ELF....AI$'; then
+		printf " ✖ ERROR: \"%b\" is NOT an AppImage\n" "$arg"
+	else
+		if echo "$1" | grep -q -- "C\|config$"; then
+			if [ -d "$argpath"/"$arg".config ]; then
+				echo "✖ ERROR: \"$arg\" already contains a config dir" | _fit
+			else
+				mkdir "$argpath"/"$arg".config || return 1
+				echo "✔ \$XDG_CONFIG_HOME set to \"$argpath.config\" for \"$arg\"" | _fit
+			fi
+		fi
+		if echo "$1" | grep -q -- "H\|home$"; then
+			if [ -d "$argpath"/"$arg".home ]; then
+				echo "✖ ERROR: \"$arg\" already contains a home dir" | _fit
+			else
+				mkdir "$argpath"/"$arg".home || return 1
+				echo "✔ \$HOME set to \"$argpath.home\" for \"$arg\"" | _fit
+			fi
+		fi
+	fi
+}
+
+################################################################################################################################################################
+#				DOWNGRADE
+################################################################################################################################################################
+
 _downgrade_entries_filter() {
 	grep -vi "^#\|version0=" ./AM-updater | grep "api.github.com" \
 		| tr '=' '\n' | sed 's/^\$(//g' \
 		| tail -1 | sed '1,${
 		s/version=$(//g
 		s/head -1)/head -100/g
+		s/tail -1)/head -100/g
 		s#$REPO#'"$REPO"'#g
 		s#releases/latest#releases#g
 		s#releases #releases?per_page=100 #g
@@ -110,12 +154,16 @@ _downgrade() {
 	echo "$DIVIDING_LINE"
 	echo "You have chosen to roll back \"$2\"."
 	echo "$DIVIDING_LINE"
-	echo "Select a URL from this menu (read carefully) or press CTRL+C to abort:"
+	echo "Select a URL from this menu (read carefully) or press ZERO to abort:"
 	echo "$DIVIDING_LINE"
 	sleep 1
 	select d in $urls; do
-		test -n "$d" && break
-		echo ">>> Invalid Selection"
+		if [ -n "$d" ]; then
+			break
+		else
+			printf "\n Invalid selection. ABORTED! \n"
+			return 1
+		fi
 	done
 	cp ./AM-updater ./AM-rollback
 	sed -i 's/version0/#version0/g' ./AM-rollback
@@ -132,7 +180,10 @@ _downgrade() {
 	echo "ROLLBACK SUCCESSFUL!"
 }
 
-# ICON THEME CHANGER
+################################################################################################################################################################
+#				ICON THEME CHANGER
+################################################################################################################################################################
+
 _icon_theme() {
 	if [ "$AMCLI" = am ] && test -f /usr/local/share/applications/"$arg"*AM.desktop; then
 		$SUDOCMD sed -i "s#Icon=$argpath/icons/#Icon=#g" /usr/local/share/applications/"$arg"*AM.desktop 2>/dev/null
@@ -142,29 +193,58 @@ _icon_theme() {
 	_icon_theme_export_to_datadir 2>/dev/null
 }
 
-# LAUNCHER
+################################################################################################################################################################
+#				LAUNCHER
+################################################################################################################################################################
+
 _launcher_appimage_integration() {
-	"$arg" --appimage-extract *.desktop 1>/dev/null && mv ./squashfs-root/*.desktop ./"$appimage".desktop
-	"$arg" --appimage-extract .DirIcon 1>/dev/null && mv ./squashfs-root/.DirIcon ./DirIcon
-	COUNT=0
-	while [ "$COUNT" -lt 10 ]; do # Tries to get the actual icon/desktop if it is a symlink to another symlink
-		if [ -L ./"$appimage".desktop ]; then
-			LINKPATH="$(readlink ./"$appimage".desktop | sed 's|^\./||' 2>/dev/null)"
-			"$arg" --appimage-extract "$LINKPATH" 1>/dev/null && mv ./squashfs-root/"$LINKPATH" ./"$appimage".desktop
-		fi
-		if [ -L ./DirIcon ]; then
-			LINKPATH="$(readlink ./DirIcon | sed 's|^\./||' 2>/dev/null)"
-			"$arg" --appimage-extract "$LINKPATH" 1>/dev/null && mv ./squashfs-root/"$LINKPATH" "$DATADIR"/icons/ 1>/dev/null
-		fi
-		[ ! -L ./"$appimage".desktop ] && [ ! -L ./DirIcon ] && break
-		COUNT=$((COUNT + 1))
-	done
-	sed -i "s#Exec=[^ ]*#Exec=\"$arg\"#g" ./"$appimage".desktop
-	mv ./"$appimage".desktop "$DATADIR"/applications/AppImages/"$appimage"-AM.desktop
-	rm -R -f ./squashfs-root ./DirIcon
+	if grep -Eaoq -m 1 "appimage-extract" "$arg"; then
+		"$arg" --appimage-extract *.desktop 1>/dev/null && mv ./squashfs-root/*.desktop ./"$appimage".desktop
+		"$arg" --appimage-extract .DirIcon 1>/dev/null && mv ./squashfs-root/.DirIcon ./DirIcon
+		COUNT=0
+		while [ "$COUNT" -lt 10 ]; do # Tries to get the actual icon/desktop if it is a symlink to another symlink
+			if [ -L ./"$appimage".desktop ]; then
+				LINKPATH="$(readlink ./"$appimage".desktop | sed 's|^\./||' 2>/dev/null)"
+				"$arg" --appimage-extract "$LINKPATH" 1>/dev/null && mv ./squashfs-root/"$LINKPATH" ./"$appimage".desktop
+			fi
+			if [ -L ./DirIcon ]; then
+				LINKPATH="$(readlink ./DirIcon | sed 's|^\./||' 2>/dev/null)"
+				"$arg" --appimage-extract "$LINKPATH" 1>/dev/null && mv ./squashfs-root/"$LINKPATH" "$DATADIR"/icons/ 1>/dev/null
+			fi
+			[ ! -L ./"$appimage".desktop ] && [ ! -L ./DirIcon ] && break
+			COUNT=$((COUNT + 1))
+		done
+	elif command -v 7z >/dev/null 2>&1; then
+		7z x -osquashfs-root "$arg" 1>/dev/null
+		mv ./squashfs-root/*.desktop ./"$appimage".desktop
+		mv ./squashfs-root/.DirIcon ./DirIcon || test -f ./squashfs-root/*.png && mv ./squashfs-root/*.png ./DirIcon || test -f ./squashfs-root/*.svg && mv ./squashfs-root/*.svg ./DirIcon
+		COUNT=0
+		while [ "$COUNT" -lt 10 ]; do
+			if [ -L ./"$appimage".desktop ]; then
+				LINKPATH="$(readlink ./"$appimage".desktop | sed 's|^\./||' 2>/dev/null)"
+				mv ./squashfs-root/"$LINKPATH" ./"$appimage".desktop
+			fi
+			if [ -L ./DirIcon ]; then
+				LINKPATH="$(readlink ./DirIcon | sed 's|^\./||' 2>/dev/null)"
+				mv ./squashfs-root/"$LINKPATH" ./DirIcon 1>/dev/null
+			fi
+			[ ! -L ./"$appimage".desktop ] && [ ! -L ./DirIcon ] && break
+			COUNT=$((COUNT + 1))
+		done
+		icon_name=$(grep "^Icon=" ./"$appimage".desktop | head -1 | sed 's/^Icon=//g')
+		sed -i 's/.svg$//g; s/.png$//g' ./"$appimage".desktop
+		mv ./DirIcon "$DATADIR"/icons/"$icon_name" 1>/dev/null
+	else
+		echo "WARNING: cannot extract old type 1 AppImages, install \"7z\" and retry." | _fit
+	fi
+	if [ -d ./squashfs-root ]; then
+		sed -i "s#Exec=[^ ]*#Exec=\"$arg\"#g" ./"$appimage".desktop
+		mv ./"$appimage".desktop "$DATADIR"/applications/AppImages/"$appimage"-AM.desktop
+	fi
 }
 
 _launcher_appimage_bin() {
+	rm -R -f ./squashfs-root ./DirIcon
 	mkdir -p "$BINDIR"
 	if ! echo "$PATH" | grep "$BINDIR" >/dev/null 2>&1; then
 		echo "$DIVIDING_LINE"
@@ -201,9 +281,9 @@ _launcher_appimage_bin() {
 _launcher(){
 	_clean_launchers 2>/dev/null 1>/dev/null
 	if [ ! -f "$arg" ]; then
-		echo "ERROR: \"$arg\" not found" | _fit
-	elif ! grep -Eaoq -m 1 'github.com/AppImage/AppImageKit/wiki/FUSE' "$arg" 2>/dev/null; then
-		echo "ERROR: \"$arg\" is NOT an AppImage" | _fit
+		printf "%b\n ERROR: \"%b\" not found\n%b\n" "$DIVIDING_LINE" "$arg" "$DIVIDING_LINE" | _fit
+	elif ! head -c10 "$arg" 2>/dev/null | grep -qa '^.ELF....AI$' 2>/dev/null; then
+		printf "%b\n ERROR: \"%b\" is NOT an AppImage\n%b\n" "$DIVIDING_LINE" "$arg" "$DIVIDING_LINE" | _fit
 	else
 		printf " ◆ File: %s\n" "$arg"
 		appimage=$(basename -- "$arg")
@@ -213,11 +293,14 @@ _launcher(){
 		cd "$(dirname "$arg")" || return
 
 		_launcher_appimage_integration 2>/dev/null
-		_launcher_appimage_bin
+		[ -d ./squashfs-root ] && _launcher_appimage_bin
 	fi
 }
 
-# LOCK/UNLOCK
+################################################################################################################################################################
+#				LOCK/UNLOCK
+################################################################################################################################################################
+
 _lock() {
 		if [ ! -f "$argpath"/AM-updater ]; then
 		echo " \"$AMCLIUPPER\" cannot manage updates for $2, \"AM-updater\" file not found!"
@@ -248,23 +331,28 @@ _unlock() {
 	fi
 }
 
-# NO LIBFUSE
+################################################################################################################################################################
+#				NO LIBFUSE
+################################################################################################################################################################
+
 _nolibfuse() {
 	AMCLIPATH_ORIGIN="$AMCLIPATH"
 	target="$(echo "${2}" | tr '[:lower:]' '[:upper:]')"
+	echo "$DIVIDING_LINE"
 	# safety checks
-	if ! cd "$argpath" 2>/dev/null; then
-		echo " ⚠️ Error: \"$target\" is NOT installed."
+	if [ ! -d "$argpath" ]; then
+		printf " 💀Error, \"%b\" is NOT installed\n" "$target"
 		return 1
+	else
+		cd "$argpath" || return 1
 	fi
-	if ! grep -Eaoq -m 1 'github.com/AppImage/AppImageKit/wiki/FUSE' ./"$arg" 2>/dev/null; then
-		echo " ⚠️ Error: $target is NOT an AppImage."
+	if ! head -c10 ./"$arg" 2>/dev/null | grep -qa '^.ELF....AI$' 2>/dev/null; then
+		printf " 💀Error, \"%b\" is NOT an AppImage\n" "$target"
 		return 1
 	elif file "$arg" 2>/dev/null | grep -qi "static"; then
-		echo " ◆ $target is already a new generation AppImage."
+		printf " ◆ \"%b\" is already a new generation AppImage.\n" "$target"
 		return 1
 	elif test -f ./*.zsync; then
-		echo "$DIVIDING_LINE"
 		echo " Warning! Your AppImage uses \"zsync\" to update."
 		echo " The .zsync file will be removed and will no longer work"
 		echo " your \"AM-updater\" will likely still be able to update the AppImage"
@@ -285,7 +373,16 @@ _nolibfuse() {
 
 	# Extract the AppImage
 	printf " ...extracting the AppImage\r"
-	./"$2" --appimage-extract >/dev/null 2>&1 && chmod 0755 ./squashfs-root
+	if grep -Eaoq -m 1 "appimage-extract" "$2"; then
+		./"$2" --appimage-extract >/dev/null 2>&1 && chmod 0755 ./squashfs-root
+	#elif command -v 7z >/dev/null 2>&1; then
+	#	7z x -osquashfs-root "$arg" 1>/dev/null && chmod 0755 ./squashfs-root
+	#	sed -i 's/.svg$//g; s/.png$//g' ./squashfs-root/*.desktop
+	#	find ./squashfs-root -type f -exec chmod +x {} \;
+	#	wait
+	#else
+	#	echo "WARNING: cannot extract old type 1 AppImages, install \"7z\" and retry." | _fit
+	fi
 
 	# Convert the AppImage to a new generation one
 	printf " ...trying to convert in new generation AppImage\r"
@@ -319,7 +416,10 @@ _nolibfuse() {
 	fi
 }
 
-# REMOVE
+################################################################################################################################################################
+#				REMOVE
+################################################################################################################################################################
+
 _detect_path_to_remove() {
 	if [ -f "$APPMAN_APPSPATH"/"$arg"/remove ]; then
 		RMPATH="1"
@@ -359,9 +459,9 @@ _hard_remove() {
 	[ -d "$DATADIR"/icons/hicolor/scalable/apps ] && find "$DATADIR"/icons/hicolor/scalable/apps -xtype l -exec rm {} \;
 }
 
-###########################################################################
-# OPTIONS AVAILABLE IN THIS MODULE
-###########################################################################
+################################################################################################################################################################
+#				USAGE
+################################################################################################################################################################
 
 # Main logic
 [ -z "$2" ] && echo " USAGE: $AMCLI $1 [ARGUMENT]" && exit 1
@@ -374,6 +474,19 @@ case "$1" in
 			argpath=$(echo "$ARGPATHS" | grep "/$arg$")
 			_backup "${@}"
 			shift
+		done
+		;;
+
+	'config'|'-C'|'--config'|'home'|'-H'|'--home'|'-HC'|'-CH'|'HC'|'CH')
+		# Set dedicated $HOME and $XDG_CONFIG_HOME directories for one or more AppImages.
+		_determine_args
+		echo "$DIVIDING_LINE"
+		entries="$(echo "$@" | cut -f2- -d ' ')"
+		for arg in $entries; do
+			argpath=$(echo "$ARGPATHS" | grep "/$arg$")
+			_isolate_appimage "${@}"
+			echo "$DIVIDING_LINE"
+			argpath=""
 		done
 		;;
 
@@ -460,6 +573,7 @@ case "$1" in
 			_remove_info_files
 			shift
 		done
+		echo "$DIVIDING_LINE"
 		;;
 
 	'overwrite'|'-o')

@@ -4,6 +4,13 @@
 # THIS MODULE INCLUDES ALL THE ACTIONS INTENDED FOR THE MANAGEMENT OF LISTS AND SINGLE PAGES
 ############################################################################################
 
+for arg in $ARGS; do
+	argpath=$(echo "$ARGPATHS" | grep "/$arg$")
+	if [ -f "$argpath"/.am-installer/"$arg".toolpack ]; then
+		sort "$argpath"/.am-installer/"$arg".toolpack > "$argpath"/.am-installer/"$arg".soarpkg && rm -f "$argpath"/.am-installer/"$arg".toolpack
+	fi
+done
+
 ################################################################################
 #				ABOUT
 ################################################################################
@@ -11,7 +18,7 @@
 AMCATALOGUEMARKDOWNS="${AMCATALOGUEMARKDOWNS:-https://portable-linux-apps.github.io/apps}"
 
 _about_remove_extension() {
-	tparg=$(echo "$arg" | _remove_known_third_party_extensions)
+	tparg=$(echo "$arg" | _remove_known_third_party_extensions | sed 's/.extra$//g')
 }
 
 _about_check() {
@@ -25,17 +32,22 @@ _about_description_for_third_party() {
 		tp_extension=$(echo "$arg" | sed 's:.*\.::')
 	fi
 	if [ -n "$tp_extension" ]; then
-		tprepo_readme="${tp_extension}_readme"
-		readme_source="${!tprepo_readme}"
-		tprepo_repo="${tp_extension}_repo"
-		repo_source="${!tprepo_repo}"
-		appname_arg=$(curl -Ls "$readme_source" 2>/dev/null | grep -i "^| $appname | .* | http.* | http.* | .* |$" | tr '|' '\n' | cut -c 2- | grep .)
-		about_description=$(echo "$appname_arg" | awk -F: "NR==$awk_description")
-		about_site=$(echo "$appname_arg" | awk -F: "NR==$awk_site")
+		if [ "$tp_extension" = extra ]; then
+			about_description="AppImage installed with the \"-e\" option, no description available."
+			about_site=$(grep -i "^version=" "$argpath"/AM-updater | tr ' ' '\n' | grep -i "^http" | sed 's#api.github.com#github.com#g; s#repos/##g; s#/releases/.*##g; s#/releases$##g')
+		else
+			tprepo_readme="${tp_extension}_readme"
+			readme_source="${!tprepo_readme}"
+			tprepo_repo="${tp_extension}_repo"
+			repo_source="${!tprepo_repo}"
+			appname_arg=$(curl -Ls "$readme_source" 2>/dev/null | grep -i "^| $appname | .* | http.* | http.* | .* |$" | tr '|' '\n' | cut -c 2- | grep .)
+			about_description=$(echo "$appname_arg" | awk -F: "NR==$awk_description")
+			about_site=$(echo "$appname_arg" | awk -F: "NR==$awk_site")
+			third_party_readme=$(curl -Ls "$readme_source")
+			tpnumber=$(echo "$third_party_readme" | grep "^| $appname | .* | http.* | http.* | .* |$" | wc -l | sed 's/ //g')
+		fi
 
-		third_party_readme=$(curl -Ls "$readme_source")
-		tpnumber=$(echo "$third_party_readme" | grep "^| $appname | .* | http.* | http.* | .* |$" | wc -l | sed 's/ //g')
-		if [ "$tpnumber" -ge "1" ]; then
+		if [ -n "$tpnumber" ] && [ "$tpnumber" -ge "1" ]; then
 			[ "$tpnumber" != 1 ] && printf "\nAvailable families: %b\n" "$tpnumber"
 			if echo "$app_status" | grep -q "^installed"; then
 				[ -f "$argpath/$appname" ] && printf "\nBinary info: %b\n" "$(file "$argpath/$appname")" | fold -sw 78
@@ -51,7 +63,9 @@ _about_description_for_third_party() {
 		fi
 	fi
 
-	if [ -n "$about_description" ]; then
+	if [ "$tp_extension" = extra ]; then
+		printf "\n%b\n\nSOURCE: %b\n" "$about_description" "$about_site"
+	elif [ -n "$about_description" ]; then
 		printf "\n%b\n\nSOURCE: \n%b\n\nDATABASE: %b\n" "$about_description" "$about_site" "$repo_source"
 	else
 		[ -n "$repo_source" ] && printf "\n\nDATABASE: %b\n" "$repo_source" || printf "\nAvailable in an third-party database (requires an extension).\n"
@@ -77,7 +91,7 @@ _about_description() {
 
 _about_page() {
 	package_name="$arg"
-	app_name=$(echo "$arg" | sed 's/-appimage//g' | _remove_known_third_party_extensions)
+	app_name=$(echo "$arg" | sed 's/-appimage//g' | _remove_known_third_party_extensions | sed 's/.extra$//g')
 	argpath=$(echo "$ARGPATHS" | grep "/$app_name$")
 	markdown_url="$AMCATALOGUEMARKDOWNS/${arg}.md"
 	printf " PACKAGE: %b%b\033[0m\n" "${Green}" "$package_name"
@@ -139,6 +153,7 @@ _about_page() {
 #				FILES
 ################################################################################
 _files_header() {
+	third_party_lists="$third_party_lists extra"
 	for f in $third_party_lists; do
 		[ -z "$CHECK_SUPPORTED_THIRD_PARTY_APPS" ] && CHECK_SUPPORTED_THIRD_PARTY_APPS="$(find "$APPSPATH"/* -type f -name "*.$f*" -print -quit 2>/dev/null)"
 	done
@@ -225,9 +240,9 @@ _files_type() {
 	APPVERSION=$(grep -w " ◆ $arg	|" "$AMCACHEDIR"/version-args | sed 's:.*|	::')
 	FILE=$(command -v "$arg" 2>/dev/null)
 	LINK=$(readlink "$FILE" 2>/dev/null)
-	if grep -Eaoq -m 1 'Universal RunImage and AppImage runtime' ./"$arg/$arg" 2>/dev/null; then
+	if head -c10 ./"$arg/$arg" 2>/dev/null | grep -qa '^.ELF....RI$'; then
 		echo " ◆ $arg	|	runimage" >> "$AMCACHEDIR"/files-type
-	elif grep -Eaoq -m 1 'github.com/AppImage/AppImageKit/wiki/FUSE' ./"$arg/$arg" 2>/dev/null; then
+	elif head -c10 ./"$arg/$arg" 2>/dev/null | grep -qa '^.ELF....AI$'; then
 		_files_if_appimage
 	elif file ./"$arg"/* | grep -E 'LSB|/bin' >/dev/null 2>&1; then
 		_files_if_binary
@@ -258,8 +273,6 @@ _files_db() {
 		_files_db_third_party
 	elif [ "$arg" = am ]; then
 		DB="am"
-	elif test -f "$CACHEDIR"/extra/"$arg" || test -f "$APPSPATH"/"$arg"/.am-installer/"$arg" && ! grep -q "^APP=" "$APPSPATH"/"$arg"/.am-installer/"$arg"; then
-		DB="none"
 	elif test -f "$AMDATADIR/$ARCH-apps" && ! grep -q "^◆ $arg :" "$AMDATADIR/$ARCH-apps"; then
 		DB="unknown"
 	else
@@ -460,11 +473,18 @@ _list() {
 	else
 		AVAILABLE_APPIMAGES_NUMBER=$(grep -e "^◆.*$" -c "$AMDATADIR/$ARCH-appimages")
 	fi
+	if ! test -f "$AMDATADIR/$ARCH-portable"; then
+		_online_check
+		_sync_portable_list
+		AVAILABLE_PORTABLE_NUMBER=$(grep -e "^◆.*$" -c "$AMDATADIR/$ARCH-portable")
+	else
+		AVAILABLE_PORTABLE_NUMBER=$(grep -e "^◆.*$" -c "$AMDATADIR/$ARCH-portable")
+	fi
 	# Determine the number of third-party apps
 	for t in $third_party_lists; do
 		[ ! -f "$AMDATADIR/$ARCH-$t" ] && _online_check && _sync_third_party_lists && _completion_lists
 	done
-	tp_lists=$(find "$AMDATADIR" -type f -name "$ARCH-*" | grep -v "appimages\|apps")
+	tp_lists=$(find "$AMDATADIR" -type f -name "$ARCH-*" | grep -v "appimages\|portable\|apps")
 	for t in $tp_lists; do
 		[ -z "$TP_LISTS" ] && TP_LISTS=$(sort -u "$t") || TP_LISTS="$TP_LISTS\n$(sort -u "$t")"
 	done
@@ -584,6 +604,14 @@ case "$1" in
 			_list_msg "$@" | less -Ir
 			printf "%b\n %b\n%b\n" "$DIVIDING_LINE" "$SUBJECT" "$DIVIDING_LINE"
 			;;
+		'--portable')
+			wget -q --tries=10 --timeout=20 --spider https://github.com && _sync_portable_list
+			_list
+			SUBJECT="$AVAILABLE_PORTABLE_NUMBER portable programs available in the \"AM\" database"
+			LIST=$(sort -u "$AMDATADIR"/"$ARCH"-portable | grep "^◆ .*$" 2>/dev/null | _pretty_list)
+			_list_msg "$@" | less -Ir
+			printf "%b\n %b\n%b\n" "$DIVIDING_LINE" "$SUBJECT" "$DIVIDING_LINE"
+			;;
 		*)	
 			if echo "$third_party_flags" | tr ' ' '\n' | grep -q -- "$2$"; then
 				wget -q --tries=10 --timeout=20 --spider https://github.com && _sync_third_party_lists 2>/dev/null
@@ -607,6 +635,7 @@ case "$1" in
 			echo " USAGE: $AMCLI $1 [ARGUMENT]"
 			echo "        $AMCLI $1 --all [ARGUMENT]"
 			echo "        $AMCLI $1 --appimages [ARGUMENT]"
+			echo "        $AMCLI $1 --portable [ARGUMENT]"
 			echo "        $AMCLI $1 --pkg [ARGUMENT]"
 			echo ""; exit 1
 		fi
@@ -629,6 +658,11 @@ case "$1" in
 			wget -q --tries=10 --timeout=20 --spider https://github.com && _sync_appimages_list
 			_query_lists "$*"
 			sort -u "$AMDATADIR/$ARCH-appimages" 2>/dev/null | grep "^◆ .*$" 2>/dev/null | _find_no_order "$@" | _pretty_list_compat
+		elif [ "$1" = --portable ]; then
+			shift
+			wget -q --tries=10 --timeout=20 --spider https://github.com && _sync_portable_list
+			_query_lists "$*"
+			sort -u "$AMDATADIR/$ARCH-portable" 2>/dev/null | grep "^◆ .*$" 2>/dev/null | _find_no_order "$@" | _pretty_list_compat
 		else
 			_query_lists "$*"
 			LISTS=$(find "$AMDATADIR" -type f -name "$ARCH-app*" 2>/dev/null | grep -v appimage | xargs)
