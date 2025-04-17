@@ -25,7 +25,18 @@ fi
 
 # Use translations
 export TEXTDOMAIN=am
-export TEXTDOMAINDIR=/usr/share/locale
+# AM
+if [[ -f "/usr/share/locale/${LANGUAGE}/LC_MESSAGES/am.mo" ]] || [[ -f "/usr/share/locale/${LANG:0:5}/LC_MESSAGES/am.mo" ]] || [[ -f "/usr/share/locale/${LANG:0:2}/LC_MESSAGES/am.mo" ]]; then
+	export TEXTDOMAINDIR=/usr/share/locale
+# AppMan
+elif [[ -f "$HOME/.local/share/locale/${LANGUAGE}/LC_MESSAGES/am.mo" ]] || [[ -f "$HOME/.local/share/locale/${LANG:0:5}/LC_MESSAGES/am.mo" ]] || [[ -f "$HOME/.local/share/locale/${LANG:0:2}/LC_MESSAGES/am.mo" ]]; then
+	export TEXTDOMAINDIR=$HOME/.local/share/localei
+# Current dir
+elif [[ -f "usr/share/locale/${LANGUAGE}/LC_MESSAGES/am.mo" ]] || [[ -f "usr/share/locale/${LANG:0:5}/LC_MESSAGES/am.mo" ]] || [[ -f "usr/share/locale/${LANG:0:2}/LC_MESSAGES/am.mo" ]]; then
+  export TEXTDOMAINDIR=$(pwd)/usr/share/locale
+else
+  echo "Not found translation file for you yet. Maybe you can help us translate AM to your language?"
+fi
 
 # XDG Variables
 export BINDIR="${XDG_BIN_HOME:-$HOME/.local/bin}"
@@ -131,7 +142,7 @@ _appman_check() {
 		echo "$DIVIDING_LINE"
 		echo "$APPMAN_SETUP_MSG" | _fit
 		echo "$DIVIDING_LINE"
-		read -r -ep " Write the path or just press enter to use default:$(printf "\n\n ")" location
+		read -r -ep $" Write the path or just press enter to use default:$(printf "\n\n ")" location
 		location="$(echo "$location" | sed 's/[ \t]/-/g; s|^\./||' 2>/dev/null)"
 		[ -z "$location" ] && location="$HOME/Applications"
 		if ! echo "$location" | grep "^/" >/dev/null 2>&1; then
@@ -755,7 +766,7 @@ _use_appman() {
 	_online_check
 	[ "$CLI" = appman ] && echo $" This function only works for AM" && exit 0
 	printf "%b" "$APPMAN_MSG_THINK" | _fit
-	read -r -p " Do you wish to enter \"AppMan Mode\" (y,N)?" yn
+	read -r -p $" Do you wish to enter \"AppMan Mode\" (y,N)?" yn
 	if ! echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
 		echo "$DIVIDING_LINE"
 	else
@@ -770,7 +781,7 @@ if [ "$AMCLI" = am ]; then
 		_appman
 		AMCLIPATH="$(realpath "$0")"
 	elif [ ! -w "$AMPATH" ]; then
-		read -r -p " \"AM\" is read-only, want to use it in \"AppMan Mode\" (Y,n)? " yn
+		read -r -p $" \"AM\" is read-only, want to use it in \"AppMan Mode\" (Y,n)? " yn
 		if echo "$yn" | grep -i '^n' >/dev/null 2>&1; then
 			exit 0
 		else
@@ -1330,8 +1341,7 @@ case "$1" in
 		for n in $ARGPATHS; do sed -e '/notify-send/ s/^#*//' -i "$n/AM-updater" 2>/dev/null; done
 		;;
     # Translate
-    '--translate')
-	    shift
+    '--translate'|'--translate-new')
 	    MODULE="translate.am"
         _use_module "$@"
         ;;
