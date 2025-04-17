@@ -4,58 +4,85 @@
 # THIS MODULE IS USED TO CREATE AND UPDATE TRANSLATION FILES
 ##########################################################################
 
-# Using gum and bat or not
-# Author: zenobit
-
-list="INSTALL AM-INSTALLER APP-MANAGER modules/database.am modules/install.am modules/management.am modules/sandboxes.am modules/template.am"
-
-cd "$AMPATH" || echo "Can´t enter AMPATH $AMPATH"
-
+# Files for string extraction
+list="APP-MANAGER modules/database.am modules/install.am modules/management.am modules/sandboxes.am modules/template.am modules/translate.am"
+# Common functions
 gumS() {
-  if command -v gum -v >>/dev/null; then
+  if command -v gum -v >/dev/null; then
     gum style --border double --border-foreground 2 --padding "0 3" "$@"
   else
     echo -e "\n$@\n"
   fi
 }
-
 gumW() {
-  if command -v gum -v >>/dev/null; then
-    gum style --border double --padding "0 3" "$@"
+  if command -v gum -v >/dev/null; then
+    gum style --border normal --padding "0 3" "$@"
   else
     echo -e "\n$@\n"
   fi
 }
-
+gumR() {
+  if command -v gum -v >/dev/null; then
+    gum style --border double --border-foreground 1 --padding "0 3" "$@"
+  else
+    echo -e "\n$@\n"
+  fi
+}
 gumQ() {
-  if command -v gum -v >>/dev/null; then
+  if command -v gum -v >/dev/null; then
     gum confirm --selected.background 2 --prompt.foreground 2 "$@"
   else
     echo -e "\n$@\n"
-    read -p "Press n for exit, anything else for continue..." yn
-    if echo "$yn" | grep -i '^n' >/dev/null 2>&1; then
+    read -p $"Press y for continue, anything else to exit..." yn
+    if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
+      echo ''
+    else
       exit 1
     fi
   fi
 }
-
-if [ -f po/am.pot ]; then
-  #gumQ "Remove existing file?" || exit 1
-  rm po/am.pot && gumW "am.pot removed"
-fi
-
-gumW "Translating: $list"
-
-gumS "Creating directories"
-mkdir -p po
-
-gumS "Extracting strings..."
-for file in ${list}; do
-  gumW "$file"
-  bash --dump-po-strings "$file" >> po/am.pot
-  gumS "Extraction completed"
-  #gumQ "Show am.pot? (needs bat)" && bat po/am.pot
-  gumS "Fixing strings..."
+gumI() {
+  if command -v gum -v >/dev/null; then
+    input=$(gum input --placeholder "$@" --placeholder.foreground 2)
+  else
+    read -p "$@" input
+  fi
+  echo "${input}"
+}
+gumS $"Translating: $list"
+# Enter AMCLI dir
+enter_() {
+  cd "$AMPATH" || echo $"Can´t enter AMPATH $AMPATH"
+}
+# Remove old pot and create po dir
+prepare_() {
+  if [ -f po/am.pot ]; then
+    #gumQ "Remove existing file?" || exit 1
+    rm po/am.pot && gumW $"am.pot removed"
+  else
+    echo $"Fresh start"
+  fi
+  echo $"Creating directories"
+  mkdir -p po
+}
+# extract strings from list
+# xgettext can´t handle $"" or $''
+#xgettext --default-domain=am --output=messages.po --output-dir=po --language Shell APP-MANAGER
+# extract modules
+#xgettext --directory=modules --default-domain=am --output=messages.po --output-dir=po --language=Shell --join-existing --check=quote-unicode --indent --package-name=am --package-version=6.7 --msgid-bugs-address=noreply@github.com database.am install.am management.am sandboxes.am template.am translation.am
+extract_() {
+  gumS $"Extracting strings..."
+  for file in ${list}; do
+    echo "$file"
+    # Extract strings for translation
+    bash --dump-po-strings "$file" >> po/am.pot
+    gumW $"Extraction completed"
+    #gumQ "Show am.pot? (needs bat)" && bat po/am.pot
+  done
+}
+# Not have to be used hopefully
+fix_() {
+  gumS $"Fixing strings"
   gumW '\\\' && sed -i ':a;N;$!ba;s/\\\\\\/\\\\/g' po/am.pot
   gumW '\\' && sed -i ':a;N;$!ba;s/\\\\/\\/g' po/am.pot
   gumW '\n"
@@ -68,45 +95,159 @@ for file in ${list}; do
 "' && sed -i ':a;N;$!ba;s/\\n"\n"/\n/g' po/am.pot
   gumW '"
 "' && sed -i ':a;N;$!ba;s/""\n"/"\n/g' po/am.pot
-  gumS "Fixing completed"
-done
-
-gumS "am.pot ready for translation"
-#gumS "Creating en_US.pot"
-#cp po/am.pot po/en_US.pot
-
-#  FILE_PATH="po/am.pot"
-#  TEMP_FILE=$(mktemp)
-#  msgid_content=""
-#  while read -r line; do
-#    if [[ "$line" =~ ^msgid ]]; then
-#      msgid_content=$(echo "$line" | sed 's/msgid //')
-#      while read -r next_line; do
-#        if [[ "$next_line" =~ ^msgid || "$next_line" =~ ^msgstr ]]; then
-#          break
-#        fi
-#        msgid_content+=$'\n'"$next_line"
-#      done
-#      echo "msgid $msgid_content" >> "$TEMP_FILE"
-#      msgid_content="$msgid_content"
-#      export msgid_content
-#    elif [[ "$line" =~ ^msgstr ]]; then
-#      echo "msgstr $msgid_content" >> "$TEMP_FILE"
-#    else
-#      echo "$line" >> "$TEMP_FILE"
-#    fi
-#  done < "$FILE_PATH"
-# mv "$TEMP_FILE" "$FILE_PATH"
-# bat "$TEMP_FILE"
-# echo "You can now use en_US.pot for translation"
-
-# To add new language, add language code to LINGUAS file
-echo 'cs' > po/LINGUAS
-echo 'it' >> po/LINGUAS
-mapfile -t linguas <po/LINGUAS && \
- for i in "${linguas[@]}"; do
-   mkdir -p usr/share/locale/"${i}"/LC_MESSAGES/ && \
-   msgfmt -o usr/share/locale/"${i}"/LC_MESSAGES/am.mo po/"${i}".po
- done
-
-gumQ "Copy files to /usr/share/? (sudo needed)" && sudo cp -r usr/share/locale /usr/share/
+  gumS $"Fixing completed"
+}
+# Create file with header
+header_() {
+  case "${1}" in
+    '')
+      LANGUAGE="English"
+      PACKAGE_NAME="am"
+      PACKAGE_VERSION="$AMVERSION"
+      TRANSLATOR_NAME="John Doe"
+      TRANSLATOR_EMAIL="john.doe@example.com"
+      touch po/temp.po
+cat << EOF > po/temp.po
+# File with translation for AM
+# FIRST AUTHOR <EMAIL@ADDRESS>, $(date +"%Y")
+msgid ""
+msgstr ""
+"Project-Id-Version: ${PACKAGE_NAME} ${PACKAGE_VERSION}\n"
+"Report-Msgid-Bugs-To: https://github.com/ivan-hc/AM\n"
+"POT-Creation-Date: $(date +"%Y-%m-%d %H:%M%z")\n"
+"PO-Revision-Date: $(date +"%Y-%m-%d %H:%M%z")\n"
+"Last-Translator: ${TRANSLATOR_NAME} <${TRANSLATOR_EMAIL}>\n"
+"Language-Team: ${LANGUAGE} <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
+EOF
+      ;;
+    '*')
+      LANGUAGE="$NLANG"
+      PACKAGE_NAME="am"
+      PACKAGE_VERSION="$AMVERSION"
+      TRANSLATOR_NAME="$TRANSLATOR"
+      TRANSLATOR_EMAIL="$TRANSLATOR_EMAIL"
+      touch "po/${NLANG}.po"
+      cat << EOF > "po/${NLANG}.po"
+# File with translation for AM
+# FIRST AUTHOR <EMAIL@ADDRESS>, $(date +"%Y")
+msgid ""
+msgstr ""
+"Project-Id-Version: ${PACKAGE_NAME} ${PACKAGE_VERSION}\n"
+"Report-Msgid-Bugs-To: https://github.com/ivan-hc/AM\n"
+"POT-Creation-Date: $(date +"%Y-%m-%d %H:%M%z")\n"
+"PO-Revision-Date: $(date +"%Y-%m-%d %H:%M%z")\n"
+"Last-Translator: ${TRANSLATOR_NAME} <${TRANSLATOR_EMAIL}>\n"
+"Language-Team: ${LANGUAGE} <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
+EOF
+      ;;
+  esac
+}
+# Join duplicate strings
+duplicities_() {
+  gumW $"Joining duplicities from ${1} into ${2}"
+  msguniq "${1}" -o "${2}"
+}
+# Create main translation file
+run_() {
+  gumS $"Creating files for translations"
+  header_
+  # add strings to empty file with header
+  cat po/am.pot >> po/temp.po
+  # remove duplicities from po file
+  duplicities_ po/temp.po po/am.po
+  # recreate fixed pot file
+  msgcat --output-file=po/am.pot --unique --indent --no-wrap po/am.po
+}
+# Add new language
+ask_() {
+  if [ -n "${1}" ]; then
+    NLANG="${1}"
+  else
+    gumS $"Enter short code of new language"
+    NLANG=$(gumI "${LANG:0:2}...")
+  fi
+  if ! grep -q -w "$NLANG" po/LINGUAS 2>/dev/null; then
+    gumS $"Translator name" && \
+    TRANSLATOR=$(gumI $"Enter your name...") && \
+    gumS $"Translator email" && \
+    TRANSLATOR_EMAIL=$(gumI $"Enter your email...") && \
+    gumQ $"Is it ${NLANG} correct language?" && \
+    echo "$NLANG" >> po/LINGUAS && \
+    run_ || exit 1
+  else
+    gumR $"Language already included" && echo $" Try again with another language, or run \"$AMCLI --translate\" to update added translations" && exit 1
+  fi
+}
+# Update all translations
+update_() {
+  mapfile 2>/dev/null -t linguas <po/LINGUAS && \
+  for i in "${linguas[@]}"; do
+    if [ -f "po/${i}.po" ]; then
+      gumW $"Merging with old ${i}.po"
+      msgmerge -U "po/${i}.po" po/am.pot
+    else
+      # create directories
+      mkdir -p "usr/share/locale/${i}/LC_MESSAGES/"
+      gumW $"Creating new ${i} translation file"
+      msginit --input po/am.po --output-file="po/${i}.po" --no-translator --locale "${i}"
+    fi
+    #echo $"Joining duplicities"
+    duplicities_ "po/${i}.po" "po/${i}.po"
+    #echo $"Creating ${i}.mo file"
+    msgfmt -o "usr/share/locale/${i}/LC_MESSAGES/am.mo" "po/${i}.po"
+    gumS $"${i} done"
+  done || gumR $"Fucked up" && exit 1
+}
+# Cleaning
+clean_() {
+  rm -f po/tmp.po
+}
+# Copy translation for AM or AppMan
+copy_() {
+  gumS $"Machine preparation for translation done."
+  # copy translated .mo files to destination
+  if [ "$AMCLI" == appman ]; then
+    gumQ $"Copy files to $HOME/.local/share/ for use with AppMan?" && cp -r usr/share/locale "$HOME/.local/share/"
+  elif  [ "$AMCLI" == am ]; then
+    gumQ $"Copy files to /usr/share/ for use with AM?" && "$SUDOCMD" cp -r usr/share/locale /usr/share/
+  fi
+}
+# Check for LINGUAS
+yet_() {
+  if mapfile 2>/dev/null -t linguas <po/LINGUAS; then
+    echo ''
+  else
+    gumR $"No language added, run \"$AMCLI --translate-new\" first!" && exit 1
+  fi
+}
+# What to run?
+case "${1}" in
+  '--translate')
+    enter_
+    yet_
+    prepare_
+    extract_
+    run_
+    update_
+    clean_
+    copy_
+    ;;
+  '--translate-new')
+    shift
+    enter_
+    prepare_
+    extract_
+    ask_ "${@}"
+    update_
+    clean_
+    copy_
+    ;;
+esac
