@@ -56,9 +56,9 @@ enter_() {
 }
 # Remove old pot and create po dir
 prepare_() {
-  if [ -f po/am.pot ]; then
+  if [ -f translations/am.pot ]; then
     #gumQ "Remove existing file?" || exit 1
-    rm po/am.pot && gumW $"am.pot removed"
+    rm translations/am.pot && gumW $"am.pot removed"
   else
     echo $"Fresh start"
   fi
@@ -75,26 +75,26 @@ extract_() {
   for file in ${list}; do
     echo "$file"
     # Extract strings for translation
-    bash --dump-po-strings "$file" >> po/am.pot
+    bash --dump-po-strings "$file" >> translations/am.pot
     gumW $"Extraction completed"
-    #gumQ "Show am.pot? (needs bat)" && bat po/am.pot
+    #gumQ "Show am.pot? (needs bat)" && bat translations/am.pot
   done
 }
 # Not have to be used hopefully
 fix_() {
   gumG $"Fixing strings"
-  gumW '\\\' && sed -i ':a;N;$!ba;s/\\\\\\/\\\\/g' po/am.pot
-  gumW '\\' && sed -i ':a;N;$!ba;s/\\\\/\\/g' po/am.pot
+  gumW '\\\' && sed -i ':a;N;$!ba;s/\\\\\\/\\\\/g' translations/am.pot
+  gumW '\\' && sed -i ':a;N;$!ba;s/\\\\/\\/g' translations/am.pot
   gumW '\n"
 "\n"
-"' && sed -i ':a;N;$!ba;s/\\n"\n"\\n"\n"/\n\n/g' po/am.pot
+"' && sed -i ':a;N;$!ba;s/\\n"\n"\\n"\n"/\n\n/g' translations/am.pot
   gumW '"
 "\n"
-"' && sed -i ':a;N;$!ba;s/"\n"\\n"\n"/\n\n/g' po/am.pot
+"' && sed -i ':a;N;$!ba;s/"\n"\\n"\n"/\n\n/g' translations/am.pot
   gumW '\n"
-"' && sed -i ':a;N;$!ba;s/\\n"\n"/\n/g' po/am.pot
+"' && sed -i ':a;N;$!ba;s/\\n"\n"/\n/g' translations/am.pot
   gumW '"
-"' && sed -i ':a;N;$!ba;s/""\n"/"\n/g' po/am.pot
+"' && sed -i ':a;N;$!ba;s/""\n"/"\n/g' translations/am.pot
   gumG $"Fixing completed"
 }
 # Create file with header
@@ -106,8 +106,8 @@ header_() {
       PACKAGE_VERSION="$AMVERSION"
       TRANSLATOR_NAME="John Doe"
       TRANSLATOR_EMAIL="john.doe@example.com"
-      touch po/temp.po
-cat << EOF > po/temp.po
+      touch translations/temp.po
+cat << EOF > translations/temp.po
 # File with translation for AM
 # FIRST AUTHOR <EMAIL@ADDRESS>, $(date +"%Y")
 msgid ""
@@ -130,8 +130,8 @@ EOF
       PACKAGE_VERSION="$AMVERSION"
       TRANSLATOR_NAME="$TRANSLATOR"
       TRANSLATOR_EMAIL="$TRANSLATOR_EMAIL"
-      touch "po/${NLANG}.po"
-      cat << EOF > "po/${NLANG}.po"
+      touch "translations/${NLANG}.po"
+      cat << EOF > "translations/${NLANG}.po"
 # File with translation for AM
 # FIRST AUTHOR <EMAIL@ADDRESS>, $(date +"%Y")
 msgid ""
@@ -160,11 +160,11 @@ run_() {
   gumG $"Creating files for translations"
   header_
   # add strings to empty file with header
-  cat po/am.pot >> po/temp.po
+  cat translations/am.pot >> translations/temp.po
   # remove duplicities from po file
-  duplicities_ po/temp.po po/am.po
+  duplicities_ translations/temp.po translations/am.po
   # recreate fixed pot file
-  msgcat --output-file=po/am.pot --unique --indent --no-wrap po/am.po
+  msgcat --output-file=translations/am.pot --unique --indent --no-wrap translations/am.po
 }
 # Add new language
 ask_() {
@@ -174,13 +174,13 @@ ask_() {
     gumG $"Enter short code of new language"
     NLANG=$(gumI "${LANG:0:2}...")
   fi
-  if ! grep -q -w "$NLANG" po/LINGUAS 2>/dev/null; then
+  if ! grep -q -w "$NLANG" translations/LINGUAS 2>/dev/null; then
     gumG $"Translator name" && \
     TRANSLATOR=$(gumI $"Enter your name...") && \
     gumG $"Translator email" && \
     TRANSLATOR_EMAIL=$(gumI $"Enter your email...") && \
     gumQ $"Is it ${NLANG} correct language?" && \
-    echo "$NLANG" >> po/LINGUAS && \
+    echo "$NLANG" >> translations/LINGUAS && \
     run_
   else
     gumR $"Language already included" && echo $" Try again with another language, or run \"$AMCLI --translate\" to update added translations" && exit 1
@@ -188,40 +188,40 @@ ask_() {
 }
 # Update all translations
 update_() {
-  mapfile 2>/dev/null -t linguas <po/LINGUAS && \
+  mapfile 2>/dev/null -t linguas <translations/LINGUAS && \
   for i in "${linguas[@]}"; do
-    if [ -f "po/${i}.po" ]; then
+    if [ -f "translations/${i}.po" ]; then
       gumW $"Merging with old ${i}.po"
-      msgmerge -U "po/${i}.po" po/am.pot
+      msgmerge -U "translations/${i}.po" translations/am.pot
     else
       gumW $"Creating new ${i} translation file"
-      msginit --input po/am.po --output-file="po/${i}.po" --no-translator --locale "${i}"
+      msginit --input translations/am.po --output-file="translations/${i}.po" --no-translator --locale "${i}"
     fi
     # create directories
-    mkdir -p "po/usr/share/locale/${i}/LC_MESSAGES/"
+    mkdir -p "translations/usr/share/locale/${i}/LC_MESSAGES/"
     #echo $"Joining duplicities"
-    duplicities_ "po/${i}.po" po/new.po
-    mv po/new.po "po/${i}.po"
+    duplicities_ "translations/${i}.po" translations/new.po
+    mv translations/new.po "translations/${i}.po"
     #echo $"Creating ${i}.mo file"
 
-    msgfmt -o "po/usr/share/locale/${i}/LC_MESSAGES/am.mo" "po/${i}.po"
+    msgfmt -o "translations/usr/share/locale/${i}/LC_MESSAGES/am.mo" "translations/${i}.po"
     gumG $"${i} done"
   done
 }
 # Cleaning
 clean_() {
-  rm -f po/temp.po
+  rm -f translations/temp.po
 }
 # Copy translations to .local
 copy_() {
   gumG $"Preparation for translation done."
   echo $"Now is up to translators, or AI..."
   # copy translated .mo files to destination
-  gumQ $"Copy files to $HOME/.local/share/ for use with AppMan?" && cp -r po/usr/share/locale "$HOME/.local/share/"
+  gumQ $"Copy files to $HOME/.local/share/ for use with AppMan?" && cp -r translations/usr/share/locale "$HOME/.local/share/"
 }
 # Check for LINGUAS
 yet_() {
-  if mapfile 2>/dev/null -t linguas <po/LINGUAS; then
+  if mapfile 2>/dev/null -t linguas <translations/LINGUAS; then
     echo ''
   else
     gumR $"No language added, run \"$AMCLI --translate-new\" first!" && exit 1
