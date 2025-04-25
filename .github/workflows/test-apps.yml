@@ -35,7 +35,7 @@ on:
 
   schedule:
     #- cron: '*/30 6-8 * * *'
-    - cron: '*/30 * * * *'
+    - cron: '0 * * * *'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -103,7 +103,7 @@ jobs:
         run: |
           echo "### stats RESET" >> $GITHUB_STEP_SUMMARY
           rm -rf results
-          git config --global user.name "${{ github.repository_owner }}"
+          git config --global user.name web-flow
           git config --global user.email "noreply@github.com"
           git rm -r results
           git commit -m "reset stats"
@@ -136,7 +136,6 @@ jobs:
             echo " 🏁 ${{ steps.stats.outputs.tested }}" >> $GITHUB_STEP_SUMMARY
           fi
           if [[ "${{ steps.stats.outputs.excluded }}" != '0' ]]; then
-            echo "no GitHub/AppImage:" >> $GITHUB_STEP_SUMMARY
             echo " ❌ ${{ steps.stats.outputs.excluded }} (excluded)" >> $GITHUB_STEP_SUMMARY
           fi
 
@@ -331,7 +330,7 @@ jobs:
 
           # Install the application
 
-          if [[ "$pure_arg" =~ (kvrt|suyu|vikunja) ]]; then
+          if [[ "$pure_arg" =~ (kvrt|suyu) ]]; then
 
             echo "This application cannot be installed on github actions" | tee -a results/log-"${{ matrix.file }}"
             echo "${{ matrix.file }}" >> results/ok-${{ matrix.file }}
@@ -450,21 +449,17 @@ jobs:
 
       - name: "Git Config"
         run: |
-          git config --global user.name "${{ github.repository_owner }}"
+          git config --global user.name web-flow
           git config --global user.email "noreply@github.com"
 
       - name: "Process log results"
         run: |
           mkdir -p results
-          echo '-----------------------------------------------------------------'
-          echo 'No GitHub/AppImage +'
-          echo '-----------------------------------------------------------------'
           for LogFile in results/out-*; do
             echo '-----------------------------------------------------------------'
             echo "$LogFile out"
             echo '-----------------------------------------------------------------'
             cat "$LogFile"
-            echo '-----------------------------------------------------------------'
             echo '-----------------------------------------------------------------'
             [ -f "$LogFile" ] || continue
             appname=$(basename "$LogFile" | cut -d'-' -f2-)
@@ -494,7 +489,7 @@ jobs:
           git add results
 
       - name: "Show results"
-        if: (always() && needs.generate-matrix.outputs.skip != 'true' && github.event.inputs.reset_stats != 'true')
+        if: ( ${{ needs.generate-matrix.outputs.skip != 'true' }} && ${{ github.event.inputs.reset_stats != 'true' }} )
         run: |
           if [[ -f results/tested ]]; then
             tested=$(wc -l < results/tested 2>/dev/null || echo 0)
@@ -528,15 +523,12 @@ jobs:
           echo "Missed results:"
           echo '-----------------------------------------------------------------'
           ls -R results/
-          for rest in results/*; do
-            cat "$rest"
-          done
           echo '-----------------------------------------------------------------'
 
       - name: "Push"
         if: ${{ needs.generate-matrix.outputs.skip != 'true' }}
         run: |
-          git config --global user.name "${{ github.repository_owner }}"
+          git config --global user.name web-flow
           git config --global user.email "noreply@github.com"
           if [[ "$GITHUB_REF" == 'refs/pull/*' ]]; then
             echo "This is a Pull Request. Not saving results."
@@ -553,49 +545,28 @@ jobs:
             git push --force-with-lease && echo "sync successfull" >> $GITHUB_STEP_SUMMARY || (git diff && git status)
           fi
 
-  # delete-all-artifacts:
-  #   name: "cleanup 🧹"
-  #   runs-on: ubuntu-22.04
-  #   needs: update-results
-  #   if: always()
-  #   steps:
-  #     - name: "Check out repository 🏃"
-  #       uses: actions/checkout@v4
-  #
-  #     - name: "Delete Artifacts 🙈"
-  #       env:
-  #         REPO_NAME: ${{ github.repository }}
-  #         RUN_ID: ${{ github.run_id }}
-  #         TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  #       run: |
-  #         echo "Fetching and deleting all artifacts for run ID: $RUN_ID"
-  #         PAGE=1
-  #         DELETED=0
-  #         while true; do
-  #           RESPONSE=$(curl -s -H "Authorization: token $TOKEN" \
-  #            "https://api.github.com/repos/$REPO_NAME/actions/runs/$RUN_ID/artifacts?per_page=1000&page=$PAGE")
-  #           ARTIFACT_IDS=$(echo "$RESPONSE" | jq -r '.artifacts[].id')
-  #           if [[ -z "$ARTIFACT_IDS" ]]; then
-  #             echo "No more artifacts to delete. Total deleted: $DELETED"
-  #             break
-  #           fi
-  #           for ARTIFACT_ID in $ARTIFACT_IDS; do
-  #             echo "Deleting artifact with ID: $ARTIFACT_ID"
-  #             curl -X DELETE -s -H "Authorization: token $TOKEN" \
-  #              "https://api.github.com/repos/$REPO_NAME/actions/artifacts/$ARTIFACT_ID"
-  #             ((DELETED+=1))
-  #           done
-  #           ((PAGE+=1))
-  #         done
-  #         echo "Successfully deleted $DELETED artifacts."
-  #         echo "Git clean"
-  #         git clean -f
-
   already-tested:
     name: "all 🏁"
     runs-on: ubuntu-22.04
     needs: generate-matrix
     if: ${{ needs.generate-matrix.outputs.skip == 'true' }}
     steps:
-      - name: "Mark as Successful"
-        run: echo "All apps already tested..." >> $GITHUB_STEP_SUMMARY
+      - name: "Checkout"
+        uses: actions/checkout@v4
+
+      - name: "Git Config"
+        run: |
+           git config --global user.name web-flow
+           git config --global user.email "noreply@github.com"
+
+      - name: "Reset all tested"
+        run: |
+          echo "All apps already tested..." >> $GITHUB_STEP_SUMMARY
+          echo "### stats RESET" >> $GITHUB_STEP_SUMMARY
+          #cp results/log log.old 2>/dev/null && git add log.old || echo "Log deleted without backup"
+          #cp results/excluded excluded.old 2>/dev/null && git add excluded.old || echo "Excluded deleted without backup"
+          #rm -rf results
+          git rm -r results
+          git commit -m "reset stats"
+          git push --force
+          git clean -f
