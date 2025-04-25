@@ -1,4 +1,4 @@
-name: "Updated translations"
+name: "🦉 translations"
 
 on:
   push:
@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   sync-files:
-    name: "Regenerate translations"
+    name: "🦉 translations"
     runs-on: ubuntu-22.04
     steps:
       - name: "Checkout source repository"
@@ -32,18 +32,36 @@ jobs:
           chmod +x ./INSTALL
           sudo ./INSTALL 2> /dev/null || ./INSTALL
 
+      # For now until translations are merged to AM
+      # We need to overwrite installed am
+      # And include translation files
+      - name: "Get translations from outside"
+        run: |
+          cd /tmp/
+          # Clone repo with localization
+          git clone https://github.com/oSoWoSo/AM am-translations
+          cd am-translations
+          # Copy source and translated files
+          cp -r po /opt/am/
+          # Copy translated modules
+          cp -r modules /opt/am/
+          # Copy am
+          cp APP-MANAGER /opt/am/
+          # Just for sure
+          chmod a+x /opt/am/APP-MANAGER
+
       - name: "Regen"
         run: |
           am --translate
 
       - name: "Push to Source"
         run: |
-          git config --global user.name "${{ github.repository_owner }}"
+          git config --global user.name "web-flow"
           git config --global user.email "noreply@github.com"
           git add programs/*-appimages programs/*-portable
           if git diff-index --quiet HEAD; then
             echo "No changes to commit." >> $GITHUB_STEP_SUMMARY
           else
-            git commit -m "translations updated"
+            git commit -m "Update translations"
             git push && echo "Sync to Source succeeded" >> $GITHUB_STEP_SUMMARY
           fi
