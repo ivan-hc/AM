@@ -72,19 +72,24 @@ jobs:
         uses: actions/create-release@v1
         with:
           tag_name: "v0.${{ github.run_number }}"
-          release_name: "AM Translation"
+          release_name: "AM Translation v0.${{ github.run_number }}"
           draft: false
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: "Upload mo files to Release"
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: translations/usr/share/locale/*/LC_MESSAGES/am.mo
-          asset_name: am.mo
-          asset_content_type: application/octet-stream
+      - name: "Upload translation files to Release"
+        run: |
+          for file in translations/usr/share/locale/*/LC_MESSAGES/am.mo; do
+            if [ -f "$file" ]; then
+              echo "Uploading $file"
+              gh release upload ${{ steps.create_release.outputs.tag_name }} "$file" --clobber
+            else
+              echo "File $file does not exist."
+            fi
+          done
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: "Upload mo files"
         uses: actions/upload-artifact@v4
