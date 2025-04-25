@@ -9,6 +9,10 @@ on:
 
   workflow_dispatch:
 
+permissions:
+  packages: write
+  contents: write
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -67,38 +71,16 @@ jobs:
           tree -d
           echo '----------------------------------------------------------------------------'
 
-      - name: "Create Release"
+      - name: Create Release
         id: create_release
-        uses: actions/create-release@v1
+        uses: elgohr/Github-Release-Action@v5
         with:
-          tag_name: "v0.${{ github.run_number }}"
-          release_name: "AM Translation v0.${{ github.run_number }}"
-          draft: false
-          prerelease: false
+          tag: "translations_v0.${{ github.run_number }}"
+          title: "translations v0.${{ github.run_number }}"
+          workdir: translations
+          prerelease: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: "Upload translation files to Release"
-        run: |
-          for file in translations/usr/share/locale/*/LC_MESSAGES/am.mo; do
-            if [ -f "$file" ]; then
-              echo "Uploading $file"
-              gh release upload ${{ steps.create_release.outputs.tag_name }} "$file" --clobber
-            else
-              echo "File $file does not exist."
-            fi
-          done
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: "Upload mo files"
-        uses: actions/upload-artifact@v4
-        with:
-          name: translations
-          path: translations/usr/share/locale/*/LC_MESSAGES/am.mo
-          if-no-files-found: warn
-          #retention-days: 1
-          #compression-level: 0
 
       - name: "Push to Source"
         run: |
