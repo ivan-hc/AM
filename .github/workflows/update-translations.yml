@@ -1,0 +1,50 @@
+name: "Updated translations"
+
+on:
+  push:
+    branches: localization
+    paths:
+      - po/**
+
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sync-files:
+    name: "Regenerate translations"
+    runs-on: ubuntu-22.04
+    steps:
+      - name: "Checkout source repository"
+        uses: actions/checkout@v4
+
+      - name: "Cache dependencies"
+        uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: wget curl torsocks zsync
+          version: 1.0
+
+      - name: "Install AM 🎁"
+        run: |
+          sudo systemctl enable tor.service || systemctl enable tor.service
+          sudo systemctl restart tor.service && wait || systemctl restart tor.service && wait
+          chmod +x ./INSTALL
+          sudo ./INSTALL 2> /dev/null || ./INSTALL
+
+      - name: "Regen"
+        run: |
+          am --translate
+
+      - name: "Push to Source"
+        run: |
+          git config --global user.name "${{ github.repository_owner }}"
+          git config --global user.email "noreply@github.com"
+          git add programs/*-appimages programs/*-portable
+          if git diff-index --quiet HEAD; then
+            echo "No changes to commit." >> $GITHUB_STEP_SUMMARY
+          else
+            git commit -m "translations updated"
+            git push && echo "Sync to Source succeeded" >> $GITHUB_STEP_SUMMARY
+          fi
