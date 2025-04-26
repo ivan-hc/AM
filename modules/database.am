@@ -176,9 +176,9 @@ _files_header() {
 		else
 			LIBSMESSAGE="AND $LIBNUMB LIBRARIES"
 		fi
-		[ "$APPMAN_ON" = 1 ] && echo "- $APPSMESSAGE $LIBSMESSAGE LOCALLY, AS \"APPMAN\"" || echo "- $APPSMESSAGE $LIBSMESSAGE MANAGED BY \"$AMCLIUPPER\""
+		[ "$APPMAN_ON" = 1 ] && echo " $APPSMESSAGE $LIBSMESSAGE LOCALLY, AS \"APPMAN\"" || echo " $APPSMESSAGE $LIBSMESSAGE MANAGED BY \"$AMCLIUPPER\""
 	else
-		[ "$APPMAN_ON" = 1 ] && echo "- $APPSMESSAGE LOCALLY, AS \"APPMAN\"" || echo "- $APPSMESSAGE MANAGED BY \"$AMCLIUPPER\""
+		[ "$APPMAN_ON" = 1 ] && echo " $APPSMESSAGE LOCALLY, AS \"APPMAN\"" || echo " $APPSMESSAGE MANAGED BY \"$AMCLIUPPER\""
 	fi
 	echo ""
 	if [ -n "$CHECK_SUPPORTED_THIRD_PARTY_APPS" ]; then
@@ -263,7 +263,6 @@ _files_sizes() {
 	else
 		SIZE=$(du -sh -- "$arg" | cut -f1 -d"	")
 	fi
-	SIZE=$(echo "$SIZE" | sed 's/.$/ &/; s/$/iB/')
 	echo " ◆ $arg	|	$SIZE" >> "$AMCACHEDIR"/files-sizes
 }
 
@@ -359,6 +358,10 @@ _files_total_size() {
 	printf "\n"
 }
 
+_files_table_sizes() {
+	sed 's/^/ /g; s/K$/ KiB/; s/M$/ MiB/; s/G$/ GiB/'
+}
+
 _files_sort_by_name() {
 	_files_header
 	rm -f "$AMCACHEDIR"/files-args-byname
@@ -366,7 +369,7 @@ _files_sort_by_name() {
 	echo "$files_table_header" > "$AMCACHEDIR"/files-args-byname
 	echo "$files_table_header_lines" >> "$AMCACHEDIR"/files-args-byname
 	sort "$AMCACHEDIR"/files-args 2>/dev/null >> "$AMCACHEDIR"/files-args-byname
-	column -t "$AMCACHEDIR"/files-args-byname
+	column -t "$AMCACHEDIR"/files-args-byname | _files_table_sizes
 	_files_total_size
 	_files_appimage_type_notes
 }
@@ -378,7 +381,7 @@ _files_sort_by_size() {
 	echo "$files_table_header" > "$AMCACHEDIR"/files-args-bysize
 	echo "$files_table_header_lines" >> "$AMCACHEDIR"/files-args-bysize
 	cat "$AMCACHEDIR"/files-args >> "$AMCACHEDIR"/files-args-bysize 2>/dev/null
-	column -t "$AMCACHEDIR"/files-args-bysize
+	column -t "$AMCACHEDIR"/files-args-bysize | _files_table_sizes
 	_files_total_size
 	_files_appimage_type_notes
 }
@@ -395,12 +398,11 @@ _files_launcher_message() {
 		appimagename=$(basename -- "$appimage_full_path")
 		appimage_path=$(echo "$appimage_full_path" | sed -E 's|/[^/]+$|/|; s/\/*$//g')
 		appimage_size="$(du -sh -- "$appimage_full_path" 2>/dev/null | cut -f1 -d"	")"
-		appimage_size_unit=$(echo "$appimage_size" | sed 's/.$/ &/; s/$/iB/')
-		[ ! -d "$appimage_path" ] && appimage_path="$appimage_path*" &&	appimage_size_unit="unknown"
-		echo "◆ $appimagename | $appimage_path | $appimage_size_unit"
+		[ ! -d "$appimage_path" ] && appimage_path="$appimage_path*" &&	appimage_size="unknown"
+		echo "◆ $appimagename | $appimage_path | $appimage_size"
 		#echo "◆ File: $appimagename"
 		#echo "  Path: $appimage_path"
-		#echo "  Size: $appimage_size_unit"
+		#echo "  Size: $appimage_size"
 		#echo ""
 	done
 }
@@ -417,10 +419,10 @@ _files_launcher() {
 	[ -d "$DATADIR"/applications/AppImages ] && [ -z "$( ls -A "$DATADIR"/applications/AppImages )" ] && _files_missing_launcher_message && exit 0
 	FILES_LAUNCHERS_NUMBER=$(find "$DATADIR"/applications/AppImages -type f -name '*.desktop' 2>/dev/null | uniq | wc -l | sed 's/ //g')
 	[ "$FILES_LAUNCHERS_NUMBER" = 1 ] && APPIMAGES="APPIMAGE" || APPIMAGES="APPIMAGES"
-	LAUNCHERS_MESSAGE="- YOU HAVE INTEGRATED $FILES_LAUNCHERS_NUMBER $APPIMAGES USING THE \"--launcher\" OPTION"
+	LAUNCHERS_MESSAGE=" YOU HAVE INTEGRATED $FILES_LAUNCHERS_NUMBER $APPIMAGES USING THE \"--launcher\" OPTION"
 	printf "\n%b\n\n" "$LAUNCHERS_MESSAGE"
 	#_files_launcher_message | _fit
-	_files_launcher_message | column -t
+	_files_launcher_message | column -t | _files_table_sizes
 	_files_launcher_message | grep -q " unknown$" && printf "\n *this path is listed but not mounted, file size unknown\n\n" || printf "\n"
 }
 
