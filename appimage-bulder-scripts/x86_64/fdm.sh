@@ -2,51 +2,37 @@
 
 APP=fdm
 
-# DOWNLOADING THE DEPENDENCIES
-if test -f ./appimagetool; then
-	echo " appimagetool already exists" 1> /dev/null
-else
-	echo " Downloading appimagetool..."
-	wget -q https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool
-fi
-chmod a+x ./appimagetool
+_appimage_basics() {
+	# Launcher
+	rm -f "$APP".AppDir/freedownloadmanager.desktop
+	cat <<-HEREDOC >> ./"$APP".AppDir/"$APP".desktop
+	[Desktop Entry]
+	Name=Free Download Manager
+	Comment= FDM is a powerful modern download accelerator and organizer
+	Keywords=download;manager;free;fdm;
+	Exec=$APP
+	Terminal=false
+	Type=Application
+	Icon=icon
+	Categories=Network;FileTransfer;P2P;GTK;
+	StartupNotify=true
+	HEREDOC
 
-# DOWLOAD THE DEB PACKAGE
-echo " Downloading the .deb package..."
-[ ! -f ./*.deb ] && wget -q "$(curl -Ls https://www.freedownloadmanager.org/download-fdm-for-linux.htm | tr '">< ' '\n' | grep "http.*deb$" | grep -vi "qt" | head -1)"
+	# AppRun
+	printf '#!/bin/sh\nHERE="$(dirname "$(readlink -f "${0}")")"\nexec "${HERE}"/%b "$@"' "$APP" > ./"$APP".AppDir/AppRun && chmod a+x ./"$APP".AppDir/AppRun
+}
 
-# COMPILE THE APPDIR
-echo " Extracting the .deb package to the AppDir..."
-mkdir -p "$APP".AppDir
-ar x ./*.deb
-tar fx ./data.tar*
-mv ./opt/*/* "$APP".AppDir/
+ARCH="x86_64"
 
-# Add launcher in the root of the AppDir
-echo "[Desktop Entry]
-Name=Free Download Manager
-Comment= FDM is a powerful modern download accelerator and organizer
-Keywords=download;manager;free;fdm;
-Exec=$APP
-Terminal=false
-Type=Application
-Icon=icon
-Categories=Network;FileTransfer;P2P;GTK;
-StartupNotify=true" > "$APP".AppDir/freedownloadmanager.desktop
+# DEPENDENCIES
+[ ! -f ./appimagetool ] && curl -#Lo appimagetool https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-"$ARCH".AppImage && chmod a+x ./appimagetool
 
-# CREATE THE APPRUN
-cat >> "$APP".AppDir/AppRun << 'EOF'
-#!/bin/sh
-HERE="$(dirname "$(readlink -f "${0}")")"
-export UNION_PRELOAD="${HERE}"
-exec "${HERE}"/fdm "$@"
-EOF
-chmod a+x "$APP".AppDir/AppRun
+DOWNLOAD_PAGE=$(curl -Ls https://www.freedownloadmanager.org/download-fdm-for-linux.htm)
+DOWNLOAD_URL=$(echo "$DOWNLOAD_PAGE" | tr '">< ' '\n' | grep "http.*deb$" | grep -vi "qt" | head -1)
+VERSION=$(echo "$DOWNLOAD_PAGE" | grep "FDM [0-9]" | tr '><" ' '\n' | grep "^[0-9]" | head -1)
+[ ! -f "$APP".deb ] && curl -#Lo "$APP".deb "$DOWNLOAD_URL" && mkdir -p "$APP".AppDir && ar x ./*.deb && tar fx ./data.tar* && mv ./opt/*/* "$APP".AppDir/ || exit 1
+_appimage_basics
 
-# EXPORT THE APP TO AN APPIMAGE
-printf '#!/bin/sh\nexit 0' > ./desktop-file-validate # hack due to https://github.com/AppImage/appimagetool/pull/47
-chmod a+x ./desktop-file-validate
-PATH="$PATH:$PWD" ARCH=x86_64 ./appimagetool -n ./"$APP".AppDir 2>&1 | grep "Architecture\|Creating\|====\|Exportable"
-if ! test -f ./*.AppImage; then
-	echo "No AppImage available."; exit 1
-fi
+# CONVERT THE APPDIR TO AN APPIMAGE
+ARCH=x86_64 VERSION="$VERSION" ./appimagetool -s ./"$APP".AppDir 2>&1
+test -f ./*.Appimage && rm -Rf ./*.deb ./*.AppDir ./*tar*
