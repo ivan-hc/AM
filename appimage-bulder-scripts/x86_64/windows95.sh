@@ -2,45 +2,38 @@
 
 APP=windows95
 
-# DOWNLOADING THE DEPENDENCIES
-if test -f ./appimagetool; then
-	echo " appimagetool already exists" 1> /dev/null
-else
-	echo " Downloading appimagetool..."
-	wget -q https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool
-fi
-if test -f ./pkg2appimage; then
-	echo " pkg2appimage already exists" 1> /dev/null
-else
-	echo " Downloading pkg2appimage..."
-	wget -q https://github.com/ivan-hc/AM/raw/refs/heads/main/tools/pkg2appimage -O pkg2appimage
-fi
-chmod a+x ./appimagetool ./pkg2appimage
+_appimage_basics() {
+	# Launcher
+	cat <<-HEREDOC >> ./"$APP".AppDir/"$APP".desktop
+	[Desktop Entry]
+	Name=windows95
+	Comment=Windows 95, in an app. I'm sorry.
+	GenericName=windows95
+	Exec=windows95 %U
+	Icon=windows95
+	Type=Application
+	StartupNotify=true
+	Categories=GNOME;GTK;Utility;
+	HEREDOC
 
-# CREATING THE HEAD OF THE RECIPE
-DEB=$(curl -Ls https://api.github.com/repos/felixrieseberg/windows95/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | grep -i "amd64.deb" | head -1)
-echo "app: $APP
-binpatch: true
+	# Icon
+	wget -q https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/main/icons/windows95.png -O ./"$APP".AppDir/"$APP".png
 
-ingredients:
+	# AppRun
+	printf '#!/bin/sh\nHERE="$(dirname "$(readlink -f "${0}")")"\nexec "${HERE}"/usr/bin/%b "$@"' "$APP" > ./"$APP".AppDir/AppRun && chmod a+x ./"$APP".AppDir/AppRun
+}
 
-  script:
-    - if ! test -f ./*.deb; then wget -q -c \"$DEB\"; fi
+ARCH="x86_64"
 
-script:
- - rm -f windows95.png
- - wget -q https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/refs/heads/main/icons/windows95.png" > recipe.yml
+# DEPENDENCIES
+[ ! -f ./appimagetool ] && curl -#Lo appimagetool https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-"$ARCH".AppImage && chmod a+x ./appimagetool
 
-# DOWNLOAD ALL THE NEEDED PACKAGES AND COMPILE THE APPDIR
-echo "Compilling $APP from recipe using pkg2appimage, please wait..."
-./pkg2appimage ./recipe.yml >/dev/null 2>&1
+DOWNLOAD_PAGE=$(curl -Ls https://raw.githubusercontent.com/felixrieseberg/windows95/refs/heads/master/README.md)
+DOWNLOAD_URL=$(echo "$DOWNLOAD_PAGE" | tr '><" ' '\n' |  grep -i "^https.*github.com.*download.*deb$" | grep -i "x64\|amd64\|x86_64" | head -1)
+VERSION=$(echo "$DOWNLOAD_URL" | tr '_' '\n' | grep "^[0-9]" | head -1)
+[ ! -f "$APP".deb ] && curl -#Lo "$APP".deb "$DOWNLOAD_URL" && mkdir -p "$APP".AppDir/usr && ar x ./*.deb && tar fx ./data.tar* && mv ./usr/* "$APP".AppDir/usr/ || exit 1
+_appimage_basics
 
-# EXPORT THE APP TO AN APPIMAGE
-printf '#!/bin/sh\nexit 0' > ./desktop-file-validate # hack due to https://github.com/AppImage/appimagetool/pull/47
-chmod a+x ./desktop-file-validate
-PATH="$PATH:$PWD" ARCH=x86_64 ./appimagetool -n ./"$APP"/"$APP".AppDir 2>&1 | grep "Architecture\|Creating\|====\|Exportable"
-if ! test -f ./*.AppImage; then
-	echo "No AppImage available."; exit 1
-else
-	rm -f ./appimagetool ./pkg2appimage
-fi
+# CONVERT THE APPDIR TO AN APPIMAGE
+ARCH=x86_64 VERSION="$VERSION" ./appimagetool -s ./"$APP".AppDir 2>&1
+test -f ./*.Appimage && rm -Rf ./*.deb ./*.AppDir ./*tar*
