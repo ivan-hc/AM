@@ -493,15 +493,6 @@ NOTE: Since this is an "install" option, you can add the "`--user`" flag to inst
 Same as "install" (see above) but for AppImages only.  Option "`-ias`" (aka Install AppImage & Sandox) is equivalent to "`-ia --sandbox`", to set sandboxes for AppImage packages.
 
 ------------------------------------------------------------------------
-### `lock`
-
-		am lock {PROGRAM}
-
-**Description**:
-
-Prevent an application being updated, if it has an"AM-updater" script.
-
-------------------------------------------------------------------------
 ### `list`, `-l`
 
 		am -l
@@ -512,6 +503,15 @@ Prevent an application being updated, if it has an"AM-updater" script.
 **Description**:
 
 Shows the list of all the apps available, or just the AppImages. It can also be extended with additional flags, the "`--all`" flag allows you to consult the set of all supported databases.
+
+------------------------------------------------------------------------
+### `lock`
+
+		am lock {PROGRAM}
+
+**Description**:
+
+Prevent an application being updated, if it has an"AM-updater" script.
 
 ------------------------------------------------------------------------
 ### `newrepo`, `neodb`
