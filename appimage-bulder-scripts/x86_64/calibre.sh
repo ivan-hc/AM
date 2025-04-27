@@ -59,3 +59,6 @@ if [ "$arch" = arm64 ]; then
 else
 	ARCH=x86_64 VERSION="$VERSION" _appimagetool -s ./"$APP".AppDir 2>&1
 fi
+if ! test -f ./*.AppImage; then
+	echo "No AppImage available."; exit 1
+fi

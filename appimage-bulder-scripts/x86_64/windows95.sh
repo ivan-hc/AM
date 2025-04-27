@@ -48,3 +48,6 @@ _appimage_basics
 
 # CONVERT THE APPDIR TO AN APPIMAGE
 ARCH=x86_64 VERSION="$VERSION" _appimagetool -s ./"$APP".AppDir 2>&1
+if ! test -f ./*.AppImage; then
+	echo "No AppImage available."; exit 1
+fi
