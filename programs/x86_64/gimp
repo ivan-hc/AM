@@ -4,6 +4,7 @@
 APP=gimp
 SITE1="https://www.gimp.org"
 SITE2="ivan-hc/GIMP-appimage"
+SITE3="pkgforge-dev/GIMP-and-PhotoGIMP-AppImage"
 
 # CREATE DIRECTORIES AND ADD REMOVER
 [ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
@@ -23,19 +24,33 @@ read -r -p "
 
     Source: https://github.com/ivan-hc/GIMP-appimage
 
+ 3. Unofficial AppImage that also includes PhotoGIMP.
+
+    Source: https://github.com/pkgforge-dev/GIMP-and-PhotoGIMP-AppImage
+
  Which version you choose (type a number and press ENTER)?" response
 case "$response" in
-	1) rm -f /opt/"$APP"/version
-	UPDATER=1
-	version="https:$(curl -Ls https://www.gimp.org/downloads/ | tr '">< ' '\n' | grep -i "download.*x86_64.*appimage$" | head -1)"
-	wget "$version"
-	echo "$version" >> /opt/$APP/version;;
-	2) rm -f /opt/"$APP"/version
-	version=$(curl -Ls https://api.github.com/repos/ivan-hc/GIMP-appimage/releases/latest | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | head -1)
-	UPDATER=2
-	wget "$version"
-	echo "$version" >> /opt/$APP/version;;
-	*) /opt/"$APP"/remove && exit;;
+	1)
+		UPDATER=1
+		version="https:$(curl -Ls https://www.gimp.org/downloads/ | tr '">< ' '\n' | grep -i "download.*x86_64.*appimage$" | head -1)"
+		wget "$version"
+		echo "$version" > /opt/$APP/version
+		;;
+	2)
+		UPDATER=2
+		version=$(curl -Ls https://api.github.com/repos/ivan-hc/GIMP-appimage/releases/latest | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | head -1)
+		wget "$version"
+		echo "$version" > /opt/$APP/version
+		;;
+	3)
+		UPDATER=3
+		version=$(curl -Ls https://api.github.com/repos/pkgforge-dev/GIMP-and-PhotoGIMP-AppImage/releases/latest | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | head -1)
+		wget "$version"
+		echo "$version" > /opt/$APP/version
+		;;
+	*)
+		/opt/"$APP"/remove && exit
+		;;
 esac
 cd ..
 mv ./tmp/*mage ./"$APP"
@@ -57,10 +72,15 @@ cat >> ./AM-updater << 'EOF'
 SITE="https://www.gimp.org"
 version="https:$(curl -Ls https://www.gimp.org/downloads/ | tr '">< ' '\n' | grep -i "download.*x86_64.*appimage$" | head -1)"
 EOF
-else
+elif [ "$UPDATER" = 2 ]; then
 cat >> ./AM-updater << 'EOF'
 SITE="ivan-hc/GIMP-appimage"
-version=$(curl -Ls https://api.github.com/repos/ivan-hc/GIMP-appimage/releases/latest | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | head -1)
+version=$(curl -Ls https://api.github.com/repos/ivan-hc/GIMP-appimage/releases/latest | sed 's/[()",{} ]/\n/g' | grep -oi "https.*x86_64.*mage$" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | head -1)
+EOF
+elif [ "$UPDATER" = 3 ]; then
+cat >> ./AM-updater << 'EOF'
+SITE="pkgforge-dev/GIMP-and-PhotoGIMP-AppImage"
+version=$(curl -Ls https://api.github.com/repos/pkgforge-dev/GIMP-and-PhotoGIMP-AppImage/releases/latest | sed 's/[()",{} ]/\n/g' | grep -oi "https.*x86_64.*mage$" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | head -1)
 EOF
 fi
 cat >> ./AM-updater << 'EOF'
