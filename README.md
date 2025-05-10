@@ -97,7 +97,7 @@ The "AM-INSTALLER" script allows you to choose "[AppMan](#what-is-appman)" inste
 
 Copy/paste the following one line command to download and run the "[AM-INSTALLER](https://github.com/ivan-hc/AM/blob/main/AM-INSTALLER)" script
 ```
-wget -q https://raw.githubusercontent.com/ivan-hc/AM/main/AM-INSTALLER && chmod a+x ./AM-INSTALLER && ./AM-INSTALLER
+wget -q https://raw.githubusercontent.com/ivan-hc/AM/main/AM-INSTALLER && chmod a+x ./AM-INSTALLER && ./AM-INSTALLER && rm ./AM-INSTALLER
 ```
 ...below, the screenshot of what will appear.
 
@@ -123,7 +123,7 @@ sudo ./INSTALL
 ## Using a one-line command (only system-wide installation)
 Copy/paste the following one line command command
 ```
-wget https://raw.githubusercontent.com/ivan-hc/AM/main/INSTALL && chmod a+x ./INSTALL && sudo ./INSTALL
+wget https://raw.githubusercontent.com/ivan-hc/AM/main/INSTALL && chmod a+x ./INSTALL && sudo ./INSTALL && rm ./INSTALL
 ```
 This is definitely the quickest method of all!
 
