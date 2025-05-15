@@ -54,6 +54,8 @@ You can use the command `am -a {PROGRAM}` to view the description and get the so
      - [Supported third-party databases](#supported-third-party-databases)
      - [How to replace AM database](#how-to-replace-am-database)
 
+   - [Recommended packages](#recommended-packages)
+
    - [Do you own a repository for AppImages external to this database? Follow these instructions!](#do-you-own-a-repository-for-appimages-external-to-this-database-follow-these-instructions)
 
 [How to update all programs, for real!](#how-to-update-all-programs-for-real)
@@ -254,6 +256,28 @@ it is enough to `export` the variables above and respect the destination file fo
 I did this to not tie users to this database and to allow them to use AM and all its features if I, Ivan, am unable to intervene for any reason.
 
 There are many discontinuous projects. Should this become one too, it will not be obsolete.
+
+------------------------------------------------------------------------
+## Recommended packages
+After installing AM, the following packages are a must have to make your life easier:
+
+### *1) `appimageupdatetool`*
+[**appimageupdatetool**](https://github.com/pkgforge-dev/AppImageUpdate) (fork) is a tool to get delta updates of AppImages that support them, useful if you decide to install large AppImage packages (*see "[How to update all programs, for real!](https://github.com/ivan-hc/AM?tab=readme-ov-file#how-to-update-all-programs-for-real)"*)
+```
+am -i appimageupdatetool
+```
+
+### *2) `appimagetool`*
+[**appimagetool**](https://github.com/AppImage/appimagetool) is a tool used to create AppImage packages from AppDirs. "AM" uses this to convert old AppImages and remove their dependency on libfuse2 or to assemble AppImage packages on the fly from portable archives [if a build script is available](https://github.com/ivan-hc/AM/tree/main/appimage-bulder-scripts), like in an AUR helper (*see "[Convert Type2 AppImages requiring libfuse2 to New Generation AppImages](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/nolibfuse.md)" and "[Option One: "build AppImages on-the-fly](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/template.md#option-one-build-appimages-on-the-fly)"*)
+```
+am -i appimagetool
+```
+
+### *3) `aisap`*
+[**aisap**](https://github.com/mgord9518/aisap) is a Bubblewrap frontend that allows you to isolate AppImages in a sandbox (*see "[Sandbox an AppImage](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/sandbox.md)"*)
+```
+am -i aisap
+```
 
 ------------------------------------------------------------------------
 ### Do you own a repository for AppImages external to this database? Follow these instructions!
