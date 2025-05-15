@@ -526,7 +526,7 @@ Same as "install" (see above) but for AppImages only.  Option "`-ias`" (aka Inst
 
 **Description**:
 
-Shows the list of all the apps available, or just the AppImages. It can also be extended with additional flags, the "`--all`" flag allows you to consult the set of all supported databases.
+Shows the list of all the apps available. Without flags only shows the apps in the "AM" database, add the "`--appimages`" to show only the AppImages or "`--portable`" to show other formats from the "AM" database. The "`--all`" flag allows you to consult the set of all supported third-party databases. It can also be extended with additional flags.
 
 ------------------------------------------------------------------------
 ### `lock`
