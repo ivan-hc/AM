@@ -1,13 +1,7 @@
 This directory will contain scripts for building AppImage packages on the fly, where required.
 
-Each script must have the name of the corresponding installation script, but with the ".sh" extension. For example:
-```
-/appimage-bulder-scripts/x86_64/calibre.sh
-```
-is used by
-```
-/programs/x86_64/calibre
-```
+Each script must have the name of the corresponding installation script, but with the ".sh" extension.
+
 It is assumed that all of the work for these scripts will be done during the installation process, in the "tmp" directory, so the scripts posted here will need to be able to compile and drop the AppImage into the same "tmp" directory. The rest of the installation process will handle the created AppImage as if it had been normally downloaded from the internet ready-made.
 
 If you are a user of my tools, consider using [AppImaGen](https://github.com/ivan-hc/AppImaGen). 
