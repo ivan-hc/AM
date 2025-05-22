@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="9.7.1"
+AMVERSION="9.7.1-2"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -160,7 +160,6 @@ _appman() {
 	else
 		APPSDIR="$(head -1 "$APPMANCONFIG"/appman-config 2>/dev/null)"
 	fi
-	[ -n "$APPSDIR" ] && mkdir -p "$APPSDIR"/appman || exit 1
 	mkdir -p "$BINDIR" "$DATADIR"/applications "$DATADIR"/icons || exit 1
 	AMCLI="appman"
 	AMCLIPATH="$DIR/$AMCLI"
@@ -176,7 +175,13 @@ _appman() {
 		printf "%b ⚠️ WARNING\033[0m: \"%b%b\033[0m\" is not in PATH, local apps may not run.\n" "${RED}" "${LightBlue}" "$BINDIR"
 	fi
 	MODULES_PATH="$AMPATH/modules"
-	mkdir -p "$MODULES_PATH" || exit 1
+	if [ "$CLI" = am ] && [ -f "$APPMANCONFIG"/appman-mode ] && [ -d /usr/lib/am/modules ]; then
+		MODULES_PATH="/usr/lib/am/modules"
+	elif [ "$CLI" = am ] && [ -f "$APPMANCONFIG"/appman-mode ] && [ -d "$(realpath /opt)/am/modules" ]; then
+		MODULES_PATH="$(realpath /opt)/am/modules"
+	elif [ "$CLI" = appman ]; then
+		mkdir -p "$MODULES_PATH" || exit 1
+	fi
 }
 
 # "AM" CORE VARIABLES
@@ -953,7 +958,7 @@ _sync_modules() {
 	printf "%b\n Check for updates in modules...\n" "$DIVIDING_LINE"
 	MODULES=$(curl -Ls "$AMREPO/APP-MANAGER" | tr '"' '\n' | grep "[a-z]\.am$")
 	for module_name in $MODULES; do
-		cd "$MODULES_PATH" || return 1
+		mkdir -p "$MODULES_PATH" && cd "$MODULES_PATH" || return 1
 		if ! test -f ./"$module_name"; then
 			echo " ◆ Downloading $module_name (not previously installed)..."
 			curl -Os "$MODULES_SOURCE/$module_name" 2>/dev/null
@@ -997,8 +1002,25 @@ _use_sync() {
 	_sync_databases
 	_sync_installation_scripts
 	if [ "$(realpath "$0")" != "/usr/bin/am" ] && [ "$AMSYNC" != 1 ]; then
-		_sync_modules
-		_sync_amcli
+		if [ "$CLI" = am ]; then
+			if [ -f "$APPMANCONFIG"/appman-mode ]; then
+				if [ -d "$(realpath /opt)/am/modules" ]; then
+					MODULES_PATH="$(realpath /opt)/am/modules"
+					if [ -w "$(realpath /opt)/am" ]; then
+						_sync_modules
+						_sync_amcli
+					else
+						printf "%b\n DONE! \n" "$DIVIDING_LINE"
+					fi
+				fi
+			else
+				_sync_modules
+				_sync_amcli
+			fi
+		elif [ "$CLI" = appman ]; then
+			_sync_modules
+			_sync_amcli
+		fi
 	fi
 	echo "$DIVIDING_LINE"
 }
@@ -1222,12 +1244,17 @@ _use_force_latest() {
 _use_module() {
 	# Test if module exists
 	if [ ! -f "$MODULES_PATH/$MODULE" ]; then
-		_online_check
-		if ! wget -q "$MODULES_SOURCE/$MODULE" -O "$MODULES_PATH/$MODULE"; then
-			echo " Module not found, run \"$AMCLI -s\" to update \"$AMCLIUPPER\""
-			exit 1
+		if [ "$CLI" = am ] && [ -f "$APPMANCONFIG"/appman-mode ] && [ -f "/usr/lib/am/modules/$MODULE" ]; then
+			MODULES_PATH="/usr/lib/am/modules"
+		elif [ "$CLI" = am ] && [ -f "$APPMANCONFIG"/appman-mode ] && [ -f "$(realpath /opt)/am/modules/$MODULE" ]; then
+			MODULES_PATH="$(realpath /opt)/am/modules"
+		else
+			_online_check
+			if ! wget -q "$MODULES_SOURCE/$MODULE" -O "$MODULES_PATH/$MODULE"; then
+				echo " Module not found, run \"$AMCLI -s\" to update \"$AMCLIUPPER\""
+				exit 1
+			fi
 		fi
-		chmod a+x "$MODULES_PATH/$MODULE"
 	fi
 	# Source module
 	source "$MODULES_PATH/$MODULE" "$@"
@@ -1283,8 +1310,8 @@ case "$1" in
 		;;
 	# INBUILT OPTIONS
 	'--devmode-disable'|'--devmode-enable')
-		[ "$1" = "--devmode-disable" ] && rm -f "$AMDATADIR"/betatester \
-		|| touch "$AMDATADIR"/betatester && _betatester_message_on
+		[ "$(realpath "$0")" = "/usr/bin/am" ] && echo "This feature is disabled by your organization" | _fit \
+			|| [ "$1" = "--devmode-disable" ] && rm -f "$AMDATADIR"/betatester || touch "$AMDATADIR"/betatester && _betatester_message_on
 		;;
 	'--force-latest')
 		_use_force_latest "$@"
