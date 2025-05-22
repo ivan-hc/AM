@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="9.7.1"
+AMVERSION="9.7.1-1"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -1222,12 +1222,17 @@ _use_force_latest() {
 _use_module() {
 	# Test if module exists
 	if [ ! -f "$MODULES_PATH/$MODULE" ]; then
-		_online_check
-		if ! wget -q "$MODULES_SOURCE/$MODULE" -O "$MODULES_PATH/$MODULE"; then
-			echo " Module not found, run \"$AMCLI -s\" to update \"$AMCLIUPPER\""
-			exit 1
+		if [ "$CLI" = am ] && [ -f "$APPMANCONFIG"/appman-mode ] && [ -f "/usr/lib/am/modules/$MODULE" ]; then
+			MODULES_PATH="/usr/lib/am/modules"
+		elif [ "$CLI" = am ] && [ -f "$APPMANCONFIG"/appman-mode ] && [ -f "$(realpath /opt)/am/modules/$MODULE" ]; then
+			MODULES_PATH="$(realpath /opt)/am/modules"
+		else
+			_online_check
+			if ! wget -q "$MODULES_SOURCE/$MODULE" -O "$MODULES_PATH/$MODULE"; then
+				echo " Module not found, run \"$AMCLI -s\" to update \"$AMCLIUPPER\""
+				exit 1
+			fi
 		fi
-		chmod a+x "$MODULES_PATH/$MODULE"
 	fi
 	# Source module
 	source "$MODULES_PATH/$MODULE" "$@"
