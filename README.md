@@ -912,6 +912,8 @@ complete -c am -f -a "(cat $data_home/.local/share/AM/list 2>/dev/null)"`
 Another recommendation is to use `wget` instead of `wget2` (in Fedora, it's called `wget1` & you also need to install `wget1-wget` package, so it becomes symlinked to `wget`).
 `wget` gives the prettier & generally working output, while `wget2` has a bug where it clears out the output of itself, making the application installation & update progress hardly visible.
 
+### Distro examples: Gidro OS
+
 For the example on how the distribution installs `am`, you can check [Gidro-OS](https://github.com/fiftydinar/gidro-os), custom image based on Fedora Silverblue by @fiftydinar:  
 https://github.com/fiftydinar/gidro-os/blob/main/recipes/recipe-appimages.yml
 
