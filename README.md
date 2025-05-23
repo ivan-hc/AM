@@ -864,16 +864,42 @@ Below you can access the documentation pages related to the use of "AM", complet
 
 ------------------------------------------------------------------------
 # Instructions for Linux Distro Maintainers
-You can package "AM" for Debian, Fedora, Arch Linux, Gentoo and many more GNU/Linux distros using the following configuration:
-```
-/usr/bin/am
-/usr/lib/am/modules
-```
-where "`/usr/bin/am`" is the script "[APP-MANAGER](https://github.com/ivan-hc/AM/blob/main/APP-MANAGER)" and "`/usr/lib/am/modules`" is the directory "[modules](https://github.com/ivan-hc/AM/tree/main/modules)" with all its content.
+Glossary:  
+- System `am` (`/usr/bin/am`)
+- Local-system `am` (`/usr/local/bin/am` symlinked to `/opt/am/APP-MANAGER`)
+- Local-user `appman` (`$HOME/.local/bin/appman`)
+- APPMANCONFIG=`$XDG_DATA_HOME/appman-config`
 
-Applications will continue to be installed in /opt, as always. What changes from the normal "AM" installation is the update of the CLI and modules, which will instead be completely managed by the package manager in use (APT, DNF, PacMan/YAY...).
+You can package "AM" for Debian, Fedora, Arch Linux, Gentoo and many more GNU/Linux distros using the following configuration:  
+- `/usr/bin/am`
+- `/usr/lib/am/modules/`
 
-**As for "AppMan"**, **there is no packaging**, as it is a standalone or self-updating script, and needs to be in a read-write directory without root privileges.
+where "`/usr/bin/am`" is the script "[APP-MANAGER](https://github.com/ivan-hc/AM/blob/main/APP-MANAGER)" and "`/usr/lib/am/modules/`" is the directory "[modules](https://github.com/ivan-hc/AM/tree/main/modules)" with all its content.
+
+Applications will continue to be installed in `/opt/` or `$HOME` location when `--user` flag is used for installation, according to the `$APPMANCONFIG/appman-config` file configuration.
+
+What changes from the locally-installed `am` or `appman` is the update process of the CLI and modules.  
+System `am` intentionally ignores updates of CLI and modules in this scenario & hands that responsibility to the distro package manager in use (APT, DNF, PacMan/YaY...)
+
+`--devmode` option is completely disabled in this mode, as it's only intended to update locally-installed `am` or `appman` in run-time to `dev` branch.  
+You as a packager or distro-maintainer can optionally make `am-dev` or `am-git` package separately from `am` for this usage.
+
+Generation of shell completions in `$HOME` is also disabled in this mode, as they can be easily packaged in respective system directories.  
+That can be done like this:
+
+Bash (`/usr/share/bash-completion/completions/am`):  
+- `complete -W "$(cat "${XDG_DATA_HOME:-$HOME/.local/share}/AM/list" 2>/dev/null)" am`
+
+Zsh  
+Zsh completion currently depends on the bash one, which can be inserted into `zshrc`:  
+```
+autoload bashcompinit
+bashcompinit
+source "/usr/share/bash-completion/completions/am"
+```
+
+Fish (`/usr/share/fish/vendor_completions.d/am`):  
+- `complete -c am -f -a "(cat (status --data-home)/AM/list 2>/dev/null)"`
 
 ------------------------------------------------------------------------
 
