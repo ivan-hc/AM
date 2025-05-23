@@ -868,7 +868,7 @@ Below you can access the documentation pages related to the use of "AM", complet
 - System `am` (`/usr/bin/am`)
 - Local-system `am` (`/usr/local/bin/am` symlinked to `/opt/am/APP-MANAGER`)
 - Local-user `appman` (`$HOME/.local/bin/appman`)
-- APPMANCONFIG=`$XDG_DATA_HOME/appman-config`
+- APPMANCONFIG=`$XDG_CONFIG_HOME/appman-config`
 
 You can package "AM" for Debian, Fedora, Arch Linux, Gentoo and many more GNU/Linux distros using the following configuration:  
 - `/usr/bin/am`
