@@ -152,11 +152,13 @@ mv ./icons/"$RELEASE"-startcenter* ./icons/"$APP"-startcenter 2>/dev/null
 mv ./icons/"$RELEASE"-writer* ./icons/"$APP"-writer 2>/dev/null
 
 # LAUNCHERS
-./libreoffice --appimage-extract opt/libreoffice*/share/xdg && mv squashfs-root/opt/libreoffice*/share/xdg ./ 2>/dev/null
-cd ./xdg || exit 1
-for f in *.desktop ; do mv "$f" "$APP-${f%.desktop}-AM.desktop"; done
-sed -i "s# $(echo $RELEASE | cut -c 12-) # #g; s#Icon=$APP#Icon=/opt/$APP/icons/$APP#g; s#$RELEASE#$APP#g" *
-sed -i '/Name=LibreOffice/c\Name=LibreOffice' ./*startcenter-AM.desktop
-cd ..
-mv ./xdg/* /usr/local/share/applications/ 2>/dev/null
-rm -R -f ./squashfs-root ./xdg
+./libreoffice --appimage-extract opt/libreoffice*/share/xdg
+LAUNCHERS=$(find squashfs-root -name *.desktop -type f | xargs)
+for f in $LAUNCHERS ; do
+	launcher=$(echo "$f" | sed 's:.*/::')
+	mv "$f" ./"$APP-${launcher%.desktop}-AM.desktop"
+done
+sed -i "s# $(echo $RELEASE | cut -c 12-) # #g; s#Icon=$APP#Icon=/opt/$APP/icons/$APP#g; s#$RELEASE#$APP#g" *.desktop
+sed -i '/Name=LibreOffice/c\Name=LibreOffice' *startcenter-AM.desktop
+mv *.desktop /usr/local/share/applications/
+rm -R -f ./squashfs-root
