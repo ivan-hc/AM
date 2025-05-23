@@ -901,7 +901,13 @@ source "/usr/share/bash-completion/completions/am"
 
 **Fish**  
 Located in `/usr/share/fish/vendor_completions.d/am`:  
-- `complete -c am -f -a "(cat (status --data-home)/AM/list 2>/dev/null)"`
+```
+set data_home $XDG_DATA_HOME
+if test -z "$data_home"
+    set data_home "$HOME/.local/share"
+end
+complete -c am -f -a "(cat $data_home/.local/share/AM/list 2>/dev/null)"`
+```
 
 ------------------------------------------------------------------------
 
