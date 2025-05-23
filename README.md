@@ -864,7 +864,7 @@ Below you can access the documentation pages related to the use of "AM", complet
 
 ------------------------------------------------------------------------
 # Instructions for Linux Distro Maintainers
-Glossary:  
+**Glossary**:  
 - System `am` (`/usr/bin/am`)
 - Local-system `am` (`/usr/local/bin/am` symlinked to `/opt/am/APP-MANAGER`)
 - Local-user `appman` (`$HOME/.local/bin/appman`)
@@ -887,10 +887,11 @@ You as a packager or distro-maintainer can optionally make `am-dev` or `am-git` 
 Generation of shell completions in `$HOME` is also disabled in this mode, as they can be easily packaged in respective system directories.  
 That can be done like this:
 
-Bash (`/usr/share/bash-completion/completions/am`):  
+**Bash**  
+Located in `/usr/share/bash-completion/completions/am`:  
 - `complete -W "$(cat "${XDG_DATA_HOME:-$HOME/.local/share}/AM/list" 2>/dev/null)" am`
 
-Zsh  
+**Zsh**  
 Zsh completion currently depends on the bash one, which can be inserted into `zshrc`:  
 ```
 autoload bashcompinit
@@ -898,7 +899,8 @@ bashcompinit
 source "/usr/share/bash-completion/completions/am"
 ```
 
-Fish (`/usr/share/fish/vendor_completions.d/am`):  
+**Fish**  
+Located in `/usr/share/fish/vendor_completions.d/am`:  
 - `complete -c am -f -a "(cat (status --data-home)/AM/list 2>/dev/null)"`
 
 ------------------------------------------------------------------------
