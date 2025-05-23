@@ -893,7 +893,7 @@ Located in `/usr/share/bash-completion/completions/am`:
 
 **Zsh**  
 Zsh completion currently depends on the bash one, which can be inserted into `zshrc`:  
-```
+```zsh
 autoload bashcompinit
 bashcompinit
 source "/usr/share/bash-completion/completions/am"
@@ -901,7 +901,7 @@ source "/usr/share/bash-completion/completions/am"
 
 **Fish**  
 Located in `/usr/share/fish/vendor_completions.d/am`:  
-```
+```fish
 set data_home $XDG_DATA_HOME
 if test -z "$data_home"
     set data_home "$HOME/.local/share"
