@@ -909,6 +909,9 @@ end
 complete -c am -f -a "(cat $data_home/.local/share/AM/list 2>/dev/null)"`
 ```
 
+For the example on how the distribution installs `am`, you can check Gidro-OS, custom image based on Fedora Silverblue by @fiftydinar:  
+https://github.com/fiftydinar/gidro-os/blob/main/recipes/recipe-appimages.yml
+
 ------------------------------------------------------------------------
 
 | [Back to "Main Index"](#main-index) |
