@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="9.7.1-2"
+AMVERSION="9.7.1-3"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -309,6 +309,16 @@ _am_dependences_check() {
 		printf " See %bhttps://github.com/ivan-hc/AM#core-dependences\033[0m for more information\n" "${LightBlue}"
 		echo "$DIVIDING_LINE"
 		exit 1
+	fi
+}
+
+_check_fedora_mess() {
+	if wget --version | head -1 | grep -qi ' 2.\|wget2 '; then
+		printf "\n%b WARNING: your distro maintainer ships \"wget2\" as \"wget\" \033[0m\n" "${RED}"
+		printf "\nGNU Wget was released in 1996. GNU Wget2 is a rewrite, released in 2021 with the name \"wget2\", to work alongside \"wget\".\n\nBeing a rewrite, the flags and behavior differ in several ways, and this was seen when the Fedora team decided in 2024 to replace Wget entirely with a symbolic link to Wget2, even though they are two different programs with different names, to the point of raising concerns of the creator himself.\n" | _fit
+		printf "\nRealizing the mess they had made, the RHEL team decided to introduce the new packages \"wget1\" and \"wget1-wget\", in 2025, to have the real GNU Wget back. On the contrary, Fedora continued with this madness, to avoid admitting the mistake.\n" | _fit
+		printf "\nIn \"$AMCLIUPPER\", GNU Wget provides nicer and generally functional output, while GNU Wget2 has a bug where it automatically suppresses the output, making application installation and upgrade progress difficult to see.\n" | _fit
+		printf "\n%bPlease fix this crap if you want a more pleasant user experience! \033[0m\n\n" "${RED}" | _fit
 	fi
 }
 
@@ -1164,6 +1174,7 @@ _use_update() {
 	_online_check
 	_update_github_api_key_in_the_updater_files
 	_clean_all_tmp_directories_from_appspath >/dev/null
+	_check_fedora_mess
 
 	ENTRIES="$(echo "$@" | cut -f2- -d ' ' | tr ' ' '\n' | grep -v -- "^-\|^$1$")"
 	FLAGS=$(echo "$@" | tr ' ' '\n' | grep -- "--" | tr '\n ' ' ')
@@ -1301,6 +1312,7 @@ case "$1" in
 	'reinstall')
 		MODULE="install.am"
 		_online_check
+		_check_fedora_mess
 		[ "$CLI" = am ] && [ -f "$APPMANCONFIG"/appman-mode ] && printf "%b" "$APPMAN_MSG"
 		_use_module "$@"
 		;;
