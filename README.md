@@ -876,7 +876,7 @@ You can package "AM" for Debian, Fedora, Arch Linux, Gentoo and many more GNU/Li
 
 where "`/usr/bin/am`" is the script "[APP-MANAGER](https://github.com/ivan-hc/AM/blob/main/APP-MANAGER)" and "`/usr/lib/am/modules/`" is the directory "[modules](https://github.com/ivan-hc/AM/tree/main/modules)" with all its content.
 
-Applications will continue to be installed in `/opt/` or `$HOME` location when `--user` flag is used for installation, according to the `$APPMANCONFIG/appman-config` file configuration.
+Applications will continue to be installed in `/opt/` or `$HOME` location when `--user` flag is used for installation, according to the `$APPMANCONFIG` file configuration.
 
 What changes from the locally-installed `am` or `appman` is the update process of the CLI and modules.  
 System `am` intentionally ignores updates of CLI and modules in this scenario & hands that responsibility to the distro package manager in use (APT, DNF, PacMan/YaY...)
@@ -906,7 +906,7 @@ set data_home $XDG_DATA_HOME
 if test -z "$data_home"
     set data_home "$HOME/.local/share"
 end
-complete -c am -f -a "(cat $data_home/.local/share/AM/list 2>/dev/null)"`
+complete -c am -f -a "(cat $data_home/AM/list 2>/dev/null)"`
 ```
 
 Another recommendation is to use `wget` instead of `wget2` (in Fedora, it's called `wget1` & you also need to install `wget1-wget` package, so it becomes symlinked to `wget`).
