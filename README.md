@@ -906,7 +906,7 @@ set data_home "$XDG_DATA_HOME"
 if test -z "$data_home"
     set data_home "$HOME/.local/share"
 end
-complete -c am -f -a "(cat "$data_home/AM/list" 2>/dev/null)"`
+complete -c am -f -a "(cat "$data_home/AM/list" 2>/dev/null)"
 ```
 
 Another recommendation is to use `wget` instead of `wget2` (in Fedora, it's called `wget1` & you also need to install `wget1-wget` package, so it becomes symlinked to `wget`).
