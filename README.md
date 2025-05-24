@@ -914,7 +914,8 @@ Another recommendation is to use `wget` instead of `wget2` (in Fedora, it's call
 
 ### Distro examples: Gidro-OS
 
-For the example on how the distribution installs `am`, you can check [Gidro-OS](https://github.com/fiftydinar/gidro-os), custom image based on Fedora Silverblue by [@fiftydinar](https://github.com/fiftydinar):  
+For the example on how the distribution installs `am`, you can check [Gidro-OS](https://github.com/fiftydinar/gidro-os), custom image based on Fedora Silverblue by [@fiftydinar](https://github.com/fiftydinar):
+
 https://github.com/fiftydinar/gidro-os/blob/main/recipes/recipe-appimages.yml
 
 ------------------------------------------------------------------------
