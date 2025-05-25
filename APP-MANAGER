@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="9.7"
+AMVERSION="9.7.1-4"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -176,7 +176,6 @@ _appman() {
 	else
 		APPSDIR="$(head -1 "$APPMANCONFIG"/appman-config 2>/dev/null)"
 	fi
-	[ -n "$APPSDIR" ] && mkdir -p "$APPSDIR"/appman || exit 1
 	mkdir -p "$BINDIR" "$DATADIR"/applications "$DATADIR"/icons || exit 1
 	AMCLI="appman"
 	AMCLIPATH="$DIR/$AMCLI"
@@ -192,7 +191,13 @@ _appman() {
 		printf $"%b ⚠️ WARNING\033[0m: \"%b%b\033[0m\" is not in PATH, local apps may not run.\n" "${RED}" "${LightBlue}" "$BINDIR"
 	fi
 	MODULES_PATH="$AMPATH/modules"
-	mkdir -p "$MODULES_PATH" || exit 1
+	if [ "$CLI" = am ] && [ -f "$APPMANCONFIG"/appman-mode ] && [ -d /usr/lib/am/modules ]; then
+		MODULES_PATH="/usr/lib/am/modules"
+	elif [ "$CLI" = am ] && [ -f "$APPMANCONFIG"/appman-mode ] && [ -d "$(realpath /opt)/am/modules" ]; then
+		MODULES_PATH="$(realpath /opt)/am/modules"
+	elif [ "$CLI" = appman ]; then
+		mkdir -p "$MODULES_PATH" || exit 1
+	fi
 }
 
 # "AM" CORE VARIABLES
@@ -207,15 +212,14 @@ _am() {
 		echo $'ERROR: No sudo or doas found'
 		exit 1
 	fi
-	APPSPATH="/opt"
+	APPSPATH="$(realpath /opt)"
 	AMPATH="$APPSPATH/$AMCLI"
 	_create_cache_dir
 	MODULES_PATH="$AMPATH/modules"
 }
 
 # DETERMINE WHEN TO USE "AM" OR "APPMAN"
-# /opt is a symlink to /var/opt in Fedora Atomic, so we cover that here
-if [ "$(realpath "$0")" = "/opt/am/APP-MANAGER" ] || [ "$(realpath "$0")" = "/var/opt/am/APP-MANAGER" ]; then
+if [ "$(realpath "$0")" = "$(realpath /opt)/am/APP-MANAGER" ]; then
 	_am
 	mkdir -p "$MODULES_PATH" || exit 1
 elif [ "$(realpath "$0")" = "/usr/bin/am" ]; then
@@ -321,6 +325,13 @@ _am_dependences_check() {
 		printf $" See %bhttps://github.com/ivan-hc/AM#core-dependences\033[0m for more information\n" "${LightBlue}"
 		echo "$DIVIDING_LINE"
 		exit 1
+	fi
+}
+
+_check_fedora_mess() {
+	if wget --version | head -1 | grep -qi ' 2.\|wget2 '; then
+		printf "\n%bWARNING: your distro maintainer ships \"wget2\" as \"wget\" \033[0m\n\n" "${RED}" | _fit
+		[ -f /etc/redhat-release ] && printf "Please install \"%bwget1\033[0m\" and \"%bwget1-wget\033[0m\" (use %b--allowerasing\033[0m if you have to)\n\nSee https://bugzilla.redhat.com/show_bug.cgi?id=2358792\n\n" "${Gold}" "${Gold}" "${Green}" | sed "s/^/ /g"
 	fi
 }
 
@@ -539,21 +550,23 @@ _completion_lists() {
 }
 
 # BASH, FISH AND ZSH COMPLETION
-completion_file="$DATADIR/bash-completion/completions/$AMCLI"
-mkdir -p "$DATADIR/bash-completion/completions" || exit 1
-if ! grep -o " $AMCLI$" "$completion_file" >/dev/null 2>&1; then
-	echo "complete -W \"\$(cat $AMDATADIR/list 2>/dev/null)\" $AMCLI" >> "$completion_file"
-	if [ -f "${ZDOTDIR:-$HOME}"/.zshrc ] && echo "$SHELL" | grep -q "zsh"; then
-		cat <<-HEREDOC >> "${ZDOTDIR:-$HOME}"/.zshrc
-		autoload bashcompinit
-		bashcompinit
-		source "$completion_file"
-		HEREDOC
+if [ "$(realpath "$0")" != "/usr/bin/am" ]; then
+	completion_file="$DATADIR/bash-completion/completions/$AMCLI"
+	mkdir -p "$DATADIR/bash-completion/completions" || exit 1
+	if ! grep -o " $AMCLI$" "$completion_file" >/dev/null 2>&1; then
+		echo "complete -W \"\$(cat $AMDATADIR/list 2>/dev/null)\" $AMCLI" >> "$completion_file"
+		if [ -f "${ZDOTDIR:-$HOME}"/.zshrc ] && echo "$SHELL" | grep -q "zsh"; then
+			cat <<-HEREDOC >> "${ZDOTDIR:-$HOME}"/.zshrc
+			autoload bashcompinit
+			bashcompinit
+			source "$completion_file"
+			HEREDOC
+		fi
+		echo $"Shell completion has been enabled!"
 	fi
-	echo $"Shell completion has been enabled!"
-fi
-if [ -d "$DATADIR"/fish/completions ] || [ -d /etc/fish/completions ] || [ -d /usr/share/fish/completions ]; then
-	command -v fish 1>/dev/null && [ ! -f "$CONFIGDIR"/fish/completions/am.fish ] && mkdir -p "$CONFIGDIR"/fish/completions && echo "complete -c am -f -a \"(cat $DATADIR/AM/list 2>/dev/null)\"" > "$CONFIGDIR"/fish/completions/am.fish
+	if [ -d "$DATADIR"/fish/completions ] || [ -d /etc/fish/completions ] || [ -d /usr/share/fish/completions ]; then
+		command -v fish 1>/dev/null && [ ! -f "$CONFIGDIR"/fish/completions/am.fish ] && mkdir -p "$CONFIGDIR"/fish/completions && echo "complete -c am -f -a \"(cat $DATADIR/AM/list 2>/dev/null)\"" > "$CONFIGDIR"/fish/completions/am.fish
+	fi
 fi
 
 # VERSION OF THE INSTALLED APPS
@@ -969,7 +982,7 @@ _sync_modules() {
 	printf $"%b\n Check for updates in modules...\n" "$DIVIDING_LINE"
 	MODULES=$(curl -Ls "$AMREPO/APP-MANAGER" | tr '"' '\n' | grep "[a-z]\.am$")
 	for module_name in $MODULES; do
-		cd "$MODULES_PATH" || return 1
+		mkdir -p "$MODULES_PATH" && cd "$MODULES_PATH" || return 1
 		if ! test -f ./"$module_name"; then
 			echo $" ◆ Downloading $module_name (not previously installed)..."
 			curl -Os "$MODULES_SOURCE/$module_name" 2>/dev/null
@@ -1013,8 +1026,25 @@ _use_sync() {
 	_sync_databases
 	_sync_installation_scripts
 	if [ "$(realpath "$0")" != "/usr/bin/am" ] && [ "$AMSYNC" != 1 ]; then
-		_sync_modules
-		_sync_amcli
+		if [ "$CLI" = am ]; then
+			if [ -f "$APPMANCONFIG"/appman-mode ]; then
+				if [ -d "$(realpath /opt)/am/modules" ]; then
+					MODULES_PATH="$(realpath /opt)/am/modules"
+					if [ -w "$(realpath /opt)/am" ]; then
+						_sync_modules
+						_sync_amcli
+					else
+						printf "%b\n DONE! \n" "$DIVIDING_LINE"
+					fi
+				fi
+			else
+				_sync_modules
+				_sync_amcli
+			fi
+		elif [ "$CLI" = appman ]; then
+			_sync_modules
+			_sync_amcli
+		fi
 	fi
 	echo "$DIVIDING_LINE"
 }
@@ -1157,6 +1187,7 @@ _use_update() {
 	_online_check
 	_update_github_api_key_in_the_updater_files
 	_clean_all_tmp_directories_from_appspath >/dev/null
+	_check_fedora_mess
 
 	ENTRIES="$(echo "$@" | cut -f2- -d ' ' | tr ' ' '\n' | grep -v -- "^-\|^$1$")"
 	FLAGS=$(echo "$@" | tr ' ' '\n' | grep -- "--" | tr '\n ' ' ')
@@ -1238,12 +1269,17 @@ _use_force_latest() {
 _use_module() {
 	# Test if module exists
 	if [ ! -f "$MODULES_PATH/$MODULE" ]; then
-		_online_check
-		if ! wget -q "$MODULES_SOURCE/$MODULE" -O "$MODULES_PATH/$MODULE"; then
-			echo $" Module not found, run \"$AMCLI -s\" to update \"$AMCLIUPPER\""
-			exit 1
+		if [ "$CLI" = am ] && [ -f "$APPMANCONFIG"/appman-mode ] && [ -f "/usr/lib/am/modules/$MODULE" ]; then
+			MODULES_PATH="/usr/lib/am/modules"
+		elif [ "$CLI" = am ] && [ -f "$APPMANCONFIG"/appman-mode ] && [ -f "$(realpath /opt)/am/modules/$MODULE" ]; then
+			MODULES_PATH="$(realpath /opt)/am/modules"
+		else
+			_online_check
+			if ! wget -q "$MODULES_SOURCE/$MODULE" -O "$MODULES_PATH/$MODULE"; then
+				echo $" Module not found, run \"$AMCLI -s\" to update \"$AMCLIUPPER\""
+				exit 1
+			fi
 		fi
-		chmod a+x "$MODULES_PATH/$MODULE"
 	fi
 	# Source module
 	source "$MODULES_PATH/$MODULE" "$@"
@@ -1289,6 +1325,7 @@ case "$1" in
 	'reinstall')
 		MODULE="install.am"
 		_online_check
+		_check_fedora_mess
 		[ "$CLI" = am ] && [ -f "$APPMANCONFIG"/appman-mode ] && printf "%b" "$APPMAN_MSG"
 		_use_module "$@"
 		;;
@@ -1299,8 +1336,8 @@ case "$1" in
 		;;
 	# INBUILT OPTIONS
 	'--devmode-disable'|'--devmode-enable')
-		[ "$1" = "--devmode-disable" ] && rm -f "$AMDATADIR"/betatester \
-		|| touch "$AMDATADIR"/betatester && _betatester_message_on
+		[ "$(realpath "$0")" = "/usr/bin/am" ] && echo "This feature is disabled by your organization" | _fit \
+			|| [ "$1" = "--devmode-disable" ] && rm -f "$AMDATADIR"/betatester || touch "$AMDATADIR"/betatester && _betatester_message_on
 		;;
 	'--force-latest')
 		_use_force_latest "$@"
@@ -1336,10 +1373,12 @@ case "$1" in
 	'--disable-notifications')
 		_determine_args
 		for n in $ARGPATHS; do sed -e '/notify-send/ s/^#*/#/' -i "$n/AM-updater" 2>/dev/null; done
+		touch "$AMDATADIR"/disable-notifications
 		;;
 	'--enable-notifications')
 		_determine_args
 		for n in $ARGPATHS; do sed -e '/notify-send/ s/^#*//' -i "$n/AM-updater" 2>/dev/null; done
+		rm -f "$AMDATADIR"/disable-notifications
 		;;
     # Translate
     '--translate'|'--translate-new')
@@ -1455,21 +1494,22 @@ case "$1" in
 
 			${Gold}install, -i\033[0m
 
-					${LightBlue}$AMCLI -i {PROGRAM}
-					${LightBlue}$AMCLI -i --debug {PROGRAM}
-					${LightBlue}$AMCLI -i --force-latest {PROGRAM}
-					${LightBlue}$AMCLI -i --icons {PROGRAM}
+					${LightBlue}$AMCLI -i {PROGRAM}\033[0m
+					${LightBlue}$AMCLI -i --debug {PROGRAM}\033[0m
+					${LightBlue}$AMCLI -i --force-latest {PROGRAM}\033[0m
+					${LightBlue}$AMCLI -i --icons {PROGRAM}\033[0m
 					${LightBlue}$AMCLI -i --sandbox {PROGRAM}\033[0m
+			$(if [ -n "$third_party_flags" ]; then echo "" && echo "	Third-party databases:" && echo "" && for a in $third_party_flags; do echo "		${LightBlue}$AMCLI -l $a {PROGRAM}\033[0m"; done; fi)
 
-			Description: Install one or more programs or libraries from the list. With the \"--debug\" option you can see log messages to debug the script. For more details on \"--force-latest\", see the dedicated option, below. Use the \"--icons\" flag to allow the program to use icon themes. It can also be extended with additional flags (see third-party flags, at the bottom of this message). The \"--sandbox\" flag allows you to set sandboxes for AppImage packages.
+			Description: Install one or more programs or libraries from the list. With the \"--debug\" option you can see log messages to debug the script. For more details on \"--force-latest\", see the dedicated option, below. Use the \"--icons\" flag to allow the program to use icon themes. The \"--sandbox\" flag allows you to set sandboxes for AppImage packages. It can also be extended with additional flags (see third-party flags, at the bottom of this message).
 
 			${Gold}install-appimage, -ia, -ias\033[0m
 
-					${LightBlue}$AMCLI -ia {PROGRAM}
-					${LightBlue}$AMCLI -ia --debug {PROGRAM}
-					${LightBlue}$AMCLI -ia --force-latest {PROGRAM}
-					${LightBlue}$AMCLI -ia --icons {PROGRAM}
-					${LightBlue}$AMCLI -ia --sandbox {PROGRAM}
+					${LightBlue}$AMCLI -ia {PROGRAM}\033[0m
+					${LightBlue}$AMCLI -ia --debug {PROGRAM}\033[0m
+					${LightBlue}$AMCLI -ia --force-latest {PROGRAM}\033[0m
+					${LightBlue}$AMCLI -ia --icons {PROGRAM}\033[0m
+					${LightBlue}$AMCLI -ia --sandbox {PROGRAM}\033[0m
 					${LightBlue}$AMCLI -ias {PROGRAM}\033[0m
 
 			Description: Same as \"install\" (see above) but for AppImages only. Option \"-ias\" (aka Install AppImage & Sandbox) is equivalent to \"-ia --sandbox\", to set sandboxes for AppImage packages.
@@ -1477,11 +1517,12 @@ case "$1" in
 			${Gold}list, -l\033[0m
 
 					${LightBlue}$AMCLI -l\033[0m
-					${LightBlue}$AMCLI -l --all\033[0m
 					${LightBlue}$AMCLI -l --appimages\033[0m
 					${LightBlue}$AMCLI -l --portable\033[0m
+					${LightBlue}$AMCLI -l --all\033[0m
+			$(if [ -n "$third_party_flags" ]; then echo "" && echo "	Third-party databases:" && echo "" && for a in $third_party_flags; do echo "		${LightBlue}$AMCLI -l $a\033[0m"; done; fi)
 
-			Description: Shows the list of all the apps available, or just the AppImages. It can also be extended with additional flags, the \"--all\" flag allows you to consult the set of all supported databases (see third-party flags, at the bottom of this message).
+			Description: Shows the list of all the apps available. Without flags only shows the apps in the \"AM\" database, add the \"--appimages\" to show only the AppImages or \"--portable\" to show other formats from the \"AM\" database. The \"--all\" flag allows you to consult the set of all supported third-party databases. It can also be extended with additional flags (see third-party flags, at the bottom of this message).
 
 			${Gold}lock\033[0m
 
@@ -1491,10 +1532,10 @@ case "$1" in
 
 			${Gold}newrepo, neodb\033[0m
 
-					${LightBlue}$AMCLI newrepo add {URL}\\{PATH}
-					${LightBlue}$AMCLI newrepo select
-					${LightBlue}$AMCLI newrepo on\\off
-					${LightBlue}$AMCLI newrepo purge
+					${LightBlue}$AMCLI newrepo add {URL}\\{PATH}\033[0m
+					${LightBlue}$AMCLI newrepo select\033[0m
+					${LightBlue}$AMCLI newrepo on\\off\033[0m
+					${LightBlue}$AMCLI newrepo purge\033[0m
 					${LightBlue}$AMCLI newrepo info\033[0m
 
 			Description: Set a new default repo, use \"add\" to append the path to a local directory or an online URL, then use \"select\" to use it by default, a message will warn you about the usage of this repo instead of the default one. Use \"on\"/\"off\" to enable/disable it. Use \"purge\" to remove all 3rd party repos. Use \"info\" to see the source from where installation scripts and lists are taken.

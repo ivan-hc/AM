@@ -173,7 +173,7 @@ As the author of [this article](https://ubuntu.com/blog/ubuntu-23-10-restricted-
 
 User namespaces are a feature of the kernel. It's a feature which is supported by the Linux kernel. When a vulnerability is found, it's given a CVE and the code is fixed appropriately. If the kernel developers wanted to disable this feature by default, or restrict it, they could do so themselves.
 
-Introducing namespace restrictions via AppArmor is an additional security layer, but not required, since we already have more flexible sandboxing systems in the Linux world, in particular "[Bubblewrap](https://github.com/containers/bubblewrap)", used mainly by Flatpak and othe projects, including this and my other one, "[Archimage](https://github.com/ivan-hc/ArchImage)".
+Introducing namespace restrictions via AppArmor is an additional security layer, but not required, since we already have more flexible sandboxing systems in the Linux world, in particular "[Bubblewrap](https://github.com/containers/bubblewrap)", used mainly by Flatpak and other projects, including this and my other one, "[Archimage](https://github.com/ivan-hc/ArchImage)".
 
 **Canonical has only one interest in applying all these restrictions to Ubuntu: to enforce the use of Snap!**
 

@@ -12,15 +12,13 @@ printf '\n%s' "rm -f /usr/local/share/applications/$APP*-AM.desktop" >> "/opt/$A
 chmod a+x "/opt/$APP/remove"
 
 _release_still() {
-	chooseone=" tail -1 "
-	release=$(wget -q https://www.libreoffice.org/download/download-libreoffice -O - | tr '<' '\n' | grep dl_version | sed 's:.*>::' | tail -1)
-	version=$(wget -q https://appimages.libreitalia.org/ -O - | tr '"' '\n' | grep -oi "libreoffice-.*appimage$" | grep -v ">\|LibreOffice-fresh\|LibreOffice-still" | sort -t- -k1,1V -k2,2V -k3,3V -k4,4V | grep "$edition" | grep "$release" | tail -1 )
+	lovariant="still"
+	version=$(curl -Ls https://api.github.com/repos/ivan-hc/LibreOffice-appimage/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*continuous-still.*$edition.*mage$" | head -1)
 }
 
 _release_fresh() {
-	chooseone=" head -1 "
-	release=$(wget -q https://www.libreoffice.org/download/download-libreoffice -O - | tr '<' '\n' | grep dl_version | sed 's:.*>::' | head -1)
-	version=$(wget -q https://appimages.libreitalia.org/ -O - | tr '"' '\n' | grep -oi "libreoffice-.*appimage$" | grep -v ">\|LibreOffice-fresh\|LibreOffice-still" | sort -t- -k1,1V -k2,2V -k3,3V -k4,4V | grep "$edition" | grep "$release" | tail -1 )
+	lovariant="fresh"
+	version=$(curl -Ls https://api.github.com/repos/ivan-hc/LibreOffice-appimage/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*continuous-fresh.*$edition.*mage$" | head -1)
 }
 
 # CHOOSE A VERSION
@@ -46,51 +44,51 @@ read -r -p " Please choose a LibreOffice edition:
 case "$response" in
 	1)	edition="basic-x86_64"
 		_release_still 2>/dev/null 
-		wget "https://appimages.libreitalia.org/$version"
+		wget "$version"
 		;;
 	2)	edition="basic.help-x86_64"
 		_release_still 2>/dev/null 
-		wget "https://appimages.libreitalia.org/$version"
+		wget "$version"
 		;;
 	3)	edition="standard-x86_64"
 		_release_still 2>/dev/null 
-		wget "https://appimages.libreitalia.org/$version"
+		wget "$version"
 		;;
 	4)	edition="standard.help-x86_64"
 		_release_still 2>/dev/null 
-		wget "https://appimages.libreitalia.org/$version"
+		wget "$version"
 		;;
 	5)	edition="full-x86_64"
 		_release_still 2>/dev/null 
-		wget "https://appimages.libreitalia.org/$version"
+		wget "$version"
 		;;
 	6)	edition="full.help-x86_64"
 		_release_still 2>/dev/null 
-		wget "https://appimages.libreitalia.org/$version"
+		wget "$version"
 		;;
 	7)	edition="basic-x86_64"
 		_release_fresh 2>/dev/null 
-		wget "https://appimages.libreitalia.org/$version"
+		wget "$version"
 		;;
 	8)	edition="basic.help-x86_64"
 		_release_fresh 2>/dev/null 
-		wget "https://appimages.libreitalia.org/$version"
+		wget "$version"
 		;;
 	9)	edition="standard-x86_64"
 		_release_fresh 2>/dev/null 
-		wget "https://appimages.libreitalia.org/$version"
+		wget "$version"
 		;;
 	10)	edition="standard.help-x86_64"
 		_release_fresh 2>/dev/null 
-		wget "https://appimages.libreitalia.org/$version"
+		wget "$version"
 		;;
 	11)	edition="full-x86_64"
 		_release_fresh 2>/dev/null 
-		wget "https://appimages.libreitalia.org/$version"
+		wget "$version"
 		;;
 	12)	edition="full.help-x86_64"
 		_release_fresh 2>/dev/null 
-		wget "https://appimages.libreitalia.org/$version"
+		wget "$version"
 		;;
 	''|*)	mkdir -p "/opt/$APP/tmp"
 		;;
@@ -113,8 +111,8 @@ APP=libreoffice
 SITE="https://www.libreoffice.org"
 version0=$(cat "/opt/$APP/version")
 edition="EDITION"
-release=$(wget -q https://www.libreoffice.org/download/release-notes/ -O - | tr '>' '\n' | grep -i "^LibreOffice [0-9]*" | grep " Release" | tr ' ' '\n' | grep "^[0-9]" | RELEASE)
-version=$(wget -q https://appimages.libreitalia.org/ -O - | tr '"' '\n' | grep -oi "libreoffice-.*appimage$" | grep -v ">\|LibreOffice-fresh\|LibreOffice-still" | sort -t- -k1,1V -k2,2V -k3,3V -k4,4V | grep "$edition" | grep "$release" | tail -1 )
+lovariant="LOVARIANT"
+version=$(curl -Ls https://api.github.com/repos/ivan-hc/LibreOffice-appimage/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*continuous-$lovariant.*$edition.*mage$" | head -1)
 if command -v appimageupdatetool >/dev/null 2>&1; then
 	cd "/opt/$APP" || exit 1
 	appimageupdatetool -Or ./"$APP" && chmod a+x ./"$APP" && echo "$version" > ./version && exit 0
@@ -122,7 +120,7 @@ fi
 if [ "$version" != "$version0" ]; then
 	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
 	notify-send "A new version of $APP is available, please wait"
-	wget "https://appimages.libreitalia.org/$version" || exit 1
+	wget "$version" || exit 1
 	# Use tar fx ./*tar* here for example in this line in case a compressed file is downloaded.
 	cd ..
 	mv --backup=t ./tmp/*mage ./"$APP"
@@ -134,12 +132,12 @@ else
 	echo "Update not needed!"
 fi
 EOF
-sed -i 's#EDITION#'"$edition"'#g; s#RELEASE#'"$chooseone"'#g; s###g' "/opt/$APP/AM-updater"
+sed -i "s#EDITION#$edition#g; s#LOVARIANT#$lovariant#g" "/opt/$APP/AM-updater"
 chmod a+x "/opt/$APP/AM-updater"
 
 # ICONS
 cd "/opt/$APP" || exit 1
-mv $(./libreoffice --appimage-extract usr/share/icons/hicolor/scalable/apps/*.svg) ./icons 2>/dev/null
+./libreoffice --appimage-extract usr/share/icons/hicolor/scalable/apps/*.svg && mv squashfs-root/usr/share/icons/hicolor/scalable/apps/*.svg ./icons 2>/dev/null
 RELEASE=$(ls ./icons | head -1 | rev | cut -c 10- | rev)
 mv ./icons/"$RELEASE"-base* ./icons/"$APP"-base 2>/dev/null
 mv ./icons/"$RELEASE"-basic* ./icons/"$APP"-basic 2>/dev/null
@@ -154,11 +152,13 @@ mv ./icons/"$RELEASE"-startcenter* ./icons/"$APP"-startcenter 2>/dev/null
 mv ./icons/"$RELEASE"-writer* ./icons/"$APP"-writer 2>/dev/null
 
 # LAUNCHERS
-mv $(./libreoffice --appimage-extract opt/libreoffice*/share/xdg) . 2>/dev/null
-cd ./xdg || exit 1
-for f in *.desktop ; do mv "$f" "$APP-${f%.desktop}-AM.desktop"; done
-sed -i "s# $(echo $RELEASE | cut -c 12-) # #g; s#Icon=$APP#Icon=/opt/$APP/icons/$APP#g; s#$RELEASE#$APP#g" *
-sed -i '/Name=LibreOffice/c\Name=LibreOffice' ./*startcenter-AM.desktop
-cd ..
-mv ./xdg/* /usr/local/share/applications/ 2>/dev/null
-rm -R -f ./squashfs-root ./xdg
+./libreoffice --appimage-extract opt/libreoffice*/share/xdg
+LAUNCHERS=$(find squashfs-root -name *.desktop -type f | xargs)
+for f in $LAUNCHERS ; do
+	launcher=$(echo "$f" | sed 's:.*/::')
+	mv "$f" ./"$APP-${launcher%.desktop}-AM.desktop"
+done
+sed -i "s# $(echo $RELEASE | cut -c 12-) # #g; s#Icon=$APP#Icon=/opt/$APP/icons/$APP#g; s#$RELEASE#$APP#g" *.desktop
+sed -i '/Name=LibreOffice/c\Name=LibreOffice' *startcenter-AM.desktop
+mv *.desktop /usr/local/share/applications/
+rm -R -f ./squashfs-root

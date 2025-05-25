@@ -54,6 +54,8 @@ You can use the command `am -a {PROGRAM}` to view the description and get the so
      - [Supported third-party databases](#supported-third-party-databases)
      - [How to replace AM database](#how-to-replace-am-database)
 
+   - [Recommended packages](#recommended-packages)
+
    - [Do you own a repository for AppImages external to this database? Follow these instructions!](#do-you-own-a-repository-for-appimages-external-to-this-database-follow-these-instructions)
 
 [How to update all programs, for real!](#how-to-update-all-programs-for-real)
@@ -254,6 +256,28 @@ it is enough to `export` the variables above and respect the destination file fo
 I did this to not tie users to this database and to allow them to use AM and all its features if I, Ivan, am unable to intervene for any reason.
 
 There are many discontinuous projects. Should this become one too, it will not be obsolete.
+
+------------------------------------------------------------------------
+## Recommended packages
+After installing AM, the following packages are a must have to make your life easier:
+
+### *1) `appimageupdatetool`*
+[**appimageupdatetool**](https://github.com/pkgforge-dev/AppImageUpdate) (fork) is a tool to get delta updates of AppImages that support them, useful if you decide to install large AppImage packages (*see "[How to update all programs, for real!](https://github.com/ivan-hc/AM?tab=readme-ov-file#how-to-update-all-programs-for-real)"*)
+```
+am -i appimageupdatetool
+```
+
+### *2) `appimagetool`*
+[**appimagetool**](https://github.com/AppImage/appimagetool) is a tool used to create AppImage packages from AppDirs. "AM" uses this to convert old AppImages and remove their dependency on libfuse2 or to assemble AppImage packages on the fly from portable archives [if a build script is available](https://github.com/ivan-hc/AM/tree/main/appimage-bulder-scripts), like in an AUR helper (*see "[Convert Type2 AppImages requiring libfuse2 to New Generation AppImages](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/nolibfuse.md)" and "[Option One: "build AppImages on-the-fly](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/template.md#option-one-build-appimages-on-the-fly)"*)
+```
+am -i appimagetool
+```
+
+### *3) `aisap`*
+[**aisap**](https://github.com/mgord9518/aisap) is a Bubblewrap frontend that allows you to isolate AppImages in a sandbox (*see "[Sandbox an AppImage](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/sandbox.md)"*)
+```
+am -i aisap
+```
 
 ------------------------------------------------------------------------
 ### Do you own a repository for AppImages external to this database? Follow these instructions!
@@ -502,7 +526,7 @@ Same as "install" (see above) but for AppImages only.  Option "`-ias`" (aka Inst
 
 **Description**:
 
-Shows the list of all the apps available, or just the AppImages. It can also be extended with additional flags, the "`--all`" flag allows you to consult the set of all supported databases.
+Shows the list of all the apps available. Without flags only shows the apps in the "AM" database, add the "`--appimages`" to show only the AppImages or "`--portable`" to show other formats from the "AM" database. The "`--all`" flag allows you to consult the set of all supported third-party databases. It can also be extended with additional flags.
 
 ------------------------------------------------------------------------
 ### `lock`
@@ -840,16 +864,59 @@ Below you can access the documentation pages related to the use of "AM", complet
 
 ------------------------------------------------------------------------
 # Instructions for Linux Distro Maintainers
-You can package "AM" for Debian, Fedora, Arch Linux, Gentoo and many more GNU/Linux distros using the following configuration:
-```
-/usr/bin/am
-/usr/lib/am/modules
-```
-where "`/usr/bin/am`" is the script "[APP-MANAGER](https://github.com/ivan-hc/AM/blob/main/APP-MANAGER)" and "`/usr/lib/am/modules`" is the directory "[modules](https://github.com/ivan-hc/AM/tree/main/modules)" with all its content.
+**Glossary**:  
+- System `am` (`/usr/bin/am`)
+- Local-system `am` (`/usr/local/bin/am` symlinked to `/opt/am/APP-MANAGER`)
+- Local-user `appman` (`$HOME/.local/bin/appman`)
+- APPMANCONFIG=`$XDG_CONFIG_HOME/appman-config`
 
-Applications will continue to be installed in /opt, as always. What changes from the normal "AM" installation is the update of the CLI and modules, which will instead be completely managed by the package manager in use (APT, DNF, PacMan/YAY...).
+You can package "AM" for Debian, Fedora, Arch Linux, Gentoo and many more GNU/Linux distros using the following configuration:  
+- `/usr/bin/am`
+- `/usr/lib/am/modules/`
 
-**As for "AppMan"**, **there is no packaging**, as it is a standalone or self-updating script, and needs to be in a read-write directory without root privileges.
+where "`/usr/bin/am`" is the script "[APP-MANAGER](https://github.com/ivan-hc/AM/blob/main/APP-MANAGER)" and "`/usr/lib/am/modules/`" is the directory "[modules](https://github.com/ivan-hc/AM/tree/main/modules)" with all its content.
+
+Applications will continue to be installed in `/opt/` or `$HOME` location when `--user` flag is used for installation, according to the `$APPMANCONFIG` file configuration.
+
+What changes from the locally-installed `am` or `appman` is the update process of the CLI and modules.  
+System `am` intentionally ignores updates of CLI and modules in this scenario & hands that responsibility to the distro package manager in use (APT, DNF, PacMan/YaY...)
+
+`--devmode` option is completely disabled in this mode, as it's only intended to update locally-installed `am` or `appman` in run-time to `dev` branch.  
+You as a packager or distro-maintainer can optionally make `am-dev` or `am-git` package separately from `am` for this usage.
+
+Generation of shell completions in `$HOME` is also disabled in this mode, as they can be easily packaged in respective system directories.  
+That can be done like this:
+
+**Bash**  
+Located in `/usr/share/bash-completion/completions/am`:  
+- `complete -W "$(cat "${XDG_DATA_HOME:-$HOME/.local/share}/AM/list" 2>/dev/null)" am`
+
+**Zsh**  
+Zsh completion currently depends on the bash one, which can be inserted into `zshrc`:  
+```zsh
+autoload bashcompinit
+bashcompinit
+source "/usr/share/bash-completion/completions/am"
+```
+
+**Fish**  
+Located in `/usr/share/fish/vendor_completions.d/am`:  
+```fish
+set data_home "$XDG_DATA_HOME"
+if test -z "$data_home"
+    set data_home "$HOME/.local/share"
+end
+complete -c am -f -a "(cat "$data_home/AM/list" 2>/dev/null)"
+```
+
+Another recommendation is to use `wget` instead of `wget2` (in Fedora, it's called `wget1` & you also need to install `wget1-wget` package, so it becomes symlinked to `wget`).
+`wget` gives the prettier & generally working output, while `wget2` has a bug where it clears out the output of itself, making the application installation & update progress hardly visible.
+
+### Distro examples: Gidro-OS
+
+For the example on how the distribution installs `am`, you can check [Gidro-OS](https://github.com/fiftydinar/gidro-os), custom image based on Fedora Silverblue by [@fiftydinar](https://github.com/fiftydinar):
+
+https://github.com/fiftydinar/gidro-os/blob/main/recipes/recipe-appimages.yml
 
 ------------------------------------------------------------------------
 
