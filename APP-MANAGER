@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="9.7.1-4"
+AMVERSION="9.7.1-5"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -895,15 +895,12 @@ _use_hide_unhide() {
 	if [ "$1" = hide ]; then
 		for arg in $entries; do
 			argpath=$(echo "$ARGPATHS" | grep "/$arg$")
-			[ -f "$argpath/remove" ] && mv "$argpath/remove" "$argpath/remove.old" \
-			&& echo "✔ $argpath has been hidden" || echo "✖ Can't hide \"$arg\", app already hidden or non-existent"
+			[ -f "$argpath/remove" ] && mv "$argpath/remove" "$argpath/remove.old" && echo "✔ $argpath has been hidden" || echo "✖ Can't hide \"$arg\", app already hidden or non-existent"
 		done
 	else
 		for arg in $entries; do
-			[ "$AMCLI" = am ] && [ -f "/opt/$arg/remove.old" ] && mv "/opt/$arg/remove.old" "/opt/$arg/remove" \
-			&& echo "✔ /opt/$arg can be managed again"
-			[ -n "$APPMAN_APPSPATH" ] && [ -f "$APPMAN_APPSPATH/$arg/remove.old" ] && mv "$APPMAN_APPSPATH/$arg/remove.old" "$APPMAN_APPSPATH/$arg/remove" \
-			&& echo "✔ $APPMAN_APPSPATH/$arg can be managed again"
+			[ "$AMCLI" = am ] && [ -f "/opt/$arg/remove.old" ] && mv "/opt/$arg/remove.old" "/opt/$arg/remove" && echo "✔ /opt/$arg can be managed again"
+			[ -n "$APPMAN_APPSPATH" ] && [ -f "$APPMAN_APPSPATH/$arg/remove.old" ] && mv "$APPMAN_APPSPATH/$arg/remove.old" "$APPMAN_APPSPATH/$arg/remove" && echo "✔ $APPMAN_APPSPATH/$arg can be managed again"
 		done
 		_clean_amcachedir
 	fi
@@ -1038,9 +1035,9 @@ _use_sync() {
 ################################################################################################################################################################
 
 _update_updatable_apps_msg_head() {
-	printf " \"%b\" CAN MANAGE UPDATES FOR THE FOLLOWING PROGRAMS:\n%b\n\n" "$AMCLIUPPER" "$DIVIDING_LINE"
+	printf " %b\"%b\" CAN MANAGE UPDATES FOR THE FOLLOWING PROGRAMS\033[0m:\n%b\n\n" "${Gold}" "$AMCLIUPPER" "$DIVIDING_LINE"
 	[ -f "$AMCACHEDIR/updatable-args-list" ] && grep "◆" "$AMCACHEDIR/updatable-args-list" | sort || echo " None"
-	printf "\n All self-updatable programs are excluded\n"
+	printf "\n %bAll self-updatable programs are excluded\033[0m\n" "${RED}"
 	echo "$DIVIDING_LINE"
 }
 
@@ -1108,7 +1105,7 @@ _update_run_updater() {
 	sed -i "s#$ALT_GH#api.github.com#g" "$argpath"/AM-updater 2>/dev/null
 	end=$(date +%s)
 	timelapsed=$((end - start))
-	[ "$timelapsed" = 1 ] && echo " ◆ $APPNAME is updated, $timelapsed second elapsed!" || echo " ◆ $APPNAME is updated, $timelapsed seconds elapsed!"
+	[ "$timelapsed" = 1 ] && printf " %b✔\033[0m $APPNAME is updated, $timelapsed second elapsed! \n" "${Green}" || printf " %b✔\033[0m $APPNAME is updated, $timelapsed seconds elapsed! \n" "${Green}"
 	[ -n "$debug_update" ] && echo "$DIVIDING_LINE"
 }
 
@@ -1118,7 +1115,7 @@ _update_app() {
 	if [ -w "$argpath"/AM-updater ]; then
 		_update_run_updater &
 	else
-		echo " ✖ $APPNAME is read-only, cannot update it!"
+		printf " %b✖\033[0m %b is read-only, cannot update it!\n" "${RED}" "$APPNAME"
 	fi
 }
 
@@ -1184,7 +1181,7 @@ _use_update() {
 	if [ -z "$ENTRIES" ]; then
 		_clean_amcachedir
 		_update_list_updatable_apps
-		printf "%b\n >> START OF ALL PROCESSES << \n%b\n" "$DIVIDING_LINE" "$DIVIDING_LINE"
+		printf "%b\n >> %bSTART OF ALL PROCESSES\033[0m << \n%b\n" "$DIVIDING_LINE" "${LightBlue}" "$DIVIDING_LINE"
 		if echo "$FLAGS" | grep -q -- "--apps"; then
 			_update_updatable_apps_msg_head
 			_update_all_apps
@@ -1194,11 +1191,11 @@ _use_update() {
 			_update_updatable_apps_msg_head
 			_update_all_apps
 			_use_sync
-			printf " >> END OF ALL PROCESSES << \n%b\n" "$DIVIDING_LINE"
+			printf " >> %bEND OF ALL PROCESSES\033[0m << \n%b\n" "${LightBlue}" "$DIVIDING_LINE"
 			sleep 0.2
 			exit 0
 		fi
-		printf "%b\n >> END OF ALL PROCESSES << \n%b\n" "$DIVIDING_LINE" "$DIVIDING_LINE"
+		printf "%b\n >> %bEND OF ALL PROCESSES\033[0m << \n%b\n" "$DIVIDING_LINE" "${LightBlue}" "$DIVIDING_LINE"
 		sleep 0.2
 		exit 0
 	else
@@ -1210,11 +1207,11 @@ _use_update() {
 				cd "$argpath" 2>/dev/null || exit 1
 				_update_app
 			elif [ ! -d "$argpath" ]; then
-				echo " ✖ ERROR: \"$(echo "$arg" | tr '[:lower:]' '[:upper:]')\" does not exists!"
+				printf " %b✖\033[0m %b cannot be updated, program not found \n" "${RED}" "$(echo "$arg" | tr '[:lower:]' '[:upper:]')"
 			else
 				UPDATERS=$(cd "$argpath" 2>/dev/null && find . -name "*update*" -print 2>/dev/null)
 				[ -n "$UPDATERS" ] && arg_autoupdatable=", it may have its update system"
-				echo " ✖ Cannot manage updates for \"$(echo "$arg" | tr '[:lower:]' '[:upper:]')\"$arg_autoupdatable"
+				printf " %b✖\033[0m %b cannot be updated%b\n" "${RED}" "$(echo "$arg" | tr '[:lower:]' '[:upper:]')" "$arg_autoupdatable"
 			fi
 		done
 		wait
@@ -1349,7 +1346,7 @@ case "$1" in
 		_use_sync
 		;;
 	'update'|'-u'|'-U')
-		_use_update "$@"
+		if [ -t 1 ]; then _use_update "$@"; else _use_update "$@"| sed -e 's/\x1b\[[0-9;]*m//g'; fi
 		;;
 	'version'|'-v'|'--version')
 		echo "$AMVERSION"
