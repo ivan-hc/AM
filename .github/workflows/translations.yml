@@ -1,0 +1,96 @@
+name: "🦉 translations"
+
+on:
+  push:
+    paths:
+      - translations/**
+      - modules/**
+      - APP-MANAGER
+      # Trigger if action file change !! DEBUG important
+      - .github/workflows/translations.yml
+
+  workflow_dispatch:
+
+permissions:
+  packages: write
+  contents: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+run-name: "Releasing: translations_v0.${{ github.run_number }}" # [${{ github.sha }}]"
+
+jobs:
+  sync-files:
+    name: "🦉 translations"
+    runs-on: ubuntu-22.04
+    steps:
+      - name: "Checkout source repository"
+        uses: actions/checkout@v4
+
+      - name: "Cache dependencies"
+        uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: wget curl torsocks zsync gettext tree
+          version: 1.0
+
+      - name: AM
+        run: |
+          sudo systemctl enable tor.service || systemctl enable tor.service
+          sudo systemctl restart tor.service && wait || systemctl restart tor.service && wait
+          chmod +x ./INSTALL
+          sudo ./INSTALL 2> /dev/null || ./INSTALL
+
+      # For now until translations are merged to AM
+      # We need to overwrite installed am
+      # And include translation files
+      - name: "Get translations from outside"
+        run: |
+          cd /tmp/
+          # Clone repo with localization
+          git clone https://github.com/oSoWoSo/AM am-translations
+          cd am-translations
+          # Copy source and translated files
+          cp -r translations /opt/am/
+          # Copy translated modules
+          cp -r modules /opt/am/
+          # Copy am
+          cp APP-MANAGER /opt/am/
+          # Just for sure
+          chmod a+x /opt/am/APP-MANAGER
+
+      - name: Regen
+        run: |
+          am --translate
+          rm -f /opt/am/translations/*.po~
+          cp -r /opt/am/translations $GITHUB_WORKSPACE/
+          echo '----------------------------------------------------------------------------'
+          git status
+          echo '----------------------------------------------------------------------------'
+          git add translations/*
+          git add translations/LINGUAS translations/*.po translations/*.pot
+          git add translations/usr/share/locale/*/
+          echo '----------------------------------------------------------------------------'
+          tree -d
+          echo '----------------------------------------------------------------------------'
+
+      - name: Release
+        uses: remarkablemark/gitploy-action@v1
+        with:
+          directory: translations
+          branch: translations
+
+      - name: Push
+        run: |
+          git config --global user.name "web-flow"
+          git config --global user.email "noreply@github.com"
+          echo '----------------------------------------------------------------------------'
+          git status
+          echo '----------------------------------------------------------------------------'
+          if git diff-index --quiet HEAD; then
+            echo "No changes to commit." >> $GITHUB_STEP_SUMMARY
+          else
+            git commit -m "🦉 translations"
+            git push && echo "translations_v0.${{ github.run_number }} prepared" >> $GITHUB_STEP_SUMMARY
+          fi
