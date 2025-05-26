@@ -1,18 +1,17 @@
 #!/bin/sh
 
 # AM INSTALL SCRIPT VERSION 3.5
+set -u
 APP=gimp
-SITE1="https://www.gimp.org"
-SITE2="ivan-hc/GIMP-appimage"
-SITE3="pkgforge-dev/GIMP-and-PhotoGIMP-AppImage"
+SITE1="https://www.gimp.org" SITE2="ivan-hc/GIMP-appimage" SITE3="pkgforge-dev/GIMP-and-PhotoGIMP-AppImage"
 
 # CREATE DIRECTORIES AND ADD REMOVER
 [ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
-printf "#!/bin/sh\nrm -f /usr/local/bin/$APP\nrm -R -f /opt/$APP" > ../remove
+printf "#!/bin/sh\nset -e\nrm -f /usr/local/bin/$APP\nrm -R -f /opt/$APP" > ../remove
 printf '\n%s' "rm -f /usr/local/share/applications/$APP-AM.desktop" >> ../remove
 chmod a+x ../remove || exit 1
 
-# CHOOSE A VERSION
+# DOWNLOAD AND PREPARE THE APP, $version is also used for updates
 read -r -p "
  Choose which version of GIMP AppImage to use:
 
@@ -29,35 +28,30 @@ read -r -p "
     Source: https://github.com/pkgforge-dev/GIMP-and-PhotoGIMP-AppImage
 
  Which version you choose (type a number and press ENTER)?" response
-case "$response" in
-	1)
-		UPDATER=1
-		version="https:$(curl -Ls https://www.gimp.org/downloads/ | tr '">< ' '\n' | grep -i "download.*x86_64.*appimage$" | head -1)"
-		wget "$version"
-		echo "$version" > /opt/$APP/version
-		;;
-	2)
-		UPDATER=2
-		version=$(curl -Ls https://api.github.com/repos/ivan-hc/GIMP-appimage/releases/latest | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | head -1)
-		wget "$version"
-		echo "$version" > /opt/$APP/version
-		;;
-	3)
-		UPDATER=3
-		version=$(curl -Ls https://api.github.com/repos/pkgforge-dev/GIMP-and-PhotoGIMP-AppImage/releases/latest | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | head -1)
-		wget "$version"
-		echo "$version" > /opt/$APP/version
-		;;
-	*)
-		/opt/"$APP"/remove && exit
-		;;
-esac
+RELEASE=""
+if echo "$response" | grep -q "^1"; then
+	RELEASE="$SITE1"
+elif echo "$response" | grep -q "^2"; then
+	RELEASE="$SITE2"
+elif echo "$response" | grep -q "^3"; then
+	RELEASE="$SITE3"
+fi
+[ -z "$RELEASE" ] && exit 0
+[ "$RELEASE" != "$SITE1" ] && DOWLOAD_PAGE="https://api.github.com/repos/$RELEASE/releases/latest" || DOWLOAD_PAGE="https://www.gimp.org/downloads/"
+version=$(curl -Ls "$DOWLOAD_PAGE" | tr '">< ' '\n' | grep -i 'download.*x86_64.*mage$' | head -1); if ! echo "$version" | grep -q "^http"; then version="https:$version"; fi
+if [ -z "$version" ]; then
+	printf "\n 💀 ERROR: it seems that upstream removed %b, please retry\n" "$RELEASE" && exit 1
+else
+	wget "$version" || exit 1
+fi
 cd ..
 mv ./tmp/*mage ./"$APP"
+# Keep this space in sync with other installation scripts
 rm -R -f ./tmp || exit 1
+echo "$version" > ./version
 chmod a+x ./"$APP" || exit 1
 
-# LINK
+# LINK TO PATH
 ln -s "/opt/$APP/$APP" "/usr/local/bin/$APP"
 
 # SCRIPT TO UPDATE THE PROGRAM
@@ -65,26 +59,9 @@ cat >> ./AM-updater << 'EOF'
 #!/bin/sh
 set -u
 APP=gimp
-if [ -z "$APP" ]; then exit 1; fi
-EOF
-if [ "$UPDATER" = 1 ]; then
-cat >> ./AM-updater << 'EOF'
-SITE="https://www.gimp.org"
-version="https:$(curl -Ls https://www.gimp.org/downloads/ | tr '">< ' '\n' | grep -i "download.*x86_64.*appimage$" | head -1)"
-EOF
-elif [ "$UPDATER" = 2 ]; then
-cat >> ./AM-updater << 'EOF'
-SITE="ivan-hc/GIMP-appimage"
-version=$(curl -Ls https://api.github.com/repos/ivan-hc/GIMP-appimage/releases/latest | sed 's/[()",{} ]/\n/g' | grep -oi "https.*x86_64.*mage$" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | head -1)
-EOF
-elif [ "$UPDATER" = 3 ]; then
-cat >> ./AM-updater << 'EOF'
-SITE="pkgforge-dev/GIMP-and-PhotoGIMP-AppImage"
-version=$(curl -Ls https://api.github.com/repos/pkgforge-dev/GIMP-and-PhotoGIMP-AppImage/releases/latest | sed 's/[()",{} ]/\n/g' | grep -oi "https.*x86_64.*mage$" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | head -1)
-EOF
-fi
-cat >> ./AM-updater << 'EOF'
+SITE="REPLACETHIS"
 version0=$(cat "/opt/$APP/version")
+version=$(curl -Ls "DOWLOAD_PAGE" | tr '">< ' '\n' | grep -i 'download.*x86_64.*mage$' | head -1); if ! echo "$version" | grep -q "^http"; then version="https:$version"; fi
 [ -n "$version" ] || { echo "Error getting link"; exit 1; }
 if command -v appimageupdatetool >/dev/null 2>&1; then
 	cd "/opt/$APP" || exit 1
@@ -106,6 +83,7 @@ else
 fi
 EOF
 chmod a+x ./AM-updater || exit 1
+sed -i "s#REPLACETHIS#$RELEASE#g; s#DOWLOAD_PAGE#$DOWLOAD_PAGE#g" /opt/"$APP"/AM-updater
 
 # LAUNCHER & ICON
 ./"$APP" --appimage-extract *.desktop 1>/dev/null && mv ./squashfs-root/*.desktop ./"$APP".desktop
@@ -113,11 +91,11 @@ chmod a+x ./AM-updater || exit 1
 COUNT=0
 while [ "$COUNT" -lt 10 ]; do # Tries to get the actual icon/desktop if it is a symlink to another symlink
 	if [ -L ./"$APP".desktop ]; then
-		LINKPATH=$(readlink ./"$APP".desktop)
+		LINKPATH="$(readlink ./"$APP".desktop | sed 's|^\./||' 2>/dev/null)"
 		./"$APP" --appimage-extract "$LINKPATH" 1>/dev/null && mv ./squashfs-root/"$LINKPATH" ./"$APP".desktop
 	fi
 	if [ -L ./DirIcon ]; then
-		LINKPATH=$(readlink ./DirIcon)
+		LINKPATH="$(readlink ./DirIcon | sed 's|^\./||' 2>/dev/null)"
 		./"$APP" --appimage-extract "$LINKPATH" 1>/dev/null && mv ./squashfs-root/"$LINKPATH" ./DirIcon
 	fi
 	[ ! -L ./"$APP".desktop ] && [ ! -L ./DirIcon ] && break
