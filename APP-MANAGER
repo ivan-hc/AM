@@ -901,6 +901,7 @@ _use_clean() {
 ################################################################################################################################################################
 
 _use_hide_unhide() {
+	_determine_args
 	entries="$(echo "$@" | cut -f2- -d ' ')"
 	if [ "$1" = hide ]; then
 		for arg in $entries; do
@@ -1351,23 +1352,35 @@ case "$1" in
 		_use_clean
 		;;
 	'devmode-disable'|'devmode-enable'|'--devmode-disable'|'--devmode-enable')
-		[ "$(realpath "$0")" = "/usr/bin/am" ] && echo $"This feature is disabled by your organization" | _fit || [ "$1" = "--devmode-disable" ] && rm -f "$AMDATADIR"/betatester || touch "$AMDATADIR"/betatester && _betatester_message_on
+		if [ "$(realpath "$0")" = "/usr/bin/am" ]; then
+			echo $"This feature is disabled by your organization" | _fit
+		else
+			if [ "$1" = "--devmode-disable" ]; then
+				rm -f "$AMDATADIR"/betatester
+			else
+				touch "$AMDATADIR"/betatester
+				_betatester_message_on
+			fi
+		fi
 		;;
 	'disable-notifications'|'--disable-notifications')
 		_determine_args
-		for n in $ARGPATHS; do sed -e '/notify-send/ s/^#*/#/' -i "$n/AM-updater" 2>/dev/null; done
+		for n in $ARGPATHS; do
+			sed -e '/notify-send/ s/^#*/#/' -i "$n/AM-updater" 2>/dev/null
+		done
 		touch "$AMDATADIR"/disable-notifications
 		;;
 	'enable-notifications'|'--enable-notifications')
 		_determine_args
-		for n in $ARGPATHS; do sed -e '/notify-send/ s/^#*//' -i "$n/AM-updater" 2>/dev/null; done
+		for n in $ARGPATHS; do
+			sed -e '/notify-send/ s/^#*//' -i "$n/AM-updater" 2>/dev/null
+		done
 		rm -f "$AMDATADIR"/disable-notifications
 		;;
 	'force-latest'|'--force-latest')
 		_use_force_latest "$@"
 		;;
 	'hide'|'unhide')
-		_determine_args
 		_use_hide_unhide "$@"
 		;;
 	'newrepo'|'neodb')
@@ -1377,10 +1390,18 @@ case "$1" in
 		_use_sync
 		;;
 	'system'|'--system')
-		[ -f "$APPMANCONFIG"/appman-mode ] && rm -f "$APPMANCONFIG"/appman-mode && printf "%b" "$APPMAN_MSG_OFF"
+		if [ -f "$APPMANCONFIG"/appman-mode ]; then
+			rm -f "$APPMANCONFIG"/appman-mode && printf "%b" "$APPMAN_MSG_OFF"
+		fi
 		;;
 	'update'|'-u'|'-U')
-		if [ -t 1 ]; then _use_update "$@"; else _use_update "$@" | sed -e 's/\x1b\[[0-9;]*m//g'; fi
+		if [ -n "$NO_COLOR" ]; then
+			_use_update "$@" | sed -e 's/\x1b\[[0-9;]*m//g'
+		elif [ -t 1 ]; then
+			_use_update "$@"
+		else
+			_use_update "$@" | sed -e 's/\x1b\[[0-9;]*m//g'
+		fi
 		;;
 	'version'|'-v'|'--version')
 		echo "$AMVERSION"
