@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="9.7.1-11"
+AMVERSION="9.7.1-12"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -45,15 +45,22 @@ DIVIDING_LINE="-----------------------------------------------------------------
 [ -f "$DATADIR/AM/locale" ] && iso_code="$(cat "$DATADIR/AM/locale" | head -1 | cut -c -2)"
 if ! echo "$LANG" | grep -q "^en\|^C"; then
 	if [ -n "$LANG" ] && [ -z "$iso_code" ]; then
-		iso_code="$(echo "$LANG" | cut -c -2)"
+		iso_code=$(echo "$LANG" | cut -c -2)
 		if [ "$iso_code" != "en" ]; then
 			if [ ! -f "$DATADIR/locale/$iso_code/LC_MESSAGES/am.mo" ]; then
-				mkdir -p "$DATADIR/locale/$iso_code/LC_MESSAGES"
-				wget -q "https://github.com/AM-community/localization/raw/main/usr/share/locale/$iso_code/LC_MESSAGES/$iso_code.mo" -o "$DATADIR/locale/$iso_code/LC_MESSAGES/am.mo"
-				ln -s "$DATADIR/locale/$iso_code/LC_MESSAGES/am.mo" "$DATADIR/locale/$iso_code/LC_MESSAGES/appman.mo"
+				if curl --output /dev/null --silent --head --fail "https://github.com/AM-community/localization/raw/refs/heads/main/usr/share/locale/$iso_code/LC_MESSAGES/am.mo" 1>/dev/null; then
+					mkdir -p "$DATADIR/locale/$iso_code/LC_MESSAGES"
+					curl -s -Lo "$DATADIR/locale/$iso_code/LC_MESSAGES/am.mo" "https://github.com/AM-community/localization/raw/refs/heads/main/usr/share/locale/$iso_code/LC_MESSAGES/am.mo"
+					ln -s "$DATADIR/locale/$iso_code/LC_MESSAGES/am.mo" "$DATADIR/locale/$iso_code/LC_MESSAGES/appman.mo"
+				else
+					printf "%b\n No locale available for you, consider adding one\n Visit https://github.com/AM-community/localization for more information\n" "$DIVIDING_LINE"
+					printf " For now, we set the locale to \"en\" (default) to further avoid this message\n Remove $DATADIR/AM/locale to unset this\n%b\n" "$DIVIDING_LINE"
+					mkdir -p "$DATADIR/AM" && echo "en" > "$DATADIR/AM/locale"
+				fi
+			else
+				export TEXTDOMAIN="am"
+				export TEXTDOMAINDIR="$DATADIR/locale"
 			fi
-			export TEXTDOMAIN="am"
-			export TEXTDOMAINDIR="$DATADIR/locale"
 		fi
 	fi
 fi
