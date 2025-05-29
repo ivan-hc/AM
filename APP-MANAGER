@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="9.7.1-10"
+AMVERSION="9.7.1-11"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -42,11 +42,19 @@ LightBlue='\033[1;34m'
 DIVIDING_LINE="-----------------------------------------------------------------------------"
 
 # Translations
-if ! echo "$LANG" | grep -q "^en" || [ "$LANG" != "C" ]; then
-	[ -n "$LANG" ] && iso_code="${LANG:0:2}"
-	if [ -f "$DATADIR/locale/$iso_code/LC_MESSAGES/am.mo" ]; then
-		export TEXTDOMAIN="am"
-		export TEXTDOMAINDIR="$DATADIR/locale"
+[ -f "$DATADIR/AM/locale" ] && iso_code="$(cat "$DATADIR/AM/locale" | head -1 | cut -c -2)"
+if ! echo "$LANG" | grep -q "^en\|^C"; then
+	if [ -n "$LANG" ] && [ -z "$iso_code" ]; then
+		iso_code="$(echo "$LANG" | cut -c -2)"
+		if [ "$iso_code" != "en" ]; then
+			if [ ! -f "$DATADIR/locale/$iso_code/LC_MESSAGES/am.mo" ]; then
+				mkdir -p "$DATADIR/locale/$iso_code/LC_MESSAGES"
+				wget -q "https://github.com/AM-community/localization/raw/main/usr/share/locale/$iso_code/LC_MESSAGES/$iso_code.mo" -o "$DATADIR/locale/$iso_code/LC_MESSAGES/am.mo"
+				ln -s "$DATADIR/locale/$iso_code/LC_MESSAGES/am.mo" "$DATADIR/locale/$iso_code/LC_MESSAGES/appman.mo"
+			fi
+			export TEXTDOMAIN="am"
+			export TEXTDOMAINDIR="$DATADIR/locale"
+		fi
 	fi
 fi
 
