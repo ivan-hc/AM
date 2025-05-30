@@ -21,7 +21,7 @@ run-name: "🦉"
 
 jobs:
   sync-files:
-    name: "🦉 translations"
+    name: 🦉 translations
     runs-on: ubuntu-22.04
 
     steps:
@@ -32,63 +32,42 @@ jobs:
       - name: "Cache dependencies"
         uses: awalsh128/cache-apt-pkgs-action@latest
         with:
-          packages: gettext tree
+          packages: wget curl torsocks zsync gettext tree
           version: 1.0
 
-      - name: "Update"
+      - name: 🦉
         run: |
-          # Get AM version
-          AMVERSION=$(head -n 3 < APP-MANAGER | tail -n 1 | cut -d'"' -f2)
-          # Files for string extraction
-          list="APP-MANAGER modules/database.am modules/install.am modules/management.am modules/sandboxes.am modules/template.am"
-          # Remove old pot and create po dir
-          if [ -f source.pot ]; then
-            rm source.pot
-          fi
+          sudo systemctl enable tor.service || systemctl enable tor.service
+          sudo systemctl restart tor.service && wait || systemctl restart tor.service && wait
+          chmod +x ./INSTALL
+          sudo ./INSTALL 2> /dev/null || ./INSTALL
 
-          for file in ${list}; do
-            echo "$file"
-            # Extract strings for translation
-            bash --dump-po-strings "$file" >> source.pot
-          done
-
-          LANGUAGE="English"
-          PACKAGE_NAME="am"
-          PACKAGE_VERSION="$AMVERSION"
-          TRANSLATOR_NAME="John Doe"
-          TRANSLATOR_EMAIL="john.doe@example.com"
-          touch temp.po
-          cat <<-HEREDOC >> temp.po
-          "# File with translation for AM\n"
-          "# FIRST AUTHOR <EMAIL@ADDRESS>, $(date +"%Y")\n"
-          "msgid \"\""
-          "msgstr \"\""
-          "Project-Id-Version: ${PACKAGE_NAME} ${PACKAGE_VERSION}\n"
-          "Report-Msgid-Bugs-To: https://github.com/ivan-hc/AM\n"
-          "POT-Creation-Date: $(date +"%Y-%m-%d")\n"
-          "PO-Revision-Date: $(date +"%Y-%m-%d")\n"
-          "Last-Translator: ${TRANSLATOR_NAME} <${TRANSLATOR_EMAIL}>\n"
-          "Language-Team: ${LANGUAGE} <LL@li.org>\n"
-          "MIME-Version: 1.0\n"
-          "Content-Type: text/plain; charset=UTF-8\n"
-          "Content-Transfer-Encoding: 8bit\n"
-          "Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
-          HEREDOC
-
-          # add strings to empty file with header
-          cat source.pot >> temp.po
-          cat source.pot >> source.po
-          # remove duplicities from po file
-          msguniq temp.po -o source.po || cat temp.po
-          # recreate fixed pot file
-          msgcat --output-file=source.pot --unique --indent --no-wrap source.po
+      # We need include translation files
+      - name: "Get translations etc from outside"
+        run: |
+          cd /tmp/
+          # Clone repo with localization
+          git clone https://github.com/${{ github.repository_owner }}/localization localization
+          cd localization
+          # Copy source and translated files
+          cp *.po source.pot /opt/am/
+          # Copy translated modules
+          cp -r modules /opt/am/
+          # Copy am
+          cp APP-MANAGER /opt/am/
+          # Just for sure
+          chmod a+x /opt/am/APP-MANAGER
 
       - name: Regen
         run: |
+          am --translate
+          rm -f /opt/am/translations/*.po~
+          cp -r /opt/am/translations $GITHUB_WORKSPACE/
           echo '----------------------------------------------------------------------------'
           git status
           echo '----------------------------------------------------------------------------'
           rm -f temp.p*
+          git add *.po
           git add source.po
           git add source.pot
           echo '----------------------------------------------------------------------------'
