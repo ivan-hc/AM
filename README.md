@@ -319,7 +319,7 @@ or if using AppMan
 ```
 appman translate
 ```
-The command accepts two-letter language codes (for example "it" for Italian, or "sr" for Serbian). In case the desired language is not in the database, it will default to English (code "en"), which is the default.
+The command accepts two-letter language codes (for example "it" for Italian, or "sr" for Serbian). In case the desired language is not in the database, it will default to English (code "en").
 
 In the example, "AM" in Italian, Czech and Serbian
 
