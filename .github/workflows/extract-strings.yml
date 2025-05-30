@@ -28,6 +28,8 @@ jobs:
 
       - name: "Checkout source repository"
         uses: actions/checkout@v4
+        with:
+          path: am
 
       - name: "Cache dependencies"
         uses: awalsh128/cache-apt-pkgs-action@latest
@@ -64,25 +66,20 @@ jobs:
           token: ${{ secrets.TOKEN }}
           path: monorepo
 
-      - name: git config
-        run: |
-          git config --global user.name "web-flow"
-          git config --global user.email "noreply@github.com"
-
-      - name: source
-        run: |
-          cd monorepo
-          cp ../source.po ../source.pot localization/
-          echo '----------------------------------------------------------------------------'
-          git status
-          echo '----------------------------------------------------------------------------'
-          git add localization/source.po
-          git add localization/source.pot
-          echo '----------------------------------------------------------------------------'
-          git status
-          echo '----------------------------------------------------------------------------'
-          git commit -m 🦉 || echo "No changes to commit!" >> $GITHUB_STEP_SUMMARY
-          git push https://<TOKEN>@github.com/am-community/monorepo && echo "translation source prepared" >> $GITHUB_STEP_SUMMARY || echo "No changes to push!" >> $GITHUB_STEP_SUMMARY
-          fi
+      - name: Commit and push changes (if any)
+        shell: bash
         env:
           TOKEN: ${{ secrets.TOKEN }}
+        run: |
+          cd monorepo
+          git config --global user.name "${{ env.CI_COMMIT_AUTHOR }}"
+          git config --global user.email "${{ env.CI_COMMIT_EMAIL }}"
+          if [[ `git status --porcelain --untracked-files=no` ]]; then
+            git add localization/source.po
+            git add localization/source.pot
+            git commit -m "🦉"
+            git push
+          else
+            echo "no changes"
+            exit 0
+          fi
