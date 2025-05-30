@@ -641,6 +641,18 @@ Updates this script to the latest version hosted.
 Generate a custom installation script. To test the scripts, use the "`am -i '/path/to/script'`" command or enter the directory of the script and run the "`am -i ./script`" command, even using dedicated flags, if necessary (see "`-i`").
 
 ------------------------------------------------------------------------
+### `translate`, `--translate`
+
+		am --translate
+		am --translate {CODE}
+
+**Description**:
+
+Download and set one or more language packs (if available), set "am" to English (default), your language or other languages.
+ 
+Visit https://github.com/AM-community/localization to learn more on how to submit or improve translations.
+
+------------------------------------------------------------------------
 ### `unhide`
 
 		am unhide {PROGRAM}
