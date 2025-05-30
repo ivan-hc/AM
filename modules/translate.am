@@ -7,40 +7,6 @@
 # Files for string extraction
 list="APP-MANAGER modules/database.am modules/install.am modules/management.am modules/sandboxes.am modules/template.am modules/translate.am"
 # Common functions
-gumG() {
-  if command -v gum -v >/dev/null; then
-    gum style --border double --border-foreground 2 --padding "0 3" "$@"
-  else
-    echo -e "\n${Green}$@${Reset}\n"
-  fi
-}
-gumW() {
-  if command -v gum -v >/dev/null; then
-    gum style --border normal --padding "0 3" "$@"
-  else
-    echo -e "\n\033[1;37m$@${Reset}\n"
-  fi
-}
-gumR() {
-  if command -v gum -v >/dev/null; then
-    gum style --border double --border-foreground 1 --padding "0 3" "$@"
-  else
-    echo -e "\n${RED}$@${Reset}\n"
-  fi
-}
-gumQ() {
-  if command -v gum >/dev/null; then
-    gum confirm --timeout 15s --selected.background 2 --prompt.foreground 2 "$@"
-  else
-    echo -e "\n${Green}$@${Reset}\n"
-    read -t 15 -p $"Press y to continue, anything else to exit (timeout 15 seconds)" yn
-    if [ -z "$yn" ] || ! echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
-      exit 0
-    else
-      echo ''
-    fi
-  fi
-}
 gumI() {
   if command -v gum -v >/dev/null; then
     input=$(gum input --placeholder "$@" --placeholder.foreground 2)
@@ -49,65 +15,62 @@ gumI() {
   fi
   echo "${input}"
 }
-gumG $"Translating: $list"
+echo -e "\n${Green}$@${Reset}\n" $"Translating: $list"
+
+
 # Enter AMCLI dir
+
 enter_() {
   cd "$AMPATH" || echo $"Can´t enter AMPATH $AMPATH"
 }
-# Remove old pot and create po dir
+
+# Remove old pot
 prepare_() {
-  if [ -f translations/am.pot ]; then
-    #gumQ "Remove existing file?" || exit 1
-    rm translations/am.pot && gumW $"am.pot removed"
-  else
-    echo $"Fresh start"
+  if [ -f source.pot ]; then
+    rm source.pot
   fi
-  echo $"Creating directories"
-  mkdir -p po
 }
+
 # extract strings from list
 # xgettext can´t handle $"" or $''
 #xgettext --default-domain=am --output=messages.po --output-dir=po --language Shell APP-MANAGER
 # extract modules
 #xgettext --directory=modules --default-domain=am --output=messages.po --output-dir=po --language=Shell --join-existing --check=quote-unicode --indent --package-name=am --package-version=6.7 --msgid-bugs-address=noreply@github.com database.am install.am management.am sandboxes.am template.am translation.am
 extract_() {
-  gumG $"Extracting strings..."
   for file in ${list}; do
     echo "$file"
     # Extract strings for translation
-    bash --dump-po-strings "$file" >> translations/am.pot
-    gumW $"Extraction completed"
-    #gumQ "Show am.pot? (needs bat)" && bat translations/am.pot
+    bash --dump-po-strings "$file" >> source.pot
   done
 }
+
 # Not have to be used hopefully
 fix_() {
-  gumG $"Fixing strings"
-  gumW '\\\' && sed -i ':a;N;$!ba;s/\\\\\\/\\\\/g' translations/am.pot
-  gumW '\\' && sed -i ':a;N;$!ba;s/\\\\/\\/g' translations/am.pot
-  gumW '\n"
+  echo -e "\n${Green}$@${Reset}\n" $"Fixing strings"
+  echo -e "\n\033[1;37m$@${Reset}\n" '\\\' && sed -i ':a;N;$!ba;s/\\\\\\/\\\\/g' source.pot
+  echo -e "\n\033[1;37m$@${Reset}\n" '\\' && sed -i ':a;N;$!ba;s/\\\\/\\/g' source.pot
+  echo -e "\n\033[1;37m$@${Reset}\n" '\n"
 "\n"
-"' && sed -i ':a;N;$!ba;s/\\n"\n"\\n"\n"/\n\n/g' translations/am.pot
-  gumW '"
+"' && sed -i ':a;N;$!ba;s/\\n"\n"\\n"\n"/\n\n/g' source.pot
+  echo -e "\n\033[1;37m$@${Reset}\n" '"
 "\n"
-"' && sed -i ':a;N;$!ba;s/"\n"\\n"\n"/\n\n/g' translations/am.pot
-  gumW '\n"
-"' && sed -i ':a;N;$!ba;s/\\n"\n"/\n/g' translations/am.pot
-  gumW '"
-"' && sed -i ':a;N;$!ba;s/""\n"/"\n/g' translations/am.pot
-  gumG $"Fixing completed"
+"' && sed -i ':a;N;$!ba;s/"\n"\\n"\n"/\n\n/g' source.pot
+  echo -e "\n\033[1;37m$@${Reset}\n" '\n"
+"' && sed -i ':a;N;$!ba;s/\\n"\n"/\n/g' source.pot
+  echo -e "\n\033[1;37m$@${Reset}\n" '"
+"' && sed -i ':a;N;$!ba;s/""\n"/"\n/g' source.pot
+  echo -e "\n${Green}$@${Reset}\n" $"Fixing completed"
 }
+
 # Create file with header
 header_() {
-  case "${1}" in
-    '')
-      LANGUAGE="English"
-      PACKAGE_NAME="am"
-      PACKAGE_VERSION="$AMVERSION"
-      TRANSLATOR_NAME="John Doe"
-      TRANSLATOR_EMAIL="john.doe@example.com"
-      touch translations/temp.po
-cat << EOF > translations/temp.po
+  LANGUAGE="English"
+  PACKAGE_NAME="am"
+  PACKAGE_VERSION="$AMVERSION"
+  TRANSLATOR_NAME="John Doe"
+  TRANSLATOR_EMAIL="john.doe@example.com"
+  touch temp.po
+  cat << EOF > temp.po
 # File with translation for AM
 # FIRST AUTHOR <EMAIL@ADDRESS>, $(date +"%Y")
 msgid ""
@@ -123,101 +86,48 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
 EOF
-      ;;
-    '*')
-      LANGUAGE="$NLANG"
-      PACKAGE_NAME="am"
-      PACKAGE_VERSION="$AMVERSION"
-      TRANSLATOR_NAME="$TRANSLATOR"
-      TRANSLATOR_EMAIL="$TRANSLATOR_EMAIL"
-      touch "translations/${NLANG}.po"
-      cat << EOF > "translations/${NLANG}.po"
-# File with translation for AM
-# FIRST AUTHOR <EMAIL@ADDRESS>, $(date +"%Y")
-msgid ""
-msgstr ""
-"Project-Id-Version: ${PACKAGE_NAME} ${PACKAGE_VERSION}\n"
-"Report-Msgid-Bugs-To: https://github.com/ivan-hc/AM\n"
-"POT-Creation-Date: $(date +"%Y-%m-%d %H:%M%z")\n"
-"PO-Revision-Date: $(date +"%Y-%m-%d %H:%M%z")\n"
-"Last-Translator: ${TRANSLATOR_NAME} <${TRANSLATOR_EMAIL}>\n"
-"Language-Team: ${LANGUAGE} <LL@li.org>\n"
-"MIME-Version: 1.0\n"
-"Content-Type: text/plain; charset=UTF-8\n"
-"Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
-EOF
-      ;;
-  esac
 }
+
 # Join duplicate strings
 duplicities_() {
-  gumW $"Joining duplicities from ${1} into ${2}"
   msguniq "${1}" -o "${2}"
 }
+
 # Create main translation file
 run_() {
-  gumG $"Creating files for translations"
   header_
   # add strings to empty file with header
-  cat translations/am.pot >> translations/temp.po
+  cat source.pot >> temp.po
   # remove duplicities from po file
-  duplicities_ translations/temp.po translations/am.po
+  duplicities_ temp.po source.po
   # recreate fixed pot file
-  msgcat --output-file=translations/am.pot --unique --indent --no-wrap translations/am.po
+  msgcat --output-file=source.pot --unique --indent --no-wrap source.po
 }
+
 # Update all translations
 update_() {
-  mapfile 2>/dev/null -t linguas <translations/LINGUAS && \
-  for i in "${linguas[@]}"; do
-    if [ -f "translations/${i}.po" ]; then
-      gumW $"Merging with old ${i}.po"
-      msgmerge -U "translations/${i}.po" translations/am.pot
-    else
-      gumW $"Creating new ${i} translation file"
-      msginit --input translations/am.po --output-file="translations/${i}.po" --no-translator --locale "${i}"
-    fi
-    # create directories
-    mkdir -p "translations/usr/share/locale/${i}/LC_MESSAGES/"
-    #echo $"Joining duplicities"
-    duplicities_ "translations/${i}.po" translations/new.po
-    mv translations/new.po "translations/${i}.po"
-    #echo $"Creating ${i}.mo file"
-
-    msgfmt -o "translations/usr/share/locale/${i}/LC_MESSAGES/am.mo" "translations/${i}.po"
-    gumG $"${i} done"
-  done
+  if [ -f source.po ]; then
+    msgmerge -U source.po source.pot
+  else
+    msginit --input source.po --output-file=source.po --no-translator --locale en
+  fi
+  duplicities_ "source.po" new.po
+  mv new.po "source.po"
 }
+
 # Cleaning
 clean_() {
-  rm -f translations/temp.po
-  rm -f translations/*.po~
+  rm -f temp.po
+  rm -f *.po~
 }
-# Copy translations to .local
-copy_() {
-  gumG $"Preparation for translation done."
-  echo $"Now is up to translators, or AI..."
-  # copy translated .mo files to destination
-  gumQ $"Copy files to $HOME/.local/share/ for use with AppMan?" && cp -r translations/usr/share/locale "$HOME/.local/share/"
-}
-# Check for LINGUAS
-yet_() {
-  if mapfile 2>/dev/null -t linguas <translations/LINGUAS; then
-    echo ''
-  else
-    gumR $"No language added, run \"$AMCLI --translate-new\" first!" && exit 1
-  fi
-}
-# What to run?
-case "${1}" in
-  '--translate')
-    enter_
-    yet_
-    prepare_
-    extract_
-    run_
-    update_
-    clean_
-    copy_
-    ;;
-esac
+
+# Run
+enter_
+prepare_
+extract_
+run_
+update_
+clean_
+
+echo -e "\n${Green}$@${Reset}\n" $"Source for translations prepared"
+
