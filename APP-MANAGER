@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="9.7.1-15"
+AMVERSION="9.8"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -49,24 +49,24 @@ _set_locale() {
 		ln -s "$DATADIR/locale/$iso_code/LC_MESSAGES/am.mo" "$DATADIR/locale/$iso_code/LC_MESSAGES/appman.mo"
 	else
 		printf "%b\n No locale available for you, consider adding one\n Visit https://github.com/AM-community/localization for more information\n" "$DIVIDING_LINE"
-		printf " For now, we set the locale to \"en\" (default) to further avoid this message\n Remove $DATADIR/AM/locale to unset this\n%b\n" "$DIVIDING_LINE"
+		printf " For now, we set the locale to \"en\" (default) to further avoid this message\n Run \"$CLI translate\" to set an alternative language\n%b\n" "$DIVIDING_LINE"
 		iso_code="en"
 	fi
 }
 
 [ -f "$DATADIR/AM/locale" ] && iso_code="$(cat "$DATADIR/AM/locale" | head -1 | cut -c -2)"
+[ -n "$iso_code" ] && export LANGUAGE="$iso_code"
 if ! echo "$LANG" | grep -q "^en\|^C" && [ "$iso_code" != "en" ]; then
 	if [ -n "$LANG" ]; then
 		language_code=$(echo "$LANG" | cut -c -2)
 		if [ "$language_code" = "$iso_code" ]; then
 			if [ ! -f "$DATADIR/locale/$iso_code/LC_MESSAGES/am.mo" ]; then
 				_set_locale
-			else
-				export TEXTDOMAIN="am"
-				export TEXTDOMAINDIR="$DATADIR/locale"
 			fi
 			mkdir -p "$DATADIR/AM" && echo "$iso_code" > "$DATADIR/AM/locale"
 		fi
+		export TEXTDOMAIN="am"
+		export TEXTDOMAINDIR="$DATADIR/locale"
 	fi
 fi
 
@@ -74,7 +74,7 @@ _use_translate() {
 	echo "$DIVIDING_LINE"
 	if [ -z "$2" ]; then
 		[ -f "$DATADIR/AM/locale" ] && rm -f "$DATADIR/AM/locale"
-		printf $"Add a two letters code for a language, for example \"it\" for Italian\n\nNote, you will need to export the LANGUAGE variable while running \"%b\"\n\n" "$CLI" | _fit | grep .
+		printf $"Add a two letters code for a language, for example \"it\" for Italian\n\n" | _fit | grep .
 		read -r -ep $" Leave blank to use \"$CLI\" in English: " amlocale
 		if [ -z "$amlocale" ] || [ "$amlocale" = "en" ]; then
 			iso_code="en"
@@ -1121,7 +1121,7 @@ _update_determine_apps_version_changes() {
 		OLDVER="$AMCACHEDIR/updatable-args-list-old"
 		NEWVER="$AMCACHEDIR/updatable-args-list"
 		if cmp --silent -- "$NEWVER" "$OLDVER"; then
-			echo $' Nothing to do here!'
+			printf $" Nothing to do here! \n"
 		else
 			printf $" The following apps have been updated:\n\n"
 			diff "$OLDVER" "$NEWVER" | grep "^>" | sed 's/^> //g'
@@ -1671,10 +1671,7 @@ case "$1" in
 					${LightBlue}$AMCLI --translate\033[0m
 					${LightBlue}$AMCLI --translate {CODE}\033[0m
 
-			Description: Download more language packs or set \"$AMCLI\" to English or your system language (if available). Visit this site to learn more about translations.
-
-			NOTE, languages ​​other than the system language or English require exporting the \"\$LANGUAGE\" variable with the value of the desired language to translate \"$AMCLI\".
-
+			Description: Download and set one or more language packs (if available), set \"$AMCLI\" to English (default), your language or other languages.\n\nVisit https://github.com/AM-community/localization to learn more on how to submit or improve translations.
 
 			${Gold}unhide\033[0m
 
