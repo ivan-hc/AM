@@ -60,10 +60,77 @@ jobs:
 
       - name: Regen
         run: |
-          # Switch to dev branch
-          am --devmode-enable
-          am -u
-          am --translate
+          # Files for string extraction
+          list="APP-MANAGER modules/database.am modules/install.am modules/management.am modules/sandboxes.am modules/template.am modules/translate.am"
+          AMVERSION=$(am --version)
+
+          # Enter AMCLI dir
+          cd "$AMPATH" || echo $"Can´t enter AMPATH $AMPATH"
+
+          # Remove old pot
+          if [ -f source.pot ]; then
+            rm source.pot
+          fi
+
+          # extract strings from list
+          # xgettext can´t handle $"" or $''
+          #xgettext --default-domain=am --output=messages.po --output-dir=po --language Shell APP-MANAGER
+          # extract modules
+          #xgettext --directory=modules --default-domain=am --output=messages.po --output-dir=po --language=Shell --join-existing --check=quote-unicode --indent --package-name=am --package-version=6.7 --msgid-bugs-address=noreply@github.com database.am install.am management.am sandboxes.am template.am translation.am
+          for file in ${list}; do
+            echo "$file"
+            # Extract strings for translation
+            bash --dump-po-strings "$file" >> source.pot
+          done
+
+          # Create main translation file
+          LANGUAGE="English"
+          PACKAGE_NAME="am"
+          PACKAGE_VERSION="$AMVERSION"
+          TRANSLATOR_NAME="John Doe"
+          TRANSLATOR_EMAIL="john.doe@example.com"
+          touch temp.po
+          cat << EOF > temp.po
+          # File with translation for AM
+          # FIRST AUTHOR <EMAIL@ADDRESS>, $(date +"%Y")
+          msgid ""
+          msgstr ""
+          "Project-Id-Version: ${PACKAGE_NAME} ${PACKAGE_VERSION}\n"
+          "Report-Msgid-Bugs-To: https://github.com/ivan-hc/AM\n"
+          "POT-Creation-Date: $(date +"%Y-%m-%d")\n"
+          "PO-Revision-Date: $(date +"%Y-%m-%d")\n"
+          "Last-Translator: ${TRANSLATOR_NAME} <${TRANSLATOR_EMAIL}>\n"
+          "Language-Team: ${LANGUAGE} <LL@li.org>\n"
+          "MIME-Version: 1.0\n"
+          "Content-Type: text/plain; charset=UTF-8\n"
+          "Content-Transfer-Encoding: 8bit\n"
+          "Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
+          EOF
+
+          # add strings to empty file with header
+          cat source.pot >> temp.po
+
+          # remove duplicities from po file
+          msguniq temp.po -o source.po
+
+          # recreate fixed pot file
+          msgcat --output-file=source.pot --unique --indent --no-wrap source.po
+
+          # Update all translations
+          if [ -f source.po ]; then
+            msgmerge -U source.po source.pot
+          else
+            msginit --input source.po --output-file=source.po --no-translator --locale en
+          fi
+
+          msguniq source.po -o new.po
+          mv new.po "source.po"
+
+          rm -f temp.po
+          rm -f *.po~
+
+          echo $"Source for translations prepared"
+
           rm -f /opt/am/localization/*.po~
           cp -r /opt/am/localization $GITHUB_WORKSPACE/
           echo '----------------------------------------------------------------------------'
