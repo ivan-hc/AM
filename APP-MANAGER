@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="9.7.1-14"
+AMVERSION="9.7.1-15"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -42,28 +42,55 @@ LightBlue='\033[1;34m'
 DIVIDING_LINE="-----------------------------------------------------------------------------"
 
 # Translations
+_set_locale() {
+	if curl --output /dev/null --silent --head --fail "https://github.com/AM-community/monorepo/raw/refs/heads/main/localization/usr/share/locale/$iso_code/LC_MESSAGES/am.mo" 1>/dev/null; then
+		mkdir -p "$DATADIR/locale/$iso_code/LC_MESSAGES" && rm -f "$DATADIR"/locale/"$iso_code"/LC_MESSAGES/*
+		curl -s -Lo "$DATADIR/locale/$iso_code/LC_MESSAGES/am.mo" "https://github.com/AM-community/monorepo/raw/refs/heads/main/localization/usr/share/locale/$iso_code/LC_MESSAGES/am.mo"
+		ln -s "$DATADIR/locale/$iso_code/LC_MESSAGES/am.mo" "$DATADIR/locale/$iso_code/LC_MESSAGES/appman.mo"
+	else
+		printf "%b\n No locale available for you, consider adding one\n Visit https://github.com/AM-community/localization for more information\n" "$DIVIDING_LINE"
+		printf " For now, we set the locale to \"en\" (default) to further avoid this message\n Remove $DATADIR/AM/locale to unset this\n%b\n" "$DIVIDING_LINE"
+		iso_code="en"
+	fi
+}
+
 [ -f "$DATADIR/AM/locale" ] && iso_code="$(cat "$DATADIR/AM/locale" | head -1 | cut -c -2)"
-if ! echo "$LANG" | grep -q "^en\|^C"; then
-	if [ -n "$LANG" ] && [ -z "$iso_code" ]; then
-		iso_code=$(echo "$LANG" | cut -c -2)
-		if [ "$iso_code" != "en" ]; then
+if ! echo "$LANG" | grep -q "^en\|^C" && [ "$iso_code" != "en" ]; then
+	if [ -n "$LANG" ]; then
+		language_code=$(echo "$LANG" | cut -c -2)
+		if [ "$language_code" = "$iso_code" ]; then
 			if [ ! -f "$DATADIR/locale/$iso_code/LC_MESSAGES/am.mo" ]; then
-				if curl --output /dev/null --silent --head --fail "https://github.com/AM-community/monorepo/raw/refs/heads/main/localization/usr/share/locale/$iso_code/LC_MESSAGES/am.mo" 1>/dev/null; then
-					mkdir -p "$DATADIR/locale/$iso_code/LC_MESSAGES"
-					curl -s -Lo "$DATADIR/locale/$iso_code/LC_MESSAGES/am.mo" "https://github.com/AM-community/monorepo/raw/refs/heads/main/localization/usr/share/locale/$iso_code/LC_MESSAGES/am.mo"
-					ln -s "$DATADIR/locale/$iso_code/LC_MESSAGES/am.mo" "$DATADIR/locale/$iso_code/LC_MESSAGES/appman.mo"
-				else
-					printf "%b\n No locale available for you, consider adding one\n Visit https://github.com/AM-community/localization for more information\n" "$DIVIDING_LINE"
-					printf " For now, we set the locale to \"en\" (default) to further avoid this message\n Remove $DATADIR/AM/locale to unset this\n%b\n" "$DIVIDING_LINE"
-					mkdir -p "$DATADIR/AM" && echo "en" > "$DATADIR/AM/locale"
-				fi
+				_set_locale
 			else
 				export TEXTDOMAIN="am"
 				export TEXTDOMAINDIR="$DATADIR/locale"
 			fi
+			mkdir -p "$DATADIR/AM" && echo "$iso_code" > "$DATADIR/AM/locale"
 		fi
 	fi
 fi
+
+_use_translate() {
+	echo "$DIVIDING_LINE"
+	if [ -z "$2" ]; then
+		[ -f "$DATADIR/AM/locale" ] && rm -f "$DATADIR/AM/locale"
+		printf $"Add a two letters code for a language, for example \"it\" for Italian\n\nNote, you will need to export the LANGUAGE variable while running \"%b\"\n\n" "$CLI" | _fit | grep .
+		read -r -ep $" Leave blank to use \"$CLI\" in English: " amlocale
+		if [ -z "$amlocale" ] || [ "$amlocale" = "en" ]; then
+			iso_code="en"
+		else
+			iso_code=$(echo "$amlocale" | tr '[:upper:]' '[:lower:]' | cut -c -2)
+			_set_locale
+		fi
+		printf "\n"
+	else
+		iso_code=$(echo "$2" | tr '[:upper:]' '[:lower:]' | cut -c -2)
+		_set_locale
+	fi
+	mkdir -p "$DATADIR/AM" && echo "$iso_code" > "$DATADIR/AM/locale"
+	printf $"Setting locale to \"%b\"\n" "$iso_code" | _fit
+	echo "$DIVIDING_LINE"
+}
 
 # Prevent the use of "sudo" ("AM")
 if [ "$(id -u)" = 0 ] && [ -n "${SUDO_USER:-$DOAS_USER}" ]; then
@@ -530,9 +557,9 @@ fi
 # COMPLETION LIST
 available_options="about add apikey backup clean config disable downgrade download enable extra files hide home icons info \
 	install install-appimage launcher list lock neodb newrepo nolibfuse off on overwrite purge query reinstall remove sandbox \
-	select sync template test translate translate-new unhide unlock update --all --appimages --apps --byname --config --convert --debug \
+	select sync template test translate unhide unlock update --all --appimages --apps --byname --config --convert --debug \
 	--devmode-disable --devmode-enable --disable-notifications --enable-notifications --force-latest --home --icons \
-	-ias --launcher --less --pkg --portable --rollback --disable-sandbox --sandbox --system --translate --translate-new --user $third_party_flags"
+	-ias --launcher --less --pkg --portable --rollback --disable-sandbox --sandbox --system --translate --user $third_party_flags"
 
 _completion_lists() {
 	# Remove existing lists and download new ones
@@ -1351,10 +1378,8 @@ case "$1" in
 		_online_check
 		_use_module "$@"
 		;;
-	'translate'|'translate-new'|'--translate'|'--translate-new')
-		MODULE="translate.am"
-		_online_check
-		_use_module "$@"
+	'translate'|'--translate')
+		_use_translate "$@"
 		;;
 	# INBUILT OPTIONS
 	'apikey')
@@ -1638,6 +1663,16 @@ case "$1" in
 					${LightBlue}$AMCLI -t {PROGRAM}\033[0m
 
 			Description: Generate a custom installation script. To test the scripts, use the \"${LightBlue}$AMCLI -i '/path/to/script'\033[0m\" command or enter the directory of the script and run the \"${LightBlue}$AMCLI -i ./script\033[0m\" command, even using dedicated flags, if necessary (see \"-i\").
+
+			${Gold}translate, --translate\033[0m
+
+					${LightBlue}$AMCLI --translate\033[0m
+					${LightBlue}$AMCLI --translate {CODE}\033[0m
+
+			Description: Download more language packs or set \"$AMCLI\" to English or your system language (if available). Visit this site to learn more about translations.
+
+			NOTE, languages ​​other than the system language or English require exporting the \"\$LANGUAGE\" variable with the value of the desired language to translate \"$AMCLI\".
+
 
 			${Gold}unhide\033[0m
 
