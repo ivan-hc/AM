@@ -1,50 +1,46 @@
-Show in [Czech](README-cs.md), [English](README.md), [German](README-de.md),
-[Spanish](README-es.md), [Italian](README-it.md), [Russian](README-ru.md) or
-[Serbian](README-sr.md) language
+Traduzione:
 
-# This is main development repository
+# Questo è il repository principale di sviluppo
 
-Everything will happen in this repo
+Tutto accadrà in questo repo
 
-And will be automaticaly synced to individual repositories under this
-organization
+E sarà automaticamente sincronizzato con i singoli repository sotto questa
+organizzazione
 
-- [AM](https://github.com/AM-community/am)
-- [localization](https://github.com/AM-community/localization)
+- [AM]
+- [localizzazione]
 
-🦉 Localization files 🦉
+🦉 File di localizzazione 🦉
 
-For [AM](https://github.com/ivan-hc/AM) project
-# For now in testing mode
-Come and help us translate AM to *your* language
+Per il progetto [AM](https://github.com/ivan-hc/AM)
+# Per ora in modalità test
+Vieni e aiutaci a tradurre AM in *tua* lingua
 
-[![Localization
-State](https://hosted.weblate.org/widget/am/am/open-graph.png)](https://hosted.weblate.org/engage/am/)
+[Stato di localizzazione]
 
-If your language isn't yet listed would be awesome if you add it
-[here](https://hosted.weblate.org/new-lang/am/am/)
+Se la tua lingua non è ancora elencata sarebbe fantastico se lo aggiungi
+[qui](https://hosted.weblate.org/new-lang/am/am/)
 
-[![Localization
-State](https://hosted.weblate.org/widget/am/multi-auto.svg)](https://hosted.weblate.org/engage/am/)
+[Stato di localizzazione]
 
-- [workflows](https://github.com/AM-community/workflows)
-- [checks](https://github.com/AM-community/checks)
-- [github](https://github.com/AM-community/.github) (organization readme)
+- - si'
+- [controlla]
+- [github](https://github.com/AM-community/.github) (organizzazioni leggere)
 
-Come and join our effort
-# ⭐ to make AppImages even better 🚀
+Unisciti al nostro sforzo
+# ⭐ per rendere gli AppImages ancora meglio 🚀
 
-### To check development, fill issues, pull requests or discussions please use
+### Per verificare lo sviluppo, riempire problemi, tirare richieste o discussioni si prega di utilizzare
 
-# [monorepo](https://github.com/AM-community/monorepo)
-(Storing translated binary .mo files thanks to git-lfs installed in this repo)
+# [monorepo]
+(Storing tradotto file binari .mo grazie a git-lf installati in questo repo)
 
-From here is everything else automagicaly updated
+Da qui è tutto il resto automaticamente aggiornato
 
-We got a :star: from [@Eloitor](https://github.com/Eloitor)
+Abbiamo una stella: da [@Eloitor]
 
-We got a :star: from [@zen0bit](https://github.com/zen0bit)
+Abbiamo una stella: da [@zen0bit](https://github.com/zen0bit)
 
-We got a :star: from [@ivan-hc](https://github.com/ivan-hc)
+Abbiamo una :star: da [@ivan-hc](https://github.com/ivan-hc)
 
-We got a :star: from [@Ranamom](https://github.com/Ranamom)
+Abbiamo una stella: da [@Ranamom]
