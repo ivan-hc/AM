@@ -1,31 +1,30 @@
-Show in [Czech](README-cs.md), [English](README.md), [German](README-de.md),
-[Spanish](README-es.md), [Italian](README-it.md), [Russian](README-ru.md) or
-[Serbian](README-sr.md) language
+Zobrazit v [Českém](README-cs.md), [Anglickém](README.md),
+[Německém](README-de.md), [Španělském](README-es.md), [Italském](README-it.md),
+[Ruském](README-ru.md) nebo [Srbském](README-sr.md) jazyce
 
-# This is main development repository
+# Toto je hlavní repozitář vývoje
 
-Everything will happen in this repo
+Vše se odehrává v tomto repozitáři
 
-And will be automaticaly synced to individual repositories under this
-organization
+A bude automaticky synchronizován do jednotlivých repozitářů v této organizaci
 
 - [AM](https://github.com/AM-community/am)
 - [localization](https://github.com/AM-community/localization)
 
-🦉 Localization files 🦉
+🦉 Lokalizace souborů 🦉
 
-For [AM](https://github.com/ivan-hc/AM) project
-# For now in testing mode
-Come and help us translate AM to *your* language
+Pro [AM](https://github.com/ivan-hc/AM) projekt
+# Nyní v testovacím režimu
+Přijďte a pomozte nám přeložit AM do *vašeho* jazyka
 
-[![Localization
-State](https://hosted.weblate.org/widget/am/am/open-graph.png)](https://hosted.weblate.org/engage/am/)
+[![Stav
+lokalizace](https://hosted.weblate.org/widget/am/am/open-graph.png)](https://hosted.weblate.org/engage/am/)
 
 If your language isn't yet listed would be awesome if you add it
 [here](https://hosted.weblate.org/new-lang/am/am/)
 
-[![Localization
-State](https://hosted.weblate.org/widget/am/multi-auto.svg)](https://hosted.weblate.org/engage/am/)
+[![Stav
+lokalizace](https://hosted.weblate.org/widget/am/multi-auto.svg)](https://hosted.weblate.org/engage/am/)
 
 - [workflows](https://github.com/AM-community/workflows)
 - [checks](https://github.com/AM-community/checks)
