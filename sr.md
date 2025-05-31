@@ -15,13 +15,13 @@ organization
 #Doći a #pomoć @u #prevoditi @AM #na [@X33@X]#tvoj[@X38@X] #jezik
 
 [![Localization
-State](https://hosted.weblate.org/widget/am/am/open-graph.png)](https://hosted.weblate.org/engage/am/)
+#Stanje](https://hosted.weblate.org/widget/am/am/open-graph.png)](https://hosted.weblate.org/engage/am/)
 
 Li #tvoj #jezik #biti ne @yet #popisati @would #biti @awesome li #free #dodati
 #free [tuda](https://hosted.weblate.org/new-lang/am/am/)
 
 [![Localization
-State](https://hosted.weblate.org/widget/am/multi-auto.svg)](https://hosted.weblate.org/engage/am/)
+#Stanje](https://hosted.weblate.org/widget/am/multi-auto.svg)](https://hosted.weblate.org/engage/am/)
 
 - [workflows](https://github.com/AM-community/workflows)
 - [#pregled](https://github.com/AM-community/checks)
