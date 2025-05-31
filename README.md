@@ -1,3 +1,4 @@
+Show in [Czech](README-cs.md), [English](README.md), [German](README-de.md), [Spanish](README-es.md), [Italian](README-it.md), [Russian](README-ru.md) or [Serbian](README-sr.md) language
 # "AM" Application Manager
 ### Database & solutions for all AppImages and portable apps for GNU/Linux!
 
