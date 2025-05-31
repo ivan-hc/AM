@@ -1,3 +1,6 @@
+Show in [cs](README-cs.md) [de](README-de.md) [en](README.md) [es](README-es.md)
+[it](README-it.md) [ru](README-ru.md) [sr](README-sr.md) language
+
 # @This @i #velik #razvoj repository
 
 @Everything #volja #zbivati @in @this repo
