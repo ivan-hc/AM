@@ -8,7 +8,7 @@ organization
 - [AM](https://github.com/AM-community/am)
 - [localization](https://github.com/AM-community/localization)
 
-🦉 Localization files 🦉
+Файлы локализации
 
 For [AM](https://github.com/ivan-hc/AM) project
 # For now in testing mode
@@ -25,19 +25,19 @@ State](https://hosted.weblate.org/widget/am/multi-auto.svg)](https://hosted.webl
 
 - [workflows](https://github.com/AM-community/workflows)
 - [checks](https://github.com/AM-community/checks)
-- [github](https://github.com/AM-community/.github) (organization readme)
+- [гитуб](https://github.com/AM-community/.github) (организация считывается)
 
 Come and join our effort
 # ⭐ to make AppImages even better 🚀
 
-### To check development, fill issues, pull requests or discussions please use
+### Чтобы проверить разработку, заполнить вопросы, вытащить запросы или обсуждения, пожалуйста, используйте
 
 # [monorepo](https://github.com/AM-community/monorepo)
 (Storing translated binary .mo files thanks to git-lfs installed in this repo)
 
 From here is everything else automagicaly updated
 
-We got a :star: from [@Eloitor](https://github.com/Eloitor)
+Мы получили:star: от [@Eloitor](https://github.com/Eloitor)
 
 We got a :star: from [@zen0bit](https://github.com/zen0bit)
 
