@@ -58,6 +58,8 @@ You can use the command `am -a {PROGRAM}` to view the description and get the so
 
    - [Do you own a repository for AppImages external to this database? Follow these instructions!](#do-you-own-a-repository-for-appimages-external-to-this-database-follow-these-instructions)
 
+[Translate "AM" in your local language](#translate-am-in-your-local-language)
+
 [How to update all programs, for real!](#how-to-update-all-programs-for-real)
  - [How to update all installed apps](#how-to-update-all-installed-apps)
  - [How to update everything using Topgrade](#how-to-update-everything-using-topgrade)
@@ -301,6 +303,29 @@ Replace `appname` with the name of the application that will also be used via co
 Of course, replace `user/project` with your username and the repository name.
 
 For more details on how the `-e` or `extra` option works, see [here](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/extra.md).
+
+------------------------------------------------------------------------
+
+| [Back to "Main Index"](#main-index) |
+| - |
+
+------------------------------------------------------------------------
+# Translate "AM" in your local language
+Since version 9.8 it is possible to add and use alternative languages ​​via the `translate` option, use:
+```
+am translate
+```
+or if using AppMan
+```
+appman translate
+```
+The command accepts two-letter language codes (for example "it" for Italian, or "sr" for Serbian). In case the desired language is not in the database, it will default to English (code "en").
+
+In the example, "AM" in Italian, Czech and Serbian
+
+https://github.com/user-attachments/assets/a18f48b0-f389-4e94-a576-0031354d3cd5
+
+You can add and improve languages ​​by visiting https://github.com/AM-community/localization
 
 ------------------------------------------------------------------------
 
@@ -641,6 +666,18 @@ Updates this script to the latest version hosted.
 Generate a custom installation script. To test the scripts, use the "`am -i '/path/to/script'`" command or enter the directory of the script and run the "`am -i ./script`" command, even using dedicated flags, if necessary (see "`-i`").
 
 ------------------------------------------------------------------------
+### `translate`, `--translate`
+
+		am --translate
+		am --translate {CODE}
+
+**Description**:
+
+Download and set one or more language packs (if available), set "am" to English (default), your language or other languages.
+ 
+Visit https://github.com/AM-community/localization to learn more on how to submit or improve translations.
+
+------------------------------------------------------------------------
 ### `unhide`
 
 		am unhide {PROGRAM}
@@ -950,6 +987,9 @@ Below you can access documentation pages for common issues and frequently asked 
 - *[appimagetool](https://github.com/AppImage/appimagetool), get rid of libfuse2 from your AppImages*
 - *[pkg2appimage](https://github.com/AppImage/pkg2appimage), create AppImages on the fly from existing .deb packages*
 - *[repology](https://github.com/repology), the encyclopedia of all software versions*
+
+#### Community
+- *["AM" community project](https://github.com/AM-community), join out team!*
 
 #### Partner projects, i.e. those that actively contribute to this project
 - *[Toolpacks](https://github.com/pkgforge/soarpkgs), Largest Collection of Multi-Platform Pre-Compiled Static Binaries*
