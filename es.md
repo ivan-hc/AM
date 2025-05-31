@@ -1,3 +1,6 @@
+Show in [cs](README-cs.md) [de](README-de.md) [en](README.md) [es](README-es.md)
+[it](README-it.md) [ru](README-ru.md) [sr](README-sr.md) language
+
 # Este es el principal repositorio de desarrollo
 
 Todo sucederá en este repo
