@@ -3,7 +3,8 @@
 AMVERSION="9.8"
 
 # Determine main repository and branch
-AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
+[ -z "$AM_THE_OWNER" ] && AM_THE_OWNER="ivan-hc"
+AMREPO="https://raw.githubusercontent.com/$AM_THE_OWNER/AM/main"
 AMBRANCH=$(basename "$AMREPO")
 MODULES_SOURCE="$AMREPO/modules"
 
@@ -329,7 +330,7 @@ mkdir -p "$AMDATADIR"
 
 # DEVELOPER MODE
 if [ -f "$AMDATADIR"/betatester ]; then
-	AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/dev"
+	AMREPO="https://raw.githubusercontent.com/$AM_THE_OWNER/AM/dev"
 	AMBRANCH=$(basename "$AMREPO")
 	MODULES_SOURCE="$AMREPO/modules"
 fi
@@ -986,7 +987,7 @@ _sync_installation_scripts() {
 				if [ "$CURRENT" = "$SOURCE" ]; then
 					echo -ne "\r" 2>/dev/null
 				else
-					printf $" ◆ %b%b\033[0m has changed, you may need to reinstall it, see\n   https://github.com/ivan-hc/AM/blob/main/programs/%b/%b\n" "${RED}" "$scriptname" "$ARCH" "$scriptname"
+					printf $" ◆ %b%b\033[0m has changed, you may need to reinstall it, see\n   https://github.com/$AM_THE_OWNER/AM/blob/main/programs/%b/%b\n" "${RED}" "$scriptname" "$ARCH" "$scriptname"
 					to_reinstall_true=1
 				fi
 			else
@@ -1064,10 +1065,10 @@ _sync_amcli() {
 		echo -ne $" A new release of \"$AMCLIUPPER\" is available, please wait...\r"
 		echo $" ◆ \"$AMCLIUPPER\" IS NOW UPDATED TO THE BRAND NEW \"$NEW_AM_VERSION\" VERSION!"
 		printf $"\n  Replacement of version \"%b\" currently in use, COMPLETED! \n" "$CURRENT_AM_VERSION"
-		printf $"\n See https://github.com/ivan-hc/AM/commits/main\n\n"
+		printf $"\n See https://github.com/$AM_THE_OWNER/AM/commits/main\n\n"
 	else
 		echo $" ◆ \"$AMCLIUPPER\" IS ALREADY UPDATED, CURRENT VERSION \"$CURRENT_AM_VERSION\""
-		printf $"\n See https://github.com/ivan-hc/AM/commits/%b\n\n" "$AMBRANCH"
+		printf $"\n See https://github.com/$AM_THE_OWNER/AM/commits/%b\n\n" "$AMBRANCH"
 	fi
 }
 
@@ -1351,6 +1352,9 @@ case "$1" in
 		echo ""
 		echo $" Run the \"$AMCLI -h\" command to find out more"
 		echo "$DIVIDING_LINE"
+		echo $"   or try AM with GUI (Alpha version!)"
+		echo $" Run the \"$AMCLI --gui\" command"
+		echo $"   and help us catch the bugs please"
 		exit 0
 		;;
 	# EXTERNAL OPTIONS / MODULES
@@ -1395,6 +1399,10 @@ case "$1" in
 		;;
 	'translate'|'--translate')
 		_use_translate "$@"
+		;;
+	'--gui')
+		MODULE="yad.am"
+		_use_module "$@"
 		;;
 	# INBUILT OPTIONS
 	'apikey')
@@ -1461,7 +1469,15 @@ case "$1" in
 	'version'|'-v'|'--version')
 		echo "$AMVERSION"
 		;;
-	'help'|'-h')
+	'--disable-notifications')
+		_determine_args
+		for n in $ARGPATHS; do sed -e '/notify-send/ s/^#*/#/' -i "$n/AM-updater" 2>/dev/null; done
+		;;
+	'--enable-notifications')
+		_determine_args
+		for n in $ARGPATHS; do sed -e '/notify-send/ s/^#*//' -i "$n/AM-updater" 2>/dev/null; done
+		;;
+	'help'|'-h'|'--help')
 		################################################################################################################################################################
 		#				HELP
 		################################################################################################################################################################
@@ -1483,6 +1499,12 @@ case "$1" in
 					${LightBlue}$AMCLI -a {PROGRAM}\033[0m
 
 			Description: Shows more info about one or more apps.
+
+			${Gold}--gui\033[0m
+
+					${LightBlue}$AMCLI --gui {PROGRAM}\033[0m
+
+			Description: Use AM with 3rd party GUI. (Alpha!) Using bash and ${LightBlue}Y\033[0met ${LightBlue}A\033[0mnother ${LightBlue}D\033[0mialog.
 
 			${Gold}apikey\033[0m
 

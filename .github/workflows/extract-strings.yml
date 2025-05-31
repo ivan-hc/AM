@@ -1,0 +1,108 @@
+name: 🦉
+
+on:
+  push:
+    paths:
+      - modules/**
+      - APP-MANAGER
+      # Trigger if action file change !! DEBUG important
+      - .github/workflows/extract-strings.yml
+
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+run-name: 🦉
+
+jobs:
+  sync-files:
+    name: 🦉
+    runs-on: ubuntu-22.04
+
+    steps:
+
+      - name: "Checkout source repository"
+        uses: actions/checkout@v4
+        with:
+          path: am
+
+      - name: "Cache dependencies"
+        uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: gettext
+          version: 1.0
+
+      - name: regen
+        run: |
+          # Files for string extraction
+          list="APP-MANAGER modules/database.am modules/install.am modules/management.am modules/sandboxes.am modules/template.am modules/yad.am"
+          # Remove old pot
+          if [ -f source.pot ]; then
+            rm source.pot
+          fi
+          # extract strings from list
+          for file in ${list}; do
+            echo "$file"
+            # Extract strings for translation
+            bash --dump-po-strings am/"$file" >> source.pot
+          done
+          # Create main translation file
+          LANGUAGE="English"
+          PACKAGE_NAME="am"
+          AMVERSION=$(head -n 3 < am/APP-MANAGER | tail -n 1 | cut -d'"' -f2)
+          TRANSLATOR_NAME="John Doe"
+          TRANSLATOR_EMAIL="john.doe@example.com"
+          touch temp.po
+          cat <<-HEREDOC >> temp.po
+          # File with translation for AM
+          # FIRST AUTHOR <EMAIL@ADDRESS>, $(date +"%Y")
+          msgid ""
+          msgstr ""
+          "Project-Id-Version: ${PACKAGE_NAME} ${AMVERSION}\n"
+          "Report-Msgid-Bugs-To: https://github.com/ivan-hc/AM\n"
+          "POT-Creation-Date: $(date +"%Y-%m-%d")\n"
+          "PO-Revision-Date: $(date +"%Y-%m-%d")\n"
+          "Last-Translator: ${TRANSLATOR_NAME} <${TRANSLATOR_EMAIL}>\n"
+          "Language-Team: ${LANGUAGE} <LL@li.org>\n"
+          "MIME-Version: 1.0\n"
+          "Content-Type: text/plain; charset=UTF-8\n"
+          "Content-Transfer-Encoding: 8bit\n"
+          "Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
+          HEREDOC
+          cat source.pot >> temp.po
+          # remove duplicities from po file
+          msguniq temp.po -o source.po || cat temp.po >> $GITHUB_STEP_SUMMARY
+          # recreate fixed pot file
+          msgcat --output-file=source.pot --unique --indent --no-wrap source.po
+          rm -f temp.po
+          rm -f *.po~
+
+      - name: Checkout monorepo
+        uses: actions/checkout@v4
+        with:
+          repository: am-community/monorepo
+          token: ${{ secrets.TOKEN }}
+          path: monorepo
+
+      - name: Commit and push changes (if any)
+        shell: bash
+        env:
+          TOKEN: ${{ secrets.TOKEN }}
+        run: |
+          cd monorepo
+          git config --global user.name "web-flow"
+          git config --global user.email "noreply@github.com"
+          cp ../source.* localization/
+          if [[ `git status --porcelain --untracked-files=no` ]]; then
+            git add .
+            git commit -m "🦉"
+            git push
+          else
+            echo "no changes"
+            exit 0
+          fi
