@@ -20,30 +20,31 @@ Přijďte a pomozte nám přeložit AM do *vašeho* jazyka
 [![Stav
 lokalizace](https://hosted.weblate.org/widget/am/am/open-graph.png)](https://hosted.weblate.org/engage/am/)
 
-If your language isn't yet listed would be awesome if you add it
-[here](https://hosted.weblate.org/new-lang/am/am/)
+Pokud váš jazyk ještě není uveden, by bylo úžasné, pokud jej přidáte
+[zde](https://hosted.weblate.org/new-lang/am/am/)
 
 [![Stav
 lokalizace](https://hosted.weblate.org/widget/am/multi-auto.svg)](https://hosted.weblate.org/engage/am/)
 
 - [workflows](https://github.com/AM-community/workflows)
 - [checks](https://github.com/AM-community/checks)
-- [github](https://github.com/AM-community/.github) (organization readme)
+- [github](https://github.com/AM-community/.github) (čtimě organizace)
 
-Come and join our effort
-# ⭐ to make AppImages even better 🚀
+Připojte se k našemu snažení
+# ⭐ udělat AppImage ještě lepší 🚀
 
-### To check development, fill issues, pull requests or discussions please use
+### Chcete-li zkontrolovat vývoj, máte-li problémy, požadavky o natažení nebo chcete diskutovat, použijte
 
 # [monorepo](https://github.com/AM-community/monorepo)
-(Storing translated binary .mo files thanks to git-lfs installed in this repo)
+(Uložení přeložených binárních .mo souborů díky git-lfs nainstalovaném v tomto
+repo)
 
-From here is everything else automagicaly updated
+Odtud je vše ostatní samokouzelně aktualizováno
 
-We got a :star: from [@Eloitor](https://github.com/Eloitor)
+Dostali jsme :star: od [@Eloitor](https://github.com/Eloitor)
 
-We got a :star: from [@zen0bit](https://github.com/zen0bit)
+Dostali jsme :star: od [@zen0bit](https://github.com/zen0bit)
 
-We got a :star: from [@ivan-hc](https://github.com/ivan-hc)
+Dostali jsme :star: od [@ivan-hc](https://github.com/ivan-hc)
 
-We got a :star: from [@Ranamom](https://github.com/Ranamom)
+Dostali jsme :star: od [@Ranamom](https://github.com/Ranamom)
