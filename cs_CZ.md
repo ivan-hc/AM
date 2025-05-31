@@ -1,9 +1,8 @@
 # Toto je hlavní vývojové úložiště
 
-Vše se stane v tomto repopu
+Vše se odehrává v tomto repozitáři
 
-A bude automaticky synchronizován s jednotlivými repozitáři v rámci této
-organizace
+A bude automaticky synchronizován s jednotlivými repozitáři v této organizaci
 
 - [AM](https://github.com/AM-community/am)
 - [localizace](https://github.com/AM-community/localization)
@@ -12,7 +11,7 @@ organizace
 
 Pro [AM](https://github.com/ivan-hc/AM) projekt
 # Nyní v testovacím režimu
-Přijďte a pomozte nám přeložit AM na *your* jazyk
+Přijďte a pomozte nám přeložit AM do *vašeho* jazyku
 
 [![Localization
 State](https://hosted.weblate.org/widget/am/am/open-graph.png)](https://hosted.weblate.org/engage/am/)
