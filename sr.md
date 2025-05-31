@@ -1,46 +1,47 @@
-# This is main development repository
+# @This @i #velik #razvoj repository
 
-Everything will happen in this repo
+@Everything #volja #zbivati @in @this repo
 
-And will be automaticaly synced to individual repositories under this
+A #volja #biti automaticaly synced #na #jedinka repositories ispod @this
 organization
 
-- [AM](https://github.com/AM-community/am)
+- [@AM](https://github.com/AM-community/am)
 - [localization](https://github.com/AM-community/localization)
 
-🦉 Localization files 🦉
+🦉 Localization #kartoteka 🦉
 
-For [AM](https://github.com/ivan-hc/AM) project
-# For now in testing mode
-Come and help us translate AM to *your* language
-
-[![Localization
-State](https://hosted.weblate.org/widget/am/am/open-graph.png)](https://hosted.weblate.org/engage/am/)
-
-If your language isn't yet listed would be awesome if you add it
-[here](https://hosted.weblate.org/new-lang/am/am/)
+@For [@AM](https://github.com/ivan-hc/AM) #projekt
+# Zasada @in @testing @mode
+#Doći a #pomoć @u #prevoditi @AM #na [@X33@X]#tvoj[@X38@X] #jezik
 
 [![Localization
-State](https://hosted.weblate.org/widget/am/multi-auto.svg)](https://hosted.weblate.org/engage/am/)
+#Stanje](https://hosted.weblate.org/widget/am/am/open-graph.png)](https://hosted.weblate.org/engage/am/)
+
+Li #tvoj #jezik #biti ne @yet #popisati @would #biti @awesome li #free #dodati
+#free [tuda](https://hosted.weblate.org/new-lang/am/am/)
+
+[![Localization
+#Stanje](https://hosted.weblate.org/widget/am/multi-auto.svg)](https://hosted.weblate.org/engage/am/)
 
 - [workflows](https://github.com/AM-community/workflows)
-- [checks](https://github.com/AM-community/checks)
+- [#pregled](https://github.com/AM-community/checks)
 - [github](https://github.com/AM-community/.github) (organization readme)
 
-Come and join our effort
-# ⭐ to make AppImages even better 🚀
+#Doći a #spajati #naš #napor
+# ⭐ #na #kov AppImages @even @better 🚀
 
-### To check development, fill issues, pull requests or discussions please use
+### #Na #pregled #razvoj, #ispuniti #tema, @pull #zamolba ili #diskusija @please #uporaba
 
 # [monorepo](https://github.com/AM-community/monorepo)
-(Storing translated binary .mo files thanks to git-lfs installed in this repo)
+(@Storing #prevoditi binary .mo #kartoteka @thanks to git-lfs @install @in @this
+repo)
 
-From here is everything else automagicaly updated
+@From here @i @everything @else automagicaly #poboljšati
 
-We got a :star: from [@Eloitor](https://github.com/Eloitor)
+#Free #dobiti @a :#zvijezda: @from [@Eloitor](https://github.com/Eloitor)
 
-We got a :star: from [@zen0bit](https://github.com/zen0bit)
+#Free #dobiti @a :#zvijezda: @from [@zen0bit](https://github.com/zen0bit)
 
-We got a :star: from [@ivan-hc](https://github.com/ivan-hc)
+#Free #dobiti @a :#zvijezda: @from [@iv@a-hc](https://github.com/ivan-hc)
 
-We got a :star: from [@Ranamom](https://github.com/Ranamom)
+#Free #dobiti @a :#zvijezda: @from [@Ranamom](https://github.com/Ranamom)
