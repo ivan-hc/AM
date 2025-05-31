@@ -1,50 +1,47 @@
-Show in [Czech](README-cs.md), [English](README.md), [German](README-de.md),
-[Spanish](README-es.md), [Italian](README-it.md), [Russian](README-ru.md) or
-[Serbian](README-sr.md) language
+[Чешский](README-cs.md), [English](README.md), [немецкий](README-de.md),
+[испанский](README-es.md), [итальянский](README-it.md), [русский]{6 or или
+[сербский](README-sr.md)
 
-# This is main development repository
+# Это основной репозиторий развития
 
-Everything will happen in this repo
+Все будет в этом репо
 
-And will be automaticaly synced to individual repositories under this
-organization
+И будет автоматически синхронизирован с отдельными репозиториями в рамках этой
+организации
 
 - [AM](https://github.com/AM-community/am)
-- [localization](https://github.com/AM-community/localization)
+- [локализация](https://github.com/AM-community/localization)
 
-🦉 Localization files 🦉
+🦉 Файлы локализации 🦉
 
-For [AM](https://github.com/ivan-hc/AM) project
-# For now in testing mode
-Come and help us translate AM to *your* language
+Для проекта [AM](https://github.com/ivan-hc/AM)
+# На данный момент в режиме тестирования
+Приходите и помогите нам перевести AM на * ваш * язык
 
-[![Localization
-State](https://hosted.weblate.org/widget/am/am/open-graph.png)](https://hosted.weblate.org/engage/am/)
+[
 
-If your language isn't yet listed would be awesome if you add it
-[here](https://hosted.weblate.org/new-lang/am/am/)
+Если ваш язык еще не указан, было бы круто, если бы вы добавили его [здесь]{1
 
-[![Localization
-State](https://hosted.weblate.org/widget/am/multi-auto.svg)](https://hosted.weblate.org/engage/am/)
+[
 
-- [workflows](https://github.com/AM-community/workflows)
-- [checks](https://github.com/AM-community/checks)
-- [github](https://github.com/AM-community/.github) (organization readme)
+- [рабочие процессы](https://github.com/AM-community/workflows)
+- [проверки](https://github.com/AM-community/checks)
+- [гитуб](https://github.com/AM-community/.github) (организация считывается)
 
-Come and join our effort
-# ⭐ to make AppImages even better 🚀
+Приходите и присоединяйтесь к нашим усилиям
+# ⭐ чтобы сделать приложения еще лучше 🚀
 
-### To check development, fill issues, pull requests or discussions please use
+### Чтобы проверить разработку, заполнить вопросы, вытащить запросы или обсуждения, пожалуйста, используйте
 
 # [monorepo](https://github.com/AM-community/monorepo)
-(Storing translated binary .mo files thanks to git-lfs installed in this repo)
+(Сторинг переведенных .mo-файлов благодаря git-lfs, установленным в этой репо)
 
-From here is everything else automagicaly updated
+Отсюда все остальное автоволшебство обновляется
 
-We got a :star: from [@Eloitor](https://github.com/Eloitor)
+Мы получили:star: от [@Eloitor](https://github.com/Eloitor)
 
-We got a :star: from [@zen0bit](https://github.com/zen0bit)
+Мы получили :star: от [@zen0bit]{1
 
-We got a :star: from [@ivan-hc](https://github.com/ivan-hc)
+Мы получили:star: от [@ivan-hc](https://github.com/ivan-hc)
 
-We got a :star: from [@Ranamom](https://github.com/Ranamom)
+Мы получили :star: от [@Ranamom]{1
