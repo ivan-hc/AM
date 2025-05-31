@@ -1,5 +1,6 @@
-Show in [cs](README-cs.md) [de](README-de.md) [en](README.md) [es](README-es.md)
-[it](README-it.md) [ru](README-ru.md) [sr](README-sr.md) language
+Show in [Czech](README-cs.md) [English](README.md) [German](README-de.md)
+[Spanish](README-es.md) [Italian](README-it.md) [Russian](README-ru.md)
+[Serbian](README-sr.md) language
 
 # This is main development repository
 
