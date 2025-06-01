@@ -2,7 +2,7 @@
 
 [ -f ./APP-MANAGER ] && AMVERSION=$(grep "^AMVERSION=" APP-MANAGER | tr '"' '\n' | grep "^[0-9]") || AMVERSION=$(am -v)
 
-mkdir -p translations && rm -f translations/*
+mkdir -p translations && rm -f translations/source.*
 
 cat <<-HEREDOC >> translations/source.pot
 # File with translation for AM
