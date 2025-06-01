@@ -325,12 +325,12 @@ In the example, "AM" in Italian, Czech and Serbian
 
 https://github.com/user-attachments/assets/a18f48b0-f389-4e94-a576-0031354d3cd5
 
-***To get source files needed to submit new translations or to improve the existing ones, see "[translations/README.md](translations/README.md)"***
+### See "[translations/README.md](translations/README.md)" for more information!
 
 ------------------------------------------------------------------------
 
-| [Back to "Main Index"](#main-index) |
-| - |
+| [How to translate "AM"](translations/README.md) | [Back to "Main Index"](#main-index) |
+| - | - |
 
 ------------------------------------------------------------------------
 ## How to update all programs, for real!
