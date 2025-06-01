@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-AMVERSION=$(am -v)
+[ -f ./APP-MANAGER ] && AMVERSION=$(grep "^AMVERSION=" APP-MANAGER | tr '"' '\n' | grep "^[0-9]") || AMVERSION=$(am -v)
 
-mkdir -p translations
+mkdir -p translations && rm -f translations/*
 
 cat <<-HEREDOC >> translations/source.pot
 # File with translation for AM
@@ -13,8 +13,8 @@ msgstr ""
 "Report-Msgid-Bugs-To: https://github.com/ivan-hc/AM\n"
 "POT-Creation-Date: $(date +"%Y-%m-%d")\n"
 "PO-Revision-Date: $(date +"%Y-%m-%d")\n"
-"Last-Translator: ${TRANSLATOR_NAME} <${TRANSLATOR_EMAIL}>\n"
-"Language-Team: ${LANGUAGE} <LL@li.org>\n"
+"Last-Translator: John Doe <john.doe@example.com>\n"
+"Language-Team: English <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
