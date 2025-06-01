@@ -319,13 +319,13 @@ or if using AppMan
 ```
 appman translate
 ```
-The command accepts two-letter language codes (for example "it" for Italian, or "sr" for Serbian). In case the desired language is not in the database, it will default to English (code "en").
+The command accepts reliable language codes (for example "it" for Italian, or "sr" for Serbian). In case the desired language is not in the database, it will default to English (code "en").
 
 In the example, "AM" in Italian, Czech and Serbian
 
 https://github.com/user-attachments/assets/a18f48b0-f389-4e94-a576-0031354d3cd5
 
-Visit the "translate" directory of this repository to get source files needed to submit new translations or to improve the existing ones.
+***To get source files needed to submit new translations or to improve the existing ones, see "[translations/README.md](translations/README.md)"***
 
 ------------------------------------------------------------------------
 
@@ -675,7 +675,7 @@ Generate a custom installation script. To test the scripts, use the "`am -i '/pa
 
 Download and set one or more language packs (if available), set "am" to English (default), your language or other languages.
  
-Visit the "translations" direcotory of this repository to get source files needed to submit new translations or to improve the existing ones.
+See **[translations/README.md](translations/README.md)** for more information.
 
 ------------------------------------------------------------------------
 ### `unhide`
