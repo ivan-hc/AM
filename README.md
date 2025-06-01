@@ -325,7 +325,7 @@ In the example, "AM" in Italian, Czech and Serbian
 
 https://github.com/user-attachments/assets/a18f48b0-f389-4e94-a576-0031354d3cd5
 
-You can add and improve languages ​​by visiting https://github.com/AM-community/localization
+Visit the "translate" directory of this repository to get source files needed to submit new translations or to improve the existing ones.
 
 ------------------------------------------------------------------------
 
@@ -675,7 +675,7 @@ Generate a custom installation script. To test the scripts, use the "`am -i '/pa
 
 Download and set one or more language packs (if available), set "am" to English (default), your language or other languages.
  
-Visit https://github.com/AM-community/localization to learn more on how to submit or improve translations.
+Visit the "translations" direcotory of this repository to get source files needed to submit new translations or to improve the existing ones.
 
 ------------------------------------------------------------------------
 ### `unhide`
@@ -988,11 +988,8 @@ Below you can access documentation pages for common issues and frequently asked 
 - *[pkg2appimage](https://github.com/AppImage/pkg2appimage), create AppImages on the fly from existing .deb packages*
 - *[repology](https://github.com/repology), the encyclopedia of all software versions*
 
-#### Community
-- *["AM" community project](https://github.com/AM-community), join out team!*
-
 #### Partner projects, i.e. those that actively contribute to this project
-- *[Toolpacks](https://github.com/pkgforge/soarpkgs), Largest Collection of Multi-Platform Pre-Compiled Static Binaries*
+- *[Soarpkgs](https://github.com/pkgforge/soarpkgs), Largest Collection of Multi-Platform Pre-Compiled Static Binaries*
 
 #### My other projects
 - *[AppImaGen](https://github.com/ivan-hc/AppImaGen), easily create AppImages from Ubuntu PPAs or Debian using pkg2appimage and appimagetool*
