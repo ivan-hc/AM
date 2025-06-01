@@ -37,3 +37,5 @@ AMVERSION=$(am -v)
 msguniq translations/source.pot -o translations/source.po
 
 msgcat --output-file=translations/source.pot --unique --indent --no-wrap translations/source.po
+
+sed -i 's# /opt/am/# am/#g' translations/source*
