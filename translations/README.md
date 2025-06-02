@@ -4,29 +4,32 @@ Here you can download the files needed to translate or improve existing translat
 
 -----------------------------
 
+- [Glossary](#glossary)
 - [How does "AM" translate into my language?](#how-does-am-translate-into-my-language)
 - [Which file do I need to download to add a translation?](#which-file-do-i-need-to-download-to-add-a-translation)
 - [Which file should I download to improve an existing translation?](#which-file-should-i-download-to-improve-an-existing-translation)
 - [Which programs to use?](#which-programs-to-use)
 - [How to test a language](#how-to-test-a-language)
 - [Valid language codes](#valid-language-codes)
-- [How to add or edit an existing language](#how-to-add-or-edit-an-existing-language)
+- [How to add a language](#how-to-add-a-language)
 
 -----------------------------
 
-Let's proceed in order, the translation files available here are all based on [source.po](source.po)
+## Glossary
 
-All you have to do is to put your .po file in the [po-files](po-files) directory, the Github Actions workflow named "[Language Manager](../.github/workflows/language-updater.yml)" will do the rest.
+Let's proceed in order, all translation files are based on [source.po](source.po), available in this place.
 
-Name your .po file as `$country_code.po`, where `$county_code` is the identifier you find before the dot, in `echo "$LANG`, for example "it" for Italian or "sr" for Serbian.
+In this guide we will use often the following variables to explain the steps:
+- `$county_code` is the identifier you find before the dot, in `echo "$LANG`, for example "it" for Italian or "sr" for Serbian (jump to the list "[Valid language codes](#valid-language-codes)")
+- "`$DATADIR`" is your "`${XDG_DATA_HOME:-$HOME/.local/share}`", also known as just `~/.local/share` in almost all configurations
 
-NOTE, use only valid language codes for this, please see "[Valid language codes](#valid-language-codes)" for more informations.
+Keep these details in mind to better understand the next paragraphs.
 
 -----------------------------
 
 ## How does "AM" translate into my language?
 
-Where "`$DATADIR`" is your "`${XDG_DATA_HOME:-$HOME/.local/share}`", "AM" (version 9.8 or bigger) does this when you run an option at first start:
+"AM" (version 9.8 or bigger) does this when you run an option at first start:
 1. checks if a "`$DATADIR/AM/locale`" file exists
    a) if not empty, sets `$LANGUAGE` with the value inside it
    b) if empty or not available, checks your `$country_code`
@@ -138,11 +141,13 @@ Setting an invalid value will set AM/AppMan to "en", i.e. English (standard).
 
 -----------------------------
 
-## How to add or edit an existing language
+## How to add a language
 
-Just upload the .po file to the "translations/po-files" directory. Nothing else.
+All you have to do is to put your `$country_code.po` file in the [po-files](po-files) directory of this repository.
 
-The automatic workflow in Github Actions will do the rest.
+The Github Actions workflow named "[Language Manager](../.github/workflows/language-updater.yml)" will do the rest, including creating the "am.mo" file for your language in less than one minute.
+
+You will be able to use your country code by running `am translate $country_code` or `appman translate $country_code` in few minutes, depending on github.com times.
 
 ------------------------------------------------------------------------
 
