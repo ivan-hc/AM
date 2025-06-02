@@ -6,7 +6,7 @@ Here you can download the files needed to translate or improve existing translat
 
 - [How does "AM" translate into my language?](#how-does-am-translate-into-my-language)
 - [Which file do I need to download to add a translation?](#which-file-do-i-need-to-download-to-add-a-translation)
-- [Which file do I need to download to add a translation?](#which-file-do-i-need-to-download-to-add-a-translation)
+- [Which file should I download to improve an existing translation?](#which-file-should-i-download-to-improve-an-existing-translation)
 - [Which programs to use?](#which-programs-to-use)
 - [How to test a language](#how-to-test-a-language)
 - [Valid language codes](#valid-language-codes)
@@ -56,7 +56,7 @@ Download the [source.po](source.po) file.
 
 -----------------------------
 
-#### Which file do I need to download to add a translation?
+#### Which file should I download to improve an existing translation?
 
 Check your `$country_code` (see above) and download the `$country_code.po` file from the [translations/po-files](translations/po-files) directory of this repository.
 
