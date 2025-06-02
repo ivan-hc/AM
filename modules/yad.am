@@ -5,23 +5,38 @@
 # THIS MODULE PROVIDES ADDITIONAL GRAPHICAL USER INTERFACE THANKS TO YAD #
 ##########################################################################
 
-progname="yadam"
-
 # Check dependencies
 check_yad() {
   if ! command -v yad >/dev/null 2>&1; then
-    echo $"ERROR! yad is missing! Install it..."
+    echo $"ERROR! Sorry, I can't work without yad installed, exiting."
     exit 1
+  elif [ ! -f /usr/share/noto-emoji/NotoColoremoji.ttf ]; then
+    echo $"WARNING! To see the icons you will need to install Google Noto Emoji Fonts"
+    echo $"Note: The package name 'noto-fonts-emoji' may be different depending on your distribution."
+    echo $"Look here: https://repology.org/project/fonts%3Anoto-emoji/versions"
   fi
 }
 check_yad
 
+progname="yadam"
+LOGO="/home/anon/Downloads/amlogo.png"
+# Common yad options
+
+if [ -z $DEBUG ]; then
+  YAD_OPTIONS="--window-icon=$LOGO"
+else # --image-path=PATH
+	echo $"Running in DEBUG mode!"
+  YAD_OPTIONS="--window-icon=$LOGO"
+  YAD_OPTIONS+=" --always-print-result"
+fi
+
 # Show info about GUI
 about_gui() {
   yad --about \
+   --title=$"About $progname" \
+   --image="$LOGO" \
    --pname="$progname" \
-   --image="" \
-   --pversion="0.05 Alpha" \
+   --pversion="0.06 Alpha" \
    --copyright=" 2025, zenobit" \
    --comments=$"Testing Alpha release
 
@@ -36,8 +51,8 @@ https://github.com/ivan-hc/am
 GUI:" \
    --license="GPL3" \
    --authors="zenobit <osowoso@disroot.org>" \
-   --website="https://github.com/osowoso/am/tree/yad" \
-   --website-label="repo"
+   --website="https://github.com/am-community/monorepo" \
+   --website-label="on GitHub"
 }
 
 ################################################################################################################################################################
@@ -106,19 +121,20 @@ list_installed_for_removing() {
   list_installed
   # shellcheck disable=SC2086
   yad --list \
+   --title=$"List installed for removing" \
    --width=820 \
    --height=800 \
-   --column app \
-   --column version \
-   --column type \
-   --column size \
+   --column $"app" \
+   --column $"version" \
+   --column $"type" \
+   --column $"size" \
    --column iB $APPSLIST | awk -F '|' '{print $1}' >"$GUIcacheDIR/am-toremove"
   if [ -s "$GUIcacheDIR/am-toremove" ]; then
     yad --image dialog-question \
-     --title Alert \
+     --title $"Alert" \
      --button=yes:0 \
      --button=no:1 \
-     --text "Remove $(<"$GUIcacheDIR/am-toremove")?" && am_remove $(<"$GUIcacheDIR/am-toremove")
+     --text $"Remove\" $(<"$GUIcacheDIR/am-toremove")?" && am_remove $(<"$GUIcacheDIR/am-toremove")
   fi
 }
 
@@ -136,6 +152,8 @@ DEBUGdefault='FALSE'
 install_app() {
   # shellcheck disable=SC2086
   yad --form \
+   --title=$"Install application (with options)" \
+    --always-print-result \
    --separator=' ' \
    --columns=2 \
    --focus-field=17 \
@@ -158,34 +176,36 @@ install_app() {
    --field=$"!Choose app to install":CE \
    --align=left $INSTALLABLE_COMPLETION | awk -F '|' '{print $1}' >"$GUIcacheDIR/am-toinstall"
   InstallCommand="-i"
-  if [[ $(awk '{print $1}' "$GUIcacheDIR/am-toinstall") == 'TRUE' ]]; then
-    InstallCommand+='a'
-  fi
-  if [[ $(awk '{print $2}' "$GUIcacheDIR/am-toinstall") == 'TRUE' ]]; then
-    InstallCommand+=' --soarpkg'
-  fi
-  if [[ $(awk '{print $3}' "$GUIcacheDIR/am-toinstall") == 'TRUE' ]]; then
-    InstallCommand+=' --toolpack'
-  fi
-  if [[ $(awk '{print $4}' "$GUIcacheDIR/am-toinstall") == 'TRUE' ]]; then
-    InstallCommand+=' --sandbox'
-  fi
-  if [[ $(awk '{print $5}' "$GUIcacheDIR/am-toinstall") == 'TRUE' ]]; then
-    InstallCommand+=' --user'
-  fi
-  if [[ $(awk '{print $6}' "$GUIcacheDIR/am-toinstall") == 'TRUE' ]]; then
-    InstallCommand+=' --force-latest'
-  fi
-  if [[ $(awk '{print $7}' "$GUIcacheDIR/am-toinstall") == 'TRUE' ]]; then
-    InstallCommand+=' --icons'
-  fi
-  if [[ $(awk '{print $8}' "$GUIcacheDIR/am-toinstall") == 'TRUE' ]]; then
-    InstallCommand+=' --debug'
-  fi
   if command -v $(awk '{print $9}' "$GUIcacheDIR/am-toinstall" >> /dev/null); then
-    # shellcheck disable=SC2046,2086
-    printf $"RUNNING: %s %s %s" "$AMCLI" "${InstallCommand}" $(awk '{print $9}' $GUIcacheDIR/am-toinstall)
-    "$AMCLI" ${InstallCommand} $(awk '{print $9}' "$GUIcacheDIR/am-toinstall") && list_installed
+		if [[ $(awk '{print $1}' "$GUIcacheDIR/am-toinstall") == 'TRUE' ]]; then
+			InstallCommand+='a'
+		fi
+		if [[ $(awk '{print $2}' "$GUIcacheDIR/am-toinstall") == 'TRUE' ]]; then
+			InstallCommand+=' --soarpkg'
+		fi
+		if [[ $(awk '{print $3}' "$GUIcacheDIR/am-toinstall") == 'TRUE' ]]; then
+			InstallCommand+=' --toolpack'
+		fi
+		if [[ $(awk '{print $4}' "$GUIcacheDIR/am-toinstall") == 'TRUE' ]]; then
+			InstallCommand+=' --sandbox'
+		fi
+		if [[ $(awk '{print $5}' "$GUIcacheDIR/am-toinstall") == 'TRUE' ]]; then
+			InstallCommand+=' --user'
+		fi
+		if [[ $(awk '{print $6}' "$GUIcacheDIR/am-toinstall") == 'TRUE' ]]; then
+			InstallCommand+=' --force-latest'
+		fi
+		if [[ $(awk '{print $7}' "$GUIcacheDIR/am-toinstall") == 'TRUE' ]]; then
+			InstallCommand+=' --icons'
+		fi
+		if [[ $(awk '{print $8}' "$GUIcacheDIR/am-toinstall") == 'TRUE' ]]; then
+			InstallCommand+=' --debug'
+		fi
+    if [ -n $(awk '{print $9}' "$GUIcacheDIR/am-toinstall") ]; then
+			"$AMCLI" ${InstallCommand} $(awk '{print $9}' "$GUIcacheDIR/am-toinstall") 2>/dev/null && list_installed
+		fi
+	else
+		echo $"WARNING! No application has been selected for installation"
   fi
 }
 
@@ -199,14 +219,15 @@ install_apps() {
     args+=("FALSE" "$name" "$desc") # Add arguments to fields
   done <"$GUIcacheDIR/available-list"
   yad --list \
+   --title=$"Install application(s) (with about)" \
    --width=750 \
    --height=800 \
    --checklist \
    --search-column=2 \
    --tooltip-column=3 \
-   --column install \
-   --column app \
-   --column about "${args[@]}" >"$GUIcacheDIR/am-toinstall"
+   --column $"install" \
+   --column $"app" \
+   --column $"about" "${args[@]}" >"$GUIcacheDIR/am-toinstall"
   if [ -s "$GUIcacheDIR/am-toinstall" ]; then
     # shellcheck disable=SC2046
     "$AMCLI" -i $(awk -F '|' '{print $2}' "$GUIcacheDIR/am-toinstall") && list_installed
@@ -217,6 +238,7 @@ install_apps() {
 remove_apps() {
   # shellcheck disable=SC2086
   yad --list \
+   --title=$"Remove application(s)" \
    --checklist \
    --width=740 \
    --height=800 \
@@ -227,12 +249,14 @@ remove_apps() {
      --title Alert \
      --button=yes:0 \
      --button=no:1 \
-     --text "Remove $(<"$GUIcacheDIR/am-toremove")?" && am_remove $(<"$GUIcacheDIR/am-toremove") && list_installed
+     --text $"Remove\" $(<"$GUIcacheDIR/am-toremove")?" && am_remove $(<"$GUIcacheDIR/am-toremove") && list_installed
   fi
 }
 
 # Export functions and variables (Needed for YAD to work)
 export progname
+export LOGO
+export YAD_OPTIONS
 export INSTALLABLE
 export INSTALLABLE_COMPLETION
 export APPSLIST
@@ -257,31 +281,31 @@ export -f about_gui
 export -f list_installed
 
 # Show main menu
-if [ $(am -f --less | wc -l) -gt 2 ]; then
+if [ $("$AMCLI" -f --less | wc -l) -gt 2 ]; then
   yad --form \
-   --title="AM GUI" \
+   --title=$"AppMan Graphical User Interface" \
    --align=center \
    --separator=' ' \
    --cycle-read \
    --columns=3 \
-   --field="AM:$(am -f --less | head -1)":LBL "" \
-   --field="AppMan:$(am -f --less | tail -1)":LBL "" \
+   --field="AM:$("$AMCLI" -f --less | head -1)":LBL "" \
+   --field="AppMan:$("$AMCLI" -f --less | tail -1)":LBL "" \
    --field=" ":LBL "" \
    --field=$"📥 Install apps!!Install more apps":FBTN "bash -c install_apps" \
    --field=$"📥 Install!!Install one app":FBTN "bash -c install_app" \
    --field=" ":LBL "" \
    --field=$"📋 Installed!!List installed Apps and remove App":FBTN "bash -c list_installed_for_removing" \
    --field=$"🗑️ Remove!!Uninstall App(s)":FBTN "bash -c remove_apps" \
-   --button=$"About!ℹ️!Info about GUI":"bash -c about_gui" \
+   --button=$"About!$LOGO!Info about GUI":"bash -c about_gui" \
    --button=$"yad-quit!!Exit GUI"
 else
   yad --form \
-   --title="AM GUI" \
+   --title=$"AM Graphical User Interface" \
    --align=center \
    --separator=' ' \
    --cycle-read \
    --columns=3 \
-   --field="AM:$(am -f --less | head -1)":LBL "" \
+   --field="AM:$("$AMCLI" -f --less | head -1)":LBL "" \
    --field=" ":LBL "" \
    --field=" ":LBL "" \
    --field=$"📥 Install apps!!Install more apps":FBTN "bash -c install_apps" \
@@ -289,7 +313,7 @@ else
    --field=" ":LBL "" \
    --field=$"📋 Installed!!List installed Apps and remove App":FBTN "bash -c list_installed_for_removing" \
    --field=$"🗑️ Remove!!Uninstall App(s)":FBTN "bash -c remove_apps" \
-   --button=$"About!ℹ️!Info about GUI":"bash -c about_gui" \
+   --button=$"About!$LOGO!Info about GUI":"bash -c about_gui" \
    --button=$"yad-quit!!Exit GUI"
 fi
 exit 0
