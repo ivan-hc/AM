@@ -56,7 +56,7 @@ Download the [source.po](source.po) file.
 
 -----------------------------
 
-#### Which file should I download to improve an existing translation?
+## Which file should I download to improve an existing translation?
 
 Check your `$country_code` (see above) and download the `$country_code.po` file from the [translations/po-files](translations/po-files) directory of this repository.
 
