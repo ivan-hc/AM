@@ -43,7 +43,7 @@ Now, let's see what files you need to work on translations, and what software to
 ...download the [source.pot](source.pot) file
 
 #### *To improve an existing translation...*
-...download any other .po file from this directory
+...download any other .po file from the translations/po-files directory
 
 -----------------------------
 
@@ -130,7 +130,7 @@ Setting an invalid value will set AM/AppMan to "en", i.e. English (standard).
 
 ## How to add or edit an existing language
 
-Just upload the .po file to the "translations" directory. Nothing else.
+Just upload the .po file to the "translations/po-files" directory. Nothing else.
 
 The automatic workflow in Github Actions will do the rest.
 
