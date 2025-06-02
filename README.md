@@ -320,7 +320,7 @@ or if using AppMan
 ```
 appman translate
 ```
-The command accepts two-letter language codes (for example "it" for Italian, or "sr" for Serbian). In case the desired language is not in the database, it will default to English (code "en").
+The command accepts reliable language codes (for example "it" for Italian, or "sr" for Serbian). In case the desired language is not in the database, it will default to English (code "en").
 
 In the example, "AM" in Italian, Czech and Serbian
 
@@ -993,7 +993,7 @@ Below you can access documentation pages for common issues and frequently asked 
 - *["AM" community project](https://github.com/AM-community), join out team!*
 
 #### Partner projects, i.e. those that actively contribute to this project
-- *[Toolpacks](https://github.com/pkgforge/soarpkgs), Largest Collection of Multi-Platform Pre-Compiled Static Binaries*
+- *[Soarpkgs](https://github.com/pkgforge/soarpkgs), Largest Collection of Multi-Platform Pre-Compiled Static Binaries*
 
 #### My other projects
 - *[AppImaGen](https://github.com/ivan-hc/AppImaGen), easily create AppImages from Ubuntu PPAs or Debian using pkg2appimage and appimagetool*
