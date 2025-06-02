@@ -4,23 +4,37 @@ Here you can download the files needed to translate or improve existing translat
 
 -----------------------------
 
-- [Files to download](#files-to-download)
-- [Which programs to use](#which-programs-to-use)
+- [How does "AM" translate into my language?](#how-does-am-translate-into-my-language)
+- [Which file do I need to download to add a translation?](#which-file-do-i-need-to-download-to-add-a-translation)
+- [Which file do I need to download to add a translation?](#which-file-do-i-need-to-download-to-add-a-translation)
+- [Which programs to use?](#which-programs-to-use)
 - [How to test a language](#how-to-test-a-language)
 - [Valid language codes](#valid-language-codes)
 - [How to add or edit an existing language](#how-to-add-or-edit-an-existing-language)
 
 -----------------------------
 
-Let's proceed in order, the translation files available here are all based on source.po
+Let's proceed in order, the translation files available here are all based on [source.po](source.po)
 
-To add files in this section, you must follow the following steps:
-- files with the .po extension go in the root of this directory
-- files with the .mo extension (those used by AM) must be inserted in the directory usr/share/locale/"$country_code"/LC_MESSAGES (where "$country_code" is the identifier you find before the dot, in `echo "$LANG`, for example "it" for Italian or "sr" for Serbian) of this repository
+All you have to do is to put your .po file in the [po-files](po-files) directory, the Github Actions workflow named "[Language Manager](../.github/workflows/language-updater.yml)" will do the rest.
 
-"AM" from version 9.8 downloads the localization file suitable for your system in the local directory ~/.local/share/locale.
+Name your .po file as `$country_code.po`, where `$county_code` is the identifier you find before the dot, in `echo "$LANG`, for example "it" for Italian or "sr" for Serbian.
 
-If this .mo file is not available in this directory, "AM" will be set in English by default. However, it will be possible to add or use a different code using the command
+NOTE, use only valid language codes for this, please see "[Valid language codes](#valid-language-codes)" for more informations.
+
+-----------------------------
+
+## How does "AM" translate into my language?
+
+Where "`$DATADIR`" is your "`${XDG_DATA_HOME:-$HOME/.local/share}`", "AM" (version 9.8 or bigger) does this when you run an option at first start:
+1. checks if a "`$DATADIR/AM/locale`" file exists
+   a) if not empty, sets `$LANGUAGE` with the value inside it
+   b) if empty or not available, checks your `$country_code`
+2. if your `$country_code` is a [valid one](#valid-language-codes), then "AM" will check if a `$country_code.mo` file exists in [this directory](usr/share/locale) of this repository
+   a) if your `$country_code` exists in here, it will be downloaded to your "`$DATADIR/locale`" directory, in a rootless way
+   b) if your `$country_code` does not exists here, "AM" will set the "en" (English) value into a "`$DATADIR/AM/locale`" file
+
+In case of "2b" (see above), it will be possible to add or use a different `$country_code` using the command
 ```
 am translate $country_code
 ```
@@ -30,35 +44,31 @@ appman translate $country_code
 ```
 if you use AppMan.
 
-Now, let's see what files you need to work on translations, and what software to use.
+Again, see "[Valid language codes](#valid-language-codes)" for more informations and check [this directory](usr/share/locale) to see the available ones.
+
+**NOTE, Make sure you are connected to the internet, failure to download a .mo file could be due to this.**
 
 -----------------------------
 
-## Files to download
+## Which file do I need to download to add a translation?
 
-#### *To start a new translation...*
-...download the [source.po](source.po) file
-
-#### *To synchronize an existing translation...*
-...download the [source.pot](source.pot) file
-
-#### *To improve an existing translation...*
-...download any other .po file from the translations/po-files directory
+Download the [source.po](source.po) file.
 
 -----------------------------
 
-## Which programs to use
+#### Which file do I need to download to add a translation?
 
-You can use an offline editor like [Poedit](https://poedit.net/download), available in almost all distribution repositories (see https://pkgs.org/download/poedit), or use an online one, just search for "online .po editor" in your reference search engine and you will find several results, even free ones.
+Check your `$country_code` (see above) and download the `$country_code.po` file from the [translations/po-files](translations/po-files) directory of this repository.
 
-#### *Advantages of an offline editor*
-- You can use it locally and without an internet connection.
+-----------------------------
 
-#### *Advantages of an online editor*
-- Does not take up disk space
-- Allows you to use your browser extensions, such as this one, to right-click and translate selected text
+## Which programs to use?
 
-Personally, I alternate between the two.
+You can use an offline editor like [Poedit](https://poedit.net/download), available in almost all distribution repositories (see https://pkgs.org/download/poedit)
+
+Alternatively, use an online one: just search for "online .po editor" in your reference search engine and you will find several results, even free ones. These does not take up disk space and allows you to use your browser extensions, such as this one, to right-click and translate selected text (like [this one](https://github.com/FilipePS/Traduzir-paginas-web) for Firefox-based browsers).
+
+Personally, I alternate between Poedit and online editors like [this one](https://localise.biz/free/poeditor), depending on my needs.
 
 -----------------------------
 
