@@ -81,7 +81,8 @@ Personally, I alternate between Poedit and online editors like [this one](https:
 -----------------------------
 
 ## How to test a language
-Suppose we have a test.mo file for the language "jp" (Japanese), we assume that the directory "`$DATADIR/AM`" exists, as it is "core" and automatically created when you first start AM or AppMan:
+
+**Suppose we have a test.mo file for the language "jp" (Japanese):**
 
 1. We set a value for `$DATADIR`, which is usually ~/.local/share, but may vary on other systems and configurations. To be sure not to make a mistake, execute the following command
 ```
@@ -104,7 +105,7 @@ ln -sf "$DATADIR/locale/jp/LC_MESSAGES/am.mo" "$DATADIR/locale/jp/LC_MESSAGES/ap
 
 4. Set AM's language to "jp" manually
 ```
-echo "jp" > "$DATADIR/AM/locale"
+mkdir -p "$DATADIR/AM" && echo "jp" > "$DATADIR/AM/locale"
 ```
 
 5. Use AM/AppMan to test the changes.
