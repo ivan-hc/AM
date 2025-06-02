@@ -31,10 +31,15 @@ Keep these details in mind to better understand the next paragraphs.
 
 "AM" (version 9.8 or bigger) does this when you run an option at first start:
 1. checks if a "`$DATADIR/AM/locale`" file exists
+
    a) if not empty, sets `$LANGUAGE` with the value inside it
+
    b) if empty or not available, checks your `$country_code`
+
 2. if your `$country_code` is a [valid one](#valid-language-codes), then "AM" will check if a `$country_code.mo` file exists in [this directory](usr/share/locale) of this repository
+
    a) if your `$country_code` exists in here, it will be downloaded to your "`$DATADIR/locale`" directory, in a rootless way
+
    b) if your `$country_code` does not exists here, "AM" will set the "en" (English) value into a "`$DATADIR/AM/locale`" file
 
 In case of "2b" (see above), it will be possible to add or use a different `$country_code` using the command
