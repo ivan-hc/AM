@@ -6,6 +6,7 @@ Here you can download the files needed to translate or improve existing translat
 
 - [Files to download](#files-to-download)
 - [Which programs to use](#which-programs-to-use)
+- [How to add or edit an existing language](#how-to-add-or-edit-an-existing-language)
 
 -----------------------------
 
@@ -56,3 +57,18 @@ You can use an offline editor like [Poedit](https://poedit.net/download), availa
 - Allows you to use your browser extensions, such as this one, to right-click and translate selected text
 
 Personally, I alternate between the two.
+
+-----------------------------
+
+## How to add or edit an existing language
+
+Just upload the .po file to the "translations" directory. Nothing else.
+
+The automatic workflow in Github Actions will do the rest.
+
+------------------------------------------------------------------------
+
+| [Back to "Main Index"](../../README.md#main-index) |
+| - |
+
+------------------------------------------------------------------------
