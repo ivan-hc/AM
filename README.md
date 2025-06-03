@@ -326,12 +326,12 @@ In the example, "AM" in Italian, Czech and Serbian
 
 https://github.com/user-attachments/assets/a18f48b0-f389-4e94-a576-0031354d3cd5
 
-You can add and improve languages ​​by visiting https://github.com/AM-community/localization
+### See "[translations/README.md](translations/README.md)" for more information!
 
 ------------------------------------------------------------------------
 
-| [Back to "Main Index"](#main-index) |
-| - |
+| [How to translate "AM"](translations/README.md) | [Back to "Main Index"](#main-index) |
+| - | - |
 
 ------------------------------------------------------------------------
 ## How to update all programs, for real!
@@ -676,7 +676,7 @@ Generate a custom installation script. To test the scripts, use the "`am -i '/pa
 
 Download and set one or more language packs (if available), set "am" to English (default), your language or other languages.
  
-Visit https://github.com/AM-community/localization to learn more on how to submit or improve translations.
+See **[translations/README.md](translations/README.md)** for more information.
 
 ------------------------------------------------------------------------
 ### `unhide`
