@@ -1,46 +1,57 @@
-# This is main development repository
+# Contributing to "AM"
+First off, thanks for taking the time to contribute!
 
-Everything will happen in this repo
+-----------------------------------------------
 
-And will be automaticaly synced to individual repositories under this
-organization
+## Found a Problem?
+Before reporting a problem, be it a bug, design or others, we assume you have made sure that:
+1. [the README.md](https://github.com/ivan-hc/AM/blob/main/README.md) does not cover your problem
+2. the problem has not been reported in the [issue tracker](https://github.com/ivan-hc/AM/issues)
+3. the problem is not related to the installed apps but to the [installation scripts](https://github.com/ivan-hc/AM/tree/main/programs)
+4. the "AM"/"AppMan" command line interface [is updated to the latest version](https://github.com/ivan-hc/AM/releases/latest)
 
-- [AM](https://github.com/AM-community/am)
-- [localization](https://github.com/AM-community/localization)
+If all apply, then please consider opening a [new issue](https://github.com/ivan-hc/AM/issues).
 
-🦉 Localization files 🦉
+-----------------------------------------------
 
-For [AM](https://github.com/ivan-hc/AM) project
-# For now in testing mode
-Come and help us translate AM to *your* language
+## Want to submit a new app?
+Use the option `-t` to create the installation script:
+```
+am -t my-appname
+```
+where `$XDG_DESKTOP_DIR` is your Desktop directory and `$ARCH` is your system architecture (for example x86_64 or i686), the "am-scripts" directory will contain the installation scripts in "$ARCH". Use the option `-i` to test the installation of the script:
+```
+am -i $XDG_DESKTOP_DIR/am-scripts/$ARCH/my-script
+```
+among the other stuff in the "am-scripts" directory created with the option `-t` you can see:
+- the "list" file, containing the lines to add to the list of available applications (the file "$ARCH-apps" available [here](https://github.com/ivan-hc/AM/tree/main/programs), **NOT the one named "$ARCH"-appimages**, the latter is managed by the maintainer of this repository);
+- the directory bearing the name of our catalog, "[portable-linux-apps.github.io](https://portable-linux-apps.github.io)", its enough to drag/drop the content of this directory for a pull request on the dedicated [repo](https://github.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io).
 
-[![Localization
-State](https://hosted.weblate.org/widget/am/am/open-graph.png)](https://hosted.weblate.org/engage/am/)
+**NOTE: if you are not sure, submit your request at https://github.com/ivan-hc/AM/issues , we will try to provide all the above as soon as possible.**
 
-If your language isn't yet listed would be awesome if you add it
-[here](https://hosted.weblate.org/new-lang/am/am/)
+-----------------------------------------------
 
-[![Localization
-State](https://hosted.weblate.org/widget/am/multi-auto.svg)](https://hosted.weblate.org/engage/am/)
+## Want to Submit Code?
+You can submit code by:
+1. fork this repository
+2. install "AM" and "AppMan" using the guide at https://github.com/ivan-hc/AM#how-to-install-am
+3. submit a [pull request](https://github.com/ivan-hc/AM/pulls)
 
-- [workflows](https://github.com/AM-community/workflows)
-- [checks](https://github.com/AM-community/checks)
-- [github](https://github.com/AM-community/.github) (organization readme)
+-----------------------------------------------
 
-Come and join our effort
-# ⭐ to make AppImages even better 🚀
+## Want to contribute to the Development Branch and test newer features?
+Enter the developer mode using the command
+```
+am --devmode-enable
+```
+to go back to the main stable branch instead
+```
+am --devmode-disable
+```
+***NOTE, using the "dev" branch can cause serious risks to system stability. Use at your own risk.***
 
-### To check development, fill issues, pull requests or discussions please use
+-----------------------------------------------
 
-# [monorepo](https://github.com/AM-community/monorepo)
-(Storing translated binary .mo files thanks to git-lfs installed in this repo)
-
-From here is everything else automagicaly updated
-
-We got a :star: from [@Eloitor](https://github.com/Eloitor)
-
-We got a :star: from [@zen0bit](https://github.com/zen0bit)
-
-We got a :star: from [@ivan-hc](https://github.com/ivan-hc)
-
-We got a :star: from [@Ranamom](https://github.com/Ranamom)
+### Credits
+- [@nazdridoy](https://github.com/nazdridoy)
+- [@zen0bit](https://github.com/zen0bit)
