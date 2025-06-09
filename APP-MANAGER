@@ -7,8 +7,9 @@ AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
 
 # Determine the name of this script and its working directory
 export REALDIR="$PWD"
-DIR="$( cd "$( dirname "$0" )" && pwd )"
-CLI=$(basename "$0")
+DIR="$(cd "${0%/*}" && echo "$PWD")"
+CLI="${0##*/}"
+CLI_PATH="$(readlink -f "$0")"
 
 # Determine system architecture and current user
 ARCH="$(uname -m)"
@@ -16,10 +17,13 @@ ARCH="$(uname -m)"
 export ARCH
 
 # Fixes issue with less on bsd
-if uname | grep -q "BSD\|DragonFly\|DynFi\|FreeNAS\|helloSystem\|OPNsense\|pfSense\|TrueNAS\|XigmaNAS"; then
-	TERM=xterm-clear
-	export TERM
-fi
+case "$(uname)" in
+	*BSD*|*DragonFly*|*DynFi*|*FreeNAS*|*OPNsense*|\
+	*helloSystem*|*pfSense*|*TrueNAS*|*XigmaNAS*)
+		TERM=xterm-clear
+		export TERM
+		;;
+esac
 
 # XDG Variables
 export BINDIR="${XDG_BIN_HOME:-$HOME/.local/bin}"
@@ -273,10 +277,10 @@ _am() {
 }
 
 # DETERMINE WHEN TO USE "AM" OR "APPMAN"
-if [ "$(realpath "$0")" = "$(realpath /opt)/am/APP-MANAGER" ]; then
+if [ "$CLI_PATH" = "$(realpath /opt)/am/APP-MANAGER" ]; then
 	_am
 	mkdir -p "$MODULES_PATH" || exit 1
-elif [ "$(realpath "$0")" = "/usr/bin/am" ]; then
+elif [ "$CLI_PATH" = "/usr/bin/am" ]; then
 	_am
 	AMPATH="$AMCACHEDIR"
 	MODULES_PATH="/usr/lib/am/modules"
@@ -594,7 +598,7 @@ _completion_lists() {
 }
 
 # BASH, FISH AND ZSH COMPLETION
-if [ "$(realpath "$0")" != "/usr/bin/am" ]; then
+if [ "$CLI_PATH" != "/usr/bin/am" ]; then
 	completion_file="$DATADIR/bash-completion/completions/$AMCLI"
 	mkdir -p "$DATADIR/bash-completion/completions" || exit 1
 	if ! grep -o " $AMCLI$" "$completion_file" >/dev/null 2>&1; then
@@ -836,7 +840,7 @@ if [ "$AMCLI" = am ]; then
 	if [ -f "$APPMANCONFIG"/appman-mode ]; then
 		[ ! -f "$APPMANCONFIG"/appman-config ] && printf "%b\n" "$APPMAN_MSG"
 		_appman
-		AMCLIPATH="$(realpath "$0")"
+		AMCLIPATH="$CLI_PATH"
 	elif [ ! -w "$AMPATH" ]; then
 		read -r -p $" \"AM\" is read-only, want to use it in \"AppMan Mode\" (Y,n)? " yn
 		if echo "$yn" | grep -i '^n' >/dev/null 2>&1; then
@@ -921,7 +925,7 @@ _clean_launchers() {
 }
 
 _clean_old_modules() {
-	[ -z "$MODULES" ] && MODULES=$(sort "$(realpath "$0")" | tr '"' '\n' | grep "[a-z]\.am$" | uniq)
+	[ -z "$MODULES" ] && MODULES=$(sort "$CLI_PATH" | tr '"' '\n' | grep "[a-z]\.am$" | uniq)
 	[ -z "$MODULES_PATH" ] && exit 1
 	for m in "$MODULES_PATH"/*; do
 		if [[ "${MODULES}" != *"$(basename -- "$m")"* ]];then
@@ -1061,7 +1065,7 @@ _sync_amcli() {
 	_clean_amcachedir 1>/dev/null
 	cd "$AMCACHEDIR" || return 1
 	curl -Ls "$AMREPO"/APP-MANAGER > ./APP-MANAGER && chmod a+x ./APP-MANAGER
-	echo y | mv ./APP-MANAGER "$(realpath "$0")"
+	echo y | mv ./APP-MANAGER "$CLI_PATH"
 	NEW_AM_VERSION=$("$AMCLIPATH" -v)
 	if [ ! "$CURRENT_AM_VERSION" = "$NEW_AM_VERSION" ]; then
 		echo -ne $" A new release of \"$AMCLIUPPER\" is available, please wait...\r"
@@ -1080,7 +1084,7 @@ _use_sync() {
 	_sync_databases
 	_sync_locale
 	_sync_installation_scripts
-	if [ "$(realpath "$0")" != "/usr/bin/am" ] && [ "$AMSYNC" != 1 ]; then
+	if [ "$CLI_PATH" != "/usr/bin/am" ] && [ "$AMSYNC" != 1 ]; then
 		if [ "$CLI" = am ]; then
 			if [ -f "$APPMANCONFIG"/appman-mode ]; then
 				if [ -d "$(realpath /opt)/am/modules" ]; then
@@ -1410,7 +1414,7 @@ case "$1" in
 		_use_clean
 		;;
 	'devmode-disable'|'devmode-enable'|'--devmode-disable'|'--devmode-enable')
-		if [ "$(realpath "$0")" = "/usr/bin/am" ]; then
+		if [ "$CLI_PATH" = "/usr/bin/am" ]; then
 			echo $"This feature is disabled by your organization" | _fit
 		else
 			if [ "$1" = "--devmode-disable" ]; then
