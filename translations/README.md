@@ -52,7 +52,7 @@ appman translate $country_code
 ```
 if you use AppMan.
 
-Again, see "[Valid language codes](#valid-language-codes)" for more informations and check [this directory](usr/share/locale) to see the available ones.
+Again, see "[Valid language codes](#valid-language-codes)" for more information and check [this directory](usr/share/locale) to see the available ones.
 
 **NOTE, Make sure you are connected to the internet, failure to download a .mo file could be due to this.**
 
@@ -156,7 +156,7 @@ You will be able to use your country code by running `am translate $country_code
 
 ------------------------------------------------------------------------
 
-| [Back to "Main Index"](../../README.md#main-index) |
+| [Back to "Main Index"](../README.md#main-index) |
 | - |
 
 ------------------------------------------------------------------------
