@@ -12,9 +12,9 @@ AMCATALOGUEMARKDOWNS="${AMCATALOGUEMARKDOWNS:-https://portable-linux-apps.github
 
 _about_remove_extension() {
 	tparg=$(echo "$arg" | tr '.' '\n' | head -1)
-	try_extension=$(echo "$arg" | tr '.' '\n' | tail -1)
 	tp_extension=""
 	unavailable_argument=""
+	echo "$arg" | grep -q "\." && try_extension=$(echo "$arg" | tr '.' '\n' | tail -1) || try_extension=""
 	if [ -n "$try_extension" ]; then
 		if echo "$third_party_lists" | tr ' ' '\n' | grep -q "^$try_extension$" && [ -f "$AMDATADIR/$ARCH-$try_extension" ]; then
 			if ! grep -q "^◆ $tparg " "$AMDATADIR/$ARCH-$try_extension"; then
@@ -23,9 +23,16 @@ _about_remove_extension() {
 				tp_extension="$try_extension"
 			fi
 		fi
-		if echo "$ARGPATHS" | grep -q "/$tparg$"; then
-			argpath=$(echo "$ARGPATHS" | grep "/$tparg$")
-			[ -f "$argpath/.am-installer/$tparg.extra" ] && tp_extension="extra"
+		if [ "$try_extension" != extra ]; then
+			if ! echo "$third_party_lists" | tr ' ' '\n' | grep -q "^$try_extension$"; then
+				unavailable_argument="1"
+			fi
+		fi
+	fi
+	if echo "$ARGPATHS" | grep -q "/$tparg$"; then
+		argpath=$(echo "$ARGPATHS" | grep "/$tparg$")
+		if [ -f "$argpath/.am-installer/$tparg.extra" ]; then
+			tp_extension="extra"
 		fi
 	fi
 	if ! grep -q "^◆ $tparg " "$AMDATADIR"/"$ARCH"-* && ! echo "$ARGPATHS" | grep -q "/$tparg$"; then
@@ -77,19 +84,22 @@ _about_description_for_third_party() {
 	repo_source=""
 }
 
+_about_description_fit() {
+	fold -sw "$(("$(tput cols)"-"3"))" | sed 's/^ //g; s/^/ /g' | awk '!NF && !a++; NF {print;a=0}'  | sed '${/^$/d}; ${/^ $/d}'
+}
+
 _about_description() {
 	if curl -o /dev/null -sIf "$markdown_url"; then
 		markdown_page=$(curl -Ls "$markdown_url" | grep -v -- "^#\|^.*| \[Applications\|^.*| -\|^.*!\[")
-		echo "$markdown_page" | fold -sw 78 | sed 's/^ //g; s/^/ /g' | awk '!NF && !a++; NF {print;a=0}'
+		echo "$markdown_page" | _about_description_fit
 	elif grep -q "^◆ $package_name " "$AMDATADIR"/"$ARCH"-*; then
 		appname="$package_name"
-		_about_description_for_third_party | sed 's/^ //g; s/^/ /g' | awk '!NF && !a++; NF {print;a=0}'
+		_about_description_for_third_party | _about_description_fit
 	elif grep -q "^◆ $app_name " "$AMDATADIR"/"$ARCH"-*; then
 		appname="$app_name"
-		_about_description_for_third_party | sed 's/^ //g; s/^/ /g' | awk '!NF && !a++; NF {print;a=0}'
+		_about_description_for_third_party | _about_description_fit
 	elif [ "$tp_extension" = extra ]; then
-		app_name="$tparg.extra"
-		_about_description_for_third_party | sed 's/^ //g; s/^/ /g' | awk '!NF && !a++; NF {print;a=0}'
+		_about_description_for_third_party | _about_description_fit
 	else
 		printf $' "%s" IS NOT A VALID ARGUMENT\n' "$package_name"
 	fi
@@ -107,7 +117,7 @@ _about_page() {
 		if test -f "$argpath"/.am-installer/*; then
 			scriptname=$(basename -- "$(find "$argpath"/.am-installer/* | head -1)")
 			if [ "$app_name" != "$scriptname" ]; then
-				if [ "$tp_extension" != extra ]; then
+				if ! echo "$scriptname" | grep -q "\.extra$"; then
 					app_status="installed\033[0m, but replaced by ${Green}$scriptname\033[0m\n\n Note, run ${RED}$AMCLI -a $scriptname\033[0m instead"
 				fi
 				if [ "$package_name" = "$scriptname" ]; then
