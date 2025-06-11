@@ -11,25 +11,29 @@
 AMCATALOGUEMARKDOWNS="${AMCATALOGUEMARKDOWNS:-https://portable-linux-apps.github.io/apps}"
 
 _about_remove_extension() {
-	tparg=$(echo "$arg" | _remove_known_third_party_extensions | sed 's/.extra$//g')
+	tparg=$(echo "$arg" | tr '.' '\n' | head -1)
 	try_extension=$(echo "$arg" | tr '.' '\n' | tail -1)
-	if [ -f "$AMDATADIR/$ARCH-$try_extension" ]; then
-		if ! grep -q "^◆ $tparg " "$AMDATADIR/$ARCH-$try_extension"; then
-			tparg="$arg"
+	tp_extension=""
+	unavailable_argument=""
+	if [ -n "$try_extension" ]; then
+		if echo "$third_party_lists" | tr ' ' '\n' | grep -q "^$try_extension$" && [ -f "$AMDATADIR/$ARCH-$try_extension" ]; then
+			if ! grep -q "^◆ $tparg " "$AMDATADIR/$ARCH-$try_extension"; then
+				unavailable_argument="1"
+			else
+				tp_extension="$try_extension"
+			fi
+		fi
+		if echo "$ARGPATHS" | grep -q "/$tparg$"; then
+			argpath=$(echo "$ARGPATHS" | grep "/$tparg$")
+			[ -f "$argpath/.am-installer/$tparg.extra" ] && tp_extension="extra"
 		fi
 	fi
-}
-
-_about_check() {
-	! grep -q "^◆ $arg \|^◆ $tparg " "$AMDATADIR"/"$ARCH"-*
+	if ! grep -q "^◆ $tparg " "$AMDATADIR"/"$ARCH"-* && ! echo "$ARGPATHS" | grep -q "/$tparg$"; then
+		unavailable_argument="1"
+	fi
 }
 
 _about_description_for_third_party() {
-	if echo "$appname" | grep -q "\."; then
-		tp_extension=$(echo "$appname" | sed 's:.*\.::')
-	elif echo "$arg" | grep -q "\."; then
-		tp_extension=$(echo "$arg" | sed 's:.*\.::')
-	fi
 	if [ -n "$tp_extension" ]; then
 		if [ "$tp_extension" = extra ]; then
 			about_description="AppImage installed with the \"-e\" option, no description available."
@@ -83,6 +87,9 @@ _about_description() {
 	elif grep -q "^◆ $app_name " "$AMDATADIR"/"$ARCH"-*; then
 		appname="$app_name"
 		_about_description_for_third_party | sed 's/^ //g; s/^/ /g' | awk '!NF && !a++; NF {print;a=0}'
+	elif [ "$tp_extension" = extra ]; then
+		app_name="$tparg.extra"
+		_about_description_for_third_party | sed 's/^ //g; s/^/ /g' | awk '!NF && !a++; NF {print;a=0}'
 	else
 		printf $' "%s" IS NOT A VALID ARGUMENT\n' "$package_name"
 	fi
@@ -90,8 +97,7 @@ _about_description() {
 
 _about_page() {
 	package_name="$arg"
-	app_name=$(echo "$arg" | sed 's/-appimage//g' | _remove_known_third_party_extensions | sed 's/.extra$//g')
-	argpath=$(echo "$ARGPATHS" | grep "/$app_name$")
+	app_name="$tparg"
 	markdown_url="$AMCATALOGUEMARKDOWNS/${arg}.md"
 	printf " PACKAGE: %b%b\033[0m\n" "${Green}" "$package_name"
 	argpath=$(echo "$ARGPATHS" | grep "/$app_name$")
@@ -101,24 +107,30 @@ _about_page() {
 		if test -f "$argpath"/.am-installer/*; then
 			scriptname=$(basename -- "$(find "$argpath"/.am-installer/* | head -1)")
 			if [ "$app_name" != "$scriptname" ]; then
-				app_status="installed\033[0m, but replaced by ${Green}$scriptname\033[0m\n\n Note, run ${RED}$AMCLI -a $scriptname\033[0m instead"
+				if [ "$tp_extension" != extra ]; then
+					app_status="installed\033[0m, but replaced by ${Green}$scriptname\033[0m\n\n Note, run ${RED}$AMCLI -a $scriptname\033[0m instead"
+				fi
 				if [ "$package_name" = "$scriptname" ]; then
 					app_status="installed\033[0m, as ${Green}$app_name\033[0m"
 				fi
 			fi
-			if echo "$arg" | grep -q "\."; then
-				for tp_list in $third_party_lists; do
-					echo "$arg" | grep -q "\.$tp_list$" && tp_on="true"
-				done
-				[ -n "$tp_on" ] && [ ! -f "$argpath"/.am-installer/"$arg" ] && app_status="not installed\n"
-				tp_on=""
+			if [ -n "$tp_extension" ]; then
+				[ ! -f "$argpath/.am-installer/$tparg.$tp_extension" ] && app_status="not installed\n"
 			fi
 		fi
 	else
 		app_status="not installed\n"
 	fi
-	if echo "$arg" | grep -q -- "-appimage$" && ! test -f "$argpath"/.am-installer/"$arg"; then
-		app_status="not installed\n"
+	if echo "$arg" | grep -q -- "-appimage$"; then
+		try_arg=$(echo "$arg" | sed 's/-appimage$//g')
+		if echo "$ARGPATHS" | grep -q "/$try_arg$"; then
+			argpath=$(echo "$ARGPATHS" | grep "/$try_arg$")
+			if [ -f "$argpath/.am-installer/$try_arg-appimage" ]; then
+				app_status="installed\033[0m, as ${Green}$try_arg\033[0m"
+			else
+				app_status="not installed\n"
+			fi
+		fi
 	fi
 	# Determine if the referenced app is a metapackage or part of it
 	METAPACKAGES="kdegames kdeutils node platform-tools"
@@ -547,6 +559,7 @@ case "$1" in
 	'-a'|'about')
 		[ -z "$2" ] && echo $" USAGE: $AMCLI $1 [ARGUMENT]" && exit 1
 		_online_check
+		_completion_lists
 		_sync_third_party_lists
 		_determine_args
 		echo "$DIVIDING_LINE"
@@ -554,7 +567,7 @@ case "$1" in
 		entries="$(echo "$@" | cut -f2- -d ' ')" # Removes first argument
 		for arg in $entries; do
 			_about_remove_extension
-			if _about_check "$@"; then
+			if [ -n "$unavailable_argument" ]; then
 				printf $" ERROR: %b not found\033[0m\n" "${RED}\"$arg\""
 			else
 				_about_page "$arg"
