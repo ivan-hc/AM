@@ -1,616 +1,1840 @@
 #!/usr/bin/env bash
 
-AMVERSION="6.6.5-beta"
+AMVERSION="9.8"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
-AMBRANCH=$(basename "$AMREPO")
 
 # Determine the name of this script and its working directory
-DIR="$( cd "$( dirname "$0" )" && pwd )"
-CLI=$(basename "$0")
+export REALDIR="$PWD"
+DIR="$(cd "${0%/*}" && echo "$PWD")"
+CLI="${0##*/}"
+CLI_PATH="$(readlink -f "$0")"
 
 # Determine system architecture and current user
-arch="$HOSTTYPE"
-currentuser="$USER"
+ARCH="$(uname -m)"
+[ "$ARCH" = "amd64" ] && ARCH=x86_64
+export ARCH
 
-# Determine sytem package manager
-function _system_package_manager_check() {
-	if command -v dnf &> /dev/null; then
-		osPKGman="dnf"
-	elif command -v pacman &> /dev/null; then
-		osPKGman="pacman"
-	elif command -v emerge &> /dev/null; then
-		osPKGman="emerge"
-	elif command -v zypper &> /dev/null; then
-		osPKGman="zypper"
-	elif command -v apt-get &> /dev/null; then
-		osPKGman="apt-get"
-	elif command -v apk &> /dev/null; then
-		osPKGman="apk"
-	else
-		osPKGman=""
-	fi
-}
+# Fixes issue with less on bsd
+case "$(uname)" in
+	*BSD*|*DragonFly*|*DynFi*|*FreeNAS*|*OPNsense*|\
+	*helloSystem*|*pfSense*|*TrueNAS*|*XigmaNAS*)
+		TERM=xterm-clear
+		export TERM
+		;;
+esac
+
+# XDG Variables
+export BINDIR="${XDG_BIN_HOME:-$HOME/.local/bin}"
+export DATADIR="${XDG_DATA_HOME:-$HOME/.local/share}"
+export CONFIGDIR="${XDG_CONFIG_HOME:-$HOME/.config}"
+export CACHEDIR="${XDG_CACHE_HOME:-$HOME/.cache}"
+export APPMANCONFIG="$CONFIGDIR/appman"
+APPMANCONFIG="$CONFIGDIR/appman"
+SCRIPTDIR="${SCRIPTDIR:-$(xdg-user-dir DESKTOP 2>/dev/null)}"
+[ -d "$SCRIPTDIR" ] || SCRIPTDIR="$PWD"
+export SCRIPTDIR
 
 # Colors
-RED='\033[0;31m'; LightBlue='\033[1;34m'; Green='\033[0;32m'
+RED='\033[0;31m'
+Gold='\033[0;33m'
+Green='\033[0;32m'
+LightBlue='\033[1;34m'
+DIVIDING_LINE="-----------------------------------------------------------------------------"
+
+# Fit texts to an acceptable width
+_fit() {
+	command -v tput >/dev/null 2>&1 && fold -sw "$(("$(tput cols)"-"3"))" | sed 's/^/ /g' || fold -sw 77 | sed 's/^/ /g'
+}
+
+# DEVELOPER MODE
+[ -f "$DATADIR/AM/betatester" ] && AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/dev"
+
+# Branch and modues source
+AMBRANCH=$(basename "$AMREPO")
+MODULES_SOURCE="$AMREPO/modules"
+
+# Translations
+ISO_CODES="ab ace ach af ain ak am am_ET an ang ar as as_IN ast ay az az_AZ az_IR ba bal bar be be@latin ber be@tarask bg bi bn bn_BD bn_IN bo br brx bs byn ca ca@valencia ce cgg ch chr ckb cmn co crh cs csb cs_CZ cv cy da de de_CH de_DE de@hebrew dv dz ee el en en@arabic en_AU en@boldquot en_CA en@cyrillic en_GB en@greek en@hebrew en_NZ en@piglatin en@quot en@shaw en_US eo es es_AR es_CO es_ES es_EU es_MX et eu fa fa_IR ff fi fil fo fr fr_CA fr_FR frp fur fy ga gd gez gl gn gu gv ha haw he hi hne hr hsb ht hu hu_HU hy hy_AM hye hye_RU ia id id_ID ie ig io is it iu ja jam ka kab kg ki kk kl km kmr kn ko kok ks ks_IN ku ku_IQ kv kw kw_GB ky la lb lg li lo locale.alias lt ltg lv mai mg mhr mi mjw mk ml mn mo mr ms mt my na nah nan nap nb nb_NO nds ne nl nl_BE nl_NL nn no nso nv oc om or or_IN pa pap pa_PK pi pl pms ps pt pt_BR pt_PT qu quz ro rom ro_MD ru rue ru_UA rw sa sat sc sd se shn si sk sl sm sma sn so son sq sr sr@ije sr@ijekavian sr@ijekavianlatin sr@latin sr@Latn sr_RS sr_RS@latin sv sw szl ta ta_LK te tet tg th ti tig tk tl tr tt tt@iqtelif tzm ug uk ur ur_PK uz uz@cyrillic uz@Latn ve vec vi wa wae wal wo xh yi yo zgh zh_CN zh_Hans zh_Hant zh_HK zh_SG zh_TW zu"
+_check_valid_iso_codes() {
+	for lang in $ISO_CODES; do
+		if echo "$LANG" | grep -q "^$lang."; then
+			language_code="$lang"
+		fi
+	done
+	[ -n "$language_code" ] && language_code="${language_code%@*}"; iso_code="${language_code%%_*}"
+}
+
+_set_locale() {
+	if curl --output /dev/null --silent --head --fail "https://github.com/ivan-hc/AM/raw/$AMBRANCH/translations/usr/share/locale/$iso_code/LC_MESSAGES/am.mo" 1>/dev/null; then
+		mkdir -p "$DATADIR/locale/$iso_code/LC_MESSAGES" && rm -f "$DATADIR"/locale/"$iso_code"/LC_MESSAGES/am.mo "$DATADIR"/locale/"$iso_code"/LC_MESSAGES/appman.mo
+		curl -s -Lo "$DATADIR/locale/$iso_code/LC_MESSAGES/am.mo" "https://github.com/ivan-hc/AM/raw/$AMBRANCH/translations/usr/share/locale/$iso_code/LC_MESSAGES/am.mo"
+		ln -sf "$DATADIR/locale/$iso_code/LC_MESSAGES/am.mo" "$DATADIR/locale/$iso_code/LC_MESSAGES/appman.mo"
+		mkdir -p "$DATADIR/AM" && echo "$iso_code" > "$DATADIR/AM/locale"
+	else
+		printf "%b\n No locale available for you, consider adding one\n Visit https://github.com/ivan-hc/AM/tree/$AMBRANCH/translations\n" "$DIVIDING_LINE"
+		printf " For now, we set the locale to \"en\" (default) to further avoid this message\n Run \"$CLI translate\" to set an alternative language\n%b\n" "$DIVIDING_LINE"
+		iso_code="en"
+		mkdir -p "$DATADIR/AM" && echo "en" > "$DATADIR/AM/locale"
+	fi
+}
+
+[ -f "$DATADIR/AM/locale" ] && iso_code="$(cat "$DATADIR/AM/locale" | head -1)"
+[ -n "$iso_code" ] && export LANGUAGE="$iso_code"
+if ! echo "$LANG" | grep -q "^en.\|^C" && [ "$iso_code" != "en" ]; then
+	if [ -n "$LANG" ]; then
+		[ -z "$iso_code" ] && _check_valid_iso_codes
+		if [ ! -f "$DATADIR/locale/$iso_code/LC_MESSAGES/am.mo" ]; then
+			_set_locale
+		fi
+		export TEXTDOMAIN="am"
+		export TEXTDOMAINDIR="$DATADIR/locale"
+	fi
+fi
+
+_use_translate() {
+	echo "$DIVIDING_LINE"
+	if [ -z "$2" ]; then
+		[ -f "$DATADIR/AM/locale" ] && rm -f "$DATADIR/AM/locale"
+		printf $"Add a suitable locale code, for example \"it\" for Italian\n\n" | _fit | grep .
+		read -r -ep $" Leave blank to use \"$CLI\" in English: " amlocale
+		if [ -z "$amlocale" ] || [ "$amlocale" = "en" ]; then
+			iso_code="en"
+		elif ! echo "$ISO_CODES" | tr ' ' '\n' | grep -q "^$amlocale$"; then
+			printf "ERROR, \"%b\" is not a valid locale code\n\nList of valid locale codes:\n\n%b\n\n" "$amlocale" "$ISO_CODES"| _fit
+		else
+			iso_code="$amlocale"
+			_set_locale
+		fi
+		printf "\n"
+	elif [ "$2" = "en" ]; then
+		iso_code="en"
+	elif ! echo "$ISO_CODES" | tr ' ' '\n' | grep -q "^$2$"; then
+		printf "ERROR, \"%b\" is not a valid locale code\n\nList of valid locale codes:\n\n%b\n\n" "$2" "$ISO_CODES" | _fit
+	else
+		iso_code="$2"
+		_set_locale
+	fi
+	mkdir -p "$DATADIR/AM" && echo "$iso_code" > "$DATADIR/AM/locale"
+	printf $"Setting locale to \"%b\"\n" "$iso_code" | _fit
+	echo "$DIVIDING_LINE"
+}
 
 # Prevent the use of "sudo" ("AM")
-function _no_sudo() {
-	if [ -n "$SUDO_COMMAND" ]; then
-		printf '\n Please do not use "sudo" to execute "'"$CLI"'", try again.\n\n'
-		exit 1
+if [ "$(id -u)" = 0 ] && [ -n "${SUDO_USER:-$DOAS_USER}" ]; then
+	printf $"\n Please do not use \"sudo\" to execute \"%b\", try again.\n\n" "$CLI"
+	exit 1
+fi
+
+if ! sed --version 2>/dev/null | grep -qi "gnu"; then
+	NO_SED_I=true
+fi
+
+_create_cache_dir() {
+	AMCACHEDIR="$CACHEDIR/$AMCLI"
+	mkdir -p "$AMCACHEDIR"
+}
+
+_clean_amcachedir() {
+	if [ "$AMCLI" = am ] && [ -d "$CACHEDIR"/am ]; then
+		rm -f "$CACHEDIR"/am/* rm -f "$CACHEDIR"/am/*/* 2>/dev/null
+		rmdir "$CACHEDIR"/am/* 2>/dev/null
+	fi
+	if [ -d "$CACHEDIR"/appman ]; then
+		rm -f "$CACHEDIR"/appman/* "$CACHEDIR"/appman/*/* 2>/dev/null
+		rmdir "$CACHEDIR"/appman/* 2>/dev/null
 	fi
 }
 
-_no_sudo
-
-# Common variables to handle user's XDG directories
-export SCRIPTDIR="$(if command -v xdg-user-dir &>/dev/null; then xdg-user-dir DESKTOP; else echo $HOME; fi)"
-
-# Check XDG variables ("APPMAN")
-if [ -n "$XDG_CONFIG_HOME" ]; then
-	APPMANCONFIG="$XDG_CONFIG_HOME/appman"
-else
-	APPMANCONFIG="$HOME/.config/appman"
-fi
-
-if [ -n "$XDG_DATA_HOME" ]; then
-	DATADIR="$XDG_DATA_HOME"
-else
-	DATADIR="$HOME/.local/share"
-fi
-
-# "AM" CORE VARIABLES
-function _am() {
-	AMCLI="am"
-	AMCLIPATH="$AMCLI"
-	SUDOCOMMAND="sudo"
-	COMPLETIONPATH="/etc/bash_completion.d"
-	COMPLETIONFILE="am-completion.sh"
-	APPSPATH="/opt"
-	AMPATH="$APPSPATH/$AMCLI"
-	mkdir -p "$AMPATH"/.cache
-	mkdir -p "$AMPATH"/modules
+# Makes "less" optional
+less() {
+	if ! command less "$@" 2>/dev/null; then
+		while read -r line; do echo "$line"; done
+		echo $"Install 'less' if you want to scroll this list"
+	fi
 }
+
+# Force usage of a GNU implementation of "sed"
+sed() {
+	if [ "$NO_SED_I" = true ] && [ "$1" = '-i' ]; then
+		if command -v gsed >/dev/null 2>&1; then
+			command gsed "$@"
+		else
+			shift
+			tmpsedYYY="$(command sed "$@" 2>/dev/null)"
+			while [ "$#" -gt 1 ]; do shift; done
+			if [ -n "$tmpsedYYY" ] && [ -f "$1" ]; then
+				echo "$tmpsedYYY" > "$1"
+				unset tmpsedYYY
+			else
+				>&2 echo $"💀 ERROR: Your version of sed does not support '-i' flag without extension, we tried to workaround and failed" | _fit
+				>&2 echo $" Please install gsed"
+				unset tmpsedYYY
+				return 1
+			fi
+		fi
+	else
+		command sed "$@"
+	fi
+}
+
+################################################################################################################################################################
+#				AM/APPMAN
+################################################################################################################################################################
 
 # "APPMAN" CORE VARIABLES AND FUNCTIONS
+APPMAN_SETUP_MSG=$(echo $"Before proceeding with any task, where do you want to install apps?
 
-function _patch_bashrc_and_profile() {
-	# Fix order in "echo $PATH" in case "$HOME/.local/bin" is placed at the beginning instead of the end
-	# Check if the custom PATH is not already in .bashrc, then append it (fix - exclamation mark negates the entire command substitution)
-	if test -f "$HOME/.bashrc"; then
-		if ! grep -q 'export PATH=$PATH:$HOME/.local/bin' "$HOME/.bashrc"; then
-			echo 'export PATH=$(echo $PATH | tr ":" "\n" | grep -v "/.local/bin" | tr "\n" ":" | sed ''s/.$//'')' >> "$HOME/.bashrc"
-			echo -e 'export PATH=$PATH:$HOME/.local/bin\n' >> "$HOME/.bashrc"
+SYNTAX: /FULLPATH/TO/DIRNAME
+EXAMPLE: $HOME/My-apps
+
+NOTE: Any spaces in the path will be replaced for dashes
+NOTE: If no input is given then \"~/Applications\" will be used as default
+
+if you wish to later change the location, first remove all the programs and then edit the \"$APPMANCONFIG/appman-config\" file.")
+
+_appman_check() {
+	if [ ! -f "$APPMANCONFIG"/appman-config ]; then
+		echo "$DIVIDING_LINE"
+		[ "$AMCLI" = am ] && echo $">>> Configure AppMan" || echo $">>> Thank you for choosing AppMan!"
+		echo "$DIVIDING_LINE"
+		echo "$APPMAN_SETUP_MSG" | _fit
+		echo "$DIVIDING_LINE"
+		read -r -ep $" Write the path or just press enter to use default:$(printf "\n\n ")" location
+		location="$(echo "$location" | sed 's/[ \t]/-/g; s|^\./||' 2>/dev/null)"
+		[ -z "$location" ] && location="$HOME/Applications"
+		if ! echo "$location" | grep "^/" >/dev/null 2>&1; then
+			location="$HOME/$location"
 		fi
-	fi
-	# Correct the order of .local/bin in .profile if necessary
-	if test -f "$HOME/.profile"; then
-		if grep -q 'PATH="$HOME/.local/bin:$PATH"' "$HOME/.profile"; then
-			sed -i 's#PATH="$HOME/.local/bin:$PATH"#PATH="$PATH:$HOME/.local/bin"#g' "$HOME/.profile"
+		if echo "$location" | grep "$BINDIR" >/dev/null 2>&1; then
+			echo "$DIVIDING_LINE"
+			echo $" 💀 ERROR, you can't install applications in \"$BINDIR\""
+			echo $" $BINDIR is normally used for executables, Please choose a different path and retry!"
+			echo "$DIVIDING_LINE"
+			exit  1
+		elif ! mkdir -p "$location" 2>/dev/null || [ ! -w "$location" ]; then
+			echo $" 💀 ERROR: You don't have write access to $location or it is invalid"
+			exit 1
 		fi
-	elif test -f "$HOME/.bash_profile"; then
-		if grep -q 'PATH="$HOME/.local/bin:$PATH"' "$HOME/.bash_profile"; then
-			sed -i 's#PATH="$HOME/.local/bin:$PATH"#PATH="$PATH:$HOME/.local/bin"#g' "$HOME/.bash_profile"
-		fi
+		mkdir -p "$APPMANCONFIG" || exit 1
+		echo "${location%/}" > "$APPMANCONFIG"/appman-config || exit 1
+		echo "$DIVIDING_LINE"
+		echo $" You are ready! Start installing your favorite apps locally!"
+		echo $" All apps will be installed in $location"
+		echo $" In case of problems, use the option \"-h\"."
+		echo "$DIVIDING_LINE"
 	fi
 }
 
-function _appman() {
-
-	function _appman_initialize() {
-		APPSDIR=$1
-		mkdir -p ~/"$APPSDIR"/appman/.cache
-		mkdir -p ~/"$APPSDIR"/appman/modules
-		mkdir -p ~/.local/bin "$DATADIR"/applications "$DATADIR"/icons
-		AMCLI="appman"
-		AMCLIPATH="$DIR/$AMCLI"
-		SUDOCOMMAND=""
-		COMPLETIONPATH="$HOME"
-		COMPLETIONFILE=".bash_completion"
-		APPSPATH="$HOME/$APPSDIR"
-		AMPATH="$HOME/$APPSDIR/$AMCLI"
-	}
-
-	# Helper functions don't need to be defined inside the parent function
-	function _appman_prompt_for_directory() {
-		local location
-		read -r -ep "Please, write the name or the path of your custom application's folder: $(echo -e '\n\n '$HOME'/')" location
-		echo "$location"
-	}
-
-	function _appman_validate_directory() {
-		local location=$1
-		if [[ "$location" == "" ]]; then
-			echo -e "--------------------------------------------------------------------------"
-			echo "OPERATION ABORTED!"
-			exit  1
-		elif [[ "$location" == ".local/bin" ]]; then
-			echo -e "--------------------------------------------------------------------------\n"
-			echo -e " 💀 ERROR, you can't install applications into a '$PATH'\n\n The directory ~/.local/bin and 'bin' folders are used for executables.\n\n Please, choose a different path and retry! \n"
-			echo -e "--------------------------------------------------------------------------\n"
-			exit  1
-		else
-			local location_appman="${location/#$HOME}"
-			location_appman="${location_appman// /-}"
-			location_appman="${location_appman#/}"
-			location_appman="${location_appman%/}"
-			echo "$location_appman"
-		fi
-	}
-
-	if [[ ! -f "$APPMANCONFIG"/appman-config ]]; then
-		echo "--------------------------------------------------------------------------"
-		echo " >>> Thank you for choosing AppMan!"
-		echo "--------------------------------------------------------------------------"
-		echo "Before proceeding with any task, write the name of the directory in which"
-		echo 'you will install the apps, for example "Programs" or "My-apps", you can '
-		echo 'also choose a subfolder, for example ".local/My-apps" or a deeper path.'
-		echo -e "\nThe destination folder will be created in $HOME"
-		echo -e "\nSYNTAX: PATH/TO/DIRNAME\n"
-		echo 'NOTE, any spaces or "/" at the beginning and end will be removed. If you '
-		echo 'decide to change your choice in the future, first remove all the programs'
-		echo 'and then edit the ~/.config/appman/appman-config text file.'
-		echo -e "--------------------------------------------------------------------------\n"
-		local location=$(_appman_prompt_for_directory)
-		local validated_location=$(_appman_validate_directory "$location")
-		mkdir -p "$APPMANCONFIG"
-		echo "$validated_location" >> "$APPMANCONFIG"/appman-config
-		echo '--------------------------------------------------------------------------'
-		echo 'You are ready! Start installing your favorite apps locally!!'
-		echo "All apps will be installed in $HOME/$validated_location"
-		echo -e '\nIn case of problems, use the option "-h".'
-		echo '--------------------------------------------------------------------------'
+_appman() {
+	_appman_check
+	if ! grep -q "^/" "$APPMANCONFIG"/appman-config; then
+		APPSDIR="$HOME/$(head -1 "$APPMANCONFIG"/appman-config 2>/dev/null)"
+	else
+		APPSDIR="$(head -1 "$APPMANCONFIG"/appman-config 2>/dev/null)"
 	fi
-	_appman_initialize "$(<"$APPMANCONFIG"/appman-config)"
+	mkdir -p "$BINDIR" "$DATADIR"/applications "$DATADIR"/icons || exit 1
+	AMCLI="appman"
+	AMCLIPATH="$DIR/$AMCLI"
+	SUDOCMD=""
+	APPSPATH="$APPSDIR"
+	AMPATH="$APPSDIR/$AMCLI"
+	_create_cache_dir
+	if [ ! -w "$APPSPATH" ]; then
+		echo $"ERROR: You don't have write access to $APPSPATH" | _fit
+		exit 1
+	elif ! echo "$PATH" | grep "$BINDIR" >/dev/null 2>&1; then
+		echo "$DIVIDING_LINE"
+		printf $"%b ⚠️ WARNING\033[0m: \"%b%b\033[0m\" is not in PATH, local apps may not run.\n" "${RED}" "${LightBlue}" "$BINDIR"
+	fi
+	MODULES_PATH="$AMPATH/modules"
+	if [ "$CLI" = am ] && [ -f "$APPMANCONFIG"/appman-mode ] && [ -d /usr/lib/am/modules ]; then
+		MODULES_PATH="/usr/lib/am/modules"
+	elif [ "$CLI" = am ] && [ -f "$APPMANCONFIG"/appman-mode ] && [ -d "$(realpath /opt)/am/modules" ]; then
+		MODULES_PATH="$(realpath /opt)/am/modules"
+	elif [ "$CLI" = appman ]; then
+		mkdir -p "$MODULES_PATH" || exit 1
+	fi
+}
 
-	_patch_bashrc_and_profile
+# "AM" CORE VARIABLES
+_am() {
+	AMCLI="am"
+	AMCLIPATH="$AMCLI"
+	if command -v sudo >/dev/null 2>&1; then
+		export SUDOCMD="sudo"
+	elif command -v doas >/dev/null 2>&1; then
+		export SUDOCMD="doas"
+	else
+		echo $'ERROR: No sudo or doas found'
+		exit 1
+	fi
+	APPSPATH="$(realpath /opt)"
+	AMPATH="$APPSPATH/$AMCLI"
+	_create_cache_dir
+	MODULES_PATH="$AMPATH/modules"
 }
 
 # DETERMINE WHEN TO USE "AM" OR "APPMAN"
-if [[ "$DIR/$CLI" == "/usr/local/bin/am" ]] 2>/dev/null; then
+if [ "$CLI_PATH" = "$(realpath /opt)/am/APP-MANAGER" ]; then
 	_am
+	mkdir -p "$MODULES_PATH" || exit 1
+elif [ "$CLI_PATH" = "/usr/bin/am" ]; then
+	_am
+	AMPATH="$AMCACHEDIR"
+	MODULES_PATH="/usr/lib/am/modules"
 else
 	_appman
 fi
 
-# Set header authorization if GitHub API key file exists
-[ -f "$AMPATH/ghapikey.txt" ] && HeaderAuthWithGITPAT=" --header \"Authorization: token $(<"$AMPATH/ghapikey.txt")\" "
+_detect_appman_apps() {
+	[ -f "$APPMANCONFIG/appman-config" ] && APPMAN_APPSPATH=$(sort "$APPMANCONFIG/appman-config")
+	if ! echo "$APPMAN_APPSPATH" | grep -q "^/"; then
+		[ -f "$APPMANCONFIG/appman-config" ] && APPMAN_APPSPATH="$HOME/$(sort "$APPMANCONFIG/appman-config")"
+	fi
+}
 
-# DEVELOPER MODE
-if test -f "$AMPATH"/betatester; then
-	AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/dev"
-	AMBRANCH=$(basename "$AMREPO")
+_determine_args() {
+	ARGPATHS=$(find "$APPSPATH" -maxdepth 2 -name 'remove' -print 2>/dev/null | sort -u | sed 's|/remove||g')
+	ARGS=$(echo "$ARGPATHS" | xargs -n 1 basename 2>/dev/null)
+	if [ "$AMCLI" = am ]; then
+		_detect_appman_apps
+		if [ -d "$APPMAN_APPSPATH" ]; then
+			APPMAN_PATHS=$(find "$APPMAN_APPSPATH" -maxdepth 2 -name 'remove' -print 2>/dev/null | sort -u | sed 's|/remove||g')
+			ARGPATHS=$(printf "%b\n%b" "$ARGPATHS" "$APPMAN_PATHS")
+			ARGS=$(echo "$ARGPATHS" | xargs -n 1 basename 2>/dev/null)
+		fi
+	fi
+	# use "argpath=$(echo "$ARGPATHS" | grep "/$arg$")" to determine the full path of "arg"
+}
+
+_icon_theme_export_to_datadir() {
+	PNG="$(file "$APPSPATH"/*/icons/* | grep -i '.png' | awk -F":" '{print $1}' | grep -vi .png)"
+	SVG="$(file "$APPSPATH"/*/icons/* | grep -i '.svg' | awk -F":" '{print $1}' | grep -vi .svg)"
+	for file in $PNG; do ln -s "$file" "${file}".png; done
+	for file in $SVG; do ln -s "$file" "${file}".svg; done
+	if [ -n "$APPMAN_APPSPATH" ]; then
+		PNG="$(file "$APPMAN_APPSPATH"/*/icons/* | grep -i '.png' | awk -F":" '{print $1}' | grep -vi .png)"
+		SVG="$(file "$APPMAN_APPSPATH"/*/icons/* | grep -i '.svg' | awk -F":" '{print $1}' | grep -vi .svg)"
+		for file in $PNG; do ln -s "$file" "${file}".png; done
+		for file in $SVG; do ln -s "$file" "${file}".svg; done
+	fi
+	mkdir -p "$DATADIR"/icons/hicolor/scalable/apps
+	find "$DATADIR"/icons/hicolor/scalable/apps -xtype l -exec rm {} \;
+	ln -s "$APPSPATH"/*/icons/*.* "$DATADIR"/icons/hicolor/scalable/apps
+	[ -n "$APPMAN_APPSPATH" ] && ln -s "$APPMAN_APPSPATH"/*/icons/*.* "$DATADIR"/icons/hicolor/scalable/apps
+}
+
+################################################################################################################################################################
+#				FINALIZE
+################################################################################################################################################################
+
+AMCLIUPPER=$(echo "$AMCLI" | tr '[:lower:]' '[:upper:]')
+
+# Create new data directory and move important files there
+AMDATADIR="$DATADIR/AM"
+mkdir -p "$AMDATADIR"
+
+_betatester_message_on() {
+	if [ -f "$AMDATADIR"/betatester ]; then
+		echo "$DIVIDING_LINE"; echo $"\"$AMCLIUPPER\" $AMVERSION: DEVELOPER MODE"; echo "$DIVIDING_LINE"
+	fi
+}
+
+################################################################################################################################################################
+#				APPS DATABASE
+################################################################################################################################################################
+
+# Apps database in use
+APPSDB="${APPSDB:-$AMREPO/programs/$ARCH}"
+APPSLISTDB="${APPSLISTDB:-$AMREPO/programs/$ARCH-apps}"
+
+################################################################################################################################################################
+#				SECURITY
+################################################################################################################################################################
+
+# SAFETY CHECKS
+_am_dependences_check() {
+	# Check for essential commands required by the application
+	missing_deps=""
+	AMDEPENDENCES="cat chmod chown curl file grep sed wget"
+	for name in $AMDEPENDENCES; do
+		if ! command -v "$name" >/dev/null 2>&1; then
+			missing_deps="$name $missing_deps"
+		fi
+	done
+
+	# Exit if any essential command is missing
+	if [ -n "$missing_deps" ]; then
+		echo "$DIVIDING_LINE"
+		printf $" ${RED}💀 ERROR! MISSING ESSENTIAL COMMANDS\033[0m: %s\n\n Install the above and try again! \n" "${missing_deps[*]}"
+		echo "$DIVIDING_LINE"
+		printf $"%bList of the %b core dependences\033[0m:\n\n%b\n" "${Green}" "$AMCLIUPPER $AMVERSION" "$AMDEPENDENCES" | _fit
+		echo "$DIVIDING_LINE"
+		printf $"If this message appears it is because you are missing some dependency and if its the first time its because something new has been introduced.\n\n" | _fit
+		printf $" See %bhttps://github.com/ivan-hc/AM#core-dependences\033[0m for more information\n" "${LightBlue}"
+		echo "$DIVIDING_LINE"
+		exit 1
+	fi
+}
+
+_check_fedora_mess() {
+	if wget --version | head -1 | grep -qi ' 2.\|wget2 '; then
+		printf $"\n%bWARNING: your distro maintainer ships \"wget2\" as \"wget\" \033[0m\n\n" "${RED}" | _fit
+		[ -f /etc/redhat-release ] && printf $"Please install \"%bwget1\033[0m\" and \"%bwget1-wget\033[0m\" (use %b--allowerasing\033[0m if you have to)\n\nSee https://bugzilla.redhat.com/show_bug.cgi?id=2358792\n\n" "${Gold}" "${Gold}" "${Green}" | sed "s/^/ /g"
+	fi
+}
+
+_check_ubuntu_mess() {
+	if command -v unshare >/dev/null 2>&1 && ! unshare --user -p /bin/true >/dev/null 2>&1; then
+		echo "$DIVIDING_LINE"
+		printf $"\n %b⚠️ WARNING: ACCESS TO USER NAMESPACES IS RESTRICTED! \033[0m\n\n" "${RED}"
+		echo $" Some apps may not run, you need to enable access to user namespaces, see"
+		printf " %bhttps://github.com/ivan-hc/AM/blob/main/docs/troubleshooting.md#ubuntu-mess\033[0m\n" "${LightBlue}"
+		echo $" to know more."
+		echo ""
+		echo "$DIVIDING_LINE"
+	fi
+}
+
+_am_dependences_check
+_check_ubuntu_mess
+
+# Function to check online connections (uses github.com by default, as the database and CLI itself are stored/hosted there)
+_online_check() {
+	if ! wget -q --tries=10 --timeout=20 --spider https://github.com; then
+		printf $"\n %b is offline, please check your internet connection and try again\n\n" "$AMCLI"
+		exit 0
+	fi
+}
+
+# BLACKLIST FILES
+appimagelauncher_msg="Your installation of AppImageLauncher may have been done via DEB, RPM, or AUR, which interrupts the natural operation of \"systemd-binfmt\" in addition to launching the aforementioned daemon. To avoid problems with \"$AMCLIUPPER\" and any other AppImages helper, it's preferable to use \"only\" the standalone AppImage of AppImageLauncher, whose official updated release can also be installed via \"$AMCLIUPPER\". But as long as you have the currently installed version, you can't use this CLI."
+
+_blacklisted_file() {
+	printf $"\n %b💀WARNING! Detected \"%b\"\033[0m\n\n" "${RED}" "$blacklisted_file"
+	echo $"It will prevent \"$AMCLIUPPER\" from working correctly with AppImages, especially when extracting, integrating and updating them." | _fit
+	echo ""
+	if echo "$blacklisted_file" | grep -q appimagelauncherd; then
+		echo "$appimagelauncher_msg" | _fit
+		echo "" && echo $" Please remove \"AppImageLauncher\", reboot and retry!"
+	else
+		echo $" Please remove \"$blacklisted_file\", reboot and retry!"
+	fi
+	echo ""
+	exit 0
+}
+
+if command -v appimaged &>/dev/null; then
+	blacklisted_file=$(command -v appimaged)
+	_blacklisted_file
+elif command -v appimagelauncherd &>/dev/null; then
+	blacklisted_file=$(command -v appimagelauncherd)
+	_blacklisted_file
 fi
-function _betatester_message_on() {
-	if test -f "$AMPATH"/betatester; then
-		echo '--------------------------------------------------------------------------'
-		echo "\"$AMCLI\" $AMVERSION: developer mode" | tr a-z A-Z
-		echo '--------------------------------------------------------------------------'
-	fi
-}
 
-function _use_betatester_on() {
-	touch "$AMPATH"/betatester
-}
+################################################################################################################################################################
+#				3RD PARTY
+################################################################################################################################################################
 
-function _use_betatester_off() {
-	rm -f "$AMPATH"/betatester
-}
-
-# DOWNLOAD PORTABLE DEPENDENCES
-function _portable_dependences_setup() {
-
-	function _jq_installer() {
-		if ! command -v jq 1>/dev/null; then
-
-			_system_package_manager_check
-
-			if [[ -z "$osPKGman" ]];then
-				echo -e " ${RED}💀 ERROR!\033[0m Missing essential command ${Green}jq\033[0m\n"
-				read -p " Do you wish to install it using $AMCLI (Y,n)? " yn
-				case $yn in
-				'N'|'n')
-					echo -e "\n The \"jq\" command is essential for parsing JSON files on sites"
-					echo " for example api.github.com, to list the URLs of apps to download."
-					echo -e " You need to install it at least via your package manager to use \"$AMCLI\".\n\n Missing essential command ${RED}jq\033[0m, aborted!"; exit
-					;;
-				'Y'|'y'|*)
-					rm -f "$AMPATH"/.cache/*
-					echo ""
-					source "$AMPATH"/modules/install.am -i jq 2>&1 | grep "INSTALLED"
-					echo ""
-					;;
-				esac
-			else
-				echo -e " ${RED}💀 ERROR!\033[0m Missing essential command ${Green}jq\033[0m\n"
-				echo " Install it from your system package manager \"$osPKGman\" and retry!"; exit
-			fi
-		fi
-	}
-	_jq_installer
-}
-
-# FUNCTIONS RELATED TO THE SAFE USE OF "AM"
-function _am_security_check() {
-	function _am_dependences_check() {
-		# Check for essential commands required by the application
-		missing_deps=()
-		AMDEPENDENCES="cat chmod chown curl grep sed wget"
-		for name in $AMDEPENDENCES; do
-			if ! command -v "$name" &>/dev/null; then
-				missing_deps+=("$name")
-			fi
-		done
-
-		# Exit if any essential command is missing
-		if [ -n "$missing_deps" ]; then
-			echo '--------------------------------------------------------------------------'
-			printf " ${RED}💀 ERROR! MISSING ESSENTIAL COMMANDS\033[0m: %s\n\n Install the above and try again! \n" "${missing_deps[*]}"
-			echo '--------------------------------------------------------------------------'
-			echo -e "\n ${Green}List of the $(echo "$AMCLI" | tr a-z A-Z) $AMVERSION core dependences\033[0m:\n"
-			echo $AMDEPENDENCES | tr ' ' ',' | sed 's/,/, /g' | sed 's/^/ /g'
-			echo -e '\n--------------------------------------------------------------------------'
-			echo " If this message appears it is because you are missing some dependency"
-			echo " and if its the first time its because something new has been introduced."
-			echo -e "\n See ${LightBlue}https://github.com/ivan-hc/AM#dependences\033[0m for more information"
-			echo '--------------------------------------------------------------------------'
-			exit 1
-		fi
-	}
-
-	_am_dependences_check
-
-	# Check and create the $AMPATH directory if it does not exist
-	if [ ! -d "$AMPATH" ]; then
-		$SUDOCOMMAND mkdir -p "$AMPATH"
-	fi
-
-	# Function to check online connections (uses github.com by default, as the database and CLI itself are stored/hosted there)
-	function _online_check() {
-		if ! wget -q --tries=10 --timeout=20 --spider https://github.com; then
-			echo -e "\n $AMCLI is offline, please check your internet connection and try again\n"
-			exit
-		fi
-	}
-}
-
-_am_security_check
-
-# SECURE INSTALLED APPS
-function _prevent_apps_from_being_removed_by_third_parties() {
-	# Add a security layer to scripts named "remove" of installed apps to prevent file removal by non-privileged users
-	if [ $AMCLI == am ] 2>/dev/null; then
-		if ! grep -q '"$SUDO_COMMAND"' /opt/*/remove 2> /dev/null; then
-			for r in /opt/*/; do
-				if test -f $r/remove; then
-					sed -i '1 a if [ -z "$SUDO_COMMAND" ]; then echo "Permission denied"; exit 1; fi' $r/remove 2> /dev/null
-				fi
-			done
-		fi
-	fi
-}
-
-_prevent_apps_from_being_removed_by_third_parties 2> /dev/null
-
-# FUNCTIONS RELATED TO THE DATABASE OF APPS
-function _am_databases_check() {
-	# Determine catalogue in use
-	export AMCATALOGUEMARKDOWNS="https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/main/apps"
-	export AMCATALOGUEICONS="https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/main/icons"
-
-	function _am_newrepo_check() {
-		# Determine if the CLI uses the "main" branch of https://github.com/ivan-hc/AM or an alternative one
-		if [[ -f "$AMPATH"/new-repo.txt ]]; then
-			AMREPO=$(<"$AMPATH/new-repo.txt") # Utilizing command substitution with < for more efficient file reading
-			AMBRANCH=$(basename "$AMREPO")
-			APPSDB="$AMREPO/programs/$arch"
-			APPSLISTDB="$AMREPO/programs/$arch-apps"
-			LIBSLISTDB="$AMREPO/programs/libs-list"
-			if [[ "$@" != "newrepo off" ]]; then
-				echo '--------------------------------------------------------------------------'
-				echo " Source: $AMREPO"
-				echo '--------------------------------------------------------------------------'
-			fi
+_use_newrepo() {
+	[ -z "$2" ] && echo $" USAGE: $AMCLI $1 [ARGUMENT]" && exit 1
+	case $2 in
+	'add')
+		if [ -z "$3" ]; then
+			echo $" USAGE:	$AMCLI $1 $2 /path/to/dir"; echo "	$AMCLI $1 $2 {URL}"; exit 1
 		else
-			APPSDB="$AMREPO/programs/$arch"
-			APPSLISTDB="$AMREPO/programs/$arch-apps"
-			LIBSLISTDB="$AMREPO/programs/libs-list"
+			echo "$3" >> "$AMDATADIR/newrepo-lists"
 		fi
-	}
+		;;
+	'enable'|'on')
+		[ ! -f "$AMDATADIR/newrepo-lists" ] && echo $" ERROR, \"$AMDATADIR/newrepo-lists\" file not found" && exit 1
+		[ -f "$AMDATADIR/newrepo-off" ] && mv "$AMDATADIR/newrepo-off" "$AMDATADIR/newrepo-on" && echo $" New repo ON!"
+		;;
+	'disable'|'off')
+		[ ! -f "$AMDATADIR/newrepo-lists" ] && echo $" ERROR, \"$AMDATADIR/newrepo-lists\" file not found" && exit 1
+		[ -f "$AMDATADIR/newrepo-on" ] && mv "$AMDATADIR/newrepo-on" "$AMDATADIR/newrepo-off" && echo $" New repo OFF!"
+		;;
+	'info')
+		printf $" Source: %b\n Apps: %b\n List: %b\n" "$AMREPO" "$APPSDB" "$APPSLISTDB"
+		;;
+	'purge')
+		[ -f "$AMDATADIR/newrepo-lists" ] && rm -f "$AMDATADIR"/newrepo* && echo $" Removed all 3rd party repositories"
+		;;
+	'select')
+		[ ! -f "$AMDATADIR/newrepo-lists" ] && echo $" ERROR, \"$AMDATADIR/newrepo-lists\" file not found" && exit 1
+		printf $"Select a repo from the list or press CTRL+C to abort:\n%b\n" "$DIVIDING_LINE"; sleep 1
+		select repo in $(sort -u "$AMDATADIR/newrepo-lists" | uniq); do
+			test -n "$repo" && break
+			echo $">>> Invalid Selection"
+		done
+		echo "$repo" > "$AMDATADIR/newrepo-on"
+		;;
+	esac
+}
 
-	_am_newrepo_check
-
-	# To implement future application database changes
-	if [ -f "$AMPATH/neodb" ]; then
-		if grep -q "://" "$AMPATH/neodb"; then
-			if grep -q "#STATUS=quiet" "$AMPATH/neodb"; then
-				case "$1" in
-				'-a'|'about'|'-d'|'download'|'-i'|'install'|'-l'|'list'|'-q'|'query')
-					echo '--------------------------------------------------------------------------'
-					echo " Source: Third party repositories are enabled"
-					echo '--------------------------------------------------------------------------'
-					;;
-				esac
-			fi
+# 3RD PARTY DATABASES
+_am_newrepo_check() {
+	# Determine if the CLI uses the "main" branch of https://github.com/ivan-hc/AM or an alternative one
+	if [ -f "$AMDATADIR/newrepo-on" ]; then
+		if grep -q "^http" "$AMDATADIR/newrepo-on"; then
+			AMREPO=$(sort "$AMDATADIR/newrepo-on")
+		elif grep -q "^/" "$AMDATADIR/newrepo-on"; then
+			AMREPO="file://$(sort "$AMDATADIR/newrepo-on")"
+		fi
+		AMBRANCH=$(basename "$AMREPO")
+		export APPSDB="$AMREPO/programs/$ARCH"
+		export APPSLISTDB="$AMREPO/programs/$ARCH-apps"
+		export MODULES_PATH="$AMPATH/modules"
+		if [ "$1" != "newrepo" ] && [ "$1" != "neodb" ]; then
+			echo "$DIVIDING_LINE"; echo $" Source: $AMREPO"; echo "$DIVIDING_LINE"
 		fi
 	fi
 }
 
-_am_databases_check
+_am_newrepo_check "$@"
 
-# Check version of the installed apps
-function _check_version() {
-	rm -f $AMPATH/.cache/version-args
-	cd $APPSPATH &&
-	INSTALLED_APPS=$(find -name 'remove' -printf "%h\n" 2>/dev/null | du -sh -- * 2> /dev/null | sort -rh | sed 's@.*	@@')
-	for arg in $INSTALLED_APPS; do
-		 if test -f ./$arg/remove 2>/dev/null; then
-	 		if test -f ./$arg/version 2>/dev/null; then
-				APPVERSION=$(cat $APPSPATH/$arg/version | head -1 | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
-				if [ -z "$APPVERSION" ]; then
-					if test -f ./$arg/*.zsync 2>/dev/null; then
-						APPVERSION=$(strings -d ./$arg/*.zsync | grep -i $arg | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
-					elif grep -q -- "-$arch/" ./$arg/version; then
-						ALPHANUMERICTEST=$(cat $APPSPATH/$arg/version | tr '-' '\n' | grep -vi "appimage\|$arg\|$arch" | tail -1)
-						if ! [[ "$ALPHANUMERICTEST" =~ [^a-zA-Z0-9] ]]; then
-							APPVERSION="$ALPHANUMERICTEST"
-						fi
-					elif ! sed "s/$arch//g" $APPSPATH/$arg/version | grep -q "[0-9]"; then
-						if grep -qi "/continuous/" $APPSPATH/$arg/version 2>/dev/null; then
-							APPVERSION="continuous"
-						fi
-					else
-						APPVERSION=$(cat $APPSPATH/$arg/version | sed 's:.*/::' | tr '-' '\n' | tr '_' '\n' | grep -vi "appimage\|$arg\|$arch\|amd64" | grep "[0-9]" | head -1)
-					fi
-				fi
-			elif test -f ./$arg/updater 2>/dev/null; then
-				APPVERSION=$($APPSPATH/$arg/updater -d $APPSPATH/$arg/$arg 2>/dev/null | grep -i $arg | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
-				if [ -z "$APPVERSION" ]; then
-					APPVERSION=$(grep -i "version=" $APPSPATH/$arg/* 2>/dev/null | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
-				fi
-			elif [ "$arg" == "$AMCLI" ]; then
-				APPVERSION="$AMVERSION"
-			elif grep -qi "version=" ./$arg/* 2>/dev/null; then
-				APPVERSION=$(grep -i "version=" $APPSPATH/$arg/* 2>/dev/null | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1)
-			elif echo "$arg" | grep -q "ffwa-"; then
-				APPVERSION="WebApp"
-			elif cat $APPSPATH/$arg/remove 2> /dev/null | grep -q "usr/local/lib"; then
-				APPVERSION=$(strings -d $(cat $APPSPATH/$arg/remove | tr ' ' '\n' | grep "usr/local/lib") | grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | tail -1)
-			else
-				APPVERSION="unknown"
-			fi
-			if [ -z "$APPVERSION" ]; then
-				APPVERSION="unknown"
-			fi
-			echo " ◆ $arg	|	$APPVERSION" >> $AMPATH/.cache/version-args
+################################################################################################################################################################
+#				3RD PARTY SOURCES
+################################################################################################################################################################
+
+[ -z "$AM_EXTRA_SOURCES" ] && AM_EXTRA_SOURCES="https://raw.githubusercontent.com/ivan-hc/am-extras/main/am-extras"
+if [ ! -f "$AMDATADIR"/am-extras ]; then
+	wget -q --tries=10 --timeout=20 --spider https://github.com && curl -Ls "$AM_EXTRA_SOURCES" > "$AMDATADIR"/am-extras
+fi
+[ -f "$AMDATADIR"/am-extras ] && source "$AMDATADIR"/am-extras
+
+#################################
+#	ALL THE ABOVE
+#################################
+third_party_lists=$(echo "$third_party_flags" | tr '-' '\n' | sed 's/ //g' | xargs)
+
+_remove_known_third_party_extensions() {
+	sed "s/$(echo "$third_party_lists" | sed 's/ /\\|/g')$//g; s/\.$//g"
+}
+
+_files_db_third_party() {
+	for tp_list in $third_party_lists; do
+		if test -f "$APPSPATH"/"$arg"/.am-installer/*."$tp_list"; then
+			export DB="$tp_list"
 		fi
 	done
 }
 
-# Generate a list of words to use in bash completion
-rm -rf "$AMPATH/options"
-cat <<-HEREDOC >> "$AMPATH/options"
-	about
-	apikey
-	backup
-	clean
-	download
-	files
-	install
-	list
-	lock
-	neodb
-	newrepo
-	nolibfuse
-	overwrite
-	query
-	remove
-	sync
-	template
-	test
-	unlock
-	update
-	web
-	--apps
-	--byname
-	--convert
-	--debug
-	--devmode-disable
-	--devmode-enable
-	--disable-completion
-	--enable-completion
-	--firejail
-	--force-latest
-	--home
-	--launcher
-	--less
-	--rollback
-	--sandbox
-	--silent
-	--user
-HEREDOC
+_third_party_lsts_filter() {
+	grep -v -- "---\|^| appname" | grep "^| .* | .* | http.* | http.* | .* |$" 2>/dev/null | awk -F'|' '{print $2, $3}' | sed 's/^/◆/g; s/   / : /g; s/ $//g'
+}
 
-# Functions related to internal options to enable/disable bash (and zsh) completion.
-function _use_disable-completion() {
-	if [ "$(grep -o "$AMCLI" 0<"$COMPLETIONPATH/$COMPLETIONFILE" | head -1)" == "$AMCLI" ]; then
-		grep -v 'complete -W "$(cat '"$AMPATH"'/list 2>/dev/null)" '"$AMCLI"'' "$COMPLETIONPATH/$COMPLETIONFILE" > "$AMPATH"/$COMPLETIONFILE.backup &&
-		$SUDOCOMMAND mv "$AMPATH"/$COMPLETIONFILE.backup "$COMPLETIONPATH/$COMPLETIONFILE"
-		echo " Completion disabled! "
-	else
-		echo " Completion script is NOT enabled! "
+_sync_third_party_lists() {
+	curl -Ls "$AM_EXTRA_SOURCES" > "$AMDATADIR"/am-extras
+	for tp_list in $third_party_lists; do
+		rm -f "$AMDATADIR"/"$ARCH"-"$tp_list"
+		tprepo_readme="${tp_list}_readme"
+		if [ -n "${!tprepo_readme}" ]; then
+			curl -Ls "${!tprepo_readme}" | _third_party_lsts_filter \
+			| sed "s/$/. To install it use the --$tp_list flag or the .$tp_list extension./g" | sort > "$AMDATADIR"/"$ARCH"-"$tp_list" \
+			|| touch "$AMDATADIR"/"$ARCH"-"$tp_list"
+		fi
+	done
+}
+
+_completion_list_third_party() {
+	for tp_list in $third_party_lists; do
+		[ -f "$AMDATADIR"/"$ARCH"-"$tp_list" ] && awk '{print $2}' "$AMDATADIR"/"$ARCH"-"$tp_list" >> "$AMDATADIR"/list && awk '{print $2}' "$AMDATADIR"/"$ARCH"-"$tp_list" | sed -e "s/$/.$tp_list/" >> "$AMDATADIR"/list
+	done
+}
+
+export awk_name="1" awk_description="2" awk_site="3" awk_dl="4" awk_ver="5" # Numbers to use in "awk" to determine columns
+
+third_party_flags_message=""
+
+if [ -n "$third_party_flags" ]; then
+for flag in $third_party_flags; do
+tpflag_name=$(echo "$flag" | tr '-' '\n ' | grep .)
+tprepo_name="${tpflag_name}_repo"
+third_party_flags_message=$(echo -e $"$third_party_flags_message\n
+${Gold}--$tpflag_name\033[0m
+
+	${LightBlue}$AMCLI -i --$tpflag_name {PROGRAM}\033[0m
+	${LightBlue}am -i --$tpflag_name --user {PROGRAM}\033[0m
+	${LightBlue}$AMCLI -l --$tpflag_name\033[0m
+
+Description: This is a flag to use in \"-i\" and \"-l\" to install/list software from ${!tprepo_name}. You can also use it in \"-q\" as a keyword. For installations you can use .$tpflag_name as the package extension instead of using the flag.
+")
+done
+fi
+
+[ -z "$third_party_flags_message" ] && third_party_flags_message="none\n"
+
+################################################################################################################################################################
+#				UTILITIES
+################################################################################################################################################################
+
+# COMPLETION LIST
+available_options="about add apikey backup clean config disable downgrade download enable extra files hide home icons info \
+	install install-appimage launcher list lock neodb newrepo nolibfuse off on overwrite purge query reinstall remove sandbox \
+	select sync template test translate unhide unlock update --all --appimages --apps --byname --config --convert --debug \
+	--devmode-disable --devmode-enable --disable-notifications --enable-notifications --force-latest --home --icons \
+	-ias --launcher --less --pkg --portable --rollback --disable-sandbox --sandbox --system --translate --user $third_party_flags"
+
+_completion_lists() {
+	# Remove existing lists and download new ones
+	curl -Ls "$APPSLISTDB" > "$AMDATADIR/$ARCH-apps"
+	awk -v FS="(◆ | : )" '{print $2}' <"$AMDATADIR"/"$ARCH"-apps > "$AMDATADIR"/list
+	_completion_list_third_party
+	# Append options to the list
+	for o in $available_options; do
+		echo "$o" >> "$AMDATADIR"/list
+	done
+	# Detecl valid lists
+	valid_lists="apps$\|appimages$\|portable$"
+	for tp_list in $third_party_lists; do
+		valid_lists="$valid_lists\|$tp_list$"
+	done
+	for l in "$AMDATADIR"/"$ARCH"-*; do
+		! echo "$l" | grep -q "$valid_lists" && rm -f "$l"
+	done
+}
+
+# BASH, FISH AND ZSH COMPLETION
+if [ "$CLI_PATH" != "/usr/bin/am" ]; then
+	completion_file="$DATADIR/bash-completion/completions/$AMCLI"
+	mkdir -p "$DATADIR/bash-completion/completions" || exit 1
+	if ! grep -o " $AMCLI$" "$completion_file" >/dev/null 2>&1; then
+		echo "complete -W \"\$(cat $AMDATADIR/list 2>/dev/null)\" $AMCLI" >> "$completion_file"
+		if [ -f "${ZDOTDIR:-$HOME}"/.zshrc ] && echo "$SHELL" | grep -q "zsh"; then
+			cat <<-HEREDOC >> "${ZDOTDIR:-$HOME}"/.zshrc
+			autoload bashcompinit
+			bashcompinit
+			source "$completion_file"
+			HEREDOC
+		fi
+		echo $"Shell completion has been enabled!"
+	fi
+	if [ -d "$DATADIR"/fish/completions ] || [ -d /etc/fish/completions ] || [ -d /usr/share/fish/completions ]; then
+		command -v fish 1>/dev/null && [ ! -f "$CONFIGDIR"/fish/completions/am.fish ] && mkdir -p "$CONFIGDIR"/fish/completions && echo "complete -c am -f -a \"(cat $DATADIR/AM/list 2>/dev/null)\"" > "$CONFIGDIR"/fish/completions/am.fish
+	fi
+fi
+
+# VERSION OF THE INSTALLED APPS
+# Filters
+_check_version_filters() {
+	sed -E "s/$ARCH|amd64|x86-64|x64|basic|standard|full|help|Qt[0-9]//g; s/-/\n/g; s/_/\n/g;" |\
+	grep -vi "appimage\|$arg\|?\|tar." | grep "[0-9]" | head -1 | sed 's/^v//g; s/^\.//g; s/\.$//g;'
+}
+
+_check_version_grep_numbers() {
+	grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1
+}
+
+# Versions
+_check_version_if_any_version_reference_is_somewhere() {
+	txt_files=$(file "$argpath"/* | awk -F: '/ASCII text/ {print $1}')
+	for txtf in $txt_files; do
+		if [ -f "$argpath"/tbb_version.json ] && grep -qi "\"version\":" "$argpath"/tbb_version.json; then
+			APPVERSION=$(sort "$argpath"/tbb_version.json | tr '"' '\n' | grep "^[0-9]" | head -1)
+		elif grep -qi "^version=" "$txtf" && grep -qi "^name=" "$txtf"; then
+			APPVERSION=$(grep -i "^version=" "$txtf" | cut -c 9- | tr -cd '[:alnum:]._-')
+		fi
+	done
+}
+
+_check_version_if_version_file_exists() {
+	APPVERSION=$(sort "$argpath"/version | head -1 | sed 's:.*/::' | _check_version_filters)
+	if [ -z "$APPVERSION" ]; then
+		if grep -q "download$" "$argpath"/version; then
+			APPVERSION=$(sort "$argpath"/version | tr '/' '\n' | _check_version_filters)
+		elif grep -q "://" "$argpath"/version; then
+			APPVERSION=$(sort "$argpath"/version | tr '/' '\n' | _check_version_grep_numbers)
+		elif grep -q "/v[0-9]*" "$argpath"/version; then
+			APPVERSION=$(sort "$argpath"/version | tr '/' '\n' | grep "^v[0-9]" | head -1 | sed 's/^v//g')
+		elif [ "$(sort "$argpath"/version | wc -w | sed 's/ //g')" = 1 ]; then
+			APPVERSION=$(sort "$argpath"/version | head -1)
+		fi
+	fi
+	if [ -z "$APPVERSION" ]; then
+		if grep -q "http.*download/.*[0-9].*/" "$argpath"/version; then
+			APPVERSION=$(sort "$argpath"/version | tr '/-' '\n' | grep "[0-9]" | _check_version_filters | tail -1)
+		fi
 	fi
 }
 
-function _use_enable_completion() {
-	if [ "$(grep -o "$AMCLI" 0<"$COMPLETIONPATH/$COMPLETIONFILE" | head -1)" == "$AMCLI" ]; then
-		echo " Completion script is already enabled!"
-	else
-		$SUDOCOMMAND mkdir -p "$COMPLETIONPATH"
-		if [ "$AMCLI" == appman ]; then
-			if ! test -f "$COMPLETIONPATH/$COMPLETIONFILE"; then
-				echo '#!/usr/bin/env bash' >> "$COMPLETIONFILE"
+_check_version_if_library() {
+	LIBNAME=$(sort "$argpath"/remove | tr ' ' '\n' | grep "usr/local/lib" | head -1 | sed 's:.*/::')
+	APPVERSION=$(find /usr/local/lib -type f -name "$LIBNAME" -type f | sed 's:.*.so.::' | tail -1)
+}
+
+_check_version_if_binary_in_place() {
+	APPVERSION=$(date -r "$argpath"/"$arg" "+%Y.%m.%d")
+}
+
+_check_version() {
+	rm -f "$AMCACHEDIR"/version-args
+	_determine_args
+	for arg in $ARGS; do
+		argpath=$(echo "$ARGPATHS" | grep "/$arg$")
+		if [ -f "$argpath"/remove ]; then
+			if [ -f "$argpath"/version ]; then
+				_check_version_if_version_file_exists
+			elif [ "$arg" = "$AMCLI" ]; then
+				APPVERSION="$AMVERSION"
+			elif echo "$arg" | grep -q "ffwa-"; then
+				APPVERSION="WebApp"
+			elif grep -q "usr/local/lib" "$argpath"/remove 2>/dev/null; then
+				_check_version_if_library
+			elif [ -f "$argpath"/updater ] || grep -qi "version=" "$argpath"/*; then
+				_check_version_if_any_version_reference_is_somewhere
+			else
+				APPVERSION="unknown"
 			fi
-		else
-			echo '#!/usr/bin/env bash' >> "$COMPLETIONFILE"
+			if [ -z "$APPVERSION" ]; then
+				[ -f "$argpath"/"$arg" ] && _check_version_if_binary_in_place || APPVERSION="unknown"
+			fi
+			echo " ◆ $arg	|	$APPVERSION" >> "$AMCACHEDIR"/version-args
 		fi
-		echo 'complete -W "$(cat '"$AMPATH"'/list 2>/dev/null)" '"$AMCLI"'' >> "$COMPLETIONFILE"
-		chmod a+x "$COMPLETIONFILE"
-		$SUDOCOMMAND mv "$COMPLETIONFILE" "$COMPLETIONPATH/" 2> /dev/null
-		echo " Completion has been enabled!"
-	fi
-	if [ -f "$HOME/.zshrc" ] || [ -f "$ZDOTDIR/.zshrc" ]; then
-		if [ -n "$ZDOTDIR" ]; then
-			ZSHDIR="$ZDOTDIR"
-		else
-			ZSHDIR="$HOME"
-		fi
-		if grep -q "source $ZSHDIR/$COMPLETIONFILE" "$ZSHDIR/.zshrc"; then
-			echo "Zsh completion already enabled!"
-		else
-			echo '#!/usr/bin/env bash' >> "$ZSHDIR/$COMPLETIONFILE"
-			echo 'complete -W "$(cat '"$AMPATH"'/list 2>/dev/null)" '"$AMCLI"'' >> "$ZSHDIR/$COMPLETIONFILE"
-			chmod a+x "$ZSHDIR/$COMPLETIONFILE"
-			echo -e "\nautoload bashcompinit\nbashcompinit\nsource $ZSHDIR/$COMPLETIONFILE" >> "$ZSHDIR/.zshrc"
-		fi
-	fi
+	done
 }
 
-# Function for the option that helps "AM" function like "AppMan", via alias
-function _use_appman() {
-	_online_check
-	if [ "$AMCLI" == appman ] 2>/dev/null; then
-		echo " This function only works for AM"
-		exit
-	fi
-	if test -f /opt/am/appman; then
-		_appman
-		echo -e "Please run '${RED}alias am=/opt/am/appman\033[0m' to made 'AM' act exactly like 'AppMan' for\nthe current session or save this command to your '"'~/.bashrc'"' file to make the\nchanges permanent. Visit ${LightBlue}https://github.com/ivan-hc/appman\033[0m for more!"
+_check_version_for_auto_updatable_apps() {
+	_determine_args
+	for arg in $ARGS; do
+		argpath=$(echo "$ARGPATHS" | grep "/$arg$")
+		if [ -f "$argpath"/updater ]; then
+			_check_version_if_any_version_reference_is_somewhere
+			if [ "$AMCLI" = am ] && [ -d "$CACHEDIR"/am ] && grep -q " ◆ $arg	|" "$CACHEDIR"/am/version-args; then
+				OLDAPPVERSION=$(grep " ◆ $arg	|" "$CACHEDIR"/am/version-args | awk 'END {print $NF}')
+				sed -i "/ ◆ $arg	|/s#$OLDAPPVERSION#$APPVERSION#" "$CACHEDIR"/am/*args*
+			fi
+			if [ -d "$CACHEDIR"/appman ] && grep -q " ◆ $arg	|" "$CACHEDIR"/appman/version-args; then
+				OLDAPPVERSION=$(grep " ◆ $arg	|" "$CACHEDIR"/appman/version-args | awk 'END {print $NF}')
+				sed -i "/ ◆ $arg	|/s#$OLDAPPVERSION#$APPVERSION#" "$CACHEDIR"/appman/*args*
+			fi
+		fi
+	done
+}
+
+if [ -f "$AMCACHEDIR"/version-args ]; then
+	_check_version_for_auto_updatable_apps 2>/dev/null
+fi
+
+# This function removes all info and versions from the register
+_remove_info_files() {
+	rm -f "$AMCACHEDIR"/files*
+	rm -f "$AMCACHEDIR"/version-args
+}
+
+################################################################################################################################################################
+#				APIKEY
+################################################################################################################################################################
+
+ghapikey_file="$AMDATADIR/ghapikey.txt"
+# Set header authorization if GitHub API key file exists
+[ -f "$ghapikey_file" ] && HeaderAuthWithGITPAT=" --header \"Authorization: token $(sort "$ghapikey_file")\" "
+
+# Function to validate GitHub API tokens
+_validate_github_token() {
+	local token="$1"
+	local quiet="${2:-false}"  # Optional parameter to suppress output
+
+	# Check HTTP status code for proper validation
+	local HTTP_STATUS
+	HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --header "Authorization: token $token" "https://api.github.com/repos/ivan-hc/AM/releases")
+
+	if [ "$HTTP_STATUS" = "200" ]; then
+		[ "$quiet" != "true" ] && echo $"Validation successful!"
+		return 0
+	elif [ "$HTTP_STATUS" = "401" ] || [ "$HTTP_STATUS" = "403" ]; then
+		[ "$quiet" != "true" ] && echo $"ERROR: Invalid token or insufficient permissions!"
+		return 1
 	else
-		_appman
-		wget -q "$AMREPO"/APP-MANAGER -O /opt/am/appman && chmod a+x /opt/am/appman
-		echo -e "Please run '${RED}alias am=/opt/am/appman\033[0m' to made 'AM' act exactly like 'AppMan' for\nthe current session or save this command to your '"'~/.bashrc'"' file to make the\nchanges permanent."
+		[ "$quiet" != "true" ] && echo $"ERROR: Unexpected response (HTTP $HTTP_STATUS)"
+		return 2
 	fi
 }
 
-# Handle external modules
-function _use_module() {
+_use_apikey() {
+	case $2 in
+	'del'|'delete'|'remove')
+		[ -f "$ghapikey_file" ] || { echo $" ✖ No file named $ghapikey_file has been found"; exit 1; }
+		# Remove token references from all updater files before deleting the token file
+		for arg in $ARGS; do
+		argpath=$(echo "$ARGPATHS" | grep "/$arg$")
+			if [ -f "$argpath"/AM-updater ] && grep -q "https://api.github.com" "$argpath"/AM-updater; then
+				# Remove the Authorization header from the file
+				sed -i 's# --header "Authorization: token [^"]*"##g' "$argpath"/AM-updater
+			fi
+		done
+		rm -f "$ghapikey_file" && echo $" ✔ $ghapikey_file has been removed"
+		echo $" ✔ Authorization headers removed from updater files"
+		exit 0
+	esac
+	_online_check
+	if [[ "$2" =~ ^(gh[ps]_[a-zA-Z0-9]{36}|github_pat_[a-zA-Z0-9]{22}_[a-zA-Z0-9]{59})$ ]]; then
+		# Validate the token
+		if _validate_github_token "$2"; then
+			echo "$2" > "$ghapikey_file"
+		fi
+	else
+		echo $"ERROR: Wrong expression, validation failed!"
+	fi
+}
+
+_update_github_api_key_in_the_updater_files() {
+	if [ -f "$ghapikey_file" ]; then
+		ghapikey=$(sort "$ghapikey_file")
+
+		# Validate the stored token quietly before attempting to update files
+		if ! _validate_github_token "$ghapikey" "true"; then
+			echo "$DIVIDING_LINE"
+			echo $" ⚠️ Warning: Stored GitHub API token is invalid or expired"
+			echo ""
+			echo $" Please either:"
+			echo $"   1. Generate a new token and add it with: $AMCLI apikey YOUR_NEW_TOKEN"
+			echo $"   2. Remove the invalid token with: $AMCLI apikey del"
+			echo ""
+			echo $" For instructions on creating GitHub tokens, see:"
+			echo " https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token"
+			echo "$DIVIDING_LINE"
+			exit 1
+		fi
+
+		for arg in $ARGS; do
+		argpath=$(echo "$ARGPATHS" | grep "/$arg$")
+			if [ -f "$argpath"/AM-updater ] && grep -q "https://api.github.com" "$argpath"/AM-updater; then
+				# Check if the file already contains a valid API key
+				if ! grep -qE "(gh[ps]_[a-zA-Z0-9]{36}|github_pat_[a-zA-Z0-9]{22}_[a-zA-Z0-9]{59})" "$argpath"/AM-updater; then
+					# Insert HeaderAuthWithGITPAT before the GitHub API URL
+					sed -i "s#https://api.github.com#$HeaderAuthWithGITPAT https://api.github.com#g" "$argpath"/AM-updater
+				else
+					# Replace existing API key with the one from ghapikey.txt
+					sed -i "s#\(gh[ps]_[a-zA-Z0-9]\{36\}\|github_pat_[a-zA-Z0-9]\{22\}_[a-zA-Z0-9]\{59\}\)#$ghapikey#g" "$argpath"/AM-updater
+				fi
+			fi
+		done
+	fi
+}
+
+################################################################################################################################################################
+#				APPMAN MODE
+################################################################################################################################################################
+
+APPMAN_MSG=$(echo -e $"$DIVIDING_LINE\n \"AM\" is running as \"AppMan\", use ${Green}am --system\033[0m to switch it back to \"AM\"\n$DIVIDING_LINE\n")
+APPMAN_MSG_OFF=$(echo -e $"$DIVIDING_LINE\n \"AppMan Mode\" disabled! \n$DIVIDING_LINE\n")
+APPMAN_MSG_THINK=$(echo -e $"$DIVIDING_LINE\nNOTE: You can also choose to simply use \"--user\" as a flag to install apps locally (options \"-i\", \"-ia\" and \"-e\") instead of going fully into \"AppMan Mode\". \"AM\" can  handle local applications as well.\n$DIVIDING_LINE\n")
+
+_use_appman() {
+	_online_check
+	[ "$CLI" = appman ] && echo $" This function only works for AM" && exit 0
+	printf "%b\n" "$APPMAN_MSG_THINK" | _fit
+	read -r -p $" Do you wish to enter \"AppMan Mode\" (y,N)?" yn
+	if ! echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
+		echo "$DIVIDING_LINE"
+	else
+		[ ! -f "$APPMANCONFIG"/appman-mode ] && mkdir -p "$APPMANCONFIG" && touch "$APPMANCONFIG"/appman-mode
+		_appman && printf "%b\n" "$APPMAN_MSG"
+	fi
+}
+
+if [ "$AMCLI" = am ]; then
+	if [ -f "$APPMANCONFIG"/appman-mode ]; then
+		[ ! -f "$APPMANCONFIG"/appman-config ] && printf "%b\n" "$APPMAN_MSG"
+		_appman
+		AMCLIPATH="$CLI_PATH"
+	elif [ ! -w "$AMPATH" ]; then
+		read -r -p $" \"AM\" is read-only, want to use it in \"AppMan Mode\" (Y,n)? " yn
+		if echo "$yn" | grep -i '^n' >/dev/null 2>&1; then
+			exit 0
+		else
+			echo "$DIVIDING_LINE"; echo $"\"AppMan Mode\" enabled!"; echo "$DIVIDING_LINE"
+			_use_appman 1>/dev/null
+		fi
+	fi
+fi
+
+################################################################################################################################################################
+#				CLEAN
+################################################################################################################################################################
+
+_clean_amcachedir_message() {
+	_clean_amcachedir
+	[ "$AMCLI" = am ] && [ -d "$CACHEDIR"/am ] && echo $" ✔ Clear the contents of $CACHEDIR/am"
+	[ -d "$CACHEDIR"/appman ] && echo $" ✔ Clear the contents of $CACHEDIR/appman"
+}
+
+_clean_all_home_cache_directories_of_appimages() {
+	for arg in $ARGPATHS; do
+		if test -d "$arg"/*.home/.cache; then
+			rm -Rf "$arg"/*/*.home/.cache/* && echo $" ✔ Clear the contents of $arg/*.home/.cache"
+		fi
+	done
+}
+
+_clean_all_tmp_directories_from_appspath() {
+	_determine_args
+	for arg in $ARGPATHS; do
+		if [ -d "$arg"/tmp ]; then
+			rm -Rf "$arg"/tmp && echo $" ✔ Removed $arg/tmp"
+		fi
+	done
+}
+
+_clean_launchers() {
+	if [ -d "$DATADIR"/applications/AppImages ]; then
+		rm -f "$AMCACHEDIR"/mountpoints
+		for var in "$DATADIR"/applications/AppImages/*.desktop; do
+			# full path to appimage
+			appimagename=$(awk -F'=| ' '/Exec=/{print $2; exit}' "$var" | sed 's/"//g; s/\s.*$//')
+			# name of the appimage
+			launcher2del=$(basename -- "$(echo "$appimagename" | tr '[:upper:]' '[:lower:]')")
+			# removable mount point where the appimage may be stored
+			mountpoint=$(echo "$appimagename" | cut -d'/' -f1-4)
+			if [ ! -f "$appimagename" ]; then
+				if echo "$appimagename" | grep -q "^/media/\|^/mnt/"; then
+					mountpoint=$(echo "$appimagename" | cut -d'/' -f1-4)
+					unmounted_point=$(echo "$mountpoint" | cut -d'/' -f1-2)
+				elif echo "$appimagename" | grep -q "^/run/media/"; then
+					mountpoint=$(echo "$appimagename" | cut -d'/' -f1-5)
+					unmounted_point="/run/media"
+				else
+					mountpoint=""
+				fi
+				if [ -n "$mountpoint" ] && [ ! -d "$mountpoint" ]; then
+					echo "$mountpoint" >> "$AMCACHEDIR"/mountpoints
+					echo $" ✖ ERROR: cannot remove \"$(basename "$var")\""
+					echo $"   related AppImage is located in an unmounted path of $unmounted_point"
+				else
+					rm -f "$var"
+					[ -n "$BINDIR" ] && [ -n "$launcher2del" ] && rm -f "$BINDIR"/"$launcher2del"*
+				fi
+			fi
+		done
+		if [ -f "$AMCACHEDIR"/mountpoints ]; then
+			mountpoints=$(sort "$AMCACHEDIR"/mountpoints)
+			for m in $mountpoints; do
+				[ ! -d "$m" ] && mountpoint_enabled=1
+			done
+		fi
+		[ -z "$mountpoint_enabled" ] && [ -n "$BINDIR" ] && cd "$BINDIR" && find . -xtype l -delete
+		rm -f "$AMCACHEDIR"/mountpoints
+		echo $' ✔ Removed orphaned launchers produced with the "--launcher" option'
+		rmdir "$DATADIR"/applications/AppImages
+	else
+		[ -n "$BINDIR" ] && cd "$BINDIR" && find . -xtype l -delete
+	fi
+}
+
+_clean_old_modules() {
+	[ -z "$MODULES" ] && MODULES=$(sort "$CLI_PATH" | tr '"' '\n' | grep "[a-z]\.am$" | uniq)
+	[ -z "$MODULES_PATH" ] && exit 1
+	for m in "$MODULES_PATH"/*; do
+		if [[ "${MODULES}" != *"$(basename -- "$m")"* ]];then
+			rm -f "$m" 2>/dev/null
+			echo $" ✔ Removed obsolete module named \"$(basename -- "$m")\""
+		fi
+	done
+}
+
+_use_clean() {
+	echo $" Cleaning temporary files and folders..." && sleep 0.1
+	i=100 && while [ "$i" -ge 0 ]; do
+		printf " %03d\r" "$i" && sleep 0.0001 && i=$((i - 1))
+	done
+	_detect_appman_apps
+	_determine_args
+	_clean_amcachedir_message
+	_clean_all_home_cache_directories_of_appimages
+	_clean_all_tmp_directories_from_appspath
+	_clean_launchers 2>/dev/null
+	_clean_old_modules
+}
+
+################################################################################################################################################################
+#				HIDE/UNHIDE
+################################################################################################################################################################
+
+_use_hide_unhide() {
+	_determine_args
+	entries="$(echo "$@" | cut -f2- -d ' ')"
+	if [ "$1" = hide ]; then
+		for arg in $entries; do
+			argpath=$(echo "$ARGPATHS" | grep "/$arg$")
+			[ -f "$argpath/remove" ] && mv "$argpath/remove" "$argpath/remove.old" && echo $"✔ $argpath has been hidden" || echo $"✖ Can't hide \"$arg\", app already hidden or non-existent"
+		done
+	else
+		for arg in $entries; do
+			[ "$AMCLI" = am ] && [ -f "/opt/$arg/remove.old" ] && mv "/opt/$arg/remove.old" "/opt/$arg/remove" && echo $"✔ /opt/$arg can be managed again"
+			[ -n "$APPMAN_APPSPATH" ] && [ -f "$APPMAN_APPSPATH/$arg/remove.old" ] && mv "$APPMAN_APPSPATH/$arg/remove.old" "$APPMAN_APPSPATH/$arg/remove" && echo $"✔ $APPMAN_APPSPATH/$arg can be managed again"
+		done
+		_clean_amcachedir
+	fi
+}
+
+################################################################################################################################################################
+#				SYNC
+################################################################################################################################################################
+
+_sync_installation_scripts() {
+	printf $"%b\n Checking for changes of the installation scripts in the online database...\n" "$DIVIDING_LINE"
+	_determine_args
+	for arg in $ARGS; do
+		argpath=$(echo "$ARGPATHS" | grep "/$arg$")
+		if [ -f "$argpath"/AM-updater ] && [ -w "$argpath" ]; then
+			mkdir -p "$argpath"/.am-installer
+			scriptname=$(ls "$argpath/.am-installer/" | head -1)
+			if [ -n "$scriptname" ] && grep -q "^◆ $scriptname :" "$AMDATADIR/$ARCH-apps"; then
+				CURRENT=$(cat "$argpath"/.am-installer/"$scriptname")
+				SOURCE=$(curl -Ls "$APPSDB"/"$scriptname")
+				if [ "$CURRENT" = "$SOURCE" ]; then
+					echo -ne "\r" 2>/dev/null
+				else
+					printf $" ◆ %b%b\033[0m has changed, you may need to reinstall it, see\n   https://github.com/ivan-hc/AM/blob/main/programs/%b/%b\n" "${RED}" "$scriptname" "$ARCH" "$scriptname"
+					to_reinstall_true=1
+				fi
+			else
+				if [ -z "$scriptname" ] && curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg"  1>/dev/null; then
+					printf $" ◆ No installation script for %b, downloading one...\n" "$arg"
+					mkdir -p "$argpath"/.am-installer
+					wget -q "$APPSDB/$arg" -O "$argpath"/.am-installer/"$arg"
+				fi
+				SOURCE=""
+			fi
+			scriptname=""
+		fi
+	done
+	[ -n "$to_reinstall_true" ] && printf $"\n To fix the above, just run \"%b%b reinstall\033[0m\", without arguments\n" "${Green}" "$AMCLI"
+}
+
+_sync_appimages_list() {
+	APPIMAGES_LIST="${APPIMAGES_LIST:-$AMREPO/programs/$ARCH-appimages}"
+	curl -Ls "$APPIMAGES_LIST" > "$AMDATADIR/$ARCH-appimages"
+}
+
+_sync_portable_list() {
+	PORTABLE_LIST="${PORTABLE_LIST:-$AMREPO/programs/$ARCH-portable}"
+	curl -Ls "$PORTABLE_LIST" > "$AMDATADIR/$ARCH-portable"
+}
+
+_sync_databases() {
+	printf $"%b\n Check and update offline lists of additional databases...\n" "$DIVIDING_LINE"
+	_sync_appimages_list
+	_sync_portable_list
+	_sync_third_party_lists 2>/dev/null
+	_completion_lists
+}
+
+_sync_locale() {
+	if [ -f "$DATADIR/locale/$iso_code/LC_MESSAGES/am.mo" ]; then
+		printf $"%b\n Check and update localization...\n" "$DIVIDING_LINE"
+		rm -f "$DATADIR/locale/$iso_code/LC_MESSAGES/am.mo"
+		curl -s -Lo "$DATADIR/locale/$iso_code/LC_MESSAGES/am.mo" "https://github.com/ivan-hc/AM/raw/$AMBRANCH/translations/usr/share/locale/$iso_code/LC_MESSAGES/am.mo"
+	elif [ "$iso_code" = "en" ]; then
+		_check_valid_iso_codes
+		if curl --output /dev/null --silent --head --fail "https://github.com/ivan-hc/AM/raw/$AMBRANCH/translations/usr/share/locale/$iso_code/LC_MESSAGES/am.mo" 1>/dev/null; then
+			printf "%b\n Found a translation file, run the \"%b%b translate %b\033[0m\" command to use it...\n" "$DIVIDING_LINE" "$Gold" "$AMCLI" "$iso_code"
+		fi
+	fi
+}
+
+_sync_modules() {
+	printf $"%b\n Check for updates in modules...\n" "$DIVIDING_LINE"
+	MODULES=$(curl -Ls "$AMREPO/APP-MANAGER" | tr '"' '\n' | grep "[a-z]\.am$")
+	for module_name in $MODULES; do
+		mkdir -p "$MODULES_PATH" && cd "$MODULES_PATH" || return 1
+		if ! test -f ./"$module_name"; then
+			echo $" ◆ Downloading $module_name (not previously installed)..."
+			curl -Os "$MODULES_SOURCE/$module_name" 2>/dev/null
+			chmod a+x ./"$MODULENAME"
+		fi
+		CURRENT=$(cat ./"$module_name" 2>/dev/null)
+		SOURCE=$(curl -Ls "$MODULES_SOURCE/$module_name")
+		if [ "$CURRENT" = "$SOURCE" ]; then
+			echo -ne "\r" 2>/dev/null
+		else
+			echo $" ◆ Updating $module_name..."
+			curl -Ls "$MODULES_SOURCE/$module_name" > ./"$module_name" 2>/dev/null
+		fi
+	done
+	_clean_old_modules
+}
+
+_sync_amcli() {
+	echo "$DIVIDING_LINE"
+	CURRENT_AM_VERSION="$AMVERSION"
+	echo -ne $"\n ◆ SYNCHRONIZING \"$AMCLIUPPER\" VERSION \"$CURRENT_AM_VERSION\"...\r" && sleep 0.25
+	_clean_amcachedir 1>/dev/null
+	cd "$AMCACHEDIR" || return 1
+	curl -Ls "$AMREPO"/APP-MANAGER > ./APP-MANAGER && chmod a+x ./APP-MANAGER
+	echo y | mv ./APP-MANAGER "$CLI_PATH"
+	NEW_AM_VERSION=$("$AMCLIPATH" -v)
+	if [ ! "$CURRENT_AM_VERSION" = "$NEW_AM_VERSION" ]; then
+		echo -ne $" A new release of \"$AMCLIUPPER\" is available, please wait...\r"
+		echo $" ◆ \"$AMCLIUPPER\" IS NOW UPDATED TO THE BRAND NEW \"$NEW_AM_VERSION\" VERSION!"
+		printf $"\n  Replacement of version \"%b\" currently in use, COMPLETED! \n" "$CURRENT_AM_VERSION"
+		printf $"\n See https://github.com/ivan-hc/AM/commits/main\n\n"
+	else
+		echo $" ◆ \"$AMCLIUPPER\" IS ALREADY UPDATED, CURRENT VERSION \"$CURRENT_AM_VERSION\""
+		printf $"\n See https://github.com/ivan-hc/AM/commits/%b\n\n" "$AMBRANCH"
+	fi
+}
+
+_use_sync() {
+	_online_check
+	_betatester_message_on
+	_sync_databases
+	_sync_locale
+	_sync_installation_scripts
+	if [ "$CLI_PATH" != "/usr/bin/am" ] && [ "$AMSYNC" != 1 ]; then
+		if [ "$CLI" = am ]; then
+			if [ -f "$APPMANCONFIG"/appman-mode ]; then
+				if [ -d "$(realpath /opt)/am/modules" ]; then
+					MODULES_PATH="$(realpath /opt)/am/modules"
+					if [ -w "$(realpath /opt)/am" ]; then
+						_sync_modules
+						_sync_amcli
+					else
+						printf "%b\n DONE! \n" "$DIVIDING_LINE"
+					fi
+				fi
+			else
+				_sync_modules
+				_sync_amcli
+			fi
+		elif [ "$CLI" = appman ]; then
+			_sync_modules
+			_sync_amcli
+		fi
+	fi
+	echo "$DIVIDING_LINE"
+}
+
+################################################################################################################################################################
+#				UPDATE
+################################################################################################################################################################
+
+_update_updatable_apps_msg_head() {
+	printf $" %b\"%b\" CAN MANAGE UPDATES FOR THE FOLLOWING PROGRAMS\033[0m:\n%b\n\n" "${Gold}" "$AMCLIUPPER" "$DIVIDING_LINE"
+	[ -f "$AMCACHEDIR/updatable-args-list" ] && grep "◆" "$AMCACHEDIR/updatable-args-list" | sort || echo $" None"
+	printf $"\n %bAll self-updatable programs are excluded\033[0m\n" "${RED}"
+	echo "$DIVIDING_LINE"
+}
+
+_update_list_updatable_apps() {
+	_determine_args
+	_check_version
+	for arg in $ARGS; do
+		argpath=$(echo "$ARGPATHS" | grep "/$arg$")
+		if [ -d "$argpath" ]; then
+			if [ -f "$argpath/AM-updater" ]; then
+			 	app_version=$(grep -w " ◆ $arg	|" "$AMCACHEDIR/version-args" | sed 's:.*|	::')
+				echo " ◆ $arg $app_version" >> "$AMCACHEDIR"/updatable-args-list
+			fi
+		fi
+	done
+}
+
+_update_determine_apps_version_changes() {
+	[ -z "$debug_update" ] && echo "$DIVIDING_LINE"
+	if [ -f "$AMCACHEDIR"/updatable-args-list ]; then
+		mv "$AMCACHEDIR"/updatable-args-list "$AMCACHEDIR"/updatable-args-list-old
+		_update_list_updatable_apps
+		OLDVER="$AMCACHEDIR/updatable-args-list-old"
+		NEWVER="$AMCACHEDIR/updatable-args-list"
+		if cmp --silent -- "$NEWVER" "$OLDVER"; then
+			printf $" Nothing to do here! \n"
+		else
+			printf $" The following apps have been updated:\n\n"
+			diff "$OLDVER" "$NEWVER" | grep "^>" | sed 's/^> //g'
+			echo ""
+		fi
+	else
+		echo $' No apps to update here!'
+	fi
+}
+
+[ -z "$ALT_GH" ] && ALT_GH="api.gh.pkgforge.dev"
+
+_update_determine_gh_apps_number() {
+	for arg in $ARGS; do
+		argpath=$(echo "$ARGPATHS" | grep "/$arg$")
+		if [ -f "$argpath"/AM-updater ] && grep -q "api.github.com" "$argpath"/AM-updater; then
+			[ -n "$GH_APPS" ] && GH_APPS=$(printf "%b\n%b\n" "$GH_APPS" "$arg") || GH_APPS="$arg"
+		fi
+	done
+	wait
+	[ -z "$GH_APPS" ] && GH_APPS_NUMBER="" || GH_APPS_NUMBER=$(echo "$GH_APPS" | wc -l | sed 's/ //g')
+	if [ -n "$GH_APPS_NUMBER" ]; then
+		GH_API_REMAINING=$(curl -Ls "https://api.github.com/rate_limit" | tr '{,' '\n' | grep -i remaining | tail -1 | grep -Eo "[0-9]*")
+		GH_API_ALLOWED=$(("$GH_API_REMAINING"-"$GH_APPS_NUMBER"))
+	fi
+}
+
+_update_run_updater() {
+	if grep -q "api.github.com" "$argpath"/AM-updater; then
+		if [ "$GH_API_ALLOWED" -le 5 ]; then
+			sed -i "s#api.github.com#$ALT_GH#g" "$argpath"/AM-updater
+		fi
+	fi
+	if [ -z "$debug_update" ]; then
+		"$argpath"/AM-updater >/dev/null 2>&1
+	else
+		"$argpath"/AM-updater
+	fi
+	sed -i "s#$ALT_GH#api.github.com#g" "$argpath"/AM-updater 2>/dev/null
+	end=$(date +%s)
+	timelapsed=$((end - start))
+	[ "$timelapsed" = 1 ] && printf $" %b✔\033[0m $APPNAME is updated, $timelapsed second elapsed! \n" "${Green}" || printf $" %b✔\033[0m $APPNAME is updated, $timelapsed seconds elapsed! \n" "${Green}"
+	[ -n "$debug_update" ] && echo "$DIVIDING_LINE"
+}
+
+_update_app() {
+	APPNAME=$(echo "$arg" | tr '[:lower:]' '[:upper:]')
+	start=$(date +%s)
+	if [ -w "$argpath"/AM-updater ]; then
+		_update_run_updater &
+	else
+		printf $" %b✖\033[0m %b is read-only, cannot update it!\n" "${RED}" "$APPNAME"
+	fi
+}
+
+_update_all_apps() {
+	for arg in $ARGS; do
+		argpath=$(echo "$ARGPATHS" | grep "/$arg$")
+		cd "$argpath" || exit 1
+		arg=$(printf '%s\n' "${PWD##*/}")
+		if [ -f "$argpath"/AM-updater ]; then
+			_update_app
+		fi
+	done
+	wait
+	_update_determine_apps_version_changes
+	_clean_all_tmp_directories_from_appspath >/dev/null
+	[ -d "$APPMAN_APPSPATH" ] && rm -Rf "$APPMAN_APPSPATH"/*/tmp
+}
+
+_update_launchers_not_found_msg() {
+	MISSING_LAUNCHERS_MSG=" No launcher found."
+	printf "%b\n%b\n%b\n" "$DIVIDING_LINE" "$MISSING_LAUNCHERS_MSG" "$DIVIDING_LINE"
+}
+
+_update_launchers() {
+	_clean_launchers 2>/dev/null 1>/dev/null
+	MISSING_LAUNCHERS_MSG="No launcher found, use option \"--launcher\" to create them."
+	[ ! -d "$DATADIR"/applications/AppImages ] && _update_launchers_not_found_msg && exit 0
+	[ -d "$DATADIR"/applications/AppImages ] && [ -z "$( ls -A "$DATADIR"/applications/AppImages )" ] && _update_launchers_not_found_msg && exit 0
+	if ! command -v appimageupdatetool 1>/dev/null; then
+		update_launchers_error_message=" 💀 ERROR! Missing command \"${RED}appimageupdatetool\033[0m\", install it and retry!"
+		printf "%b\n%b\n%b\n" "$DIVIDING_LINE" "$update_launchers_error_message" "$DIVIDING_LINE"
+	else
+		echo $" ◆ Update local AppImages integrated manually"
+		for var in "$DATADIR"/applications/AppImages/*.desktop; do
+			appimage_full_path=$(awk -F'=| ' '/Exec=/{print $2; exit}' "$var" | sed 's/"//g; s/\s.*$//')
+			appimagename=$(basename -- "$appimage_full_path")
+			appimage_path=$(echo "$appimage_full_path" | sed -E 's|/[^/]+$|/|; s/\/*$//g')
+			printf "%b\n File: %b%b\033[0m\n Path: %b" "$DIVIDING_LINE" "${Green}" "$appimagename" "$appimage_path"
+			if [ ! -f "$appimage_full_path" ]; then
+				echo $"(unmounted)" | _fit
+			else
+				printf "\n\n"
+				appimageupdatetool -Or "$appimage_full_path"
+			fi
+		done
+	fi
+}
+
+_use_update() {
+	_online_check
+	_update_github_api_key_in_the_updater_files
+	_clean_all_tmp_directories_from_appspath >/dev/null
+	_check_fedora_mess
+
+	ENTRIES="$(echo "$@" | cut -f2- -d ' ' | tr ' ' '\n' | grep -v -- "^-\|^$1$")"
+	FLAGS=$(echo "$@" | tr ' ' '\n' | grep -- "--" | tr '\n ' ' ')
+	if echo "$FLAGS" | grep -q -- "--debug"; then
+		debug_update="1"
+	fi
+
+	_update_determine_gh_apps_number
+
+	if [ -z "$ENTRIES" ]; then
+		_clean_amcachedir
+		_update_list_updatable_apps
+		printf $"%b\n >> %bSTART OF ALL PROCESSES\033[0m << \n%b\n" "$DIVIDING_LINE" "${LightBlue}" "$DIVIDING_LINE"
+		if echo "$FLAGS" | grep -q -- "--apps"; then
+			_update_updatable_apps_msg_head
+			_update_all_apps
+		elif echo "$FLAGS" | grep -q -- "--launcher"; then
+			_update_launchers
+		else
+			_update_updatable_apps_msg_head
+			_update_all_apps
+			_use_sync
+			printf $" >> %bEND OF ALL PROCESSES\033[0m << \n%b\n" "${LightBlue}" "$DIVIDING_LINE"
+			sleep 0.2
+			exit 0
+		fi
+		printf $"%b\n >> %bEND OF ALL PROCESSES\033[0m << \n%b\n" "$DIVIDING_LINE" "${LightBlue}" "$DIVIDING_LINE"
+		sleep 0.2
+		exit 0
+	else
+		[ -n "$debug_update" ] && echo "$DIVIDING_LINE"
+		_determine_args
+		for arg in $ENTRIES; do
+			argpath=$(echo "$ARGPATHS" | grep "/$arg$")
+			if [ -f "$argpath"/AM-updater ]; then
+				cd "$argpath" 2>/dev/null || exit 1
+				_update_app
+			elif [ ! -d "$argpath" ]; then
+				printf $" %b✖\033[0m %b cannot be updated, program not found \n" "${RED}" "$(echo "$arg" | tr '[:lower:]' '[:upper:]')"
+			else
+				UPDATERS=$(cd "$argpath" 2>/dev/null && find . -name "*update*" -print 2>/dev/null)
+				[ -n "$UPDATERS" ] && arg_autoupdatable=", it may have its update system"
+				printf $" %b✖\033[0m %b cannot be updated%b\n" "${RED}" "$(echo "$arg" | tr '[:lower:]' '[:upper:]')" "$arg_autoupdatable"
+			fi
+		done
+		wait
+		exit 0
+	fi
+}
+
+_use_force_latest() {
+  	_online_check
+  	_determine_args
+	ENTRIES="$(echo "$@" | cut -f2- -d ' ')"
+  	for arg in $ENTRIES; do
+	  	argpath=$(echo "$ARGPATHS" | grep "/$arg$")
+	  	if [ ! -d "$argpath" ]; then
+			echo $" ERROR: \"$arg\" is not installed, see \"-f\""
+		elif [ ! -f "$argpath"/AM-updater ]; then
+			echo $" ERROR: \"$AMCLI\" cannot manage updates for \"$arg\""
+		elif ! grep -q "api.github.com" "$argpath"/AM-updater; then
+			echo $" ERROR: \"$arg\" source is not on Github"
+		elif ! grep -q "/releases | " "$argpath"/AM-updater; then
+			echo $" ERROR: \"$arg\" does not redirect to a generic \"releases\""
+		else
+			sed -i 's#/releases | #/releases/latest | #g' "$argpath"/AM-updater
+			APPNAME=$(echo "$arg" | tr '[:lower:]' '[:upper:]')
+			start=$(date +%s)
+			_update_run_updater
+		fi
+	done
+}
+
+################################################################################################################################################################
+#				USAGE
+################################################################################################################################################################
+
+# HANDLE ALL THE EXTERNAL MODULES
+_use_module() {
 	# Test if module exists
-	if ! test -f "$AMPATH/modules/$MODULE"; then
-		wget -q "$AMREPO/modules/$MODULE" -O "$AMPATH/modules/$MODULE"
-		chmod a+x "$AMPATH/modules/$MODULE"
+	if [ ! -f "$MODULES_PATH/$MODULE" ]; then
+		if [ "$CLI" = am ] && [ -f "$APPMANCONFIG"/appman-mode ] && [ -f "/usr/lib/am/modules/$MODULE" ]; then
+			MODULES_PATH="/usr/lib/am/modules"
+		elif [ "$CLI" = am ] && [ -f "$APPMANCONFIG"/appman-mode ] && [ -f "$(realpath /opt)/am/modules/$MODULE" ]; then
+			MODULES_PATH="$(realpath /opt)/am/modules"
+		else
+			_online_check
+			if ! wget -q "$MODULES_SOURCE/$MODULE" -O "$MODULES_PATH/$MODULE"; then
+				echo $" Module not found, run \"$AMCLI -s\" to update \"$AMCLIUPPER\""
+				exit 1
+			fi
+		fi
 	fi
 	# Source module
-	source "$AMPATH/modules/$MODULE" "$@"
+	if [ -n "$NO_COLOR" ]; then
+		source "$MODULES_PATH/$MODULE" "$@" | sed -e 's/\x1b\[[0-9;]*m//g'
+	elif [ -t 1 ]; then
+		source "$MODULES_PATH/$MODULE" "$@"
+	else
+		source "$MODULES_PATH/$MODULE" "$@" | sed -e 's/\x1b\[[0-9;]*m//g'
+	fi
 }
 
-# ALL THE OPTIONS
 case "$1" in
 	'')
-		echo -e "\n USAGE: '$AMCLI [option]'\n        '$AMCLI [option] [argument]'\n\n Run the '$AMCLI -h' command to find out more\n"
+		echo "$DIVIDING_LINE"
+		echo $" USAGE: $AMCLI [OPTION]"
+		echo $"        $AMCLI [OPTION] [ARGUMENT]"
+		echo ""
+		echo $" Run the \"$AMCLI -h\" command to find out more"
+		echo "$DIVIDING_LINE"
+		exit 0
 		;;
-	# OPTIONS BASED ON EXTERNAL MODULES
-	'-a'|'about'|'-l'|'list'|'-q'|'query')
+	# EXTERNAL OPTIONS / MODULES
+	'about'|'-a'|\
+	'files'|'-f'|'-fi'|\
+	'list'|'-l'|\
+	'query'|'-q')
 		MODULE="database.am"
 		_use_module "$@"
 		;;
-	'-b'|'backup'|'-o'|'overwrite'|'lock'|'unlock')
-		MODULE="no-updates.am"
+	'backup'|'-b'|\
+	'config'|'-C'|'--config'|'home'|'-H'|'--home'|'-HC'|'-CH'|'HC'|'CH'|\
+	'downgrade'|'--rollback'|\
+	'icons'|'--icons'|\
+	'launcher'|'--launcher'|\
+	'lock'|'unlock'|\
+	'nolibfuse'|\
+	'overwrite'|'-o'|\
+	'remove'|'-R'|'-r')
+		MODULE="management.am"
 		_use_module "$@"
 		;;
-	'-c'|'clean')
-		MODULE="clean.am"
-		_use_module
-		;;
-	'-d'|'download')
-		MODULE="download.am"
+	'download'|'-d'|\
+	'extra'|'-e'|\
+	'install'|'-i'|'-ias'|\
+	'install-appimage'|'-ia'|\
+	'reinstall')
+		MODULE="install.am"
 		_online_check
+		_check_fedora_mess
+		[ "$CLI" = am ] && [ -f "$APPMANCONFIG"/appman-mode ] && printf "%b\n" "$APPMAN_MSG"
 		_use_module "$@"
 		;;
-	'-f'|'files')
-		MODULE="files.am"
-		_use_module "$@"
-		_betatester_message_on
-		;;
-	'-h'|'help')
-		MODULE="help.am"
-		_use_module "$@"
-		;;
-	'-H'|'--home'|'--firejail'|'--sandbox')
+	'sandbox'|'--sandbox'|'--disable-sandbox')
 		MODULE="sandboxes.am"
 		_use_module "$@"
 		;;
-	'-i'|'install')
-		MODULE="install.am"
-		_online_check
-		_betatester_message_on
-		_portable_dependences_setup
-		_use_module "$@"
-		;;
-	'-R'|'-r'|'remove')
-		MODULE="remove.am"
-		_use_module "$@"
-		;;
-	'-s'|'sync')
-		MODULE="sync.am"
-		_online_check
-		_betatester_message_on
-		_use_module "$@"
-		;;
-	'-t'|'template')
+	'template'|'-t')
 		MODULE="template.am"
 		_online_check
 		_use_module "$@"
 		;;
-	'-u'|'-U'|'update'|'--force-latest')
-		MODULE="update.am"
-		_online_check
-		_portable_dependences_setup
-		_use_module "$@"
-		;;
-	'--launcher')
-		MODULE="launcher.am"
-		_use_module "$@"
-		;;
-	'--rollback')
-		MODULE="rollback.am"
-		_online_check
-		_use_module "$@"
-		;;
-	'neodb'|'apikey'|'newrepo')
-		MODULE="devtools.am"
-		_online_check
-		_use_module "$@"
-		;;
-	'nolibfuse')
-		MODULE="nolibfuse.am"
-		_online_check
-		_use_module "$@"
+	'translate'|'--translate')
+		_use_translate "$@"
 		;;
 	# INBUILT OPTIONS
-	'--devmode-disable')
-		_use_betatester_off
+	'apikey')
+		_use_apikey "$@"
 		;;
-	'--devmode-enable')
-		_use_betatester_on
-		_betatester_message_on
-		;;
-	'--disable-completion')
-		_use_disable-completion
-		;;
-	'--enable-completion')
-		_use_enable_completion
-		;;
-	'--user'|'appman')
+	'appman'|'--user')
 		_use_appman
+		;;
+	'clean'|'-c')
+		_use_clean
+		;;
+	'devmode-disable'|'devmode-enable'|'--devmode-disable'|'--devmode-enable')
+		if [ "$CLI_PATH" = "/usr/bin/am" ]; then
+			echo $"This feature is disabled by your organization" | _fit
+		else
+			if [ "$1" = "--devmode-disable" ]; then
+				rm -f "$AMDATADIR"/betatester
+			else
+				touch "$AMDATADIR"/betatester
+				_betatester_message_on
+			fi
+		fi
+		;;
+	'disable-notifications'|'--disable-notifications')
+		_determine_args
+		for n in $ARGPATHS; do
+			sed -e '/notify-send/ s/^#*/#/' -i "$n/AM-updater" 2>/dev/null
+		done
+		touch "$AMDATADIR"/disable-notifications
+		;;
+	'enable-notifications'|'--enable-notifications')
+		_determine_args
+		for n in $ARGPATHS; do
+			sed -e '/notify-send/ s/^#*//' -i "$n/AM-updater" 2>/dev/null
+		done
+		rm -f "$AMDATADIR"/disable-notifications
+		;;
+	'force-latest'|'--force-latest')
+		_use_force_latest "$@"
+		;;
+	'hide'|'unhide')
+		_use_hide_unhide "$@"
+		;;
+	'newrepo'|'neodb')
+		_use_newrepo "$@"
+		;;
+	'sync'|'-s')
+		_use_sync
+		;;
+	'system'|'--system')
+		if [ -f "$APPMANCONFIG"/appman-mode ]; then
+			rm -f "$APPMANCONFIG"/appman-mode && printf "%b\n" "$APPMAN_MSG_OFF"
+		fi
+		;;
+	'update'|'-u'|'-U')
+		if [ -n "$NO_COLOR" ]; then
+			_use_update "$@" | sed -e 's/\x1b\[[0-9;]*m//g'
+		elif [ -t 1 ]; then
+			_use_update "$@"
+		else
+			_use_update "$@" | sed -e 's/\x1b\[[0-9;]*m//g'
+		fi
 		;;
 	'version'|'-v'|'--version')
 		echo "$AMVERSION"
 		;;
+	'help'|'-h')
+		################################################################################################################################################################
+		#				HELP
+		################################################################################################################################################################
+
+		_use_help() {
+			[ "$CLI" = am ] && [ -f "$APPMANCONFIG"/appman-mode ] && printf "%b\n" "$APPMAN_MSG"
+			echo -e $"
+			NAME: ${Green}$AMCLIUPPER\033[0m		VERSION: ${Green}$AMVERSION\033[0m
+
+			SYNOPSIS:	${LightBlue}$AMCLI {OPTION}\033[0m
+					${LightBlue}$AMCLI {OPTION} {PROGRAM}\033[0m
+
+			DESCRIPTION: A command line utility to install and manage AppImages and other portable programs for GNU/Linux thanks to its AUR-inspired database.
+
+			OPTIONS:
+
+			${Gold}about, -a\033[0m
+
+					${LightBlue}$AMCLI -a {PROGRAM}\033[0m
+
+			Description: Shows more info about one or more apps.
+
+			${Gold}apikey\033[0m
+
+					${LightBlue}$AMCLI apikey {Github Token}
+					${LightBlue}$AMCLI apikey delete\033[0m
+
+			Description: Accede to github APIs using your personal access tokens. The file named \"ghapikey.txt\" will be saved in $AMDATADIR. Use \"del\" to remove it.
+
+			${Gold}backup, -b\033[0m
+
+					${LightBlue}$AMCLI -b {PROGRAM}\033[0m
+
+			Description: Create a snapshot of the current version of an installed program.
+
+			${Gold}clean, -c\033[0m
+
+					${LightBlue}$AMCLI -c\033[0m
+
+			Description: Removes all the unnecessary files and folders.
+
+			${Gold}config, -C, --config\033[0m
+
+					${LightBlue}$AMCLI -C {PROGRAM}\033[0m
+
+			Description: Set a dedicated \$XDG_CONFIG_HOME for one or more AppImages.
+
+			${Gold}downgrade, --rollback\033[0m
+
+					${LightBlue}$AMCLI --rollback {PROGRAM}\033[0m
+
+			Description: Download an older or specific app version.
+
+			${Gold}download, -d\033[0m
+
+					${LightBlue}$AMCLI -d {PROGRAM}
+					${LightBlue}$AMCLI -d --convert {PROGRAM}\033[0m
+
+			Description: Download one or more installation scripts to your desktop or convert them to local installers for \"AppMan\". To test the scripts, use the \"${LightBlue}$AMCLI -i '/path/to/script'\033[0m\" command or enter the directory of the script and run the \"${LightBlue}$AMCLI -i ./script\033[0m\" command, even using dedicated flags, if necessary (see \"-i\").
+
+			${Gold}extra, -e\033[0m
+
+					${LightBlue}$AMCLI -e user/project {APPNAME}
+					${LightBlue}$AMCLI -e user/project {APPNAME} {KEYWORD}\033[0m
+
+			Description: Install AppImages from github.com, outside the database. This allows you to install, update and manage them all like the others. Where \"user/project\" can be the whole URL to the github repository, give a name to the program so that it can be used from the command line. Optionally, add an \"univoque\" keyword if multiple AppImages are listed.
+
+			${Gold}files, -f, -fi\033[0m
+
+					${LightBlue}$AMCLI -f
+					${LightBlue}$AMCLI -f --byname
+					${LightBlue}$AMCLI -f --less\033[0m
+
+			Description: Shows the list of all installed programs, with sizes. By default apps are sorted by size, use \"--byname\" to sort by name. With the option \"--less\" it shows only the number of installed apps. Option \"-fi\" only shows installed apps, not the AppImages integrated with the \"--launcher\" option.
+
+			${Gold}help, -h\033[0m
+
+					${LightBlue}$AMCLI -h\033[0m
+
+			Description: Prints this message.
+
+			${Gold}hide\033[0m
+
+					${LightBlue}$AMCLI hide {PROGRAM}\033[0m
+
+			Description: Prevents an installed application from being shown or managed by \"$AMCLI\".
+
+			${Gold}home, -H, --home\033[0m
+
+					${LightBlue}$AMCLI -H {PROGRAM}\033[0m
+
+			Description: Set a dedicated \$HOME directory for one or more AppImages.
+
+			${Gold}-HC, -CH\033[0m
+
+					${LightBlue}$AMCLI -HC {PROGRAM}\033[0m
+
+			Description: Set dedicated \$HOME and \$XDG_CONFIG_HOME directories for one or more AppImages.
+
+			${Gold}icons, --icons\033[0m
+
+					${LightBlue}$AMCLI --icons {PROGRAM}
+					${LightBlue}$AMCLI --icons --all\033[0m
+
+			Description: Allow installed apps to use system icon themes. You can specify the name of the apps to change or use the \"--all\" flag to change all of them at once. This will remove the icon path from the .desktop file and add the symbolic link of all available icons in the $DATADIR/icons/hicolor/scalable/apps directory. The \"--icons\" option can be used as \"flag\" in the \"-i\" and \"-ia\" options.
+
+			${Gold}install, -i\033[0m
+
+					${LightBlue}$AMCLI -i {PROGRAM}\033[0m
+					${LightBlue}$AMCLI -i --debug {PROGRAM}\033[0m
+					${LightBlue}$AMCLI -i --force-latest {PROGRAM}\033[0m
+					${LightBlue}$AMCLI -i --icons {PROGRAM}\033[0m
+					${LightBlue}$AMCLI -i --sandbox {PROGRAM}\033[0m
+			$(if [ -n "$third_party_flags" ]; then echo "" && echo "	Third-party databases:" && echo "" && for a in $third_party_flags; do echo "		${LightBlue}$AMCLI -i $a {PROGRAM}\033[0m"; done; fi)
+
+			Description: Install one or more programs or libraries from the list. With the \"--debug\" option you can see log messages to debug the script. For more details on \"--force-latest\", see the dedicated option, below. Use the \"--icons\" flag to allow the program to use icon themes. The \"--sandbox\" flag allows you to set sandboxes for AppImage packages. It can also be extended with additional flags (see third-party flags, at the bottom of this message).
+
+			${Gold}install-appimage, -ia, -ias\033[0m
+
+					${LightBlue}$AMCLI -ia {PROGRAM}\033[0m
+					${LightBlue}$AMCLI -ia --debug {PROGRAM}\033[0m
+					${LightBlue}$AMCLI -ia --force-latest {PROGRAM}\033[0m
+					${LightBlue}$AMCLI -ia --icons {PROGRAM}\033[0m
+					${LightBlue}$AMCLI -ia --sandbox {PROGRAM}\033[0m
+					${LightBlue}$AMCLI -ias {PROGRAM}\033[0m
+
+			Description: Same as \"install\" (see above) but for AppImages only. Option \"-ias\" (aka Install AppImage & Sandbox) is equivalent to \"-ia --sandbox\", to set sandboxes for AppImage packages.
+
+			${Gold}list, -l\033[0m
+
+					${LightBlue}$AMCLI -l\033[0m
+					${LightBlue}$AMCLI -l --appimages\033[0m
+					${LightBlue}$AMCLI -l --portable\033[0m
+					${LightBlue}$AMCLI -l --all\033[0m
+			$(if [ -n "$third_party_flags" ]; then echo "" && echo "	Third-party databases:" && echo "" && for a in $third_party_flags; do echo "		${LightBlue}$AMCLI -l $a\033[0m"; done; fi)
+
+			Description: Shows the list of all the apps available. Without flags only shows the apps in the \"AM\" database, add the \"--appimages\" to show only the AppImages or \"--portable\" to show other formats from the \"AM\" database. The \"--all\" flag allows you to consult the set of all supported third-party databases. It can also be extended with additional flags (see third-party flags, at the bottom of this message).
+
+			${Gold}lock\033[0m
+
+					${LightBlue}$AMCLI lock {PROGRAM}\033[0m
+
+			Description: Prevent an application being updated, if it has an\"AM-updater\" script.
+
+			${Gold}newrepo, neodb\033[0m
+
+					${LightBlue}$AMCLI newrepo add {URL}\\{PATH}\033[0m
+					${LightBlue}$AMCLI newrepo select\033[0m
+					${LightBlue}$AMCLI newrepo on\\off\033[0m
+					${LightBlue}$AMCLI newrepo purge\033[0m
+					${LightBlue}$AMCLI newrepo info\033[0m
+
+			Description: Set a new default repo, use \"add\" to append the path to a local directory or an online URL, then use \"select\" to use it by default, a message will warn you about the usage of this repo instead of the default one. Use \"on\"/\"off\" to enable/disable it. Use \"purge\" to remove all 3rd party repos. Use \"info\" to see the source from where installation scripts and lists are taken.
+
+			${Gold}nolibfuse\033[0m
+
+					${LightBlue}$AMCLI nolibfuse {PROGRAM}\033[0m
+
+			Description: Convert old AppImages and get rid of \"libfuse2\" dependence.
+
+			${Gold}overwrite, -o\033[0m
+
+					${LightBlue}$AMCLI -o {PROGRAM}\033[0m
+
+			Description: Overwrite apps with snapshots saved previously (see \"-b\").
+
+			${Gold}query, -q\033[0m
+
+					${LightBlue}$AMCLI -q {KEYWORD}
+					${LightBlue}$AMCLI -q --all {KEYWORD}
+					${LightBlue}$AMCLI -q --appimages {KEYWORD}
+					${LightBlue}$AMCLI -q --portable {KEYWORD}
+					${LightBlue}$AMCLI -q --pkg {PROGRAM1} {PROGRAM2}\033[0m
+
+			Description: Search for keywords in the list of available applications, add the \"--appimages\" option to list only the AppImages, \"--portable\" option to list only the portable apps or add \"--pkg\" to list multiple programs at once. The \"--all\" flag allows you to consult the set of all supported databases.
+
+			${Gold}reinstall\033[0m
+
+					${LightBlue}$AMCLI reinstall\033[0m
+					${LightBlue}$AMCLI reinstall --all\033[0m
+
+			Description: Reinstall only programs whose installation script has been modified in AM's online database. Use the \"--all\" flaf to reinstall everything instead.
+
+			NOTE, this only works with the \"AM\" database. Apps installed with the \"-e\" option and custom scripts created with the \"-t\" option are not supported.
+
+			${Gold}remove, -r\033[0m
+
+					${LightBlue}$AMCLI -r {PROGRAM}\033[0m
+
+			Description: Removes one or more apps, requires confirmation.
+
+			${Gold}-R\033[0m
+
+					${LightBlue}$AMCLI -R {PROGRAM}\033[0m
+
+			Description: Removes one or more apps without asking.
+
+			${Gold}sandbox, --sandbox\033[0m
+
+					${LightBlue}$AMCLI sandbox {PROGRAM}\033[0m
+
+			Description: Run an AppImage in a sandbox using Aisap.
+
+			NOTE, \"--sandbox\" can be used as a flag in \"-i\" and \"-ia\" or can be replaced using the option \"-ias\" (aka Install AppImage & Sandbox).
+
+			${Gold}sync, -s\033[0m
+
+					${LightBlue}$AMCLI -s\033[0m
+
+			Description: Updates this script to the latest version hosted.
+
+			${Gold}template, -t\033[0m
+
+					${LightBlue}$AMCLI -t {PROGRAM}\033[0m
+
+			Description: Generate a custom installation script. To test the scripts, use the \"${LightBlue}$AMCLI -i '/path/to/script'\033[0m\" command or enter the directory of the script and run the \"${LightBlue}$AMCLI -i ./script\033[0m\" command, even using dedicated flags, if necessary (see \"-i\").
+
+			${Gold}translate, --translate\033[0m
+
+					${LightBlue}$AMCLI --translate\033[0m
+					${LightBlue}$AMCLI --translate {CODE}\033[0m
+
+			Description: Download and set one or more language packs (if available), set \"$AMCLI\" to English (default), your language or other languages.\n\nVisit https://github.com/ivan-hc/AM/tree/$AMBRANCH/translations to get source files needed to submit new translations or to improve the existing ones.
+
+			${Gold}unhide\033[0m
+
+					${LightBlue}$AMCLI unhide {PROGRAM}\033[0m
+
+			Description: Allow a hidden app to be shown and managed again (nulls \"hide\").
+
+			${Gold}unlock\033[0m
+
+					${LightBlue}$AMCLI unlock {PROGRAM}\033[0m
+
+			Description: Unlock updates for the selected program (nulls \"lock\").
+
+			${Gold}update, -u, -U\033[0m
+
+					${LightBlue}$AMCLI -u
+					${LightBlue}$AMCLI -u --apps
+					${LightBlue}$AMCLI -u --debug
+					${LightBlue}$AMCLI -u --apps --debug
+					${LightBlue}$AMCLI -u {PROGRAM}\033[0m
+					${LightBlue}$AMCLI -u --debug {PROGRAM}
+					${LightBlue}$AMCLI -u --launcher\033[0m
+
+			Description: Update everything. Add \"--apps\" to update only the apps or write only the apps you want to update by adding their names. Add the \"--debug\" flag to view the output of AM-updater scripts. Add the \"--launcher\" flag to try to update only local AppImages integrated with the \"--launcher\" option (see \"--launcher\").
+
+			${Gold}version, -v\033[0m
+
+					${LightBlue}$AMCLI -v\033[0m
+
+			Description: Shows the version.
+
+			${Gold}--devmode-disable\033[0m
+
+					${LightBlue}$AMCLI --devmode-disable\033[0m
+
+			Description: Undo \"--devmode-enable\" (see below).
+
+			${Gold}--devmode-enable\033[0m
+
+					${LightBlue}$AMCLI --devmode-enable\033[0m
+
+			Description: Use the development branch (at your own risk).
+
+			${Gold}--disable-notifications\033[0m
+
+					${LightBlue}$AMCLI --disable-notifications\033[0m
+
+			Description: Disable notifications during apps update.
+
+			${Gold}--disable-sandbox\033[0m
+
+					${LightBlue}$AMCLI --disable-sandbox {PROGRAM}\033[0m
+
+			Description: Disable the sandbox for the selected app.
+
+			${Gold}--enable-notifications\033[0m
+
+					${LightBlue}$AMCLI --enable-notifications\033[0m
+
+			Description: Enable notifications during apps update (nulls \"--disable-notifications\").
+
+			${Gold}--force-latest\033[0m
+
+					${LightBlue}$AMCLI --force-latest {PROGRAM}\033[0m
+
+			Description: Downgrades an installed app from pre-release to \"latest\".
+
+			${Gold}--launcher\033[0m
+
+					${LightBlue}$AMCLI --launcher /path/to/\${APPIMAGE}\033[0m
+
+			Description: Drag/drop one or more AppImages in the terminal and embed them in the apps menu and customize a command to use from the CLI.
+
+			NOTE that \"--launcher\" can be used as a flag in \"-u\" to try to update the integrated AppImages (see \"-u\"). This works only if \"appimageupdatetool\" is installed and delta updates are supported. This flag does not work miracles, I strongly suggest to use options \"-ia\" and \"-e\" instead.
+
+			${Gold}--system\033[0m
+
+					${LightBlue}am --system\033[0m
+
+			Description: Switch \"AM\" back to \"AM\" from \"AppMan Mode\" (see \"--user\").
+
+			${Gold}--user\033[0m
+
+					${LightBlue}am --user\033[0m
+
+			Description: Made \"AM\" run in \"AppMan Mode\", locally, useful for unprivileged users. This option only works with \"AM\".
+
+			The \"--user\" option can also be used just as a flag for installation options. For example:
+
+			- Use it to install applications locally, option \"-i\" or \"install\":
+
+				${LightBlue}am -i --user {PROGRAM}\033[0m
+
+			- Also suboptions of \"-i\" can work with this flag:
+
+				${LightBlue}am -i --user --debug {PROGRAM}\033[0m
+				${LightBlue}am -i --user --force-latest {PROGRAM}
+				${LightBlue}am -i --user --icons {PROGRAM}
+				${LightBlue}am -i --user --debug --force-latest {PROGRAM}
+				${LightBlue}am -i --user --debug --force-latest --icons {PROGRAM}\033[0m
+
+			- Same for AppImages only, option \"-ia\" or \"install-appimage\":
+
+				${LightBlue}am -ia --user {PROGRAM}\033[0m
+				${LightBlue}am -ia --user --debug {PROGRAM}
+				${LightBlue}am -ia --user --force-latest {PROGRAM}
+				${LightBlue}am -ia --user --icons {PROGRAM}
+				${LightBlue}am -ia --user --debug --force-latest {PROGRAM}\033[0m
+				${LightBlue}am -ia --user --debug --force-latest --icons {PROGRAM}\033[0m
+
+			- External AppImages can be installed like this as well, option \"-e\" or \"extra\":
+
+				${LightBlue}am -e --user user/project {APPNAME}\033[0m
+				${LightBlue}am -e --user user/project {APPNAME} {KEYWORD}\033[0m
+
+			NOTE, \"AM\" 9 or higher is also able to, update and manage apps locally, by default, and without having to switch to \"AppMan Mode\".
+
+			$DIVIDING_LINE
+
+			THIRD-PARTY FLAGS: $third_party_flags_message
+			$DIVIDING_LINE
+
+			 SITES:
+
+			 https://github.com/ivan-hc/AM
+
+			 https://portable-linux-apps.github.io
+
+			\n" | sed 's/^			//g' | _fit
+		}
+
+		if [ -n "$NO_COLOR" ]; then
+			_use_help "$@" | sed -e 's/\x1b\[[0-9;]*m//g' | less -Ir
+		elif [ -t 1 ]; then
+			_use_help "$@" | less -Ir
+		else
+			_use_help "$@" | sed -e 's/\x1b\[[0-9;]*m//g'
+		fi
+		;;
 	*)
-		exec "$AMCLIPATH"
+		echo "$DIVIDING_LINE"
+		echo $"ERROR: unknown option \"$1\", run the \"$AMCLI -h\" command to find out more" | _fit
+		echo "$DIVIDING_LINE"
 		;;
 esac
 

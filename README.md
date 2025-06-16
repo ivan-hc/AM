@@ -1,939 +1,1002 @@
 # "AM" Application Manager
-### *Database & solutions for all AppImages and portable apps for GNU/Linux!*
+### Database & solutions for all AppImages and portable apps for GNU/Linux!
+
+<div align="center">
+
+| <img src="https://raw.githubusercontent.com/ivan-hc/AM/main/sample/sandbox.gif"> | <img src="https://raw.githubusercontent.com/ivan-hc/AM/main/sample/list.gif"> | <img src="https://raw.githubusercontent.com/ivan-hc/AM/main/sample/about.gif"> |
+| - | - | - |
+| *sandbox AppImages* | *list available apps* | *info about the apps* |
+| <img src="https://raw.githubusercontent.com/ivan-hc/AM/main/sample/install.gif"> | <img src="https://raw.githubusercontent.com/ivan-hc/AM/main/sample/query.gif"> | <img src="https://raw.githubusercontent.com/ivan-hc/AM/main/sample/files.gif"> |
+| *install applications* | *query lists using keywords* | *show the installed apps* |
+| <img src="https://raw.githubusercontent.com/ivan-hc/AM/main/sample/backup-overwrite.gif"> | <img src="https://raw.githubusercontent.com/ivan-hc/AM/main/sample/update.gif"> | <img src="https://raw.githubusercontent.com/ivan-hc/AM/main/sample/nolibfuse.gif"> |
+| *create and restore snapshots* | *update everything* | *get rid of libfuse2* |
+
+</div>
+
+"AM"/"AppMan" is a set of scripts and modules for installing, updating, and managing AppImage packages and other portable formats, in the same way that APT manages DEBs packages, DNF the RPMs, and so on... using a large database of Shell scripts inspired by the Arch User Repository, each dedicated to an app or set of applications.
+
+"AM"/"AppMan" aims to be the default package manager for all AppImage packages, giving them a home to stay.
+
+You can consult the entire **list of managed apps** at [**portable-linux-apps.github.io/apps**](https://portable-linux-apps.github.io/apps).
 
 ------------------------------------------------------------------------
-[Introducing "AM"](#introducing-am)
-- [Differences between "AM" and "AppMan"](#differences-between-am-and-appman)
-- [Use AM locally like AppMan does](#use-am-locally-like-appman-does)
-- [What programs can be installed](#what-programs-can-be-installed)
-- [How to update all programs, for real](#how-to-update-all-programs-for-real)
-- [Repository and Multiarchitecture](#repository-and-multiarchitecture)
-- [Comparison with other AppImage managers](#comparison-with-other-appimage-managers)
+## What does it do?
+
+"AM" easily integrates portable programs and AppImages system-wide (by default) or locally (using the `--user` flag), allows for their updates and management from the command line, integrates them into the application menu and can even assemble them on the fly as an AUR helper.
+
+"AM" is just a tool to provide applications easily and quickly and is only responsible for integrating the AppImages into the system and installing the various programs available, respecting the following order:
+1. creation of the base directories and the removal script
+2. download of the package
+3. creation of the version file and the update script
+4. possibly, extraction of the icons and .desktop files
+
+## What doesn't it do!
+**"AM" is NOT responsible for the malfunction of individual apps!** This is a problem of those who develop or package them upstream.
+
+You can use the command `am -a {PROGRAM}` to view the description and get the sources **to contact the program maintainers**, or `am -d {PROGRAM}` to **download and read the script on your desktop to trace and reach the source safely**.
+
+------------------------------------------------------------------------
+# Main index
+------------------------------------------------------------------------
 
 [Installation](#installation)
-- [Dependences](#dependences)
-- [Proceed](#proceed)
 
-[Uninstall](#uninstall)
+- [Using the "AM-installer" script to choose between local and system-wide installation](#using-the-am-installer-script-to-choose-between-local-and-system-wide-installation)
+- [Using "GIT" (only system-wide installation)](#using-git-only-system-wide-installation)
+- [Using a one-line command (only system-wide installation)](#using-a-one-line-command-only-system-wide-installation)
 
-[Usage](#usage)
+   - [What is AppMan?](#what-is-appman)
+   - [AM installation structure](#am-installation-structure)
+   - [Uninstall](#uninstall)
+   - [How are apps installed](#how-are-apps-installed)
+   - [How to set the path to local apps](#how-to-set-the-path-to-local-apps)
+   - [What programs can be installed](#what-programs-can-be-installed)
+     - [Supported third-party databases](#supported-third-party-databases)
+     - [How to replace AM database](#how-to-replace-am-database)
 
-[Features](#features)
-- [How to enable bash completion](#how-to-enable-bash-completion)
-- [Snapshots: backup your app and restore to a previous version](#snapshots-backup-your-app-and-restore-to-a-previous-version)
-- [Update/remove programs without "AM"](#updateremove-programs-without-am)
-- [Rollback](#rollback)
-- [Convert old Type2 AppImages to Type3](#convert-old-type2-appimages-to-type3)
-- [Manage local AppImages](#manage-local-appimages)
-- [Sandbox using Firejail](#sandbox-using-firejail)
-- [Create and test your own installation script](#create-and-test-your-own-installation-script)
-- [Third-party databases for applications (NeoDB)](#third-party-databases-for-applications-neodb)
+   - [Recommended packages](#recommended-packages)
+
+   - [Do you own a repository for AppImages external to this database? Follow these instructions!](#do-you-own-a-repository-for-appimages-external-to-this-database-follow-these-instructions)
+
+[Translate "AM" in your local language](#translate-am-in-your-local-language)
+
+[How to update all programs, for real!](#how-to-update-all-programs-for-real)
+ - [How to update all installed apps](#how-to-update-all-installed-apps)
+ - [How to update everything using Topgrade](#how-to-update-everything-using-topgrade)
+
+[Options](#options)
+
+[Guides and tutorials](#guides-and-tutorials)
+
+[Instructions for Linux Distro Maintainers](#instructions-for-linux-distro-maintainers)
 
 [Troubleshooting](#troubleshooting)
-- [An application does not work, is old and unsupported](#an-application-does-not-work-is-old-and-unsupported)
-- [Cannot download or update an application](#cannot-download-or-update-an-application)
-- [Cannot mount and run AppImages](#cannot-mount-and-run-appimages)
-- [Spyware, malware and dangerous software](#spyware-malware-and-dangerous-software)
-- [Stop AppImage prompt to create its own launcher, desktop integration and doubled launchers](#stop-appimage-prompt-to-create-its-own-launcher-desktop-integration-and-doubled-launchers)
-- [The script points to "releases" instead of downloading the latest stable](#the-script-points-to-releases-instead-of-downloading-the-latest-stable)
-- [Wget2 prevents me from downloading apps and modules](#wget2-prevents-me-from-downloading-apps-and-modules)
-- [Wrong download link](#wrong-download-link)
 
 [Related projects](#related-projects)
 
------------------------------------------------------------------------------
-# Introducing "AM"
-This project is the set of two Command Line Interfaces that coexist in the same body, "[APP-MANAGER](https://github.com/ivan-hc/AM/blob/main/APP-MANAGER)". This script, depending on how it is installed and renamed, allows you to install and manage any AppImage package, but also the official versions of Firefox, Thunderbird, Brave, Blender and hundreds of other programs provided on their official sites... in the same way but with different installation methods, at system level as super user or locally. These two CLIs, or entities, are "AM" (`am` command) and "AppMan" (`appman` command), respectively.
-
-**This repository is focused on using "AM" and contains the full database of the installation scripts for the applications managed by both "AM" and "AppMan"!**
-
-*For specific guide on using "AppMan", see https://github.com/ivan-hc/AppMan*
-
-*See it in action ("AM" version 4.3.2):*
-
-https://github.com/ivan-hc/AM/assets/88724353/b2dd8ca6-5ee7-4bb2-8480-9a53f5cfcf56
-
-Being "[APP-MANAGER](https://github.com/ivan-hc/AM/blob/main/APP-MANAGER)" a bash-based script, it can be used on all the architectures supported by the Linux kernel and works with all the GNU/Linux distributions.
-
-"AM"/"AppMan" aims to be a merger for GNU/Linux distributions, using not just AppImage as the main package format, but also other standalone programs, so without having to risk breaking anything on your system: no daemons, no shared libraries. Just your program!
-
-The main goal of this tool is to provide the same updated applications to multiple GNU/Linux distributions without having to change the package manager or the distro itself. This means that whatever distro you use, you will not miss your favorite programs or the need for a more updated version.
-
-- ***You can read the common code used by both "AM" and "AppMan" at the following link***:
-
-https://github.com/ivan-hc/AM/blob/main/APP-MANAGER
-
-- ***You can check out updates to the common code used by both "AM" and "AppMan" at the following link***:
-
-https://github.com/ivan-hc/AM/commits/main/APP-MANAGER
-
-- ***For a summary of the new versions, consult the "releases" section of the "AM" repository at the following link***:
-
-https://github.com/ivan-hc/AM/releases
-
-------------------------------------------------------------------------
-## Differences between "AM" and "AppMan"
-<details>
-  <summary></summary>
-
-Initially the two projects traveled in parallel to each other, until version 5, in which the codes merged. However, depending on whether it is installed permanently using a specific method ("AM") or downloaded portablely ("AppMan", if renamed "`appman`") the two CLIs work slightly differently.
-
-#### In short:
-
-- "**AM**" applies system-wide programs integration (for all users), i.e. installs programs in the `/opt` directory (see [Linux Standard Base](https://refspecs.linuxfoundation.org/FHS_3.0/fhs/ch03s13.html)), the launchers instead are installed in `/usr/share/applications` (or `/usr/local/share/applications` if the distribution is "immutable") with the "AM-" suffix and the links are placed in `/usr/local/bin` or `/usr/local/games`. To manage programs system wide, AM needs to be installed in `/opt/am` as "`APP-MANAGER`" with a `/usr/local/bin/am` as a symlink (see https://github.com/ivan-hc/AM#installation);
-- "**AppMan**", on the other hand, works in a portable way and allows you to install and manage the same applications locally, in your "$HOME" directory, and without root privileges. However, it is important that it is renamed to `appman` to work (see https://github.com/ivan-hc/AppMan#installation)
-
-***NOTE, "AM" can be set to work like "AppMan" by enabling an alias provided with the command "`am --user`".***
-
-#### To be more detailed, here is an overview of how apps are installed by "AM" and "AppMan"
-
-Where `$PROGRAM` is the application we're going to install:
-- "AM" (ie the `am` command) installs programs system-wide. "AM" requires the `sudo` privileges but only to install and remove the app, all the other commands can be executed as a normal user. This allows multiple users of the same system to be able to use the same installed applications. This is what an installation script installs with "AM":
-
-      /opt/$PROGRAM/
-      /opt/$PROGRAM/$PROGRAM
-      /opt/$PROGRAM/AM-updater
-      /opt/$PROGRAM/remove
-      /opt/$PROGRAM/icons/$ICON-NAME
-      /usr/local/bin/$PROGRAM
-      /usr/share/applications/AM-$PROGRAM.desktop
-If the distro is immutable instead, the path of the launcher (the last line above) will change like this:
-
-      /usr/local/share/applications/AM-$PROGRAM.desktop
-Since version 5.1 the installation process have introduced a check to find read-only filesystems (`grep "[[:space:]]ro[[:space:],]" /proc/mounts`), if there are mountpoints like this, your distro may be an immutable one, so an `/usr/local/share/applications` directory will be created and the installation script will be patched to redirect the installation of launchers in that path to solve the issue.
-
-- "AppMan" (ie the `appman` command) instead does not need root privileges to work, it allows you to choose where to install your applications into your `$HOME` directory. AppMan is also usable as a portable app (i.e. you can download and place it wherever you want) and it is able to update itself, anywhere! At first start it will ask you where to install the apps and it will create the directory for you (the configuration file is in `~/.config/appman`). For example, suppose you want install everything in "Applicazioni" (the italian of "applications"), this is the structure of what an installation scripts installs with "AppMan" instead:
-
-      ~/Applicazioni/$PROGRAM/
-      ~/Applicazioni/$PROGRAM/$PROGRAM
-      ~/Applicazioni/$PROGRAM/AM-updater
-      ~/Applicazioni/$PROGRAM/remove
-      ~/Applicazioni/$PROGRAM/icons/$ICON-NAME
-      ~/.local/bin/$PROGRAM
-      ~/.local/share/applications/AM-$PROGRAM.desktop
-
-For everything else, the controls and operation are always the same for both command line tools. The only thing that changes is that the installation scripts are written only for "AM", while "AppMan" uses the same scripts and includes commands that can modify them to make them work locally during the installation process.
-
-</details>
-
------------------------------------------------------------------------------
-## Use AM locally like AppMan does
-<details>
-  <summary></summary>
-
-If you usa "AM" and have the needing of installing apps at system level and locally, use the option `--user` that allows you to create an alias to install and manage apps in your $HOME folder. When executing the `am --user` command you will be suggested an alias to use temporarily or if you want you can add it in your ~/.bashrc to make it permanent. "AppMan" will be used while still using the usual `am` command.
-
-The `--user` option does not immediately enable "AppMan Mode", instead it will show you an alias to use temporarily in the current session or to add to your ~/.bashrc to make it permanent:
-```
-alias am=/opt/am/appman
-```
-AppMan is downloaded to the AM's installation folder, but without affecting the existing installation.
-
-***NOTE: using AM with the `--user` option enabled and the alias for AppMan, "sudo" allows normal use of AM, absence allows use of AppMan.***
-
-</details>
-
------------------------------------------------------------------------------
-## What programs can be installed
-<details>
-  <summary></summary>
-
-"AM"/"AppMan" installs/removes/updates/manages only standalone programs, ie those programs that can be run from a single directory in which they are contained (where `$PROGRAM` is the name of the application, "AM" installs them always into a dedicated folder named `/opt/$PROGRAM`, while "AppMan" lets you choose to install them in a dedicated directory in your `$HOME`).
-
-The "AM" repository aims to be a reference point where you can download all the AppImage packages scattered around the web, otherwise unobtainable, as you would expect from any package manager, through specific installation scripts for each application, as happens with the AUR PKGBUILDs, on Arch Linux. "AM" is intended to be a kind of Arch User Repository (AUR) of AppImage packages, providing them a home to stay. An both "AM" and "AppMan" are the key of this home. Visit...
-
-# [*https://portable-linux-apps.github.io*](https://portable-linux-apps.github.io)
-
-... for more!
-
-### STANDALONE PROGRAMS
-The programs are taken:
-- from official sources (see Firefox, Thunderbird, Blender, NodeJS, Chromium Latest, Platform Tools...);
-- extracted from official .deb/tar/zip packages;
-- from the repositories and official sites of individual developers.
-
-### APPIMAGES
-The vast majority of scripts target AppImage packages:
-- from official sources (if the upstream developers provide them);
-- from AppImage recipes to be compiled on-the-fly with [pkg2appimage](https://github.com/AppImage/pkg2appimage) and [appimagetool](https://github.com/AppImage/AppImageKit);
-- from unofficial third-party developers, but only if an official release is not available.
-
-You can consult basic information, links to sites and sources used through the related `am -a $PROGRAM` command.
-
-### FIREFOX PROFILES
-You even create Firefox profiles to run as webapps, the ones with suffix "ffwa-" in the apps list.
-
-### THIRD-PARTY LIBRARIES
-From version 5.8 it is also possible to install [third-party libraries](https://github.com/ivan-hc/AM/tree/main/libraries) if they are not provided in your distribution's repositories.
-
-The full list is [here](https://github.com/ivan-hc/AM/blob/main/libraries/libs-list).
-
-</details>
-
------------------------------------------------------------------------------
-## How to update all programs, for real
-<details>
-  <summary></summary>
-
-To update all the programs and "AM" itself, just run the command (without `sudo`):
-
-    am -u
-    
-To update only the programs:
-
-    am -u --apps
-
-To update just one program:
-
-    am -u $PROGRAM
-
-Here are the ways in which the updates will be made:
-- Updateable AppImages can rely on an [appimageupdatetool](https://github.com/AppImage/AppImageUpdate)-based "updater" or on their external zsync file (if provided by the developer);
-- Non-updateable AppImages and other standalone programs will be replaced only with a more recent version if available, this will be taken by comparing the installed version with the one available on the source (using "curl", "grep" and "cat"), the same is for some AppImages created with [pkg2appimage](https://github.com/AppImage/pkg2appimage) and [appimagetool](https://github.com/AppImage/AppImageKit);
-- Fixed versions will be listed with their build number (e.g. $PROGRAM-1.1.1). Note that most of the programs are updateable, so fixed versions will only be added upon request (or if it is really difficult to find a right wget/curl command to download the latest version).
-
-***NOTE, with "AM", during the first installation, the main user (`$currentuser`) will take the necessary permissions on each `/opt/$PROGRAM` directory, in this way all updates will be automatic and without root permissions.***
-
-###### *In this video I'll show you how to test an update on "Avidemux" using "AM" (I use my custom AppImage I have built from "deb-multimedia", for my use case, but don't worry, the official Avidemux AppImage is also available on this repository). Firefox, on the other hand, is not affected by this management, as it can be updated automatically*:
-
-https://github.com/ivan-hc/AM/assets/88724353/7e1845e7-bd02-495a-a1b5-735867a765d1
-
-</details>
-
------------------------------------------------------------------------------
-## Repository and Multiarchitecture
-<details>
-  <summary></summary>
-
-Each program is installed through a dedicated script, and all these scripts are listed in the "[repository](https://github.com/ivan-hc/AM/tree/main/programs)" and divided by architecture.
-
-***NOTE that currently my work focuses on applications for x86_64 architecture, but it is possible to extend "AM" to all other available architectures.***
-
-Click on the link of your architecture to see the list of all the apps available on this repository:
-
-- [x86_64](https://raw.githubusercontent.com/ivan-hc/AM/main/programs/x86_64-apps)
-- [i686](https://raw.githubusercontent.com/ivan-hc/AM/main/programs/i686-apps)
-- [aarch64](https://raw.githubusercontent.com/ivan-hc/AM/main/programs/aarch64-apps)
-
-If you are interested, you can deliberately join this project to improve the lists above.
-
-</details>
-
------------------------------------------------------------------------------
-## Comparison with other AppImage managers
-<details>
-  <summary></summary>
-
-- There are many other AppImage managers around, and almost all of them support their database on appimagehub or other official AppImage resources, but the big problem is at the base of the compilation of these packages, being very often without an integrated update system. Furthermore, AppImage is a format that many developers are abandoning in favor of Flatpak, also because there were no centralized repositories or software that managed its updates in a universal way... at least until the invention of the first draft of [AppMan](https://github.com/ivan-hc/AppMan);
-- With "AM"/"AppMan" each installed program has its own script (AM-updater) that compares the installed version with the one available in the sources or uses official tools to update the AppImages ([see above](#how-to-update-all-programs-for-real)), there is support for multiple architectures (including i686 and aarch64) and anyone can create a script to install that particular program (if available for its architecture).
-
-</details>
-
 ------------------------------------------------------------------------
 # Installation
-### Dependences
-#### *Below are the essential dependencies for both "AM" and "AppMan"!*
-A warning message will prevent you from using "AM"/"AppMan" if the following packages are not installed on your system:
-- "`coreutils`", is usually installed by default in all distributions as it contains basic commands ("`cat`", "`chmod`", "`chown`"...);
+To install "AM" you must first install the "core" dependencies from your package manager:
+- "`coreutils`" (contains "`cat`", "`chmod`", "`chown`"...);
 - "`curl`", to check URLs;
 - "`grep`", to check files;
-- "`jq`", to handle JSON files (some scripts need to check a download URL from api.github.com);
 - "`sed`", to edit/adapt installed files;
-- "`wget`" to download all programs and update "AM"/AppMan itself;
-- "`xdg-user-dirs`" to download or manage files in well known local folders;
-
-- "`sudo`" (only required by "AM")
-
-###### *NOTE, if for some reason you don't use `sudo` and you prefer to gain administration privileges using alternative commands such as `doas` or similar, simply use "AppMan"*
+- "`wget`" to download all programs and update "AM" itself.
+- "`sudo`" or "`doas`", for installing and removing programs at the system level.
 
 <details>
-  <summary>See also optional dependencies, click here!</summary>
+  <summary>Additionally, you may need these optional dependencies, click here.</summary>
 
-#### *Listed below are optional dependencies that are needed only by some programs*
-Don't worry, if you come across one of these programs, a message will warn you that the program cannot be installed, skipping the installation process just for that script:
-- "`binutils`", contains a series of basic commands, including "`ar`" which extracts .deb packages (which are very few here);
+- "`binutils`", contains a series of basic commands, including "`ar`" which extracts .deb packages;
+- "`less`", to read the ever-longer lists;
 - "`unzip`", to extract .zip packages;
 - "`tar`", to extract .tar* packages;
-- "`zsync`", about 10% of AppImages depend on this to be updated.
+- "`zsync`", required by very few programs and AppImages (although it is mentioned in all installation scripts, it is often disabled because the managed .zsync files are often broken, especially for apps hosted on github.com).
 
 </details>
 
 ------------------------------------------------------------------------
-# Proceed
-"AM" is ment to be installed at system level to manage apps using `sudo` privileges.
+## Using the "AM-installer" script to choose between local and system-wide installation
+The "AM-INSTALLER" script allows you to choose "[AppMan](#what-is-appman)" instead of "AM", briefly explaining the differences between the two.
 
-To install "AM" quickly, just copy/paste the following command:
+Copy/paste the following one line command to download and run the "[AM-INSTALLER](https://github.com/ivan-hc/AM/blob/main/AM-INSTALLER)" script
 ```
-wget https://raw.githubusercontent.com/ivan-hc/AM/main/INSTALL && chmod a+x ./INSTALL && sudo ./INSTALL
+wget -q https://raw.githubusercontent.com/ivan-hc/AM/main/AM-INSTALLER && chmod a+x ./AM-INSTALLER && ./AM-INSTALLER && rm ./AM-INSTALLER
 ```
-Or use "GIT":
+...below, the screenshot of what will appear.
+
+![Istantanea_2024-11-02_00-03-39 png](https://github.com/user-attachments/assets/7bb170da-5b17-4d36-8d86-679d477debf5)
+
+Type "1" to install "AM", "2" to install "[AppMan](#what-is-appman)". Any other key will abort the installation.
+
+**Installation is complete!**
+
+Run `am -h` or jump to "**[Usage](#usage)**" to see all the available options.
+
+------------------------------------------------------------------------
+## Using "GIT" (only system-wide installation)
+Copy/paste the following commands
 ```
 git clone https://github.com/ivan-hc/AM.git
 cd AM
 chmod a+x INSTALL
 sudo ./INSTALL
-```    
-In both cases, the "INSTALL" script will create a dedicated /opt/am directory containing the ["APP-MANAGER"](https://github.com/ivan-hc/AM/blob/main/APP-MANAGER) script (ie "AM" itself), a symlink for it in /usr/local/bin named `am` and the /opt/am/remove script needed to [uninstall](#uninstall) "AM" itself, if needed. A temporary folder named /opt/am/.cache will be created too, in wich each installation script or list of available applications (for your architecture) is downloaded.
-
------------------------------------------------------------------------------
-# Uninstall
-Before you remove "AM"/AppMan, use the option `-R` to remove the apps installed using the following syntax (for example using "AM"):
 ```
-am -R {PROGRAM1} {PROGRAM2} {PROGRAM3}...
-```
-to have a list of the installed programs use the option `-f` or `files` (syntax `am -f` or `appman -f`).
-
-- To uninstall "AM" just run the command `am -R am`
-- To uninstall "AppMan" just remove it, also remove the directory $HOME/.config/appman
-
-------------------------------------------------------------------------	
-# USAGE
-```
- am {OPTION}
- 
- am {OPTION} {ARGUMENT}
-```
-
-<details>
-  <summary>Click here to see the full list of options</summary>
-
- ___________________________________________________________________________
- 
- ## OPTIONS 
- 				
- (standard, for both "AM" and "APPMAN")
- ___________________________________________________________________________
- ___________________________________________________________________________
- 
- `-a`, `about`
- 
- SYNOPSIS:
-
- `-a {PROGRAM}`
- 
- DESCRIPTION: 	Shows more info about one or more apps, all the pages are downloaded from https://portable-linux-apps.github.io
- ___________________________________________________________________________
- 
- `-b`, `backup`
- 
- SYNOPSIS:
-
- `-b {PROGRAM}`
- 
- DESCRIPTION:	Save the current version of one or more apps, each snapshot is stored into a dedicated directory, under $HOME/.am-snapshots/$PROGRAM
- 
- To restore the snapshots see the "-o" option.
- ___________________________________________________________________________
- 
- `-c`, `clean`
- 
- SYNOPSIS:
-
- `-c`
- 
- DESCRIPTION:	Removes all the unnecessary files and folders.
- ___________________________________________________________________________
- 
- `-d`, `download`
- 
- SYNOPSIS:
-
- `-d {PROGRAM}`
-
-  `-d --convert {PROGRAM}`
- 
- DESCRIPTION:	Download one or more installation scripts to your desktop. With the option "--convert" its converted to a standalone local installer, but AM requires AppMan to be installed to add custom directory settings.
- ___________________________________________________________________________
- 
- `-f`, `files`
- 
- SYNOPSIS:
-
- `-f`
-
- `-f --byname`
-
- `-f --less`
- 
- DESCRIPTION:	Shows the list of all installed programs, with sizes. By default apps are sorted by size, use "--byname" to sort by name. With the option "--less" it shows only the number of installed apps.
- ___________________________________________________________________________
- 
- `-h`, `help`
- 
- SYNOPSIS:
-
- `-h`
- 
- DESCRIPTION:	Prints this message.
- ___________________________________________________________________________
- 
- `-H`, `--home`
- 
- SYNOPSIS:
-
- `-H {PROGRAM}`
- 
- DESCRIPTION:	Set a dedicated $HOME directory for one or more AppImages.
- ___________________________________________________________________________
- 
- `-i`, `install`
- 
- SYNOPSIS:
-
- `-i {PROGRAM}`
-
- `-i --debug {PROGRAM}`
-
- `-i --force-latest {PROGRAM}`
- 
- DESCRIPTION:   Install one or more programs or libraries from the list. With the "--debug" option you can see log messages to debug the script. For more details on "--force-latest", see the dedicated option, below.
- ___________________________________________________________________________
- 
- `-l`, `list`
- 
- SYNOPSIS:
-
- `-l`
-
- DESCRIPTION:	Shows the list of all the apps available in the repository.
- ___________________________________________________________________________
- 
- `-o`, `overwrite`
- 
- SYNOPSIS:
-
- `-o {PROGRAM}`
- 
- DESCRIPTION:	Overwrite the existing version of the app with a snapshot saved previously (see the option "-b", above).
- ___________________________________________________________________________
- 
- `-q`, `query`
- 
- SYNOPSIS:
-
- `-q {KEYWORD}`
- 
- DESCRIPTION:	Can be used to search for keywords and terms in the list of available applications packages to display matches. This can be useful if you are looking for applications having a specific feature.
- ___________________________________________________________________________
- 
- `-r`, `remove`
- 
- SYNOPSIS:
-
- `-r {PROGRAM}`
- 
- DESCRIPTION:	Removes one or more apps, requires confirmation.
- ___________________________________________________________________________
- 
- `-R`
- 
- SYNOPSIS:
-
- `-R {PROGRAM}`
- 
- DESCRIPTION:	Removes one or more apps without asking.
- ___________________________________________________________________________
- 
- `-s`, `sync`
- 
- SYNOPSIS:
-
- `-s`
- 
- DESCRIPTION:	Updates this script to the latest version hosted.
- ___________________________________________________________________________
- 
- `-t`, `template`
- 
- SYNOPSIS:
-
- `-t {PROGRAM}`
- 
- DESCRIPTION:	This option allows you to generate a custom script from a list of different templates that may be vary according to the kind of app you want to upload to the "AM" repo, and the source where it is available. You can install it using the `am test /path/to/your-script` command.
- ___________________________________________________________________________
- 
- `-u`, `-U`, `update`
- 
- SYNOPSIS:
-
- `-u`
-
- `-u apps`
- 
- `-u {PROGRAM}`
- 		
- DESCRIPTION: Update all the apps (and "am" itself) or just one. If you add the "`--apps`" suboption you only update apps.
- ___________________________________________________________________________
- 
- `-v`, `version`
- 
- SYNOPSIS:
-
- `-v`
- 
- DESCRIPTION:	Shows the version.
- ___________________________________________________________________________
- 
- `--disable-completion`
- 
- SYNOPSIS:
-
- `--disable-completion`
- 
- DESCRIPTION:	Disable bash-completion.
- ___________________________________________________________________________
- 
- `--enable-completion`
- 
- SYNOPSIS:
-
- `--enable-completion`
- 
- DESCRIPTION:	Enable bash-completion to complete a keyword with the "TAB" key, using the names of all installable applications available.
- ___________________________________________________________________________
- 
- `--firejail`, `--sandbox`
- 
- SYNOPSIS:
-
- `--firejail {PROGRAM}`
- 
- DESCRIPTION:	Run an AppImage in a sandbox using Firejail.
- ___________________________________________________________________________
- 
- `--force-latest`
- 
- SYNOPSIS:
-
- `--force-latest {PROGRAM}`
-
- `-i --force-latest {PROGRAM}`
- 
- DESCRIPTION:	Downgrades an installed app from pre-release to "latest". This can be used with "-i" to force the installation of apps from "latest". Many scripts point to "releases" to find the latest build for GNU/Linux if the developer has not uploaded one in "latest".
- ___________________________________________________________________________
-
- `--launcher`
- 
- SYNOPSIS:
- 
- `--launcher /path/to/${APPIMAGE}`
-
- DESCRIPTION:	Embed one or more local AppImages in the applications menu. I suggest dragging the files into the terminal to get the desired effect. Launchers are located in ~/.local/share/applications/AppImages by default.
- ___________________________________________________________________________
- 
- `--rollback`
- 
- SYNOPSIS:
-
- `--rollback {PROGRAM}`
- 
- DESCRIPTION:	Download an older or specific version of the software you are interested in (only works with Github).
- ___________________________________________________________________________ 
- 
- `apikey`
- 
- SYNOPSIS:
- 
- `apikey {Github Token}`
- 
- `apikey delete`
- 
- DESCRIPTION:	Get unlimited access to https://api.github.com using your personal access tokens. The configuration file named "ghapikey.txt" will be saved in '$AMPATH' . Use the command "'$AMCLI' apikey delete/del/remove" to remove the file.
- __________________________________________________________________________
- 
- `dev`, `devmode`
- 
- SYNOPSIS:
- 
- `dev off`
- 
- `dev on`
- 
- DESCRIPTION:	View the installer output during installation, use "on". It can be disabled with "off" or with the "`-s`" and "`-u`" options.
- __________________________________________________________________________ 
- 
- `lock`
- 
- SYNOPSIS:
-
- `lock {PROGRAM}`
- 
- DESCRIPTION:	Lock the selected app to the current version installed, this only works if exists a dedicated "AM-updater" installed with the app.
- __________________________________________________________________________
- 
- `neodb`
- 
- SYNOPSIS:
- 
- `neodb`
-
- `neodb --silent`
- 
- DESCRIPTION:   Add third-party repos to extend the existing database. Use "--silent" to hide messages about third-party repos in use.
- __________________________________________________________________________
- 
- `newrepo`
- 
- SYNOPSIS:
- 
- `newrepo {URL}`
- 
- `newrepo off`
- 
- `newrepo on`
- 
- DESCRIPTION:   Set the variable "$AMREPO" to a new custom repository. Use "off" to restore the default one or overwrite it with a new one.
- __________________________________________________________________________
- 
- `nolibfuse`
- 
- SYNOPSIS:
- 
- `nolibfuse {PROGRAM}`
- 
- DESCRIPTION:   Convert an installed Type2 AppImage to a Type3 AppImage. Type3 AppImages does not require libfuse2 installed. Only AppImages updatable with "zsync" can be updated keeping this format. Others will be replaced with the one provided from the upstream.
- __________________________________________________________________________
- 
- `unlock`
- 
- SYNOPSIS:
-
- `unlock {PROGRAM}`
- 
- DESCRIPTION:	Unlock updates for the selected program. This option nulls the option "lock" (see above).
- ___________________________________________________________________________
- ___________________________________________________________________________
-
-## EXTRA OPTIONS
- ___________________________________________________________________________
- 
- `--user`, `appman`			(only available for "AM")
- 
- SYNOPSIS:
-
- `--user`
- 
- DESCRIPTION:	Run "AM" as an unprivileged user making it act as "AppMan".
- __________________________________________________________________________
-
-</details>
 
 ------------------------------------------------------------------------
-# Features
-------------------------------------------------------------------------
-### How to enable bash completion
-<details>
-  <summary></summary>
-
-Since 2.3.1 release "AM" has its inbuilt bash completion script that can be enabled using the following command:
-
-    am --enable-completion
-This will ceate a bash completion script in /etc/bash_completion.d named `am-completion.sh` needed to complete a keyword with the TAB key using the names of all the main options and the name of the scripts of all the applications available in the "AM" repository.
-To disable bash completion (and to remove the /etc/bash_completion.d/am-completion.sh script):
-
-    am --disable-completion
-Here you are a video on how to disable/enable bash completion in "AM":
-
-https://user-images.githubusercontent.com/88724353/155971864-783c098c-e696-47b5-aaa8-85dab6ab3b46.mp4
-
-A more detailed guide on how to create your own bash completion script for your project is available [here](https://iridakos.com/programming/2018/03/01/bash-programmable-completion-tutorial).
-
-</details>
-
-------------------------------------------------------------------------
-### Snapshots: backup your app and restore to a previous version
-<details>
-  <summary></summary>
-
-Since 2.6.1 release, "AM" supports snapshots of all installed applications. A selected program can be copied locally into your home folder.
-
-Here you are a video on how to backup/restore works in "AM":
-
-https://user-images.githubusercontent.com/88724353/157094646-0e29ddbe-6cb7-4880-8414-110db071e617.mp4
-
-- option `-b` or `backup` creates the snapshot, usage:
-
-      am -b $PROGRAM
-- option `-o` or `overwrite` allows you to roll back to a previous version of the program. Usage:
-
-      am -o $PROGRAM
-All the snapshots are stored into an hidden `/home/$USER/.am-snapshots` folder containing other subfolders, each one has the name of the programs you've done a backup before. Each snapshot is named with the date and time you have done the backup. To restore the application to a previous version, copy/paste the name of the snapshot when the `-o` option will prompt it.
-
-</details>
-
-------------------------------------------------------------------------
-### Update/remove programs without "AM"
-<details>
-  <summary></summary>
-
-- To update a program without "am":
+## Using a one-line command (only system-wide installation)
+Copy/paste the following one line command command
 ```
+wget https://raw.githubusercontent.com/ivan-hc/AM/main/INSTALL && chmod a+x ./INSTALL && sudo ./INSTALL && rm ./INSTALL
+```
+This is definitely the quickest method of all!
+
+**NOTE, the reason why I gave priority to the "AM-INSTALLER" script in this guide is because "AM" can be used in different forms. In fact, not all users can afford to install "AM" with root privileges. That's why "[AppMan](#what-is-appman)" also exists.**
+
+------------------------------------------------------------------------
+### What is AppMan?
+AppMan is a portable version of "AM", limited to installing and managing apps only locally and without root privileges.
+
+The command name changes, from `am` to `appman`, but the script is the same.
+
+"AM" on the contrary, provides a "fixed" installation, but can install and manage apps both locally and at the system level.
+
+- "AM" is for privileged users who want to install and manage apps at multiple levels
+- "AppMan" is the way to go for non-privileged users or those who don't have great needs
+
+If you want to know more about "AppMan", visit https://github.com/ivan-hc/AppMan
+
+------------------------------------------------------------------------
+### AM installation structure
+The classic "AM" installation has the following structure:
+```
+/opt/am/APP-MANAGER ==> /usr/local/bin/am
+/opt/am/modules
+/opt/am/remove
+```
+Where the command `/usr/local/bin/am` is just a symbolic link to `/opt/am/APP-MANAGER`. The directory `/opt/am/modules` contains the modules "not vital" for "AM" but necessary for managing the apps. The script `/opt/am/remove` is instead necessary for removing "AM".
+
+------------------------------------------------------------------------
+### Uninstall
+To uninstall "AM" simply run this command:
+```
+sudo /opt/am/remove
+```
+or from the CLI directly
+```
+am -R am
+```
+NOTE, it is recommended to remove apps first using the `-R` option, and then "AM", since locally installed apps may have a different path than `/opt`, see "[How are apps installed](#how-are-apps-installed)", below.
+
+**If you are an AppMan user**, `appman` is a portable script, you can simply remove it manually. **If you used AM-INSTALLER**, you simply need to remove the `$HOME/.local/bin/appman` script. To remove applications, the same rule as AM, above, applies. Their location is the one you indicated in the `$HOME/.config/appman/appman-config` file.
+
+------------------------------------------------------------------------
+### How are apps installed
+The system-wide AppImage integration has the following structure:
+```
+/opt/$PROGRAM/
+/opt/$PROGRAM/$PROGRAM
 /opt/$PROGRAM/AM-updater
+/opt/$PROGRAM/remove
+/opt/$PROGRAM/icons/$ICON-NAME
+/usr/local/bin/$PROGRAM
+/usr/local/share/applications/$PROGRAM-AM.desktop
 ```
-Note that this works only if the program has a /opt/$PROGRAM/AM-updater script, other programs like Firefox and Thunderbird are auto-updatable. 
-	
-- To uninstall a program without "am":
-```
-sudo /opt/$PROGRAM/remove
-```
+Locally installed apps can have a directory of your choice, depending on what you decided when you first started `am -i --user {PROGRAM}` or when you started `appman` (if you chose [AppMan](#what-is-appman)) or by using the `am --user` command.
 
-</details>
+In fact, the `--user` command can be used as a "flag" for application installation options, allowing you to integrate them locally and without root permissions, as AppMan does.
+
+For example, let's say you want to create and use the `/home/USER/Applicazioni` directory, here is the structure of a locally embedded AppImage:
+```
+~/Applicazioni/$PROGRAM/
+~/Applicazioni/$PROGRAM/$PROGRAM
+~/Applicazioni/$PROGRAM/AM-updater
+~/Applicazioni/$PROGRAM/remove
+~/Applicazioni/$PROGRAM/icons/$ICON-NAME
+~/.local/bin/$PROGRAM
+~/.local/share/applications/$PROGRAM-AM.desktop
+```
 
 ------------------------------------------------------------------------
-### Rollback
-<details>
-  <summary></summary>
+### How to set the path to local apps
 
-From version 4.4 it is possible to directly select from a list of URLs the version of the app that interests you most from the main source. Use the `--rollback` option in this mode:
+The configuration file for the path to locally installed applications is located in `~/.config/appman` and contains the path you specified when you first launched an option to install applications using the `--user` flag, for example:
 ```
-am --rollback ${PROGRAM}
+am -i --user {PROGRAM}
 ```
-This only works with the apps hosted on Github.
+If you are an AppMan user, you can simply launch any option.
 
-</details>
+When you first launch it, you will be asked to specify a path to the applications. You can specify any directory or subdirectory you want, **even outside of $HOME**, as long as it is not privileged. Even a USB stick.
+
+NOTE: by modifying the contents of `~/.config/appman`, you will only change the paths for any subsequent operation, while apps and modules stored in the old path will not be manageable. It is recommended to remove the apps first.
 
 ------------------------------------------------------------------------
-### Convert old Type2 AppImages to Type3
-<details>
-  <summary></summary>
+### What programs can be installed
+"AM" installs, removes, updates and manages only standalone programs, ie those programs that can be run from a single directory in which they are contained.
 
-Since version 6.1 it is possible to convert old Type2 AppImages (dependent on `libfuse2`) to Type3 using the option `nolibfuse`.
+1. **PORTABLE PROGRAMS** from official sources (see Firefox, Thunderbird, NodeJS, Platform Tools...), extracted from official .deb/tar/zip packages.
+2. **APPIMAGES**, from both official and unofficial sources (I also create unofficial AppImages), or compiled on-the-fly with [pkg2appimage](https://github.com/AppImage/pkg2appimage) and [appimagetool](https://github.com/AppImage/AppImageKit), like an AUR helper, from official archives.
+3. **FIREFOX PROFILES** to run as webapps, the ones with suffix "ffwa-" in the apps list.
+4. **THIRD-PARTY LIBRARIES** if they are missing in your repositories.
+
+The database aims to be a reference point where you can download all the AppImage packages scattered around the web, otherwise unobtainable, as you would expect from any package manager, through specific installation scripts for each application, as happens with the AUR PKGBUILDs, on Arch Linux. You can see all of them [here](https://github.com/ivan-hc/AM/tree/main/programs), divided by architecture.
+
+You can view basic information, site links and sources using the related command `am -a {PROGRAM}`, or visit [**portable-linux-apps.github.io/apps**](https://portable-linux-apps.github.io/apps).
+
+#### Supported third-party databases
+Another feature of "AM" is extensibility, thanks to the management of applications from external databases through the use of dedicated "flags" to be used during the installation process (option `-i` or `install`), the creation of lists (`-l` or `list`) and searches (`-q` or `query`)
 ```
-am nolibfuse ${PROGRAM}
+                am -i --{FLAG} {PROGRAM}
+                am -i --{FLAG} --user {PROGRAM}
+                am -l --{FLAG}
 ```
-First the selected program type is checked, if it is a Type2 AppImage, it will be extracted and repackaged using the new version of `appimagetool` from https://github.com/probonopd/go-appimage :
-- If the installed AppImage can be updated via `zsync`, the update will take place while maintaining the status of Type3 AppImage;
-- On the contrary, if the update occurs through "comparison" of versions, the converted AppImage will be replaced by the upstream version, which could still be Type2. But from version 6.1.1 the command is added within the application's AM-updater script, so as to automatically start the conversion at each update (prolonging the update time, depending on the size of the AppImage). **I suggest anyone to contact the developers to update the packaging method of their AppImage!**
+These databases have the task of supporting and enriching the list of applications that can be installed via "AM".
 
-NOTE, the conversion is not always successful, a lot depends on how the program is packaged. The conversion occurs in two steps:
-- if in the first case it succeeds without problems, the package will be repackaged as it was, but of Type 3 (and the AM-updater script will be patched if a .zsync file doesn't exist);
-- if the script encounters problems (due to Appstream validation), it will attempt to delete the contents of the /usr/share/metainfo directory inside the AppImage, as a workaround (which will probably make updates via `zsync` unusable);
-- if this step does not succeed either, the process will end with an error and the AppImage will remain Type2.
+**To see the full list of flags, scroll to the bottom of the `-h` or `help` message.**
 
-See the video:
+Alternatively, perform searches (option `-q` or `query`) using the flag `--all` to identify the application.
 
-https://github.com/ivan-hc/AM/assets/88724353/8b45d2c2-d2da-4a07-8b43-0cd77ffcb7cc
+Each application from external databases also has an identifying extension that corresponds to the database from which it comes.
 
-</details>
+Third-party databases can show basic information normally with the option `-a` or `about`, no flag is needed here. However, the name of the package will be shown with an extension equivalent to the flag used to install it. For example `{PROGRAM}` will be `{PROGRAM}.{FLAG}` if coming from the "`{FLAG}`" database.
 
-------------------------------------------------------------------------
-### Manage local AppImages
-<details>
-  <summary></summary>
+Same thing, you can use `am -i {PROGRAM}.{FLAG}` or `am -i --user {PROGRAM}.{FLAG}` to install the program without using the flag.
 
-Since version 4.4.2 you can use the `--launcher` option to integrate your local AppImage packages by simply dragging and dropping them into the terminal (see video).
+#### How to replace AM database
+One thing I care a lot about is **continuity**, and as I have seen over the years, not all open source developers are able to maintain a project. This could happen to me in the future. I don't want it to be that way.
 
-https://github.com/ivan-hc/AM/assets/88724353/c4b889f4-8504-4853-8918-44d52084fe6c
+Because of this, I have made some essential variables "customizable":
+- `APPSDB`, i.e. the "raw" directory of the architecture in use, containing the installation scripts (default value *https://raw.githubusercontent.com/ivan-hc/AM/main/programs/$ARCH*), this is mainly used in `-i`, `-d` and `-s`/`-u`
+- `APPSDBLIST`, i.e. the list of applications available for that architecture (default value *https://raw.githubusercontent.com/ivan-hc/AM/main/programs/$ARCH-apps*), this is used every time lists are updated, for example in `-l`, `-q` and `-s`/`-u`
+- `APPIMAGES_LIST`, i.e. the list of AppImages available in the database (default value *https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/main/x86_64-appimages*), used in `-ia` and `-l`/`-q` with the `--appimages` flag
+- `AMCATALOGUEMARKDOWNS`, i.e. the pages in .md format from the catalog of applications available in this database (default value *https://portable-linux-apps.github.io/apps*, add an appname with extension .md to see the content of one file), this is used in `-a`
+- `AMCATALOGUEICONS`, i.e. the icons in .png format available in the catalog of applications available in this database (default value *https://portable-linux-apps.github.io/icons*, add an appname with extension .png to see one file), this is used in `-i`, in case the installation script fails to get an icon for the application
+- `AMSYNC`, if set to "1" prevents AM from updating itself and updating modules when running `-s` or `-u`
 
-</details>
+it is enough to `export` the variables above and respect the destination file format (follow the URLs in parentheses) in case you decide to open a new community-driven database that can make up for the lack of support in this repository.
 
-------------------------------------------------------------------------
-### Sandbox using Firejail
-<details>
-  <summary></summary>
+I did this to not tie users to this database and to allow them to use AM and all its features if I, Ivan, am unable to intervene for any reason.
 
-Since version 5.3 you can use the `--firejail` option to run AppImages using a sandbox (requires Firejail installed on the host).
-
-At first start a copy of /etc/firejail/default.profile will be saved in your application's directory, so you're free to launch the AppImage once using the default Firejail profile (option 1) or the custom one (2), you can also patch the .desktop files (if available) to in sandbox-mode always (options 3 and 4). You can handle the custom firejail.profile file of the app using `vim` or `nano` using the option 5 (the first selection is `vim`).
-
-Options 1, 2 and 5 are continuous to let you edit the file and test your changes immediately. Press any key to exit.
-
-NOTE: once patched the .desktop files (options 3 and 4), they will be placed in ~/.local/share/applications, this means that if you have installed apps using AppMan, the original launchers will be overwrited.
-
-</details>
+There are many discontinuous projects. Should this become one too, it will not be obsolete.
 
 ------------------------------------------------------------------------
-### Create and test your own installation script
-<details>
-  <summary></summary>
+## Recommended packages
+After installing AM, the following packages are a must have to make your life easier:
 
-"AM"/"AppMan" has a `-t` option (or `template`) with which you can get a script to customize according to your needs. With this option, you can quickly create scripts to download existing programs or even create AppImage or AppDirs through tools such as [appimagetool](https://github.com/AppImage/AppImageKit) and [pkg2appimage](https://github.com/AppImage/pkg2appimage).
-
-The following video shows how to create and test an AppImage of "Abiword" from Debian Unstable repository with a custom AppRun (option 5):
-
-https://user-images.githubusercontent.com/88724353/150619523-a45455f6-a656-4753-93fe-aa99babc1083.mp4
-
-The currently available templates are stored [here](https://github.com/ivan-hc/AM/tree/main/templates).
-
-A wiki is also available, here I will try to explain the installation script's workflow for a program to be better managed by "AM", trying to use a language that is as simple and elementary as possible.
-
-Each script is written exclusively for "AM" and is structured in such a way that even "[AppMan](https://github.com/ivan-hc/AppMan)" can modify it to manage programs locally.
-
-We can divide the stages of an installation's process as follows:
-
-* [Step 1: create the main directory](https://github.com/ivan-hc/AM/wiki/Step-1:-create-the-main-directory) in /opt, as already suggested by the [Linux Standard Base](https://tldp.org/LDP/Linux-Filesystem-Hierarchy/html/opt.html) (LSB);
-* [Step 2: create the "remove" script](https://github.com/ivan-hc/AM/wiki/Step-2:-create-the-%22remove%22-script), needed to uninstall averything (this must be the first one to be created, in order to quickly resolve any aborted/brocken installations using the `-r` option);
-* [Step 3: download the program](https://github.com/ivan-hc/AM/wiki/Step-3:-download-the-program) and/or compile the program (this operation varies depending on how the program is distributed);
-* [Step 4: link to a $PATH](https://github.com/ivan-hc/AM/wiki/Step-4:-link-to-a-$PATH) (usually `/usr/local/bin`, but also `/usr/bin`, `/usr/games` or `/usr/local/games`);
-* [Step 5: the "AM updater" script](https://github.com/ivan-hc/AM/wiki/Step-5:-the-%22AM-updater%22-script), which is a kind of "copy" of step "3" (see above) that may include options to recognize newer versions of the program. NOTE that if you intend to create a script for the fixed version of a program, you can also skip this step;
-* [Step 6: launchers and icons](https://github.com/ivan-hc/AM/wiki/Step-6:-launchers-and-icons). Note that if you intend to create a script for a command line utility, you can also skip this step;
-* [Step 7: change the permissions](https://github.com/ivan-hc/AM/wiki/Step-7:-permissions) in the program folder, so you can use the update function (step 5) without using "sudo" privileges
-* [Step 8 (optional): your signature](https://github.com/ivan-hc/AM/wiki/Step-8-(optional):-your-signature)
-
-The most difficult step to overcome is certainly the number "3", given the great variety of methods in which authors distribute their software, while all the other steps are much easier to overcome.
-
-To install and test your own script, use the command `am -i /path/to/your-script` or `appman -i /path/to/your-script` depending on your CLI
-
-</details>
-
-------------------------------------------------------------------------
-# Third-party databases for applications (NeoDB)
-<details>
-  <summary></summary>
-
-From version 6.4, "AM"/"AppMan" can be extended by adding new application databases using a configuration file named "neodb".
-
-### For more details, see the full guide at https://github.com/ivan-hc/neodb
-
-</details>
-
-------------------------------------------------------------------------
------------------------------------------------------------------------------
-# Troubleshooting
------------------------------------------------------------------------------
-### An application does not work, is old and unsupported
-<details>
-  <summary></summary>
-
-Use the `-a` option and go to the developer's site to report the problem. The task of "AM" is solely to install / remove / update the applications managed by it. Problems related to the failure of an installed program or any related bugs are attributable solely to its developers.
-
-</details>
-
------------------------------------------------------------------------------
-### Cannot download or update an application
-<details>
-  <summary></summary>
-
-There can be many reasons:
-- check your internet connection;
-- if the app is hosted on github.com, you have probably exceeded the hourly limit of API calls;
-- the referring link may have been changed, try the `--rollback` option;
-- the reference site has changed, report any changes at https://github.com/ivan-hc/AM/issues
-
-</details>
-
------------------------------------------------------------------------------
-### Cannot mount and run AppImages
-<details>
-  <summary></summary>
-
-If by running it in the terminal you get an error message about "FUSE" or "libfuse"/"libfuse2" missing, take a look at the official documentation:
-
-https://docs.appimage.org/user-guide/troubleshooting/fuse.html
-
-If your distro does not provide `libfuse2`, you can install it using the command:
+### *1) `appimageupdatetool`*
+[**appimageupdatetool**](https://github.com/pkgforge-dev/AppImageUpdate) (fork) is a tool to get delta updates of AppImages that support them, useful if you decide to install large AppImage packages (*see "[How to update all programs, for real!](https://github.com/ivan-hc/AM?tab=readme-ov-file#how-to-update-all-programs-for-real)"*)
 ```
-am -i libfuse2
+am -i appimageupdatetool
+```
+
+### *2) `appimagetool`*
+[**appimagetool**](https://github.com/AppImage/appimagetool) is a tool used to create AppImage packages from AppDirs. "AM" uses this to convert old AppImages and remove their dependency on libfuse2 or to assemble AppImage packages on the fly from portable archives [if a build script is available](https://github.com/ivan-hc/AM/tree/main/appimage-bulder-scripts), like in an AUR helper (*see "[Convert Type2 AppImages requiring libfuse2 to New Generation AppImages](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/nolibfuse.md)" and "[Option One: "build AppImages on-the-fly](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/template.md#option-one-build-appimages-on-the-fly)"*)
+```
+am -i appimagetool
+```
+
+### *3) `aisap`*
+[**aisap**](https://github.com/mgord9518/aisap) is a Bubblewrap frontend that allows you to isolate AppImages in a sandbox (*see "[Sandbox an AppImage](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/sandbox.md)"*)
+```
+am -i aisap
+```
+
+------------------------------------------------------------------------
+### Do you own a repository for AppImages external to this database? Follow these instructions!
+If you have a github repository where you build and publish AppImage packages and if for any reason your application is not in this database, add the following instructions:
+
+> To install and update my AppImage using "[AM](https://github.com/ivan-hc/AM)", simply run the following command:
+> ```
+> am -e https://github.com/user/project appname keyword
+> ```
+> if you want to install and update it locally, run
+> ```
+> am -e --user https://github.com/user/project appname keyword
+> ```
+> ...or if you use [AppMan](https://github.com/ivan-hc/AppMan)
+> ```
+> appman -e https://github.com/user/project appname keyword
+> ```
+
+Replace `appname` with the name of the application that will also be used via command line... `keyword` is optional, depending on whether you have more than one AppImage in the "releases" section of your repository.
+
+Of course, replace `user/project` with your username and the repository name.
+
+For more details on how the `-e` or `extra` option works, see [here](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/extra.md).
+
+------------------------------------------------------------------------
+
+| [Back to "Main Index"](#main-index) |
+| - |
+
+------------------------------------------------------------------------
+# Translate "AM" in your local language
+Since version 9.8 it is possible to add and use alternative languages ​​via the `translate` option, use:
+```
+am translate
+```
+or if using AppMan
+```
+appman translate
+```
+The command accepts reliable language codes (for example "it" for Italian, or "sr" for Serbian). In case the desired language is not in the database, it will default to English (code "en").
+
+In the example, "AM" in Italian, Czech and Serbian
+
+https://github.com/user-attachments/assets/a18f48b0-f389-4e94-a576-0031354d3cd5
+
+### See "[translations/README.md](translations/README.md)" for more information!
+
+------------------------------------------------------------------------
+
+| [How to translate "AM"](translations/README.md) | [Back to "Main Index"](#main-index) |
+| - | - |
+
+------------------------------------------------------------------------
+## How to update all programs, for real!
+Most of the apps managed by "AM" have a script called `AM-updater`. It tells how updates are checked when running the `am -u` command.
+
+In most cases, the "version comparison" is used between the installed one (file `version`) and an online source (official or not, depending on how hard or easy it is to find a download URL or just a number, using the terminal). In other cases, AppImages can rely on "`appimageupdatetool`" if they support "delta updates" (install it with the command `am -i appimageupdatetool`). However, there are some programs that update themselves (and among these the most famous is certainly Firefox, all official development builds).
+
+### How to update all installed apps
+Option `-u` or `update` updates all the installed apps and keeps "AM"/"AppMan" in sync with the latest version and all latest bug fixes.
+
+1. To update only the programs, use `am -u --apps` / `appman -u --apps`
+2. To update just one program, use `am -u $PROGRAM` / `appman -u $PROGRAM`
+3. To update all the programs and "AM"/"AppMan" itself, just run the command`am -u` / `appman -u`
+4. To update only "AM"/"AppMan" and the modules use the option `-s` instead, `am -s` / `appman -s`
+
+The `-u` option can also be combined with the `--debug` flag to show the output of installed application updates.
+
+### How to update everything using Topgrade
+Keeping your system up to date usually involves invoking multiple package managers. This results in big, non-portable shell one-liners saved in your shell. To remedy this, Topgrade detects which tools you use and runs the appropriate commands to update them.
+
+Install the "`topgrade`" package using the command
+```
+am -i topgrade
 ```
 or
 ```
-appman -i libfuse2
+am -i --user topgrade
 ```
-NOTE, in AppMan you still need to use your password (`sudo`) to install the library at system level, in /usr/local/lib
+Visit [github.com/topgrade-rs/topgrade](https://github.com/topgrade-rs/topgrade) to learn more.
 
-Alternatively you can use the "`nolibfuse`" option to "try" to convert old Type2 AppImages to Type3, so as not to depend on `libfuse2`. In most cases it works, but sometimes it can give errors, depending on how the package was manufactured.
+------------------------------------------------------------------------
 
-However, I suggest contacting the upstream developers to convince them to upgrade their packages to Type3.
+| [Back to "Main Index"](#main-index) |
+| - |
 
-</details>
+------------------------------------------------------------------------
+# OPTIONS
 
------------------------------------------------------------------------------
-### Spyware, malware and dangerous software
 <details>
-  <summary></summary>
+  <summary>Click here to see the full list of options</summary>
+  
+------------------------------------------------------------------------
+## USAGE:
 
-Before installing any application, try to know where it comes from first. This program provides you with two basic options for this purpose:
-- Option `-a` or `about` (medium safety), allows you to read a short description and know the links from the pages of the site [https://portable-linux-apps.github.io](https://portable-linux-apps.github.io) locally, however these links may be inaccurate due to continuous updates of the initial scripts (you can provide additional info yourself by modifying the pages of the site, [here](https://github.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io), it is also open source);
-- Option `-d` or `download` (absolute safety), this allows you to get the installation script directly on your desktop, so you can read the mechanisms and how it performs the downloads from the sources (in most cases there is a header for each step that explains what the listed commands do).
+		am {OPTION}
+		am {OPTION} {PROGRAM}
 
-“AM” and AppMan are just tools to easily install all listed programs, but what you choose to install is your complete responsibility. **Use at your own risk**!
+------------------------------------------------------------------------
+### `about`, `-a`
 
-</details>
+		am -a {PROGRAM}
 
------------------------------------------------------------------------------
-### Stop AppImage prompt to create its own launcher, desktop integration and doubled launchers
-<details>
-  <summary></summary>
+**Description**:
 
-Some developers insist on creating Appimages that create their own launcher on first launch (like WALC and OpenShot). If the official solution proposed [here](https://discourse.appimage.org/t/stop-appimage-from-asking-to-integrate/488) doesn't work, create a .home directory with the `-H` option, launch the app and accept the request. For example (with "AM"):
-```
-am -H walc
-walc
-```
-Accept the integration request, the launcher will be saved in the walc.home directory located next to the AppImage file.
+Shows more info about one or more apps.
 
-</details>
+------------------------------------------------------------------------
+### `apikey`
 
------------------------------------------------------------------------------
-### The script points to "releases" instead of downloading the latest stable
-<details>
-  <summary></summary>
+		am apikey {Github Token}
+		am apikey delete
 
-This is a choice I made as many developers have abandoned support for AppImage or GNU/Linux in general. My aim here is to introduce you to other developers' applications, then it's up to you to contact them, support them, help improve the software through forks and pull requests, opening issues and encouraging developers to keep the software in the format you prefer.
+**Description**:
 
-In case you are sure that the upstream developer will maintain the package for each stable release, you can fix this in several ways:
-#### Method 1: Direct installation by combining `-d` and `-i` options 
-```
-am -d $PROGRAM
-sed -i 's#releases -O -#releases/latest -O -#g' $(xdg-user-dir DESKTOP)/$PROGRAM
-am -i $(xdg-user-dir DESKTOP)/$PROGRAM
-```
-#### Method 2: "Downgrade" the installed app to "latest"
-Use the option `--force-latest` to patch the AM-updater and perform the "update"/"downgrade":
-```
-am --force-latest $PROGRAM
-```
-or do it manually:
-```
-sed -i 's#releases -O -#releases/latest -O -#g' /opt/$PROGRAM/AM-updater
-am -u $PROGRAM
-```
+Accede to github APIs using your personal access tokens. The file named "ghapikey.txt" will be saved in ~/.local/share/AM. Use "`del`" to remove it.
+
+------------------------------------------------------------------------
+### `backup`, `-b`
+
+		am -b {PROGRAM}
+
+**Description**:
+
+Create a snapshot of the current version of an installed program.
+
+------------------------------------------------------------------------
+### `clean`, `-c`
+
+		am -c
+
+**Description**:
+
+Removes all the unnecessary files and folders.
+
+------------------------------------------------------------------------
+### `config`, `-C`, `--config`
+
+		am -C {PROGRAM}
+
+**Description**:
+
+Set a dedicated `$XDG_CONFIG_HOME` for one or more AppImages.
+
+------------------------------------------------------------------------
+### `downgrade`, `--rollback`
+
+		am --rollback {PROGRAM}
+
+**Description**:
+
+Download an older or specific app version.
+
+------------------------------------------------------------------------
+### `download`, `-d`
+
+		am -d {PROGRAM}
+		am -d --convert {PROGRAM}
+
+**Description**:
+
+Download one or more installation scripts to your desktop or convert them to local installers for "AppMan". To test the scripts, use the "`am -i '/path/to/script'`" command or enter the directory of the script and run the "`am -i ./script`" command, even using dedicated flags, if necessary (see "`-i`").
+
+------------------------------------------------------------------------
+### `extra`, `-e`
+
+		am -e user/project {APPNAME}
+		am -e user/project {APPNAME} {KEYWORD}
+
+**Description**:
+
+Install AppImages from github.com, outside the database. This allows you to install, update and manage them all like the others. Where "`user/project`" can be the whole URL to the github repository, give a name to the program so that it can be used from the command line. Optionally, add an "univoque" keyword if multiple AppImages are listed.
+
+NOTE: Since this is an "install" option, you can add the "`--user`" flag (before "`user/project`") to install apps locally. See "`--user`" at the bottom to learn more.
+
+------------------------------------------------------------------------
+### `files`, `-f`, `-fi`
+
+		am -f
+		am -f --byname
+		am -f --less
+
+**Description**:
+
+Shows the list of all installed programs, with sizes. By default apps are sorted by size, use "`--byname`" to sort by name. With the option "`--less`" it shows only the number of installed apps. Option "`-fi`" only shows installed apps, not the AppImages integrated with the "`--launcher`" option.
+
+------------------------------------------------------------------------
+### `help`, `-h`
+
+		am -h
+
+**Description**:
+
+Prints this message.
+
+------------------------------------------------------------------------
+### `hide`
+
+		am hide {PROGRAM}
+
+**Description**:
+
+Prevents an installed application from being shown or managed by "am".
+
+------------------------------------------------------------------------
+### `home`, `-H`, `--home`
+
+		am -H {PROGRAM}
+
+**Description**:
+
+Set a dedicated $HOME directory for one or more AppImages.
+
+------------------------------------------------------------------------
+### `-HC`, `-CH`
+
+		am -HC {PROGRAM}
+
+**Description**:
+
+Set dedicated $HOME and $XDG_CONFIG_HOME directories for one or more AppImages.
+
+------------------------------------------------------------------------
+### `icons`, `--icons`
+
+		am --icons {PROGRAM}
+		am --icons --all
+
+**Description**:
+
+Allow installed apps to use system icon themes. You can specify the name of the apps to change or use the "`--all`" flag to change all of them at once. This will remove the icon path from the .desktop file and add the symbolic link of all available icons in the `~/.local/share/icons/hicolor/scalable/apps` directory. The "`--icons`" option can be used as "flag" in the "`-i`" and "`-ia`" options.
+
+------------------------------------------------------------------------
+### `install`, `-i`
+
+		am -i {PROGRAM}
+		am -i --debug {PROGRAM}
+		am -i --force-latest {PROGRAM}
+		am -i --icons {PROGRAM}
+		am -i --sandbox {PROGRAM}
+
+**Description**:
+
+Install one or more programs or libraries from the list. With the "`--debug`" option you can see log messages to debug the script. For more details on "`--force-latest`", see the dedicated option, below. Use the "`--icons`" flag to allow the program to use icon themes. It can also be extended with additional flags. The "`--sandbox`" flag allows you to set sandboxes for AppImage packages.
+
+NOTE: Since this is an "install" option, you can add the "`--user`" flag to install apps locally. See "`--user`" at the bottom to learn more.
+
+------------------------------------------------------------------------
+### `install-appimage`, `-ia`, `-ias`
+
+		am -ia {PROGRAM}
+		am -ia --debug {PROGRAM}
+		am -ia --force-latest {PROGRAM}
+		am -ia --icons {PROGRAM}
+		am -ia --sandbox {PROGRAM}
+		am -ias {PROGRAM}
+
+**Description**:
+
+Same as "install" (see above) but for AppImages only.  Option "`-ias`" (aka Install AppImage & Sandox) is equivalent to "`-ia --sandbox`", to set sandboxes for AppImage packages.
+
+------------------------------------------------------------------------
+### `list`, `-l`
+
+		am -l
+		am -l --all
+		am -l --appimages
+  		am -l --portable
+
+**Description**:
+
+Shows the list of all the apps available. Without flags only shows the apps in the "AM" database, add the "`--appimages`" to show only the AppImages or "`--portable`" to show other formats from the "AM" database. The "`--all`" flag allows you to consult the set of all supported third-party databases. It can also be extended with additional flags.
+
+------------------------------------------------------------------------
+### `lock`
+
+		am lock {PROGRAM}
+
+**Description**:
+
+Prevent an application being updated, if it has an"AM-updater" script.
+
+------------------------------------------------------------------------
+### `newrepo`, `neodb`
+
+		am newrepo add {URL}\{PATH}
+		am newrepo select
+		am newrepo on\off
+		am newrepo purge
+		am newrepo info
+
+**Description**:
+
+Set a new default repo, use "`add`" to append the path to a local directory or an online URL, then use "`select`" to use it by default, a message will warn you about the usage of this repo instead of the default one. Use "`on`"/"`off`" to enable/disable it. Use "`purge`" to remove all 3rd party repos. Use "`info`" to see the source from where installation scripts and lists are taken.
+
+------------------------------------------------------------------------
+### `nolibfuse`
+
+		am nolibfuse {PROGRAM}
+
+**Description**:
+
+Convert old AppImages and get rid of "libfuse2" dependence.
+
+------------------------------------------------------------------------
+### `overwrite`, `-o`
+
+		am -o {PROGRAM}
+
+**Description**:
+
+Overwrite apps with snapshots saved previously (see "`-b`").
+
+------------------------------------------------------------------------
+### `query`, `-q`
+
+		am -q {KEYWORD}
+		am -q --all {KEYWORD}
+		am -q --appimages {KEYWORD}
+		am -q --portable {KEYWORD}
+		am -q --pkg {PROGRAM1} {PROGRAM2}
+
+**Description**:
+
+Search for keywords in the list of available applications, add the "`--appimages`" option to list only the AppImages, "`--portable`" option to list only the portable apps or add "`--pkg`" to list multiple programs at once. The "`--all`" flag allows you to consult the set of all supported databases.
+
+------------------------------------------------------------------------
+### `reinstall`
+
+ 		am reinstall
+ 		am reinstall --all
+
+**Description**:
+
+Reinstall only programs whose installation script has been modified in AM's online database. Use the "`--all`" flag to reinstall everything instead.
+
+NOTE, this only works with the "AM" database. Apps installed with the "`-e`" option and custom scripts created with the "`-t`" option are not supported.
+
+------------------------------------------------------------------------
+### `remove`, `-r`
+
+		am -r {PROGRAM}
+
+**Description**:
+
+Removes one or more apps, requires confirmation.
+
+------------------------------------------------------------------------
+### `-R`
+
+		am -R {PROGRAM}
+
+**Description**:
+
+Removes one or more apps without asking.
+
+------------------------------------------------------------------------
+### `sandbox`, `--sandbox`
+
+		am sandbox {PROGRAM}
+
+**Description**:
+
+Run an AppImage in a sandbox using Aisap.
+
+NOTE, "`--sandbox`" can be used as a flag in "`-i`" and "`-ia`" or can be replaced using the option "`-ias`" (aka Install AppImage & Sandox).
+
+------------------------------------------------------------------------
+### `sync`, `-s`
+
+		am -s
+
+**Description**:
+
+Updates this script to the latest version hosted.
+
+------------------------------------------------------------------------
+### `template`, `-t`
+
+		am -t {PROGRAM}
+
+**Description**:
+
+Generate a custom installation script. To test the scripts, use the "`am -i '/path/to/script'`" command or enter the directory of the script and run the "`am -i ./script`" command, even using dedicated flags, if necessary (see "`-i`").
+
+------------------------------------------------------------------------
+### `translate`, `--translate`
+
+		am --translate
+		am --translate {CODE}
+
+**Description**:
+
+Download and set one or more language packs (if available), set "am" to English (default), your language or other languages.
+ 
+See **[translations/README.md](translations/README.md)** for more information.
+
+------------------------------------------------------------------------
+### `unhide`
+
+		am unhide {PROGRAM}
+
+**Description**:
+
+Allow a hidden app to be shown and managed again (nulls "`hide`").
+
+------------------------------------------------------------------------
+### `unlock`
+
+		am unlock {PROGRAM}
+
+**Description**:
+
+Unlock updates for the selected program (nulls "`lock`").
+
+------------------------------------------------------------------------
+### `update`, `-u`, `-U`
+
+		am -u
+		am -u --apps
+		am -u --debug
+		am -u --apps --debug
+		am -u {PROGRAM}
+		am -u --debug {PROGRAM}
+		am -u --launcher
+
+**Description**:
+
+Update everything. Add "`--apps`" to update only the apps or write only the apps you want to update by adding their names. Add the "`--debug`" flag to view the output of AM-updater scripts. Add the "`--launcher`" flag to try to update only local AppImages integrated with the "`--launcher`" option (see "`--launcher`").
+
+------------------------------------------------------------------------
+### `version`, `-v`
+
+		am -v
+
+**Description**:
+
+Shows the version.
+
+------------------------------------------------------------------------
+### `--devmode-disable`
+
+		am --devmode-disable
+
+**Description**:
+
+Undo "`--devmode-enable`" (see below).
+
+------------------------------------------------------------------------
+### `--devmode-enable`
+
+		am --devmode-enable
+
+**Description**:
+
+Use the development branch (at your own risk).
+
+------------------------------------------------------------------------
+### `--disable-notifications`
+
+		am --disable-notifications
+
+**Description**:
+
+Disable notifications during apps update.
+
+------------------------------------------------------------------------
+### `--disable-sandbox`
+
+		am --disable-sandbox {PROGRAM}
+
+**Description**:
+
+Disable the sandbox for the selected app.
+
+------------------------------------------------------------------------
+### `--enable-notifications`
+
+		am --enable-notifications
+
+**Description**:
+
+Enable notifications during apps update (nulls "`--disable-notifications`").
+
+------------------------------------------------------------------------
+### `--force-latest`
+
+		am --force-latest {PROGRAM}
+
+**Description**:
+
+Downgrades an installed app from pre-release to "latest".
+
+------------------------------------------------------------------------
+### `--launcher`
+
+		am --launcher /path/to/${APPIMAGE}
+
+**Description**:
+
+Drag/drop one or more AppImages in the terminal and embed them in the apps menu and customize a command to use from the CLI.
+
+NOTE that "`--launcher`" can be used as a flag in "`-u`" to try to update the integrated AppImages (see "`-u`"). This works only if "appimageupdatetool" is installed and delta updates are supported. This flag does not work miracles, I strongly suggest to use options "`-ia`" and "`-e`" instead.
+
+------------------------------------------------------------------------
+### `--system`
+
+		am --system
+
+**Description**:
+
+Switch "AM" back to "AM" from "AppMan Mode" (see "`--user`").
+
+------------------------------------------------------------------------
+### `--user`
+
+		am --user
+
+**Description**:
+
+Made "AM" run in "AppMan Mode", locally, useful for unprivileged users. This option only works with "AM".
+
+The "`--user`" option can also be used just as a "flag" for installation options. For example:
+
+- Use it to install applications locally, option "`-i`" or "`install`":
+
+		am -i --user {PROGRAM}
+
+- Also suboptions of "-i" can work with this flag:
+
+		am -i --user --debug {PROGRAM}
+		am -i --user --force-latest {PROGRAM}
+		am -i --user --icons {PROGRAM}
+		am -i --user --debug --force-latest {PROGRAM}
+		am -i --user --debug --force-latest --icons {PROGRAM}
+
+- Same for AppImages only, option "`-ia`" or "`install-appimage`":
+
+		am -ia --user {PROGRAM}
+		am -ia --user --debug {PROGRAM}
+		am -ia --user --force-latest {PROGRAM}
+		am -ia --user --icons {PROGRAM}
+		am -ia --user --debug --force-latest {PROGRAM}
+		am -ia --user --debug --force-latest --icons {PROGRAM}
+
+- External AppImages can be installed like this as well, option "`-e`" or "`extra`":
+
+		am -e --user user/project {APPNAME}
+		am -e --user user/project {APPNAME} {KEYWORD}
+
+NOTE, "AM" 9 or higher is also able to, update and manage apps locally, by default, and without having to switch to "AppMan Mode".
+
+------------------------------------------------------------------------
+
+## THIRD-PARTY FLAGS: 
+
+------------------------------------------------------------------------
+
+All flags intended for third-party databases are listed at the bottom of the `-h` or `help` message, their description and synopsis will be something like this:
+
+		am -i --{FLAG} {PROGRAM}
+		am -i --{FLAG} --user {PROGRAM}
+		am -l --{FLAG}
+
+**Description**:
+
+This is a flag to use in "`-i`" and "`-l`" to install/list `{FLAG}`s from *https://site.name/source/repository*. You can also use it in "`-q`" as a keyword. For installations you can use .`{FLAG}` as the package extension instead of using the flag.
 
 </details>
 
 ------------------------------------------------------------------------
-### Wget2 prevents me from downloading apps and modules
-<details>
-  <summary></summary>
 
-With the arrival of Fedora 40 in April 2024, many users began to complain about the inability to download any application from github and the inability to update modules (see https://github.com/ivan-hc/AM/issues/496). This is because "wget" is no longer actively developed, and its successor "wget2" was not yet ready to take its place immediately. Yet the Fedora team decided to replace it anyway, causing quite a few problems for this project and many others that use api.github.com to function.
-
-Attempts to add patches to avoid having dependencies like `jq` added and to rewrite all the scripts to promptly adapt them to more versatile solutions were in vain.
-
-So I decided to host on this repository the "wget" binaries directly from Debian 12 (see [here](https://github.com/ivan-hc/AM/tree/main/tools/x86_64) and [here](https://github.com/ivan-hc/AM/tree/main/tools/aarch64)), and the installation scripts dedicated to them, for the [x86_64](https://github.com/ivan-hc/AM/blob/main/programs/x86_64/wget) and [aarch64](https://github.com/ivan-hc/AM/blob/main/programs/x86_64/wget) architectures and which use "wget2" to download the executable.
-
-Run the command
-```
-am -i wget
-```
-NOTE, the binary is called from a script in /usr/local/bin that runs "wget" with the "--no-check-certificate" option. It's not the best of solutions, but it's enough to suppress this shortcoming while the compatibility issue between wget and wget2 will not be completely resolved.
-
-</details>
+| [Back to "Main Index"](#main-index) |
+| - |
 
 ------------------------------------------------------------------------
-### Wrong download link
-<details>
-  <summary></summary>
-
-The reasons may be two:
-- the referring link may have been changed, try the `--rollback` option;
-- the reference site has changed, report any changes at https://github.com/ivan-hc/AM/issues
-
-</details>
+# Guides and tutorials
+Below you can access the documentation pages related to the use of "AM", complete with tutorials and demonstration videos, depending on the topic you are interested in:
 
 ------------------------------------------------------------------------
+- [Install applications](docs/guides-and-tutorials/install.md)
+- [Install only AppImages](docs/guides-and-tutorials/install-appimage.md)
+  - [Install and sandbox AppImages in one go](docs/guides-and-tutorials/install-appimage.md#install-and-sandbox-appimages-in-one-go)
+- [Install AppImages not listed in this database but available in other github repos](docs/guides-and-tutorials/extra.md)
+- [List the installed applications](docs/guides-and-tutorials/files.md)
+- [List and query all the applications available on the database](docs/guides-and-tutorials/list-and-query.md)
+- [Update all](docs/guides-and-tutorials/update.md)
+- [Backup and restore installed apps using snapshots](docs/guides-and-tutorials/backup-and-overwrite.md)
+- [Remove one or more applications](docs/guides-and-tutorials/remove.md)
+- [Convert Type2 AppImages requiring libfuse2 to New Generation AppImages](docs/guides-and-tutorials/nolibfuse.md)
+- [Integrate local AppImages into the menu by dragging and dropping them](docs/guides-and-tutorials/launcher.md)
+  - [How to create a launcher for a local AppImage](docs/guides-and-tutorials/launcher.md#how-to-create-a-launcher-for-a-local-appimage)
+  - [How to remove the orphan launchers](docs/guides-and-tutorials/launcher.md#how-to-remove-the-orphan-launchers)
+  - [AppImages from external media](docs/guides-and-tutorials/launcher.md#appimages-from-external-media)
+  - [Update scattered AppImages](docs/guides-and-tutorials/launcher.md#update-scattered-appimages)
+- [Sandbox an AppImage](docs/guides-and-tutorials/sandbox.md)
+  - [How to enable a sandbox](docs/guides-and-tutorials/sandbox.md#how-to-enable-a-sandbox)
+  - [How to disable a sandbox](docs/guides-and-tutorials/sandbox.md#how-to-disable-a-sandbox)
+  - [Sandboxing example](docs/guides-and-tutorials/sandbox.md#sandboxing-example)
+  - [About Aisap sandboxing](docs/guides-and-tutorials/sandbox.md#about-aisap-sandboxing)
+- [How to update or remove apps manually](docs/guides-and-tutorials/remove.md#how-to-update-or-remove-apps-manually)
+- [Downgrade an installed app to a previous version](docs/guides-and-tutorials/downgrade.md)
+- [How to use multiple versions of the same application](docs/guides-and-tutorials/backup-and-overwrite.md#how-to-use-multiple-versions-of-the-same-application)
+- [Create and test your own installation script](docs/guides-and-tutorials/template.md)
+  - [Option Zero: "AppImages"](docs/guides-and-tutorials/template.md#option-zero-appimages)
+  - [Option One: "build AppImages on-the-fly"](docs/guides-and-tutorials/template.md#option-one-build-appimages-on-the-fly)
+  - [Option Two: "Archives and other programs"](docs/guides-and-tutorials/template.md#option-two-archives-and-other-programs)
+  - [Option Three: "Firefox profiles"](docs/guides-and-tutorials/template.md#option-three-firefox-profiles)
+  - [How an installation script works](docs/guides-and-tutorials/template.md#how-an-installation-script-works)
+  - [How to test an installation script](docs/guides-and-tutorials/template.md#how-to-test-an-installation-script)
+  - [How to submit a Pull Request](docs/guides-and-tutorials/template.md#how-to-submit-a-pull-request)
+- [Third-party databases for applications (NeoDB)](docs/guides-and-tutorials/newrepo.md)
+- [BSD, freeBSD and derivative systems: configuration and troubleshooting](docs/guides-and-tutorials/bsd.md)
+
+------------------------------------------------------------------------
+
+| [Back to "Main Index"](#main-index) |
+| - |
+
+------------------------------------------------------------------------
+# Instructions for Linux Distro Maintainers
+**Glossary**:  
+- System `am` (`/usr/bin/am`)
+- Local-system `am` (`/usr/local/bin/am` symlinked to `/opt/am/APP-MANAGER`)
+- Local-user `appman` (`$HOME/.local/bin/appman`)
+- APPMANCONFIG=`$XDG_CONFIG_HOME/appman-config`
+
+You can package "AM" for Debian, Fedora, Arch Linux, Gentoo and many more GNU/Linux distros using the following configuration:  
+- `/usr/bin/am`
+- `/usr/lib/am/modules/`
+
+where "`/usr/bin/am`" is the script "[APP-MANAGER](https://github.com/ivan-hc/AM/blob/main/APP-MANAGER)" and "`/usr/lib/am/modules/`" is the directory "[modules](https://github.com/ivan-hc/AM/tree/main/modules)" with all its content.
+
+Applications will continue to be installed in `/opt/` or `$HOME` location when `--user` flag is used for installation, according to the `$APPMANCONFIG` file configuration.
+
+What changes from the locally-installed `am` or `appman` is the update process of the CLI and modules.  
+System `am` intentionally ignores updates of CLI and modules in this scenario & hands that responsibility to the distro package manager in use (APT, DNF, PacMan/YaY...)
+
+`--devmode` option is completely disabled in this mode, as it's only intended to update locally-installed `am` or `appman` in run-time to `dev` branch.  
+You as a packager or distro-maintainer can optionally make `am-dev` or `am-git` package separately from `am` for this usage.
+
+Generation of shell completions in `$HOME` is also disabled in this mode, as they can be easily packaged in respective system directories.  
+That can be done like this:
+
+**Bash**  
+Located in `/usr/share/bash-completion/completions/am`:  
+- `complete -W "$(cat "${XDG_DATA_HOME:-$HOME/.local/share}/AM/list" 2>/dev/null)" am`
+
+**Zsh**  
+Zsh completion currently depends on the bash one, which can be inserted into `zshrc`:  
+```zsh
+autoload bashcompinit
+bashcompinit
+source "/usr/share/bash-completion/completions/am"
+```
+
+**Fish**  
+Located in `/usr/share/fish/vendor_completions.d/am`:  
+```fish
+set data_home "$XDG_DATA_HOME"
+if test -z "$data_home"
+    set data_home "$HOME/.local/share"
+end
+complete -c am -f -a "(cat "$data_home/AM/list" 2>/dev/null)"
+```
+
+Another recommendation is to use `wget` instead of `wget2` (in Fedora, it's called `wget1` & you also need to install `wget1-wget` package, so it becomes symlinked to `wget`).
+`wget` gives the prettier & generally working output, while `wget2` has a bug where it clears out the output of itself, making the application installation & update progress hardly visible.
+
+### Distro examples: Gidro-OS
+
+For the example on how the distribution installs `am`, you can check [Gidro-OS](https://github.com/fiftydinar/gidro-os), custom image based on Fedora Silverblue by [@fiftydinar](https://github.com/fiftydinar):
+
+https://github.com/fiftydinar/gidro-os/blob/main/recipes/recipe-appimages.yml
+
+------------------------------------------------------------------------
+
+| [Back to "Main Index"](#main-index) |
+| - |
+
+------------------------------------------------------------------------
+# Troubleshooting
+Below you can access documentation pages for common issues and frequently asked questions:
+
+------------------------------------------------------------------------
+- [An application does not work, is old and unsupported](docs/troubleshooting.md#an-application-does-not-work-is-old-and-unsupported)
+- [Cannot download or update an application](docs/troubleshooting.md#cannot-download-or-update-an-application)
+- [Cannot mount and run AppImages](docs/troubleshooting.md#cannot-mount-and-run-appimages)
+- [Failed to open squashfs image](docs/troubleshooting.md#failed-to-open-squashfs-image)
+- [Spyware, malware and dangerous software](docs/troubleshooting.md#spyware-malware-and-dangerous-software)
+- [Stop AppImage prompt to create its own launcher, desktop integration and doubled launchers](docs/troubleshooting.md#stop-appimage-prompt-to-create-its-own-launcher-desktop-integration-and-doubled-launchers)
+- [The script points to "releases" instead of downloading the latest stable](docs/troubleshooting.md#the-script-points-to-releases-instead-of-downloading-the-latest-stable)
+- [Ubuntu mess](docs/troubleshooting.md#ubuntu-mess)
+- [Wrong download link](docs/troubleshooting.md#wrong-download-link)
+
+------------------------------------------------------------------------
+
+| [Back to "Main Index"](#main-index) |
+| - |
+
 ------------------------------------------------------------------------
 # Related projects
 #### External tools and forks used in this project
-- [appimagetool](https://github.com/AppImage/AppImageKit)
-- [appimageupdatetool](https://github.com/AppImage/AppImageUpdate)
-- [libunionpreload](https://github.com/project-portable/libunionpreload)
-- [pkg2appimage](https://github.com/AppImage/pkg2appimage)
+- *[aisap](https://github.com/mgord9518/aisap), sandboxing solutions for AppImages*
+- *[appimagetool](https://github.com/AppImage/appimagetool), get rid of libfuse2 from your AppImages*
+- *[pkg2appimage](https://github.com/AppImage/pkg2appimage), create AppImages on the fly from existing .deb packages*
+- *[repology](https://github.com/repology), the encyclopedia of all software versions*
+
+#### Partner projects, i.e. those that actively contribute to this project
+- *[Soarpkgs](https://github.com/pkgforge/soarpkgs), Largest Collection of Multi-Platform Pre-Compiled Static Binaries*
 
 #### My other projects
-- [AppImaGen](https://github.com/ivan-hc/AppImaGen), a script that generates AppImages from Debian or from a PPA for the previous Ubuntu LTS;
-- [ArchImage](https://github.com/ivan-hc/ArchImage), build AppImage packages for all distributions but including Arch Linux packages. Powered by JuNest;
-- [Firefox for Linux scripts](https://github.com/ivan-hc/Firefox-for-Linux-scripts), easily install the official releases of Firefox for Linux.
+- *[AppImaGen](https://github.com/ivan-hc/AppImaGen), easily create AppImages from Ubuntu PPAs or Debian using pkg2appimage and appimagetool*
+- *[ArchImage](https://github.com/ivan-hc/ArchImage), create AppImages for all distributions using Arch Linux packages. Powered by JuNest*
+- *[Firefox for Linux scripts](https://github.com/ivan-hc/Firefox-for-Linux-scripts), easily install the official releases of Firefox for Linux*
+- *[My AppImage packages](https://github.com/ivan-hc#my-appimage-packages) the complete list of packages managed by me and available in this database*
+- *[Snap2AppImage](https://github.com/ivan-hc/Snap2AppImage), try to convert Snap packages to AppImages*
 
 ------------------------------------------------------------------------
 
@@ -941,4 +1004,11 @@ The reasons may be two:
 
 --------
 
-*© 2020-present Ivan Alesandro Sala aka 'Ivan-HC'* - I'm here just for fun! 
+*© 2020-present Ivan Alessandro Sala aka 'Ivan-HC'* - I'm here just for fun! 
+
+------------------------------------------------------------------------
+
+| [**ko-fi.com**](https://ko-fi.com/IvanAlexHC) | [**PayPal.me**](https://paypal.me/IvanAlexHC) | [Install "AM"/"AppMan"](#installation) | ["Main Index"](#main-index) |
+| - | - | - | - |
+
+------------------------------------------------------------------------

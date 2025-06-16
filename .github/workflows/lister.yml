@@ -1,0 +1,49 @@
+name: "Sync Apps List"
+
+on:
+  push:
+    branches: main
+    paths:
+      - programs/x86_64-apps
+      - programs/i686-apps
+      - programs/aarch64-apps
+
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sync-files:
+    name: "Run sync"
+    runs-on: ubuntu-22.04
+    outputs:
+      message: ${{ steps.commit_message.outputs.message }}
+    steps:
+      - name: "Checkout source repository"
+        uses: actions/checkout@v4
+
+      - name: "Get commit message"
+        id: commit_message
+        run: |
+          ORIGINAL_COMMIT_MESSAGE=$(git log --format=%s -n 1 ${{ github.sha }})
+          COMMIT_MESSAGE="$ORIGINAL_COMMIT_MESSAGE (sync lists) [${{ github.sha }}]"
+          echo "message=$COMMIT_MESSAGE" >> $GITHUB_OUTPUT
+
+      - name: "Run lister"
+        run: |
+          cd programs
+          ./appimage-lister-uniq.sh
+
+      - name: "Push to Source"
+        run: |
+          git config --global user.name "web-flow"
+          git config --global user.email "noreply@github.com"
+          git add programs/*-appimages programs/*-portable
+          if git diff-index --quiet HEAD; then
+            echo "No changes to commit." >> $GITHUB_STEP_SUMMARY
+          else
+            git commit -m "${{ steps.commit_message.outputs.message }}"
+            git push && echo "Sync to Source succeeded" >> $GITHUB_STEP_SUMMARY
+          fi

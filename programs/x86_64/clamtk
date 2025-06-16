@@ -1,0 +1,180 @@
+#!/bin/sh
+
+# AM INSTALL SCRIPT VERSION 3.5
+set -u
+APP=clamtk
+SITE="dave-theunsub/clamtk"
+
+# CREATE DIRECTORIES AND ADD REMOVER
+[ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
+printf "#!/bin/sh\nset -e\nrm -f /usr/local/bin/$APP\nrm -R -f /opt/$APP" > ../remove
+printf '\n%s' "rm -f /usr/local/share/applications/$APP-AM.desktop" >> ../remove
+chmod a+x ../remove || exit 1
+
+# DOWNLOAD AND PREPARE THE APP, $version is also used for updates
+version=$(curl -Ls  https://api.github.com/repos/dave-theunsub/clamtk/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | grep -i "tar.xz$" | head -1)
+wget "$version" || exit 1
+[ -e ./*7z ] && 7z x ./*7z && rm -f ./*7z
+[ -e ./*tar.* ] && tar fx ./*tar.* && rm -f ./*tar.*
+[ -e ./*zip ] && unzip -qq ./*zip 1>/dev/null && rm -f ./*zip
+cd ..
+if [ -d ./tmp/* 2>/dev/null ]; then mv ./tmp/*/* ./; else mv ./tmp/* ./"$APP" 2>/dev/null || mv ./tmp/* ./; fi
+rm -R -f ./tmp || exit 1
+echo "$version" > ./version
+chmod a+x ./$APP || exit 1
+
+# LINK TO PATH
+ln -s "/opt/$APP/$APP" "/usr/local/bin/$APP"
+
+# SCRIPT TO UPDATE THE PROGRAM
+cat >> ./AM-updater << 'EOF'
+#!/bin/sh
+set -u
+APP=clamtk
+SITE="dave-theunsub/clamtk"
+version0=$(cat "/opt/$APP/version")
+version=$(curl -Ls  https://api.github.com/repos/dave-theunsub/clamtk/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | grep -i "tar.xz$" | head -1)
+[ -n "$version" ] || { echo "Error getting link"; exit 1; }
+if [ "$version" != "$version0" ]; then
+	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
+	notify-send "A new version of $APP is available, please wait"
+	wget "$version" || exit 1
+	[ -e ./*7z ] && 7z x ./*7z && rm -f ./*7z
+	[ -e ./*tar.* ] && tar fx ./*tar.* && rm -f ./*tar.*
+	[ -e ./*zip ] && unzip -qq ./*zip 1>/dev/null && rm -f ./*zip
+	cd ..
+	if [ -d ./tmp/* 2>/dev/null ]; then mv --backup=t ./tmp/*/* ./; else mv --backup=t ./tmp/* ./"$APP" 2>/dev/null || mv --backup=t ./tmp/* ./; fi
+	chmod a+x ./"$APP" || exit 1
+	echo "$version" > ./version
+	rm -R -f ./tmp ./*~
+	notify-send "$APP is updated!"
+else
+	echo "Update not needed!"
+fi
+EOF
+chmod a+x ./AM-updater || exit 1
+
+# ICON
+mkdir -p icons
+wget https://raw.githubusercontent.com/dave-theunsub/clamtk/refs/heads/master/images/clamtk_300x300.png -O ./icons/"$APP" 2> /dev/null
+
+# LAUNCHER
+echo "[Desktop Entry]
+Name=ClamTk
+GenericName=Virus Scanner
+GenericName[af]=Virus Skandeerder
+GenericName[ar]=ماسح الفيروسات
+GenericName[ast]=Antivirus
+GenericName[az]=Virus axtarışı
+GenericName[bg]=Скенер за вируси
+GenericName[bs]=Virus Skener
+GenericName[ca]=Comprovador de virus
+GenericName[cs]=Antivirový program
+GenericName[da]=Virusscanneren
+GenericName[de]=Virensuche
+GenericName[el]=Ανιχνευτής ιών
+GenericName[en_AU]=Virus Scanner
+GenericName[en_CA]=Virus Scanner
+GenericName[en_GB]=Virus Scanner
+GenericName[eo]=Viruskontrolilo
+GenericName[es]=Analizador de Virus
+GenericName[eu]=Birus eskanerra
+GenericName[fi]=Virustorjuntasovellus
+GenericName[fo]=Virus skannari
+GenericName[fr]=Module de recherche et analyse de virus
+GenericName[gl]=Analizador de virus
+GenericName[he]=סורק וירוסים
+GenericName[hr]=Skener virusa
+GenericName[hu]=Víruskereső
+GenericName[id]=Pemindai Virus
+GenericName[it]=Analizzatore virus
+GenericName[ja]=ウイルススキャナ
+GenericName[ko]=바이러스 검사기
+GenericName[lt]=Virusų suradimo programa
+GenericName[mnw_MM]=အရာမဂၠိုက်ဂၠာဲ စၟဳစၟတ်စၟ
+GenericName[mr]=धमक्या साठी स्कॅन
+GenericName[ms]=Pengimbas Virus
+GenericName[nb]=Virusskanner
+GenericName[nl]=Virusscanner
+GenericName[nl_BE]=Virusscanner
+GenericName[nn]=Virusskannar
+GenericName[pa]=ਵਿਸ਼ਾਣੂ ਖੋਜੀ
+GenericName[pl]=Skaner wirusów
+GenericName[pt]=Verificador de vírus
+GenericName[pt_BR]=Antivírus Escaner
+GenericName[ro]=Scaner pentru viruși
+GenericName[ru]=Проверка на вирусы
+GenericName[sk]=Antivírus
+GenericName[sl]=Virusni pregledovalec
+GenericName[sr@latin]=Virus Skener
+GenericName[sv]=Virusskanner
+GenericName[te]=వైరస్ స్కానర్
+GenericName[th]=โปรแกรมตรวจจับไวรัส
+GenericName[tr]=Virüs Tarayıcı
+GenericName[ug]=ۋﻯﺭۇﺱ ﺕەﻚﺷۈﺭگۈچ
+GenericName[uk]=Антивірусний сканер
+GenericName[uz]=Вирусларни текшириш
+GenericName[zh_CN]=病毒扫描工具
+GenericName[zh_TW]=病毒掃描程式
+Comment=Scan for threats...
+Comment[af]=Skandeer vir virusse...
+Comment[ar]=إمسح للكشف عن الفيروسات
+Comment[ast]=Buscar amenaces...
+Comment[az]=Təhlükə mövcudluğuna yoxla...
+Comment[bg]=Проверка за наличие на заплахи ...
+Comment[bs]=Pretraga za virusima...
+Comment[ca]=Escaneja
+Comment[cs]=Skenování hrozeb...
+Comment[da]=Skan for virus...
+Comment[de]=Auf Bedrohungen untersuchen …
+Comment[el]=Έλεγχος για ιούς...
+Comment[en]=Scan for threats...
+Comment[en_AU]=Scan for threats...
+Comment[en_CA]=Scan for threats...
+Comment[en_GB]=Scan for threats...
+Comment[es]=Analizar en busca de amenazas…
+Comment[eu]=Eskaneatu birusen bila...
+Comment[fi]=Tarkista uhkien varalta...
+Comment[fo]=Skanna eftir virus...
+Comment[fr]=Rechercher des menaces...
+Comment[gl]=Buscar ameazas...
+Comment[he]=סריקה לאיתור איומים…
+Comment[hr]=Pretraživanje virusa...
+Comment[hu]=Vírusok keresése...
+Comment[id]=Pindai untuk ancaman...
+Comment[it]=Analizza per la ricerca di minacce...
+Comment[ja]=ウィルスをスキャンします..
+Comment[km]=វិភាគរកការគំរាមកំហៃង...
+Comment[ko]=위험 요소를 검사합니다...
+Comment[lt]=Ieškoti virusų...
+Comment[mnw_MM]=စိစောတ်ဂၠိုက်ဂၠာဲအန္တရာယ်
+Comment[ms]=Imbas jika ada ancaman...
+Comment[nb]=Skann etter virus...
+Comment[nl]=Scannen op virussen…
+Comment[nn]=Skann...
+Comment[pa]=ਧਮਕਿਯਾੰ ਲਈ ਖੋਜ ਕਰੋ
+Comment[pl]=Przeskanuj pliki w poszukiwaniu wirusów...
+Comment[pt]=A analizar ameaças...
+Comment[pt_BR]=Verificar se há vírus...
+Comment[ro]=Scanare pentru amenințări...
+Comment[ru]=Проверка на наличие угроз...
+Comment[sk]=Skenovanie hrozieb...
+Comment[sl]=Preglej za virusi...
+Comment[sr@latin]=Skeniranje pretnji...
+Comment[sv]=Skanna efter virus...
+Comment[te]=వైరస్సుల కోసం సంశోధిస్తున్నది...
+Comment[th]=สแกนภัยคุกคาม...
+Comment[tr]=Virüs taraması yap...
+Comment[ug]=ۋىرۇس تەكشۈر…
+Comment[uk]=Шукати загрози…
+Comment[uz]=Хавф учун текшириш...
+Comment[zh_CN]=扫描威胁...
+Comment[zh_TW]=掃描威脅...
+TryExec=clamtk
+Exec=$APP %F
+Icon=/opt/$APP/icons/$APP
+Type=Application
+Terminal=false
+Categories=GTK;GNOME;Utility;
+StartupNotify=true
+Keywords=antivirus;virus;malware;scan;scanner;" > /usr/local/share/applications/"$APP"-AM.desktop

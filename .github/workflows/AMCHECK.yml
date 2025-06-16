@@ -1,0 +1,609 @@
+name: "AMCHECK"
+
+on:
+  push:
+    branches: main
+    paths:
+      - 'programs/x86_64/**'
+
+  repository_dispatch:
+    types: [check]
+
+  workflow_dispatch:
+    inputs:
+      reset_stats:
+        description: "RESET stats"
+        required: true
+        default: false
+        type: boolean
+      retest_excluded:
+        description: "TEST excluded"
+        required: true
+        default: false
+        type: boolean
+      what_test:
+        description: "App names: (space between)"
+        required: false
+        default: ""
+        type: string
+      how_many:
+        description: "Number of apps: (max 256)"
+        required: false
+        default: ''
+        type: integer
+
+  schedule:
+    #- cron: '0 0-12 * * 1'
+    - cron: '0 * * * *'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  actions: write
+  contents: write
+
+env:
+  REPO: ${{ github.repository_owner }}/AM
+  BRANCH: main
+  TOTEST: 250
+
+jobs:
+  triggered:
+    if: github.event_name == 'repository_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Remotely triggered"
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.client_payload.ref }}
+
+      - name: "Show payload"
+        run: echo ${{ github.event.client_payload.sha }} >> $GITHUB_STEP_SUMMARY
+
+  show-stats:
+    name: "stats 📝"
+    runs-on: ubuntu-latest
+    outputs:
+      all: ${{ steps.count.outputs.all }}
+      tested: ${{ steps.stats.outputs.tested }}
+      excluded: ${{ steps.stats.outputs.excluded }}
+    steps:
+      - name: "Checkout AM"
+        if: github.event.inputs.reset_stats != 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.REPO }}
+
+      - name: "Count programs 📊"
+        if: github.event.inputs.reset_stats != 'true'
+        id: count
+        run: |
+          sort programs/x86_64-apps | grep -v "\"kdegames\"\|\"kdeutils\"\|\"node\"\|\"platform-tools\"\| ffwa-" | awk '{print $2}' > appslist
+          x64Count=$(wc -l < appslist)
+          echo "all=$x64Count" >> $GITHUB_OUTPUT
+
+      - name: "Upload appslist"
+        if: github.event.inputs.reset_stats != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: appslist
+          path: appslist
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
+
+      - name: "Checkout"
+        uses: actions/checkout@v4
+
+      - name: "Reset stats"
+        if: github.event.inputs.reset_stats == 'true'
+        run: |
+          echo "### stats RESET" >> $GITHUB_STEP_SUMMARY
+          rm -rf results
+          git config --global user.name web-flow
+          git config --global user.email "noreply@github.com"
+          git rm -r results
+          git commit -m "reset stats"
+          git push --force
+          git clean -f
+
+      - name: "Count stats 📊"
+        if: github.event.inputs.reset_stats != 'true'
+        id: stats
+        run: |
+          if [ -f results/tested ]; then
+            tested=$(wc -l < results/tested)
+          else
+            tested='0'
+          fi
+          if [ -f results/excluded ]; then
+            excluded=$(wc -l < results/excluded)
+          else
+            excluded='0'
+          fi
+          echo "tested=$tested" >> $GITHUB_OUTPUT
+          echo "excluded=$excluded" >> $GITHUB_OUTPUT
+
+      - name: "Show stats 📊"
+        if: github.event.inputs.reset_stats != 'true'
+        run: |
+          echo "### 🎬 apps: ${{ steps.count.outputs.all }}" >> $GITHUB_STEP_SUMMARY
+          if [[ "${{ steps.stats.outputs.tested }}" != '0' ]]; then
+            echo "🔨 tests:" >> $GITHUB_STEP_SUMMARY
+            echo " 🏁 ${{ steps.stats.outputs.tested }}" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [[ "${{ steps.stats.outputs.excluded }}" != '0' ]]; then
+            echo " ❌ ${{ steps.stats.outputs.excluded }} (excluded)" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  generate-matrix:
+    name: "matrix 🌀"
+    if: github.event.inputs.reset_stats != 'true'
+    needs: show-stats
+    runs-on: ubuntu-latest
+    outputs:
+      skip: ${{ steps.set-matrix.outputs.skip }}
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v4
+
+      - name: "Download appslist"
+        uses: actions/download-artifact@v4
+        with:
+          name: appslist
+
+      - name: "Generate Matrix 🏆"
+        id: set-matrix
+        if: github.event.inputs.retest_excluded != 'true'
+        run: |
+          if [[ -f results/tested ]]; then
+            echo "tested exist"
+            if diff -q appslist results/tested; then
+              echo "Everything checked"
+              echo "skip=true" >> $GITHUB_OUTPUT
+              exit 0
+            else
+              echo "Getting temp list"
+              comm -23 appslist results/tested > totest_tmp.list
+            fi
+          else
+            echo "First run!"
+            cp appslist totest_tmp.list
+          fi
+          if [[ -f results/excluded ]]; then
+            echo "Excluded exists"
+            comm -23 totest_tmp.list results/excluded > totest.list
+            if [ ! -s totest.list ]; then
+              echo "List is empty"
+              echo " 🏁 Nothing to test 🏁" >> $GITHUB_STEP_SUMMARY
+              echo "skip=true" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+          else
+            echo "Creating new list"
+            mv totest_tmp.list totest.list
+          fi
+          if [ ! -z "${{ github.event.inputs.what_test }}" ]; then
+            echo "Testing only: ${{ github.event.inputs.what_test }}"
+            FILES="${{ github.event.inputs.what_test }}"
+          elif [ "${{ github.event.inputs.retest_excluded }}" == 'true' ]; then
+            echo "Testing excluded"
+            if [ -f result-var/excluded ]; then
+              FILES=$(cat result-var/excluded)
+            else
+              echo "Nothing excluded!"
+              echo "Nothing excluded!" >> $GITHUB_STEP_SUMMARY
+              exit 1
+            fi
+          else
+            if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+              echo "Used workflow dispatch"
+              how_many="${{ github.event.inputs.how_many }}"
+              if [ -z "$how_many" ]; then
+                echo "Don't have numbers"
+                how_many="${{ env.TOTEST }}"
+              fi
+            else
+              echo "Shedule or push?"
+              echo "how_many=${{ env.TOTEST }}"
+              how_many=${{ env.TOTEST }}
+              if [ -z "$how_many" ]; then
+                echo "Still don't exist"
+                how_many="$TOTEST"
+              fi
+            fi
+            FILES=$(head -n "$how_many" totest.list || cat totest.list)
+          fi
+          echo '-------------------------------------------------------------'
+          echo 'Testing files:'
+          echo '-------------------------------------------------------------'
+          echo "${FILES}"
+          echo '-------------------------------------------------------------'
+          MATRIX="{\"include\": ["
+          for file in $FILES; do
+            MATRIX+="{\"file\": \"$file\"},"
+          done
+          MATRIX="${MATRIX%,}]}"
+          echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
+
+  run-actions:
+    name: "🔨"
+    needs: generate-matrix
+    runs-on: ubuntu-latest
+    if: ${{ needs.generate-matrix.outputs.skip != 'true' }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
+    env:
+      TIMEOUT: 23
+    steps:
+      - name: "Checkout AM"
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.REPO }}
+
+        # Added ripgrep for bat
+      - name: "Cache dependencies"
+        uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: wget curl ripgrep
+          version: 1.0
+
+      - name: "Fix AppArmor"
+        run: |
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_unconfined=0
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+
+      - name: "Install AM manually 🎁"
+        run: |
+          sudo mkdir -p /opt/am/modules /usr/local/bin || exit 1
+          sudo cp -r ./APP-MANAGER /opt/am/APP-MANAGER && sudo chmod a+x /opt/am/APP-MANAGER || exit 1
+          sudo ln -fs /opt/am/APP-MANAGER /usr/local/bin/am || exit 1
+          sudo touch /opt/am/remove || exit 1
+          sudo cp -r modules/*.am /opt/am/modules/
+          export AMDATADIR="${XDG_DATA_HOME:-$HOME/.local/share}"/AM
+          mkdir -p "$AMDATADIR" || exit 1
+          cp -r programs/x86_64-apps "$AMDATADIR"/ || exit 1
+          
+
+      - name: "Checkout repository"
+        uses: actions/checkout@v4
+        with:
+          path: results
+
+      - name: "Create directory"
+        working-directory: programs/x86_64
+        run: |
+          echo "Creating results directory"
+          mkdir -p results
+
+      - name: "APP ${{ matrix.file }} 🚧"
+        working-directory: programs/x86_64
+        run: echo "APP=\"${{ matrix.file }}\"" | tee -a results/out-"${{ matrix.file }}"
+
+      - name: "Is ${{ matrix.file }} AppImage? 🚧"
+        id: is-appimage
+        working-directory: programs/x86_64
+        run: |
+          if grep -qe "appimage-extract\|mage\$\|tmp/\*mage" "${{ matrix.file }}" 1>/dev/null; then
+            echo "APPIMAGE='yes'" | tee -a results/out-"${{ matrix.file }}"
+          else
+            echo "APPIMAGE='no'" >> results/out-"${{ matrix.file }}"
+            touch results/out-"${{ matrix.file }}"
+          fi
+
+      - name: "Is ${{ matrix.file }} on GitHub? 🚧"
+        id: on-github
+        working-directory: programs/x86_64
+        run: |
+          if grep -q "api.github.com" "${{ matrix.file }}" 2>/dev/null; then
+            echo "GITHUB='yes'" | tee -a results/out-"${{ matrix.file }}"
+          else
+            #echo "EXIT_CODE=9" >> $GITHUB_ENV
+            echo "GITHUB='no'" >> results/out-"${{ matrix.file }}"
+            touch results/out-"${{ matrix.file }}"
+          fi
+
+      - name: "SITE ${{ matrix.file }} 🚧"
+        working-directory: programs/x86_64
+        run: |
+          if grep -q "^SITE=" "${{ matrix.file }}" 2>/dev/null; then
+            SITE=$(eval echo "$(grep -i '^SITE=' "${{ matrix.file }}" | head -1 | sed 's/SITE=//g')")
+            echo "SITE=\"$SITE\"" | tee -a results/out-"${{ matrix.file }}"
+          fi
+
+      - name: "test ${{ matrix.file }} 🚧"
+        id: test
+        working-directory: programs/x86_64
+        run: |
+          set -uo pipefail
+          mkdir -p results
+          EXIT_CODE=0
+
+          # Define the content of the script || Alow testing non existent (for workflow tests)
+          script_content=$(cat ${{ matrix.file }}) || echo "Testing non exist file! (for workflow test only)"
+          # Define the pure name of the app
+          pure_arg=$(echo "${{ matrix.file }}" | sed 's/\-appimage$//g' | sed 's:.*/::')
+
+          # Allow installing applications even if the command already exists
+          sed -i '/command -v "$pure_arg"/d; /command already exists/d' /opt/am/modules/install.am
+
+          # Special patches
+          if [[ "$pure_arg" =~ (node|npm) ]]; then
+            sed -i 's/_check_if_script_installs_a_metapackage || return 1//g' /opt/am/modules/install.am
+          fi
+
+          # Install the application
+
+          if [[ "$pure_arg" =~ (clipgrab|kvrt|suyu) ]]; then
+
+            echo "This application cannot be installed on GitHub Actions" | tee -a results/log-"${{ matrix.file }}"
+            echo "${{ matrix.file }}" >> results/ok-${{ matrix.file }}
+
+          elif [[ "$pure_arg" =~ (vikunja) ]]; then
+
+            echo "This application takes too long to install on GitHub Actions, the mirror is too weak" | tee -a results/log-"${{ matrix.file }}"
+            echo "${{ matrix.file }}" >> results/ok-${{ matrix.file }}
+
+          else
+          
+            if grep -qe "^read " "${{ matrix.file }}" 1>/dev/null || [[ "$pure_arg" =~ (wine) ]]; then
+
+              echo 1 | am -i "${{ matrix.file }}" --debug 2>&1
+              ARGSNUMB=$(find /opt -maxdepth 2 -name 'remove' -print 2>/dev/null | sed 's|/remove||g' | tr ' ' '\n' | wc -l)
+              if [ "$ARGSNUMB" = 1 ]; then
+                sleep 30
+                echo 1 | am -i "${{ matrix.file }}" --debug 2>&1
+              fi
+              ARGSNUMB=$(find /opt -maxdepth 2 -name 'remove' -print 2>/dev/null | sed 's|/remove||g' | tr ' ' '\n' | wc -l)
+              if [ "$ARGSNUMB" = 1 ]; then
+                sleep 30
+                echo 1 | am -i "${{ matrix.file }}" --debug 2>&1
+              fi
+
+            elif [[ "$pure_arg" =~ (bat-extras) ]]; then
+
+              echo y | am -i bat "${{ matrix.file }}" --debug 2>&1
+              ARGSNUMB=$(find /opt -maxdepth 2 -name 'remove' -print 2>/dev/null | sed 's|/remove||g' | tr ' ' '\n' | wc -l)
+              if [ "$ARGSNUMB" = 1 ]; then
+                sleep 30
+                echo y | am -i bat "${{ matrix.file }}" --debug 2>&1
+              fi
+              ARGSNUMB=$(find /opt -maxdepth 2 -name 'remove' -print 2>/dev/null | sed 's|/remove||g' | tr ' ' '\n' | wc -l)
+              if [ "$ARGSNUMB" = 1 ]; then
+                sleep 30
+                echo y | am -i bat "${{ matrix.file }}" --debug 2>&1
+              fi
+
+            else
+
+              echo y | am -i "${{ matrix.file }}" --debug 2>&1
+              ARGSNUMB=$(find /opt -maxdepth 2 -name 'remove' -print 2>/dev/null | sed 's|/remove||g' | tr ' ' '\n' | wc -l)
+              if [ "$ARGSNUMB" = 1 ]; then
+                sleep 30
+                echo y | am -i "${{ matrix.file }}" --debug 2>&1
+              fi
+              ARGSNUMB=$(find /opt -maxdepth 2 -name 'remove' -print 2>/dev/null | sed 's|/remove||g' | tr ' ' '\n' | wc -l)
+              if [ "$ARGSNUMB" = 1 ]; then
+                sleep 30
+                echo y | am -i "${{ matrix.file }}" --debug 2>&1
+              fi
+
+            fi
+
+            LASTDIR=$(ls -td /opt/* | head -1 | sed 's:.*/::')
+
+            # If an application is blacklisted, ignore it
+            if [ "$LASTDIR" = am ]; then
+              echo "### 💀 ${{ matrix.file }}" >> $GITHUB_STEP_SUMMARY
+              echo "${{ matrix.file }}" >> results/log-${{ matrix.file }}
+              exit 1
+
+            # If the last modified directory contains a file named "remove", check the installed files
+            elif test -f /opt/"$LASTDIR"/remove; then
+
+              printf "\n-------------------------------------------------------------\n\n"
+
+              # Check structure of directories in /opt
+              echo " Structure of the directory in /opt"
+              echo ""
+              ls /opt/"$LASTDIR" | tee -a results/log-"${{ matrix.file }}"
+
+              printf "\n-------------------------------------------------------------\n\n"
+
+              # Check the command in /usr/local/bin
+              echo " Command in \$PATH"
+              echo ""
+              command -v "$pure_arg" | tee -a results/log-"${{ matrix.file }}" || command -v "$LASTDIR" | tee -a results/log-"${{ matrix.file }}" || ls /usr/local/bin | tee -a results/log-"${{ matrix.file }}"
+
+              printf "\n-------------------------------------------------------------\n\n"
+
+              # Check launchers in /usr/local/share/applications
+              echo " Launchers in /usr/local/share/applications" | tee -a results/log-"${{ matrix.file }}"
+              echo ""
+              if test -f /usr/local/share/applications/*AM.desktop 2>/dev/null; then
+                 ls /usr/local/share/applications | grep "AM.desktop$" | tee -a results/log-"${{ matrix.file }}"
+              elif echo "$script_content" | grep -q -- '^./"$APP" --appimage-extract.*./"$APP".desktop$'; then
+                 ls /usr/local/share/applications | grep "AM.desktop$" | tee -a results/log-"${{ matrix.file }}"
+              else
+                 echo "No .desktop file available" | tee -a results/log-"${{ matrix.file }}"
+              fi
+
+              printf "\n-------------------------------------------------------------\n\n"
+
+              # Remove the application
+              am -R "$LASTDIR" && echo "${{ matrix.file }}" >> results/ok-${{ matrix.file }} || echo "${{ matrix.file }}" >> results/log-${{ matrix.file }}
+
+            # Any other result is a failure
+            else
+              exit 1
+            fi
+          fi
+
+      - name: "Upload out ⬆️"
+        uses: actions/upload-artifact@v4
+        with:
+          name: out-${{ matrix.file }}
+          path: programs/x86_64/results/out-${{ matrix.file }}
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
+
+      - name: "Upload KO Results ☝️"
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ko-${{ matrix.file }}
+          path: programs/x86_64/results/ko-${{ matrix.file }}
+          retention-days: 1
+
+      - name: "Upload OK Results ⬆️"
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ok-${{ matrix.file }}
+          path: programs/x86_64/results/ok-${{ matrix.file }}
+          retention-days: 1
+
+  update-results:
+    name: "results 📰"
+    needs: run-actions
+    runs-on: ubuntu-latest
+    if: (always() && github.event.inputs.reset_stats != 'true')
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: "Download results ⬇️"
+        uses: actions/download-artifact@v4
+        with:
+          path: results
+          merge-multiple: true
+
+      - name: "Download appslist"
+        uses: actions/download-artifact@v4
+        with:
+          name: appslist
+
+      - name: "Git Config"
+        run: |
+          git config --global user.name web-flow
+          git config --global user.email "noreply@github.com"
+
+      - name: "Process log results"
+        run: |
+          mkdir -p results
+          for LogFile in results/out-*; do
+            echo '-----------------------------------------------------------------'
+            echo "$LogFile out"
+            echo '-----------------------------------------------------------------'
+            [ -f "$LogFile" ] && cat "$LogFile"
+            echo '-----------------------------------------------------------------'
+            [ -f "$LogFile" ] || continue
+            appname=$(basename "$LogFile" | cut -d'-' -f2-)
+            echo '-----------------------------------------------------------------'
+            echo "$appname"
+            echo '-----------------------------------------------------------------'
+            if [ -z "$size" ]; then
+              size=$(cat "$LogFile" | grep 'size' | cut -d'=' -f2)
+              echo "size is $size"
+            fi
+            KoFile="results/ko-$appname"
+            if [[ -f "$KoFile" ]]; then
+              echo "$appname" | tee -a failing results/excluded
+              rm -f "$KoFile"
+              cat "$LogFile" | grep -E '(^.*=.*$|^.*----.*$)' >> results/log
+              sort -u results/excluded -o results/excluded
+              sort -u failing -o failing
+              git add results/excluded
+            else
+              cat "$LogFile" | grep -E '(^.*=.*$|^.*----.*$)' >> results/log
+              echo "$appname" >> results/tested
+            fi
+            echo '-----------------------------------------------------------------' >> results/log
+            rm -f "$LogFile"
+          done
+          sort -u results/tested -o results/tested
+          git add results
+
+      - name: "Show results"
+        if: ( ${{ needs.generate-matrix.outputs.skip != 'true' }} && ${{ github.event.inputs.reset_stats != 'true' }} )
+        run: |
+          if [[ -f results/tested ]]; then
+            tested=$(wc -l < results/tested 2>/dev/null || echo 0)
+          else
+            tested='0'
+          fi
+          if [[ -f results/excluded ]]; then
+            excluded=$(wc -l < results/excluded 2>/dev/null || echo 0)
+          else
+            excluded='0'
+          fi
+          if [[ -f failing ]]; then
+            fail=$(wc -l < failing 2>/dev/null || echo 0)
+          else
+            fail='0'
+          fi
+          count=$(wc -l < appslist)
+          remaining=$((count - tested - excluded))
+          (( remaining < 0 )) && remaining=0
+          echo "🏁 $tested tested" >> $GITHUB_STEP_SUMMARY
+          if [[ "$fail" != '0' ]]; then
+            echo ":x: $fail excluded now" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [[ "$excluded" != '0' ]]; then
+            echo "😱 $excluded excluded" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "### 🛅 $remaining to test" >> $GITHUB_STEP_SUMMARY
+          rm -f appslist
+          rm -f results/ok-*
+          echo '-----------------------------------------------------------------'
+          echo "Missed results:"
+          echo '-----------------------------------------------------------------'
+          ls -R results/
+          echo '-----------------------------------------------------------------'
+
+      - name: "Push"
+        if: ${{ needs.generate-matrix.outputs.skip != 'true' }}
+        run: |
+          git config --global user.name web-flow
+          git config --global user.email "noreply@github.com"
+          if [[ "$GITHUB_REF" == 'refs/pull/*' ]]; then
+            echo "This is a Pull Request. Not saving results."
+            exit 0
+          elif git diff-index --quiet HEAD; then
+            echo "No changes to commit." >> $GITHUB_STEP_SUMMARY
+            exit 0
+          else
+            git add results
+            git commit -m "check"
+            git push --force-with-lease && echo "sync successfull" >> $GITHUB_STEP_SUMMARY || (git diff && git status)
+          fi
+
+  already-tested:
+    name: "all 🏁"
+    runs-on: ubuntu-latest
+    needs: generate-matrix
+    if: ${{ needs.generate-matrix.outputs.skip == 'true' }}
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v4
+
+      - name: "Git Config"
+        run: |
+           git config --global user.name web-flow
+           git config --global user.email "noreply@github.com"
+
+      - name: "Reset all tested"
+        run: |
+          echo "All apps already tested..." >> $GITHUB_STEP_SUMMARY
+          echo "### stats RESET" >> $GITHUB_STEP_SUMMARY
+          git rm -r results
+          git commit -m "reset stats"
+          git push --force
+          git clean -f
