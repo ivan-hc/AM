@@ -307,11 +307,21 @@ _files_db() {
 _files_files() {
 	cd "$APPSPATH" || exit 1
 	INSTALLED_APPS_BY_SIZE=$(du -sh $INSTALLED_APPS_PATHS 2>/dev/null | sort -rh)
-	INSTALLED_APPS=$(echo "$INSTALLED_APPS_BY_SIZE" | xargs -n 1 basename 2>/dev/null)
+	INSTALLED_APPS=$(echo "$INSTALLED_APPS_BY_SIZE" | grep "$APPSPATH" | sed 's:.*/::' | xargs)
+
 	if [ ! -f "$AMCACHEDIR"/version-args ]; then
 		_check_version
 	fi
-	if [ ! -f "$AMCACHEDIR"/files-type ]; then
+	version_args=""
+	for arg in $INSTALLED_APPS; do
+		if ! grep -q " ◆ $arg " "$AMCACHEDIR"/version-args; then
+			version_args="1"
+		fi
+	done
+	[ -n "$version_args" ] && _check_version
+
+	if [ -n "$version_args" ] || [ ! -f "$AMCACHEDIR"/files-type ]; then
+		rm -f "$AMCACHEDIR"/files-type
 		for arg in $INSTALLED_APPS; do
 			if [ -f ./"$arg"/remove ]; then
 		 		_files_type &
@@ -319,6 +329,7 @@ _files_files() {
 		done
 		wait
 	fi
+
 	rm -f "$AMCACHEDIR"/files-sizes "$AMCACHEDIR"/files-db
 	for arg in $INSTALLED_APPS; do
 		if [ -f ./"$arg"/remove ]; then
