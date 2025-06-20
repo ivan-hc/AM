@@ -202,13 +202,6 @@ _files_header() {
 		[ "$APPMAN_ON" = 1 ] && echo $" $APPSMESSAGE LOCALLY, AS \"APPMAN\"" || echo $" $APPSMESSAGE MANAGED BY \"$AMCLIUPPER\""
 	fi
 	echo ""
-	if [ -n "$CHECK_SUPPORTED_THIRD_PARTY_APPS" ]; then
-		files_table_header=$(echo $"- APPNAME | DB | VERSION | TYPE | SIZE ")
-		files_table_header_lines="- ------- | -- | ------- | ---- | ----"
-	else
-		files_table_header=$(echo $"- APPNAME | VERSION | TYPE | SIZE ")
-		files_table_header_lines="- ------- | ------- | ---- | ----"
-	fi
 }
 
 # Functions to determine file's type
@@ -289,14 +282,23 @@ _files_sizes() {
 
 # Function to determine file's database
 _files_db() {
+	DB=""
 	if test -f "$APPSPATH"/"$arg"/.am-installer/*.*; then
 		_files_db_third_party
 	elif [ "$arg" = am ]; then
 		DB="am"
-	elif test -f "$AMDATADIR/$ARCH-apps" && ! grep -q "^◆ $arg :" "$AMDATADIR/$ARCH-apps"; then
-		DB="unknown"
+	elif [ -f "$AMDATADIR/$ARCH-apps" ] && ! grep -q "^◆ $arg :" "$AMDATADIR/$ARCH-apps"; then
+		DB="unsupported"
 	else
 		DB="am"
+	fi
+	if [ -z "$DB" ]; then
+		if echo "$arg" | grep -q "\."; then
+			file_suffix=$(echo "$arg" | tr '.' '\n' | head -1)
+			file_extension=$(echo "$arg" | tr '.' '\n' | tail -1)
+			[ -f "$AMDATADIR/$ARCH-apps" ] && grep -q "^◆ $file_suffix.*$file_extension :" "$AMDATADIR/$ARCH-apps" && DB="am"
+		fi
+		[ -z "$DB" ] &&	DB="unsupported"
 	fi
 	echo " ◆ $arg	|	$DB" >> "$AMCACHEDIR"/files-db
 }
@@ -305,11 +307,23 @@ _files_db() {
 _files_files() {
 	cd "$APPSPATH" || exit 1
 	INSTALLED_APPS_BY_SIZE=$(du -sh $INSTALLED_APPS_PATHS 2>/dev/null | sort -rh)
-	INSTALLED_APPS=$(echo "$INSTALLED_APPS_BY_SIZE" | xargs -n 1 basename 2>/dev/null)
+	INSTALLED_APPS=$(echo "$INSTALLED_APPS_BY_SIZE" | grep "$APPSPATH" | sed 's:.*/::' | xargs)
+
 	if [ ! -f "$AMCACHEDIR"/version-args ]; then
 		_check_version
 	fi
-	if [ ! -f "$AMCACHEDIR"/files-type ]; then
+
+	version_args=""
+	[ -f "$AMCACHEDIR"/files-args ] && known_items_number=$(sort -u "$AMCACHEDIR"/files-args | wc -l | sed 's/ //g')
+	for arg in $INSTALLED_APPS; do
+		if [ "$FILES_NUMBER" != "$known_items_number" ]; then
+			version_args="1"
+		fi
+	done
+	[ -n "$version_args" ] && _check_version
+
+	if [ -n "$version_args" ] || [ ! -f "$AMCACHEDIR"/files-type ]; then
+		rm -f "$AMCACHEDIR"/files-type
 		for arg in $INSTALLED_APPS; do
 			if [ -f ./"$arg"/remove ]; then
 		 		_files_type &
@@ -317,6 +331,7 @@ _files_files() {
 		done
 		wait
 	fi
+
 	rm -f "$AMCACHEDIR"/files-sizes "$AMCACHEDIR"/files-db
 	for arg in $INSTALLED_APPS; do
 		if [ -f ./"$arg"/remove ]; then
@@ -332,19 +347,26 @@ _files() {
 	rm -f "$AMCACHEDIR"/files-args
 	for arg in $INSTALLED_APPS; do
 		if test -f ./"$arg"/remove 2>/dev/null; then
-			APPVERSION=$(grep -w " ◆ $arg	|" "$AMCACHEDIR"/version-args | tr '	' '\n' | tail -1)
+			APPVERSION=$(grep -w " ◆ $arg	|" "$AMCACHEDIR"/version-args | awk '{print $4}')
 			[ -f ./"$arg"/AM-LOCK ] && APPVERSION="$APPVERSION🔒"
 			echo "$APPVERSION" | grep -q "🔒$" && APPLOCKED=1
-			APPTYPE=$(grep -w " ◆ $arg	|" "$AMCACHEDIR"/files-type | tr '	' '\n' | tail -1)
-			APPSYZE=$(grep -w " ◆ $arg	|" "$AMCACHEDIR"/files-sizes | tr '	' '\n' | tail -1)
-			APPDB=$(grep -w " ◆ $arg	|" "$AMCACHEDIR"/files-db | tr '	' '\n' | tail -1)
-			if [ -n "$CHECK_SUPPORTED_THIRD_PARTY_APPS" ]; then
+			APPTYPE=$(grep -w " ◆ $arg	|" "$AMCACHEDIR"/files-type | awk '{print $4}')
+			APPSYZE=$(grep -w " ◆ $arg	|" "$AMCACHEDIR"/files-sizes | awk '{print $4}')
+			APPDB=$(grep -w " ◆ $arg	|" "$AMCACHEDIR"/files-db | awk '{print $4}')
+			if [ -n "$CHECK_SUPPORTED_THIRD_PARTY_APPS" ] || [ -f "$AMCACHEDIR"/files-db ] && grep -q "	unsupported" "$AMCACHEDIR"/files-db; then
 				echo " ◆ $arg	|	$APPDB	|	$APPVERSION	|	$APPTYPE	|	$APPSYZE" >> "$AMCACHEDIR"/files-args
 			else
 				echo " ◆ $arg	|	$APPVERSION	|	$APPTYPE	|	$APPSYZE" >> "$AMCACHEDIR"/files-args
 			fi
 		fi
 	done
+	if [ -n "$CHECK_SUPPORTED_THIRD_PARTY_APPS" ] || [ -f "$AMCACHEDIR"/files-db ] && grep -q "	unsupported" "$AMCACHEDIR"/files-db; then
+		files_table_header=$(echo $"- APPNAME | DB | VERSION | TYPE | SIZE ")
+		files_table_header_lines="- ------- | -- | ------- | ---- | ----"
+	else
+		files_table_header=$(echo $"- APPNAME | VERSION | TYPE | SIZE ")
+		files_table_header_lines="- ------- | ------- | ---- | ----"
+	fi
 }
 
 _files_number() {
