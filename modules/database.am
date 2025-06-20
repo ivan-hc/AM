@@ -287,12 +287,19 @@ _files_db() {
 		_files_db_third_party
 	elif [ "$arg" = am ]; then
 		DB="am"
-	elif test -f "$AMDATADIR/$ARCH-apps" && ! grep -q "^◆ $arg :" "$AMDATADIR/$ARCH-apps"; then
+	elif [ -f "$AMDATADIR/$ARCH-apps" ] && ! grep -q "^◆ $arg :" "$AMDATADIR/$ARCH-apps"; then
 		DB="unsupported"
 	else
 		DB="am"
 	fi
-	[ -z "$DB" ] && DB="unsupported"
+	if [ -z "$DB" ]; then
+		if echo "$arg" | grep -q "\."; then
+			file_suffix=$(echo "$arg" | tr '.' '\n' | head -1)
+			file_extension=$(echo "$arg" | tr '.' '\n' | tail -1)
+			[ -f "$AMDATADIR/$ARCH-apps" ] && grep -q "^◆ $file_suffix.*$file_extension :" "$AMDATADIR/$ARCH-apps" && DB="am"
+		fi
+		[ -z "$DB" ] &&	DB="unsupported"
+	fi
 	echo " ◆ $arg	|	$DB" >> "$AMCACHEDIR"/files-db
 }
 
