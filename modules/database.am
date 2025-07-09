@@ -188,6 +188,29 @@ _about_page() {
 ################################################################################
 #				FILES
 ################################################################################
+_column() {
+	awk '
+		{
+		# Collect the data for each column and track the max width
+		for (i = 1; i <= NF; i++) {
+			max_width[i] = (length($i) > max_width[i]) ? length($i) : max_width[i]
+			lines[NR, i] = $i
+		}
+		num_fields = NF
+	}
+	END {
+		# Output each line, formatting each column to be the same width
+		for (i = 1; i <= NR; i++) {
+			for (j = 1; j <= num_fields; j++) {
+				# Print the column with space padding
+				printf "%-" max_width[j] "s", lines[i, j]
+			}
+			print ""
+		}
+	}
+	' | sed 's/^-  /-/; s/./& /; s/|/ | /g'
+}
+
 _files_header() {
 	third_party_lists_find=$(echo "$third_party_lists extra" | tr ' ' '\n' | xargs | sed 's# #\\|#g')
 	echo ""
@@ -426,7 +449,7 @@ _files_sort_by_name() {
 	echo "$files_table_header" > "$AMCACHEDIR"/files-args-byname
 	echo "$files_table_header_lines" >> "$AMCACHEDIR"/files-args-byname
 	sort "$AMCACHEDIR"/files-args 2>/dev/null >> "$AMCACHEDIR"/files-args-byname
-	column -t "$AMCACHEDIR"/files-args-byname | _files_table_sizes
+	cat "$AMCACHEDIR"/files-args-byname | _column | _files_table_sizes
 	_files_total_size
 	_files_appimage_type_notes
 }
@@ -438,7 +461,7 @@ _files_sort_by_size() {
 	echo "$files_table_header" > "$AMCACHEDIR"/files-args-bysize
 	echo "$files_table_header_lines" >> "$AMCACHEDIR"/files-args-bysize
 	cat "$AMCACHEDIR"/files-args >> "$AMCACHEDIR"/files-args-bysize 2>/dev/null
-	column -t "$AMCACHEDIR"/files-args-bysize | _files_table_sizes
+	cat "$AMCACHEDIR"/files-args-bysize | _column | _files_table_sizes
 	_files_total_size
 	_files_appimage_type_notes
 }
@@ -479,7 +502,7 @@ _files_launcher() {
 	LAUNCHERS_MESSAGE=" YOU HAVE INTEGRATED $FILES_LAUNCHERS_NUMBER $APPIMAGES USING THE \"--launcher\" OPTION"
 	printf "\n%b\n\n" "$LAUNCHERS_MESSAGE"
 	#_files_launcher_message | _fit
-	_files_launcher_message | column -t | _files_table_sizes
+	_files_launcher_message | _column | _files_table_sizes
 	_files_launcher_message | grep -q " unknown$" && printf $"\n *this path is listed but not mounted, file size unknown\n\n" || printf "\n"
 }
 
