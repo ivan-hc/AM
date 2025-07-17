@@ -982,14 +982,21 @@ Below you can access documentation pages for common issues and frequently asked 
 
 ------------------------------------------------------------------------
 # Related projects
-#### External tools and forks used in this project
-- *[aisap](https://github.com/mgord9518/aisap), sandboxing solutions for AppImages*
-- *[appimagetool](https://github.com/AppImage/appimagetool), get rid of libfuse2 from your AppImages*
-- *[pkg2appimage](https://github.com/AppImage/pkg2appimage), create AppImages on the fly from existing .deb packages*
-- *[repology](https://github.com/repology), the encyclopedia of all software versions*
+#### Side Projects
+- *[amcheck](https://github.com/ivan-hc/amcheck), checks the validity of scripts in this database and monitors the availability of AppImages*
+- *[am-extras](https://github.com/ivan-hc/am-extras), lists applications from third-party databases*
+- *[repology-versions](https://github.com/ivan-hc/repology-versions), lists "unfindable" versions if upstream doesn't provide easy-to-intercept references*
 
-#### Partner projects, i.e. those that actively contribute to this project
-- *[Soarpkgs](https://github.com/pkgforge/soarpkgs), Largest Collection of Multi-Platform Pre-Compiled Static Binaries*
+#### External tools and forks used in this project
+- *[aisap](https://github.com/mgord9518/aisap), sandboxing solutions for AppImages, see sandboxing options above*
+- *[appimagetool](https://github.com/AppImage/appimagetool), get rid of libfuse2 from old AppImages (option `nolibfuse`) and create AppImages on the fly (see [appimage-bulder-scripts](https://github.com/ivan-hc/AM/tree/main/appimage-bulder-scripts))*
+- *[repology](https://github.com/repology), the encyclopedia of all software versions, used in [ivan-hc/repology-versions](https://github.com/ivan-hc/repology-versions)*
+
+#### Organizations and their affiliates that actively contribute to this project
+- *[Package Forge](https://github.com/pkgforge), Improving Package Management & Security for Linux systems*
+  - *[Dev](https://github.com/pkgforge-dev), Package Forge's Official Developer Repos*
+  - *[Community](https://github.com/pkgforge-community), Package Forge's Community Repos, Projects & their Dependencies*
+- *[Portable Linux Apps](https://github.com/Portable-Linux-Apps), Census, cataloging and distribution of AppImages and portable apps for GNU/Linux*
 
 #### My other projects
 - *[AppImaGen](https://github.com/ivan-hc/AppImaGen), easily create AppImages from Ubuntu PPAs or Debian using pkg2appimage and appimagetool*
