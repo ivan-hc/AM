@@ -368,7 +368,7 @@ _3rd_party_apps_handler() {
 		select d in $about_site; do
 			if [ -n "$d" ]; then
 				url_content=$(curl -Ls "$third_party_readme" | grep -i "$d" | tr '|' '\n' | cut -c 2- | grep . | awk -F: "NR==$awk_dl" | sed 's/ //g')
-				if ! curl --output /dev/null --silent --head --fail "$url_content" 1>/dev/null; then
+				if ! curl --output /dev/null --silent --head --fail "$url_content" 1>/dev/null && [ "$tp_extension" != soarpkg ]; then
 					printf $"%bPlease select another item or press \"ZERO\".\n\n" "$tp_missing_file_msg" | _fit
 				else
 					break
@@ -382,7 +382,7 @@ _3rd_party_apps_handler() {
 		third_party_url="curl -Ls $third_party_readme | grep -i \"$d\" | tr '|' '\\\n' | cut -c 2- | grep . | awk -F: \"NR==$awk_dl\""
 	else
 		url_content=$(curl -Ls "$third_party_readme" | grep -i "^| $arg | .* | http.* | http.* | .* |$" | tr '|' '\n' | cut -c 2- | grep . | awk -F: "NR==$awk_dl" | sed 's/ //g')
-		if ! curl --output /dev/null --silent --head --fail "$url_content" 1>/dev/null; then
+		if ! curl --output /dev/null --silent --head --fail "$url_content" 1>/dev/null && [ "$tp_extension" != soarpkg ]; then
 			printf "%b" "$tp_missing_file_msg" | _fit
 			return 1
 		fi
@@ -391,6 +391,12 @@ _3rd_party_apps_handler() {
 	if [ "$tp_extension" = appbundle ]; then
 		curl -Ls "$AMREPO"/templates/AM-SAMPLE-AppBundle > "$CACHEDIR/extra/$arg.$tp_extension" || exit 1
 		sed -i "s#APP=SAMPLE#APP=$arg#g; s#FUNCTION#$awk_version#g; s#wget \"\$version\"#wget \$($third_party_url)#g" "$CACHEDIR/extra/$arg.$tp_extension"
+	elif [ "$tp_extension" = soarpkg ]; then
+		curl -Ls "$AMREPO"/templates/AM-SAMPLE-bincache-soarpkg-dbin > "$CACHEDIR/extra/$arg.$tp_extension" || exit 1
+		sed -i "s#APP=SAMPLE#APP=$arg#g; s#FUNCTION#$awk_version#g" "$CACHEDIR/extra/$arg.$tp_extension"
+		dbin_item=$(echo "$url_content" | sed "s#^http.*/bincache/##g; s#/.*/#/#g; s#_.*/#/#g")
+		[ "$dbin_item" = "$arg/$arg" ] && dbin_item="$arg"
+		sed -i "s#ITEM#$dbin_item#g" "$CACHEDIR/extra/$arg.$tp_extension"
 	elif echo "$url_content" | grep -qi "\.appimage$\|\.nixappimage$\|/appimage/"; then
 		if [ "$arg" = libreoffice ]; then
 			curl -Ls "$AMREPO"/templates/AM-SAMPLE-AppImage-libreoffice > "$CACHEDIR/extra/$arg.$tp_extension" || exit 1
