@@ -990,6 +990,7 @@ Below you can access documentation pages for common issues and frequently asked 
 #### External tools and forks used in this project
 - *[aisap](https://github.com/mgord9518/aisap), sandboxing solutions for AppImages, see sandboxing options above*
 - *[appimagetool](https://github.com/AppImage/appimagetool), get rid of libfuse2 from old AppImages (option `nolibfuse`) and create AppImages on the fly (see [appimage-bulder-scripts](https://github.com/ivan-hc/AM/tree/main/appimage-bulder-scripts))*
+- *[dbin](https://github.com/xplshn/dbin), the easy to use/get, suckless software distribution system, used as OCI registry client to install packages from third-party databases*
 - *[repology](https://github.com/repology), the encyclopedia of all software versions, used in [ivan-hc/repology-versions](https://github.com/ivan-hc/repology-versions)*
 
 #### Organizations and their affiliates that actively contribute to this project
