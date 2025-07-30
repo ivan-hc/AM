@@ -544,9 +544,16 @@ _am_newrepo_check "$@"
 #				3RD PARTY SOURCES
 ################################################################################################################################################################
 
+_am_extras_sources() {
+	AM_EXTRA_SOURCES=$(curl -Ls "$AM_EXTRA_SOURCES")
+	if echo "$AM_EXTRA_SOURCES" | grep -q "^# "; then
+		echo "$AM_EXTRA_SOURCES" > "$AMDATADIR"/am-extras
+	fi
+}
+
 [ -z "$AM_EXTRA_SOURCES" ] && AM_EXTRA_SOURCES="https://raw.githubusercontent.com/ivan-hc/am-extras/main/am-extras"
 if [ ! -f "$AMDATADIR"/am-extras ]; then
-	wget -q --tries=10 --timeout=20 --spider https://github.com && curl -Ls "$AM_EXTRA_SOURCES" > "$AMDATADIR"/am-extras
+	_am_extras_sources
 fi
 [ -f "$AMDATADIR"/am-extras ] && source "$AMDATADIR"/am-extras
 
@@ -572,7 +579,7 @@ _third_party_lsts_filter() {
 }
 
 _sync_third_party_lists() {
-	curl -Ls "$AM_EXTRA_SOURCES" > "$AMDATADIR"/am-extras
+	_am_extras_sources
 	for tp_list in $third_party_lists; do
 		rm -f "$AMDATADIR"/"$ARCH"-"$tp_list"
 		tprepo_readme="${tp_list}_readme"
@@ -625,7 +632,8 @@ available_options="about add apikey backup clean config disable downgrade downlo
 
 _completion_lists() {
 	# Remove existing lists and download new ones
-	curl -Ls "$APPSLISTDB" > "$AMDATADIR/$ARCH-apps"
+	APPSLISTDB=$(curl -Ls "$APPSLISTDB")
+	echo "$APPSLISTDB" | grep "^◆" > "$AMDATADIR/$ARCH-apps"
 	awk -v FS="(◆ | : )" '{print $2}' <"$AMDATADIR"/"$ARCH"-apps > "$AMDATADIR"/list
 	_completion_list_third_party
 	# Append options to the list
@@ -1059,12 +1067,14 @@ _sync_installation_scripts() {
 
 _sync_appimages_list() {
 	APPIMAGES_LIST="${APPIMAGES_LIST:-$AMREPO/programs/$ARCH-appimages}"
-	curl -Ls "$APPIMAGES_LIST" > "$AMDATADIR/$ARCH-appimages"
+	APPIMAGES_LIST=$(curl -Ls "$APPIMAGES_LIST")
+	echo "$APPIMAGES_LIST" | grep "^◆" > "$AMDATADIR/$ARCH-appimages"
 }
 
 _sync_portable_list() {
 	PORTABLE_LIST="${PORTABLE_LIST:-$AMREPO/programs/$ARCH-portable}"
-	curl -Ls "$PORTABLE_LIST" > "$AMDATADIR/$ARCH-portable"
+	PORTABLE_LIST=$(curl -Ls "$PORTABLE_LIST")
+	echo "$PORTABLE_LIST" | grep "^◆" > "$AMDATADIR/$ARCH-portable"
 }
 
 _sync_databases() {
