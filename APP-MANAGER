@@ -1090,7 +1090,7 @@ _sync_locale() {
 
 _sync_modules() {
 	printf $"%b\n Check for updates in modules...\n" "$DIVIDING_LINE"
-	MODULES="database.am install.am management.am sandboxes.am template.am"
+	MODULES=$(echo "$AMCLI_ONLINE_CONTENT" | tr '"' '\n' | grep "[a-z]\.am$")
 	for module_name in $MODULES; do
 		mkdir -p "$MODULES_PATH" && cd "$MODULES_PATH" || return 1
 		if ! test -f ./"$module_name"; then
@@ -1113,25 +1113,22 @@ _sync_modules() {
 }
 
 _sync_amcli() {
-	AMCLI_ONLINE_CONTENT=$(curl -Ls "$AMREPO"/APP-MANAGER)
-	if echo "$AMCLI_ONLINE_CONTENT" | grep -q AMCLI; then
-		echo "$DIVIDING_LINE"
-		CURRENT_AM_VERSION="$AMVERSION"
-		echo -ne $"\n ◆ SYNCHRONIZING \"$AMCLIUPPER\" VERSION \"$CURRENT_AM_VERSION\"...\r" && sleep 0.25
-		_clean_amcachedir 1>/dev/null
-		cd "$AMCACHEDIR" || return 1
-		echo "$AMCLI_ONLINE_CONTENT" > ./APP-MANAGER && chmod a+x ./APP-MANAGER
-		echo y | mv ./APP-MANAGER "$CLI_PATH"
-		NEW_AM_VERSION=$("$AMCLIPATH" -v)
-		if [ ! "$CURRENT_AM_VERSION" = "$NEW_AM_VERSION" ]; then
-			echo -ne $" A new release of \"$AMCLIUPPER\" is available, please wait...\r"
-			echo $" ◆ \"$AMCLIUPPER\" IS NOW UPDATED TO THE BRAND NEW \"$NEW_AM_VERSION\" VERSION!"
-			printf $"\n  Replacement of version \"%b\" currently in use, COMPLETED! \n" "$CURRENT_AM_VERSION"
-			printf $"\n See https://github.com/ivan-hc/AM/commits/main\n\n"
-		else
-			echo $" ◆ \"$AMCLIUPPER\" IS ALREADY UPDATED, CURRENT VERSION \"$CURRENT_AM_VERSION\""
-			printf $"\n See https://github.com/ivan-hc/AM/commits/%b\n\n" "$AMBRANCH"
-		fi
+	echo "$DIVIDING_LINE"
+	CURRENT_AM_VERSION="$AMVERSION"
+	echo -ne $"\n ◆ SYNCHRONIZING \"$AMCLIUPPER\" VERSION \"$CURRENT_AM_VERSION\"...\r" && sleep 0.25
+	_clean_amcachedir 1>/dev/null
+	cd "$AMCACHEDIR" || return 1
+	echo "$AMCLI_ONLINE_CONTENT" > ./APP-MANAGER && chmod a+x ./APP-MANAGER
+	echo y | mv ./APP-MANAGER "$CLI_PATH"
+	NEW_AM_VERSION=$("$AMCLIPATH" -v)
+	if [ ! "$CURRENT_AM_VERSION" = "$NEW_AM_VERSION" ]; then
+		echo -ne $" A new release of \"$AMCLIUPPER\" is available, please wait...\r"
+		echo $" ◆ \"$AMCLIUPPER\" IS NOW UPDATED TO THE BRAND NEW \"$NEW_AM_VERSION\" VERSION!"
+		printf $"\n  Replacement of version \"%b\" currently in use, COMPLETED! \n" "$CURRENT_AM_VERSION"
+		printf $"\n See https://github.com/ivan-hc/AM/commits/main\n\n"
+	else
+		echo $" ◆ \"$AMCLIUPPER\" IS ALREADY UPDATED, CURRENT VERSION \"$CURRENT_AM_VERSION\""
+		printf $"\n See https://github.com/ivan-hc/AM/commits/%b\n\n" "$AMBRANCH"
 	fi
 }
 
@@ -1142,24 +1139,27 @@ _use_sync() {
 	_sync_locale
 	_sync_installation_scripts
 	if [ "$CLI_PATH" != "/usr/bin/am" ] && [ "$AMSYNC" != 1 ]; then
-		if [ "$CLI" = am ]; then
-			if [ -f "$APPMANCONFIG"/appman-mode ]; then
-				if [ -d "$(readlink -f /opt)/am/modules" ]; then
-					MODULES_PATH="$(readlink -f /opt)/am/modules"
-					if [ -w "$(readlink -f /opt)/am" ]; then
-						_sync_modules
-						_sync_amcli
-					else
-						printf "%b\n DONE! \n" "$DIVIDING_LINE"
+		AMCLI_ONLINE_CONTENT=$(curl -Ls "$AMREPO"/APP-MANAGER)
+		if echo "$AMCLI_ONLINE_CONTENT" | grep -q AMCLI; then
+			if [ "$CLI" = am ]; then
+				if [ -f "$APPMANCONFIG"/appman-mode ]; then
+					if [ -d "$(readlink -f /opt)/am/modules" ]; then
+						MODULES_PATH="$(readlink -f /opt)/am/modules"
+						if [ -w "$(readlink -f /opt)/am" ]; then
+							_sync_modules
+							_sync_amcli
+						else
+							printf "%b\n DONE! \n" "$DIVIDING_LINE"
+						fi
 					fi
+				else
+					_sync_modules
+					_sync_amcli
 				fi
-			else
+			elif [ "$CLI" = appman ]; then
 				_sync_modules
 				_sync_amcli
 			fi
-		elif [ "$CLI" = appman ]; then
-			_sync_modules
-			_sync_amcli
 		fi
 	fi
 	echo "$DIVIDING_LINE"
