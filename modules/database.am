@@ -92,10 +92,10 @@ _about_description_for_third_party() {
 			readme_source="${!tprepo_readme}"
 			tprepo_repo="${tp_extension}_repo"
 			repo_source="${!tprepo_repo}"
-			appname_arg=$(curl -Ls "$readme_source" 2>/dev/null | grep -i "^| $appname | .* | http.* | http.* | .* |$" | tr '|' '\n' | cut -c 2- | grep .)
+			third_party_readme=$(curl -Ls "$readme_source")
+			appname_arg=$(echo "$third_party_readme" 2>/dev/null | grep -i "^| $appname | .* | http.* | http.* | .* |$" | tr '|' '\n' | cut -c 2- | grep .)
 			about_description=$(echo "$appname_arg" | awk -F: "NR==$awk_description")
 			about_site=$(echo "$appname_arg" | awk -F: "NR==$awk_site")
-			third_party_readme=$(curl -Ls "$readme_source")
 			tpnumber=$(echo "$third_party_readme" | grep "^| $appname | .* | http.* | http.* | .* |$" | wc -l | sed 's/ //g')
 		fi
 
@@ -129,10 +129,12 @@ _about_description_for_third_party() {
 _about_description() {
 	AMCATALOGUEMARKDOWNS="${AMCATALOGUEMARKDOWNS:-https://portable-linux-apps.github.io/apps}"
 	markdown_url="$AMCATALOGUEMARKDOWNS/$arg.md"
-	if curl -o /dev/null -sIf "$markdown_url"; then
-		markdown_page=$(curl -Ls "$markdown_url" | grep -v -- "^#\|^.*| \[Applications\|^.*| -\|^.*!\[")
+	markdown_page=$(curl -Ls "$markdown_url")
+	if echo "$markdown_page" | grep -q "^#"; then
+		markdown_page=$(echo "$markdown_page" | grep -v -- "^#\|^.*| \[Applications\|^.*| -\|^.*!\[")
 		echo "$markdown_page" | _about_description_fit
 	else
+		markdown_page=""
 		_about_description_for_third_party | _about_description_fit
 	fi
 }
