@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="9.8.1-1"
+AMVERSION="9.8.1-2"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -544,9 +544,16 @@ _am_newrepo_check "$@"
 #				3RD PARTY SOURCES
 ################################################################################################################################################################
 
+_am_extras_sources() {
+	AM_EXTRA_SOURCES=$(curl -Ls "$AM_EXTRA_SOURCES")
+	if echo "$AM_EXTRA_SOURCES" | grep -q "^# "; then
+		echo "$AM_EXTRA_SOURCES" > "$AMDATADIR"/am-extras
+	fi
+}
+
 [ -z "$AM_EXTRA_SOURCES" ] && AM_EXTRA_SOURCES="https://raw.githubusercontent.com/ivan-hc/am-extras/main/am-extras"
 if [ ! -f "$AMDATADIR"/am-extras ]; then
-	wget -q --tries=10 --timeout=20 --spider https://github.com && curl -Ls "$AM_EXTRA_SOURCES" > "$AMDATADIR"/am-extras
+	_am_extras_sources
 fi
 [ -f "$AMDATADIR"/am-extras ] && source "$AMDATADIR"/am-extras
 
@@ -572,7 +579,7 @@ _third_party_lsts_filter() {
 }
 
 _sync_third_party_lists() {
-	curl -Ls "$AM_EXTRA_SOURCES" > "$AMDATADIR"/am-extras
+	_am_extras_sources
 	for tp_list in $third_party_lists; do
 		rm -f "$AMDATADIR"/"$ARCH"-"$tp_list"
 		tprepo_readme="${tp_list}_readme"
@@ -625,7 +632,8 @@ available_options="about add apikey backup clean config disable downgrade downlo
 
 _completion_lists() {
 	# Remove existing lists and download new ones
-	curl -Ls "$APPSLISTDB" > "$AMDATADIR/$ARCH-apps"
+	APPSLISTDB=$(curl -Ls "$APPSLISTDB" 2>/dev/null)
+	echo "$APPSLISTDB" | grep "^◆" > "$AMDATADIR/$ARCH-apps"
 	awk -v FS="(◆ | : )" '{print $2}' <"$AMDATADIR"/"$ARCH"-apps > "$AMDATADIR"/list
 	_completion_list_third_party
 	# Append options to the list
@@ -1059,12 +1067,14 @@ _sync_installation_scripts() {
 
 _sync_appimages_list() {
 	APPIMAGES_LIST="${APPIMAGES_LIST:-$AMREPO/programs/$ARCH-appimages}"
-	curl -Ls "$APPIMAGES_LIST" > "$AMDATADIR/$ARCH-appimages"
+	APPIMAGES_LIST=$(curl -Ls "$APPIMAGES_LIST" 2>/dev/null)
+	echo "$APPIMAGES_LIST" | grep "^◆" > "$AMDATADIR/$ARCH-appimages"
 }
 
 _sync_portable_list() {
 	PORTABLE_LIST="${PORTABLE_LIST:-$AMREPO/programs/$ARCH-portable}"
-	curl -Ls "$PORTABLE_LIST" > "$AMDATADIR/$ARCH-portable"
+	PORTABLE_LIST=$(curl -Ls "$PORTABLE_LIST" 2>/dev/null)
+	echo "$PORTABLE_LIST" | grep "^◆" > "$AMDATADIR/$ARCH-portable"
 }
 
 _sync_databases() {
@@ -1090,7 +1100,7 @@ _sync_locale() {
 
 _sync_modules() {
 	printf $"%b\n Check for updates in modules...\n" "$DIVIDING_LINE"
-	MODULES=$(curl -Ls "$AMREPO/APP-MANAGER" | tr '"' '\n' | grep "[a-z]\.am$")
+	MODULES=$(echo "$AMCLI_ONLINE_CONTENT" | tr '"' '\n' | grep "[a-z]\.am$")
 	for module_name in $MODULES; do
 		mkdir -p "$MODULES_PATH" && cd "$MODULES_PATH" || return 1
 		if ! test -f ./"$module_name"; then
@@ -1100,11 +1110,13 @@ _sync_modules() {
 		fi
 		CURRENT=$(cat ./"$module_name" 2>/dev/null)
 		SOURCE=$(curl -Ls "$MODULES_SOURCE/$module_name")
-		if [ "$CURRENT" = "$SOURCE" ]; then
-			echo -ne "\r" 2>/dev/null
-		else
-			echo $" ◆ Updating $module_name..."
-			curl -Ls "$MODULES_SOURCE/$module_name" > ./"$module_name" 2>/dev/null
+		if echo "$SOURCE" | grep -q AMCLI; then
+			if [ "$CURRENT" = "$SOURCE" ]; then
+				echo -ne "\r" 2>/dev/null
+			else
+				echo $" ◆ Updating $module_name..."
+				echo "$SOURCE" > ./"$module_name" 2>/dev/null
+			fi
 		fi
 	done
 	_clean_old_modules
@@ -1116,9 +1128,9 @@ _sync_amcli() {
 	echo -ne $"\n ◆ SYNCHRONIZING \"$AMCLIUPPER\" VERSION \"$CURRENT_AM_VERSION\"...\r" && sleep 0.25
 	_clean_amcachedir 1>/dev/null
 	cd "$AMCACHEDIR" || return 1
-	curl -Ls "$AMREPO"/APP-MANAGER > ./APP-MANAGER && chmod a+x ./APP-MANAGER
+	echo "$AMCLI_ONLINE_CONTENT" > ./APP-MANAGER && chmod a+x ./APP-MANAGER
 	echo y | mv ./APP-MANAGER "$CLI_PATH"
-	NEW_AM_VERSION=$("$AMCLIPATH" -v)
+	NEW_AM_VERSION=$(echo "$AMCLI_ONLINE_CONTENT" | grep "^AMVERSION=" | tr '"' '\n' | grep "^[0-9]")
 	if [ ! "$CURRENT_AM_VERSION" = "$NEW_AM_VERSION" ]; then
 		echo -ne $" A new release of \"$AMCLIUPPER\" is available, please wait...\r"
 		echo $" ◆ \"$AMCLIUPPER\" IS NOW UPDATED TO THE BRAND NEW \"$NEW_AM_VERSION\" VERSION!"
@@ -1137,24 +1149,27 @@ _use_sync() {
 	_sync_locale
 	_sync_installation_scripts
 	if [ "$CLI_PATH" != "/usr/bin/am" ] && [ "$AMSYNC" != 1 ]; then
-		if [ "$CLI" = am ]; then
-			if [ -f "$APPMANCONFIG"/appman-mode ]; then
-				if [ -d "$(readlink -f /opt)/am/modules" ]; then
-					MODULES_PATH="$(readlink -f /opt)/am/modules"
-					if [ -w "$(readlink -f /opt)/am" ]; then
-						_sync_modules
-						_sync_amcli
-					else
-						printf "%b\n DONE! \n" "$DIVIDING_LINE"
+		AMCLI_ONLINE_CONTENT=$(curl -Ls "$AMREPO"/APP-MANAGER)
+		if echo "$AMCLI_ONLINE_CONTENT" | grep -q AMCLI; then
+			if [ "$CLI" = am ]; then
+				if [ -f "$APPMANCONFIG"/appman-mode ]; then
+					if [ -d "$(readlink -f /opt)/am/modules" ]; then
+						MODULES_PATH="$(readlink -f /opt)/am/modules"
+						if [ -w "$(readlink -f /opt)/am" ]; then
+							_sync_modules
+							_sync_amcli
+						else
+							printf "%b\n DONE! \n" "$DIVIDING_LINE"
+						fi
 					fi
+				else
+					_sync_modules
+					_sync_amcli
 				fi
-			else
+			elif [ "$CLI" = appman ]; then
 				_sync_modules
 				_sync_amcli
 			fi
-		elif [ "$CLI" = appman ]; then
-			_sync_modules
-			_sync_amcli
 		fi
 	fi
 	echo "$DIVIDING_LINE"
