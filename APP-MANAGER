@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="9.8.1-1"
+AMVERSION="9.8.1-2"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -1090,7 +1090,7 @@ _sync_locale() {
 
 _sync_modules() {
 	printf $"%b\n Check for updates in modules...\n" "$DIVIDING_LINE"
-	MODULES=$(curl -Ls "$AMREPO/APP-MANAGER" | tr '"' '\n' | grep "[a-z]\.am$")
+	MODULES="database.am install.am management.am sandboxes.am template.am"
 	for module_name in $MODULES; do
 		mkdir -p "$MODULES_PATH" && cd "$MODULES_PATH" || return 1
 		if ! test -f ./"$module_name"; then
@@ -1100,33 +1100,38 @@ _sync_modules() {
 		fi
 		CURRENT=$(cat ./"$module_name" 2>/dev/null)
 		SOURCE=$(curl -Ls "$MODULES_SOURCE/$module_name")
-		if [ "$CURRENT" = "$SOURCE" ]; then
-			echo -ne "\r" 2>/dev/null
-		else
-			echo $" ◆ Updating $module_name..."
-			curl -Ls "$MODULES_SOURCE/$module_name" > ./"$module_name" 2>/dev/null
+		if echo "$SOURCE" | grep -q AMCLI; then
+			if [ "$CURRENT" = "$SOURCE" ]; then
+				echo -ne "\r" 2>/dev/null
+			else
+				echo $" ◆ Updating $module_name..."
+				echo "$SOURCE" > ./"$module_name" 2>/dev/null
+			fi
 		fi
 	done
 	_clean_old_modules
 }
 
 _sync_amcli() {
-	echo "$DIVIDING_LINE"
-	CURRENT_AM_VERSION="$AMVERSION"
-	echo -ne $"\n ◆ SYNCHRONIZING \"$AMCLIUPPER\" VERSION \"$CURRENT_AM_VERSION\"...\r" && sleep 0.25
-	_clean_amcachedir 1>/dev/null
-	cd "$AMCACHEDIR" || return 1
-	curl -Ls "$AMREPO"/APP-MANAGER > ./APP-MANAGER && chmod a+x ./APP-MANAGER
-	echo y | mv ./APP-MANAGER "$CLI_PATH"
-	NEW_AM_VERSION=$("$AMCLIPATH" -v)
-	if [ ! "$CURRENT_AM_VERSION" = "$NEW_AM_VERSION" ]; then
-		echo -ne $" A new release of \"$AMCLIUPPER\" is available, please wait...\r"
-		echo $" ◆ \"$AMCLIUPPER\" IS NOW UPDATED TO THE BRAND NEW \"$NEW_AM_VERSION\" VERSION!"
-		printf $"\n  Replacement of version \"%b\" currently in use, COMPLETED! \n" "$CURRENT_AM_VERSION"
-		printf $"\n See https://github.com/ivan-hc/AM/commits/main\n\n"
-	else
-		echo $" ◆ \"$AMCLIUPPER\" IS ALREADY UPDATED, CURRENT VERSION \"$CURRENT_AM_VERSION\""
-		printf $"\n See https://github.com/ivan-hc/AM/commits/%b\n\n" "$AMBRANCH"
+	AMCLI_ONLINE_CONTENT=$(curl -Ls "$AMREPO"/APP-MANAGER)
+	if echo "$AMCLI_ONLINE_CONTENT" | grep -q AMCLI; then
+		echo "$DIVIDING_LINE"
+		CURRENT_AM_VERSION="$AMVERSION"
+		echo -ne $"\n ◆ SYNCHRONIZING \"$AMCLIUPPER\" VERSION \"$CURRENT_AM_VERSION\"...\r" && sleep 0.25
+		_clean_amcachedir 1>/dev/null
+		cd "$AMCACHEDIR" || return 1
+		echo "$AMCLI_ONLINE_CONTENT" > ./APP-MANAGER && chmod a+x ./APP-MANAGER
+		echo y | mv ./APP-MANAGER "$CLI_PATH"
+		NEW_AM_VERSION=$("$AMCLIPATH" -v)
+		if [ ! "$CURRENT_AM_VERSION" = "$NEW_AM_VERSION" ]; then
+			echo -ne $" A new release of \"$AMCLIUPPER\" is available, please wait...\r"
+			echo $" ◆ \"$AMCLIUPPER\" IS NOW UPDATED TO THE BRAND NEW \"$NEW_AM_VERSION\" VERSION!"
+			printf $"\n  Replacement of version \"%b\" currently in use, COMPLETED! \n" "$CURRENT_AM_VERSION"
+			printf $"\n See https://github.com/ivan-hc/AM/commits/main\n\n"
+		else
+			echo $" ◆ \"$AMCLIUPPER\" IS ALREADY UPDATED, CURRENT VERSION \"$CURRENT_AM_VERSION\""
+			printf $"\n See https://github.com/ivan-hc/AM/commits/%b\n\n" "$AMBRANCH"
+		fi
 	fi
 }
 
