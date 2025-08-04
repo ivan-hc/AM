@@ -276,7 +276,7 @@ am -i appimagetool
 ```
 
 ### *3) `aisap` or `sas`*
-[**aisap**](https://github.com/mgord9518/aisap) is a Bubblewrap frontend that allows you to isolate AppImages in a sandbox, [**sas**](https://github.com/Samueru-sama/simple-appimage-sandbox) is a POSIX rewrite of Aisap with DWARFS support (*see "[Sandbox an AppImage](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/sandbox.md)"*)
+[**aisap**](https://github.com/mgord9518/aisap) is a Bubblewrap frontend that allows you to isolate AppImages in a sandbox, [**sas**](https://github.com/Samueru-sama/simple-appimage-sandbox) is a POSIX shell rewrite of Aisap with DWARFS support (*see "[Sandbox an AppImage](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/sandbox.md)"*)
 ```
 am -i aisap
 ```
