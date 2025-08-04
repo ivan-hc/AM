@@ -9,7 +9,7 @@ The option "`--sandbox`", which since version 5.3 was using Firejail, has taken 
 
 In this sense, "Aisap" may be considered a reference point for the future of AppImages sandboxing!
 
-**Since August 2025, AM has adopted [SAS](https://github.com/Samueru-sama/simple-appimage-sandbox) (Simple AppImage Sandboxing), a POSIX rewrite of Aisap, as its default sandboxing solution.**
+**Since August 2025, AM has adopted [SAS](https://github.com/Samueru-sama/simple-appimage-sandbox) (Simple AppImage Sandboxing), a POSIX shell rewrite of Aisap, as its default sandboxing solution.**
 
 ----------------------------------------------------
 #### How to enable a sandbox
