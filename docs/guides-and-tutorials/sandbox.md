@@ -9,6 +9,8 @@ The option "`--sandbox`", which since version 5.3 was using Firejail, has taken 
 
 In this sense, "Aisap" may be considered a reference point for the future of AppImages sandboxing!
 
+**Since August 2025, AM has adopted [SAS](https://github.com/Samueru-sama/simple-appimage-sandbox) (Simple AppImage Sandboxing), a POSIX shell rewrite of Aisap, as its default sandboxing solution.**
+
 ----------------------------------------------------
 #### How to enable a sandbox
 This method works as follows:
@@ -19,9 +21,9 @@ or
 ```
 appman --sandbox $APP
 ```
-The "aisap" package installed is required, whether it is available system-wide ("AM") or locally ("AppMan"), the important thing is that the "aisap" command is in $PATH. If it is not present, "AM"/"AppMan" will ask you if it can proceed with the installation before continuing.
+The "aisap"/"sas" package installed is required, whether it is available system-wide ("AM") or locally ("AppMan"), the important thing is that the "aisap"/"sas" command is in $PATH. If it is not present, "AM"/"AppMan" will ask you if it can proceed with the installation before continuing.
 
-We will first compile the Aisap script in a non-privileged, easy-to-access directory, before being placed in $PATH (see step 2, below).
+We will first compile the script in a non-privileged, easy-to-access directory, before being placed in $PATH (see step 2, below).
 1. Once started, you will be asked whether to enable the sandbox (default "Y") or not (type "N"):
   - the main XDG directories (Pictures, Videos, Documents...) will be listed, answer whether to authorize access (type "Y") or not ("N", default);
   - at the end, choose whether to specify some directories to access (default "N"), and if "Yes", write the path.
@@ -53,6 +55,10 @@ https://github.com/ivan-hc/AM/assets/88724353/dd193943-7b08-474a-bbbb-4a6906de8b
 
 ----------------------------------------------------
 #### About Aisap sandboxing
+This section is for demonstration purposes only, for those who want to take inspiration from Aisap for future implementations.
+
+For the new Aisap's rewrite "**SAS**" (Simple AppImage Sandboxing), visit https://github.com/Samueru-sama/simple-appimage-sandbox
+
 For more information about "Aisap", visit https://github.com/mgord9518/aisap
 
 Available profiles are listed at https://github.com/mgord9518/aisap/tree/main/profiles

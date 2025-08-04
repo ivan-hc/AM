@@ -275,10 +275,14 @@ am -i appimageupdatetool
 am -i appimagetool
 ```
 
-### *3) `aisap`*
-[**aisap**](https://github.com/mgord9518/aisap) is a Bubblewrap frontend that allows you to isolate AppImages in a sandbox (*see "[Sandbox an AppImage](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/sandbox.md)"*)
+### *3) `aisap` or `sas`*
+[**aisap**](https://github.com/mgord9518/aisap) is a Bubblewrap frontend that allows you to isolate AppImages in a sandbox, [**sas**](https://github.com/Samueru-sama/simple-appimage-sandbox) is a POSIX shell rewrite of Aisap with DWARFS support (*see "[Sandbox an AppImage](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/sandbox.md)"*)
 ```
 am -i aisap
+```
+or
+```
+am -i sas
 ```
 
 ------------------------------------------------------------------------
@@ -643,7 +647,7 @@ Removes one or more apps without asking.
 
 **Description**:
 
-Run an AppImage in a sandbox using Aisap.
+Run an AppImage in a sandbox.
 
 NOTE, "`--sandbox`" can be used as a flag in "`-i`" and "`-ia`" or can be replaced using the option "`-ias`" (aka Install AppImage & Sandox).
 
@@ -988,7 +992,7 @@ Below you can access documentation pages for common issues and frequently asked 
 - *[repology-versions](https://github.com/ivan-hc/repology-versions), lists "unfindable" versions if upstream doesn't provide easy-to-intercept references*
 
 #### External tools and forks used in this project
-- *[aisap](https://github.com/mgord9518/aisap), sandboxing solutions for AppImages, see sandboxing options above*
+- *[aisap](https://github.com/mgord9518/aisap) and [sas](https://github.com/Samueru-sama/simple-appimage-sandbox), sandboxing solutions for AppImages, see sandboxing options above*
 - *[appimagetool](https://github.com/AppImage/appimagetool), get rid of libfuse2 from old AppImages (option `nolibfuse`) and create AppImages on the fly (see [appimage-bulder-scripts](https://github.com/ivan-hc/AM/tree/main/appimage-bulder-scripts))*
 - *[dbin](https://github.com/xplshn/dbin), the easy to use/get, suckless software distribution system, used as OCI registry client to install packages from third-party databases*
 - *[repology](https://github.com/repology), the encyclopedia of all software versions, used in [ivan-hc/repology-versions](https://github.com/ivan-hc/repology-versions)*

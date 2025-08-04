@@ -48,28 +48,25 @@ _disable_sandbox() {
 }
 
 _check_aisap() {
-	if [ "$1" = "aisap" ]; then
-		echo $" Error: You can't sandbox aisap"
+	if [ "$1" = "aisap" ] || [ "$1" = "sas" ]; then
+		echo $" Error: You can't sandbox $1"
 		return 1
-	elif ! command -v aisap 1>/dev/null; then
-		printf $'\n%s\n\n' " Error: You need aisap for this script work"
-		read -r -p $" ◆ DO YOU WISH TO INSTALL AISAP? Install size <5 MiB? (Y/n) " yn
-		if echo "$yn" | grep -i '^n' >/dev/null 2>&1; then
-			echo $" OPERATION ABORTED!"
-			return 1
-		fi
+	elif ! command -v aisap 1>/dev/null && ! command -v sas 1>/dev/null; then
+		printf $'\n%s\n' " ERROR: You need aisap or sas for this script to work"
+		printf $'\n%s\n\n' " NOTE: Only sas can sandbox DWARFS AppImages"
+		read -r -p $" ◆ DO YOU WISH TO INSTALL SAS? Install size <5 MiB? (Y/n) " yn
+		case "$yn" in
+			n*|N*) echo $" OPERATION ABORTED!"; return 1;;
+		esac
 		if [ "$CLI" = am ] && [ -f "$APPMANCONFIG"/appman-config ]; then
-			read -r -p $" ◆ DO YOU WISH TO INSTALL AISAP LOCALLY? (Y/n) " yn
-			if echo "$yn" | grep -i '^n' >/dev/null 2>&1; then
-				"$AMCLIPATH_ORIGIN" -i aisap >/dev/null 2>&1
-			else
-				"$AMCLIPATH_ORIGIN" -i --user aisap >/dev/null 2>&1
-			fi
-		else
-			"$AMCLIPATH_ORIGIN" -i aisap >/dev/null 2>&1
+			read -r -p $" ◆ DO YOU WISH TO INSTALL SAS LOCALLY? (Y/n) " yn
+			case "$yn" in
+				n*|N*) "$AMCLIPATH_ORIGIN" -i sas >/dev/null 2>&1;;
+				''|*)  "$AMCLIPATH_ORIGIN" -i --user sas >/dev/null 2>&1;;
+			esac
 		fi
-		command -v aisap 1>/dev/null || return 1
-		echo $" aisap installed successfully!"
+		command -v sas 1>/dev/null || return 1
+		echo $" sas installed successfully!"
 	fi
 	if [ -f "$BINDIR"/"$1" ]; then
 		SUDOCMD=""
@@ -88,9 +85,13 @@ _generate_sandbox_script() {
 	# But that location can be changed by setting the $SANDBOXDIR env variable
 
 	# Dependency check
-	if ! command -v aisap 1>/dev/null; then
-	  echo "You need aisap for this to work"
-	  notify-send -u critical "Sandbox error: Missing aisap dependency!"
+	if command -v sas 1>/dev/null; then
+	  SANDBOXCMD="sas"
+	elif command -v aisap 1>/dev/null; then
+	  SANDBOXCMD="aisap"
+	else
+	  echo "You need aisap or sas for this to work"
+	  notify-send -u critical "Sandbox error: Missing aisap/sas dependency!"
 	  exit 1
 	fi
 	# Set variables and create sandboxed dir.
@@ -143,7 +144,7 @@ _generate_sandbox_script() {
 	[ -z "$APPNAME" ] && exit 1
 	# Start at sandboxed home
 	# Edit below this to add or remove access to parts of the system
-	exec aisap --trust-once --level 1 \
+	exec "$SANDBOXCMD" --trust-once --level 1 \
 	--data-dir "$SANDBOXDIR/$APPNAME" \
 	--add-file "$DATADIR/${APPDATA:-$APPNAME}":rw \
 	--add-file "$DATADIR"/themes \
