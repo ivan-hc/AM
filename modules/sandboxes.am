@@ -84,25 +84,34 @@ _generate_sandbox_script() {
 	# The default location for the sandboxed home is in $HOME/.local/am-sandboxes
 	# But that location can be changed by setting the $SANDBOXDIR env variable
 
+	# Set common XDG variables
+	BINDIR="${XDG_BIN_HOME:-$HOME/.local/bin}"
+	DATADIR="${XDG_DATA_HOME:-$HOME/.local/share}"
+	CONFIGDIR="${XDG_CONFIG_HOME:-$HOME/.config}"
+	CACHEDIR="${XDG_CACHE_HOME:-$HOME/.cache}"
+
 	# Dependency check
 	if command -v sas 1>/dev/null; then
 	  SANDBOXCMD="sas"
 	elif command -v aisap 1>/dev/null; then
 	  SANDBOXCMD="aisap"
+	elif [ -f "$BINDIR/sas" ]; then
+	  SANDBOXCMD="$BINDIR/sas"
+	elif [ -f "$BINDIR/aisap" ]; then
+	  SANDBOXCMD="$BINDIR/aisap"
 	else
 	  echo "You need aisap or sas for this to work"
 	  notify-send -u critical "Sandbox error: Missing aisap/sas dependency!"
 	  exit 1
 	fi
-	# Set variables and create sandboxed dir.
+
+	# Set variables and create sandboxed dir
 	APPEXEC=DUMMY
 	chmod a-x "$APPEXEC" # Prevents accidental launch of app outside the sandbox
 	APPNAME="$(echo "$APPEXEC" | awk -F "/" '{print $NF}')"
 	SANDBOXDIR="${SANDBOXDIR:-$HOME/.local/am-sandboxes}"
-	DATADIR="${XDG_DATA_HOME:-$HOME/.local/share}"
-	CONFIGDIR="${XDG_CONFIG_HOME:-$HOME/.config}"
-	CACHEDIR="${XDG_CACHE_HOME:-$HOME/.cache}"
 	DBUS="$(ls /tmp/dbus* 2>/dev/null | head -1)"
+
 	# get xdg user dirs, unset if var = $HOME
 	for DIR in DESKTOP DOCUMENTS DOWNLOAD GAMES MUSIC PICTURES VIDEOS; do
 	  eval XDG_DIR="$(xdg-user-dir $DIR 2>/dev/null)"
