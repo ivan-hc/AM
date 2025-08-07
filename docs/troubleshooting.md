@@ -1,9 +1,9 @@
 # Troubleshooting
 
 - [An application does not work, is old and unsupported](#an-application-does-not-work-is-old-and-unsupported)
-- [Failed to open squashfs image](#failed-to-open-squashfs-image)
 - [Cannot download or update an application](#cannot-download-or-update-an-application)
 - [Cannot mount and run AppImages](#cannot-mount-and-run-appimages)
+- [Failed to open squashfs image](#failed-to-open-squashfs-image)
 - [Spyware, malware and dangerous software](#spyware-malware-and-dangerous-software)
 - [Stop AppImage prompt to create its own launcher, desktop integration and doubled launchers](#stop-appimage-prompt-to-create-its-own-launcher-desktop-integration-and-doubled-launchers)
 - [The script points to "releases" instead of downloading the latest stable](#the-script-points-to-releases-instead-of-downloading-the-latest-stable)
