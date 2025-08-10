@@ -989,13 +989,11 @@ Below you can access documentation pages for common issues and frequently asked 
 #### Side Projects
 - *[amcheck](https://github.com/ivan-hc/amcheck), checks the validity of scripts in this database and monitors the availability of AppImages*
 - *[am-extras](https://github.com/ivan-hc/am-extras), lists applications from third-party databases*
-- *[repology-versions](https://github.com/ivan-hc/repology-versions), lists "unfindable" versions if upstream doesn't provide easy-to-intercept references*
 
 #### External tools and forks used in this project
 - *[aisap](https://github.com/mgord9518/aisap) and [sas](https://github.com/Samueru-sama/simple-appimage-sandbox), sandboxing solutions for AppImages, see sandboxing options above*
 - *[appimagetool](https://github.com/AppImage/appimagetool), get rid of libfuse2 from old AppImages (option `nolibfuse`) and create AppImages on the fly (see [appimage-bulder-scripts](https://github.com/ivan-hc/AM/tree/main/appimage-bulder-scripts))*
 - *[dbin](https://github.com/xplshn/dbin), the easy to use/get, suckless software distribution system, used as OCI registry client to install packages from third-party databases*
-- *[repology](https://github.com/repology), the encyclopedia of all software versions, used in [ivan-hc/repology-versions](https://github.com/ivan-hc/repology-versions)*
 
 #### Organizations and their affiliates that actively contribute to this project
 - *[Package Forge](https://github.com/pkgforge), Improving Package Management & Security for Linux systems*
