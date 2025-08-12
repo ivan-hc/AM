@@ -102,7 +102,7 @@ _about_description_for_third_party() {
 		if [ -n "$tpnumber" ] && [ "$tpnumber" -ge "1" ]; then
 			[ "$tpnumber" != 1 ] && printf $"\nAvailable families: %b\n" "$tpnumber"
 			if echo "$app_status" | grep -q "^installed"; then
-				[ -f "$argpath/$appname" ] && printf $"\nBinary info: %b\n" "$(file "$argpath/$appname")" | fold -sw 78
+				[ -f "$argpath/$appname" ] && printf $"\nBinary info: %b\n" "\n$(readelf -h "$argpath/$appname" | sed 's/$/;/g; s/:;/:/g' | xargs)" | fold -sw 78
 			fi
 			about_description=$(echo "$third_party_readme" | grep "^| $appname " | awk -F'|' '{print $3}' | sed 's/ \[.*\] //g' | uniq)
 			if echo "$about_description" | grep -q "\[[a-z]"; then
@@ -217,7 +217,7 @@ _files_header() {
 # Functions to determine file's type
 
 _files_if_binary() {
-	if file ./"$arg"/* | grep "static" >/dev/null 2>&1; then
+	if ! readelf -d "${LINK:-$FILE}" 2>/dev/null | grep -q "0"; then
 		echo $" ◆ $arg	|	static-binary" >> "$AMCACHEDIR"/files-type
 	else
 		echo $" ◆ $arg	|	dynamic-binary" >> "$AMCACHEDIR"/files-type
@@ -268,7 +268,7 @@ _files_type() {
 		echo " ◆ $arg	|	runimage" >> "$AMCACHEDIR"/files-type
 	elif head -c10 ./"$arg/$arg" 2>/dev/null | grep -qa '^.ELF....AI$'; then
 		_files_if_appimage
-	elif file ./"$arg"/* | grep -E 'LSB|/bin' >/dev/null 2>&1; then
+	elif readelf -h ./"$arg"/* 2>/dev/null | grep -E 'LSB|/bin|ELF' >/dev/null 2>&1 || readelf -h ./"$arg"/*/* 2>/dev/null | grep -E 'LSB|/bin|ELF' >/dev/null 2>&1; then
 		_files_if_binary
 	elif grep "#!" "${LINK:-$FILE}" >/dev/null 2>&1; then
 		_files_if_script
