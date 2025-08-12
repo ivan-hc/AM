@@ -32,11 +32,7 @@ so if an update happens through "comparison" of versions, the converted AppImage
 
 https://github.com/user-attachments/assets/03683d8b-32d8-4617-83e3-5278e33b46f4
 
-Instead, if the installed AppImage can be updated via `zsync`, **this may no longer be updatable**, anyway a solution may be the use of `appimageupdatetool`, at https://github.com/AppImageCommunity/AppImageUpdate .
-
-The `nolibfuse` option has been improved since version 7.8, so everyone can say goodbye to the old "libfuse2" dependence.
-
-Anyway, **I suggest anyone to contact the developers to update the packaging method of their AppImage!** This is also a way to keep open source projects alive: your participation through feedback to the upstream.
+NOTE, AppImage will lose the ability to receive delta updates, **I suggest anyone to contact the developers to update the packaging method of their AppImage!** This is also a way to keep open source projects alive: your participation through feedback to the upstream.
 
 The `nolibfuse` option is not intended to replace the work of the owners of these AppImage packages, but to encourage the use of AppImage packages on systems that do not have "libfuse2", a library that is now obsolete and in fact no longer available out-of-the-box by default in many distributions, first and foremost Ubuntu and Fedora.
 
