@@ -91,7 +91,7 @@ To install "AM" you must first install the "core" dependencies from your package
 - "`less`", to read the ever-longer lists;
 - "`unzip`", to extract .zip packages;
 - "`tar`", to extract .tar* packages;
-- "`zsync`", required by very few programs and AppImages (although it is mentioned in all installation scripts, it is often disabled because the managed .zsync files are often broken, especially for apps hosted on github.com).
+- "`zsync`", required by very few programs.
 
 </details>
 
