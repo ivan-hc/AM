@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="9.8.2"
+AMVERSION="9.8.2-1"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -189,6 +189,13 @@ _clean_amcachedir() {
 	if [ -d "$CACHEDIR"/appman ]; then
 		rm -f "$CACHEDIR"/appman/* "$CACHEDIR"/appman/*/* 2>/dev/null
 		rmdir "$CACHEDIR"/appman/* 2>/dev/null
+	fi
+}
+
+# Makes "file" optional
+file() {
+	if command -v file >/dev/null 2>&1; then
+		command file "$@"
 	fi
 }
 
@@ -403,7 +410,7 @@ APPSLISTDB="${APPSLISTDB:-$AMREPO/programs/$ARCH-apps}"
 _am_dependences_check() {
 	# Check for essential commands required by the application
 	missing_deps=""
-	AMDEPENDENCES="cat chmod chown curl file grep sed wget"
+	AMDEPENDENCES="cat chmod chown curl grep sed wget"
 	for name in $AMDEPENDENCES; do
 		if ! command -v "$name" >/dev/null 2>&1; then
 			missing_deps="$name $missing_deps"
@@ -681,14 +688,18 @@ _check_version_grep_numbers() {
 
 # Versions
 _check_version_if_any_version_reference_is_somewhere() {
-	txt_files=$(file "$argpath"/* | awk -F: '/ASCII text/ {print $1}')
-	for txtf in $txt_files; do
-		if [ -f "$argpath"/tbb_version.json ] && grep -qi "\"version\":" "$argpath"/tbb_version.json; then
-			APPVERSION=$(sort "$argpath"/tbb_version.json | tr '"' '\n' | grep "^[0-9]" | head -1)
-		elif grep -qi "^version=" "$txtf" && grep -qi "^name=" "$txtf"; then
-			APPVERSION=$(grep -i "^version=" "$txtf" | cut -c 9- | tr -cd '[:alnum:]._-')
-		fi
-	done
+	if [ -f "$argpath"/tbb_version.json ] && grep -qi "\"version\":" "$argpath"/tbb_version.json; then
+		APPVERSION=$(sort "$argpath"/tbb_version.json | tr '"' '\n' | grep "^[0-9]" | head -1)
+	elif [ -f "$argpath"/platform.ini ] && grep -q "^Milestone=" "$argpath"/platform.ini; then
+		APPVERSION=$(grep "^Milestone=" "$argpath"/platform.ini | sed 's/Milestone=//g')
+	else
+		txt_files=$(file "$argpath"/* | awk -F: '/ASCII text/ {print $1}')
+		for txtf in $txt_files; do
+			if grep -qi "^version=" "$txtf" && grep -qi "^name=" "$txtf"; then
+				APPVERSION=$(grep -i "^version=" "$txtf" | cut -c 9- | tr -cd '[:alnum:]._-')
+			fi
+		done
+	fi
 }
 
 _check_version_if_version_file_exists() {
