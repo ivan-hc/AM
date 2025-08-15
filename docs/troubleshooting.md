@@ -160,7 +160,7 @@ sed -i 's#releases -O -#releases/latest -O -#g' /opt/$PROGRAM/AM-updater
 am -u $PROGRAM
 ```
 
-See also "[Install the "latest" stable release instead of the latest "unstable"](guides-and-tutorials/install.md#install-the-latest-stable-release-instead-of-the-latest-unstable)".
+See also [**Install the "latest" stable release instead of the latest "unstable"**](guides-and-tutorials/install.md#install-the-latest-stable-release-instead-of-the-latest-unstable).
 
 ------------------------------------------------------------------------
 
