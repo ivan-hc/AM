@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="9.8.2-1"
+AMVERSION="9.8.2-2"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -583,16 +583,15 @@ _third_party_lsts_filter() {
 	grep -v -- "---\|^| appname" | grep "^| .* | .* | http.* | http.* | .* |$" 2>/dev/null | awk -F'|' '{print $2, $3}' | sed 's/^/◆/g; s/   / : /g; s/ $//g'
 }
 
+_third_party_lsts_generator() {
+	tprepo_readme="${tp_list}_readme" && curl -Ls "${!tprepo_readme}" 2>/dev/null | _third_party_lsts_filter \
+	| sed "s/$/. To install it use the --$tp_list flag or the .$tp_list extension./g" | sort > "$AMDATADIR"/"$ARCH"-"$tp_list" || touch "$AMDATADIR"/"$ARCH"-"$tp_list"
+}
+
 _sync_third_party_lists() {
 	_am_extras_sources
 	for tp_list in $third_party_lists; do
-		rm -f "$AMDATADIR"/"$ARCH"-"$tp_list"
-		tprepo_readme="${tp_list}_readme"
-		if [ -n "${!tprepo_readme}" ]; then
-			curl -Ls "${!tprepo_readme}" | _third_party_lsts_filter \
-			| sed "s/$/. To install it use the --$tp_list flag or the .$tp_list extension./g" | sort > "$AMDATADIR"/"$ARCH"-"$tp_list" \
-			|| touch "$AMDATADIR"/"$ARCH"-"$tp_list"
-		fi
+		_third_party_lsts_generator &
 	done
 }
 
@@ -1088,8 +1087,10 @@ _sync_portable_list() {
 
 _sync_databases() {
 	printf $"%b\n Check and update offline lists of additional databases...\n" "$DIVIDING_LINE"
-	_sync_appimages_list
-	_sync_portable_list
+	if [ -z "$MODULE" ]; then
+		_sync_appimages_list
+		_sync_portable_list
+	fi
 	_sync_third_party_lists 2>/dev/null
 	_completion_lists
 }
