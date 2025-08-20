@@ -186,6 +186,8 @@ _column() {
 	' | sed 's/^-  /-/; s/./& /; s/|/ | /g'
 }
 
+# HEAD OF THE TABLE
+
 _files_header() {
 	third_party_lists_find=$(echo "$third_party_lists extra" | tr ' ' '\n' | xargs | sed 's# #\\|#g')
 	echo ""
@@ -214,7 +216,44 @@ _files_header() {
 	echo ""
 }
 
-# Functions to determine file's type
+# DETERMINE VERSIONS
+
+_files_versions() {
+	cd "$APPSPATH" || exit 1
+	INSTALLED_APPS_BY_SIZE=$(du -sh $INSTALLED_APPS_PATHS 2>/dev/null | sort -rh)
+	INSTALLED_APPS=$(echo "$INSTALLED_APPS_BY_SIZE" | grep "$APPSPATH" | sed 's:.*/::' | xargs)
+
+	if [ ! -f "$AMCACHEDIR"/version-args ]; then
+		_check_version
+	fi
+
+	version_args=""
+	[ -f "$AMCACHEDIR"/files-args ] && known_items_number=$(sort -u "$AMCACHEDIR"/files-args | wc -l | sed 's/ //g')
+	for arg in $INSTALLED_APPS; do
+		if [ "$FILES_NUMBER" != "$known_items_number" ]; then
+			version_args="1"
+		fi
+	done
+	[ -n "$version_args" ] && _check_version
+}
+
+# DETERMINE TYPE, SIZE AND DATABASE
+
+_files_if_appimage() {
+	if ! head -c1000000 ./"$arg/$arg" 2>/dev/null | grep -qa 'AppImages require FUSE to run'; then
+		if head -c1000 "$FILE" 2>/dev/null | grep -q "SANDBOXCMD"; then
+			echo " ◆ $arg	|	appimage🔒" >> "$AMCACHEDIR"/files-type
+		else
+			echo " ◆ $arg	|	appimage" >> "$AMCACHEDIR"/files-type
+		fi
+	else
+		if head -c1000 "$FILE" 2>/dev/null | grep -q "SANDBOXCMD"; then
+			echo " ◆ $arg	|	appimage🔒*" >> "$AMCACHEDIR"/files-type
+		else
+			echo " ◆ $arg	|	appimage*" >> "$AMCACHEDIR"/files-type
+		fi
+	fi
+}
 
 _files_if_binary() {
 	if file ./"$arg"/* | grep "static" >/dev/null 2>&1; then
@@ -222,10 +261,6 @@ _files_if_binary() {
 	else
 		echo $" ◆ $arg	|	dynamic-binary" >> "$AMCACHEDIR"/files-type
 	fi
-}
-
-_files_if_library() {
-	echo $" ◆ $arg	|	library" >> "$AMCACHEDIR"/files-type
 }
 
 _files_if_script() {
@@ -244,45 +279,36 @@ _files_if_script() {
 	fi
 }
 
-_files_if_appimage() {
-	if ! grep -Eaoq -m 1 'AppImages require FUSE to run' ./"$arg/$arg"; then
-		if grep "SANDBOXDIR" "$FILE" >/dev/null 2>&1; then
-			echo " ◆ $arg	|	appimage🔒" >> "$AMCACHEDIR"/files-type
-		else
-			echo " ◆ $arg	|	appimage" >> "$AMCACHEDIR"/files-type
-		fi
-	else
-		if grep "SANDBOXDIR" "$FILE" >/dev/null 2>&1; then
-			echo " ◆ $arg	|	appimage🔒*" >> "$AMCACHEDIR"/files-type
-		else
-			echo " ◆ $arg	|	appimage*" >> "$AMCACHEDIR"/files-type
-		fi
-	fi
-}
-
 _files_type() {
-	APPVERSION=$(grep -w " ◆ $arg	|" "$AMCACHEDIR"/version-args | sed 's:.*|	::')
+	# Determine type
 	FILE=$(command -v "$arg" 2>/dev/null)
 	LINK=$(readlink "$FILE" 2>/dev/null)
-	if head -c10 ./"$arg/$arg" 2>/dev/null | grep -qa '^.ELF....RI$'; then
-		echo " ◆ $arg	|	runimage" >> "$AMCACHEDIR"/files-type
-	elif head -c10 ./"$arg/$arg" 2>/dev/null | grep -qa '^.ELF....AI$'; then
+	if head -c10 ./"$arg/$arg" 2>/dev/null | grep -qa '^.ELF....AI$'; then
+		# AppImages
 		_files_if_appimage
 	elif test -f ./"$arg"/.am-installer/*.appbundle; then
+		# Appbundles
 		echo " ◆ $arg	|	appbundle" >> "$AMCACHEDIR"/files-type
+	elif head -c10 ./"$arg/$arg" 2>/dev/null | grep -qa '^.ELF....RI$'; then
+		# Runimages
+		echo " ◆ $arg	|	runimage" >> "$AMCACHEDIR"/files-type
 	elif file ./"$arg"/* | grep -E 'LSB|/bin' >/dev/null 2>&1; then
+		# Binaries
 		_files_if_binary
 	elif grep "#!" "${LINK:-$FILE}" >/dev/null 2>&1; then
+		# Scripts and launchers
 		_files_if_script
 	elif grep  "usr/local/lib" ./"$arg"/remove >/dev/null 2>&1; then
-		_files_if_library
+		# Libraries
+		echo $" ◆ $arg	|	library" >> "$AMCACHEDIR"/files-type
 	else
+		# Other
 		echo $" ◆ $arg	|	other" >> "$AMCACHEDIR"/files-type
 	fi
 }
 
-# Function to determine file's size
 _files_sizes() {
+	# Determine size
 	if grep -q "usr/local/lib" ./"$arg"/remove; then
 		LIBNAME=$(<"$APPSPATH"/"$arg"/remove tr ' ' '\n' | grep "usr/local/lib" | head -1 | sed 's/*//g')
 		SIZE=$(du -sh "$LIBNAME"* | cut -f1 | sort -rh | head -1)
@@ -292,8 +318,8 @@ _files_sizes() {
 	echo " ◆ $arg	|	$SIZE"iB >> "$AMCACHEDIR"/files-sizes
 }
 
-# Function to determine file's database
 _files_db() {
+	# Determine database
 	DB=""
 	if test -f "$APPSPATH"/"$arg"/.am-installer/*.*; then
 		_files_db_third_party
@@ -317,56 +343,34 @@ _files_db() {
 	echo " ◆ $arg	|	$DB" >> "$AMCACHEDIR"/files-db
 }
 
-# Functions to create file's table
 _files_files() {
-	cd "$APPSPATH" || exit 1
-	INSTALLED_APPS_BY_SIZE=$(du -sh $INSTALLED_APPS_PATHS 2>/dev/null | sort -rh)
-	INSTALLED_APPS=$(echo "$INSTALLED_APPS_BY_SIZE" | grep "$APPSPATH" | sed 's:.*/::' | xargs)
-
-	if [ ! -f "$AMCACHEDIR"/version-args ]; then
-		_check_version
-	fi
-
-	version_args=""
-	[ -f "$AMCACHEDIR"/files-args ] && known_items_number=$(sort -u "$AMCACHEDIR"/files-args | wc -l | sed 's/ //g')
-	for arg in $INSTALLED_APPS; do
-		if [ "$FILES_NUMBER" != "$known_items_number" ]; then
-			version_args="1"
-		fi
-	done
-	[ -n "$version_args" ] && _check_version
-
 	if [ -n "$version_args" ] || [ ! -f "$AMCACHEDIR"/files-type ]; then
 		rm -f "$AMCACHEDIR"/files-type
 		for arg in $INSTALLED_APPS; do
-			if [ -f ./"$arg"/remove ]; then
-		 		_files_type &
-			fi
+			[ -f ./"$arg"/remove ] && _files_type &
 		done
-		wait
 	fi
 
-	rm -f "$AMCACHEDIR"/files-sizes "$AMCACHEDIR"/files-db
 	for arg in $INSTALLED_APPS; do
-		if [ -f ./"$arg"/remove ]; then
-			_files_sizes &
-			_files_db
-		fi
+		[ -f ./"$arg"/remove ] && _files_sizes && _files_db
 	done
-	wait
 }
 
+# CREATE THE TABLE
 _files() {
-	_files_files
+	_files_versions
+	sh -c "$(_files_files)"
+	wait
 	rm -f "$AMCACHEDIR"/files-args
 	for arg in $INSTALLED_APPS; do
 		if test -f ./"$arg"/remove 2>/dev/null; then
 			APPVERSION=$(grep -w " ◆ $arg	|" "$AMCACHEDIR"/version-args | awk '{print $4}')
 			[ -f ./"$arg"/AM-LOCK ] && APPVERSION="$APPVERSION🔒"
 			echo "$APPVERSION" | grep -q "🔒$" && APPLOCKED=1
-			APPTYPE=$(grep -w " ◆ $arg	|" "$AMCACHEDIR"/files-type | awk '{print $4}')
-			APPSYZE=$(grep -w " ◆ $arg	|" "$AMCACHEDIR"/files-sizes | awk '{print $4}')
-			APPDB=$(grep -w " ◆ $arg	|" "$AMCACHEDIR"/files-db | awk '{print $4}')
+			APPTYPE=$(grep -w " ◆ $arg	|" "$AMCACHEDIR"/files-type | uniq | awk '{print $4}')
+			[ -z "$APPTYPE" ] && _files_type && APPTYPE=$(grep -w " ◆ $arg	|" "$AMCACHEDIR"/files-type | uniq | awk '{print $4}')
+			APPSYZE=$(grep -w " ◆ $arg	|" "$AMCACHEDIR"/files-sizes | uniq | awk '{print $4}')
+			APPDB=$(grep -w " ◆ $arg	|" "$AMCACHEDIR"/files-db | uniq | awk '{print $4}')
 			if [ -f "$AMCACHEDIR"/files-db ] && grep -q "unsupported\|$third_party_lists_find" "$AMCACHEDIR"/files-db; then
 				echo " ◆ $arg	|	$APPDB	|	$APPVERSION	|	$APPTYPE	|	$APPSYZE" >> "$AMCACHEDIR"/files-args
 			else
