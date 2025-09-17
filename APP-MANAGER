@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="9.8.2-8"
+AMVERSION="9.8.2-9"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -1128,8 +1128,26 @@ _use_relocate() {
 		echo " ERROR: appman-config file not found"
 		echo "$DIVIDING_LINE"
 	else
-		rm -f "$SCRIPTDIR"/am-clone.source
-		_clone_create_clone_file
+		read -r -p $" Do you want to install the set of programs listed above (y,N)?" yn
+		if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
+			AMCLIPATH_ORIGIN="$AMCLIPATH"
+			rm -f "$SCRIPTDIR"/am-clone.source
+			_clone_create_clone_file
+			sort -u "$SCRIPTDIR"/am-clone.source | grep -v "^/opt" > "$SCRIPTDIR"/am-clone.source.appman
+			_determine_args
+			APPMAN_APPS_OLD=$(echo "$ARGPATHS" | grep -v "^/opt/")
+			if [ -n "$APPMAN_APPS_OLD" ]; then
+				for arg in $APPMAN_APPS_OLD; do
+					appname=$(echo "$arg" | sed 's:.*/::')
+					"$AMCLIPATH_ORIGIN" -R "$appname"
+				done
+			fi
+			rm -f "$APPMANCONFIG"/appman-config
+			_appman
+			APPMAN_APPS_NEW=$(sort -u "$SCRIPTDIR"/am-clone.source.appman | sed 's:.*/::' | xargs)
+			"$AMCLIPATH_ORIGIN" -i --user "$APPMAN_APPS_NEW"
+		fi
+		
 	fi
 }
 
