@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="9.8.2-5"
+AMVERSION="9.8.2-6"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -1025,11 +1025,29 @@ _use_clean() {
 #				CLONE
 ################################################################################################################################################################
 
+_clone_create_clone_file() {
+	_determine_args
+	rm -f "$SCRIPTDIR"/am-clone.source
+	for arg in $ARGS; do
+		argpath=$(echo "$ARGPATHS" | grep "/$arg$")
+		[ -d "$argpath"/.am-installer ] && scriptname=$(ls "$argpath/.am-installer/" | head -1)
+		[ -z "$scriptname" ] && scriptname="$arg"
+		if [ "$arg" != am ]; then
+			echo "$argpath" | sed "s/\/$arg$/\/$scriptname/g" >> "$SCRIPTDIR"/am-clone.source
+		fi
+		scriptname=""
+	done
+	[ -f "$SCRIPTDIR"/am-clone.source ] && CLONE_FILE="$SCRIPTDIR/am-clone.source"
+}
+
 _clone_show_items_msg() {
 	echo "$DIVIDING_LINE"
 	if [ -f "$CLONE_FILE" ]; then
-		printf "File: %b\n\nContent:\n" "$CLONE_FILE"
-		sort "$CLONE_FILE" | _fit
+		printf "File: %b\n" "$CLONE_FILE"
+		system_apps=$(sort "$CLONE_FILE" | grep "^/opt" 2>/dev/null | sed -- 's:.*/::; s/^/ - /g')
+		local_apps=$(sort "$CLONE_FILE" | grep -v "^/opt" 2>/dev/null | sed -- 's:.*/::; s/^/ - /g')
+		[ -n "$system_apps" ] && printf "\nContent (system-wide installation):\n\n%b\n" "$system_apps" | _fit
+		[ -n "$local_apps" ] && printf "\nContent (local/rootless installation):\n\n%b\n" "$local_apps" | _fit
 	else
 		echo " ERROR: am-clone.source file not found"
 	fi
@@ -1057,21 +1075,10 @@ _clone_install() {
 
 _use_clone() {
 	[ -z "$CLONE_FILE" ] && CLONE_FILE=$(find "$SCRIPTDIR" -type f -name am-clone.source 2>/dev/null | head -1)
-	[ -z "$CLONE_FILE" ] && CLONE_FILE=$(find "$HOME" -type f -name am-clone.source 2>/dev/null | head -1)
-	[ -z "$CLONE_FILE" ] && CLONE_FILE=$(find / -type f -name am-clone.source 2>/dev/null | head -1)
+	[ -z "$CLONE_FILE" ] && CLONE_FILE=$(find "$HOME" -type f -name am-clone.source 2>/dev/null | grep -v "share/Trash" | head -1)
+	[ -z "$CLONE_FILE" ] && CLONE_FILE=$(find / -type f -name am-clone.source 2>/dev/null | grep -v "share/Trash" | head -1)
 	if [ -z "$CLONE_FILE" ]; then
-		_determine_args
-		rm -f "$SCRIPTDIR"/am-clone.source
-		for arg in $ARGS; do
-			argpath=$(echo "$ARGPATHS" | grep "/$arg$")
-			[ -d "$argpath"/.am-installer ] && scriptname=$(ls "$argpath/.am-installer/" | head -1)
-			[ -z "$scriptname" ] && scriptname="$arg"
-			if [ "$arg" != am ]; then
-				echo "$argpath" | sed "s/\/$arg$/\/$scriptname/g" >> "$SCRIPTDIR"/am-clone.source
-			fi
-			scriptname=""
-		done
-		[ -f "$SCRIPTDIR"/am-clone.source ] && CLONE_FILE="$SCRIPTDIR/am-clone.source"
+		_clone_create_clone_file
 	fi
 	if echo "$1" | grep -q -- "clone"; then
 
