@@ -420,6 +420,18 @@ Create a snapshot of the current version of an installed program.
 Removes all the unnecessary files and folders.
 
 ------------------------------------------------------------------------
+### `clone`, `--clone`
+
+		am clone
+		am clone -i
+
+**Description**:
+
+Clone the list of installed apps to an "am-clone.source" file, or search for an existing one on the desktop (priority), in `$HOME`, or across the entire system and removable devices. Add "`-i`" or "`install`" if you want to install or add the listed apps to a new configuration, to share it with anyone on other PCs and configurations.
+ 
+ You can also set the path to a custom file by exporting the `$CLONE_FILE` variable.
+
+------------------------------------------------------------------------
 ### `config`, `-C`, `--config`
 
 		am -C {PROGRAM}
@@ -621,6 +633,15 @@ Search for keywords in the list of available applications, add the "`--appimages
 Reinstall only programs whose installation script has been modified in AM's online database. Use the "`--all`" flag to reinstall everything instead.
 
 NOTE, this only works with the "AM" database. Apps installed with the "`-e`" option and custom scripts created with the "`-t`" option are not supported.
+
+------------------------------------------------------------------------
+### `relocate`, `--relocate`
+
+		am relocate
+
+**Description**:
+
+Remove and reinstall local/AppMan apps to a new location.
 
 ------------------------------------------------------------------------
 ### `remove`, `-r`
