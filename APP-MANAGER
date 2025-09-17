@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="9.8.2-4"
+AMVERSION="9.8.2-5"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -1036,6 +1036,25 @@ _clone_show_items_msg() {
 	echo "$DIVIDING_LINE"
 }
 
+_clone_install() {
+	if [ -f "$CLONE_FILE" ]; then
+		AMCLIPATH_ORIGIN="$AMCLIPATH"
+		ARGS=$(sort -u "$CLONE_FILE" | sed 's:.*/::' | xargs)
+		for arg in $ARGS; do
+			argpath=$(sort -u "$CLONE_FILE" | grep "/$arg$")
+			if [ "$AMCLI" = "am" ] && ! echo "$argpath" | grep -q "^/opt"; then
+				"$AMCLIPATH_ORIGIN" -i --user "$arg"
+			else
+				"$AMCLIPATH_ORIGIN" -i "$arg"
+			fi
+		done
+	else
+		echo "$DIVIDING_LINE"
+		echo " ERROR: am-clone.source file not found"
+		echo "$DIVIDING_LINE"
+	fi
+}
+
 _use_clone() {
 	[ -z "$CLONE_FILE" ] && CLONE_FILE=$(find "$SCRIPTDIR" -type f -name am-clone.source 2>/dev/null | head -1)
 	[ -z "$CLONE_FILE" ] && CLONE_FILE=$(find "$HOME" -type f -name am-clone.source 2>/dev/null | head -1)
@@ -1055,7 +1074,14 @@ _use_clone() {
 		[ -f "$SCRIPTDIR"/am-clone.source ] && CLONE_FILE="$SCRIPTDIR/am-clone.source"
 	fi
 	if echo "$1" | grep -q -- "clone"; then
+
 		_clone_show_items_msg
+
+		case "$2" in
+		'install'|'-i')
+			_clone_install "$@"
+			;;
+		esac
 	fi
 }
 
