@@ -8,6 +8,8 @@ File detection starts (in order of priority):
 
 If you want to create a new "am-clone.source" file, simply remove the other one or rename it.
 
+**This option supports both AM and third-party databases.**
+
 The basic command is
 ```
 am clone
@@ -58,7 +60,7 @@ Of course, AppMan only supports local installations, no apps will require root p
 
 NOTE: On existing configurations, already installed apps will NOT be overwritten.
 
-This option supports both AM and third-party databases.
+NOTE2: Reinstalled apps don't retain any sandboxes, isolation directories, or other manual changes made by the user. Consider using the `backup`/`-b` and `overwrite`/`-o` options for this purpose. See [here](./backup-and-overwrite.md).
 
 ------------------------------------------------------------------------
 
