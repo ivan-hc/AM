@@ -424,12 +424,14 @@ Removes all the unnecessary files and folders.
 
 		am clone
 		am clone -i
+		am clone -i --system
+		am clone -i --user
 
 **Description**:
 
-Clone the list of installed apps to an "am-clone.source" file, or search for an existing one on the desktop (priority), in `$HOME`, or across the entire system and removable devices. Add "`-i`" or "`install`" if you want to install or add the listed apps to a new configuration, to share it with anyone on other PCs and configurations.
+Clone the list of installed apps to an "am-clone.source" file, or search for an existing one on the desktop (priority), in `$HOME`, or across the entire system and removable devices. Add "`-i`" or "`install`" if you want to install or add the listed apps to a new configuration, to share it with anyone on other PCs and configurations. Add the "`--system`" or "`--user`" flag if you want all listed apps to be installed system-wide or locally respectively.
  
- You can also set the path to a custom file by exporting the `$CLONE_FILE` variable.
+You can also set the path to a custom file by exporting the `$CLONE_FILE` variable.
 
 ------------------------------------------------------------------------
 ### `config`, `-C`, `--config`
