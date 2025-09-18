@@ -899,7 +899,7 @@ Below you can access the documentation pages related to the use of "AM", complet
 - [Backup and restore installed apps using snapshots](docs/guides-and-tutorials/backup-and-overwrite.md)
 - [Remove one or more applications](docs/guides-and-tutorials/remove.md)
 - [Clone a set of programs installed from other AM and AppMan configurations](docs/guides-and-tutorials/clone.md)
-- [Change the destination path for locally installed programs (AppMan and AM in AppMan mode)](docs/guides-and-tutorials/relocate.md)
+- [Change the destination path of installed programs](docs/guides-and-tutorials/relocate.md)
 - [Convert Type2 AppImages requiring libfuse2 to New Generation AppImages](docs/guides-and-tutorials/nolibfuse.md)
 - [Integrate local AppImages into the menu by dragging and dropping them](docs/guides-and-tutorials/launcher.md)
   - [How to create a launcher for a local AppImage](docs/guides-and-tutorials/launcher.md#how-to-create-a-launcher-for-a-local-appimage)
