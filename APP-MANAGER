@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="9.9alpha1"
+AMVERSION="9.9alpha2"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -1043,9 +1043,15 @@ _clone_create_clone_file() {
 _clone_show_items_msg() {
 	echo "$DIVIDING_LINE"
 	if [ -f "$CLONE_FILE" ]; then
+		CLONE_FILE_CONTENT=$(sort -u "$CLONE_FILE")
+		if echo "$@" | grep -q -- "system"; then
+			CLONE_FILE_CONTENT=$(echo "$CLONE_FILE_CONTENT" | sed 's#^#/opt#')
+		elif echo "$@" | grep -q -- "user"; then
+			CLONE_FILE_CONTENT=$(echo "$CLONE_FILE_CONTENT" | sed 's#^/opt#/local#g')
+		fi
 		printf "File: %b\n" "$CLONE_FILE"
-		system_apps=$(sort "$CLONE_FILE" | grep "^/opt" 2>/dev/null | sed -- 's:.*/::; s/^/ - /g')
-		local_apps=$(sort "$CLONE_FILE" | grep -v "^/opt" 2>/dev/null | sed -- 's:.*/::; s/^/ - /g')
+		system_apps=$(echo "$CLONE_FILE_CONTENT" | grep "^/opt" 2>/dev/null | sed -- 's:.*/::; s/^/ - /g' | sort -u)
+		local_apps=$(echo "$CLONE_FILE_CONTENT" | grep -v "^/opt" 2>/dev/null | sed -- 's:.*/::; s/^/ - /g' | sort -u)
 		[ -n "$system_apps" ] && printf "\nContent (system-wide installation):\n\n%b\n" "$system_apps" | _fit
 		[ -n "$local_apps" ] && printf "\nContent (local/rootless installation):\n\n%b\n" "$local_apps" | _fit
 	else
@@ -1057,9 +1063,9 @@ _clone_show_items_msg() {
 _clone_install() {
 	if [ -f "$CLONE_FILE" ]; then
 		AMCLIPATH_ORIGIN="$AMCLIPATH"
-		ARGS=$(sort -u "$CLONE_FILE" | sed 's:.*/::' | xargs)
+		ARGS=$(echo "$CLONE_FILE_CONTENT" | sed 's:.*/::' | xargs)
 		for arg in $ARGS; do
-			argpath=$(sort -u "$CLONE_FILE" | grep "/$arg$")
+			argpath=$(echo "$CLONE_FILE_CONTENT" | grep "/$arg$")
 			if [ "$AMCLI" = "am" ] && ! echo "$argpath" | grep -q "^/opt"; then
 				"$AMCLIPATH_ORIGIN" -i --user "$arg"
 			else
@@ -1082,18 +1088,16 @@ _use_clone() {
 	fi
 	if echo "$1" | grep -q -- "clone"; then
 
-		_clone_show_items_msg
+		_clone_show_items_msg "$@"
 
-		case "$2" in
-		'install'|'-i')
+		if echo "$@" | grep -oq -- "install\|-i"; then
 			read -r -p $" Do you want to install the set of programs listed above (y,N)?" yn
 			if ! echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
 				echo "$DIVIDING_LINE"
 			else
 				_clone_install "$@"
 			fi
-			;;
-		esac
+		fi
 	fi
 }
 
@@ -1707,9 +1711,11 @@ case "$1" in
 			${Gold}clone, --clone\033[0m
 
 					${LightBlue}$AMCLI --clone
-					${LightBlue}$AMCLI --clone -i\033[0m
+					${LightBlue}$AMCLI --clone -i
+					${LightBlue}$AMCLI --clone -i --system
+					${LightBlue}$AMCLI --clone -i --user\033[0m
 
-			Description: Clone the list of installed apps to an \"am-clone.source\" file, or search for an existing one on the desktop (priority), in $HOME, or across the entire system and removable devices. Add \"-i\" or \"install\" if you want to install or add the listed apps to a new configuration, to share it with anyone on other PCs and configurations.
+			Description: Clone the list of installed apps to an \"am-clone.source\" file, or search for an existing one on the desktop (priority), in $HOME, or across the entire system and removable devices. Add \"-i\" or \"install\" if you want to install or add the listed apps to a new configuration, to share it with anyone on other PCs and configurations. Add the \"--system\" or \"--user\" flag if you want all listed apps to be installed system-wide or locally respectively.
 
 			You can also set the path to a custom file by exporting the \$CLONE_FILE variable.
 
