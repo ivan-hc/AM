@@ -56,6 +56,10 @@ am clone -i --system
 
 Of course, AppMan only supports local installations, no apps will require root privileges or system installations.
 
+NOTE: On existing configurations, already installed apps will NOT be overwritten.
+
+This option supports both AM and third-party databases.
+
 ------------------------------------------------------------------------
 
 | [Back to "Guides and tutorials"](../../README.md#guides-and-tutorials) | [Back to "Main Index"](../../README.md#main-index) | ["Portable Linux Apps"](https://portable-linux-apps.github.io/) | [ "AppMan" ](https://github.com/ivan-hc/AppMan) |
