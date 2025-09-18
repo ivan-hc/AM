@@ -34,6 +34,10 @@ appman --relocate
 
 https://github.com/user-attachments/assets/1b721a62-a8eb-43df-9d2f-e5f7a0c4f63d
 
+NOTE: On existing configurations, already installed apps will NOT be overwritten.
+
+NOTE2: Reinstalled apps don't retain any sandboxes, isolation directories, or other manual changes made by the user. Consider using the `backup`/`-b` and `overwrite`/`-o` options for this purpose. See [here](./backup-and-overwrite.md).
+
 ------------------------------------------------------------------------
 
 | [Back to "Guides and tutorials"](../../README.md#guides-and-tutorials) | [Back to "Main Index"](../../README.md#main-index) | ["Portable Linux Apps"](https://portable-linux-apps.github.io/) | [ "AppMan" ](https://github.com/ivan-hc/AppMan) |
