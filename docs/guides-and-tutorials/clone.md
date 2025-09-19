@@ -1,5 +1,5 @@
 ## Clone a configuration and export it to other systems
-The `clone` or `--clone` option allows you to detect or create a file called "am-clone.source" from which AM/AppMan can obtain the information needed to install apps from one system to another. This allows you to choose whether to defer system and local installations, or whether to install everything system-wide or locally.
+The `clone` or `--clone` option allows you to detect or create a file called "am-clone.source" from which AM/AppMan can obtain the information needed to install apps from one system to another. This allows you to choose whether to keep distinct system and local installations, or whether to install everything system-wide or locally.
 
 File detection starts (in order of priority):
 1. from the XDG_DESKTOP_DIR directory (usually Desktop)
