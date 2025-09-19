@@ -3,7 +3,7 @@
 DIRS=$(find . -type d | grep "/" | sed 's:.*/::')
 for arch in $DIRS; do
 	rm -f "$arch-appimages" "$arch-portable"
-	ARGS=$(awk -v FS="(◆ | : )" '{print $2}' <"$arch-apps")
+	ARGS=$(awk -v FS="(◆ | : )" '{print $2}' <"$arch-apps" | sort)
 	for arg in $ARGS; do
 		if [ -f "./$arch/$arg" ]; then
 			grep "^◆ $arg :" "$arch-apps" >> "$arch-tmplist"
