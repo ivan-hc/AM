@@ -210,6 +210,8 @@ When you first launch it, you will be asked to specify a path to the application
 
 NOTE: by modifying the contents of `~/.config/appman`, you will only change the paths for any subsequent operation, while apps and modules stored in the old path will not be manageable. It is recommended to remove the apps first.
 
+To change locations, remove local apps, and reinstall in the new location, see the `--relocate` or `relocate` option, [here](docs/guides-and-tutorials/relocate.md).
+
 ------------------------------------------------------------------------
 ### What programs can be installed
 "AM" installs, removes, updates and manages only standalone programs, ie those programs that can be run from a single directory in which they are contained.
@@ -420,6 +422,20 @@ Create a snapshot of the current version of an installed program.
 Removes all the unnecessary files and folders.
 
 ------------------------------------------------------------------------
+### `clone`, `--clone`
+
+		am clone
+		am clone -i
+		am clone -i --system
+		am clone -i --user
+
+**Description**:
+
+Clone the list of installed apps to an "am-clone.source" file, or search for an existing one on the desktop (priority), in `$HOME`, or across the entire system and removable devices. Add "`-i`" or "`install`" if you want to install or add the listed apps to a new configuration, to share it with anyone on other PCs and configurations. Add the "`--system`" or "`--user`" flag if you want all listed apps to be installed system-wide or locally respectively.
+ 
+You can also set the path to a custom file by exporting the `$CLONE_FILE` variable.
+
+------------------------------------------------------------------------
 ### `config`, `-C`, `--config`
 
 		am -C {PROGRAM}
@@ -621,6 +637,15 @@ Search for keywords in the list of available applications, add the "`--appimages
 Reinstall only programs whose installation script has been modified in AM's online database. Use the "`--all`" flag to reinstall everything instead.
 
 NOTE, this only works with the "AM" database. Apps installed with the "`-e`" option and custom scripts created with the "`-t`" option are not supported.
+
+------------------------------------------------------------------------
+### `relocate`, `--relocate`
+
+		am relocate
+
+**Description**:
+
+Remove and reinstall local/AppMan apps to a new location.
 
 ------------------------------------------------------------------------
 ### `remove`, `-r`
@@ -873,6 +898,8 @@ Below you can access the documentation pages related to the use of "AM", complet
 - [Update all](docs/guides-and-tutorials/update.md)
 - [Backup and restore installed apps using snapshots](docs/guides-and-tutorials/backup-and-overwrite.md)
 - [Remove one or more applications](docs/guides-and-tutorials/remove.md)
+- [Clone a set of programs installed from other AM and AppMan configurations](docs/guides-and-tutorials/clone.md)
+- [Change the destination path of installed programs](docs/guides-and-tutorials/relocate.md)
 - [Convert Type2 AppImages requiring libfuse2 to New Generation AppImages](docs/guides-and-tutorials/nolibfuse.md)
 - [Integrate local AppImages into the menu by dragging and dropping them](docs/guides-and-tutorials/launcher.md)
   - [How to create a launcher for a local AppImage](docs/guides-and-tutorials/launcher.md#how-to-create-a-launcher-for-a-local-appimage)
