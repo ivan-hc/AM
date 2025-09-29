@@ -46,6 +46,8 @@ You can use the command `am -a {PROGRAM}` to view the description and get the so
 - [Using a one-line command (only system-wide installation)](#using-a-one-line-command-only-system-wide-installation)
 
    - [What is AppMan?](#what-is-appman)
+     - [How to install AppMan manually](#how-to-install-appman-manually)
+
    - [AM installation structure](#am-installation-structure)
    - [Uninstall](#uninstall)
    - [How are apps installed](#how-are-apps-installed)
@@ -145,6 +147,46 @@ The command name changes, from `am` to `appman`, but the script is the same.
 - "AppMan" is the way to go for non-privileged users or those who don't have great needs
 
 If you want to know more about "AppMan", visit https://github.com/ivan-hc/AppMan
+
+#### How to install AppMan manually
+<details>
+  <summary>Click here to expand</summary>
+As we've already seen, AppMan is portable, meaning you can use it anywhere, in any directory with read and write permissions.
+
+The basic principle is very simple: the APP-MANAGER script must be renamed "appman".
+
+Try it and believe it:
+```
+wget -q "https://raw.githubusercontent.com/ivan-hc/AM/main/APP-MANAGER" -O ./appman && chmod a+x ./appman
+```
+However, **this approach is NOT RECOMMENDED** for various reasons, the most common being convenience:
+- the AM-INSTALLER ensures the creation of an XDG_BIN_HOME or $HOME/.local/bin directory if it doesn't already exist, so you can use it in $PATH without having to write the entire path to the script.
+- by installing it in the local $PATH, the AM-INSTALLER also takes care of its use in ZSH, if that is used instead of BASH.
+
+To install it into $PATH manually, run the following commands:
+```
+ZSHRC="${ZDOTDIR:-$HOME}/.zshrc"
+BINDIR="${XDG_BIN_HOME:-$HOME/.local/bin}"
+mkdir -p "$BINDIR"
+if ! echo $PATH | grep "$BINDIR" >/dev/null 2>&1; then 
+	if [ -e ~/.bashrc ] && ! grep 'PATH="$PATH:$BINDIR"' ~/.bashrc >/dev/null 2>&1; then
+		printf '\n%s\n' 'BINDIR="${XDG_BIN_HOME:-$HOME/.local/bin}"' >> ~/.bashrc
+		printf '\n%s\n' 'if ! echo $PATH | grep "$BINDIR" >/dev/null 2>&1; then' >> ~/.bashrc
+		printf '	export PATH="$PATH:$BINDIR"\nfi\n' >> ~/.bashrc
+	fi
+	if [ -e "$ZSHRC" ] && ! grep 'PATH="$PATH:$BINDIR"' "$ZSHRC" >/dev/null 2>&1; then
+		printf '\n%s\n' 'BINDIR="${XDG_BIN_HOME:-$HOME/.local/bin}"' >> "$ZSHRC"
+		printf '\n%s\n' 'if ! echo $PATH | grep "$BINDIR" >/dev/null 2>&1; then' >> "$ZSHRC"
+		printf '	export PATH="$PATH:$BINDIR"\nfi\n' >> "$ZSHRC"
+	fi
+fi
+wget -q "https://raw.githubusercontent.com/ivan-hc/AM/$AM_BRANCH/APP-MANAGER" -O "$BINDIR"/appman && chmod a+x "$BINDIR"/appman
+```
+The above is a "summary" (without the messages) of what the AM-INSTALLER script already does when you choose option 2 (AppMan).
+
+For more information, see https://github.com/ivan-hc/AM/issues/1830
+
+</details>
 
 ------------------------------------------------------------------------
 ### AM installation structure
