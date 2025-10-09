@@ -216,27 +216,6 @@ _files_header() {
 	echo ""
 }
 
-# DETERMINE VERSIONS
-
-_files_versions() {
-	cd "$APPSPATH" || exit 1
-	INSTALLED_APPS_BY_SIZE=$(du -sh $INSTALLED_APPS_PATHS 2>/dev/null | sort -rh)
-	INSTALLED_APPS=$(echo "$INSTALLED_APPS_BY_SIZE" | grep "$APPSPATH" | sed 's:.*/::' | xargs)
-
-	if [ ! -f "$AMCACHEDIR"/version-args ]; then
-		_check_version
-	fi
-
-	version_args=""
-	[ -f "$AMCACHEDIR"/files-args ] && known_items_number=$(sort -u "$AMCACHEDIR"/files-args | wc -l | sed 's/ //g')
-	for arg in $INSTALLED_APPS; do
-		if [ "$FILES_NUMBER" != "$known_items_number" ]; then
-			version_args="1"
-		fi
-	done
-	[ -n "$version_args" ] && _check_version
-}
-
 # DETERMINE TYPE, SIZE AND DATABASE
 
 _files_if_appimage() {
@@ -344,23 +323,19 @@ _files_db() {
 }
 
 _files_files() {
-	if [ -n "$version_args" ] || [ ! -f "$AMCACHEDIR"/files-type ]; then
-		rm -f "$AMCACHEDIR"/files-type
-		for arg in $INSTALLED_APPS; do
-			[ -f ./"$arg"/remove ] && _files_type &
-		done
-	fi
-
-	rm -f "$AMCACHEDIR"/files-db
-	rm -f "$AMCACHEDIR"/files-sizes
+	_check_version
+	rm -f "$AMCACHEDIR"/files-*
 	for arg in $INSTALLED_APPS; do
-		[ -f ./"$arg"/remove ] && _files_sizes && _files_db
+		[ -f ./"$arg"/remove ] && _files_db && _files_sizes && _files_type &
 	done
 }
 
 # CREATE THE TABLE
 _files() {
-	_files_versions
+	cd "$APPSPATH" || exit 1
+	INSTALLED_APPS_BY_SIZE=$(du -sh $INSTALLED_APPS_PATHS 2>/dev/null | sort -rh)
+	INSTALLED_APPS=$(echo "$INSTALLED_APPS_BY_SIZE" | grep "$APPSPATH" | sed 's:.*/::' | xargs)
+
 	sh -c "$(_files_files)"
 	wait
 	rm -f "$AMCACHEDIR"/files-args
