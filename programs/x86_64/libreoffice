@@ -21,26 +21,50 @@ _release_fresh() {
 	version=$(curl -Ls https://api.github.com/repos/ivan-hc/LibreOffice-appimage/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*continuous-fresh.*$edition.*mage$" | head -1)
 }
 
+_release_junest_still() {
+	lovariant="still"
+	version=$(curl -Ls https://api.github.com/repos/ivan-hc/LibreOffice-appimage/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*continuous-junest-still.*$edition.*mage$" | head -1)
+}
+
+_release_junest_fresh() {
+	lovariant="fresh"
+	version=$(curl -Ls https://api.github.com/repos/ivan-hc/LibreOffice-appimage/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*continuous-junest-fresh.*$edition.*mage$" | head -1)
+}
+
 # CHOOSE A VERSION
 
-read -r -p " Please choose a LibreOffice edition:
+echo " Please choose a LibreOffice edition:
 
  - STILL is slightly older but tested longer.
  - FRESH includes all the latest features.
  - BASIC only supports English (US and GB).
- - STANDARD includes English (US/GB), Arabic, Chinese (Simplified and 
-   Traditional), French, German, Italian, Japanese, Korean, Portuguese 
+ - STANDARD includes English (US/GB), Arabic, Chinese (Simplified and
+   Traditional), French, German, Italian, Japanese, Korean, Portuguese
    (BR/PT), Russian, and Spanish.
  - FULL includes all supported languages.
 
- 1) Still-basic			2) Still-basic with manuals
- 3) Still-standard		4) Still-standard with manuals
- 5) Still-full			6) Still-full with manuals
- 7) Fresh-basic			8) Fresh-basic with manuals
- 9) Fresh-standard		10) Fresh-standard with manuals
- 11) Fresh-full			12) Fresh-full with manuals
+ See more at https://github.com/ivan-hc/LibreOffice-appimage
 
- Type a number from the above list and press ENTER: " response
+----------------------------------------------------------------------
+	APPIMAGE (CLASSIC)	   |	   ARCHIMAGE
+-----------------------------------|----------------------------------
+				   |
+ 1) Still-basic			   |	13) Still-basic
+ 2) Still-basic with manuals	   |	14) Still-italian
+ 3) Still-standard		   |	15) Still-european
+ 4) Still-standard with manuals	   |	16) Still-standard
+ 5) Still-full			   |	17) Still-full
+ 6) Still-full with manuals	   |
+ 				   |
+ 7) Fresh-basic			   |	18) Fresh-basic
+ 8) Fresh-basic with manuals	   |	19) Fresh-italian
+ 9) Fresh-standard		   |	20) Fresh-european
+ 10) Fresh-standard with manuals   |	21) Fresh-standar
+ 11) Fresh-full			   |	22) Fresh-full
+ 12) Fresh-full with manuals	   |
+ 				   |
+----------------------------------------------------------------------"
+read -r -p " Type a number from the above list and press ENTER: " response
 case "$response" in
 	1)	edition="basic-x86_64"
 		_release_still 2>/dev/null 
@@ -90,7 +114,47 @@ case "$response" in
 		_release_fresh 2>/dev/null 
 		wget "$version"
 		;;
-	''|*)	mkdir -p "/opt/$APP/tmp"
+	13)	edition="basic"
+		_release_junest_still 2>/dev/null 
+		wget "$version"
+		;;
+	14)	edition="italian"
+		_release_junest_still 2>/dev/null 
+		wget "$version"
+		;;
+	15)	edition="european"
+		_release_junest_still 2>/dev/null 
+		wget "$version"
+		;;
+	16)	edition="standard"
+		_release_junest_still 2>/dev/null 
+		wget "$version"
+		;;
+	17)	edition="full"
+		_release_junest_still 2>/dev/null 
+		wget "$version"
+		;;
+	18)	edition="basic"
+		_release_junest_fresh 2>/dev/null 
+		wget "$version"
+		;;
+	19)	edition="italian"
+		_release_junest_fresh 2>/dev/null 
+		wget "$version"
+		;;
+	20)	edition="european"
+		_release_junest_fresh 2>/dev/null 
+		wget "$version"
+		;;
+	21)	edition="standard"
+		_release_junest_fresh 2>/dev/null 
+		wget "$version"
+		;;
+	22)	edition="full"
+		_release_junest_fresh 2>/dev/null 
+		wget "$version"
+		;;
+	''|*)	exit 1
 		;;
 esac
 cd ..
@@ -138,6 +202,7 @@ chmod a+x "/opt/$APP/AM-updater"
 # ICONS
 cd "/opt/$APP" || exit 1
 ./libreoffice --appimage-extract usr/share/icons/hicolor/scalable/apps/*.svg && mv squashfs-root/usr/share/icons/hicolor/scalable/apps/*.svg ./icons 2>/dev/null
+./libreoffice --appimage-extract .junest/usr/share/icons/hicolor/scalable/apps/*.svg && mv squashfs-root/.junest/usr/share/icons/hicolor/scalable/apps/*.svg ./icons 2>/dev/null
 RELEASE=$(ls ./icons | head -1 | rev | cut -c 10- | rev)
 mv ./icons/"$RELEASE"-base* ./icons/"$APP"-base 2>/dev/null
 mv ./icons/"$RELEASE"-basic* ./icons/"$APP"-basic 2>/dev/null
@@ -152,7 +217,8 @@ mv ./icons/"$RELEASE"-startcenter* ./icons/"$APP"-startcenter 2>/dev/null
 mv ./icons/"$RELEASE"-writer* ./icons/"$APP"-writer 2>/dev/null
 
 # LAUNCHERS
-./libreoffice --appimage-extract opt/libreoffice*/share/xdg
+./libreoffice --appimage-extract opt/libreoffice*/share/xdg 2>/dev/null
+./libreoffice --appimage-extract .junest/usr/lib/libreoffice/share/xdg 2>/dev/null
 LAUNCHERS=$(find squashfs-root -name *.desktop -type f | xargs)
 for f in $LAUNCHERS ; do
 	launcher=$(echo "$f" | sed 's:.*/::')
