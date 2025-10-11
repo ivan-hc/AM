@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="9.9-2"
+AMVERSION="9.9-3"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -697,15 +697,27 @@ if [ "$CLI_PATH" != "/usr/bin/am" ]; then
 	mkdir -p "$DATADIR/bash-completion/completions" || exit 1
 	if ! grep -o " $AMCLI$" "$completion_file" >/dev/null 2>&1; then
 		echo "complete -W \"\$(cat $AMDATADIR/list 2>/dev/null)\" $AMCLI" >> "$completion_file"
+		# Shell completion in zsh requires editing the main configuration file
 		if [ -f "${ZDOTDIR:-$HOME}"/.zshrc ] && echo "$SHELL" | grep -q "zsh"; then
-			cat <<-HEREDOC >> "${ZDOTDIR:-$HOME}"/.zshrc
-			autoload bashcompinit
-			bashcompinit
-			source "$completion_file"
-			HEREDOC
+			if ! grep -q "$completion_file" "${ZDOTDIR:-$HOME}"/.zshrc && [ ! -f "$AMDATADIR"/zsh-completion-off ]; then
+				printf $"Zsh completion requires editing the main configuration file, but it may cause problems.\nSee https://github.com/ivan-hc/AM/issues/1843\n" | _fit
+				read -r -p $"Want to proceed anyway? (y,N)" response
+				if echo "$response" | grep -qi "^y"; then
+					cat <<-HEREDOC >> "${ZDOTDIR:-$HOME}"/.zshrc
+					autoload bashcompinit
+					bashcompinit
+					source "$completion_file"
+					HEREDOC
+				else
+					touch "$AMDATADIR"/zsh-completion-off
+				fi
+			fi
 		fi
-		echo $"Shell completion has been enabled!"
+		if [ ! -f "$AMDATADIR"/zsh-completion-off ]; then
+			echo $"Shell completion has been enabled!"
+		fi
 	fi
+	# Shell completion in fish
 	if [ -d "$DATADIR"/fish/completions ] || [ -d /etc/fish/completions ] || [ -d /usr/share/fish/completions ]; then
 		command -v fish 1>/dev/null && [ ! -f "$CONFIGDIR"/fish/completions/am.fish ] && mkdir -p "$CONFIGDIR"/fish/completions && echo "complete -c am -f -a \"(cat $DATADIR/AM/list 2>/dev/null)\"" > "$CONFIGDIR"/fish/completions/am.fish
 	fi
