@@ -656,7 +656,7 @@ Convert old AppImages and get rid of "libfuse2" dependence.
 Overwrite apps with snapshots saved previously (see "`-b`").
 
 ------------------------------------------------------------------------
-### `query`, `-q`
+### `query`, `-q`, `search`
 
 		am -q {KEYWORD}
 		am -q --all {KEYWORD}
@@ -845,7 +845,7 @@ Enable notifications during apps update (nulls "`--disable-notifications`").
 Downgrades an installed app from pre-release to "latest".
 
 ------------------------------------------------------------------------
-### `--launcher`
+### `--launcher`, `integrate`
 
 		am --launcher /path/to/${APPIMAGE}
 
