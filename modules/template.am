@@ -12,7 +12,7 @@ _template_create_dirs_and_ask_for_source() {
 	# Create base directories
 	mkdir -p ./am-scripts ./am-scripts/"$ARCH"
 	# Download the template and convert the argument into a command
-	if [ "$templatetype" = 0 ] || [ "$templatetype" = 1 ]; then
+	if [ "$templatetype" = 0 ] || [ "$templatetype" = 1 ] || [ -z "$templatetype" ]; then
 		wget -q "$AMREPO"/templates/AM-SAMPLE-AppImage -O ./am-scripts/"$ARCH"/"$arg"
 	elif [ "$templatetype" = 2 ]; then
 		wget -q "$AMREPO"/templates/AM-SAMPLE-Archive -O ./am-scripts/"$ARCH"/"$arg"
@@ -286,16 +286,17 @@ _template_then_git_repo() {
 # ------------------------------------------------------------------------
 
 _template_if_sourceforge() {
-	sed -i "s#REPLACETHIS#$RESPONSE#g" ./am-scripts/"$ARCH"/"$arg"
 	# ADD PROJECTNAME
 	read -r -ep $" ◆ ADD THE NAME OF THE PROJECT OR LEAVE BLANK IF ITS THE SAME $(echo -e '\n : ')" projectname
 	case "$projectname" in
-	'')	SOURCEFORGE="https://sourceforge.net/p/$arg/activity/feed";;
-	*)	SOURCEFORGE="https://sourceforge.net/p/$projectname/activity/feed";;
+	'')	projectname="$arg";;
+	*)	projectname="$projectname";;
 	esac
+	SOURCEFORGE="https://sourceforge.net/p/$projectname/activity/feed?limit=100000"
+	sed -i "s#REPLACETHIS#https://sourceforge.net/p/$projectname#g" ./am-scripts/"$ARCH"/"$arg"
 	echo "$DIVIDING_LINE"
 	# FILE TYPE
-	if [ "$templatetype" = 0 ]; then
+	if [ "$templatetype" = 0 ] || [ -z "$templatetype" ]; then
 		filetype="appimage"
 	elif [ "$templatetype" = 2 ]; then
 		read -r -ep $" ◆ ADD an univoque keyword for the file (for example \"tar.gz\", \"linux\"):" filekeyword
@@ -311,14 +312,14 @@ _template_if_sourceforge() {
 		;;
 	esac
 	echo "$DIVIDING_LINE"
-	sourceforge_url_test=$(curl -Ls "$SOURCEFORGE" | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep -i "$filetype" | grep -v '%' | head -1)
+	sourceforge_url_test=$(curl -Ls "$SOURCEFORGE" | tr '">< ' '\n' | grep -i "^https://sourceforge.net/projects/.*download" | grep -i "$filetype" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | head -1)
 	if curl --head --silent --fail "$sourceforge_url_test" 1> /dev/null; then
 		_edit_script_head
-		echo "version=\$(curl -Ls $SOURCEFORGE | grep -Eo \"(http|https)://[a-zA-Z0-9./?=_%:-]*\" | grep -i \"$filetype\" | grep -v '%' | head -1)" >> ./am-scripts/"$ARCH"/"$arg"
+		echo "version=\$(curl -Ls $SOURCEFORGE | tr '\">< ' '\n' | grep -i \"^https://sourceforge.net/projects/.*download\" | grep -i \"$filetype\" | grep -vi \"i386\\|i686\\|aarch64\\|arm64\\|armv7l\" | head -1)" >> ./am-scripts/"$ARCH"/"$arg"
 		_edit_script_middle
-		echo "version=\$(curl -Ls $SOURCEFORGE | grep -Eo \"(http|https)://[a-zA-Z0-9./?=_%:-]*\" | grep -i \"$filetype\" | grep -v '%' | head -1)" >> ./am-scripts/"$ARCH"/"$arg"
+		echo "version=\$(curl -Ls $SOURCEFORGE | tr '\">< ' '\n' | grep -i \"^https://sourceforge.net/projects/.*download\" | grep -i \"$filetype\" | grep -vi \"i386\\|i686\\|aarch64\\|arm64\\|armv7l\" | head -1)" >> ./am-scripts/"$ARCH"/"$arg"
 		_edit_script_ending
-		curl -Ls "$SOURCEFORGE" | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep -i "$filetype" | grep -v '%' | head -1
+		curl -Ls "$SOURCEFORGE" | tr '">< ' '\n' | grep -i "^https://sourceforge.net/projects/.*download" | grep -i "$filetype" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | head -1
 		echo -e $"\n The URL above is an example of what both\n the install and update scripts will point to.\n"
 	else
 		_template_custom_download_url_as_version_variable
@@ -360,7 +361,7 @@ for arg in $ARGS; do
 		read -r -p $" WHAT KIND OF PROGRAM DO YOU WANT TO WRITE A SCRIPT FOR? : " templatetype
 		case "$templatetype" in
 
-		0) # APPIMAGE (ANY)
+		'0'|'') # APPIMAGE (ANY)
 
 			_template_create_dirs_and_ask_for_source
 
@@ -382,7 +383,7 @@ for arg in $ARGS; do
 			echo -e $"\n All files are saved in $SCRIPTDIR/am-scripts\n"
 			;;
 
-		1) # CREATE AN APPIMAGE ON-THE-FLY
+		'1') # CREATE AN APPIMAGE ON-THE-FLY
 
 			_template_create_dirs_and_ask_for_source
 			_template_description_if_hosted_elsewhere
@@ -403,7 +404,7 @@ for arg in $ARGS; do
 			echo -e $"\n All files are saved in $SCRIPTDIR/am-scripts\n"
 			;;
 
-		2) # DOWNLOAD ANY ARCHIVE
+		'2') # DOWNLOAD ANY ARCHIVE
 
 			_template_create_dirs_and_ask_for_source
 
@@ -454,7 +455,7 @@ for arg in $ARGS; do
 			echo -e $"\n All files are saved in $SCRIPTDIR/am-scripts\n"
 			;;
 
-		3) # CREATE A CUSTOM FIREFOX PROFILE ("firefox" MUST BE IN "$PATH" TO MADE IT WORK)
+		'3') # CREATE A CUSTOM FIREFOX PROFILE ("firefox" MUST BE IN "$PATH" TO MADE IT WORK)
 
 			_template_create_dirs_and_ask_for_source
 
