@@ -1026,7 +1026,7 @@ Another recommendation is to use `wget` instead of `wget2` (in Fedora, it's call
 
 For the example on how the distribution installs `am`, you can check [Gidro-OS](https://github.com/fiftydinar/gidro-os), custom image based on Fedora Silverblue by [@fiftydinar](https://github.com/fiftydinar):
 
-https://github.com/fiftydinar/gidro-os/blob/main/recipes/recipe-appimages.yml
+https://github.com/fiftydinar/gidro-os/blob/a61b6960618371905115797f1089b4d0a271a974/recipes/recipe-appimages.yml
 
 ------------------------------------------------------------------------
 
