@@ -54,10 +54,31 @@ _download() {
 #				INSTALL
 ################################################################################
 
+_check_argument() {
+	printf $"NOTE:\n\n" | _fit
+	printf -- $"- to try to install AppImages (from github.com) not listed, use \"-e\"\n" | _fit
+	printf -- $"- to integrate random local AppImages to the app's menu, use \"--launcher\"\n" | _fit
+	printf -- $"- to create your own installation script, use \"-t\" or \"template\"\n" | _fit
+	printf $"\nFor more info, run \"$AMCLI -h\".\n" | _fit
+}
+
 _check_if_optional_dependences_are_needed() {
 	# Determine generic build utils
 	app_deps="ar gcc glib-compile-schemas make tar unzip"
-	script_content=$(cat ./"$arg")
+	# Determine if the argument is a script and not something else
+	if head -c10 ./"$arg" 2>/dev/null | grep -q "^#!"; then
+		script_content=$(cat ./"$arg")
+	elif head -c10 ./"$arg" 2>/dev/null | grep -qa '^.ELF....AI$'; then
+		printf $"💀 ERROR: this option is ment to handle installation scripts only! \n\n" | _fit
+		printf $" If this AppImage is not in our database, open an issue or a pull request at\n https://github.com/ivan-hc/AM\n\n" | _fit
+		_check_argument
+		return 1
+	else
+		printf $"💀 ERROR: \"$arg\" is not a valid file! \n\n" | _fit
+		printf $"This option is ment to handle installation scripts only! \n\n" | _fit
+		_check_argument
+		return 1
+	fi
 	# Determine if this is an AppImage that can be compiled on-the-fly
 	if grep -qi "^wget.*.sh.*chmod.*&&" ./"$arg"; then
 		appimage_bulder_script=$(grep "^wget " ./"$arg" | tr '"' '\n' | grep -i "^http" | sed "s/\$APP/$arg/g")
