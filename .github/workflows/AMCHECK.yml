@@ -55,7 +55,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: "Remotely triggered"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.event.client_payload.ref }}
 
@@ -72,7 +72,7 @@ jobs:
     steps:
       - name: "Checkout AM"
         if: github.event.inputs.reset_stats != 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: ${{ env.REPO }}
 
@@ -95,7 +95,7 @@ jobs:
           compression-level: 0
 
       - name: "Checkout"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: "Reset stats"
         if: github.event.inputs.reset_stats == 'true'
@@ -148,7 +148,7 @@ jobs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
       - name: "Checkout"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: "Download appslist"
         uses: actions/download-artifact@v4
@@ -241,7 +241,7 @@ jobs:
       TIMEOUT: 23
     steps:
       - name: "Checkout AM"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: ${{ env.REPO }}
 
@@ -270,7 +270,7 @@ jobs:
           
 
       - name: "Checkout repository"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           path: results
 
@@ -323,6 +323,9 @@ jobs:
           mkdir -p results
           EXIT_CODE=0
 
+          # Enter developer mode
+          #am --devmode-enable
+
           # Define the content of the script || Alow testing non existent (for workflow tests)
           script_content=$(cat ${{ matrix.file }}) || echo "Testing non exist file! (for workflow test only)"
           # Define the pure name of the app
@@ -343,9 +346,24 @@ jobs:
             echo "This application cannot be installed on GitHub Actions" | tee -a results/log-"${{ matrix.file }}"
             echo "${{ matrix.file }}" >> results/ok-${{ matrix.file }}
 
-          elif [[ "$pure_arg" =~ (vikunja) ]]; then
+          elif [[ "$pure_arg" =~ (artifact|hashsum|mudlet|vhc-viewer-wayland|vhc-viewer-x11) ]]; then
+
+            echo "This application is susceptible to failure on GitHub Actions" | tee -a results/log-"${{ matrix.file }}"
+            echo "${{ matrix.file }}" >> results/ok-${{ matrix.file }}
+
+          elif [[ "$pure_arg" =~ (animashooter-junior|animashooter-pioneer|vikunja) ]]; then
 
             echo "This application takes too long to install on GitHub Actions, the mirror is too weak" | tee -a results/log-"${{ matrix.file }}"
+            echo "${{ matrix.file }}" >> results/ok-${{ matrix.file }}
+
+          #elif grep -q 'sourceforge.net' "${{ matrix.file }}" 1>/dev/null; then
+
+          #  echo "Applications on sourceforge.net are susceptible to failure on GitHub Actions" | tee -a results/log-"${{ matrix.file }}"
+          #  echo "${{ matrix.file }}" >> results/ok-${{ matrix.file }}
+
+          elif [[ "$pure_arg" =~ (omnipull) ]]; then
+
+            echo "This application has a pending issue report, and for now is susceptible to failure on GitHub Actions" | tee -a results/log-"${{ matrix.file }}"
             echo "${{ matrix.file }}" >> results/ok-${{ matrix.file }}
 
           else
@@ -475,7 +493,7 @@ jobs:
     if: (always() && github.event.inputs.reset_stats != 'true')
     steps:
       - name: "Checkout"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -592,7 +610,7 @@ jobs:
     if: ${{ needs.generate-matrix.outputs.skip == 'true' }}
     steps:
       - name: "Checkout"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: "Git Config"
         run: |
