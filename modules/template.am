@@ -4,31 +4,74 @@
 # THIS MODULE IS USED TO CREATE INSTALLATION SCRIPS TO ADD TO THE DATABASE
 ##########################################################################
 
+# Installation scripts are mainly for the x86_64 architecture: if there is not one for x86_64, there is no alternative architecture counterpart
+MAIN_ARCH="x86_64"
+
+list_header="#########################################################################################################
+
+Please, check and edit the lines starting with \"◆\" down below:
+
+If all is OK, move them to the file/files named \"\$ARCH-apps\" (for example \"x86_64-apps\")
+
+No matters the order, Github Actions will take care to sort it for you.
+
+NOTE: The catalog at https://portable-linux-apps.github.io bases its pages on app descriptions.
+
+Depending on the keywords it finds, it will place the app to a category.
+
+See the list of keywords at:
+https://github.com/ivan-hc/AM/blob/23d1eb26cff2ad48cbe986ff882a1665e48be638/tools/am2pla-site#L274-L313
+
+#########################################################################################################"
+
+_template_create_README() {
+	if [ ! -f ./am-scripts/list ]; then
+		echo "$list_header" > ./am-scripts/list
+		sed -i 's/^/# /g; s/# #/##/g' ./am-scripts/list
+		printf "\n\n" >> ./am-scripts/list
+	fi
+}
+
 # ------------------------------------------------------------------------
 # COMMON FUNCTIONS FOR OPTIONS 0 (APPIMAGES) AND 2 (ARCHIVES/FILES)
 # ------------------------------------------------------------------------
 
 _template_create_dirs_and_ask_for_source() {
 	# Create base directories
-	mkdir -p ./am-scripts ./am-scripts/"$ARCH"
+	mkdir -p ./am-scripts ./am-scripts/"$MAIN_ARCH"
+	if [ ! -f ./am-scripts/"$MAIN_ARCH"-apps ]; then
+		curl -Lo am-scripts/"$MAIN_ARCH"-apps "$AMREPO/programs/$MAIN_ARCH-apps" 2>/dev/null \
+		|| printf "%b\nERROR: Cannot download \n$AMREPO/programs/$MAIN_ARCH-apps\nPlease download it manually! \n%b\n" "$DIVIDING_LINE" "$DIVIDING_LINE" | _fit
+	fi
+	_template_create_README
 	# Download the template and convert the argument into a command
 	if [ "$templatetype" = 0 ] || [ "$templatetype" = 1 ] || [ -z "$templatetype" ]; then
-		wget -q "$AMREPO"/templates/AM-SAMPLE-AppImage -O ./am-scripts/"$ARCH"/"$arg"
+		wget -q "$AMREPO"/templates/AM-SAMPLE-AppImage -O ./am-scripts/"$MAIN_ARCH"/"$arg"
 	elif [ "$templatetype" = 2 ]; then
-		wget -q "$AMREPO"/templates/AM-SAMPLE-Archive -O ./am-scripts/"$ARCH"/"$arg"
+		wget -q "$AMREPO"/templates/AM-SAMPLE-Archive -O ./am-scripts/"$MAIN_ARCH"/"$arg"
 	elif [ "$templatetype" = 3 ]; then
-		wget -q "$AMREPO"/templates/AM-SAMPLE-Firefox-webapp -O ./am-scripts/"$ARCH"/"$arg"
+		wget -q "$AMREPO"/templates/AM-SAMPLE-Firefox-webapp -O ./am-scripts/"$MAIN_ARCH"/"$arg"
 	fi
-	sed -i "s/SAMPLE/$arg/g" ./am-scripts/"$ARCH"/"$arg"
+	sed -i "s/SAMPLE/$arg/g" ./am-scripts/"$MAIN_ARCH"/"$arg"
 	echo "$DIVIDING_LINE"
 }
 
 _template_create_new_line_for_application_list() {
-	echo "◆ $arg : $COMMENT" >> ./am-scripts/list
+	# Fix $COMMENT syntax
+	COMMENT=$(echo "$COMMENT"  | sed -- "s/\[.*\]//g; s/[[:space:]]*$//; s/^[[:space:]]*//g" | xargs)
+	if ! echo "$COMMENT" | grep -q "\.$"; then COMMENT=$(echo "$COMMENT."); fi
+	if echo "$COMMENT" | grep -qi "^description:"; then _template_description_if_hosted_elsewhere; fi
+
+	# Remove duplicated lines
+	if grep -q "^◆ $arg " ./am-scripts/list; then
+		sed -i "s/^◆ $arg .*/◆ $arg : ${COMMENT^}/g" ./am-scripts/list
+	else
+		echo "◆ $arg : ${COMMENT^}" >> ./am-scripts/list
+	fi
 }
 
 _template_description_if_hosted_elsewhere() {
-	sed -i "s#REPLACETHIS#$RESPONSE#g" ./am-scripts/"$ARCH"/"$arg"
+	sed -i "s#REPLACETHIS#$RESPONSE#g" ./am-scripts/"$MAIN_ARCH"/"$arg"
 	# ADD A DESCRIPTION FOR THIS APPLICATION
 	read -r -ep $" ◆ ADD A BRIEF DESCRIPTION FOR THIS APPLICATION $(echo -e '\n : ')" COMMENT
 	case "$COMMENT" in
@@ -40,17 +83,17 @@ _template_description_if_hosted_elsewhere() {
 }
 
 _edit_script_head() {
-	mv ./am-scripts/"$ARCH"/"$arg" ./am-scripts/"$ARCH"/"$arg".old
-	sed -n '1,14p' ./am-scripts/"$ARCH"/"$arg".old >> ./am-scripts/"$ARCH"/"$arg"
+	mv ./am-scripts/"$MAIN_ARCH"/"$arg" ./am-scripts/"$MAIN_ARCH"/"$arg".old
+	sed -n '1,14p' ./am-scripts/"$MAIN_ARCH"/"$arg".old >> ./am-scripts/"$MAIN_ARCH"/"$arg"
 }
 
 _edit_script_middle() {
-	sed -n '16,35p' ./am-scripts/"$ARCH"/"$arg".old >> ./am-scripts/"$ARCH"/"$arg"
+	sed -n '16,35p' ./am-scripts/"$MAIN_ARCH"/"$arg".old >> ./am-scripts/"$MAIN_ARCH"/"$arg"
 }
 
 _edit_script_ending() {
-	sed -n '37,132p' ./am-scripts/"$ARCH"/"$arg".old >> ./am-scripts/"$ARCH"/"$arg"
-	rm -f ./am-scripts/"$ARCH"/"$arg".old
+	sed -n '37,132p' ./am-scripts/"$MAIN_ARCH"/"$arg".old >> ./am-scripts/"$MAIN_ARCH"/"$arg"
+	rm -f ./am-scripts/"$MAIN_ARCH"/"$arg".old
 }
 
 # ------------------------------------------------------------------------
@@ -63,9 +106,9 @@ _template_custom_download_url_as_version_variable() {
 	case "$DOWNLOADURL" in
 	*)
 		_edit_script_head
-		echo "version=\$($DOWNLOADURL)" >> ./am-scripts/"$ARCH"/"$arg"
+		echo "version=\$($DOWNLOADURL)" >> ./am-scripts/"$MAIN_ARCH"/"$arg"
 		_edit_script_middle
-		echo "version=\$($DOWNLOADURL)" >> ./am-scripts/"$ARCH"/"$arg"
+		echo "version=\$($DOWNLOADURL)" >> ./am-scripts/"$MAIN_ARCH"/"$arg"
 		_edit_script_ending
 		echo "$DIVIDING_LINE"
 		;;
@@ -77,19 +120,19 @@ _template_use_wget_to_download_a_linear_url_or_a_command() {
 	read -r -ep $" ◆ FOR \"WGET\", ADD A COMMAND AS \"\$( ... )\" OR A LINEAR DOWNLOAD URL $(echo -e '\n : ')" DOWNLOADURL
 	case "$DOWNLOADURL" in
 	*)
-		mv ./am-scripts/"$ARCH"/"$arg" ./am-scripts/"$ARCH"/"$arg".old
-		sed -n '1,15p' ./am-scripts/"$ARCH"/"$arg".old >> ./am-scripts/"$ARCH"/"$arg"
-		echo "wget \"$DOWNLOADURL\" || exit 1" >> ./am-scripts/"$ARCH"/"$arg"
-		if grep -q "appimage" ./am-scripts/"$ARCH"/"$arg".old; then
-			sed -n '17,44p' ./am-scripts/"$ARCH"/"$arg".old >> ./am-scripts/"$ARCH"/"$arg"
-			echo "	wget \"$DOWNLOADURL\" || exit 1" >> ./am-scripts/"$ARCH"/"$arg"
-			sed -n '46,150p' ./am-scripts/"$ARCH"/"$arg".old >> ./am-scripts/"$ARCH"/"$arg"
+		mv ./am-scripts/"$MAIN_ARCH"/"$arg" ./am-scripts/"$MAIN_ARCH"/"$arg".old
+		sed -n '1,15p' ./am-scripts/"$MAIN_ARCH"/"$arg".old >> ./am-scripts/"$MAIN_ARCH"/"$arg"
+		echo "wget \"$DOWNLOADURL\" || exit 1" >> ./am-scripts/"$MAIN_ARCH"/"$arg"
+		if grep -q "appimage" ./am-scripts/"$MAIN_ARCH"/"$arg".old; then
+			sed -n '17,44p' ./am-scripts/"$MAIN_ARCH"/"$arg".old >> ./am-scripts/"$MAIN_ARCH"/"$arg"
+			echo "	wget \"$DOWNLOADURL\" || exit 1" >> ./am-scripts/"$MAIN_ARCH"/"$arg"
+			sed -n '46,150p' ./am-scripts/"$MAIN_ARCH"/"$arg".old >> ./am-scripts/"$MAIN_ARCH"/"$arg"
 		else
-			sed -n '17,40p' ./am-scripts/"$ARCH"/"$arg".old >> ./am-scripts/"$ARCH"/"$arg"
-			echo "	wget \"$DOWNLOADURL\" || exit 1" >> ./am-scripts/"$ARCH"/"$arg"
-			sed -n '42,150p' ./am-scripts/"$ARCH"/"$arg".old >> ./am-scripts/"$ARCH"/"$arg"
+			sed -n '17,40p' ./am-scripts/"$MAIN_ARCH"/"$arg".old >> ./am-scripts/"$MAIN_ARCH"/"$arg"
+			echo "	wget \"$DOWNLOADURL\" || exit 1" >> ./am-scripts/"$MAIN_ARCH"/"$arg"
+			sed -n '42,150p' ./am-scripts/"$MAIN_ARCH"/"$arg".old >> ./am-scripts/"$MAIN_ARCH"/"$arg"
 		fi
-		rm -f ./am-scripts/"$ARCH"/"$arg".old
+		rm -f ./am-scripts/"$MAIN_ARCH"/"$arg".old
 		echo "$DIVIDING_LINE"
 		;;
 	esac
@@ -98,9 +141,9 @@ _template_use_wget_to_download_a_linear_url_or_a_command() {
 _template_use_repology() {
 	echo ""; echo " $repology"; echo ""
 	_edit_script_head
-	echo "version=\$($repology_command)" >> ./am-scripts/"$ARCH"/"$arg"
+	echo "version=\$($repology_command)" >> ./am-scripts/"$MAIN_ARCH"/"$arg"
 	_edit_script_middle
-	echo "version=\$($repology_command)" >> ./am-scripts/"$ARCH"/"$arg"
+	echo "version=\$($repology_command)" >> ./am-scripts/"$MAIN_ARCH"/"$arg"
 	_edit_script_ending
 }
 
@@ -126,8 +169,8 @@ _template_help_by_repology() {
 
 # Function to add a generic .desktop file and an icon to the installation script (option 2)
 _template_generate_desktop_file() {
-	sed -i "s/#printf/printf/g" ./am-scripts/"$ARCH"/"$arg"
-	cat <<-'HEREDOC' >> ./am-scripts/"$ARCH"/"$arg"
+	sed -i "s/#printf/printf/g" ./am-scripts/"$MAIN_ARCH"/"$arg"
+	cat <<-'HEREDOC' >> ./am-scripts/"$MAIN_ARCH"/"$arg"
 
 	# ICON
 	mkdir -p icons
@@ -149,19 +192,19 @@ _template_desktop_file_select_category() {
 	echo -e $" LIST OF CATEGORIES:\n 0) AudioVideo\n 1) Audio\n 2) Video\n 3) Development\n 4) Education\n 5) Game\n 6) Graphics\n 7) Network\n 8) Office\n 9) Science\n 10) Settings\n 11) System\n 12) Utility (default)\n "
 	read -r -p $" CHOOSE A CATEGORY : " response
 	case "$response" in
-		0)	sed -i "s/YOURCATEGORY/AudioVideo/g" ./am-scripts/"$ARCH"/"$arg";;
-		1)	sed -i "s/YOURCATEGORY/Audio/g" ./am-scripts/"$ARCH"/"$arg";;
-		2)	sed -i "s/YOURCATEGORY/Video/g" ./am-scripts/"$ARCH"/"$arg";;
-		3)	sed -i "s/YOURCATEGORY/Development/g" ./am-scripts/"$ARCH"/"$arg";;
-		4)	sed -i "s/YOURCATEGORY/Education/g" ./am-scripts/"$ARCH"/"$arg";;
-		5)	sed -i "s/YOURCATEGORY/Game/g" ./am-scripts/"$ARCH"/"$arg";;
-		6)	sed -i "s/YOURCATEGORY/Graphics/g" ./am-scripts/"$ARCH"/"$arg";;
-		7)	sed -i "s/YOURCATEGORY/Network/g" ./am-scripts/"$ARCH"/"$arg";;
-		8)	sed -i "s/YOURCATEGORY/Office/g" ./am-scripts/"$ARCH"/"$arg";;
-		9)	sed -i "s/YOURCATEGORY/Science/g" ./am-scripts/"$ARCH"/"$arg";;
-		10)	sed -i "s/YOURCATEGORY/Settings/g" ./am-scripts/"$ARCH"/"$arg";;
-		11)	sed -i "s/YOURCATEGORY/System/g" ./am-scripts/"$ARCH"/"$arg";;
-		12|*)	sed -i "s/YOURCATEGORY/Utility/g" ./am-scripts/"$ARCH"/"$arg";;
+		0)	sed -i "s/YOURCATEGORY/AudioVideo/g" ./am-scripts/"$MAIN_ARCH"/"$arg";;
+		1)	sed -i "s/YOURCATEGORY/Audio/g" ./am-scripts/"$MAIN_ARCH"/"$arg";;
+		2)	sed -i "s/YOURCATEGORY/Video/g" ./am-scripts/"$MAIN_ARCH"/"$arg";;
+		3)	sed -i "s/YOURCATEGORY/Development/g" ./am-scripts/"$MAIN_ARCH"/"$arg";;
+		4)	sed -i "s/YOURCATEGORY/Education/g" ./am-scripts/"$MAIN_ARCH"/"$arg";;
+		5)	sed -i "s/YOURCATEGORY/Game/g" ./am-scripts/"$MAIN_ARCH"/"$arg";;
+		6)	sed -i "s/YOURCATEGORY/Graphics/g" ./am-scripts/"$MAIN_ARCH"/"$arg";;
+		7)	sed -i "s/YOURCATEGORY/Network/g" ./am-scripts/"$MAIN_ARCH"/"$arg";;
+		8)	sed -i "s/YOURCATEGORY/Office/g" ./am-scripts/"$MAIN_ARCH"/"$arg";;
+		9)	sed -i "s/YOURCATEGORY/Science/g" ./am-scripts/"$MAIN_ARCH"/"$arg";;
+		10)	sed -i "s/YOURCATEGORY/Settings/g" ./am-scripts/"$MAIN_ARCH"/"$arg";;
+		11)	sed -i "s/YOURCATEGORY/System/g" ./am-scripts/"$MAIN_ARCH"/"$arg";;
+		12|*)	sed -i "s/YOURCATEGORY/Utility/g" ./am-scripts/"$MAIN_ARCH"/"$arg";;
 	esac
 	echo "$DIVIDING_LINE"
 }
@@ -174,6 +217,7 @@ _template_if_github() {
 	SITE="https://github.com"
 	RESPONSE=$(echo "$RESPONSE" | sed 's#https://github.com/##g' | cut -f1,2 -d'/')
 	COMMENT=$(curl $HeaderAuthWithGITPAT https://api.github.com/repos/"$RESPONSE" 2>/dev/null | grep description | sed 's/"description": "//' | sed 's/",//' | cut -c 3-)
+	[ -z "$COMMENT" ] && [ -z "$HeaderAuthWithGITPAT" ] && COMMENT=$(curl https://"$ALT_GH"/repos/"$RESPONSE" 2>/dev/null | grep description | sed 's/"description": "//' | sed 's/",//' | cut -c 3-)
 	CURL_COMMAND_REF="curl -Ls https://api.github.com/repos"
 	CURL_COMMAND_REF_PREVIEW="curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos"
 	GH_API_ALLOWED=$(curl -Ls "https://api.github.com/rate_limit" | tr '{,' '\n' | grep -i remaining | tail -1 | grep -Eo "[0-9]*")
@@ -205,8 +249,8 @@ _template_if_git_repo() {
 		FUNCTION=''"$CURL_COMMAND_REF"'/'"$RESPONSE"'/releases | sed '"$q"'s/[()",{} ]/\\n/g'"$q"' | grep -oi "https.*" | grep -vi "i386\\|i686\\|aarch64\\|arm64\\|armv7l" | head -1'
 	fi
 	# Add the above function and reference repository in the installation script
-	sed -i "s#REPLACETHIS#$RESPONSE#g" ./am-scripts/"$ARCH"/"$arg"
-	sed -i "s#FUNCTION)#$FUNCTION)#g" ./am-scripts/"$ARCH"/"$arg"
+	sed -i "s#REPLACETHIS#$RESPONSE#g" ./am-scripts/"$MAIN_ARCH"/"$arg"
+	sed -i "s#FUNCTION)#$FUNCTION)#g" ./am-scripts/"$MAIN_ARCH"/"$arg"
 	_template_create_new_line_for_application_list
 	echo "$DIVIDING_LINE"
 }
@@ -217,13 +261,18 @@ _template_test_github_url() {
 	echo "$GHURLPREVIEW"
 }
 
-_template_test_github_arm64_url() {
-	if [ "$ARCH" = x86_64 ] && grep -q "^version=.*api.github.com" ./am-scripts/"$ARCH"/"$arg"; then
+_template_test_github_alt_architectures_url() {
+	if grep -q "^version=.*api.github.com" ./am-scripts/"$MAIN_ARCH"/"$arg"; then
+		# Determine if arm64/aarch64 releases are available
 		GHURLPREVIEW_COMMAND_ARM64=$(echo "$GHURLPREVIEW_COMMAND" | sed -- "s#grep -vi .*armv7l\"# grep -i \"aarch64\\\|arm64\"#g")
 		GHURLPREVIEW_ARM64=$(eval "$GHURLPREVIEW_COMMAND_ARM64")
 		if [ -n "$GHURLPREVIEW_ARM64" ]; then
+			if [ ! -f ./am-scripts/aarch64-apps ]; then
+				curl -Lo am-scripts/aarch64-apps "$AMREPO/programs/aarch64-apps" 2>/dev/null \
+				|| printf "%b\nERROR: Cannot download \n$AMREPO/programs/aarch64-apps\nPlease download it manually! \n%b\n" "$DIVIDING_LINE" "$DIVIDING_LINE" | _fit
+			fi
 			mkdir -p ./am-scripts/aarch64
-			cp -r ./am-scripts/"$ARCH"/"$arg" ./am-scripts/aarch64/"$arg"
+			cp -r ./am-scripts/"$MAIN_ARCH"/"$arg" ./am-scripts/aarch64/"$arg"
 			sed -i -- "s#grep -vi .*armv7l\"# grep -i \"aarch64\\\|arm64\"#g" ./am-scripts/aarch64/"$arg"
 		fi
 	fi
@@ -235,7 +284,7 @@ _template_then_git_repo() {
 	read -r -p $' Latest release (y) or a generic one (N or leave blank)?' yn
 	if echo "$yn" | grep -qi "^y"; then
 		setlatest="/latest"
-		sed -i 's#/releases #/releases/latest #g' ./am-scripts/"$ARCH"/"$arg"
+		sed -i 's#/releases #/releases/latest #g' ./am-scripts/"$MAIN_ARCH"/"$arg"
 	else
 		setlatest=""
 	fi
@@ -259,7 +308,7 @@ _template_then_git_repo() {
 	1)
 		read -r -ep $' URL must contain ("x64", "x86_64"... or leave blank): ' response
 		if [ -n "$response" ]; then
-			sed -i "s# head -1# grep -i \"$response\" | head -1#g" ./am-scripts/"$ARCH"/"$arg"
+			sed -i "s# head -1# grep -i \"$response\" | head -1#g" ./am-scripts/"$MAIN_ARCH"/"$arg"
 			read -r -p $' Do you wish to check the link for the last time (Y,n)?' yn
 			if ! echo "$yn" | grep -qi "^n"; then
 				if [ "$templatetype" = 0 ] || [ -z "$templatetype" ]; then
@@ -276,7 +325,7 @@ _template_then_git_repo() {
 	2)
 		read -r -ep $' URL must NOT contain ("txt", "ARM"... or leave blank): ' response
 		if [ -n "$response" ]; then
-			sed -i "s# head -1# grep -v \"$response\" | head -1#g" ./am-scripts/"$ARCH"/"$arg"
+			sed -i "s# head -1# grep -v \"$response\" | head -1#g" ./am-scripts/"$MAIN_ARCH"/"$arg"
 			read -r -p $' Do you wish to check the link for the last time (Y,n)?' yn
 			if ! echo "$yn" | grep -qi "^n"; then
 				if [ "$templatetype" = 0 ] || [ -z "$templatetype" ]; then
@@ -305,7 +354,7 @@ _template_if_sourceforge() {
 	*)	projectname="$projectname";;
 	esac
 	SOURCEFORGE="https://sourceforge.net/p/$projectname/activity/feed?limit=100000"
-	sed -i "s#REPLACETHIS#https://sourceforge.net/p/$projectname#g" ./am-scripts/"$ARCH"/"$arg"
+	sed -i "s#REPLACETHIS#https://sourceforge.net/p/$projectname#g" ./am-scripts/"$MAIN_ARCH"/"$arg"
 	echo "$DIVIDING_LINE"
 	# FILE TYPE
 	if [ "$templatetype" = 0 ] || [ -z "$templatetype" ]; then
@@ -327,16 +376,16 @@ _template_if_sourceforge() {
 	sourceforge_url_test=$(curl -Ls "$SOURCEFORGE" | tr '">< ' '\n' | grep -i "^https://sourceforge.net/projects/.*download" | grep -i "$filetype" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | head -1)
 	if curl --head --silent --fail "$sourceforge_url_test" 1> /dev/null; then
 		_edit_script_head
-		echo "version=\$(curl -Ls $SOURCEFORGE | tr '\">< ' '\n' | grep -i \"^https://sourceforge.net/projects/.*download\" | grep -i \"$filetype\" | grep -vi \"i386\\|i686\\|aarch64\\|arm64\\|armv7l\" | head -1)" >> ./am-scripts/"$ARCH"/"$arg"
+		echo "version=\$(curl -Ls $SOURCEFORGE | tr '\">< ' '\n' | grep -i \"^https://sourceforge.net/projects/.*download\" | grep -i \"$filetype\" | grep -vi \"i386\\|i686\\|aarch64\\|arm64\\|armv7l\" | head -1)" >> ./am-scripts/"$MAIN_ARCH"/"$arg"
 		_edit_script_middle
-		echo "version=\$(curl -Ls $SOURCEFORGE | tr '\">< ' '\n' | grep -i \"^https://sourceforge.net/projects/.*download\" | grep -i \"$filetype\" | grep -vi \"i386\\|i686\\|aarch64\\|arm64\\|armv7l\" | head -1)" >> ./am-scripts/"$ARCH"/"$arg"
+		echo "version=\$(curl -Ls $SOURCEFORGE | tr '\">< ' '\n' | grep -i \"^https://sourceforge.net/projects/.*download\" | grep -i \"$filetype\" | grep -vi \"i386\\|i686\\|aarch64\\|arm64\\|armv7l\" | head -1)" >> ./am-scripts/"$MAIN_ARCH"/"$arg"
 		_edit_script_ending
 		curl -Ls "$SOURCEFORGE" | tr '">< ' '\n' | grep -i "^https://sourceforge.net/projects/.*download" | grep -i "$filetype" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | head -1
 		echo -e $"\n The URL above is an example of what both\n the install and update scripts will point to.\n"
 	else
 		_template_custom_download_url_as_version_variable
 	fi
-	sed -i 's/*mage/*/g' ./am-scripts/"$ARCH"/"$arg"
+	sed -i 's/*mage/*/g' ./am-scripts/"$MAIN_ARCH"/"$arg"
 }
 
 #####################################
@@ -390,7 +439,7 @@ for arg in $ARGS; do
 					_template_help_by_repology
 				fi
 			esac
-			_template_test_github_arm64_url
+			_template_test_github_alt_architectures_url
 			# END OF THIS FUNCTION
 			echo "$DIVIDING_LINE"
 			echo -e $"\n All files are saved in $SCRIPTDIR/am-scripts\n"
@@ -406,10 +455,10 @@ for arg in $ARGS; do
 			read -r -ep $" ◆ ADD A LINEAR DOWNLOAD URL FOR THE SCRIPT OR LEAVE BLANK $(echo -e '\n : ')" dlurl
 			case "$dlurl" in
 			'')
-				sed -i 's#wget "$version"#wget "'"$AMREPO"'/appimage-bulder-scripts/'"$ARCH"'/$APP.sh" \&\& chmod a+x "$APP".sh \&\& ./"$APP".sh#g' ./am-scripts/"$ARCH"/"$arg"
+				sed -i 's#wget "$version"#wget "'"$AMREPO"'/appimage-bulder-scripts/'"$MAIN_ARCH"'/$APP.sh" \&\& chmod a+x "$APP".sh \&\& ./"$APP".sh#g' ./am-scripts/"$MAIN_ARCH"/"$arg"
 			;;
 			*)
-				sed -i 's#wget "$version"#wget "'"$dlurl"'" -O '"$arg"'.sh && chmod '"$arg"'.sh && ./'"$arg"'.sh#g' ./am-scripts/"$ARCH"/"$arg"
+				sed -i 's#wget "$version"#wget "'"$dlurl"'" -O '"$arg"'.sh && chmod '"$arg"'.sh && ./'"$arg"'.sh#g' ./am-scripts/"$MAIN_ARCH"/"$arg"
 			;;
 			esac
 			# END OF THIS FUNCTION
@@ -445,9 +494,9 @@ for arg in $ARGS; do
 				# ENTER THE URL OF THE ICON THAT WILL APPEAR IN THE MENU
 				read -r -ep $" ◆ COPY/PASTE THE URL OF THE ICON HERE $(echo -e '\n URL: ')" ICONURL
 				case "$ICONURL" in
-				'')	sed -i "s#ICONURL#https://portable-linux-apps.github.io/icons/$arg.png#g" ./am-scripts/"$ARCH"/"$arg"
+				'')	sed -i "s#ICONURL#https://portable-linux-apps.github.io/icons/$arg.png#g" ./am-scripts/"$MAIN_ARCH"/"$arg"
 					;;
-				*)	sed -i "s#ICONURL#$ICONURL#g" ./am-scripts/"$ARCH"/"$arg"
+				*)	sed -i "s#ICONURL#$ICONURL#g" ./am-scripts/"$MAIN_ARCH"/"$arg"
 					;;
 				esac
 				echo "$DIVIDING_LINE"
@@ -455,7 +504,7 @@ for arg in $ARGS; do
 				read -r -ep $' ◆ NAME OF THE APP (for the "Name" entry of the .desktop file): ' APPNAME
 				case "$APPNAME" in
 				*)
-					sed -i "s#APPNAME#$APPNAME#g" ./am-scripts/"$ARCH"/"$arg"
+					sed -i "s#APPNAME#$APPNAME#g" ./am-scripts/"$MAIN_ARCH"/"$arg"
 					;;
 				esac
 				echo "$DIVIDING_LINE"
@@ -464,7 +513,7 @@ for arg in $ARGS; do
 			else
 				echo "$DIVIDING_LINE"
 			fi
-			_template_test_github_arm64_url
+			_template_test_github_alt_architectures_url
 			# END OF THIS FUNCTION
 			echo -e $"\n All files are saved in $SCRIPTDIR/am-scripts\n"
 			;;
@@ -474,13 +523,13 @@ for arg in $ARGS; do
 			_template_create_dirs_and_ask_for_source
 
 			# USE THE SUFFIX FROM NOW ON
-			mv ./am-scripts/"$ARCH"/"$arg" ./am-scripts/"$ARCH"/"ffwa-$arg"
+			mv ./am-scripts/"$MAIN_ARCH"/"$arg" ./am-scripts/"$MAIN_ARCH"/"ffwa-$arg"
 			arg="ffwa-$arg"
 			echo "$DIVIDING_LINE"
 			read -r -ep $" ◆ NAME OF THE APP: " RESPONSE
 			case "$RESPONSE" in
 			*)
-				sed -i "s#GIVEMEANAME#$RESPONSE#g" ./am-scripts/"$ARCH"/"$arg"
+				sed -i "s#GIVEMEANAME#$RESPONSE#g" ./am-scripts/"$MAIN_ARCH"/"$arg"
 				# CREATE A NEW LINE FOR THE APPLICATION'S LIST
 				echo "◆ $arg : WebApp & Firefox Profile for $RESPONSE." >> ./am-scripts/list
 			esac
@@ -490,7 +539,7 @@ for arg in $ARGS; do
 			read -r -ep $" ◆ URL OF THE WEBAPP: " RESPONSE
 			case "$RESPONSE" in
 			*)
-				sed -i "s#MYWEBSITE#$RESPONSE#g" ./am-scripts/"$ARCH"/"$arg"
+				sed -i "s#MYWEBSITE#$RESPONSE#g" ./am-scripts/"$MAIN_ARCH"/"$arg"
 				;;
 			esac
 			echo "$DIVIDING_LINE"
@@ -498,7 +547,7 @@ for arg in $ARGS; do
 			read -r -ep $" ◆ COPY/PASTE THE URL OF THE ICON HERE $(echo -e '\n URL: ')" RESPONSE
 			case "$RESPONSE" in
 			*)
-				sed -i "s#YOURICONURL#$RESPONSE#g" ./am-scripts/"$ARCH"/"$arg"
+				sed -i "s#YOURICONURL#$RESPONSE#g" ./am-scripts/"$MAIN_ARCH"/"$arg"
 				;;
 			esac
 			echo "$DIVIDING_LINE"
