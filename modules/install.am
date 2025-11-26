@@ -271,6 +271,24 @@ _ending_the_installation() {
 	fi
 }
 
+_install_script_retry() {
+	# Determine if the installation has stopped when trying to download the app
+	test_lastdir=$(ls -td "$APPSPATH"/* | head -1 | sed 's:.*/::')
+	test_lastdir_tmp="$APPSPATH/$test_lastdir/tmp"
+	printf " \n Oops! Something went wrong! Integrity check in progress... \n"
+	TAKES_COUNT=0
+	while [ "$TAKES_COUNT" -lt 5 ]; do
+		if [ -d "$test_lastdir_tmp" ]; then
+			if [ -z "$( ls -A "$test_lastdir_tmp" )" ]; then
+				printf "\n The file was not downloaded, attempt %b of 5 will start in 5 seconds...\n\n" "$((TAKES_COUNT + 1))"
+				sleep 5
+				$SUDOCMD ./"$arg"
+			fi
+		fi
+		TAKES_COUNT=$((TAKES_COUNT + 1))
+	done
+}
+
 _install_arg() {
 	# This function is needed to parse the installation script and then execute it
 	APPNAME=$(echo "\"$pure_arg\"" | tr '[:lower:]' '[:upper:]')
@@ -288,7 +306,7 @@ _install_arg() {
 		fi
 	fi
 	# Install script
-	$SUDOCMD ./"$arg"
+	$SUDOCMD ./"$arg" || _install_script_retry
 	echo ""
 	_post_installation_processes
 	_ending_the_installation
