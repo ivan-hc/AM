@@ -287,6 +287,25 @@ _install_script_retry() {
 		fi
 		TAKES_COUNT=$((TAKES_COUNT + 1))
 	done
+	# Check if the download was successful
+	if [ -d "$test_lastdir_tmp" ]; then
+		if [ -z "$( ls -A "$test_lastdir_tmp" )" ]; then
+			# Check for patches for this kind of installation script
+			printf "\n %bAny attempt to download the specified package failed.\033[0m\n" "${RED}"
+			printf "\n Check for available patches for this type of script:\n"
+			# If the install script contains a line starting with "version" and pointing to a generic "release"
+			# it's probably on github, and you can try to increase the number of pages to search in, up to 100
+			if grep -qi "^version=.*/repos/.*/releases " ./"$arg"; then
+				printf -- "\n %b✔ Attempting to extend pages in progress...\033[0m\n\n" "${Gold}"
+				sleep 5
+				sed -i 's#/releases #/releases?per\_page=100 #g' ./"$arg"
+				$SUDOCMD ./"$arg" || printf -- "\n %b✖ Failed! \033[0m \n" "${RED}"
+			else
+				# No patches found
+				printf -- "\n %b✖ No patch available! \033[0m \n" "${RED}"
+			fi
+		fi
+	fi
 }
 
 _install_arg() {
