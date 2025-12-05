@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="9.9.1-1"
+AMVERSION="9.9.1"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -351,12 +351,12 @@ _detect_appman_apps() {
 }
 
 _determine_args() {
-	ARGPATHS=$(find "$APPSPATH" -type f -name 'remove' -executable -print 2>/dev/null | sort -u | sed 's:/[^/]*$::' | grep -v "$APPSPATH/.*/")
+	ARGPATHS=$(find "$APPSPATH" -maxdepth 2 -name 'remove' -print 2>/dev/null | sort -u | sed 's|/remove||g')
 	ARGS=$(echo "$ARGPATHS" | xargs -n 1 basename 2>/dev/null)
 	if [ "$AMCLI" = am ]; then
 		_detect_appman_apps
 		if [ -d "$APPMAN_APPSPATH" ]; then
-			APPMAN_PATHS=$(find "$APPMAN_APPSPATH" -type f -name 'remove' -executable -print 2>/dev/null | sort -u | sed 's:/[^/]*$::' | grep -v "$APPMAN_APPSPATH/.*/")
+			APPMAN_PATHS=$(find "$APPMAN_APPSPATH" -maxdepth 2 -name 'remove' -print 2>/dev/null | sort -u | sed 's|/remove||g')
 			ARGPATHS=$(printf "%b\n%b" "$ARGPATHS" "$APPMAN_PATHS")
 			ARGS=$(echo "$ARGPATHS" | xargs -n 1 basename 2>/dev/null)
 		fi
@@ -783,6 +783,7 @@ _check_version() {
 	rm -f "$AMCACHEDIR"/version-args
 	_determine_args
 	for arg in $ARGS; do
+		(
 		argpath=$(echo "$ARGPATHS" | grep "/$arg$")
 		if [ -f "$argpath"/remove ]; then
 			if [ -f "$argpath"/version ]; then
@@ -803,7 +804,9 @@ _check_version() {
 			fi
 			echo " ◆ $arg	|	$APPVERSION" >> "$AMCACHEDIR"/version-args
 		fi
+		) &
 	done
+	wait
 }
 
 _check_version_for_auto_updatable_apps() {
