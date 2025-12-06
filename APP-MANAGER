@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="9.9.1-3"
+AMVERSION="9.9.1-4"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -351,14 +351,24 @@ _detect_appman_apps() {
 }
 
 _determine_args() {
-	ARGPATHS=$(find -L "$APPSPATH" -type f -name 'remove' -executable -print 2>/dev/null | sort -u | sed 's:/[^/]*$::' | grep -v "$APPSPATH/.*/")
-	ARGS=$(echo "$ARGPATHS" | xargs -n 1 basename 2>/dev/null)
-	if [ "$AMCLI" = am ]; then
-		_detect_appman_apps
-		if [ -d "$APPMAN_APPSPATH" ]; then
-			APPMAN_PATHS=$(find -L "$APPMAN_APPSPATH" -type f -name 'remove' -executable -print 2>/dev/null | sort -u | sed 's:/[^/]*$::' | grep -v "$APPMAN_APPSPATH/.*/")
-			ARGPATHS=$(printf "%b\n%b" "$ARGPATHS" "$APPMAN_PATHS")
-			ARGS=$(echo "$ARGPATHS" | xargs -n 1 basename 2>/dev/null)
+	if [ -d "$APPSPATH" ]; then
+		if [ -L "$APPSPATH" ]; then
+			ARGPATHS=$(find -L "$APPSPATH" -type f -name 'remove' -executable -print 2>/dev/null | sort -u | sed 's:/[^/]*$::' | grep -v "$APPSPATH/.*/")
+		else
+			ARGPATHS=$(find "$APPSPATH" -type f -name 'remove' -executable -print 2>/dev/null | sort -u | sed 's:/[^/]*$::' | grep -v "$APPSPATH/.*/")
+		fi
+		ARGS=$(echo "$ARGPATHS" | xargs -n 1 basename 2>/dev/null)
+		if [ "$AMCLI" = am ]; then
+			_detect_appman_apps
+			if [ -d "$APPMAN_APPSPATH" ]; then
+				if [ -L "$APPMAN_APPSPATH" ]; then
+					APPMAN_PATHS=$(find -L "$APPMAN_APPSPATH" -type f -name 'remove' -executable -print 2>/dev/null | sort -u | sed 's:/[^/]*$::' | grep -v "$APPMAN_APPSPATH/.*/")
+				else
+					APPMAN_PATHS=$(find "$APPMAN_APPSPATH" -type f -name 'remove' -executable -print 2>/dev/null | sort -u | sed 's:/[^/]*$::' | grep -v "$APPMAN_APPSPATH/.*/")
+				fi
+				ARGPATHS=$(printf "%b\n%b" "$ARGPATHS" "$APPMAN_PATHS")
+				ARGS=$(echo "$ARGPATHS" | xargs -n 1 basename 2>/dev/null)
+			fi
 		fi
 	fi
 	# use "argpath=$(echo "$ARGPATHS" | grep "/$arg$")" to determine the full path of "arg"
