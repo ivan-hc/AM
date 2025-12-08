@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="9.9-4"
+AMVERSION="9.9.1-4"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -351,14 +351,24 @@ _detect_appman_apps() {
 }
 
 _determine_args() {
-	ARGPATHS=$(find "$APPSPATH" -maxdepth 2 -name 'remove' -print 2>/dev/null | sort -u | sed 's|/remove||g')
-	ARGS=$(echo "$ARGPATHS" | xargs -n 1 basename 2>/dev/null)
-	if [ "$AMCLI" = am ]; then
-		_detect_appman_apps
-		if [ -d "$APPMAN_APPSPATH" ]; then
-			APPMAN_PATHS=$(find "$APPMAN_APPSPATH" -maxdepth 2 -name 'remove' -print 2>/dev/null | sort -u | sed 's|/remove||g')
-			ARGPATHS=$(printf "%b\n%b" "$ARGPATHS" "$APPMAN_PATHS")
-			ARGS=$(echo "$ARGPATHS" | xargs -n 1 basename 2>/dev/null)
+	if [ -d "$APPSPATH" ]; then
+		if [ -L "$APPSPATH" ]; then
+			ARGPATHS=$(find -L "$APPSPATH" -type f -name 'remove' -executable -print 2>/dev/null | sort -u | sed 's:/[^/]*$::' | grep -v "$APPSPATH/.*/")
+		else
+			ARGPATHS=$(find "$APPSPATH" -type f -name 'remove' -executable -print 2>/dev/null | sort -u | sed 's:/[^/]*$::' | grep -v "$APPSPATH/.*/")
+		fi
+		ARGS=$(echo "$ARGPATHS" | xargs -n 1 basename 2>/dev/null)
+		if [ "$AMCLI" = am ]; then
+			_detect_appman_apps
+			if [ -d "$APPMAN_APPSPATH" ]; then
+				if [ -L "$APPMAN_APPSPATH" ]; then
+					APPMAN_PATHS=$(find -L "$APPMAN_APPSPATH" -type f -name 'remove' -executable -print 2>/dev/null | sort -u | sed 's:/[^/]*$::' | grep -v "$APPMAN_APPSPATH/.*/")
+				else
+					APPMAN_PATHS=$(find "$APPMAN_APPSPATH" -type f -name 'remove' -executable -print 2>/dev/null | sort -u | sed 's:/[^/]*$::' | grep -v "$APPMAN_APPSPATH/.*/")
+				fi
+				ARGPATHS=$(printf "%b\n%b" "$ARGPATHS" "$APPMAN_PATHS")
+				ARGS=$(echo "$ARGPATHS" | xargs -n 1 basename 2>/dev/null)
+			fi
 		fi
 	fi
 	# use "argpath=$(echo "$ARGPATHS" | grep "/$arg$")" to determine the full path of "arg"
@@ -783,6 +793,7 @@ _check_version() {
 	rm -f "$AMCACHEDIR"/version-args
 	_determine_args
 	for arg in $ARGS; do
+		(
 		argpath=$(echo "$ARGPATHS" | grep "/$arg$")
 		if [ -f "$argpath"/remove ]; then
 			if [ -f "$argpath"/version ]; then
@@ -803,7 +814,9 @@ _check_version() {
 			fi
 			echo " ◆ $arg	|	$APPVERSION" >> "$AMCACHEDIR"/version-args
 		fi
+		) &
 	done
+	wait
 }
 
 _check_version_for_auto_updatable_apps() {
@@ -1393,7 +1406,7 @@ _update_determine_apps_version_changes() {
 	fi
 }
 
-[ -z "$ALT_GH" ] && ALT_GH="api.gh.pkgforge.dev"
+[ -z "$ALT_GH" ] && ALT_GH="https://api.gh.pkgforge.dev"
 
 _update_determine_gh_apps_number() {
 	for arg in $ARGS; do
@@ -1413,7 +1426,7 @@ _update_determine_gh_apps_number() {
 _update_run_updater() {
 	if grep -q "api.github.com" "$argpath"/AM-updater; then
 		if [ "$GH_API_ALLOWED" -le 5 ]; then
-			sed -i "s#api.github.com#$ALT_GH#g" "$argpath"/AM-updater
+			sed -i "s#https://api.github.com#$ALT_GH#g" "$argpath"/AM-updater
 		fi
 	fi
 	if [ -z "$debug_update" ]; then
@@ -1421,7 +1434,7 @@ _update_run_updater() {
 	else
 		"$argpath"/AM-updater
 	fi
-	sed -i "s#$ALT_GH#api.github.com#g" "$argpath"/AM-updater 2>/dev/null
+	sed -i "s#$ALT_GH#https://api.github.com#g" "$argpath"/AM-updater 2>/dev/null
 	end=$(date +%s)
 	timelapsed=$((end - start))
 	[ "$timelapsed" = 1 ] && printf $" %b✔\033[0m $APPNAME is updated, $timelapsed second elapsed! \n" "${Green}" || printf $" %b✔\033[0m $APPNAME is updated, $timelapsed seconds elapsed! \n" "${Green}"

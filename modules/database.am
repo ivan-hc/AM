@@ -322,21 +322,23 @@ _files_db() {
 	echo " ◆ $arg	|	$DB" >> "$AMCACHEDIR"/files-db
 }
 
-_files_files() {
-	_check_version
-	rm -f "$AMCACHEDIR"/files-*
-	for arg in $INSTALLED_APPS; do
-		[ -f ./"$arg"/remove ] && _files_db && _files_sizes && _files_type &
-	done
-}
-
 # CREATE THE TABLE
 _files() {
 	cd "$APPSPATH" || exit 1
 	INSTALLED_APPS_BY_SIZE=$(du -sh $INSTALLED_APPS_PATHS 2>/dev/null | sort -rh)
 	INSTALLED_APPS=$(echo "$INSTALLED_APPS_BY_SIZE" | grep "$APPSPATH" | sed 's:.*/::' | xargs)
 
-	sh -c "$(_files_files)"
+	_check_version
+	rm -f "$AMCACHEDIR"/files-*
+	for arg in $INSTALLED_APPS; do
+		if [ -f ./"$arg"/remove ]; then
+			(
+				_files_db
+				_files_sizes
+				_files_type
+			) &
+		fi
+	done
 	wait
 	rm -f "$AMCACHEDIR"/files-args
 	for arg in $INSTALLED_APPS; do
@@ -367,7 +369,7 @@ _files() {
 _files_number() {
 	_determine_args
 	INSTALLED_APPS_PATHS=$(echo "$ARGPATHS" | grep "$APPSPATH")
-	FILES_NUMBER=$(find "$APPSPATH" -type f -name 'remove' 2>/dev/null | uniq | wc -l | sed 's/ //g')
+	FILES_NUMBER=$(echo "$ARGPATHS" | grep "$APPSPATH" 2>/dev/null | uniq | wc -l | sed 's/ //g')
 	if [ "$FILES_NUMBER" != 0 ]; then
 		FILES_NUMBER=$(echo "$INSTALLED_APPS_PATHS" | uniq | wc -l | sed 's/ //g')
 	fi
@@ -474,7 +476,7 @@ _files_launcher() {
 
 # Functions to beautify lists
 _colors() {
-	sed 's/◆\(.*\):/◆\x1b[32m\1\x1b[0m:/g'
+	sed 's/◆ \(.*\) : /◆ \x1b[32m\1\x1b[0m : /g'
 }
 
 _pretty_list() {
@@ -492,12 +494,13 @@ _list() {
 	# Check if github.com is online, if not, the function will read the offline list
 	wget -q --tries=10 --timeout=20 --spider https://github.com && _completion_lists
 	# Check the number of installed apps and libraries
+	_determine_args
 	LIBNUMBER=$(grep -q "usr/local/lib" "$APPSPATH"/*/remove 2>/dev/null | wc -l | sed 's/ //g')
-	ITEMSNUMBER=$(find "$APPSPATH" -name 'remove' -print 2>/dev/null | sort -u | wc -l | sed 's/ //g')
+	ITEMSNUMBER=$(echo "$ARGPATHS" | grep "$APPSPATH" | sort -u | wc -l | sed 's/ //g')
 	_detect_appman_apps
 	if [ "$AMCLI" = am ]; then
 		if [ -d "$APPMAN_APPSPATH" ]; then
-			APPMAN_ITEMS=$(find "$APPMAN_APPSPATH" -name 'remove' -print 2>/dev/null | sort -u | wc -l | sed 's/ //g')
+			APPMAN_ITEMS=$(echo "$ARGPATHS" | grep "$APPMAN_APPSPATH" 2>/dev/null | sort -u | wc -l | sed 's/ //g')
 			ITEMSNUMBER=$(("$ITEMSNUMBER"+"$APPMAN_ITEMS"))
 		fi
 		if test -f /opt/am/remove; then
@@ -529,14 +532,14 @@ _list() {
 	for t in $tp_lists; do
 		[ -z "$TP_LISTS" ] && TP_LISTS=$(sort -u "$t") || TP_LISTS="$TP_LISTS\n$(sort -u "$t")"
 	done
-	[ -n "$third_party_lists" ] && AVAILABLE_THIRD_PARTY_NUMBER=$(printf "%b" "$TP_LISTS" | sort -u | grep -e "^◆.*$" -c)
+	[ -n "$third_party_lists" ] && AVAILABLE_THIRD_PARTY_NUMBER=$(printf "%b" "$TP_LISTS" | grep -Eo "^◆ .* : " | sort -u | grep -e "^◆.*$" -c)
 	[ -n "$AVAILABLE_THIRD_PARTY_NUMBER" ] && AVAILABLE_TOTAL_APPS_NUMBER=$(("$AVAILABLE_APPS_NUMBER" + "$AVAILABLE_THIRD_PARTY_NUMBER")) || AVAILABLE_TOTAL_APPS_NUMBER="$AVAILABLE_APPS_NUMBER"
 	# Generate a list of the installed apps with version
 	[ ! -f "$AMCACHEDIR"/version-args ] && _check_version
 	if [ -n "$APPMAN_ITEMS" ]; then
 		_check_version
 	else
-		grep " ◆ $ARGS	" "$AMCACHEDIR"/version-args > "$AMCACHEDIR"/version-args-real
+		grep " ◆ $ARGS	" "$AMCACHEDIR"/version-args > "$AMCACHEDIR"/version-args-real 2>/dev/null
 		sort "$AMCACHEDIR"/version-args-real > "$AMCACHEDIR"/version-args
 	fi
 	INSTALLED=$(sort "$AMCACHEDIR"/version-args 2>/dev/null | sed 's/	|	/ /g' | grep -v "◆ am " | uniq)
@@ -568,7 +571,11 @@ _query_lists() {
 }
 
 _query_no_results() {
-	printf $"No search results" && [ -z "$query_all" ] && printf $", please retry this query using the \"%b--all\033[0m\" flag\n" "${LightBlue}"
+	if [ -z "$query_all" ]; then
+		printf $"No search results" && printf $", please retry this query using the \"%b--all\033[0m\" flag\n" "${LightBlue}"
+	else
+		printf $"No search results" && echo ""
+	fi
 }
 
 _find_no_order() {
@@ -655,7 +662,7 @@ case "$1" in
 				wget -q --tries=10 --timeout=20 --spider https://github.com && _sync_third_party_lists 2>/dev/null
 				_list
 				tplist_name=$(echo "$2" | tr '-' '\n ' | grep .)
-				[ -f "$AMDATADIR"/"$ARCH"-"$tplist_name" ] && TPNUMBER_HERE=$(sort -u "$AMDATADIR"/"$ARCH"-"$tplist_name" | wc -l)
+				[ -f "$AMDATADIR"/"$ARCH"-"$tplist_name" ] && TPNUMBER_HERE=$(sort -u "$AMDATADIR"/"$ARCH"-"$tplist_name" | grep -Eo "^◆ .* : " | uniq | wc -l)
 				SUBJECT=$(echo $"$TPNUMBER_HERE programs available in the ${tplist_name^} database")
 				LIST=$(sort -u "$AMDATADIR"/"$ARCH"-"$tplist_name" | grep "^◆ .*$" 2>/dev/null | _pretty_list)
 				_list_msg "$@" | less -Ir
