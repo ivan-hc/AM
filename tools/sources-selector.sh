@@ -46,8 +46,12 @@ for arch in $DIRS; do
 			cp -r "$a" "$SOURCES_DIR"/mozilla/
 		# Applications hosted on custom sources (the more problematic ones)
 		else
+			# Determine if the app source is taken from AUR
+			if grep -q "version=.*https://raw.githubusercontent.com/archlinux/aur/refs" "$a"; then
+				mkdir -p "$SOURCES_DIR"/custom-aur
+				cp -r "$a" "$SOURCES_DIR"/custom-aur/
 			# Determine if the app require more steps to be downloaded
-			if ! grep -q "wget \"\$version\"" "$a"; then
+			elif ! grep -q "wget \"\$version\"" "$a"; then
 				mkdir -p "$SOURCES_DIR"/custom-verbose
 				cp -r "$a" "$SOURCES_DIR"/custom-verbose/
 			# Determine if the app have multiple choose
