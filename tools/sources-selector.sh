@@ -32,10 +32,32 @@ for arch in $DIRS; do
 		elif grep -q "version=.*gitlab.*v4" "$a"; then
 			mkdir -p "$SOURCES_DIR"/gitlab
 			cp -r "$a" "$SOURCES_DIR"/gitlab/
-		# # Applications hosted on custom sources (the more problematic ones)
+		# Applications hosted on kde hosts
+		elif grep -q "version=.*kde.org" "$a"; then
+			mkdir -p "$SOURCES_DIR"/kde
+			cp -r "$a" "$SOURCES_DIR"/kde/
+		# Applications are Firefox WebApps
+		elif echo "$a" | grep -q -- "ffwa-"; then
+			mkdir -p "$SOURCES_DIR"/ffwa
+			cp -r "$a" "$SOURCES_DIR"/ffwa/
+		# Applications are Mozilla products or derivatives of the latter
+		elif echo "$a" | grep -q "firefox\|thunderbird\|tor-browser\|zotero"; then
+			mkdir -p "$SOURCES_DIR"/mozilla
+			cp -r "$a" "$SOURCES_DIR"/mozilla/
+		# Applications hosted on custom sources (the more problematic ones)
 		else
-			mkdir -p "$SOURCES_DIR"/custom
-			cp -r "$a" "$SOURCES_DIR"/custom/
+			# Determine if the app require more steps to be downloaded
+			if ! grep -q "wget \"\$version\"" "$a"; then
+				mkdir -p "$SOURCES_DIR"/custom-verbose
+				cp -r "$a" "$SOURCES_DIR"/custom-verbose/
+			# Determine if the app have multiple choose
+			elif grep -q "^RELEASE=" "$a"; then
+				mkdir -p "$SOURCES_DIR"/custom-multichoose
+				cp -r "$a" "$SOURCES_DIR"/custom-multichoose/
+			else
+				mkdir -p "$SOURCES_DIR"/custom-standard
+				cp -r "$a" "$SOURCES_DIR"/custom-standard/
+			fi
 		fi
 	done
 done
