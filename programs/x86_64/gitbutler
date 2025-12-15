@@ -12,8 +12,8 @@ printf '\n%s' "rm -f /usr/local/share/applications/$APP-AM.desktop" >> ../remove
 chmod a+x ../remove || exit 1
 
 # DOWNLOAD AND PREPARE THE APP, $version is also used for updates
-version=$(curl --globoff --location --head -qfsS -X 'GET' --retry 3 --header "Authorization: Bearer QQ==" https://app.gitbutler.com/downloads/release/linux/x86_64/gz | tr '">< ' '\n' | grep -i "http.*appimage" | head -1)
-wget "https://app.gitbutler.com/downloads/release/linux/x86_64/gz" --trust-server-names || exit 1
+version=$(curl -I https://app.gitbutler.com/downloads/release/linux/x86_64/gz 2>/dev/null | grep -Eoi "https.*releases.*appimage.*tar.gz" | head -1)
+wget "$version" || exit 1
 # Keep this space in sync with other installation scripts
 [ -e ./*tar.* ] && tar fx ./*tar.* && rm -f ./*tar.*
 cd ..
@@ -33,7 +33,7 @@ set -u
 APP=gitbutler
 SITE="https://gitbutler.com"
 version0=$(cat "/opt/$APP/version")
-version=$(curl --globoff --location --head -qfsS -X 'GET' --retry 3 --header "Authorization: Bearer QQ==" https://app.gitbutler.com/downloads/release/linux/x86_64/gz | tr '">< ' '\n' | grep -i "http.*appimage" | head -1)
+version=$(curl -I https://app.gitbutler.com/downloads/release/linux/x86_64/gz 2>/dev/null | grep -Eoi "https.*releases.*appimage.*tar.gz" | head -1)
 [ -n "$version" ] || { echo "Error getting link"; exit 1; }
 if command -v appimageupdatetool >/dev/null 2>&1; then
 	cd "/opt/$APP" || exit 1
@@ -42,7 +42,7 @@ fi
 if [ "$version" != "$version0" ]; then
 	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
 	notify-send "A new version of $APP is available, please wait"
-	wget "https://app.gitbutler.com/downloads/release/linux/x86_64/gz" --trust-server-names || exit 1
+	wget "$version" || exit 1
 	[ -e ./*tar.* ] && tar fx ./*tar.* && rm -f ./*tar.*
 	cd ..
 	mv --backup=t ./tmp/*mage ./"$APP"
