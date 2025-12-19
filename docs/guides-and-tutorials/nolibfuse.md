@@ -1,3 +1,18 @@
+# The `libfuse2` dependency issue in old AppImages
+The "libfuse.so.2" library (also known as "libfuse2") is a system library whose [support ended in January 2019](https://github.com/libfuse/libfuse/releases/tag/fuse-2.9.9). Old AppImages built with the old runtime still depend on it.
+
+Because it is insecure, **many Linux distributions stopped including it by default long ago**, while still maintaining the package in their repositories.
+
+In "AM", to allow old AppImages to run on systems without libfuse2, there are two solutions:
+1. The `--sandbox` option, to run the AppImage in a Bubblewrap sandbox (using SAS or Aisap as a frontend), automatically enabling `--appimage-extract-and-run` on each instance. Certainly the safest and most convenient solution.
+2. The `nolibfuse` option, which extracts and repackages the AppImage using the new runtime. A harmless solution, but it may impact system resources, depending on the size of the AppImage.
+
+This section focuses on the `nolibfuse` option. For `--sandbox`, [see the dedicated section](./sandbox.md).
+
+NOTE, what's done with the `nolibfuse` option should be done by upstream developers, in their workflows, with all the benefits that come with it, including the ability to include the necessary information in the package to allow delta updates to work with the appropriate tools. "AM" only extracts and repackages the AppImages, replacing the obsolete runtime they included, but if these include information for delta updates, they will be unusable (i.e., the "AM" update will be performed by downloading the AppImage from scratch, instead of the few bits that actually changed).
+
+------------------------------------------------------------------------
+
 ## Convert Type2 AppImages requiring libfuse2 to New Generation AppImages
 Option `nolibfuse` converts old Type2 AppImages asking for "libfuse2" into new generation AppImages:
 ```
