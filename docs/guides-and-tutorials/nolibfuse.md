@@ -4,7 +4,7 @@ The "libfuse.so.2" library (also known as "libfuse2") is a system library whose 
 Because it is insecure, **many Linux distributions stopped including it by default long ago**, while still maintaining the package in their repositories.
 
 In "AM", to allow old AppImages to run on systems without libfuse2, there are two solutions:
-1. The `--sandbox` option, to run the AppImage in a Bubblewrap sandbox (using SAS or Aisap as a frontend), automatically enabling `--appimage-extract-and-run` on each instance. Certainly the safest and most convenient solution.
+1. The `--sandbox` option, to run the AppImage in a Bubblewrap sandbox (using SAS or Aisap as a frontend). Certainly the safest and most convenient solution.
 2. The `nolibfuse` option, which extracts and repackages the AppImage using the new runtime. A harmless solution, but it may impact system resources, depending on the size of the AppImage.
 
 This section focuses on the `nolibfuse` option. For `--sandbox`, [see the dedicated section](./sandbox.md).
