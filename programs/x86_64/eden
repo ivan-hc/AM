@@ -12,10 +12,38 @@ printf '\n%s' "rm -f /usr/local/share/applications/$APP-AM.desktop" >> ../remove
 chmod a+x ../remove || exit 1
 
 # DOWNLOAD AND PREPARE THE APP, $version is also used for updates
-version=$(curl -Ls https://api.github.com/repos/eden-emulator/Releases/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | head -1)
-wget "$version" || exit 1
-# Keep this space in sync with other installation scripts
-# Use tar fx ./*tar* here for example in this line in case a compressed file is downloaded.
+read -r -p "
+ Choose which version of $APP AppImage to use:
+
+ 1) AMD64 (PGO)
+ 2) AMD64 (STANDARD)
+ 3) LEGACY (PGO)
+ 4) LEGACY (STANDARD)
+ 5) ROG-ALLY (PGO)
+ 6) ROG-ALLY (STANDARD)
+ 7) STEAMDECK (PGO)
+ 8) STEAMDECK (STANDARD)
+
+ Which version you choose (type a number and press ENTER)?" response
+RELEASE=""
+case "$response" in
+	1) RELEASE="amd64"; CLASS="pgo";;
+	2) RELEASE="amd64"; CLASS="standard";;
+	3) RELEASE="legacy"; CLASS="pgo";;
+	4) RELEASE="legacy"; CLASS="standard";;
+	5) RELEASE="rog"; CLASS="pgo";;
+	6) RELEASE="rog"; CLASS="standard";;
+	7) RELEASE="steamdeck"; CLASS="pgo";;
+	8) RELEASE="steamdeck"; CLASS="standard";;
+esac
+[ -z "$RELEASE" ] && exit 1
+
+version=$(curl -Ls https://api.github.com/repos/eden-emulator/Releases/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | grep -i "$RELEASE.*$CLASS" | head -1)
+if [ -z "$version" ]; then
+	printf "\n 💀 ERROR: it seems that upstream removed %b, please retry\n" "$RELEASE" && exit 1
+else
+	wget "$version" || exit 1
+fi
 cd ..
 mv ./tmp/*mage ./"$APP"
 # Keep this space in sync with other installation scripts
@@ -33,7 +61,7 @@ set -u
 APP=eden
 SITE="eden-emulator/Releases"
 version0=$(cat "/opt/$APP/version")
-version=$(curl -Ls https://api.github.com/repos/eden-emulator/Releases/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | head -1)
+version=$(curl -Ls https://api.github.com/repos/eden-emulator/Releases/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | grep -i "TYPE.*CLASS" | head -1)
 [ -n "$version" ] || { echo "Error getting link"; exit 1; }
 if command -v appimageupdatetool >/dev/null 2>&1; then
 	cd "/opt/$APP" || exit 1
@@ -55,6 +83,7 @@ else
 fi
 EOF
 chmod a+x ./AM-updater || exit 1
+sed -i "s/TYPE/$RELEASE/g; s/CLASS/$CLASS/g" /opt/"$APP"/AM-updater
 
 # LAUNCHER & ICON
 ./"$APP" --appimage-extract *.desktop 1>/dev/null && mv ./squashfs-root/*.desktop ./"$APP".desktop
