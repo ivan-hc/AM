@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="9.9.1-5"
+AMVERSION="9.9.1-6"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -80,6 +80,13 @@ APPMANCONFIG="$CONFIGDIR/appman"
 SCRIPTDIR="${SCRIPTDIR:-$(xdg-user-dir DESKTOP 2>/dev/null)}"
 [ -d "$SCRIPTDIR" ] || SCRIPTDIR="$PWD"
 export SCRIPTDIR
+
+# Determine the directory of the launchers
+if ! command -v hildon-home 1>/dev/null; then
+	LAUNCHERS_DIR="applications"
+else
+	LAUNCHERS_DIR="applications/hildon"
+fi
 
 # Colors
 RED='\033[0;31m'
@@ -288,7 +295,7 @@ _appman() {
 	else
 		APPSDIR="$(head -1 "$APPMANCONFIG"/appman-config 2>/dev/null)"
 	fi
-	mkdir -p "$BINDIR" "$DATADIR"/applications "$DATADIR"/icons || exit 1
+	mkdir -p "$BINDIR" "$DATADIR"/"$LAUNCHERS_DIR" "$DATADIR"/icons || exit 1
 	AMCLI="appman"
 	AMCLIPATH="$DIR/$AMCLI"
 	SUDOCMD=""
@@ -1014,7 +1021,7 @@ _clean_all_tmp_directories_from_appspath() {
 }
 
 _clean_launchers() {
-	if [ -d "$DATADIR"/applications/AppImages ]; then
+	if [ -d "$DATADIR"/"$LAUNCHERS_DIR"/AppImages ]; then
 		rm -f "$AMCACHEDIR"/mountpoints
 		for var in "$DATADIR"/applications/AppImages/*.desktop; do
 			# full path to appimage
@@ -1052,7 +1059,7 @@ _clean_launchers() {
 		[ -z "$mountpoint_enabled" ] && [ -n "$BINDIR" ] && cd "$BINDIR" && find . -xtype l -delete
 		rm -f "$AMCACHEDIR"/mountpoints
 		echo $' ✔ Removed orphaned launchers produced with the "--launcher" option'
-		rmdir "$DATADIR"/applications/AppImages
+		rmdir "$DATADIR"/"$LAUNCHERS_DIR"/AppImages
 	else
 		[ -n "$BINDIR" ] && cd "$BINDIR" && find . -xtype l -delete
 	fi
@@ -1476,14 +1483,14 @@ _update_launchers_not_found_msg() {
 _update_launchers() {
 	_clean_launchers 2>/dev/null 1>/dev/null
 	MISSING_LAUNCHERS_MSG="No launcher found, use option \"--launcher\" to create them."
-	[ ! -d "$DATADIR"/applications/AppImages ] && _update_launchers_not_found_msg && exit 0
-	[ -d "$DATADIR"/applications/AppImages ] && [ -z "$( ls -A "$DATADIR"/applications/AppImages )" ] && _update_launchers_not_found_msg && exit 0
+	[ ! -d "$DATADIR"/"$LAUNCHERS_DIR"/AppImages ] && _update_launchers_not_found_msg && exit 0
+	[ -d "$DATADIR"/"$LAUNCHERS_DIR"/AppImages ] && [ -z "$( ls -A "$DATADIR"/"$LAUNCHERS_DIR"/AppImages )" ] && _update_launchers_not_found_msg && exit 0
 	if ! command -v appimageupdatetool 1>/dev/null; then
 		update_launchers_error_message=" 💀 ERROR! Missing command \"${RED}appimageupdatetool\033[0m\", install it and retry!"
 		printf "%b\n%b\n%b\n" "$DIVIDING_LINE" "$update_launchers_error_message" "$DIVIDING_LINE"
 	else
 		echo $" ◆ Update local AppImages integrated manually"
-		for var in "$DATADIR"/applications/AppImages/*.desktop; do
+		for var in "$DATADIR"/"$LAUNCHERS_DIR"/AppImages/*.desktop; do
 			appimage_full_path=$(awk -F'=| ' '/Exec=/{print $2; exit}' "$var" | sed 's/"//g; s/\s.*$//')
 			appimagename=$(basename -- "$appimage_full_path")
 			appimage_path=$(echo "$appimage_full_path" | sed -E 's|/[^/]+$|/|; s/\/*$//g')
