@@ -60,6 +60,8 @@ You can use the command `am -a {PROGRAM}` to view the description and get the so
 
    - [Do you own a repository for AppImages external to this database? Follow these instructions!](#do-you-own-a-repository-for-appimages-external-to-this-database-follow-these-instructions)
 
+[Graphical User Interface (GUI)](#graphical-user-interface)
+
 [Translate "AM" in your local language](#translate-am-in-your-local-language)
 
 [How to update all programs, for real!](#how-to-update-all-programs-for-real)
@@ -358,6 +360,30 @@ For more details on how the `-e` or `extra` option works, see [here](https://git
 | - |
 
 ------------------------------------------------------------------------
+
+# Graphical User Interface
+An experimental GUI is provided by [@Shikakiben](https://github.com/Shikakiben) and its available in this other repository:
+
+https://github.com/Shikakiben/AM-GUI
+
+| Light theme | Dark theme |
+| - | - |
+| <img src="https://raw.githubusercontent.com/Shikakiben/AM-GUI/refs/heads/main/screenshots/light.png" width="800"/> | <img src="https://raw.githubusercontent.com/Shikakiben/AM-GUI/refs/heads/main/screenshots/dark.png" width="800"/> |
+
+To install it, run the following command
+```
+am -i am-gui
+```
+
+⚠️ **NOTE: This project is under development and some features may not work or may be incomplete.**
+
+------------------------------------------------------------------------
+
+| [Back to "Main Index"](#main-index) |
+| - |
+
+------------------------------------------------------------------------
+
 # Translate "AM" in your local language
 Since version 9.8 it is possible to add and use alternative languages ​​via the `translate` option, use:
 ```
@@ -1058,6 +1084,8 @@ Below you can access documentation pages for common issues and frequently asked 
 #### Side Projects
 - *[amcheck](https://github.com/ivan-hc/amcheck), checks the validity of scripts in this database and monitors the availability of AppImages*
 - *[am-extras](https://github.com/ivan-hc/am-extras), lists applications from third-party databases*
+- *[am-gui](https://github.com/Shikakiben/AM-GUI), a graphical Front for AM, by @Shikakiben*
+- *[vappman](https://github.com/joedefen/vappman), a visual (curses) TUI interface to AppMan, by joedefen*
 
 #### External tools and forks used in this project
 - *[aisap](https://github.com/mgord9518/aisap) and [sas](https://github.com/Samueru-sama/simple-appimage-sandbox), sandboxing solutions for AppImages, see sandboxing options above*
