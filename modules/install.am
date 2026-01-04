@@ -17,17 +17,27 @@ _convert_to_appman_compatible_script() {
 	_appman
 	if [ -d "$APPMAN_APPSPATH" ]; then
 		sed -i "s# /usr/local/bin# $BINDIR#g" ./"$arg"
-		sed -i "s# /usr/local/share/applications# $DATADIR/applications#g" ./"$arg"
+		if ! command -v hildon-home 1>/dev/null; then
+			sed -i "s# /usr/local/share/applications# $DATADIR/applications/hildon#g" ./"$arg"
+		else
+			sed -i "s# /usr/local/share/applications# $DATADIR/applications#g" ./"$arg"
+		fi
 		sed -i "s# /opt# $APPMAN_APPSPATH#g" ./"$arg"
 		sed -i "s# https://api.github.com#$HeaderAuthWithGITPAT https://api.github.com#g" ./"$arg"
 		cat <<-HEREDOC >> ./"$arg"
 
 		# POST INSTALLATION PATCH FOR ALL LAUNCHERS
-		sed -i "s#Exec=\$APP#Exec=$BINDIR/\$APP#g" $DATADIR/applications/*-AM.desktop
-		sed -i "s#Exec=/usr/bin/#Exec=$BINDIR/#g" $DATADIR/applications/*-AM.desktop
-		sed -i "s#Exec=/opt/#Exec=$HOME/$APPSDIR#g" $DATADIR/applications/*-AM.desktop
-		sed -i "s#Icon=/opt/#Icon=$HOME/$APPSDIR#g" $DATADIR/applications/*-AM.desktop
-
+		if ! command -v hildon-home 1>/dev/null; then
+			sed -i "s#Exec=\$APP#Exec=$BINDIR/\$APP#g" $DATADIR/applications/*-AM.desktop
+			sed -i "s#Exec=/usr/bin/#Exec=$BINDIR/#g" $DATADIR/applications/*-AM.desktop
+			sed -i "s#Exec=/opt/#Exec=$HOME/$APPSDIR#g" $DATADIR/applications/*-AM.desktop
+			sed -i "s#Icon=/opt/#Icon=$HOME/$APPSDIR#g" $DATADIR/applications/*-AM.desktop
+		else
+			sed -i "s#Exec=\$APP#Exec=$BINDIR/\$APP#g" $DATADIR/applications/hildon/*-AM.desktop
+			sed -i "s#Exec=/usr/bin/#Exec=$BINDIR/#g" $DATADIR/applications/hildon/*-AM.desktop
+			sed -i "s#Exec=/opt/#Exec=$HOME/$APPSDIR#g" $DATADIR/applications/hildon/*-AM.desktop
+			sed -i "s#Icon=/opt/#Icon=$HOME/$APPSDIR#g" $DATADIR/applications/hildon/*-AM.desktop
+		fi
 		HEREDOC
 		printf $" Converting %s to an AppMan-compatible script.\r" "$arg" && sleep 0.25 &&
 		printf "                                                                           \r"
@@ -189,10 +199,17 @@ _apply_patches() {
 	# Patches /usr/local for $HOME equivalent for AppMan
 	if [ "$AMCLI" = "appman" ]; then
 		sed -i "s#/usr/local/bin#$BINDIR#g" ./"$arg"
+		if command -v hildon-home 1>/dev/null; then
+			sed -i "s#/usr/local/share/applications#$DATADIR/share/applications/hildon#g" ./"$arg"
+		fi
 		sed -i "s#/usr/local/share#$DATADIR#g" ./"$arg"
 		sed -i "s#/opt/#$APPSPATH/#g" ./"$arg"
 	else
-		"$SUDOCMD" mkdir -p /usr/local/share/applications /usr/local/bin
+		if ! command -v hildon-home 1>/dev/null; then
+			"$SUDOCMD" mkdir -p /usr/local/share/applications /usr/local/bin
+		else
+			"$SUDOCMD" mkdir -p /usr/local/share/applications/hildon /usr/local/bin
+		fi
 	fi
 	# Patch to apply to installation scripts
 	sed -i "s# https://api.github.com#$HeaderAuthWithGITPAT https://api.github.com#g" ./"$arg"
@@ -233,11 +250,19 @@ _post_installation_processes() {
 		&& wget -q "$AMCATALOGUEICONS"/"$arg".png -O "${LASTDIRPATH}"/icons/"$arg" 2>/dev/null
 	# Patch .desktop to change paths if the app is installed locally
 	if [ "$AMCLI" = "appman" ]; then
-		for a in $DATADIR/applications/*-AM.desktop; do
-			sed -i "s#Exec=$pure_arg#Exec=$BINDIR/$pure_arg#g" "$a" 2>/dev/null
-			sed -i "s#Exec=/usr/bin/#Exec=$BINDIR/#g" "$a" 2>/dev/null
-			sed -i "s#Exec=/opt/#Exec=$BINDIR/#g" "$a" 2>/dev/null
-		done
+		if ! command -v hildon-home 1>/dev/null; then
+			for a in $DATADIR/applications/*-AM.desktop; do
+				sed -i "s#Exec=$pure_arg#Exec=$BINDIR/$pure_arg#g" "$a" 2>/dev/null
+				sed -i "s#Exec=/usr/bin/#Exec=$BINDIR/#g" "$a" 2>/dev/null
+				sed -i "s#Exec=/opt/#Exec=$BINDIR/#g" "$a" 2>/dev/null
+			done
+		else
+			for a in $DATADIR/applications/hildon/*-AM.desktop; do
+				sed -i "s#Exec=$pure_arg#Exec=$BINDIR/$pure_arg#g" "$a" 2>/dev/null
+				sed -i "s#Exec=/usr/bin/#Exec=$BINDIR/#g" "$a" 2>/dev/null
+				sed -i "s#Exec=/opt/#Exec=$BINDIR/#g" "$a" 2>/dev/null
+			done
+		fi
 	fi
 	# Export all icons for hicolor theme usage
 	if echo "$FLAGS" | grep -q -- '--icons'; then
