@@ -1085,7 +1085,7 @@ Below you can access documentation pages for common issues and frequently asked 
 - *[amcheck](https://github.com/ivan-hc/amcheck), checks the validity of scripts in this database and monitors the availability of AppImages*
 - *[am-extras](https://github.com/ivan-hc/am-extras), lists applications from third-party databases*
 - *[am-gui](https://github.com/Shikakiben/AM-GUI), a graphical Front for AM, by @Shikakiben*
-- *[vappman](https://github.com/joedefen/vappman), a visual (curses) TUI interface to AppMan, by joedefen*
+- *[vappman](https://github.com/joedefen/vappman), a visual (curses) TUI interface to AppMan, by @joedefen*
 
 #### External tools and forks used in this project
 - *[aisap](https://github.com/mgord9518/aisap) and [sas](https://github.com/Samueru-sama/simple-appimage-sandbox), sandboxing solutions for AppImages, see sandboxing options above*
