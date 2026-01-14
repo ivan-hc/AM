@@ -3,7 +3,7 @@
 # AM INSTALL SCRIPT VERSION 3.5
 set -u
 APP=SAMPLE
-SITE="REPLACETHIS";	SOURCE="BRANCH/ORG"
+SITE="REPLACETHIS"
 
 # CREATE DIRECTORIES AND ADD REMOVER
 [ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
@@ -12,10 +12,10 @@ printf '\n%s' "rm -f /usr/local/share/applications/$APP-AM.desktop" >> ../remove
 chmod a+x ../remove || exit 1
 
 # DOWNLOAD AND PREPARE THE APP, $version is also used for updates
-rel=$(curl -Ls "https://download.kde.org/$SOURCE/$APP" | tr '"></ ' '\n' | grep "^[0-9].*\.[0-9]" | sort -nru | head -1)
-package=$(curl -Ls "https://download.kde.org/$SOURCE/$APP/$rel" | tr '"></ ' '\n' | grep -i "appimage$" | head -1)
-version="https://download.kde.org/$SOURCE/$APP/$rel/$package"
+tag=$(curl -Ls "$SITE" | tr '">< ' '\n' | grep "^[0-9].*/$" | tail -1)
+version="$SITE/$tag$(curl -Ls "$SITE/$tag" | tr '">< ' '\n' | grep -i "x86.64.*appimage$" | head -1)"
 wget "$version" || exit 1
+# Use tar fx ./*tar* here for example in this line in case a compressed file is downloaded.
 cd ..
 mv ./tmp/*mage ./"$APP"
 # Keep this space in sync with other installation scripts
@@ -31,11 +31,9 @@ cat >> ./AM-updater << 'EOF'
 #!/bin/sh
 set -u
 APP=SAMPLE
-SITE="REPLACETHIS";	SOURCE="BRANCH/ORG"
+SITE="REPLACETHIS"
 version0=$(cat "/opt/$APP/version")
-rel=$(curl -Ls "https://download.kde.org/$SOURCE/$APP" | tr '"></ ' '\n' | grep "^[0-9].*\.[0-9]" | sort -nru | head -1)
-package=$(curl -Ls "https://download.kde.org/$SOURCE/$APP/$rel" | tr '"></ ' '\n' | grep -i "appimage$" | head -1)
-version="https://download.kde.org/$SOURCE/$APP/$rel/$package"
+tag=$(curl -Ls "$SITE" | tr '">< ' '\n' | grep "^[0-9].*/$" | tail -1); version="$SITE/$tag$(curl -Ls "$SITE/$tag" | tr '">< ' '\n' | grep -i "x86.64.*appimage$" | head -1)"
 [ -n "$version" ] || { echo "Error getting link"; exit 1; }
 if command -v appimageupdatetool >/dev/null 2>&1; then
 	cd "/opt/$APP" || exit 1
@@ -74,6 +72,6 @@ while [ "$COUNT" -lt 10 ]; do # Tries to get the actual icon/desktop if it is a 
 	[ ! -L ./"$APP".desktop ] && [ ! -L ./DirIcon ] && break
 	COUNT=$((COUNT + 1))
 done
-sed -i "s#Exec=[^ ]*#Exec=$APP#g; s#Icon=.*#Icon=/opt/$APP/icons/$APP#g; s# --no-sandbox##g" ./"$APP".desktop
+sed -i "s#Exec=[^ ]*#Exec=$APP#g; s#Icon=.*#Icon=/opt/$APP/icons/$APP#g" ./"$APP".desktop
 mv ./"$APP".desktop /usr/local/share/applications/"$APP"-AM.desktop && mv ./DirIcon ./icons/"$APP" 1>/dev/null
 rm -R -f ./squashfs-root
