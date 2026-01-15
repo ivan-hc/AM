@@ -299,7 +299,7 @@ _template_then_git_repo() {
 			GHURLPREVIEW_COMMAND="$CURL_COMMAND_REF_PREVIEW/$RESPONSE/releases$setlatest | sed 's/[()\",{} ]/\n/g' | grep -oi \"https.*\" | grep -vi \"i386\|i686\|aarch64\|arm64\|armv7l\" | head -1"
 			_template_test_github_url
 		fi
-		echo -e $"\n The URL above is an example of what both\n the install and update scripts will point to.\n"
+		echo -e $"\n The URL above is an example of what both\n the install and update scripts will point to.\n" | _fit
 	fi
 	echo "$DIVIDING_LINE"
 	# Add/remove keywords or leave blank to skip
@@ -318,7 +318,7 @@ _template_then_git_repo() {
 					GHURLPREVIEW_COMMAND="$CURL_COMMAND_REF_PREVIEW/$RESPONSE/releases$setlatest | sed 's/[()\",{} ]/\n/g' | grep -oi \"https.*\" | grep -vi \"i386\|i686\|aarch64\|arm64\|armv7l\" | grep -i \"$response\" | head -1"
 					_template_test_github_url
 				fi
-				echo -e $"\n The URL above is an example of what both\n the install and update scripts will point to.\n"
+				echo -e $"\n The URL above is an example of what both\n the install and update scripts will point to.\n" | _fit
 			fi
 		fi
 		;;
@@ -335,7 +335,7 @@ _template_then_git_repo() {
 					GHURLPREVIEW_COMMAND="$CURL_COMMAND_REF_PREVIEW/$RESPONSE/releases$setlatest | sed 's/[()\",{} ]/\n/g' | grep -oi \"https.*\" | grep -vi \"i386\|i686\|aarch64\|arm64\|armv7l\" | grep -v \"$response\" | head -1"
 					_template_test_github_url
 				fi
-				echo -e $"\n The URL above is an example of what both\n the install and update scripts will point to.\n"
+				echo -e $"\n The URL above is an example of what both\n the install and update scripts will point to.\n" | _fit
 			fi
 		fi
 		;;
@@ -381,11 +381,36 @@ _template_if_sourceforge() {
 		echo "version=\$(curl -Ls $SOURCEFORGE | tr '\">< ' '\n' | grep -i \"^https://sourceforge.net/projects/.*download\" | grep -i \"$filetype\" | grep -vi \"i386\\|i686\\|aarch64\\|arm64\\|armv7l\" | head -1)" >> ./am-scripts/"$MAIN_ARCH"/"$arg"
 		_edit_script_ending
 		curl -Ls "$SOURCEFORGE" | tr '">< ' '\n' | grep -i "^https://sourceforge.net/projects/.*download" | grep -i "$filetype" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | head -1
-		echo -e $"\n The URL above is an example of what both\n the install and update scripts will point to.\n"
+		echo -e $"\n The URL above is an example of what both\n the install and update scripts will point to.\n" | _fit
 	else
 		_template_custom_download_url_as_version_variable
 	fi
 	sed -i 's/*mage/*/g' ./am-scripts/"$MAIN_ARCH"/"$arg"
+}
+
+_template_if_download_kde_org() {
+	# TEST AVAILABLE ARTIFACTS
+	RESPONSE=$(echo "$RESPONSE" | awk -F/ '{print $1"//"$3"/"$4"/"$5}')
+	tag=$(curl -Ls "$RESPONSE" | tr '">< ' '\n' | grep "^[0-9].*/$" | tail -1)
+	download_kde_org_url_test="$RESPONSE/$tag$(curl -Ls "$RESPONSE/$tag" | tr '">< ' '\n' | grep -i "x86.64.*appimage$" | head -1)"
+	if curl --head --silent --fail "$download_kde_org_url_test" 1> /dev/null; then
+		# REPLACE SCRIPT
+		wget -q "$AMREPO"/templates/AM-SAMPLE-AppImage-download_kde_org -O ./am-scripts/"$MAIN_ARCH"/"$arg"
+		sed -i "s/SAMPLE/$arg/g" ./am-scripts/"$MAIN_ARCH"/"$arg"
+		printf "\n $download_kde_org_url_test\n"
+		echo -e $"\n The URL above is an example of what both\n the install and update scripts will point to.\n" | _fit
+	else
+		_template_custom_download_url_as_version_variable
+	fi
+	sed -i "s#REPLACETHIS#$RESPONSE#g" ./am-scripts/"$MAIN_ARCH"/"$arg"
+	echo "$DIVIDING_LINE"
+	# ADD A DESCRIPTION FOR THIS APPLICATION
+	read -r -ep $" ◆ ADD A BRIEF DESCRIPTION FOR THIS APPLICATION $(echo -e '\n : ')" COMMENT
+	case "$COMMENT" in
+	*)
+		_template_create_new_line_for_application_list
+		;;
+	esac
 }
 
 #####################################
@@ -434,6 +459,8 @@ for arg in $ARGS; do
 					_template_then_git_repo
 				elif echo "$RESPONSE" | grep -q "sourceforge"; then
 					_template_if_sourceforge
+				elif echo "$RESPONSE" | grep -qi "^https://download.kde.org/.*stable/"; then
+					_template_if_download_kde_org
 				else
 					_template_description_if_hosted_elsewhere
 					_template_help_by_repology
