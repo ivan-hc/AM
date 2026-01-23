@@ -2,8 +2,8 @@
 
 # AM INSTALL SCRIPT VERSION 3.5
 set -u
-APP=bambustudio
-SITE="bambulab/BambuStudio"
+APP=audiomoth-usb-microphone-app
+SITE="OpenAcousticDevices/AudioMoth-USB-Microphone-App"
 
 # CREATE DIRECTORIES AND ADD REMOVER
 [ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
@@ -12,32 +12,10 @@ printf '\n%s' "rm -f /usr/local/share/applications/$APP-AM.desktop" >> ../remove
 chmod a+x ../remove || exit 1
 
 # DOWNLOAD AND PREPARE THE APP, $version is also used for updates
-read -r -p "
- Choose which version of $APP AppImage to use:
-
- 1. Any (default)
-
- 2. Fedora-based
-
- 3. Ubuntu-based
-
- Which version you choose (type a number and press ENTER)?" response
-RELEASE=""
-if echo "$response" | grep -q "^2"; then
-	RELEASE="fedora"
-elif echo "$response" | grep -q "^3"; then
-	RELEASE="ubuntu"
-else
-	RELEASE="appimage"
-fi
-[ -z "$RELEASE" ] && exit 0
-
-version=$(curl -Ls https://api.github.com/repos/bambulab/BambuStudio/releases | sed 's/[()",{} ]/\n/g' | grep -io 'https.*age$' | grep -i "$RELEASE" | head -1)
-if [ -z "$version" ]; then
-	printf "\n 💀 ERROR: it seems that upstream removed %b, please retry\n" "$RELEASE" && exit 1
-else
-	wget "$version" || exit 1
-fi
+version=$(curl -Ls https://api.github.com/repos/OpenAcousticDevices/AudioMoth-USB-Microphone-App/releases/latest | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | head -1)
+wget "$version" || exit 1
+# Keep this space in sync with other installation scripts
+# Use tar fx ./*tar* here for example in this line in case a compressed file is downloaded.
 cd ..
 mv ./tmp/*mage ./"$APP"
 # Keep this space in sync with other installation scripts
@@ -52,10 +30,10 @@ ln -s "/opt/$APP/$APP" "/usr/local/bin/$APP"
 cat >> ./AM-updater << 'EOF'
 #!/bin/sh
 set -u
-APP=bambustudio
-SITE="bambulab/BambuStudio"
+APP=audiomoth-usb-microphone-app
+SITE="OpenAcousticDevices/AudioMoth-USB-Microphone-App"
 version0=$(cat "/opt/$APP/version")
-version=$(curl -Ls https://api.github.com/repos/bambulab/BambuStudio/releases | sed 's/[()",{} ]/\n/g' | grep -io 'https.*mage$' | grep -i "REPLACETHIS" | head -1)
+version=$(curl -Ls https://api.github.com/repos/OpenAcousticDevices/AudioMoth-USB-Microphone-App/releases/latest | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | head -1)
 [ -n "$version" ] || { echo "Error getting link"; exit 1; }
 if command -v appimageupdatetool >/dev/null 2>&1; then
 	cd "/opt/$APP" || exit 1
@@ -77,7 +55,6 @@ else
 fi
 EOF
 chmod a+x ./AM-updater || exit 1
-sed -i "s#REPLACETHIS#$RELEASE#g" /opt/"$APP"/AM-updater
 
 # LAUNCHER & ICON
 ./"$APP" --appimage-extract *.desktop 1>/dev/null && mv ./squashfs-root/*.desktop ./"$APP".desktop
