@@ -133,6 +133,24 @@ _downgrade_entries_filter() {
 		}'
 }
 
+_downgrade_no_snapshots() {
+	items=$(echo "$urls" | sed 's:.*/::' | sort -u --version-sort)
+	unique_urls=""
+	for i in $items; do
+		item=$(echo "$urls" | grep -i "$i" | head -1)
+		if [ -z "$unique_urls" ]; then
+			unique_urls=$(printf "%b\n" "$item")
+		else
+			unique_urls=$(printf "%b\n%b" "$item" "$unique_urls")
+		fi
+	done
+	if echo "$urls" | head -1 | grep -q "archimage"; then
+		urls=$(echo "$unique_urls" | grep -i "archimage5")
+	else
+		urls="$unique_urls"
+	fi
+}
+
 _downgrade() {
 		# Safety checks
 	if [ ! -f "$argpath"/AM-updater ]; then
@@ -149,14 +167,22 @@ _downgrade() {
 	cd "$argpath" || return 1
 	entries_list=$(_downgrade_entries_filter)
 	urls="$(eval "$entries_list" 2>/dev/null | grep -vi "zsync$")"
+
+	# Try to avoid multiple snapshots of the same version
+	echo "$DIVIDING_LINE"
+	read -r -p $" Do you want to exclude snapshot versions? (Y,n)" yn
+	if ! echo "$yn" | grep -i '^n' >/dev/null 2>&1; then
+		_downgrade_no_snapshots
+	fi
+
 	if ! echo "$urls" | grep -q "[0-9]"; then
 		echo $" ERROR: No valid links found, sorry!"
 		exit 1
 	fi
 	echo "$DIVIDING_LINE"
-	echo $"You have chosen to roll back \"$2\"."
+	echo $"You have chosen to roll back \"$2\"." | _fit
 	echo "$DIVIDING_LINE"
-	echo $"Select a URL from this menu (read carefully) or press ZERO to abort:"
+	echo $"Select a URL from this menu (read carefully) or press ZERO to abort:" | _fit
 	echo "$DIVIDING_LINE"
 	sleep 1
 	select d in $urls; do
