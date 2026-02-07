@@ -133,6 +133,19 @@ _downgrade_entries_filter() {
 		}'
 }
 
+_downgrade_no_snapshots() {
+	items=$(echo "$urls" | sed 's:.*/::' | sort -u --version-sort)
+	for i in $items; do
+		item=$(echo "$urls" | grep -i "$i" | head -1)
+		if [ -z "$unique_urls" ]; then
+			unique_urls=$(printf "%b\n" "$item")
+		else
+			unique_urls=$(printf "%b\n%b" "$item" "$unique_urls")
+		fi
+	done
+	urls="$unique_urls"
+}
+
 _downgrade() {
 		# Safety checks
 	if [ ! -f "$argpath"/AM-updater ]; then
@@ -149,6 +162,12 @@ _downgrade() {
 	cd "$argpath" || return 1
 	entries_list=$(_downgrade_entries_filter)
 	urls="$(eval "$entries_list" 2>/dev/null | grep -vi "zsync$")"
+
+	# Try to avoid multiple snapshots of the same version
+	if echo "$urls" | grep -q -- "github.com/ivan-hc/\|github.com/pkgforge-dev"; then
+		_downgrade_no_snapshots
+	fi
+
 	if ! echo "$urls" | grep -q "[0-9]"; then
 		echo $" ERROR: No valid links found, sorry!"
 		exit 1
