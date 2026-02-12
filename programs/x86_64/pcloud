@@ -12,8 +12,9 @@ printf '\n%s' "rm -f /usr/local/share/applications/$APP-AM.desktop" >> ../remove
 chmod a+x ../remove || exit 1
 
 # DOWNLOAD AND PREPARE THE APP, $version is also used for updates
-version=$(curl -Ls https://raw.githubusercontent.com/archlinux/aur/pcloud-drive/PKGBUILD | grep "^pkgver" | tr '=' '\n' | grep "^[0-9]" | head -1)
-_api_code=$(curl -Ls https://raw.githubusercontent.com/archlinux/aur/pcloud-drive/PKGBUILD | grep "^_api_code" | sed "s/'/\n/g" | grep . | tail -1)
+_aur_pkgbuild=$(curl -Ls https://raw.githubusercontent.com/archlinux/aur/pcloud-drive/PKGBUILD)
+version=$(echo "$_aur_pkgbuild" | grep "^pkgver" | tr '=' '\n' | grep "^[0-9]" | head -1)
+_api_code=$(echo "$_aur_pkgbuild" | grep "^_api_code" | sed "s/'/\n/g" | grep . | tail -1)
 _api_response="$(curl -s "https://api.pcloud.com/getpublinkdownload?code=${_api_code}")"
 _dlhost="$(echo "${_api_response}" | grep -E -o '[a-zA-Z0-9\-]+\.pcloud\.com' | head -n 2 | sort -R | head -n 1)"
 _dlpath="$(echo "${_api_response}" | grep -E -o "\"path\":\s{0,1}\".+\"" | cut -d '"' -f 4 | tr -d '\\')"
@@ -37,7 +38,8 @@ set -u
 APP=pcloud
 SITE="https://www.pcloud.com"
 version0=$(cat "/opt/$APP/version")
-version=$(curl -Ls https://raw.githubusercontent.com/archlinux/aur/pcloud-drive/PKGBUILD | grep "^pkgver" | tr '=' '\n' | grep "^[0-9]" | head -1)
+_aur_pkgbuild=$(curl -Ls https://raw.githubusercontent.com/archlinux/aur/pcloud-drive/PKGBUILD)
+version=$(echo "$_aur_pkgbuild" | grep "^pkgver" | tr '=' '\n' | grep "^[0-9]" | head -1)
 [ -n "$version" ] || { echo "Error getting link"; exit 1; }
 if command -v appimageupdatetool >/dev/null 2>&1; then
 	cd "/opt/$APP" || exit 1
@@ -46,7 +48,7 @@ fi
 if [ "$version" != "$version0" ]; then
 	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
 	notify-send "A new version of $APP is available, please wait"
-	_api_code=$(curl -Ls https://raw.githubusercontent.com/archlinux/aur/pcloud-drive/PKGBUILD | grep "^_api_code" | sed "s/'/\n/g" | grep . | tail -1)
+	_api_code=$(echo "$_aur_pkgbuild" | grep "^_api_code" | sed "s/'/\n/g" | grep . | tail -1)
 	_api_response="$(curl -s "https://api.pcloud.com/getpublinkdownload?code=${_api_code}")"
 	_dlhost="$(echo "${_api_response}" | grep -E -o '[a-zA-Z0-9\-]+\.pcloud\.com' | head -n 2 | sort -R | head -n 1)"
 	_dlpath="$(echo "${_api_response}" | grep -E -o "\"path\":\s{0,1}\".+\"" | cut -d '"' -f 4 | tr -d '\\')"
