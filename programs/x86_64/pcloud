@@ -13,7 +13,11 @@ chmod a+x ../remove || exit 1
 
 # DOWNLOAD AND PREPARE THE APP, $version is also used for updates
 version=$(curl -Ls https://raw.githubusercontent.com/archlinux/aur/pcloud-drive/PKGBUILD | grep "^pkgver" | tr '=' '\n' | grep "^[0-9]" | head -1)
-wget "https://p-lux2.pcloud.com$(curl -Ls "https://api.pcloud.com/getpublinkdownload?code=$(curl -Ls https://raw.githubusercontent.com/archlinux/aur/pcloud-drive/PKGBUILD | grep "^_api_code" | sed "s/'/\n/g" | grep . | tail -1)" | grep "path" | tr '"' '\n' | grep pcloud | tr '\\' '\n' | grep . | xargs | sed 's/ //g')" || exit 1
+_api_code=$(curl -Ls https://raw.githubusercontent.com/archlinux/aur/pcloud-drive/PKGBUILD | grep "^_api_code" | sed "s/'/\n/g" | grep . | tail -1)
+_api_response="$(curl -s "https://api.pcloud.com/getpublinkdownload?code=${_api_code}")"
+_dlhost="$(echo "${_api_response}" | grep -E -o '[a-zA-Z0-9\-]+\.pcloud\.com' | head -n 2 | sort -R | head -n 1)"
+_dlpath="$(echo "${_api_response}" | grep -E -o "\"path\":\s{0,1}\".+\"" | cut -d '"' -f 4 | tr -d '\\')"
+wget "https://${_dlhost}${_dlpath}" || exit 1
 # Keep this space in sync with other installation scripts
 # Use tar fx ./*tar* here for example in this line in case a compressed file is downloaded.
 cd ..
@@ -42,7 +46,11 @@ fi
 if [ "$version" != "$version0" ]; then
 	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
 	notify-send "A new version of $APP is available, please wait"
-	wget "https://p-lux2.pcloud.com$(curl -Ls "https://api.pcloud.com/getpublinkdownload?code=$(curl -Ls https://raw.githubusercontent.com/archlinux/aur/pcloud-drive/PKGBUILD | grep "^_api_code" | sed "s/'/\n/g" | grep . | tail -1)" | grep "path" | tr '"' '\n' | grep pcloud | tr '\\' '\n' | grep . | xargs | sed 's/ //g')" || exit 1
+	_api_code=$(curl -Ls https://raw.githubusercontent.com/archlinux/aur/pcloud-drive/PKGBUILD | grep "^_api_code" | sed "s/'/\n/g" | grep . | tail -1)
+	_api_response="$(curl -s "https://api.pcloud.com/getpublinkdownload?code=${_api_code}")"
+	_dlhost="$(echo "${_api_response}" | grep -E -o '[a-zA-Z0-9\-]+\.pcloud\.com' | head -n 2 | sort -R | head -n 1)"
+	_dlpath="$(echo "${_api_response}" | grep -E -o "\"path\":\s{0,1}\".+\"" | cut -d '"' -f 4 | tr -d '\\')"
+	wget "https://${_dlhost}${_dlpath}" || exit 1
 	# Use tar fx ./*tar* here for example in this line in case a compressed file is downloaded.
 	cd ..
 	mv --backup=t ./tmp/* ./"$APP"
