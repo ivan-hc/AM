@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="9.9.3"
+AMVERSION="9.9.3-1"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -796,6 +796,9 @@ _check_version_if_binary_in_place() {
 	APPVERSION=$(date -r "$argpath"/"$arg" "+%Y.%m.%d")
 }
 
+archived_apps=$(curl -Ls https://raw.githubusercontent.com/ivan-hc/My-workbench/refs/heads/main/archived-apps)
+obsolete_apps=$(curl -Ls https://raw.githubusercontent.com/ivan-hc/My-workbench/refs/heads/main/obsolete-apps)
+
 _check_version() {
 	rm -f "$AMCACHEDIR"/version-args
 	_determine_args
@@ -818,6 +821,13 @@ _check_version() {
 			fi
 			if [ -z "$APPVERSION" ]; then
 				[ -f "$argpath"/"$arg" ] && _check_version_if_binary_in_place || APPVERSION="unknown"
+			fi
+			if echo "$archived_apps" | grep -q "^$arg$"; then
+				APPVERSION="$APPVERSION is ARCHIVED"
+			fi
+			if echo "$obsolete_apps" | grep -q "^$arg [0-9]"; then
+				obsolete_last_release=$(echo "$obsolete_apps" | grep "^$arg " | awk '{print $2}')
+				APPVERSION="$APPVERSION, of $obsolete_last_release"
 			fi
 			if ! grep -q " ◆ $arg	|" "$AMCACHEDIR"/version-args 2>/dev/null; then
 				echo " ◆ $arg	|	$APPVERSION" >> "$AMCACHEDIR"/version-args
