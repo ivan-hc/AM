@@ -1,0 +1,46 @@
+name: "Check archived and obsolete sources"
+
+on:
+  workflow_dispatch:
+  push:
+    branches: dev
+    paths:
+      - programs/archived-apps
+      - programs/obsolete-apps
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sync-files:
+    name: "Run sync"
+    runs-on: ubuntu-latest
+    outputs:
+      message: ${{ steps.commit_message.outputs.message }}
+    steps:
+      - name: "Checkout source repository"
+        uses: actions/checkout@v6
+
+      - name: "Get commit message"
+        id: commit_message
+        run: |
+          COMMIT_MESSAGE="Update list of archived and obsolete sources"
+          echo "message=$COMMIT_MESSAGE" >> $GITHUB_OUTPUT
+
+      - name: "Run test"
+        run: |
+          chmod a+x ./check-obsolete-sources.sh
+          ./check-obsolete-sources.sh
+
+      - name: "Push to Source"
+        run: |
+          git config --global user.name "web-flow"
+          git config --global user.email "noreply@github.com"
+          git add programs/archived-apps programs/obsolete-apps
+          if git diff-index --quiet HEAD; then
+            echo "No changes to commit." >> $GITHUB_STEP_SUMMARY
+          else
+            git commit -m "${{ steps.commit_message.outputs.message }}"
+            git push && echo "Sync to Source succeeded" >> $GITHUB_STEP_SUMMARY
+          fi
