@@ -1,0 +1,59 @@
+#!/bin/sh
+
+# AM INSTALL SCRIPT VERSION 3.5
+set -u
+APP=geargrafx
+SITE="drhelius/Geargrafx"
+
+# CREATE DIRECTORIES AND ADD REMOVER
+[ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
+printf "#!/bin/sh\nset -e\nrm -f /usr/local/bin/$APP\nrm -R -f /opt/$APP" > ../remove
+printf '\n%s' "rm -f /usr/local/share/applications/$APP-AM.desktop" >> ../remove
+chmod a+x ../remove || exit 1
+
+# DOWNLOAD AND PREPARE THE APP
+version=$(curl -Ls https://api.github.com/repos/drhelius/Geargrafx/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*download.*ubuntu.*zip" | head -1)
+wget "$version" || exit 1
+[ -e ./*zip ] && unzip ./*.zip && rm -f ./*.zip
+cd ..
+mv ./tmp/geargrafx ./geargrafx
+[ -f ./tmp/gamecontrollerdb.txt ] && mv ./tmp/gamecontrollerdb.txt ./gamecontrollerdb.txt
+rm -R -f ./tmp || exit 1
+echo "$version" > ./version
+chmod a+x ./geargrafx || exit 1
+
+# LINK TO PATH
+ln -s "/opt/$APP/geargrafx" "/usr/local/bin/geargrafx"
+
+# DOWNLOAD DESKTOP FILE AND ICON FROM GITHUB
+wget -q -O /usr/local/share/applications/geargrafx-AM.desktop 'https://aur.archlinux.org/cgit/aur.git/plain/geargrafx.desktop?h=geargrafx'
+
+# FIX PATHS AND NAME IN DESKTOP FILE
+sed -i 's|^Exec=.*|Exec=geargrafx|;' /usr/local/share/applications/geargrafx-AM.desktop
+
+# SCRIPT TO UPDATE THE PROGRAM
+cat >> ./AM-updater << 'EOF'
+#!/bin/sh
+set -u
+APP=geargrafx
+SITE="drhelius/Geargrafx"
+version0=$(cat "/opt/$APP/version")
+version=$(curl -Ls https://api.github.com/repos/drhelius/Geargrafx/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*download.*ubuntu.*zip" | head -1)
+[ -n "$version" ] || { echo "Error getting link"; exit 1; }
+if [ "$version" != "$version0" ]; then
+	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
+	notify-send "A new version of $APP is available, please wait"
+	wget "$version" || exit 1
+	[ -e ./*zip ] && unzip ./*.zip && rm -f ./*.zip
+	cd ..
+	mv --backup=t ./tmp/geargrafx ./geargrafx
+	[ -f ./tmp/gamecontrollerdb.txt ] && mv ./tmp/gamecontrollerdb.txt ./gamecontrollerdb.txt
+	chmod a+x ./geargrafx || exit 1
+	echo "$version" > ./version
+	rm -R -f ./tmp ./*~
+	notify-send "$APP updated!"
+else
+	echo "Update not needed!"
+fi
+EOF
+chmod a+x ./AM-updater || exit 1

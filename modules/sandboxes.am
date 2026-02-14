@@ -10,7 +10,7 @@ SUDOCMD_ORIGIN="$SUDOCMD"
 # Get xdg variables for _configure_dirs_access
 for DIR in DESKTOP DOCUMENTS DOWNLOAD GAMES MUSIC PICTURES VIDEOS; do
 	eval XDG_DIR="$(xdg-user-dir $DIR 2>/dev/null)"
-	[ "$(realpath "$XDG_DIR")" = "$HOME" ] && XDG_DIR=""
+	[ "$(readlink -f "$XDG_DIR")" = "$HOME" ] && XDG_DIR=""
 	eval $DIR="$XDG_DIR"
 done
 DESKTOP="$(echo "${DESKTOP:-~/Desktop}" | sed "s|$HOME|~|g")"
@@ -48,28 +48,27 @@ _disable_sandbox() {
 }
 
 _check_aisap() {
-	if [ "$1" = "aisap" ]; then
-		echo $" Error: You can't sandbox aisap"
+	if [ "$1" = "aisap" ] || [ "$1" = "sas" ]; then
+		echo $" Error: You can't sandbox $1"
 		return 1
-	elif ! command -v aisap 1>/dev/null; then
-		printf $'\n%s\n\n' " Error: You need aisap for this script work"
-		read -r -p $" ◆ DO YOU WISH TO INSTALL AISAP? Install size <5 MiB? (Y/n) " yn
-		if echo "$yn" | grep -i '^n' >/dev/null 2>&1; then
-			echo $" OPERATION ABORTED!"
-			return 1
-		fi
+	elif ! command -v aisap 1>/dev/null && ! command -v sas 1>/dev/null; then
+		printf $'\n%s\n' " ERROR: You need aisap or sas for this script to work"
+		printf $'\n%s\n\n' " NOTE: Only sas can sandbox DWARFS AppImages"
+		read -r -p $" ◆ DO YOU WISH TO INSTALL SAS? Install size <5 MiB? (Y/n) " yn
+		case "$yn" in
+			n*|N*) echo $" OPERATION ABORTED!"; return 1;;
+		esac
 		if [ "$CLI" = am ] && [ -f "$APPMANCONFIG"/appman-config ]; then
-			read -r -p $" ◆ DO YOU WISH TO INSTALL AISAP LOCALLY? (Y/n) " yn
-			if echo "$yn" | grep -i '^n' >/dev/null 2>&1; then
-				"$AMCLIPATH_ORIGIN" -i aisap >/dev/null 2>&1
-			else
-				"$AMCLIPATH_ORIGIN" -i --user aisap >/dev/null 2>&1
-			fi
+			read -r -p $" ◆ DO YOU WISH TO INSTALL SAS LOCALLY? (Y/n) " yn
+			case "$yn" in
+				n*|N*) "$AMCLIPATH_ORIGIN" -i sas >/dev/null 2>&1;;
+				''|*)  "$AMCLIPATH_ORIGIN" -i --user sas >/dev/null 2>&1;;
+			esac
 		else
-			"$AMCLIPATH_ORIGIN" -i aisap >/dev/null 2>&1
+			"$AMCLIPATH_ORIGIN" -i sas >/dev/null 2>&1
 		fi
-		command -v aisap 1>/dev/null || return 1
-		echo $" aisap installed successfully!"
+		command -v sas 1>/dev/null || return 1
+		echo $" sas installed successfully!"
 	fi
 	if [ -f "$BINDIR"/"$1" ]; then
 		SUDOCMD=""
@@ -78,7 +77,7 @@ _check_aisap() {
 
 _generate_sandbox_script() {
 	echo "$DIVIDING_LINE"
-	printf $'\n%s\n' " Making aisap sandbox script for \"$1\"..."
+	printf '\n%s\n' " Making aisap sandbox script for \"$1\"..."
 	tmpscript="$(cat <<-'HEREDOC'
 	#!/bin/sh
 	# aisap-am sandboxing script, aisap: https://github.com/mgord9518/aisap
@@ -87,25 +86,38 @@ _generate_sandbox_script() {
 	# The default location for the sandboxed home is in $HOME/.local/am-sandboxes
 	# But that location can be changed by setting the $SANDBOXDIR env variable
 
+	# Set common XDG variables
+	BINDIR="${XDG_BIN_HOME:-$HOME/.local/bin}"
+	DATADIR="${XDG_DATA_HOME:-$HOME/.local/share}"
+	CONFIGDIR="${XDG_CONFIG_HOME:-$HOME/.config}"
+	CACHEDIR="${XDG_CACHE_HOME:-$HOME/.cache}"
+
 	# Dependency check
-	if ! command -v aisap 1>/dev/null; then
-	  echo "You need aisap for this to work"
-	  notify-send -u critical "Sandbox error: Missing aisap dependency!"
+	if command -v sas 1>/dev/null; then
+	  SANDBOXCMD="sas"
+	elif command -v aisap 1>/dev/null; then
+	  SANDBOXCMD="aisap"
+	elif [ -f "$BINDIR/sas" ]; then
+	  SANDBOXCMD="$BINDIR/sas"
+	elif [ -f "$BINDIR/aisap" ]; then
+	  SANDBOXCMD="$BINDIR/aisap"
+	else
+	  echo "You need aisap or sas for this to work"
+	  notify-send -u critical "Sandbox error: Missing aisap/sas dependency!"
 	  exit 1
 	fi
-	# Set variables and create sandboxed dir.
+
+	# Set variables and create sandboxed dir
 	APPEXEC=DUMMY
 	chmod a-x "$APPEXEC" # Prevents accidental launch of app outside the sandbox
 	APPNAME="$(echo "$APPEXEC" | awk -F "/" '{print $NF}')"
 	SANDBOXDIR="${SANDBOXDIR:-$HOME/.local/am-sandboxes}"
-	DATADIR="${XDG_DATA_HOME:-$HOME/.local/share}"
-	CONFIGDIR="${XDG_CONFIG_HOME:-$HOME/.config}"
-	CACHEDIR="${XDG_CACHE_HOME:-$HOME/.cache}"
 	DBUS="$(ls /tmp/dbus* 2>/dev/null | head -1)"
+
 	# get xdg user dirs, unset if var = $HOME
 	for DIR in DESKTOP DOCUMENTS DOWNLOAD GAMES MUSIC PICTURES VIDEOS; do
 	  eval XDG_DIR="$(xdg-user-dir $DIR 2>/dev/null)"
-	  [ "$(realpath "$XDG_DIR")" = "$HOME" ] && XDG_DIR=""
+	  [ "$(readlink -f "$XDG_DIR")" = "$HOME" ] && XDG_DIR=""
 	  eval $DIR="$XDG_DIR"
 	done
 	# Use default location if var is not set
@@ -131,7 +143,7 @@ _generate_sandbox_script() {
 	  tmpsedEEE="$(sed 's|chmod a-x|chmod a+x|g' "$APPIMAGEDIR/AM-updater" 2>/dev/null)"
 	  [ -n "$tmpsedEEE" ] && echo "$tmpsedEEE" > "$APPIMAGEDIR/AM-updater" || return 1
 	  unset tmpsedEEE
-	  THISFILE="$(realpath "$0")"
+	  THISFILE="$(readlink -f "$0")"
 	  echo "✔ Replacing $THISFILE with a link to the AppImage..." \
 	    | fold -sw 77 | sed 's/^/   /g; s/   ✔/ ✔/g'
 	  SUDO ln -sf "$APPEXEC" "$THISFILE" || exit 1
@@ -143,11 +155,12 @@ _generate_sandbox_script() {
 	[ -z "$APPNAME" ] && exit 1
 	# Start at sandboxed home
 	# Edit below this to add or remove access to parts of the system
-	exec aisap --trust-once --level 1 \
+	exec "$SANDBOXCMD" --trust-once --level 1 \
 	--data-dir "$SANDBOXDIR/$APPNAME" \
 	--add-file "$DATADIR/${APPDATA:-$APPNAME}":rw \
 	--add-file "$DATADIR"/themes \
 	--add-file "$DATADIR"/icons \
+	--add-file "$DATADIR"/fonts \
 	--add-file "$CONFIGDIR/${APPCONF:-$APPNAME}":rw \
 	--add-file "$CONFIGDIR"/dconf \
 	--add-file "$CONFIGDIR"/gtk3.0 \
@@ -201,7 +214,7 @@ _configure_dirs_access() {
 		echo $"  Also aisap might not let $1 start when such paths are given"
 		printf $'\033[33m%s\n' "  Type the path to the directory"
 		read -r -p $"  Example: /media/external-drive or ~/Backups: " NEWDIR
-		NEWDIR="$(realpath "$NEWDIR")"
+		NEWDIR="$(readlink -f "$NEWDIR")"
 		case "$NEWDIR" in
 			"/"|"/home"|"$HOME"|"$DATADIR"|"$CONFIGDIR"|"$BINDIR")
 				notify-send -u critical "DO YOU WANT THE FBI TO GET YA?"

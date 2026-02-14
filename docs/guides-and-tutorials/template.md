@@ -435,25 +435,15 @@ All files and directories are created and saved in your XDG_DESKTOP directory (~
 ```
 ~/Desktop/am-scripts
 	|
-	|-portable-linux-apps.github.io
-	|	|
-	|	|-apps
-	|	|
-	|	|-icons
-	|
 	|-x86_64
 	|   |
 	|   |-$appname
 	|
 	|-list
 ```
-...where `portable-linux-apps.github.io` and `x86_64` are main directories, `apps` and `icons` are subdirectories, `$appname` is the script and `list` is the list of the applications you have created:
-1. fork this repository
-2. upload the `$appname` script from the `x86_64` directory to the "`programs/x86_64`" directory of the repository
-3. drag and drop all the .md Markdown files from `portable-linux-apps.github.io/apps` to the first comment
-4. still in the first comment, copy/paste the contents of the "`list`" file
-
-I'll take care of the rest.
+...where `x86_64` is a directory, `$appname` is the script and `list` is the list of the applications you have created:
+1. upload the `$appname` script to "[programs/x86_64](https://github.com/ivan-hc/AM/tree/main/programs/x86_64)"
+2. copy/paste the contents of the "`list`" file to [x86_64-apps](https://github.com/ivan-hc/AM/blob/main/programs/x86_64-apps)
 
 ------------------------------------------------------------------------
 

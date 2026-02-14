@@ -72,7 +72,7 @@ Check your `$country_code` (see above) and download the `$country_code.po` file 
 
 ## Which programs to use?
 
-You can use an offline editor like [Poedit](https://poedit.net/download), available in almost all distribution repositories (see https://pkgs.org/download/poedit), and there is also an unofficial AppImage, installable via AM/AppMan (`am -i poedit` or `appman -i poedit`).
+You can use an offline editor like [Poedit](https://poedit.net/download), available in almost all distribution repositories (see https://pkgs.org/download/poedit), and there is also an [unofficial AppImage](https://github.com/ivan-hc/Poedit-appimage) built by me, and installable via AM/AppMan (`am -i poedit` or `appman -i poedit`).
 
 Alternatively, use an online one: just search for "online .po editor" in your reference search engine and you will find several results, even free ones. These does not take up disk space and allows you to use your browser extensions, such as [this one](https://github.com/FilipePS/Traduzir-paginas-web) for Firefox-based browsers, to right-click and translate selected text.
 

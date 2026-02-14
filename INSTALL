@@ -1,10 +1,15 @@
 #!/bin/sh
+################################################################################################################################################################
+#
+#				"AM" INSTALL, version 20250702
+#
+################################################################################################################################################################
 
 # Colors
 RED='\033[0;31m'; LightBlue='\033[1;34m'; Green='\033[0;32m'
 
 # For developers
-AM_BRANCH="main"
+[ -z "$AM_BRANCH" ] && AM_BRANCH="main"
 
 # Check dependencies for this script
 _check_dependency() {
@@ -36,13 +41,19 @@ _prepare_am_directory() {
 	printf '%s\n' 'rm -R -f /opt/am' >> /opt/am/remove
 	chmod a+x /opt/am/remove || exit 1
 
-	# DOWNLOAD AND LINK THE MAIN SCRIPT
+	# DOWNLOAD THE MAIN SCRIPT
 	if ! wget -q "https://raw.githubusercontent.com/ivan-hc/AM/$AM_BRANCH/APP-MANAGER"; then
 		echo "💀 ERROR: Cannot download am"
 		exit 1
 	fi
 	chmod a+x /opt/am/APP-MANAGER
-	ln -fs /opt/am/APP-MANAGER /usr/local/bin/am 2> /dev/null || printf "${RED}WARNING: Couldn't link am to \"/usr/local/bin/am\"!\033[0m\n"
+	# LINK THE MAIN SCRIPT IN $PATH
+	if uname -a | grep -qi "Linux deck \|Linux steamdeck "; then
+		[ -d "/home/${SUDO_USER:-$DOAS_USER}" ] && BINDIR="/home/${SUDO_USER:-$DOAS_USER}/.local/bin" || BINDIR=""
+		[ -n "$BINDIR" ] && mkdir -p "$BINDIR" && ln -fs /opt/am/APP-MANAGER "$BINDIR"/am 2>/dev/null && sed -i "s#/usr/local/bin#$BINDIR#g" /opt/am/remove
+	else
+		ln -fs /opt/am/APP-MANAGER /usr/local/bin/am 2>/dev/null || printf "${RED}WARNING: Couldn't link am to \"/usr/local/bin/am\"!\033[0m\n"
+	fi
 }
 
 _download_am_modules() {

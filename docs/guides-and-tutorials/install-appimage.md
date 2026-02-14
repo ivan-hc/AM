@@ -25,7 +25,7 @@ In the video above, before proceeding I use the command `am -q` and `am -q --app
 
 ------------------------------------------------------------------------
 ## Install and sandbox AppImages in one go
-There is also a declination of `-ia`, namely `-ias` (Install AppImage & Sandox) which is equivalent to `-ia --sandbox` to start the sandbox configuration process via Aisap/Bubblewrap at the end of each installation
+There is also a declination of `-ia`, namely `-ias` (Install AppImage & Sandox) which is equivalent to `-ia --sandbox` to start the sandbox configuration process via Bubblewrap at the end of each installation
 ```
 am -ias {PROGRAM}
 am -ias --user {PROGRAM}

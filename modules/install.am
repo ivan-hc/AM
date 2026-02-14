@@ -17,16 +17,16 @@ _convert_to_appman_compatible_script() {
 	_appman
 	if [ -d "$APPMAN_APPSPATH" ]; then
 		sed -i "s# /usr/local/bin# $BINDIR#g" ./"$arg"
-		sed -i "s# /usr/local/share/applications# $DATADIR/applications#g" ./"$arg"
+		sed -i "s# /usr/local/share/applications# $DATADIR/$LAUNCHERS_DIR#g" ./"$arg"
 		sed -i "s# /opt# $APPMAN_APPSPATH#g" ./"$arg"
 		sed -i "s# https://api.github.com#$HeaderAuthWithGITPAT https://api.github.com#g" ./"$arg"
 		cat <<-HEREDOC >> ./"$arg"
 
 		# POST INSTALLATION PATCH FOR ALL LAUNCHERS
-		sed -i "s#Exec=\$APP#Exec=$BINDIR/\$APP#g" $DATADIR/applications/*-AM.desktop
-		sed -i "s#Exec=/usr/bin/#Exec=$BINDIR/#g" $DATADIR/applications/*-AM.desktop
-		sed -i "s#Exec=/opt/#Exec=$HOME/$APPSDIR#g" $DATADIR/applications/*-AM.desktop
-		sed -i "s#Icon=/opt/#Icon=$HOME/$APPSDIR#g" $DATADIR/applications/*-AM.desktop
+		sed -i "s#Exec=\$APP#Exec=$BINDIR/\$APP#g" $DATADIR/$LAUNCHERS_DIR/*-AM.desktop
+		sed -i "s#Exec=/usr/bin/#Exec=$BINDIR/#g" $DATADIR/$LAUNCHERS_DIR/*-AM.desktop
+		sed -i "s#Exec=/opt/#Exec=$HOME/$APPSDIR#g" $DATADIR/$LAUNCHERS_DIR/*-AM.desktop
+		sed -i "s#Icon=/opt/#Icon=$HOME/$APPSDIR#g" $DATADIR/$LAUNCHERS_DIR/*-AM.desktop
 
 		HEREDOC
 		printf $" Converting %s to an AppMan-compatible script.\r" "$arg" && sleep 0.25 &&
@@ -37,7 +37,8 @@ _convert_to_appman_compatible_script() {
 }
 
 _download() {
-	if curl --output /dev/null --silent --head --fail "$APPSDB/$arg"  1>/dev/null; then
+	arg_script=$(curl -Ls "$APPSDB/$arg" 2>/dev/null)
+	if echo "$arg_script" | grep -q "^#"; then
 		cd "$SCRIPTDIR" || return 1
 		if [ -f ./"$arg" ] || [ -d ./"$arg" ]; then
 			echo $"✖ \"$SCRIPTDIR/$arg\" already exists!" | _fit && return 1
@@ -53,10 +54,31 @@ _download() {
 #				INSTALL
 ################################################################################
 
+_check_argument() {
+	printf $"NOTE:\n\n" | _fit
+	printf -- $"- to try to install AppImages (from github.com) not listed, use \"-e\"\n" | _fit
+	printf -- $"- to integrate random local AppImages to the app's menu, use \"--launcher\"\n" | _fit
+	printf -- $"- to create your own installation script, use \"-t\" or \"template\"\n" | _fit
+	printf $"\nFor more info, run \"$AMCLI -h\".\n" | _fit
+}
+
 _check_if_optional_dependences_are_needed() {
 	# Determine generic build utils
 	app_deps="ar gcc glib-compile-schemas make tar unzip"
-	script_content=$(cat ./"$arg")
+	# Determine if the argument is a script and not something else
+	if head -c10 ./"$arg" 2>/dev/null | grep -q "^#!"; then
+		script_content=$(cat ./"$arg")
+	elif head -c10 ./"$arg" 2>/dev/null | grep -qa '^.ELF....AI$'; then
+		printf $"💀 ERROR: this option is ment to handle installation scripts only! \n\n" | _fit
+		printf $" If this AppImage is not in our database, open an issue or a pull request at\n https://github.com/ivan-hc/AM\n\n" | _fit
+		_check_argument
+		return 1
+	else
+		printf $"💀 ERROR: \"$arg\" is not a valid file! \n\n" | _fit
+		printf $"This option is ment to handle installation scripts only! \n\n" | _fit
+		_check_argument
+		return 1
+	fi
 	# Determine if this is an AppImage that can be compiled on-the-fly
 	if grep -qi "^wget.*.sh.*chmod.*&&" ./"$arg"; then
 		appimage_bulder_script=$(grep "^wget " ./"$arg" | tr '"' '\n' | grep -i "^http" | sed "s/\$APP/$arg/g")
@@ -120,7 +142,7 @@ _check_if_script_installs_a_metapackage() {
 _check_if_spooky_flag_exists() {
 	# Determine if an installation script is flagged as "spooky"
 	if grep -i spooky ./"$arg" >/dev/null 2>&1; then
-		printf $"%b%b" " ${RED}WARNING:" " \"$arg\" does not have a transparent build process! \033[0m\n"
+		printf $" ${RED}WARNING: \"$arg\" does not have a transparent build process! \033[0m\n"
 		printf $"\n We can't be sure as to what is inside the application\n We highly recommend that you sandbox this application\n\n"
 		read -r -p $" Do you wish to continue? (N/y): " yn
 		if ! echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
@@ -167,10 +189,11 @@ _apply_patches() {
 	# Patches /usr/local for $HOME equivalent for AppMan
 	if [ "$AMCLI" = "appman" ]; then
 		sed -i "s#/usr/local/bin#$BINDIR#g" ./"$arg"
+		sed -i "s#/usr/local/share/applications#$DATADIR/$LAUNCHERS_DIR#g" ./"$arg"
 		sed -i "s#/usr/local/share#$DATADIR#g" ./"$arg"
 		sed -i "s#/opt/#$APPSPATH/#g" ./"$arg"
 	else
-		"$SUDOCMD" mkdir -p /usr/local/share/applications /usr/local/bin
+		"$SUDOCMD" mkdir -p /usr/local/share/"$LAUNCHERS_DIR" /usr/local/bin
 	fi
 	# Patch to apply to installation scripts
 	sed -i "s# https://api.github.com#$HeaderAuthWithGITPAT https://api.github.com#g" ./"$arg"
@@ -192,7 +215,7 @@ _post_installation_processes() {
 	LASTDIRPATH="${APPSPATH}/${LASTDIR}"
 	# Put permission check in remove script and change ownership of directory
 	if [ "$AMCLI" = am ]; then
-		$SUDOCMD sed -i '1 a [ "$(id -u)" -ne 0 ] && echo $"Permission denied" && exit 1' \
+		$SUDOCMD sed -i '1 a [ "$(id -u)" -ne 0 ] && echo "Permission denied" && exit 1' \
 			"${LASTDIRPATH}"/remove 2>/dev/null
 		$SUDOCMD chown -R "$USER" "${LASTDIRPATH}" 2>/dev/null
 	fi
@@ -200,7 +223,7 @@ _post_installation_processes() {
 	if [ -f "${LASTDIRPATH}"/AM-updater ]; then
 		mkdir "${LASTDIRPATH}"/.am-installer 2>/dev/null
 		if [ -z "$EXTRA_TRUE" ]; then
-			curl -Ls "$APPSDB"/"$arg" > "${LASTDIRPATH}"/.am-installer/"$arg"
+			echo "$arg_script" > "${LASTDIRPATH}"/.am-installer/"$arg"
 		else
 			touch "${LASTDIRPATH}"/.am-installer/"$arg".extra
 		fi
@@ -211,7 +234,7 @@ _post_installation_processes() {
 		&& wget -q "$AMCATALOGUEICONS"/"$arg".png -O "${LASTDIRPATH}"/icons/"$arg" 2>/dev/null
 	# Patch .desktop to change paths if the app is installed locally
 	if [ "$AMCLI" = "appman" ]; then
-		for a in $DATADIR/applications/*-AM.desktop; do
+		for a in $DATADIR/$LAUNCHERS_DIR/*-AM.desktop; do
 			sed -i "s#Exec=$pure_arg#Exec=$BINDIR/$pure_arg#g" "$a" 2>/dev/null
 			sed -i "s#Exec=/usr/bin/#Exec=$BINDIR/#g" "$a" 2>/dev/null
 			sed -i "s#Exec=/opt/#Exec=$BINDIR/#g" "$a" 2>/dev/null
@@ -225,8 +248,9 @@ _post_installation_processes() {
 
 _ending_the_installation() {
 	LASTDIR=$(ls -td "$APPSPATH"/* | head -1 | sed 's:.*/::')
-	[ -f "${LASTDIRPATH}"/AM-updater ] && sed -i "s#$ALT_GH#api.github.com#g" "${LASTDIRPATH}"/AM-updater 2>/dev/null
+	[ -f "${LASTDIRPATH}"/AM-updater ] && sed -i "s#$ALT_GH#https://api.github.com#g" "${LASTDIRPATH}"/AM-updater 2>/dev/null
 	if [ -f "${LASTDIRPATH}"/remove ]; then
+		[ -d "${LASTDIRPATH}"/AppDir ] && rmdir "${LASTDIRPATH}"/AppDir 2>/dev/null
 		if test -d "${LASTDIRPATH}"/tmp; then
 			echo $" 💀 ERROR DURING INSTALLATION, REMOVED $APPNAME!"
 			$SUDOCMD "$APPSPATH/$LASTDIR/remove" 1>/dev/null
@@ -236,7 +260,7 @@ _ending_the_installation() {
 		else
 			APPSIZE=$(du -sm "${LASTDIRPATH}" | awk '{print $1}' )
 			LASTDIRNAME=$(echo "\"$LASTDIR\"" | tr '[:lower:]' '[:upper:]')
-			printf $"%b%b%s\n" " ${Green}" "$LASTDIRNAME INSTALLED\033[0m" " ($APPSIZE MB OF DISK SPACE)"
+			printf "%b%b%s\n" " ${Green}" "$LASTDIRNAME INSTALLED\033[0m" " ($APPSIZE MB OF DISK SPACE)"
 			$SUDOCMD rm "$AMCACHEDIR"/"$arg"
 			_check_version
 			app_version=$(grep -w " ◆ $LASTDIR	|" 0<"$AMCACHEDIR"/version-args | sed 's:.*|	::')
@@ -245,6 +269,43 @@ _ending_the_installation() {
 		localscript_on=""
 	else
 		echo $" INSTALLATION ABORTED!"
+	fi
+}
+
+_install_script_retry() {
+	# Determine if the installation has stopped when trying to download the app
+	test_lastdir=$(ls -td "$APPSPATH"/* | head -1 | sed 's:.*/::')
+	test_lastdir_tmp="$APPSPATH/$test_lastdir/tmp"
+	printf " \n Oops! Something went wrong! Integrity check in progress... \n"
+	TAKES_COUNT=0
+	while [ "$TAKES_COUNT" -lt 5 ]; do
+		if [ -d "$test_lastdir_tmp" ]; then
+			if [ -z "$( ls -A "$test_lastdir_tmp" )" ]; then
+				printf "\n The file was not downloaded, attempt %b of 5 will start in 5 seconds...\n\n" "$((TAKES_COUNT + 1))"
+				sleep 5
+				$SUDOCMD ./"$arg"
+			fi
+		fi
+		TAKES_COUNT=$((TAKES_COUNT + 1))
+	done
+	# Check if the download was successful
+	if [ -d "$test_lastdir_tmp" ]; then
+		if [ -z "$( ls -A "$test_lastdir_tmp" )" ]; then
+			# Check for patches for this kind of installation script
+			printf "\n %bAny attempt to download the specified package failed.\033[0m\n" "${RED}"
+			printf "\n Check for available patches for this type of script:\n"
+			# If the install script contains a line starting with "version" and pointing to a generic "release"
+			# it's probably on github, and you can try to increase the number of pages to search in, up to 100
+			if grep -qi "^version=.*/repos/.*/releases " ./"$arg"; then
+				printf -- "\n %b✔ Attempting to extend pages in progress...\033[0m\n\n" "${Gold}"
+				sleep 5
+				sed -i 's#/releases #/releases?per\_page=100 #g' ./"$arg"
+				$SUDOCMD ./"$arg" || printf -- "\n %b✖ Failed! \033[0m \n" "${RED}"
+			else
+				# No patches found
+				printf -- "\n %b✖ No patch available! \033[0m \n" "${RED}"
+			fi
+		fi
 	fi
 }
 
@@ -261,11 +322,11 @@ _install_arg() {
 	if grep -q "api.github.com" ./"$arg"; then
 		GH_API_ALLOWED=$(curl -Ls "https://api.github.com/rate_limit" | tr '{,' '\n' | grep -i remaining | tail -1 | grep -Eo "[0-9]*")
 		if [ "$GH_API_ALLOWED" -le 10 ]; then
-			sed -i "s#api.github.com#$ALT_GH#g" ./"$arg"
+			sed -i "s#https://api.github.com#$ALT_GH#g" ./"$arg"
 		fi
 	fi
 	# Install script
-	$SUDOCMD ./"$arg"
+	$SUDOCMD ./"$arg" || _install_script_retry
 	echo ""
 	_post_installation_processes
 	_ending_the_installation
@@ -310,7 +371,7 @@ _install_local_script() {
 _install_normally() {
 	# This is for scripts hosted on the official online database
 	mkdir -p "$AMCACHEDIR"/tmp && rm -f "$AMCACHEDIR"/tmp/* || return 1
-	curl -Ls "$APPSDB"/"$arg" > "$AMCACHEDIR"/tmp/"$arg" || return 1
+	echo "$arg_script" > "$AMCACHEDIR"/tmp/"$arg" || return 1
 	cd "$AMCACHEDIR" && mv ./tmp/"$arg" ./"$arg" && rmdir ./tmp || return 1
 	_install_arg
 }
@@ -325,7 +386,9 @@ for tp_list in $third_party_lists; do
 done
 
 _remove_extensions_from_appname() {
-	pure_arg=$(echo "$pure_arg" | _remove_known_third_party_extensions)
+	for e in $third_party_lists; do
+		pure_arg=$(echo "$pure_arg" | sed "s/\.$e$//g")
+	done
 }
 
 _3rd_party_check() {
@@ -337,6 +400,26 @@ _3rd_party_curl_detect_item() {
 		[ -f "$AMDATADIR"/"$ARCH"-"$tp_list" ] && tp_lists="$tp_lists\n$(sort -u "$AMDATADIR"/"$ARCH"-"$tp_list")"
 	done
 	printf "\n%b\n" "$tp_lists" | grep -q "^◆ $arg : "
+}
+
+_3rd_party_template_manager() {
+	TEMPLATE_CONTENT=$(curl -Ls "$AMREPO/templates/$TEMPLATE_NAME" 2>/dev/null)
+	if echo "$TEMPLATE_CONTENT" | grep -q "^#"; then
+		# Commom patches
+		echo "$TEMPLATE_CONTENT" | sed "s#APP=SAMPLE#APP=$arg#g; \
+			s#REPLACETHIS#$tp_site_ref#g; \
+			s#FUNCTION#$awk_version#g; \
+			s#wget \"\$version\"#wget \$($third_party_url)#g; \
+			s/\*mage/\*/g" > "$CACHEDIR/extra/$arg.$tp_extension"
+		# Patch if local installation
+		[ "$AMCLI" = appman ] && sed -i "s#Exec=\$APP#Exec=$BINDIR/\$APP#g" "$CACHEDIR/extra/$arg.$tp_extension"
+		# Disable references on archive extractors
+		sed -e '/\[ -e/ s/^#*/#/' -i "$CACHEDIR/extra/$arg.$tp_extension" 2>/dev/null
+		# Detect items for ghrc-based scripts
+		if echo "$TEMPLATE_CONTENT" | grep -q "GHRC_REF"; then
+			sed -i "s#ITEM#\$($third_party_url)#g" "$CACHEDIR/extra/$arg.$tp_extension"
+		fi
+	fi
 }
 
 _3rd_party_apps_handler() {
@@ -359,15 +442,16 @@ _3rd_party_apps_handler() {
 	awk_version="curl -Ls $third_party_readme | grep -i \"^| $arg | .* | http.* | http.* | .* |$\" | tr '|' '\\\n' | cut -c 2- | grep . | awk -F: \"NR==$awk_ver\""
 	third_party_url="curl -Ls $third_party_readme | grep -i \"^| $arg | .* | http.* | http.* | .* |$\" | tr '|' '\\\n' | cut -c 2- | grep . | awk -F: \"NR==$awk_dl\""
 	# Determine if a third-party app has multiple variants
-	tpnumber=$(curl -Ls "$third_party_readme" | grep "^| $arg | .* | http.* | http.* | .* |$" | wc -l | sed 's/ //g')
+	third_party_readme_content=$(curl -Ls "$third_party_readme")
+	tpnumber=$(echo "$third_party_readme_content" | grep "^| $arg | .* | http.* | http.* | .* |$" | wc -l | sed 's/ //g')
 	if [ "$tpnumber" != 1 ]; then
-		about_site=$(curl -Ls "$third_party_readme" | grep "^| $arg | .* | http.* | http.* | .* |$" | awk -F'|' '{print $4}' | uniq)
+		about_site=$(echo "$third_party_readme_content" | grep "^| $arg | .* | http.* | http.* | .* |$" | awk -F'|' '{print $4}' | uniq)
 		printf $" Detected multiple variants, choose one or press ZERO to abort:\n\n"
 		sleep 1
 		select d in $about_site; do
 			if [ -n "$d" ]; then
-				url_content=$(curl -Ls "$third_party_readme" | grep -i "$d" | tr '|' '\n' | cut -c 2- | grep . | awk -F: "NR==$awk_dl" | sed 's/ //g')
-				if ! curl --output /dev/null --silent --head --fail "$url_content" 1>/dev/null; then
+				url_content=$(echo "$third_party_readme_content" | grep -i "$d" | tr '|' '\n' | cut -c 2- | grep . | awk -F: "NR==$awk_dl" | sed 's/ //g')
+				if ! curl --output /dev/null --silent --head --fail "$url_content" 1>/dev/null && [ "$tp_extension" != soarpkg ]; then
 					printf $"%bPlease select another item or press \"ZERO\".\n\n" "$tp_missing_file_msg" | _fit
 				else
 					break
@@ -379,41 +463,42 @@ _3rd_party_apps_handler() {
 		done
 		awk_version="curl -Ls $third_party_readme | grep -i \"$d\" | tr '|' '\\\n' | cut -c 2- | grep . | awk -F: \"NR==$awk_ver\""
 		third_party_url="curl -Ls $third_party_readme | grep -i \"$d\" | tr '|' '\\\n' | cut -c 2- | grep . | awk -F: \"NR==$awk_dl\""
+		tp_site_ref="$d"
 	else
-		url_content=$(curl -Ls "$third_party_readme" | grep -i "^| $arg | .* | http.* | http.* | .* |$" | tr '|' '\n' | cut -c 2- | grep . | awk -F: "NR==$awk_dl" | sed 's/ //g')
-		if ! curl --output /dev/null --silent --head --fail "$url_content" 1>/dev/null; then
+		tp_site_ref=$(echo "$third_party_readme_content" | grep -i "^| $arg | .* | http.* | http.* | .* |$" | tr '|' '\n' | cut -c 2- | grep . | awk -F: "NR==$awk_site" | sed 's/ //g')
+		url_content=$(echo "$third_party_readme_content" | grep -i "^| $arg | .* | http.* | http.* | .* |$" | tr '|' '\n' | cut -c 2- | grep . | awk -F: "NR==$awk_dl" | sed 's/ //g')
+		if ! curl --output /dev/null --silent --head --fail "$url_content" 1>/dev/null && [ "$tp_extension" != soarpkg ]; then
 			printf "%b" "$tp_missing_file_msg" | _fit
 			return 1
 		fi
 	fi
 	# Create the installation script
 	if [ "$tp_extension" = appbundle ]; then
-		curl -Ls "$AMREPO"/templates/AM-SAMPLE-AppBundle > "$CACHEDIR/extra/$arg.$tp_extension" || exit 1
-		sed -i "s#APP=SAMPLE#APP=$arg#g; s#FUNCTION#$awk_version#g; s#wget \"\$version\"#wget \$($third_party_url)#g" "$CACHEDIR/extra/$arg.$tp_extension"
+		TEMPLATE_NAME="AM-SAMPLE-AppBundle"
 	elif echo "$url_content" | grep -qi "\.appimage$\|\.nixappimage$\|/appimage/"; then
-		if [ "$arg" = libreoffice ]; then
-			curl -Ls "$AMREPO"/templates/AM-SAMPLE-AppImage-libreoffice > "$CACHEDIR/extra/$arg.$tp_extension" || exit 1
-		else
-			curl -Ls "$AMREPO"/templates/AM-SAMPLE-AppImage > "$CACHEDIR/extra/$arg.$tp_extension" || exit 1
-		fi
-		sed -i "s#APP=SAMPLE#APP=$arg#g; s#FUNCTION#$awk_version#g; s#wget \"\$version\"#wget \$($third_party_url)#g" "$CACHEDIR/extra/$arg.$tp_extension"
-		sed -i 's/\*mage/\*/g' "$CACHEDIR/extra/$arg.$tp_extension" 2>/dev/null
+		TEMPLATE_NAME="AM-SAMPLE-AppImage"
 	elif echo "$url_content" | grep -qi "/runimage/"; then
-		curl -Ls "$AMREPO"/templates/AM-SAMPLE-RunImage > "$CACHEDIR/extra/$arg.$tp_extension" || exit 1
-		sed -i "s#APP=SAMPLE#APP=$arg#g; s#FUNCTION#$awk_version#g; s#wget \"\$version\"#wget \$($third_party_url)#g" "$CACHEDIR/extra/$arg.$tp_extension"
+		TEMPLATE_NAME="AM-SAMPLE-RunImage"
+	elif [ "$tp_extension" = soarpkg ]; then
+		TEMPLATE_NAME="AM-SAMPLE-soarpkg"
 	else
-		curl -Ls "$AMREPO"/templates/AM-SAMPLE-Archive > "$CACHEDIR/extra/$arg.$tp_extension" || exit 1
-		sed -i "s#APP=SAMPLE#APP=$arg#g; s#FUNCTION#$awk_version#g; s#wget \"\$version\"#wget \$($third_party_url)#g" "$CACHEDIR/extra/$arg.$tp_extension"
-		sed -e '/\[ -e/ s/^#*/#/' -i "$CACHEDIR/extra/$arg.$tp_extension" 2>/dev/null
+		TEMPLATE_NAME="AM-SAMPLE-Archive"
 	fi
-	[ "$AMCLI" = appman ] && sed -i "s#Exec=\$APP#Exec=$BINDIR/\$APP#g" "$CACHEDIR/extra/$arg.$tp_extension"
-	chmod a+x "$CACHEDIR/extra/$arg.$tp_extension"
-	arg="$CACHEDIR/extra/$arg.$tp_extension"
+
+	_3rd_party_template_manager
+
+	if [ -f "$CACHEDIR/extra/$arg.$tp_extension" ] && grep -q "^#" "$CACHEDIR/extra/$arg.$tp_extension"; then
+		chmod a+x "$CACHEDIR/extra/$arg.$tp_extension"
+		arg="$CACHEDIR/extra/$arg.$tp_extension"
+	fi
 }
 
 _install_3rd_party_app() {
 	[ -z "$tplists_on" ] && _sync_third_party_lists && tplists_on="1"
-	arg=$(echo "$arg" | _remove_known_third_party_extensions)
+	wait
+	for e in $third_party_lists; do
+		arg=$(echo "$arg" | sed "s/\.$e$//g")
+	done
 	if _3rd_party_curl_detect_item; then
 		_3rd_party_apps_handler
 		_install_local_script
@@ -480,8 +565,13 @@ case "$1" in
 		FLAGS=$(echo "$@" | tr ' ' '\n' | grep -- "--" | tr '\n ' ' ')
 		METAPACKAGES="kdegames kdeutils node platform-tools"
 
-		if [ "$1" = "-ia" ] || [ "$1" = "install-appimage" ]; then _install_appimage; fi
-		if [ "$1" = "-ias" ]; then FLAGS=$(printf "%b\n--sandbox\n" "$FLAGS"); _install_appimage; fi
+		if [ "$1" = "-ia" ] || [ "$1" = "install-appimage" ]; then
+			_install_appimage
+		fi
+		if [ "$1" = "-ias" ]; then
+			FLAGS=$(printf "%b\n--sandbox\n" "$FLAGS")
+			_install_appimage
+		fi
 
 		for arg in $entries; do
 			echo ""
@@ -494,6 +584,8 @@ case "$1" in
 			pure_arg=$(echo "$arg" | sed 's/\-appimage$//g' | sed 's:.*/::')
 			_remove_extensions_from_appname
 			echo "$arg" | grep -q -- "-appimage$" && curl -Ls "$APPSDB"/"$arg" | grep -q "APP=.*-appimage$" && pure_arg="$arg"
+
+			arg_script=$(curl -Ls "$APPSDB/$arg" 2>/dev/null)
 
 			# Test if a symlink is broken
 			[ -n "$BINDIR" ] && find "$BINDIR" -xtype l -name "$pure_arg" -delete 2>/dev/null
@@ -511,7 +603,7 @@ case "$1" in
 				fi
 			elif _3rd_party_check "$@"; then
 				_install_3rd_party_app
-			elif curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg" 1>/dev/null; then
+			elif echo "$arg_script" | grep -q "^#"; then
 				_install_normally
 			else
 				echo $"💀 ERROR: \"$arg\" does NOT exist in the \"AM\" database, $(printf "please check the list, run the \"%b$AMCLIPATH_ORIGIN -l\033[0m\" command.\n\n" "${Gold}")" | fold -sw 72 | sed 's/^/ /g'
@@ -519,16 +611,18 @@ case "$1" in
 			# Disable notifications if needed
 			[ -f "$AMDATADIR"/disable-notifications ] && [ -f "$APPSPATH/$LASTDIR/AM-updater" ] && sed -e '/notify-send/ s/^#*/#/' -i "$APPSPATH/$LASTDIR/AM-updater" 2>/dev/null
 			# Sandbox argument
-			if echo "$FLAGS" | grep -q -- "--sandbox" && [ "$LASTDIR" != aisap ]; then
-				if [ -f "$APPSPATH/$LASTDIR/$LASTDIR" ]; then
-					if ! command -v aisap >/dev/null 2>&1; then
-						mv "$AMCACHEDIR"/installed "$CACHEDIR"/installed.backup.am 2>/dev/null
-						"$AMCLIPATH_ORIGIN" --sandbox "$LASTDIR"
-						sort "$AMCACHEDIR"/installed >> "$CACHEDIR"/installed.backup.am 2>/dev/null
-						mv "$CACHEDIR"/installed.backup.am "$AMCACHEDIR"/installed 2>/dev/null
-					else
-						echo ""
-						"$AMCLIPATH_ORIGIN" --sandbox "$LASTDIR"
+			if echo "$FLAGS" | grep -q -- "--sandbox"; then
+				if [ "$LASTDIR" != aisap ] && [ "$LASTDIR" != sas ]; then
+					if [ -f "$APPSPATH/$LASTDIR/$LASTDIR" ]; then
+						if ! command -v aisap >/dev/null 2>&1 || ! command -v aisap >/dev/null 2>&1; then
+							mv "$AMCACHEDIR"/installed "$CACHEDIR"/installed.backup.am 2>/dev/null
+							"$AMCLIPATH_ORIGIN" --sandbox "$LASTDIR"
+							sort "$AMCACHEDIR"/installed >> "$CACHEDIR"/installed.backup.am 2>/dev/null
+							mv "$CACHEDIR"/installed.backup.am "$AMCACHEDIR"/installed 2>/dev/null
+						else
+							echo ""
+							"$AMCLIPATH_ORIGIN" --sandbox "$LASTDIR"
+						fi
 					fi
 				else
 					printf $"\n ERROR: \"%b\" is NOT an AppImage\n" "$LASTDIR"
@@ -565,24 +659,27 @@ case "$1" in
 			;;
 		esac
 		mkdir -p "$CACHEDIR/extra"
-		curl -Ls "$AMREPO"/templates/AM-SAMPLE-AppImage > "$CACHEDIR/extra/$EXTERNAL_APP_NAME" || exit 1
-		sed -i "s#APP=SAMPLE#APP=$EXTERNAL_APP_NAME#g" "$CACHEDIR/extra/$EXTERNAL_APP_NAME"
-		API_GITHUB_REPO="https://api.github.com/repos/$USER_PROJECT/releases"
-		sed -i "s#REPLACETHIS#$USER_PROJECT#g" "$CACHEDIR/extra/$EXTERNAL_APP_NAME"
-		q="'"
-		if [ "$ARCH" = "x86_64" ]; then
-			FILTER=' | grep -vi "i386\\|i686\\|i586\\|i486\\|aarch64\\|arm64\\|armv7l"'
-		elif [ "$ARCH" = "i686" ]; then
-			FILTER=' | grep -ie "i386\\|i686\\|i586\\|i486" '
-		elif [ "$ARCH" = "aarch64" ]; then
-			FILTER=' | grep -ie "aarch64\\|arm64" '
+		TEMPLATE_CONTENT=$(curl -Ls "$AMREPO"/templates/AM-SAMPLE-AppImage 2>/dev/null)
+		if echo "$TEMPLATE_CONTENT" | grep -q "^#"; then
+			echo "$TEMPLATE_CONTENT" > "$CACHEDIR/extra/$EXTERNAL_APP_NAME" || exit 1
+			sed -i "s#APP=SAMPLE#APP=$EXTERNAL_APP_NAME#g" "$CACHEDIR/extra/$EXTERNAL_APP_NAME"
+			API_GITHUB_REPO="https://api.github.com/repos/$USER_PROJECT/releases"
+			sed -i "s#REPLACETHIS#$USER_PROJECT#g" "$CACHEDIR/extra/$EXTERNAL_APP_NAME"
+			q="'"
+			if [ "$ARCH" = "x86_64" ]; then
+				FILTER=' | grep -vi "i386\\|i686\\|i586\\|i486\\|aarch64\\|arm64\\|armv7l"'
+			elif [ "$ARCH" = "i686" ]; then
+				FILTER=' | grep -ie "i386\\|i686\\|i586\\|i486" '
+			elif [ "$ARCH" = "aarch64" ]; then
+				FILTER=' | grep -ie "aarch64\\|arm64" '
+			fi
+			FUNCTION='curl -Ls '"$API_GITHUB_REPO"' | sed '"$q"'s/[()",{} ]/\\n/g'"$q"' | grep -oi "https.*mage$"'"$FILTER"' | head -1'
+			sed -i "s#FUNCTION)#$FUNCTION)#g" "$CACHEDIR/extra/$EXTERNAL_APP_NAME"
+			[ -n "$APP_KEYWORD" ] && sed -i "s# head -1# grep -i \"$APP_KEYWORD\" | head -1#g" "$CACHEDIR/extra/$EXTERNAL_APP_NAME"
+			chmod a+x "$CACHEDIR/extra/$EXTERNAL_APP_NAME"
+			[ "$AMCLI" = "am" ] && [ "$2" = "--user" ] && EXTRA_TRUE=1 "$AMCLIPATH_ORIGIN" -i --user "$CACHEDIR/extra/$EXTERNAL_APP_NAME" \
+			|| EXTRA_TRUE=1 "$AMCLIPATH_ORIGIN" -i "$CACHEDIR/extra/$EXTERNAL_APP_NAME"
 		fi
-		FUNCTION='curl -Ls '"$API_GITHUB_REPO"' | sed '"$q"'s/[()",{} ]/\\n/g'"$q"' | grep -oi "https.*mage$"'"$FILTER"' | head -1'
-		sed -i "s#FUNCTION)#$FUNCTION)#g" "$CACHEDIR/extra/$EXTERNAL_APP_NAME"
-		[ -n "$APP_KEYWORD" ] && sed -i "s# head -1# grep -i \"$APP_KEYWORD\" | head -1#g" "$CACHEDIR/extra/$EXTERNAL_APP_NAME"
-		chmod a+x "$CACHEDIR/extra/$EXTERNAL_APP_NAME"
-		[ "$AMCLI" = "am" ] && [ "$2" = "--user" ] && EXTRA_TRUE=1 "$AMCLIPATH_ORIGIN" -i --user "$CACHEDIR/extra/$EXTERNAL_APP_NAME" \
-		|| EXTRA_TRUE=1 "$AMCLIPATH_ORIGIN" -i "$CACHEDIR/extra/$EXTERNAL_APP_NAME"
 		exit 1
 		;;
 
@@ -625,13 +722,15 @@ case "$1" in
 					if [ -n "$scriptname" ] && grep -q "^◆ $scriptname :" "$AMDATADIR/$ARCH-apps"; then
 						CURRENT=$(cat "$argpath"/.am-installer/"$scriptname")
 						SOURCE=$(curl -Ls "$APPSDB"/"$scriptname")
-						if [ -n "$SOURCE" ] && [ "$CURRENT" != "$SOURCE" ]; then
-							reinstall_true=1
-							"$AMCLIPATH_ORIGIN" -R "$arg"
-							if [ "$AMCLI" = "am" ] && ! echo "$argpath" | grep -q "^/opt"; then
-								"$AMCLIPATH_ORIGIN" -i --user "$scriptname"
-							else
-								"$AMCLIPATH_ORIGIN" -i "$scriptname"
+						if echo "$SOURCE" | grep -q "APP=$arg"; then
+							if [ "$CURRENT" != "$SOURCE" ]; then
+								reinstall_true=1
+								"$AMCLIPATH_ORIGIN" -R "$arg"
+								if [ "$AMCLI" = "am" ] && ! echo "$argpath" | grep -q "^/opt"; then
+									"$AMCLIPATH_ORIGIN" -i --user "$scriptname"
+								else
+									"$AMCLIPATH_ORIGIN" -i "$scriptname"
+								fi
 							fi
 						fi
 						SOURCE=""

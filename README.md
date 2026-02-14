@@ -46,6 +46,8 @@ You can use the command `am -a {PROGRAM}` to view the description and get the so
 - [Using a one-line command (only system-wide installation)](#using-a-one-line-command-only-system-wide-installation)
 
    - [What is AppMan?](#what-is-appman)
+     - [How to install AppMan manually](#how-to-install-appman-manually)
+
    - [AM installation structure](#am-installation-structure)
    - [Uninstall](#uninstall)
    - [How are apps installed](#how-are-apps-installed)
@@ -57,6 +59,8 @@ You can use the command `am -a {PROGRAM}` to view the description and get the so
    - [Recommended packages](#recommended-packages)
 
    - [Do you own a repository for AppImages external to this database? Follow these instructions!](#do-you-own-a-repository-for-appimages-external-to-this-database-follow-these-instructions)
+
+[Graphical User Interface (GUI)](#graphical-user-interface)
 
 [Translate "AM" in your local language](#translate-am-in-your-local-language)
 
@@ -91,7 +95,7 @@ To install "AM" you must first install the "core" dependencies from your package
 - "`less`", to read the ever-longer lists;
 - "`unzip`", to extract .zip packages;
 - "`tar`", to extract .tar* packages;
-- "`zsync`", required by very few programs and AppImages (although it is mentioned in all installation scripts, it is often disabled because the managed .zsync files are often broken, especially for apps hosted on github.com).
+- "`zsync`", required by very few programs.
 
 </details>
 
@@ -145,6 +149,46 @@ The command name changes, from `am` to `appman`, but the script is the same.
 - "AppMan" is the way to go for non-privileged users or those who don't have great needs
 
 If you want to know more about "AppMan", visit https://github.com/ivan-hc/AppMan
+
+#### How to install AppMan manually
+<details>
+  <summary>Click here to expand</summary>
+As we've already seen, AppMan is portable, meaning you can use it anywhere, in any directory with read and write permissions.
+
+The basic principle is very simple: the APP-MANAGER script must be renamed "appman".
+
+Try it and believe it:
+```
+wget -q "https://raw.githubusercontent.com/ivan-hc/AM/main/APP-MANAGER" -O ./appman && chmod a+x ./appman
+```
+However, **this approach is NOT RECOMMENDED** for various reasons, the most common being convenience:
+- the AM-INSTALLER ensures the creation of an XDG_BIN_HOME or $HOME/.local/bin directory if it doesn't already exist, so you can use it in $PATH without having to write the entire path to the script.
+- by installing it in the local $PATH, the AM-INSTALLER also takes care of its use in ZSH, if that is used instead of BASH.
+
+To install it into $PATH manually, run the following commands:
+```
+ZSHRC="${ZDOTDIR:-$HOME}/.zshrc"
+BINDIR="${XDG_BIN_HOME:-$HOME/.local/bin}"
+mkdir -p "$BINDIR"
+if ! echo $PATH | grep "$BINDIR" >/dev/null 2>&1; then 
+	if [ -e ~/.bashrc ] && ! grep 'PATH="$PATH:$BINDIR"' ~/.bashrc >/dev/null 2>&1; then
+		printf '\n%s\n' 'BINDIR="${XDG_BIN_HOME:-$HOME/.local/bin}"' >> ~/.bashrc
+		printf '\n%s\n' 'if ! echo $PATH | grep "$BINDIR" >/dev/null 2>&1; then' >> ~/.bashrc
+		printf '	export PATH="$PATH:$BINDIR"\nfi\n' >> ~/.bashrc
+	fi
+	if [ -e "$ZSHRC" ] && ! grep 'PATH="$PATH:$BINDIR"' "$ZSHRC" >/dev/null 2>&1; then
+		printf '\n%s\n' 'BINDIR="${XDG_BIN_HOME:-$HOME/.local/bin}"' >> "$ZSHRC"
+		printf '\n%s\n' 'if ! echo $PATH | grep "$BINDIR" >/dev/null 2>&1; then' >> "$ZSHRC"
+		printf '	export PATH="$PATH:$BINDIR"\nfi\n' >> "$ZSHRC"
+	fi
+fi
+wget -q "https://raw.githubusercontent.com/ivan-hc/AM/$AM_BRANCH/APP-MANAGER" -O "$BINDIR"/appman && chmod a+x "$BINDIR"/appman
+```
+The above is a "summary" (without the messages) of what the AM-INSTALLER script already does when you choose option 2 (AppMan).
+
+For more information, see https://github.com/ivan-hc/AM/issues/1830
+
+</details>
 
 ------------------------------------------------------------------------
 ### AM installation structure
@@ -209,6 +253,8 @@ If you are an AppMan user, you can simply launch any option.
 When you first launch it, you will be asked to specify a path to the applications. You can specify any directory or subdirectory you want, **even outside of $HOME**, as long as it is not privileged. Even a USB stick.
 
 NOTE: by modifying the contents of `~/.config/appman`, you will only change the paths for any subsequent operation, while apps and modules stored in the old path will not be manageable. It is recommended to remove the apps first.
+
+To change locations, remove local apps, and reinstall in the new location, see the `--relocate` or `relocate` option, [here](docs/guides-and-tutorials/relocate.md).
 
 ------------------------------------------------------------------------
 ### What programs can be installed
@@ -275,10 +321,14 @@ am -i appimageupdatetool
 am -i appimagetool
 ```
 
-### *3) `aisap`*
-[**aisap**](https://github.com/mgord9518/aisap) is a Bubblewrap frontend that allows you to isolate AppImages in a sandbox (*see "[Sandbox an AppImage](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/sandbox.md)"*)
+### *3) `aisap` or `sas`*
+[**aisap**](https://github.com/mgord9518/aisap) is a Bubblewrap frontend that allows you to isolate AppImages in a sandbox, [**sas**](https://github.com/Samueru-sama/simple-appimage-sandbox) is a POSIX shell rewrite of Aisap with DWARFS support (*see "[Sandbox an AppImage](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/sandbox.md)"*)
 ```
 am -i aisap
+```
+or
+```
+am -i sas
 ```
 
 ------------------------------------------------------------------------
@@ -310,6 +360,30 @@ For more details on how the `-e` or `extra` option works, see [here](https://git
 | - |
 
 ------------------------------------------------------------------------
+
+# Graphical User Interface
+An experimental GUI is provided by [@Shikakiben](https://github.com/Shikakiben) and its available in this other repository:
+
+https://github.com/Shikakiben/AM-GUI
+
+| Light theme | Dark theme |
+| - | - |
+| <img src="https://raw.githubusercontent.com/Shikakiben/AM-GUI/refs/heads/main/screenshots/light.png" width="800"/> | <img src="https://raw.githubusercontent.com/Shikakiben/AM-GUI/refs/heads/main/screenshots/dark.png" width="800"/> |
+
+To install it, run the following command
+```
+am -i am-gui
+```
+
+⚠️ **NOTE: This project is under development and some features may not work or may be incomplete.**
+
+------------------------------------------------------------------------
+
+| [Back to "Main Index"](#main-index) |
+| - |
+
+------------------------------------------------------------------------
+
 # Translate "AM" in your local language
 Since version 9.8 it is possible to add and use alternative languages ​​via the `translate` option, use:
 ```
@@ -414,6 +488,20 @@ Create a snapshot of the current version of an installed program.
 **Description**:
 
 Removes all the unnecessary files and folders.
+
+------------------------------------------------------------------------
+### `clone`, `--clone`
+
+		am clone
+		am clone -i
+		am clone -i --system
+		am clone -i --user
+
+**Description**:
+
+Clone the list of installed apps to an "am-clone.source" file, or search for an existing one on the desktop (priority), in `$HOME`, or across the entire system and removable devices. Add "`-i`" or "`install`" if you want to install or add the listed apps to a new configuration, to share it with anyone on other PCs and configurations. Add the "`--system`" or "`--user`" flag if you want all listed apps to be installed system-wide or locally respectively.
+ 
+You can also set the path to a custom file by exporting the `$CLONE_FILE` variable.
 
 ------------------------------------------------------------------------
 ### `config`, `-C`, `--config`
@@ -594,7 +682,7 @@ Convert old AppImages and get rid of "libfuse2" dependence.
 Overwrite apps with snapshots saved previously (see "`-b`").
 
 ------------------------------------------------------------------------
-### `query`, `-q`
+### `query`, `-q`, `search`
 
 		am -q {KEYWORD}
 		am -q --all {KEYWORD}
@@ -617,6 +705,15 @@ Search for keywords in the list of available applications, add the "`--appimages
 Reinstall only programs whose installation script has been modified in AM's online database. Use the "`--all`" flag to reinstall everything instead.
 
 NOTE, this only works with the "AM" database. Apps installed with the "`-e`" option and custom scripts created with the "`-t`" option are not supported.
+
+------------------------------------------------------------------------
+### `relocate`, `--relocate`
+
+		am relocate
+
+**Description**:
+
+Remove and reinstall local/AppMan apps to a new location.
 
 ------------------------------------------------------------------------
 ### `remove`, `-r`
@@ -643,7 +740,7 @@ Removes one or more apps without asking.
 
 **Description**:
 
-Run an AppImage in a sandbox using Aisap.
+Run an AppImage in a sandbox.
 
 NOTE, "`--sandbox`" can be used as a flag in "`-i`" and "`-ia`" or can be replaced using the option "`-ias`" (aka Install AppImage & Sandox).
 
@@ -774,7 +871,7 @@ Enable notifications during apps update (nulls "`--disable-notifications`").
 Downgrades an installed app from pre-release to "latest".
 
 ------------------------------------------------------------------------
-### `--launcher`
+### `--launcher`, `integrate`
 
 		am --launcher /path/to/${APPIMAGE}
 
@@ -869,6 +966,8 @@ Below you can access the documentation pages related to the use of "AM", complet
 - [Update all](docs/guides-and-tutorials/update.md)
 - [Backup and restore installed apps using snapshots](docs/guides-and-tutorials/backup-and-overwrite.md)
 - [Remove one or more applications](docs/guides-and-tutorials/remove.md)
+- [Clone a set of programs installed from other AM and AppMan configurations](docs/guides-and-tutorials/clone.md)
+- [Change the destination path of installed programs](docs/guides-and-tutorials/relocate.md)
 - [Convert Type2 AppImages requiring libfuse2 to New Generation AppImages](docs/guides-and-tutorials/nolibfuse.md)
 - [Integrate local AppImages into the menu by dragging and dropping them](docs/guides-and-tutorials/launcher.md)
   - [How to create a launcher for a local AppImage](docs/guides-and-tutorials/launcher.md#how-to-create-a-launcher-for-a-local-appimage)
@@ -953,7 +1052,7 @@ Another recommendation is to use `wget` instead of `wget2` (in Fedora, it's call
 
 For the example on how the distribution installs `am`, you can check [Gidro-OS](https://github.com/fiftydinar/gidro-os), custom image based on Fedora Silverblue by [@fiftydinar](https://github.com/fiftydinar):
 
-https://github.com/fiftydinar/gidro-os/blob/main/recipes/recipe-appimages.yml
+https://github.com/fiftydinar/gidro-os/blob/a61b6960618371905115797f1089b4d0a271a974/recipes/recipe-appimages.yml
 
 ------------------------------------------------------------------------
 
@@ -982,14 +1081,22 @@ Below you can access documentation pages for common issues and frequently asked 
 
 ------------------------------------------------------------------------
 # Related projects
-#### External tools and forks used in this project
-- *[aisap](https://github.com/mgord9518/aisap), sandboxing solutions for AppImages*
-- *[appimagetool](https://github.com/AppImage/appimagetool), get rid of libfuse2 from your AppImages*
-- *[pkg2appimage](https://github.com/AppImage/pkg2appimage), create AppImages on the fly from existing .deb packages*
-- *[repology](https://github.com/repology), the encyclopedia of all software versions*
+#### Side Projects
+- *[amcheck](https://github.com/ivan-hc/amcheck), checks the validity of scripts in this database and monitors the availability of AppImages*
+- *[am-extras](https://github.com/ivan-hc/am-extras), lists applications from third-party databases*
+- *[am-gui](https://github.com/Shikakiben/AM-GUI), a graphical Front for AM, by @Shikakiben*
+- *[vappman](https://github.com/joedefen/vappman), a visual (curses) TUI interface to AppMan, by @joedefen*
 
-#### Partner projects, i.e. those that actively contribute to this project
-- *[Soarpkgs](https://github.com/pkgforge/soarpkgs), Largest Collection of Multi-Platform Pre-Compiled Static Binaries*
+#### External tools and forks used in this project
+- *[aisap](https://github.com/mgord9518/aisap) and [sas](https://github.com/Samueru-sama/simple-appimage-sandbox), sandboxing solutions for AppImages, see sandboxing options above*
+- *[appimagetool](https://github.com/AppImage/appimagetool), get rid of libfuse2 from old AppImages (option `nolibfuse`) and create AppImages on the fly (see [appimage-bulder-scripts](https://github.com/ivan-hc/AM/tree/main/appimage-bulder-scripts))*
+- *[dbin](https://github.com/xplshn/dbin), the easy to use/get, suckless software distribution system, used as OCI registry client to install packages from third-party databases*
+
+#### Organizations and their affiliates that actively contribute to this project
+- *[Package Forge](https://github.com/pkgforge), Improving Package Management & Security for Linux systems*
+  - *[Dev](https://github.com/pkgforge-dev), Package Forge's Official Developer Repos*
+  - *[Community](https://github.com/pkgforge-community), Package Forge's Community Repos, Projects & their Dependencies*
+- *[Portable Linux Apps](https://github.com/Portable-Linux-Apps), Census, cataloging and distribution of AppImages and portable apps for GNU/Linux*
 
 #### My other projects
 - *[AppImaGen](https://github.com/ivan-hc/AppImaGen), easily create AppImages from Ubuntu PPAs or Debian using pkg2appimage and appimagetool*

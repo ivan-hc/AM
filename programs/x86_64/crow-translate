@@ -3,7 +3,7 @@
 # AM INSTALL SCRIPT VERSION 3.5
 set -u
 APP=crow-translate
-SITE="crow-translate/crow-translate"
+SITE="https://download.kde.org/stable/crow-translate"
 
 # CREATE DIRECTORIES AND ADD REMOVER
 [ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
@@ -12,9 +12,9 @@ printf '\n%s' "rm -f /usr/local/share/applications/$APP-AM.desktop" >> ../remove
 chmod a+x ../remove || exit 1
 
 # DOWNLOAD AND PREPARE THE APP, $version is also used for updates
-version=$(curl -Ls https://api.github.com/repos/crow-translate/crow-translate/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | head -1)
+tag=$(curl -Ls "$SITE" | tr '">< ' '\n' | grep "^[0-9].*/$" | tail -1)
+version="$SITE/$tag$(curl -Ls "$SITE/$tag" | tr '">< ' '\n' | grep -i "x86.64.*appimage$" | head -1)"
 wget "$version" || exit 1
-# Keep this space in sync with other installation scripts
 # Use tar fx ./*tar* here for example in this line in case a compressed file is downloaded.
 cd ..
 mv ./tmp/*mage ./"$APP"
@@ -31,9 +31,9 @@ cat >> ./AM-updater << 'EOF'
 #!/bin/sh
 set -u
 APP=crow-translate
-SITE="crow-translate/crow-translate"
+SITE="https://download.kde.org/stable/crow-translate"
 version0=$(cat "/opt/$APP/version")
-version=$(curl -Ls https://api.github.com/repos/crow-translate/crow-translate/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | head -1)
+tag=$(curl -Ls "$SITE" | tr '">< ' '\n' | grep "^[0-9].*/$" | tail -1); version="$SITE/$tag$(curl -Ls "$SITE/$tag" | tr '">< ' '\n' | grep -i "x86.64.*appimage$" | head -1)"
 [ -n "$version" ] || { echo "Error getting link"; exit 1; }
 if command -v appimageupdatetool >/dev/null 2>&1; then
 	cd "/opt/$APP" || exit 1

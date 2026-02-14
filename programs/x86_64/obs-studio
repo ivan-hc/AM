@@ -20,7 +20,11 @@ read -r -p "
 
     Source: https://github.com/pkgforge-dev/OBS-Studio-AppImage
 
- 2. OBS Studio Archimage, this AppImage is made on top of JuNest (Archlinux).
+ 2. OBS Studio Archimage \"full\", with libcef and browser support.
+
+    Source: https://github.com/ivan-hc/OBS-Studio-appimage
+
+ 3. OBS Studio Archimage \"lite\", without libcef or browser support.
 
     Source: https://github.com/ivan-hc/OBS-Studio-appimage
 
@@ -28,12 +32,24 @@ read -r -p "
 RELEASE=""
 if echo "$response" | grep -q "^1"; then
 	RELEASE="$SITE1"
-elif echo "$response" | grep -q "^2"; then
+	ARCHIMAGE_ON=""
+elif echo "$response" | grep -q "^2\|^3"; then
 	RELEASE="$SITE2"
+	ARCHIMAGE_ON="1"
+	if echo "$response" | grep -q "^2"; then
+		obs_build="full"
+	else
+		obs_build="lite"
+	fi
 fi
 [ -z "$RELEASE" ] && exit 0
 
-version=$(curl -Ls https://api.github.com/repos/"$RELEASE"/releases | sed 's/[()",{} ]/\n/g' | grep -io 'https.*x86_64.*mage$' | grep -vi "full" | head -1)
+if [ -z "$ARCHIMAGE_ON" ]; then
+version=$(curl -Ls https://api.github.com/repos/"$RELEASE"/releases | sed 's/[()",{} ]/\n/g' | grep -io 'https.*x86_64.*mage$' | head -1)
+else
+version=$(curl -Ls https://api.github.com/repos/"$RELEASE"/releases | sed 's/[()",{} ]/\n/g' | grep -io 'https.*x86_64.*mage$' | grep -i "$obs_build" | head -1)
+fi
+
 if [ -z "$version" ]; then
 	printf "\n 💀 ERROR: it seems that upstream removed %b, please retry\n" "$RELEASE" && exit 1
 else
@@ -56,7 +72,7 @@ set -u
 APP=obs-studio
 SITE="REPLACETHIS"
 version0=$(cat "/opt/$APP/version")
-version=$(curl -Ls https://api.github.com/repos/REPLACETHIS/releases | sed 's/[()",{} ]/\n/g' | grep -io 'https.*x86_64.*mage$' | grep -vi "full" | head -1)
+version=$(curl -Ls https://api.github.com/repos/REPLACETHIS/releases | sed 's/[()",{} ]/\n/g' | grep -io 'https.*x86_64.*mage$' | head -1)
 [ -n "$version" ] || { echo "Error getting link"; exit 1; }
 if command -v appimageupdatetool >/dev/null 2>&1; then
 	cd "/opt/$APP" || exit 1
@@ -79,6 +95,7 @@ fi
 EOF
 chmod a+x ./AM-updater || exit 1
 sed -i "s#REPLACETHIS#$RELEASE#g" /opt/"$APP"/AM-updater
+[ -n "$ARCHIMAGE_ON" ] && [ -n "$obs_build" ] && sed -i -- "s/x86_64/$obs_build-x86_64/g" /opt/"$APP"/AM-updater
 
 # LAUNCHER & ICON
 ./"$APP" --appimage-extract *.desktop 1>/dev/null && mv ./squashfs-root/*.desktop ./"$APP".desktop

@@ -3,7 +3,7 @@
 # AM INSTALL SCRIPT VERSION 3.5
 set -u
 APP=eden-nightly
-SITE="pflyly/eden-nightly"
+SITE="Eden-CI/Nightly"
 
 # CREATE DIRECTORIES AND ADD REMOVER
 [ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
@@ -15,22 +15,24 @@ chmod a+x ../remove || exit 1
 read -r -p "
  Choose which version of $APP AppImage to use:
 
- 1) Common
+ 1) x86-64-v3
  2) Steamdeck
- 3) Any
+ 3) ROG Ally
+ 4) Legacy (very old cpus)
+ 5) Any
 
  Which version you choose (type a number and press ENTER)?" response
 RELEASE=""
-if echo "$response" | grep -q "^1"; then
-	RELEASE="Common"
-elif echo "$response" | grep -q "^2"; then
-	RELEASE="Steamdeck"
-elif echo "$response" | grep -q "^3"; then
-	RELEASE="$APP"
-fi
-[ -z "$RELEASE" ] && exit 0
+case "$response" in
+	1) RELEASE="amd64";;
+	2) RELEASE="steamdeck";;
+	3) RELEASE="rog";;
+	4) RELEASE="legacy";;
+	5) RELEASE=".";;
+esac
+[ -z "$RELEASE" ] && exit 1
 
-version=$(curl -Ls https://api.github.com/repos/pflyly/eden-nightly/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*x86_64.*mage$" | grep -i "$RELEASE" | head -1)
+version=$(curl -Ls https://api.github.com/repos/Eden-CI/Nightly/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -v aarch64 | grep -i "$RELEASE" | head -1)
 if [ -z "$version" ]; then
 	printf "\n 💀 ERROR: it seems that upstream removed %b, please retry\n" "$RELEASE" && exit 1
 else
@@ -51,9 +53,9 @@ cat >> ./AM-updater << 'EOF'
 #!/bin/sh
 set -u
 APP=eden-nightly
-SITE="pflyly/eden-nightly"
+SITE="Eden-CI/Nightly"
 version0=$(cat "/opt/$APP/version")
-version=$(curl -Ls https://api.github.com/repos/pflyly/eden-nightly/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*x86_64.*mage$" | grep -i "TYPE" | head -1)
+version=$(curl -Ls https://api.github.com/repos/Eden-CI/Nightly/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -v aarch64 | grep -i "TYPE" | head -1)
 [ -n "$version" ] || { echo "Error getting link"; exit 1; }
 if command -v appimageupdatetool >/dev/null 2>&1; then
 	cd "/opt/$APP" || exit 1
