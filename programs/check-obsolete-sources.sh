@@ -11,7 +11,7 @@ _archived_list() {
 
 _obsolete_list() {
 	user_repo=$(grep "^SITE=" "$arg" | head -1 | awk -F'"' '/^SITE=/{print $2}')
-	date=$(curl -s "https://api.gh.pkgforge.dev/repos/$user_repo/releases" | grep -oP '"updated_at": "\K\d{4}' | head -1)
+	date=$(curl -s "https://api.gh.pkgforge.dev/repos/$user_repo/releases" | grep -m 1 -oP '"updated_at": "\K\d{4}')
 	if [ -n "$date" ] && echo "$date" | grep -qE '^[0-9]{4}$' && [ "$date" -lt "$obsolescence_threshold" ]; then
 		echo "$arg $date" | sed s:.*/:: >> obsolete-list.tmp
 	fi
