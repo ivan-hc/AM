@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="9.9.3"
+AMVERSION="9.9.4"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -422,6 +422,29 @@ _betatester_message_on() {
 APPSDB="${APPSDB:-$AMREPO/programs/$ARCH}"
 APPSLISTDB="${APPSLISTDB:-$AMREPO/programs/$ARCH-apps}"
 
+# List of apps from archived repositories or not updated for more than a year
+archived_apps_source="$AMREPO/programs/archived-apps"
+obsolete_apps_source="$AMREPO/programs/obsolete-apps"
+
+_validate_and_download_lists_of_archived_and_obsolete_apps() {
+	if wget -q --tries=10 --timeout=20 --spider https://github.com; then
+		archived_apps_list_content=$(curl -Ls "$archived_apps_source")
+		if [ -n "$archived_apps_list_content" ]; then
+			echo "$archived_apps_list_content" | grep -q "^# ARCHIVED SOURCES$" && echo "$archived_apps_list_content" > "$AMDATADIR"/archived-sources
+		fi
+		obsolete_apps_list_content=$(curl -Ls "$obsolete_apps_source")
+		if [ -n "$obsolete_apps_list_content" ]; then
+			echo "$obsolete_apps_list_content" | grep -q "^# OBSOLETE SOURCES$" && echo "$obsolete_apps_list_content" > "$AMDATADIR"/obsolete-sources
+		fi
+	fi
+}
+
+[ ! -f "$AMDATADIR"/archived-sources ] && _validate_and_download_lists_of_archived_and_obsolete_apps 2>/dev/null
+[ ! -f "$AMDATADIR"/obsolete-sources ] && _validate_and_download_lists_of_archived_and_obsolete_apps 2>/dev/null
+
+[ -f "$AMDATADIR"/archived-sources ] && archived_apps=$(sort -u "$AMDATADIR"/archived-sources)
+[ -f "$AMDATADIR"/obsolete-sources ] && obsolete_apps=$(sort -u "$AMDATADIR"/obsolete-sources)
+
 ################################################################################################################################################################
 #				SECURITY
 ################################################################################################################################################################
@@ -818,6 +841,13 @@ _check_version() {
 			fi
 			if [ -z "$APPVERSION" ]; then
 				[ -f "$argpath"/"$arg" ] && _check_version_if_binary_in_place || APPVERSION="unknown"
+			fi
+			if echo "$archived_apps" | grep -q "^$arg$"; then
+				APPVERSION="$APPVERSION is ARCHIVED"
+			fi
+			if echo "$obsolete_apps" | grep -q "^$arg [0-9]"; then
+				obsolete_last_release=$(echo "$obsolete_apps" | grep "^$arg " | awk '{print $2}')
+				APPVERSION="$APPVERSION, of $obsolete_last_release"
 			fi
 			if ! grep -q " ◆ $arg	|" "$AMCACHEDIR"/version-args 2>/dev/null; then
 				echo " ◆ $arg	|	$APPVERSION" >> "$AMCACHEDIR"/version-args
@@ -1344,6 +1374,7 @@ _use_sync() {
 	_sync_databases
 	_sync_locale
 	_sync_installation_scripts
+	_validate_and_download_lists_of_archived_and_obsolete_apps
 	if [ "$CLI_PATH" != "/usr/bin/am" ] && [ "$AMSYNC" != 1 ]; then
 		AMCLI_ONLINE_CONTENT=$(curl -Ls "$AMREPO"/APP-MANAGER)
 		if echo "$AMCLI_ONLINE_CONTENT" | grep -q AMCLI; then

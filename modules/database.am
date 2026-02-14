@@ -343,7 +343,7 @@ _files() {
 	rm -f "$AMCACHEDIR"/files-args
 	for arg in $INSTALLED_APPS; do
 		if test -f ./"$arg"/remove 2>/dev/null; then
-			APPVERSION=$(grep -w " ◆ $arg	|" "$AMCACHEDIR"/version-args | awk '{print $4}')
+			APPVERSION=$(grep -w " ◆ $arg	|" "$AMCACHEDIR"/version-args | awk '{print $4}' | sed 's/,//g')
 			[ -f ./"$arg"/AM-LOCK ] && APPVERSION="$APPVERSION🔒"
 			echo "$APPVERSION" | grep -q "🔒$" && APPLOCKED=1
 			APPTYPE=$(grep -w " ◆ $arg	|" "$AMCACHEDIR"/files-type | uniq | awk '{print $4}')
@@ -355,6 +355,14 @@ _files() {
 			else
 				echo " ◆ $arg	|	$APPVERSION	|	$APPTYPE	|	$APPSYZE" >> "$AMCACHEDIR"/files-args
 			fi
+		fi
+		# Determine archived apps
+		if grep -q "^ ◆ $arg	.* ARCHIVED" "$AMCACHEDIR"/version-args; then
+			sed -i "s/ ◆ $arg	/ ◆ $arg**	/g" "$AMCACHEDIR"/files-args
+		fi
+		# Determine obsolete apps
+		if grep -q "^ ◆ $arg	.*, of " "$AMCACHEDIR"/version-args; then
+			sed -i "s/ ◆ $arg	/ ◆ $arg**	/g" "$AMCACHEDIR"/files-args
 		fi
 	done
 	if [ -f "$AMCACHEDIR"/files-db ] && grep -q "unsupported\|$third_party_lists_find" "$AMCACHEDIR"/files-db; then
@@ -379,6 +387,41 @@ _files_appimage_type_notes() {
 	if grep -qe "appimage\*\|appimage🔒\*" "$AMCACHEDIR"/files*; then
 		printf $" *has dependency to EOL libfuse2 library, please ask the creator to update\n"
 		printf "\n"
+	fi
+}
+
+_files_list_archived_and_obsolete_apps() {
+	for arg in $INSTALLED_APPS; do
+		if grep -q "^ ◆ $arg	.* ARCHIVED\|^ ◆ $arg	.*, of " "$AMCACHEDIR"/version-args; then
+			if grep -q "^ ◆ $arg	.* ARCHIVED" "$AMCACHEDIR"/version-args && grep -q "^ ◆ $arg	.*, of " "$AMCACHEDIR"/version-args; then
+				date=$(grep "^ ◆ $arg	" "$AMCACHEDIR"/version-args | grep -o '\b[12][0-9]\{3\}\b')
+				printf -- "◆ %b: the repository is archived and the last release dates back to %b\n" "$arg" "$date"
+			elif grep -q "^ ◆ $arg	.* ARCHIVED" "$AMCACHEDIR"/version-args; then
+				printf -- "◆ %b: the repository is archived\n" "$arg"
+			elif grep -q "^ ◆ $arg	.*, of " "$AMCACHEDIR"/version-args; then
+				date=$(grep "^ ◆ $arg	" "$AMCACHEDIR"/version-args | grep -o '\b[12][0-9]\{3\}\b')
+				printf -- "◆ %b: the last release dates back to %b\n" "$arg" "$date"
+			fi
+		fi
+	done
+}
+
+_files_notify_archived_and_obsolete_apps() {
+	if grep -q "ARCHIVED\|, of " "$AMCACHEDIR"/version-args; then
+		archived_and_obsolete_apps=$(_files_list_archived_and_obsolete_apps &)
+		wait
+		archived_and_obsolete_apps_number=$(echo "$archived_and_obsolete_apps" | wc -l | sed 's/ //g')
+		if [ "$archived_and_obsolete_apps_number" = 1 ]; then
+			printf $"**the following app may have security vulnerabilities or is outdated: \n\n" | _fit
+		else
+			printf $"**the following apps may have security vulnerabilities or are outdated: \n\n" | _fit
+		fi
+		echo "$archived_and_obsolete_apps" | sort -u | _fit | sed 's/^/   /g' | sed 's/  ◆/◆/g'
+		if [ "$archived_and_obsolete_apps_number" = 1 ]; then
+			printf $"\nPlease report more up-to-date sources, otherwise remove this app and look for alternatives.\n\n" | _fit
+		else
+			printf $"\nPlease report more up-to-date sources, otherwise remove these apps and look for alternatives.\n\n" | _fit
+		fi
 	fi
 }
 
@@ -416,6 +459,7 @@ _files_sort_by_name() {
 	cat "$AMCACHEDIR"/files-args-byname | _column | _files_table_sizes
 	_files_total_size
 	_files_appimage_type_notes
+	_files_notify_archived_and_obsolete_apps
 }
 
 _files_sort_by_size() {
@@ -428,6 +472,7 @@ _files_sort_by_size() {
 	cat "$AMCACHEDIR"/files-args-bysize | _column | _files_table_sizes
 	_files_total_size
 	_files_appimage_type_notes
+	_files_notify_archived_and_obsolete_apps
 }
 
 _files_appman_mode_view() {
