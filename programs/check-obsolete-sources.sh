@@ -27,7 +27,8 @@ for arg in x86_64/*; do
 done
 wait
 
-sort -u archived-list.tmp > archived-apps
+echo "# ARCHIVED SOURCES" > archived-apps
+sort -u archived-list.tmp >> archived-apps
 rm -f archived-list.tmp
 
 # Determine repositories no more updated in the last years
@@ -39,5 +40,6 @@ for arg in x86_64/*; do
 done
 wait
 
-sort -u obsolete-list.tmp > obsolete-apps
+echo "# OBSOLETE SOURCES" > obsolete-apps
+sort -u obsolete-list.tmp >> obsolete-apps
 rm -f obsolete-list.tmp
