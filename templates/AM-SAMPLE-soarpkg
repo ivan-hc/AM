@@ -26,27 +26,80 @@ chmod a+x ./$APP || exit 1
 # LINK TO PATH
 ln -s "/opt/$APP/$APP" "/usr/local/bin/$APP"
 
-# SCRIPT TO UPDATE THE PROGRAM
-cat >> ./AM-updater << 'EOF'
-#!/bin/sh
-set -u
-APP=SAMPLE
-SITE="REPLACETHIS"; GHRC_REF="ITEM"
-version0=$(cat "/opt/$APP/version")
-version=$(FUNCTION)
-[ -n "$version" ] || { echo "Error getting link"; exit 1; }
-if [ "$version" != "$version0" ]; then
-	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
-	notify-send "A new version of $APP is available, please wait"
-	curl -Ls "https://raw.githubusercontent.com/ivan-hc/AM/main/tools/ghcr_dl.sh" | sh -s -- "$GHRC_REF" "$APP" || exit 1
-	cd ..
-	mv --backup=t ./tmp/* ./
-	chmod a+x ./"$APP" || exit 1
-	echo "$version" > ./version
-	rm -R -f ./tmp ./*~
-	notify-send "$APP is updated!"
+# Determine the type of app
+if ! head -c10 "/opt/$APP/$APP" 2>/dev/null | grep -qa '^.ELF....AI$'; then
+	# SCRIPT TO UPDATE THE PROGRAM
+	cat <<-'HEREDOC' >> ./AM-updater
+	#!/bin/sh
+	set -u
+	APP=SAMPLE
+	SITE="REPLACETHIS"; GHRC_REF="ITEM"
+	version0=$(cat "/opt/$APP/version")
+	version=$(FUNCTION)
+	[ -n "$version" ] || { echo "Error getting link"; exit 1; }
+	if [ "$version" != "$version0" ]; then
+	        mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
+	        notify-send "A new version of $APP is available, please wait"
+	        curl -Ls "https://raw.githubusercontent.com/ivan-hc/AM/main/tools/ghcr_dl.sh" | sh -s -- "$GHRC_REF" "$APP" || exit 1
+	        cd ..
+	        mv --backup=t ./tmp/* ./
+	        chmod a+x ./"$APP" || exit 1
+	        echo "$version" > ./version
+	        rm -R -f ./tmp ./*~
+	        notify-send "$APP is updated!"
+	else
+	        echo "Update not needed!"
+	fi
+	HEREDOC
+	chmod a+x ./AM-updater || exit 1
 else
-	echo "Update not needed!"
+	# SCRIPT TO UPDATE THE PROGRAM
+	cat <<-'HEREDOC' >> ./AM-updater
+	#!/bin/sh
+	set -u
+	APP=SAMPLE
+	SITE="REPLACETHIS"; GHRC_REF="ITEM"
+	version0=$(cat "/opt/$APP/version")
+	version=$(FUNCTION)
+	[ -n "$version" ] || { echo "Error getting link"; exit 1; }
+	if command -v appimageupdatetool >/dev/null 2>&1; then
+	        cd "/opt/$APP" || exit 1
+	        appimageupdatetool -Or ./"$APP" && chmod a+x ./"$APP" && echo "$version" > ./version && exit 0
+	fi
+	if [ "$version" != "$version0" ]; then
+	        mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
+	        notify-send "A new version of $APP is available, please wait"
+	        curl -Ls "https://raw.githubusercontent.com/ivan-hc/AM/main/tools/ghcr_dl.sh" | sh -s -- "$GHRC_REF" "$APP" || exit 1
+	        # Use tar fx ./*tar* here for example in this line in case a compressed file is downloaded.
+	        cd ..
+	        mv --backup=t ./tmp/*mage ./"$APP"
+	        chmod a+x ./"$APP" || exit 1
+	        echo "$version" > ./version
+	        rm -R -f ./*zs-old ./*.part ./tmp ./*~
+	        notify-send "$APP is updated!"
+	else
+	        echo "Update not needed!"
+	fi
+	HEREDOC
+	chmod a+x ./AM-updater || exit 1
+
+	# LAUNCHER & ICON
+	./"$APP" --appimage-extract *.desktop 1>/dev/null && mv ./squashfs-root/*.desktop ./"$APP".desktop 2>/dev/null
+	./"$APP" --appimage-extract .DirIcon 1>/dev/null && mv ./squashfs-root/.DirIcon ./DirIcon 2>/dev/null
+	COUNT=0
+	while [ "$COUNT" -lt 10 ]; do # Tries to get the actual icon/desktop if it is a symlink to another symlink
+		if [ -L ./"$APP".desktop ]; then
+			LINKPATH="$(readlink ./"$APP".desktop | sed 's|^\./||' 2>/dev/null)"
+			./"$APP" --appimage-extract "$LINKPATH" 1>/dev/null && mv ./squashfs-root/"$LINKPATH" ./"$APP".desktop
+		fi
+		if [ -L ./DirIcon ]; then
+			LINKPATH="$(readlink ./DirIcon | sed 's|^\./||' 2>/dev/null)"
+			./"$APP" --appimage-extract "$LINKPATH" 1>/dev/null && mv ./squashfs-root/"$LINKPATH" ./DirIcon
+		fi
+		[ ! -L ./"$APP".desktop ] && [ ! -L ./DirIcon ] && break
+		COUNT=$((COUNT + 1))
+	done
+	sed -i "s#Exec=[^ ]*#Exec=$APP#g; s#Icon=.*#Icon=/opt/$APP/icons/$APP#g; s# --no-sandbox##g" ./"$APP".desktop
+	mv ./"$APP".desktop /usr/local/share/applications/"$APP"-AM.desktop && mv ./DirIcon ./icons/"$APP" 1>/dev/null
+	rm -R -f ./squashfs-root
 fi
-EOF
-chmod a+x ./AM-updater || exit 1
