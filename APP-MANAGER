@@ -1402,6 +1402,47 @@ _use_sync() {
 	echo "$DIVIDING_LINE"
 }
 
+_use_verify() {
+	_online_check
+	_determine_args
+	## Check if checksum calc tools exist
+	if (command -v shasum &> /dev/null) && (command -v md5sum &> /dev/null); then
+		ENTRIES="$(echo "$@" | cut -f2- -d ' ' | tr ' ' '\n' | grep -v -- "^-\|^$1$")"
+		for arg in $ENTRIES; do
+			argpath=$(echo "$ARGPATHS" | grep "/$arg$")
+			[ ! -d "$argpath" ] && printf $" %b✖\033[0m Checksum for %b cannot be verified, program not found \n" "${RED}" "$(echo "$arg" | tr '[:lower:]' '[:upper:]')" && continue
+			checksum_sha1=`shasum -a 1 $argpath/$arg | awk '{ print $1 }'`
+			checksum_sha256=`shasum -a 256 $argpath/$arg | awk '{ print $1 }'`
+			checksum_sha512=`shasum -a 512 $argpath/$arg | awk '{ print $1 }'`
+			checksum_md5=`md5sum $argpath/$arg | awk '{ print $1 }'`
+			## Search for zsync file
+			version=`cat "$argpath/version"`.zsync
+			digest=`curl -Ls $version | grep -a "SHA\|MD5"`
+			## Search for DIGEST file if no zsync file
+			if [ "$digest" = "" ]; then
+				version=`cat "$argpath/version"`.DIGEST
+				digest=`curl -Ls $version`
+			fi
+			## Last resort: Search download page or manual URL if verif file exists, else continue to next app
+			if [ ! "`echo $digest | grep -i "not found"`" = "" ]; then
+				[ -f "$argpath/verif" ] && version=`cat "$argpath/verif"` && digest=`curl -Ls $version`
+				[ ! -f "$argpath/verif" ] && printf $" %b✖\033[0m Checksum for %b cannot be automatically verified, no hashes found \n" "${RED}" "$(echo "$arg" | tr '[:lower:]' '[:upper:]')" && continue
+			fi
+			## Grep for any matching checksum
+			results=`echo $digest | grep -a "$checksum_md5\|$checksum_sha1\|$checksum_sha256\|$checksum_sha512"`
+			if [ "$results" = "" ]; then
+				printf $" %b✖\033[0m Checksum for %b does not match, please manually verify file integrity or reinstall \n" "${RED}" "$(echo "$arg" | tr '[:lower:]' '[:upper:]')"
+			else
+				printf $" %b✔\033[0m Checksum for %b matches, verification successful! \n" "${Green}" "$(echo "$arg" | tr '[:lower:]' '[:upper:]')"
+				printf "MD5: $checksum_md5\nSHA1: $checksum_sha1\nSHA256: $checksum_sha256\nSHA512: $checksum_sha512" > $argpath/AM-VERIFIED
+			fi
+		done
+	else
+		echo "Checksum calculation tools do not exist, please install shasum/md5sum"
+	fi
+	wait
+}
+
 ################################################################################################################################################################
 #				UPDATE
 ################################################################################################################################################################
@@ -1748,6 +1789,9 @@ case "$1" in
 		;;
 	'relocate'|'--relocate')
 		_use_relocate "$@"
+		;;
+	'verify'|'-V')
+		_use_verify "$@"
 		;;
 	'sync'|'-s')
 		_use_sync
