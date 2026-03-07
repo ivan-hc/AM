@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="9.9.4-5"
+AMVERSION="9.9.4-6"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -1415,18 +1415,19 @@ _use_verify() {
 			return 1
 		# Search for hash files
 		elif [ -f "$argpath"/version ] && grep -qi "^http" "$argpath"/version; then
+			download_url=$(sort "$argpath"/version)
 			# Search for zsync file
-			digest=$(curl -Ls "$(sort "$argpath/version").zsync" | grep -a "SHA\|MD5")
+			digest=$(curl -Ls "$download_url.zsync" | grep -a "SHA\|MD5")
 			# Search for DIGEST file if no zsync file
 			if [ -z "$digest" ]; then
-				digest=$(curl -Ls "$(sort "$argpath/version").DIGEST")
+				digest=$(curl -Ls "$download_url.DIGEST")
 				if echo "$digest" | grep -qi "not found"; then
-					printf $" %b⚠️\033[0m Checksum for %b cannot be verified, no hashes found. \n" "${Gold}" "$(echo "$arg" | tr '[:lower:]' '[:upper:]')" | _fit
+					printf $" %b⚠️\033[0m Checksum cannot be verified, no hashes found. \n" "${Gold}" | _fit
 					return 1
 				fi
 			fi
 		else
-			printf "%b⚠️\033[0m Checksum for %b cannot be verified due to missing download URL. \n" "${Gold}" "$(echo "$arg" | tr '[:lower:]' '[:upper:]')" | _fit
+			printf "%b⚠️\033[0m Checksum cannot be verified, missing download URL. \n" "${Gold}" | _fit
 			return 1
 		fi
 		# Calculate checksums and remove verified status
@@ -1437,22 +1438,22 @@ _use_verify() {
 			checksum_sha512=$(shasum -a 512 "$argpath/$arg" | awk '{print $1}')
 			checksum_md5=$(md5sum "$argpath/$arg" | awk '{print $1}')
 		else
-			printf "%b✖\033[0m Checksum for %b cannot be verified due to mismatch in binary name. \n" "${RED}" "$(echo "$arg" | tr '[:lower:]' '[:upper:]')" | _fit
+			printf "%b✖\033[0m Checksum cannot be verified, mismatch in binary name. \n" "${RED}" | _fit
 			return 1
 		fi
 		# Grep for any matching checksum
 		results=$(echo "$digest" | grep -a "$checksum_md5\|$checksum_sha1\|$checksum_sha256\|$checksum_sha512")
 		if [ -z "$results" ]; then
-			printf "%b✖\033[0m Checksum for %b does not match, please manually verify file integrity or reinstall \n" "${RED}" "$(echo "$arg" | tr '[:lower:]' '[:upper:]')" | _fit
+			printf "%b✖\033[0m Checksum does not match, please manually verify file integrity or reinstall \n" "${RED}" | _fit
 		else
-			printf "%b✔\033[0m Checksum for %b matches, verification successful. \n" "${Green}" "$(echo "$arg" | tr '[:lower:]' '[:upper:]')" | _fit
+			printf "%b✔\033[0m Checksum matches, verification successful. \n" "${Green}" | _fit
 			printf "MD5: %b\nSHA1: %b\nSHA256: %b\nSHA512: %b" "$checksum_sha1" "$checksum_sha256" "$checksum_sha512" "$checksum_md5" > "$argpath"/AM-VERIFIED
 		fi
 	else
 		[ -z "$checksum_tools_on" ] && echo "Checksum calculation tools do not exist, please install shasum/md5sum"
 		checksum_tools_on="1" # Do not repeat the message above
 	fi
-	unset checksum_sha1 checksum_sha256 checksum_sha512 checksum_md5 digest results
+	unset checksum_sha1 checksum_sha256 checksum_sha512 checksum_md5 digest download_url results
 }
 
 ################################################################################################################################################################
@@ -1528,7 +1529,7 @@ _update_run_updater() {
 		"$argpath"/AM-updater
 	fi
 	sed -i "s#$ALT_GH#https://api.github.com#g" "$argpath"/AM-updater 2>/dev/null
-	checksum_msg=$(_use_verify | sed 's/  / /g; s/ for .* cannot / cannot /g; s/ for .* matches/ matches/g' | xargs)
+	checksum_msg=$(_use_verify | xargs)
 	end=$(date +%s)
 	timelapsed=$((end - start))
 	if [ "$timelapsed" = 1 ]; then
