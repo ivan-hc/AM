@@ -845,6 +845,9 @@ _check_version() {
 			if echo "$archived_apps" | grep -q "^$arg$"; then
 				APPVERSION="$APPVERSION is ARCHIVED"
 			fi
+			if [ -f "$argpath"/AM-VERIFIED ]; then
+				APPVERSION="$APPVERSION✓"
+			fi
 			if echo "$obsolete_apps" | grep -q "^$arg [0-9]"; then
 				obsolete_last_release=$(echo "$obsolete_apps" | grep "^$arg " | awk '{print $2}')
 				APPVERSION="$APPVERSION, of $obsolete_last_release"
@@ -1403,44 +1406,55 @@ _use_sync() {
 }
 
 _use_verify() {
-	_online_check
-	_determine_args
-	## Check if checksum calc tools exist
-	if (command -v shasum &> /dev/null) && (command -v md5sum &> /dev/null); then
-		ENTRIES="$(echo "$@" | cut -f2- -d ' ' | tr ' ' '\n' | grep -v -- "^-\|^$1$")"
-		for arg in $ENTRIES; do
-			argpath=$(echo "$ARGPATHS" | grep "/$arg$")
-			[ ! -d "$argpath" ] && printf $" %b✖\033[0m Checksum for %b cannot be verified, program not found \n" "${RED}" "$(echo "$arg" | tr '[:lower:]' '[:upper:]')" && continue
-			checksum_sha1=`shasum -a 1 $argpath/$arg | awk '{ print $1 }'`
-			checksum_sha256=`shasum -a 256 $argpath/$arg | awk '{ print $1 }'`
-			checksum_sha512=`shasum -a 512 $argpath/$arg | awk '{ print $1 }'`
-			checksum_md5=`md5sum $argpath/$arg | awk '{ print $1 }'`
-			## Search for zsync file
-			version=`cat "$argpath/version"`.zsync
-			digest=`curl -Ls $version | grep -a "SHA\|MD5"`
-			## Search for DIGEST file if no zsync file
-			if [ "$digest" = "" ]; then
-				version=`cat "$argpath/version"`.DIGEST
-				digest=`curl -Ls $version`
+	# Check if checksum calc tools exist
+	if command -v shasum &> /dev/null && command -v md5sum &> /dev/null; then
+		# Check if the download was a tarball/zip file
+		if [ -f "$argpath"/version ] && [ ! -z $(grep -a "\.xz$\|\.zip$\|\.gz$" "$argpath"/version) ]; then
+			printf $" %b✔\033[0m Checksum for %b is not required for tarball/zip files, verification auto-success! \n" "${Green}" "$(echo "$arg" | tr '[:lower:]' '[:upper:]')"
+			printf "Source is tarball/zip" > "$argpath"/AM-VERIFIED
+			return 1
+		# Search for hash files
+		elif [ -f "$argpath"/version ] && [ ! -z $(grep -a "^http" "$argpath"/version) ]; then
+			# Search for zsync file
+			digest=$(curl -Ls "$(sort "$argpath/version").zsync" | grep -a "SHA\|MD5")
+			# Search for DIGEST file if no zsync file
+			if [ -z "$digest" ]; then
+				digest=$(curl -Ls "$(sort "$argpath/version").DIGEST")
+				results=$(echo "$digest" | grep -ia "not found")
+				# TODO: Refactor this
+				if [ ! -z "$results" ]; then
+					printf $" %b⚠️\033[0m Checksum for %b cannot be automatically verified, no hashes found \n" "${Gold}" "$(echo "$arg" | tr '[:lower:]' '[:upper:]')"
+					return 1
+				fi
 			fi
-			## Last resort: Search download page or manual URL if verif file exists, else continue to next app
-			if [ ! "`echo $digest | grep -i "not found"`" = "" ]; then
-				[ -f "$argpath/verif" ] && version=`cat "$argpath/verif"` && digest=`curl -Ls $version`
-				[ ! -f "$argpath/verif" ] && printf $" %b✖\033[0m Checksum for %b cannot be automatically verified, no hashes found \n" "${RED}" "$(echo "$arg" | tr '[:lower:]' '[:upper:]')" && continue
-			fi
-			## Grep for any matching checksum
-			results=`echo $digest | grep -a "$checksum_md5\|$checksum_sha1\|$checksum_sha256\|$checksum_sha512"`
-			if [ "$results" = "" ]; then
-				printf $" %b✖\033[0m Checksum for %b does not match, please manually verify file integrity or reinstall \n" "${RED}" "$(echo "$arg" | tr '[:lower:]' '[:upper:]')"
-			else
-				printf $" %b✔\033[0m Checksum for %b matches, verification successful! \n" "${Green}" "$(echo "$arg" | tr '[:lower:]' '[:upper:]')"
-				printf "MD5: $checksum_md5\nSHA1: $checksum_sha1\nSHA256: $checksum_sha256\nSHA512: $checksum_sha512" > $argpath/AM-VERIFIED
-			fi
-		done
+		else
+			printf $" %b⚠️\033[0m Checksum for %b cannot be automatically verified due to missing download URL \n" "${Gold}" "$(echo "$arg" | tr '[:lower:]' '[:upper:]')"
+			return 1
+		fi
+		# Calculate checksums and remove verified status
+		if [ -f "$argpath"/"$arg" ]; then
+			rm -f "$argpath"/AM-VERIFIED
+			checksum_sha1=$(shasum -a 1 "$argpath/$arg" | awk '{print $1}')
+			checksum_sha256=$(shasum -a 256 "$argpath/$arg" | awk '{print $1}')
+			checksum_sha512=$(shasum -a 512 "$argpath/$arg" | awk '{print $1}')
+			checksum_md5=$(md5sum "$argpath/$arg" | awk '{print $1}')
+		else
+			printf $" %b✖\033[0m Checksum for %b cannot be automatically verified due to mismatch in binary name \n" "${RED}" "$(echo "$arg" | tr '[:lower:]' '[:upper:]')"
+			return 1
+		fi
+		# Grep for any matching checksum
+		results=$(echo "$digest" | grep -a "$checksum_md5\|$checksum_sha1\|$checksum_sha256\|$checksum_sha512")
+		if [ -z "$results" ]; then
+			printf $" %b✖\033[0m Checksum for %b does not match, please manually verify file integrity or reinstall \n" "${RED}" "$(echo "$arg" | tr '[:lower:]' '[:upper:]')"
+		else
+			printf $" %b✔\033[0m Checksum for %b matches, verification successful! \n" "${Green}" "$(echo "$arg" | tr '[:lower:]' '[:upper:]')"
+			printf "MD5: %b\nSHA1: %b\nSHA256: %b\nSHA512: %b" "$checksum_sha1" "$checksum_sha256" "$checksum_sha512" "$checksum_md5" > "$argpath"/AM-VERIFIED
+		fi
 	else
-		echo "Checksum calculation tools do not exist, please install shasum/md5sum"
+		[ -z "$checksum_tools_on" ] && echo "Checksum calculation tools do not exist, please install shasum/md5sum"
+		checksum_tools_on="1" # Do not repeat the message above
 	fi
-	wait
+	unset checksum_sha1 checksum_sha256 checksum_sha512 checksum_md5 digest
 }
 
 ################################################################################################################################################################
@@ -1505,7 +1519,6 @@ _update_determine_gh_apps_number() {
 }
 
 _update_run_updater() {
-	version=`cat "$argpath"/version`
 	if grep -q "api.github.com" "$argpath"/AM-updater; then
 		if [ "$GH_API_ALLOWED" -le 5 ]; then
 			sed -i "s#https://api.github.com#$ALT_GH#g" "$argpath"/AM-updater
@@ -1517,10 +1530,10 @@ _update_run_updater() {
 		"$argpath"/AM-updater
 	fi
 	sed -i "s#$ALT_GH#https://api.github.com#g" "$argpath"/AM-updater 2>/dev/null
-	[ ! "$version" = `cat "$argpath"/version` ] && rm -f "$argpath"/AM-VERIFIED
 	end=$(date +%s)
 	timelapsed=$((end - start))
 	[ "$timelapsed" = 1 ] && printf $" %b✔\033[0m $APPNAME is updated, $timelapsed second elapsed! \n" "${Green}" || printf $" %b✔\033[0m $APPNAME is updated, $timelapsed seconds elapsed! \n" "${Green}"
+	_use_verify
 	[ -n "$debug_update" ] && echo "$DIVIDING_LINE"
 }
 
