@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="9.9.4-3"
+AMVERSION="9.9.4-4"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -1410,7 +1410,7 @@ _use_verify() {
 	if command -v shasum &> /dev/null && command -v md5sum &> /dev/null; then
 		# Check if the download was a tarball/zip file
 		if [ -f "$argpath"/version ] && grep -q "\.xz$\|\.zip$\|\.gz$" "$argpath"/version; then
-			printf "%b✔\033[0m Checksum for %b is not required for tarball/zip files, verification auto-success! \n" "${Green}" "$(echo "$arg" | tr '[:lower:]' '[:upper:]')" | _fit
+			printf "%b✔\033[0m Checksum for %b is not required for tarball/zip files, verification auto-success. \n" "${Green}" "$(echo "$arg" | tr '[:lower:]' '[:upper:]')" | _fit
 			printf "Source is tarball/zip" > "$argpath"/AM-VERIFIED
 			return 1
 		# Search for hash files
@@ -1421,12 +1421,12 @@ _use_verify() {
 			if [ -z "$digest" ]; then
 				digest=$(curl -Ls "$(sort "$argpath/version").DIGEST")
 				if echo "$digest" | grep -qi "not found"; then
-					printf $" %b⚠️\033[0m Checksum for %b cannot be automatically verified, no hashes found \n" "${Gold}" "$(echo "$arg" | tr '[:lower:]' '[:upper:]')" | _fit
+					printf $" %b⚠️\033[0m Checksum for %b cannot be verified, no hashes found. \n" "${Gold}" "$(echo "$arg" | tr '[:lower:]' '[:upper:]')" | _fit
 					return 1
 				fi
 			fi
 		else
-			printf "%b⚠️\033[0m Checksum for %b cannot be automatically verified due to missing download URL \n" "${Gold}" "$(echo "$arg" | tr '[:lower:]' '[:upper:]')" | _fit
+			printf "%b⚠️\033[0m Checksum for %b cannot be verified due to missing download URL. \n" "${Gold}" "$(echo "$arg" | tr '[:lower:]' '[:upper:]')" | _fit
 			return 1
 		fi
 		# Calculate checksums and remove verified status
@@ -1437,7 +1437,7 @@ _use_verify() {
 			checksum_sha512=$(shasum -a 512 "$argpath/$arg" | awk '{print $1}')
 			checksum_md5=$(md5sum "$argpath/$arg" | awk '{print $1}')
 		else
-			printf "%b✖\033[0m Checksum for %b cannot be automatically verified due to mismatch in binary name \n" "${RED}" "$(echo "$arg" | tr '[:lower:]' '[:upper:]')" | _fit
+			printf "%b✖\033[0m Checksum for %b cannot be verified due to mismatch in binary name. \n" "${RED}" "$(echo "$arg" | tr '[:lower:]' '[:upper:]')" | _fit
 			return 1
 		fi
 		# Grep for any matching checksum
@@ -1445,7 +1445,7 @@ _use_verify() {
 		if [ -z "$results" ]; then
 			printf "%b✖\033[0m Checksum for %b does not match, please manually verify file integrity or reinstall \n" "${RED}" "$(echo "$arg" | tr '[:lower:]' '[:upper:]')" | _fit
 		else
-			printf "%b✔\033[0m Checksum for %b matches, verification successful! \n" "${Green}" "$(echo "$arg" | tr '[:lower:]' '[:upper:]')" | _fit
+			printf "%b✔\033[0m Checksum for %b matches, verification successful. \n" "${Green}" "$(echo "$arg" | tr '[:lower:]' '[:upper:]')" | _fit
 			printf "MD5: %b\nSHA1: %b\nSHA256: %b\nSHA512: %b" "$checksum_sha1" "$checksum_sha256" "$checksum_sha512" "$checksum_md5" > "$argpath"/AM-VERIFIED
 		fi
 	else
@@ -1528,10 +1528,11 @@ _update_run_updater() {
 		"$argpath"/AM-updater
 	fi
 	sed -i "s#$ALT_GH#https://api.github.com#g" "$argpath"/AM-updater 2>/dev/null
+	checksum_msg=$(_use_verify | sed 's/  / /g; s/ for .* cannot / cannot /g; s/ for .* verification / verification /g' | xargs)
 	end=$(date +%s)
 	timelapsed=$((end - start))
-	[ "$timelapsed" = 1 ] && printf $" %b✔\033[0m $APPNAME is updated, $timelapsed second elapsed! \n" "${Green}" || printf $" %b✔\033[0m $APPNAME is updated, $timelapsed seconds elapsed! \n" "${Green}"
-	_use_verify
+	[ "$timelapsed" = 1 ] && printf $" %b✔\033[0m $APPNAME is updated, $timelapsed second elapsed! \n" "${Green}" && printf -- "- %b\n" "$checksum_msg" | _fit \
+		|| printf $" %b✔\033[0m $APPNAME is updated, $timelapsed seconds elapsed! \n" "${Green}" && printf -- "- %b\n" "$checksum_msg" | _fit
 	[ -n "$debug_update" ] && echo "$DIVIDING_LINE"
 }
 
