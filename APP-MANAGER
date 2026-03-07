@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="9.9.4-2"
+AMVERSION="9.9.4-3"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -1409,24 +1409,24 @@ _use_verify() {
 	# Check if checksum calc tools exist
 	if command -v shasum &> /dev/null && command -v md5sum &> /dev/null; then
 		# Check if the download was a tarball/zip file
-		if [ -f "$argpath"/version ] && [ ! -z $(grep -a "\.xz$\|\.zip$\|\.gz$" "$argpath"/version) ]; then
-			printf $" %b✔\033[0m Checksum for %b is not required for tarball/zip files, verification auto-success! \n" "${Green}" "$(echo "$arg" | tr '[:lower:]' '[:upper:]')"
+		if [ -f "$argpath"/version ] && grep -q "\.xz$\|\.zip$\|\.gz$" "$argpath"/version; then
+			printf "%b✔\033[0m Checksum for %b is not required for tarball/zip files, verification auto-success! \n" "${Green}" "$(echo "$arg" | tr '[:lower:]' '[:upper:]')" | _fit
 			printf "Source is tarball/zip" > "$argpath"/AM-VERIFIED
 			return 1
 		# Search for hash files
-		elif [ -f "$argpath"/version ] && [ ! -z "$(grep -a "^http" "$argpath"/version)" ]; then
+		elif [ -f "$argpath"/version ] && grep -qi "^http" "$argpath"/version; then
 			# Search for zsync file
 			digest=$(curl -Ls "$(sort "$argpath/version").zsync" | grep -a "SHA\|MD5")
 			# Search for DIGEST file if no zsync file
 			if [ -z "$digest" ]; then
 				digest=$(curl -Ls "$(sort "$argpath/version").DIGEST")
-				if [ ! -z "$(echo "$digest" | grep -ia "not found")" ]; then
-					printf $" %b⚠️\033[0m Checksum for %b cannot be automatically verified, no hashes found \n" "${Gold}" "$(echo "$arg" | tr '[:lower:]' '[:upper:]')"
+				if echo "$digest" | grep -qi "not found"; then
+					printf $" %b⚠️\033[0m Checksum for %b cannot be automatically verified, no hashes found \n" "${Gold}" "$(echo "$arg" | tr '[:lower:]' '[:upper:]')" | _fit
 					return 1
 				fi
 			fi
 		else
-			printf $" %b⚠️\033[0m Checksum for %b cannot be automatically verified due to missing download URL \n" "${Gold}" "$(echo "$arg" | tr '[:lower:]' '[:upper:]')"
+			printf "%b⚠️\033[0m Checksum for %b cannot be automatically verified due to missing download URL \n" "${Gold}" "$(echo "$arg" | tr '[:lower:]' '[:upper:]')" | _fit
 			return 1
 		fi
 		# Calculate checksums and remove verified status
@@ -1437,15 +1437,15 @@ _use_verify() {
 			checksum_sha512=$(shasum -a 512 "$argpath/$arg" | awk '{print $1}')
 			checksum_md5=$(md5sum "$argpath/$arg" | awk '{print $1}')
 		else
-			printf $" %b✖\033[0m Checksum for %b cannot be automatically verified due to mismatch in binary name \n" "${RED}" "$(echo "$arg" | tr '[:lower:]' '[:upper:]')"
+			printf "%b✖\033[0m Checksum for %b cannot be automatically verified due to mismatch in binary name \n" "${RED}" "$(echo "$arg" | tr '[:lower:]' '[:upper:]')" | _fit
 			return 1
 		fi
 		# Grep for any matching checksum
 		results=$(echo "$digest" | grep -a "$checksum_md5\|$checksum_sha1\|$checksum_sha256\|$checksum_sha512")
 		if [ -z "$results" ]; then
-			printf $" %b✖\033[0m Checksum for %b does not match, please manually verify file integrity or reinstall \n" "${RED}" "$(echo "$arg" | tr '[:lower:]' '[:upper:]')"
+			printf "%b✖\033[0m Checksum for %b does not match, please manually verify file integrity or reinstall \n" "${RED}" "$(echo "$arg" | tr '[:lower:]' '[:upper:]')" | _fit
 		else
-			printf $" %b✔\033[0m Checksum for %b matches, verification successful! \n" "${Green}" "$(echo "$arg" | tr '[:lower:]' '[:upper:]')"
+			printf "%b✔\033[0m Checksum for %b matches, verification successful! \n" "${Green}" "$(echo "$arg" | tr '[:lower:]' '[:upper:]')" | _fit
 			printf "MD5: %b\nSHA1: %b\nSHA256: %b\nSHA512: %b" "$checksum_sha1" "$checksum_sha256" "$checksum_sha512" "$checksum_md5" > "$argpath"/AM-VERIFIED
 		fi
 	else
