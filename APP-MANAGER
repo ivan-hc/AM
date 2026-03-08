@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="9.9.4-1"
+AMVERSION="9.9.4-13"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -93,11 +93,13 @@ RED='\033[0;31m'
 Gold='\033[0;33m'
 Green='\033[0;32m'
 LightBlue='\033[1;34m'
-DIVIDING_LINE="-----------------------------------------------------------------------------"
+
+command -v tput >/dev/null 2>&1 && TERMINAL_WIDTH="$(("$(tput cols)"-"3"))" || TERMINAL_WIDTH="${COLUMNS:-80}"
+DIVIDING_LINE=$(printf '%*s' "$TERMINAL_WIDTH" '' | tr ' ' '-')
 
 # Fit texts to an acceptable width
 _fit() {
-	command -v tput >/dev/null 2>&1 && fold -sw "$(("$(tput cols)"-"3"))" | sed 's/^/ /g' || fold -sw 77 | sed 's/^/ /g'
+	command -v tput >/dev/null 2>&1 && fold -sw "$TERMINAL_WIDTH" | sed 's/^/ /g' || fold -sw 77 | sed 's/^/ /g'
 }
 
 # DEVELOPER MODE
@@ -845,6 +847,9 @@ _check_version() {
 			if echo "$archived_apps" | grep -q "^$arg$"; then
 				APPVERSION="$APPVERSION is ARCHIVED"
 			fi
+			if [ -f "$argpath"/AM-VERIFIED ]; then
+				APPVERSION="$APPVERSION✓"
+			fi
 			if echo "$obsolete_apps" | grep -q "^$arg [0-9]"; then
 				obsolete_last_release=$(echo "$obsolete_apps" | grep "^$arg " | awk '{print $2}')
 				APPVERSION="$APPVERSION, of $obsolete_last_release"
@@ -1402,6 +1407,60 @@ _use_sync() {
 	echo "$DIVIDING_LINE"
 }
 
+_use_verify() {
+	# Check if checksum calc tools exist
+	if command -v shasum &> /dev/null && command -v md5sum &> /dev/null; then
+		# Check if the download was a tarball/zip file
+		if [ -f "$argpath"/version ] && grep -q "\.xz$\|\.zip$\|\.gz$" "$argpath"/version || [ -f "$argpath"/AM-updater ] && grep -q "wget.*\.xz \|wget.*\.zip \|wget.*\.gz " "$argpath"/AM-updater; then
+			printf $"%b✔\033[0m Checksum is not required for tarball/zip files. \n" "${Green}" | _fit
+			printf "Source is tarball/zip" > "$argpath"/AM-VERIFIED
+			return 1
+		# Search for hash files
+		elif [ -f "$argpath"/version ] && grep -qi "^http" "$argpath"/version; then
+			download_url=$(sort "$argpath"/version)
+		elif [ -f "$argpath"/AM-updater ] && grep -q "wget .*am-extras" "$argpath"/AM-updater; then
+			download_url=$(eval "$(grep "wget .*am-extras" "$argpath"/AM-updater | tr '()' '\n' | grep curl | head -1)" | xargs)
+		fi
+		if [ -n "$download_url" ]; then
+			# Search for zsync file
+			digest=$(curl -Ls "$download_url.zsync" | grep -a "SHA\|MD5")
+			# Search for DIGEST file if no zsync file
+			if [ -z "$digest" ]; then
+				digest=$(curl -Ls "$download_url.DIGEST")
+				if echo "$digest" | grep -qi "not found"; then
+					printf $"%b⚠️\033[0m Checksum cannot be verified, no hashes found. \n" "${Gold}" | _fit
+					return 1
+				fi
+			fi
+		else
+			printf $"%b⚠️\033[0m Checksum cannot be verified, missing download URL. \n" "${Gold}" | _fit
+			return 1
+		fi
+		# Calculate checksums and remove verified status
+		if [ -f "$argpath"/"$arg" ]; then
+			rm -f "$argpath"/AM-VERIFIED
+			checksum_sha1=$(shasum -a 1 "$argpath/$arg" | awk '{print $1}')
+			checksum_sha256=$(shasum -a 256 "$argpath/$arg" | awk '{print $1}')
+			checksum_sha512=$(shasum -a 512 "$argpath/$arg" | awk '{print $1}')
+			checksum_md5=$(md5sum "$argpath/$arg" | awk '{print $1}')
+		else
+			printf $"%b✖\033[0m Checksum cannot be verified, mismatch in binary name. \n" "${RED}" | _fit
+			return 1
+		fi
+		# Grep for any matching checksum
+		results=$(echo "$digest" | grep -a "$checksum_md5\|$checksum_sha1\|$checksum_sha256\|$checksum_sha512")
+		if [ -z "$results" ]; then
+			printf $"%b✖\033[0m Checksum does not match, please manually verify file integrity. \n" "${RED}" | _fit
+		else
+			printf $"%b✔\033[0m Checksum matches, verification successful. \n" "${Green}" | _fit
+			printf "MD5: %b\nSHA1: %b\nSHA256: %b\nSHA512: %b" "$checksum_sha1" "$checksum_sha256" "$checksum_sha512" "$checksum_md5" > "$argpath"/AM-VERIFIED
+		fi
+	else
+		echo $"Checksum calculation tools do not exist, please install shasum/md5sum."
+	fi
+	unset checksum_sha1 checksum_sha256 checksum_sha512 checksum_md5 digest download_url results
+}
+
 ################################################################################################################################################################
 #				UPDATE
 ################################################################################################################################################################
@@ -1475,9 +1534,15 @@ _update_run_updater() {
 		"$argpath"/AM-updater
 	fi
 	sed -i "s#$ALT_GH#https://api.github.com#g" "$argpath"/AM-updater 2>/dev/null
+	checksum_msg=$(_use_verify | xargs)
 	end=$(date +%s)
 	timelapsed=$((end - start))
-	[ "$timelapsed" = 1 ] && printf $" %b✔\033[0m $APPNAME is updated, $timelapsed second elapsed! \n" "${Green}" || printf $" %b✔\033[0m $APPNAME is updated, $timelapsed seconds elapsed! \n" "${Green}"
+	if [ "$timelapsed" = 1 ]; then
+		timelapsed_msg=$(printf $" %b✔\033[0m $APPNAME is updated, $timelapsed second elapsed! \n" "${Green}")
+	else
+		timelapsed_msg=$(printf $" %b✔\033[0m $APPNAME is updated, $timelapsed seconds elapsed! \n" "${Green}")
+	fi
+	printf -- "%b%b\n" "$timelapsed_msg" "$checksum_msg" | sed 's/^ //g; s/^/ /g'
 	[ -n "$debug_update" ] && echo "$DIVIDING_LINE"
 }
 
