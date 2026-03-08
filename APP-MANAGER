@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="9.9.4-18"
+AMVERSION="9.9.4-19"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -1414,7 +1414,8 @@ _use_verify() {
 		if { [ -f "$argpath/version" ] && grep -q '\.xz$\|\.zip$\|\.gz$' "$argpath/version"; } \
 		|| { [ -f "$argpath/AM-updater" ] && grep -q 'wget.*\.xz \|wget.*\.zip \|wget.*\.gz ' "$argpath/AM-updater"; } \
 		|| { [ ! -f "$argpath/version" ] && [ ! -f "$argpath/AM-updater" ] && [ -f "$argpath/updater.ini" ]; }; then
-			printf $"%b✔\033[0m Checksum is not required for tarball/zip files. \n" "${Green}" | _fit
+			checksum_msg=$(echo $"Checksum is not required for tarball/zip files.")
+			printf "%b✔\033[0m %b \n" "${Green}" "$checksum_msg" | _fit
 			printf "Source is tarball/zip" > "$argpath"/AM-VERIFIED
 			return 1
 		# Search for hash files
@@ -1431,16 +1432,19 @@ _use_verify() {
 				digest=$(curl -Ls "$download_url.DIGEST")
 				if echo "$digest" | grep -qi "not found"; then
 					if head -c10 "$argpath"/"$arg" 2>/dev/null | grep -qa '^.ELF....AI$' || head -c10 "$argpath"/"$pure_arg" 2>/dev/null | grep -qa '^.ELF....AI$'; then
-						printf $"%b⚠️\033[0m Checksum cannot be verified, no hashes found. \n" "${Gold}" | _fit
+						checksum_msg=$(echo $"Checksum cannot be verified, no hashes found.")
+						printf "%b⚠️\033[0m %b \n" "${Gold}" "$checksum_msg" | _fit
 						return 1
 					else
-						printf $"%b⚠️\033[0m Checksum verification not yet supported for this program. \n" "${Gold}" | _fit
+						checksum_msg=$(echo $"Checksum verification not yet supported for this program.")
+						printf "%b⚠️\033[0m %b \n" "${Gold}" "$checksum_msg" | _fit
 						return 1
 					fi
 				fi
 			fi
 		else
-			printf $"%b⚠️\033[0m Checksum cannot be verified, missing download URL. \n" "${Gold}" | _fit
+			checksum_msg=$(echo $"Checksum cannot be verified, missing download URL.")
+			printf "%b⚠️\033[0m %b \n" "${Gold}" "$checksum_msg" | _fit
 			return 1
 		fi
 		# Calculate checksums and remove verified status
@@ -1457,15 +1461,18 @@ _use_verify() {
 			checksum_sha512=$(shasum -a 512 "$argpath/$pure_arg" | awk '{print $1}')
 			checksum_md5=$(md5sum "$argpath/$pure_arg" | awk '{print $1}')
 		else
-			printf $"%b✖\033[0m Checksum cannot be verified, mismatch in binary name. \n" "${RED}" | _fit
+			checksum_msg=$(echo $"Checksum cannot be verified, mismatch in binary name.")
+			printf "%b✖\033[0m %b \n" "${RED}" "$checksum_msg" | _fit
 			return 1
 		fi
 		# Grep for any matching checksum
 		results=$(echo "$digest" | grep -a "$checksum_md5\|$checksum_sha1\|$checksum_sha256\|$checksum_sha512")
 		if [ -z "$results" ]; then
-			printf $"%b✖\033[0m Checksum does not match, please manually verify file integrity. \n" "${RED}" | _fit
+			checksum_msg=$(echo $"Checksum does not match, please manually verify file integrity.")
+			printf "%b✖\033[0m %b \n" "${RED}" "$checksum_msg" | _fit
 		else
-			printf $"%b✔\033[0m Checksum matches, verification successful. \n" "${Green}" | _fit
+			checksum_msg=$(echo $"Checksum matches, verification successful.")
+			printf "%b✔\033[0m %b \n" "${Green}" "$checksum_msg" | _fit
 			printf "MD5: %b\nSHA1: %b\nSHA256: %b\nSHA512: %b" "$checksum_sha1" "$checksum_sha256" "$checksum_sha512" "$checksum_md5" > "$argpath"/AM-VERIFIED
 		fi
 	else
