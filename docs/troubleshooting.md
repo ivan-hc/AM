@@ -3,6 +3,7 @@
 - [An application does not work, is old and unsupported](#an-application-does-not-work-is-old-and-unsupported)
 - [Cannot download or update an application](#cannot-download-or-update-an-application)
 - [Cannot mount and run AppImages](#cannot-mount-and-run-appimages)
+- [Checksum cannot be verified, does not match or not yet supported](#checksum-cannot-be-verified-does-not-match-or-not-yet-supported)
 - [Failed to open squashfs image](#failed-to-open-squashfs-image)
 - [Spyware, malware and dangerous software](#spyware-malware-and-dangerous-software)
 - [Stop AppImage prompt to create its own launcher, desktop integration and doubled launchers](#stop-appimage-prompt-to-create-its-own-launcher-desktop-integration-and-doubled-launchers)
@@ -53,6 +54,29 @@ However, I suggest contacting the upstream developers to convince them to upgrad
 
 * **If you cannot run some AppImages on Ubuntu 23.10+ or its derivatives, then refer to [Restricted unprivileged user namespaces are coming to Ubuntu 23.10 | Ubuntu](https://ubuntu.com/blog/ubuntu-23-10-restricted-unprivileged-user-namespaces) for possible causes and remedies or jump to "[Ubuntu mess](#ubuntu-mess)".**
 * **If you cannot run chrome/chromium/electron-based AppImages, then refer to [Troubleshooting/Electron-sandboxing](https://docs.appimage.org/user-guide/troubleshooting/electron-sandboxing.html) for possible causes and remedies.**
+
+------------------------------------------------------------------------
+
+| [Back to "Troubleshooting"](#troubleshooting) | [Back to "Main Index"](../README.md#main-index) |
+| - | - |
+
+------------------------------------------------------------------------
+### Checksum cannot be verified, does not match or not yet supported
+Starting with version [9.9.5](https://github.com/ivan-hc/AM/releases/tag/9.9.5), a checksum has been introduced for installed apps. Its status is verified when installing or updating apps.
+
+This is a system for verifying the validity of installed programs and is primarily based on data provided by a .zsync file (especially in AppImages) or DIGEST (for hashes) published online alongside the app, on its host.
+
+A lack of validity during verification DOES NOT DIRECTLY SIGNAL THAT THE DOWNLOADED APPS ARE INVALID, but rather a warning to users of that app to urge upstream to adopt current security standards.
+
+It is therefore simply a way to try to regularize portable apps and AppImages for security purposes, as is already done in other package managers.
+
+"AM" does not store packages in its own database, but retrieves them from the original source via installation scripts. The apps you install are updated in real time by upstream or by the owner of the package pointed to by the installation script. Therefore, **"AM" is not responsible for malfunctions of individual installed apps**.
+
+Given the "uncontrollable" nature of portable programs, **it was necessary to implement this feature in "AM" to at least provide greater awareness to its users**.
+
+**Whether upstream decides to apply these security standards or not, is another matter**. And you, the user, could help by reporting the issue to them.
+
+However, if you trust the author of that app and are only interested in using it, you can ignore the message.
 
 ------------------------------------------------------------------------
 
