@@ -3,7 +3,7 @@
 - [An application does not work, is old and unsupported](#an-application-does-not-work-is-old-and-unsupported)
 - [Cannot download or update an application](#cannot-download-or-update-an-application)
 - [Cannot mount and run AppImages](#cannot-mount-and-run-appimages)
-- [Checksum cannot be verified, does not match or not yet supported](#checksum-cannot-be-verified-does-not-match-or-not-yet-supported)
+- [Checksum does not match or missing verified status](#checksum-does-not-match-or-missing-verified-status)
 - [Failed to open squashfs image](#failed-to-open-squashfs-image)
 - [Spyware, malware and dangerous software](#spyware-malware-and-dangerous-software)
 - [Stop AppImage prompt to create its own launcher, desktop integration and doubled launchers](#stop-appimage-prompt-to-create-its-own-launcher-desktop-integration-and-doubled-launchers)
@@ -61,10 +61,10 @@ However, I suggest contacting the upstream developers to convince them to upgrad
 | - | - |
 
 ------------------------------------------------------------------------
-### Checksum cannot be verified, does not match or not yet supported
-Starting with version [9.9.5](https://github.com/ivan-hc/AM/releases/tag/9.9.5), a checksum has been introduced for installed apps. Its status is verified when installing or updating apps.
+### Checksum does not match or missing verified status
+Starting with version [9.9.5](https://github.com/ivan-hc/AM/releases/tag/9.9.5), a checksum validation method was introduced for installed apps. Its status is shown as verified when installing or updating apps. When listing all installed apps, these apps will have a ✔ beside its version number.
 
-This is a system for verifying the validity of installed programs and is primarily based on data provided by a .zsync file (especially in AppImages) or DIGEST (for hashes) published online alongside the app, on its host.
+This is a system for verifying the integrity of installed programs and is primarily based on data provided by a .zsync file (especially in AppImages) or other forms of digest files published alongside the app, on its host server. Unfortunately, there are quite a number of apps that do not provide these digest files, and thus "AM" will not be able to verify them.
 
 A lack of validity during verification DOES NOT DIRECTLY SIGNAL THAT THE DOWNLOADED APPS ARE INVALID, but rather a warning to users of that app to urge upstream to adopt current security standards.
 
@@ -77,6 +77,8 @@ Given the "uncontrollable" nature of portable programs, **it was necessary to im
 **Whether upstream decides to apply these security standards or not, is another matter**. And you, the user, could help by reporting the issue to them.
 
 However, if you trust the author of that app and are only interested in using it, you can ignore the message.
+
+**On the rare instance a checksum mismatch error occurs**, it indicates the update either failed or the file is somehow corrupted. In this instance, try updating again or just remove the program and then reinstall it to resolve the issue.
 
 ------------------------------------------------------------------------
 
