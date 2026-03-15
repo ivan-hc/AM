@@ -1067,7 +1067,7 @@ Below you can access documentation pages for common issues and frequently asked 
 - [An application does not work, is old and unsupported](docs/troubleshooting.md#an-application-does-not-work-is-old-and-unsupported)
 - [Cannot download or update an application](docs/troubleshooting.md#cannot-download-or-update-an-application)
 - [Cannot mount and run AppImages](docs/troubleshooting.md#cannot-mount-and-run-appimages)
-- [Checksum cannot be verified, does not match or not yet supported](docs/troubleshooting.md#checksum-cannot-be-verified-does-not-match-or-not-yet-supported)
+- [Checksum does not match or missing verified status](docs/troubleshooting.md#checksum-does-not-match-or-missing-verified-status)
 - [Failed to open squashfs image](docs/troubleshooting.md#failed-to-open-squashfs-image)
 - [Spyware, malware and dangerous software](docs/troubleshooting.md#spyware-malware-and-dangerous-software)
 - [Stop AppImage prompt to create its own launcher, desktop integration and doubled launchers](docs/troubleshooting.md#stop-appimage-prompt-to-create-its-own-launcher-desktop-integration-and-doubled-launchers)
