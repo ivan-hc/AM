@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="9.9.5-3"
+AMVERSION="9.9.5-4"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -1430,24 +1430,25 @@ _use_verify() {
 			# Search for zsync file
 			digest=$(curl -Ls "$download_url.zsync" | grep -a "SHA\|MD5")
 			if [ -z "$digest" ]; then
-				# Search for DIGEST file if no zsync file
-				digest=$(curl -Ls "$download_url.DIGEST")
-				if echo "$digest" | grep -qi "not found"; then
-					# Search for sha256 file
-					digest=$(curl -Ls "$download_url.sha256")
-					if echo "$digest" | grep -qi "not found"; then
-						return 1
-						## Disable these warnings?
-						#if head -c10 "$argpath"/"$arg" 2>/dev/null | grep -qa '^.ELF....AI$' || head -c10 "$argpath"/"$pure_arg" 2>/dev/null | grep -qa '^.ELF....AI$'; then
-						#	checksum_msg=$(echo $"Checksum cannot be verified, no hashes found.")
-						#	printf "%b⚠️\033[0m %b \n" "${Gold}" "$checksum_msg" | _fit
-						#	return 1
-						#else
-						#	checksum_msg=$(echo $"Checksum verification not yet supported for this program.")
-						#	printf "%b?\033[0m %b \n" "${LightBlue}" "$checksum_msg" | _fit
-						#	return 1
-						#fi
+				# Search other sources if no zsync file
+				for ext in digest DIGEST sha512 sha256 sha1 md5; do
+					digest=$(curl -Ls "$download_url.$ext")
+					if ! echo "$digest" | grep -qi "not found"; then
+						break
 					fi
+				done
+				if echo "$digest" | grep -qi "not found"; then
+					return 1
+					## Disable these warnings?
+					#if head -c10 "$argpath"/"$arg" 2>/dev/null | grep -qa '^.ELF....AI$' || head -c10 "$argpath"/"$pure_arg" 2>/dev/null | grep -qa '^.ELF....AI$'; then
+					#	checksum_msg=$(echo $"Checksum cannot be verified, no hashes found.")
+					#	printf "%b⚠️\033[0m %b \n" "${Gold}" "$checksum_msg" | _fit
+					#	return 1
+					#else
+					#	checksum_msg=$(echo $"Checksum verification not yet supported for this program.")
+					#	printf "%b?\033[0m %b \n" "${LightBlue}" "$checksum_msg" | _fit
+					#	return 1
+					#fi
 				fi
 			fi
 		else
