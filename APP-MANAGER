@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="9.9.5-5"
+AMVERSION="9.9.5-6"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -849,7 +849,11 @@ _check_version() {
 			fi
 			APPVERSION=$(echo "$APPVERSION" | sed 's/  / /g; s/ $//g')
 			if [ -f "$argpath"/AM-VERIFIED ]; then
-				APPVERSION=$(echo "$APPVERSION✓" | awk '{gsub(/✓/, "\033[32m✓\033[0m"); print}')
+				if grep -q "Checksum failure" "$argpath"/AM-VERIFIED; then
+					APPVERSION=$(echo "$APPVERSION✖" | awk '{gsub(/✖/, "\033[31m✖\033[0m"); print}')
+				else
+					APPVERSION=$(echo "$APPVERSION✓" | awk '{gsub(/✓/, "\033[32m✓\033[0m"); print}')
+				fi
 			fi
 			if echo "$obsolete_apps" | grep -q "^$arg [0-9]"; then
 				obsolete_last_release=$(echo "$obsolete_apps" | grep "^$arg " | awk '{print $2}')
@@ -1467,6 +1471,7 @@ _use_verify() {
 		if [ -z "$results" ]; then
 			checksum_msg=$(echo $"Checksum does not match, please manually verify file integrity.")
 			printf "%b✖\033[0m %b \n" "${RED}" "$checksum_msg" | _fit
+			printf "Checksum failure" > "$argpath"/AM-VERIFIED
 		else
 			checksum_msg=$(echo $"Checksum verified.")
 			printf "%b✔\033[0m %b \n" "${Green}" "$checksum_msg" | _fit
