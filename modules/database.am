@@ -163,31 +163,34 @@ _about() {
 #				FILES
 ################################################################################
 _column() {
-	command -v column >/dev/null 2>&1 && column -t | sed -- 's/ | /|/g; s/◆  /◆ /g; s/^-  /- /g' \
-	|| awk '
-		{
-		# Collect the data for each column and track the max width
-		for (i = 1; i <= NF; i++) {
-			max_width[i] = (length($i) > max_width[i]) ? length($i) : max_width[i]
-			lines[NR, i] = $i
-		}
-		num_fields = NF
-	}
-	END {
-		# Output each line, formatting each column to be the same width
-		for (i = 1; i <= NR; i++) {
-			for (j = 1; j <= num_fields; j++) {
-				# Print the column with space padding
-				printf "%-" max_width[j] "s", lines[i, j]
+	if command -v column >/dev/null 2>&1; then
+		column -t | sed -- 's/ | /|/g; s/◆  /◆ /g; s/^-  /- /g'
+	else
+		awk '
+			{
+			# Collect the data for each column and track the max width
+			for (i = 1; i <= NF; i++) {
+				max_width[i] = (length($i) > max_width[i]) ? length($i) : max_width[i]
+				lines[NR, i] = $i
 			}
-			print ""
+			num_fields = NF
 		}
-	}
-	' | sed 's/^-  /-/; s/./& /; s/|/ | /g'
+		END {
+			# Output each line, formatting each column to be the same width
+			for (i = 1; i <= NR; i++) {
+				for (j = 1; j <= num_fields; j++) {
+					# Print the column with space padding
+					printf "%-" max_width[j] "s", lines[i, j]
+				}
+				print ""
+			}
+		}
+		' | sed 's/^-  /-/; s/./& /; s/|/ | /g'
+	fi
 }
 
 _column_spaces() {
-	 sed 's/✖/_✖/g; s/✓/_✓/g' | _column | sed 's/_✖/ ✖/g; s/_✓/ ✓/g'
+	 sed 's/[✖✓🔒]/_&/g' | _column | sed 's/_\([✖✓🔒]\)/ \1/g'
 }
 
 # HEAD OF THE TABLE
