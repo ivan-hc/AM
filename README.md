@@ -261,7 +261,7 @@ To change locations, remove local apps, and reinstall in the new location, see t
 "AM" installs, removes, updates and manages only standalone programs, ie those programs that can be run from a single directory in which they are contained.
 
 1. **PORTABLE PROGRAMS** from official sources (see Firefox, Thunderbird, NodeJS, Platform Tools...), extracted from official .deb/tar/zip packages.
-2. **APPIMAGES**, from both official and unofficial sources (I also create unofficial AppImages), or compiled on-the-fly with [pkg2appimage](https://github.com/AppImage/pkg2appimage) and [appimagetool](https://github.com/AppImage/AppImageKit), like an AUR helper, from official archives.
+2. **APPIMAGES**, from both official and community-maintained sources, or compiled on-the-fly with [pkg2appimage](https://github.com/AppImage/pkg2appimage) and [appimagetool](https://github.com/AppImage/AppImageKit), like an AUR helper, from official archives.
 3. **FIREFOX PROFILES** to run as webapps, the ones with suffix "ffwa-" in the apps list.
 4. **THIRD-PARTY LIBRARIES** if they are missing in your repositories.
 

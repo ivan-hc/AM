@@ -286,7 +286,7 @@ Their advantage is to keep the data of the reference site well separated from th
 ## How an installation script works
 The structure of an installation script is designed for a system-wide installation (as root), since it is intended to be hosted in this database. But every path indicated within it is written so that "`appman -i`" or "`am -i --user`" can patch the essential parts, to hijack the installation at a local level and without root privileges.
 
-This is a step-by-step focus on how an installation script runs, and we will take `brave` (official archive) and `brave-appimage` (the unofficial AppImage), you will see that they have a similar structure:
+This is a step-by-step focus on how an installation script runs, and we will take `brave` (official archive) and `brave-appimage` (community-maintained AppImage), you will see that they have a similar structure:
 1. The header, it is ment to set the `APP` and `SITE` variable
 ```
 #!/bin/sh
