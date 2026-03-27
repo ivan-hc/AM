@@ -57,7 +57,7 @@ EOF
 chmod a+x ./AM-updater || exit 1
 
 # LAUNCHER & ICON
-./"$APP" --appimage-extract *.desktop 1>/dev/null && mv ./squashfs-root/*.desktop ./"$APP".desktop
+./"$APP" --appimage-extract *.desktop 1>/dev/null && mv ./squashfs-root/*.desktop ./"$APP".desktop 2>/dev/null
 ./"$APP" --appimage-extract .DirIcon 1>/dev/null && mv ./squashfs-root/.DirIcon ./DirIcon
 COUNT=0
 while [ "$COUNT" -lt 10 ]; do # Tries to get the actual icon/desktop if it is a symlink to another symlink
@@ -72,6 +72,19 @@ while [ "$COUNT" -lt 10 ]; do # Tries to get the actual icon/desktop if it is a 
 	[ ! -L ./"$APP".desktop ] && [ ! -L ./DirIcon ] && break
 	COUNT=$((COUNT + 1))
 done
+
+[ ! -L ./"$APP".desktop ] && cat >> ./"$APP".desktop << 'EOF'
+[Desktop Entry]
+Name=Briar Desktop
+Comment=Secure messaging, anywhere
+Exec=/usr/bin/briar-desktop %u
+Icon=briar-desktop
+Terminal=false
+Type=Application
+Categories=Network;Chat;InstantMessaging;
+EOF
+[ ! -L ./DiIcon ] && wget -q https://portable-linux-apps.github.io/icons/"$APP".png -O ./DirIcon
+
 sed -i "s#Exec=[^ ]*#Exec=$APP#g; s#Icon=.*#Icon=/opt/$APP/icons/$APP#g; s# --no-sandbox##g" ./"$APP".desktop
 mv ./"$APP".desktop /usr/local/share/applications/"$APP"-AM.desktop && mv ./DirIcon ./icons/"$APP" 1>/dev/null
 rm -R -f ./squashfs-root
