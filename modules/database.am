@@ -592,19 +592,33 @@ _files_total_size() {
 	fi
 	APPLOCKED=""
 	INSTALLED_APPS_PLAN=$(echo "$INSTALLED_APPS_PATHS" | xargs)
-	[ -z "$INSTALLED_APPS_PLAN" ] && TOTAL_SIZE="0 KiB" || {
+	[ -z "$INSTALLED_APPS_PLAN" ] && TOTAL_SIZE="0.00B" || {
 		# Prefer summing exact bytes computed earlier to avoid re-scanning the filesystem and to provide precise totals.
 		if [ -n "$FILES_SIZES_BYTES_CONTENT" ]; then
 			# FILES_SIZES_BYTES_CONTENT lines are: " ◆ app	|	bytes"
 			# bytes is the 4th field
 			TOTAL_BYTES=$(echo "$FILES_SIZES_BYTES_CONTENT" | awk '{s+=$4}END{print s+0}')
-			# Convert to GiB with two decimals
-			TOTAL_GiB=$(awk -v b="$TOTAL_BYTES" 'BEGIN{printf "%.2f", b/1073741824}')
-			TOTAL_SIZE="$TOTAL_GiB GiB"
 		else
-			# Fallback: original method (may be slower)
-			TOTAL_SIZE=$(du -shc $INSTALLED_APPS_PLAN | awk 'END {print $1"iB"}' | sed 's/...$/ &/')
+			# Fallback: sum exact bytes with du -sb (may be slower)
+			TOTAL_BYTES=$(du -sb $INSTALLED_APPS_PLAN 2>/dev/null | awk '{s+=$1}END{print s+0}')
 		fi
+
+		# Format total using _hr_bytes (returns e.g. "123.00G" / "301.40M" / "199.00K" / "5.00B")
+		hr=$(_hr_bytes "$TOTAL_BYTES")
+		unit=${hr: -1}
+		case "$unit" in
+			G|M|K)
+				# append the 'iB' suffix for IEC units (GiB/MiB/KiB)
+				TOTAL_SIZE="${hr}iB"
+				;;
+			B)
+				# leave plain bytes as 'B'
+				TOTAL_SIZE="${hr}"
+				;;
+			*)
+				TOTAL_SIZE="${hr}iB"
+				;;
+		esac
 	}
 	echo $" TOTAL SIZE: $TOTAL_SIZE of disk space in use"
 	printf "\n"
