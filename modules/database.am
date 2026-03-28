@@ -288,15 +288,26 @@ _files_type() {
 	fi
 }
 
-_files_sizes() {
-	# Determine size
-	if grep -q "usr/local/lib" ./"$arg"/remove; then
-		LIBNAME=$(<"$APPSPATH"/"$arg"/remove tr ' ' '\n' | grep "usr/local/lib" | head -1 | sed 's/*//g')
-		SIZE=$(du -sh "$LIBNAME"* | cut -f1 | sort -rh | head -1)
-	else
-		SIZE=$(du -sh -- "$arg" | cut -f1 -d"	")
+# Human readable formatting from bytes - produce du-like compact suffixes (e.g., 124G, 301.4M)
+_hr_bytes() {
+	local b="$1"
+	# Validate input; if not numeric, return 0.00B
+	if ! printf '%s' "$b" | grep -qE '^[0-9]+$'; then
+		printf "0.00B"
+		return
 	fi
-	echo " ◆ $arg	|	$SIZE"iB >> "$AMCACHEDIR"/files-sizes
+
+	# Always print two decimals and use unit letters only (G/M/K/B).
+	# The caller appends "iB" later, so returning e.g. "123.00G" will become "123.00GiB".
+	if [ "$b" -ge 1073741824 ]; then
+		awk -v x="$b" 'BEGIN{printf "%.2fG", x/1073741824}'
+	elif [ "$b" -ge 1048576 ]; then
+		awk -v x="$b" 'BEGIN{printf "%.2fM", x/1048576}'
+	elif [ "$b" -ge 1024 ]; then
+		awk -v x="$b" 'BEGIN{printf "%.2fK", x/1024}'
+	else
+		awk -v x="$b" 'BEGIN{printf "%.2fB", x}'
+	fi
 }
 
 _files_db() {
@@ -327,21 +338,159 @@ _files_db() {
 # CREATE THE TABLE
 _files() {
 	cd "$APPSPATH" || exit 1
-	INSTALLED_APPS_BY_SIZE=$(du -sh $INSTALLED_APPS_PATHS 2>/dev/null | sort -rh)
-	INSTALLED_APPS=$(echo "$INSTALLED_APPS_BY_SIZE" | grep "$APPSPATH" | sed 's:.*/::' | xargs)
+	# Compute bytes for installed apps once to avoid repeated du calls and rescanning large trees.
+	# INSTALLED_APPS_PATHS should contain the list of installed-apps paths (space-separated)
+	# Using du -sb gets exact bytes per tree and is faster overall than many du -sh calls.
+	# Sort numerically by bytes (largest first) to mimic previous size ordering.
+
+	# Number of parallel jobs to use (use nproc if available)
+	JOBS=${DU_JOBS:-$(nproc 2>/dev/null || echo 4)}
+
+	DU_BYTES_LIST=""
+	if [ -n "$INSTALLED_APPS_PATHS" ]; then
+		# Create a temporary file to collect per-path bytes
+		TMPDU=$(mktemp) 2>/dev/null || TMPDU="/tmp/am-du.$$"
+		: >"$TMPDU" 2>/dev/null || true
+
+		# PID array for du probes
+		declare -a _DU_PIDS=()
+		_wait_for_du_slot() {
+			# prune finished pids
+			local new p
+			new=()
+			for p in "${_DU_PIDS[@]}"; do
+				if kill -0 "$p" 2>/dev/null; then
+					new+=("$p")
+				else
+					wait "$p" 2>/dev/null || true
+				fi
+			done
+			_DU_PIDS=("${new[@]}")
+			# block until below job limit
+			while [ "${#_DU_PIDS[@]}" -ge "$JOBS" ]; do
+				if wait -n 2>/dev/null; then
+					:
+				else
+					sleep 0.05
+				fi
+				new=()
+				for p in "${_DU_PIDS[@]}"; do
+					if kill -0 "$p" 2>/dev/null; then
+						new+=("$p")
+					else
+						wait "$p" 2>/dev/null || true
+					fi
+				done
+				_DU_PIDS=("${new[@]}")
+			done
+		}
+
+		# Launch per-path probes: always measure the whole tree with du -sb
+		for path in $INSTALLED_APPS_PATHS; do
+			_wait_for_du_slot
+			(
+				[ -z "$path" ] && exit 0
+				# Measure entire tree for this app (includes data dirs like Steam's)
+				bytes=$(du -sb "$path" 2>/dev/null | awk '{print $1}' || true)
+				if echo "$bytes" | grep -qE '^[0-9]+$'; then
+					printf "%s\t%s\n" "$bytes" "$path" >>"$TMPDU"
+				else
+					printf "%s\t%s\n" "0" "$path" >>"$TMPDU"
+				fi
+			) &
+			_DU_PIDS+=($!)
+		done
+
+		# Wait for remaining du probe workers
+		for p in "${_DU_PIDS[@]}"; do
+			wait "$p" 2>/dev/null || true
+		done
+
+		# Sort numeric and capture
+		if [ -f "$TMPDU" ]; then
+			DU_BYTES_LIST=$(sort -rn "$TMPDU" 2>/dev/null || true)
+			rm -f "$TMPDU" 2>/dev/null || true
+		fi
+	fi
+
+	# Build ordered list of installed app names from the du output
+	INSTALLED_APPS=$(echo "$DU_BYTES_LIST" | awk '{print $2}' | sed 's:.*/::' | xargs)
 
 	_check_version
+	# Keep sizes in-memory (no persistent cache files)
+	FILES_SIZES_CONTENT=""
+	FILES_SIZES_BYTES_CONTENT=""
+
+	# Pre-fill files-sizes and a tiny bytes map so we avoid per-app du calls
+	if [ -n "$DU_BYTES_LIST" ]; then
+		# iterate DU_BYTES_LIST and compose in-memory content
+		while read -r bytes path; do
+			[ -z "$path" ] && continue
+			arg=$(basename -- "$path")
+			# produce compact unit suffix like du -sh (e.g., 124G, 301.4M)
+			size_compact=$(_hr_bytes "$bytes")
+			# Keep compatibility with downstream parsing which expects the script to append "iB"
+			FILES_SIZES_CONTENT="${FILES_SIZES_CONTENT}"$'\n'" ◆ $arg	|	${size_compact}""iB"
+			FILES_SIZES_BYTES_CONTENT="${FILES_SIZES_BYTES_CONTENT}"$'\n'" ◆ $arg	|	$bytes"
+		done <<< "$DU_BYTES_LIST"
+	fi
+
+	# Remove previous files-* caches as original flow expects clean state
 	rm -f "$AMCACHEDIR"/files-*
+
+	# Launch type/db checks in parallel but bounded by JOBS to avoid oversubscription
+	# Use an internal PID array and wait -n (with a fallback) instead of relying on "jobs"
+	declare -a _PIDS=()
+	_wait_for_slot() {
+		# Clean up finished pids from _PIDS
+		local new p
+		new=()
+		for p in "${_PIDS[@]}"; do
+			if kill -0 "$p" 2>/dev/null; then
+				new+=("$p")
+			else
+				# reap finished pid
+				wait "$p" 2>/dev/null || true
+			fi
+		done
+		_PIDS=("${new[@]}")
+		# If we are at or above the limit, wait for any job to finish.
+		while [ "${#_PIDS[@]}" -ge "$JOBS" ]; do
+			# Prefer wait -n (faster). If not available, poll and reap.
+			if wait -n 2>/dev/null; then
+				:
+			else
+				# Simple polling fallback: sleep a short time and then prune _PIDS
+				sleep 0.05
+			fi
+			new=()
+			for p in "${_PIDS[@]}"; do
+				if kill -0 "$p" 2>/dev/null; then
+					new+=("$p")
+				else
+					wait "$p" 2>/dev/null || true
+				fi
+			done
+			_PIDS=("${new[@]}")
+		done
+	}
+
 	for arg in $INSTALLED_APPS; do
 		if [ -f ./"$arg"/remove ]; then
+			_wait_for_slot
 			(
 				_files_db
-				_files_sizes
 				_files_type
 			) &
+			_PIDS+=($!)
 		fi
 	done
-	wait
+
+	# Wait for remaining background workers
+	for p in "${_PIDS[@]}"; do
+		wait "$p" 2>/dev/null || true
+	done
+
 	rm -f "$AMCACHEDIR"/files-args
 	for arg in $INSTALLED_APPS; do
 		if test -f ./"$arg"/remove 2>/dev/null; then
@@ -350,7 +499,8 @@ _files() {
 			echo "$APPVERSION" | grep -q "🔒$" && APPLOCKED=1
 			APPTYPE=$(grep -w " ◆ $arg	|" "$AMCACHEDIR"/files-type | uniq | awk '{print $4}')
 			[ -z "$APPTYPE" ] && _files_type && APPTYPE=$(grep -w " ◆ $arg	|" "$AMCACHEDIR"/files-type | uniq | awk '{print $4}')
-			APPSYZE=$(grep -w " ◆ $arg	|" "$AMCACHEDIR"/files-sizes | uniq | awk '{print $4}')
+			# Read size from in-memory variable instead of a cache file.
+			APPSYZE=$(echo "$FILES_SIZES_CONTENT" | grep -w " ◆ $arg	|" | uniq | awk '{print $4}')
 			APPDB=$(grep -w " ◆ $arg	|" "$AMCACHEDIR"/files-db | uniq | awk '{print $4}')
 			if [ -f "$AMCACHEDIR"/files-db ] && grep -q "unsupported\|$third_party_lists_find" "$AMCACHEDIR"/files-db; then
 				echo " ◆ $arg	|	$APPDB	|	$APPVERSION	|	$APPTYPE	|	$APPSYZE" >> "$AMCACHEDIR"/files-args
@@ -442,7 +592,20 @@ _files_total_size() {
 	fi
 	APPLOCKED=""
 	INSTALLED_APPS_PLAN=$(echo "$INSTALLED_APPS_PATHS" | xargs)
-	[ -z "$INSTALLED_APPS_PLAN" ] && TOTAL_SIZE="0 KiB" || TOTAL_SIZE=$(du -shc $INSTALLED_APPS_PLAN | awk 'END {print $1"iB"}' | sed 's/...$/ &/')
+	[ -z "$INSTALLED_APPS_PLAN" ] && TOTAL_SIZE="0 KiB" || {
+		# Prefer summing exact bytes computed earlier to avoid re-scanning the filesystem and to provide precise totals.
+		if [ -n "$FILES_SIZES_BYTES_CONTENT" ]; then
+			# FILES_SIZES_BYTES_CONTENT lines are: " ◆ app	|	bytes"
+			# bytes is the 4th field
+			TOTAL_BYTES=$(echo "$FILES_SIZES_BYTES_CONTENT" | awk '{s+=$4}END{print s+0}')
+			# Convert to GiB with two decimals
+			TOTAL_GiB=$(awk -v b="$TOTAL_BYTES" 'BEGIN{printf "%.2f", b/1073741824}')
+			TOTAL_SIZE="$TOTAL_GiB GiB"
+		else
+			# Fallback: original method (may be slower)
+			TOTAL_SIZE=$(du -shc $INSTALLED_APPS_PLAN | awk 'END {print $1"iB"}' | sed 's/...$/ &/')
+		fi
+	}
 	echo $" TOTAL SIZE: $TOTAL_SIZE of disk space in use"
 	printf "\n"
 }
