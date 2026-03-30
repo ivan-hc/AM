@@ -1491,7 +1491,7 @@ _use_verify() {
 
 _update_updatable_apps_msg_head() {
 	printf $" %b\"%b\" CAN MANAGE UPDATES FOR THE FOLLOWING PROGRAMS\033[0m:\n%b\n\n" "${Gold}" "$AMCLIUPPER" "$DIVIDING_LINE"
-	[ -f "$AMCACHEDIR/updatable-args-list" ] && grep "◆" "$AMCACHEDIR/updatable-args-list" | sort || echo $" None"
+	[ -f "$AMCACHEDIR/updatable-args-list" ] && grep "◆" "$AMCACHEDIR/updatable-args-list" | sort | sed 's/\([✖✓🔒]\)/ \1/g' || echo $" None"
 	printf $"\n %bAll self-updatable programs are excluded\033[0m\n" "${RED}"
 	echo "$DIVIDING_LINE"
 }
@@ -1504,12 +1504,19 @@ _update_list_updatable_apps() {
 		for argpath in $argpath_items; do
 			if [ -d "$argpath" ]; then
 				if [ -f "$argpath/AM-updater" ]; then
-				 	app_version=$(grep -w " ◆ $arg	|" "$AMCACHEDIR/version-args" | sed 's:.*|	::')
-					echo " ◆ $arg $app_version" >> "$AMCACHEDIR"/updatable-args-list
+					app_version=$(grep -w " ◆ $arg	|" "$AMCACHEDIR/version-args" | sed 's:.*|	::')
+					if echo "$ARGPATHS" | grep -q "^/opt" && ! echo "$argpath" | grep -q "^/opt"; then
+						echo " ◆ $arg $app_version (local)" >> "$AMCACHEDIR"/updatable-args-list
+					else
+				 		echo " ◆ $arg $app_version" >> "$AMCACHEDIR"/updatable-args-list
+				 	fi
 				fi
 			fi
 		done
 	done
+	if [ -f "$AMCACHEDIR"/updatable-args-list ]; then
+		sort -u "$AMCACHEDIR"/updatable-args-list > "$AMCACHEDIR"/updatable-args-list-sort && mv "$AMCACHEDIR"/updatable-args-list-sort "$AMCACHEDIR"/updatable-args-list
+	fi
 }
 
 _update_determine_apps_version_changes() {
