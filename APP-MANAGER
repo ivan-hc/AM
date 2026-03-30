@@ -1500,13 +1500,15 @@ _update_list_updatable_apps() {
 	_determine_args
 	_check_version
 	for arg in $ARGS; do
-		argpath=$(echo "$ARGPATHS" | grep "/$arg$")
-		if [ -d "$argpath" ]; then
-			if [ -f "$argpath/AM-updater" ]; then
-			 	app_version=$(grep -w " ◆ $arg	|" "$AMCACHEDIR/version-args" | sed 's:.*|	::')
-				echo " ◆ $arg $app_version" >> "$AMCACHEDIR"/updatable-args-list
+		argpath_items=$(echo "$ARGPATHS" | grep "/$arg$" | xargs)
+		for argpath in $argpath_items; do
+			if [ -d "$argpath" ]; then
+				if [ -f "$argpath/AM-updater" ]; then
+				 	app_version=$(grep -w " ◆ $arg	|" "$AMCACHEDIR/version-args" | sed 's:.*|	::')
+					echo " ◆ $arg $app_version" >> "$AMCACHEDIR"/updatable-args-list
+				fi
 			fi
-		fi
+		done
 	done
 }
 
@@ -1585,12 +1587,14 @@ _update_app() {
 
 _update_all_apps() {
 	for arg in $ARGS; do
-		argpath=$(echo "$ARGPATHS" | grep "/$arg$")
-		cd "$argpath" || exit 1
-		arg=$(printf '%s\n' "${PWD##*/}")
-		if [ -f "$argpath"/AM-updater ]; then
-			_update_app
-		fi
+		argpath_items=$(echo "$ARGPATHS" | grep "/$arg$" | xargs)
+		for argpath in $argpath_items; do
+			cd "$argpath" || exit 1
+			arg=$(printf '%s\n' "${PWD##*/}")
+			if [ -f "$argpath"/AM-updater ]; then
+				_update_app
+			fi
+		done
 	done
 	wait
 	_update_determine_apps_version_changes
@@ -1666,18 +1670,20 @@ _use_update() {
 		[ -n "$debug_update" ] && echo "$DIVIDING_LINE"
 		_determine_args
 		for arg in $ENTRIES; do
-			argpath=$(echo "$ARGPATHS" | grep "/$arg$")
-			if [ -f "$argpath"/AM-updater ]; then
-				cd "$argpath" 2>/dev/null || exit 1
-				_update_app
-			elif [ ! -d "$argpath" ]; then
-				printf $" %b✖\033[0m %b cannot be updated, program not found \n" "${RED}" "$(echo "$arg" | tr '[:lower:]' '[:upper:]')"
-			else
-				UPDATERS=$(cd "$argpath" 2>/dev/null && find . -name "*update*" -print 2>/dev/null)
-				[ -n "$UPDATERS" ] && arg_autoupdatable=", it may have its update system"
-				[ "$arg" = "$AMCLI" ] && arg_autoupdatable=", use \"-s\" instead"
-				printf $" %b✖\033[0m %b cannot be updated%b\n" "${RED}" "$(echo "$arg" | tr '[:lower:]' '[:upper:]')" "$arg_autoupdatable"
-			fi
+			argpath_items=$(echo "$ARGPATHS" | grep "/$arg$" | xargs)
+			for argpath in $argpath_items; do
+				if [ -f "$argpath"/AM-updater ]; then
+					cd "$argpath" 2>/dev/null || exit 1
+					_update_app
+				elif [ ! -d "$argpath" ]; then
+					printf $" %b✖\033[0m %b cannot be updated, program not found \n" "${RED}" "$(echo "$arg" | tr '[:lower:]' '[:upper:]')"
+				else
+					UPDATERS=$(cd "$argpath" 2>/dev/null && find . -name "*update*" -print 2>/dev/null)
+					[ -n "$UPDATERS" ] && arg_autoupdatable=", it may have its update system"
+					[ "$arg" = "$AMCLI" ] && arg_autoupdatable=", use \"-s\" instead"
+					printf $" %b✖\033[0m %b cannot be updated%b\n" "${RED}" "$(echo "$arg" | tr '[:lower:]' '[:upper:]')" "$arg_autoupdatable"
+				fi
+			done
 		done
 		wait
 		exit 0
