@@ -461,27 +461,13 @@ _nolibfuse() {
 #				REMOVE
 ################################################################################################################################################################
 
-_detect_path_to_remove() {
-	if [ -f "$APPMAN_APPSPATH"/"$arg"/remove ]; then
-		RMPATH="1"
-	elif [ -f "$APPSPATH"/"$arg"/remove ]; then
-		[ -w "$APPSPATH"/"$arg" ] && $SUDOCMD echo -e "\r" >/dev/null
-		RMPATH="1"
-	else
-		RMPATH=""
-	fi
-	echo "$DIVIDING_LINE"
-}
-
 _remove() {
-	[ "$AMCLI" = am ] && _detect_appman_apps
-	_detect_path_to_remove
-	[ -z "$RMPATH" ] && echo -e $" \"${RED}$arg\033[0m\" is not a valid \"APPNAME\", see \"$AMCLI -f\" for more." && return 1
+	[ ! -f "$argpath"/remove ] && echo -e $" \"${RED}$arg\033[0m\" is not a valid \"APPNAME\", see \"$AMCLI -f\" for more." && return 1
 	read -r -p $" ◆ Do you wish to remove \"$arg\"? (Y/n) " yn
 	if echo "$yn" | grep -i '^n' >/dev/null 2>&1; then
 		echo -e $" \"${LightBlue}$arg\033[0m\" has not been removed!"
 	else
-		[ "$AMCLI" = am ] && "$APPMAN_APPSPATH"/"$arg"/remove 2>/dev/null || $SUDOCMD "$APPSPATH"/"$arg"/remove 2>/dev/null || return 1
+		[ "$AMCLI" = am ] && "$argpath"/remove 2>/dev/null || $SUDOCMD "$argpath"/remove 2>/dev/null || return 1
 		_clean_amcachedir
 		sleep 0.1
 		echo -e $" \"${Green}$arg\033[0m\" has been removed!"
@@ -490,10 +476,8 @@ _remove() {
 }
 
 _hard_remove() {
-	[ "$AMCLI" = am ] && _detect_appman_apps
-	_detect_path_to_remove
-	[ -z "$RMPATH" ] && echo -e $" \"${RED}$arg\033[0m\" is not a valid \"APPNAME\", see \"$AMCLI -f\" for more." && return 1
-	[ "$AMCLI" = am ] && "$APPMAN_APPSPATH"/"$arg"/remove 2>/dev/null || $SUDOCMD "$APPSPATH"/"$arg"/remove 2>/dev/null || return 1
+	[ ! -f "$argpath"/remove ] && echo -e $" \"${RED}$arg\033[0m\" is not a valid \"APPNAME\", see \"$AMCLI -f\" for more." && return 1
+	[ "$AMCLI" = am ] && "$argpath"/remove 2>/dev/null || $SUDOCMD "$argpath"/remove 2>/dev/null || return 1
 	_clean_amcachedir
 	sleep 0.1
 	echo -e $" \"${Green}$arg\033[0m\" has been removed!"
@@ -631,8 +615,10 @@ case "$1" in
 
 	'remove'|'-r')
 		# Remove apps
+		_determine_args
 		entries="$(echo "$@" | cut -f2- -d ' ')"
 		for arg in $entries; do
+			_determine_argpath
 			_remove "${@}"
 			_remove_info_files
 			shift
@@ -642,8 +628,10 @@ case "$1" in
 
 	'-R')
 		# Remove apps without confirmation
+		_determine_args
 		entries="$(echo "$@" | cut -f2- -d ' ')"
 		for arg in $entries; do
+			_determine_argpath
 			_hard_remove "${@}"
 			_remove_info_files
 			shift
