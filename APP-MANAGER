@@ -826,43 +826,45 @@ _check_version() {
 	_determine_args
 	for arg in $ARGS; do
 		(
-		argpath=$(echo "$ARGPATHS" | tr ' ' '\n' | grep "^$APPSPATH.*/$arg$")
-		if [ -f "$argpath"/remove ]; then
-			if [ -f "$argpath"/version ]; then
-				_check_version_if_version_file_exists
-			elif [ "$arg" = "$AMCLI" ]; then
-				APPVERSION="$AMVERSION"
-			elif echo "$arg" | grep -q "ffwa-"; then
-				APPVERSION="WebApp"
-			elif grep -q "usr/local/lib" "$argpath"/remove 2>/dev/null; then
-				_check_version_if_library
-			elif [ -f "$argpath"/updater ] || grep -qi "version=" "$argpath"/*; then
-				_check_version_if_any_version_reference_is_somewhere
-			else
-				APPVERSION="unknown"
-			fi
-			if [ -z "$APPVERSION" ]; then
-				[ -f "$argpath"/"$arg" ] && _check_version_if_binary_in_place || APPVERSION="unknown"
-			fi
-			if echo "$archived_apps" | grep -q "^$arg$"; then
-				APPVERSION="$APPVERSION is ARCHIVED"
-			fi
-			APPVERSION=$(echo "$APPVERSION" | sed 's/  / /g; s/ $//g')
-			if [ -f "$argpath"/AM-VERIFIED ]; then
-				if grep -q "Checksum failure" "$argpath"/AM-VERIFIED; then
-					APPVERSION=$(echo "$APPVERSION✖" | awk '{gsub(/✖/, "\033[31m✖\033[0m"); print}')
+		argpath_items=$(echo "$ARGPATHS" | tr ' ' '\n' | grep "/$arg$" | xargs)
+		for argpath in $argpath_items; do
+			if [ -f "$argpath"/remove ]; then
+				if [ -f "$argpath"/version ]; then
+					_check_version_if_version_file_exists
+				elif [ "$arg" = "$AMCLI" ]; then
+					APPVERSION="$AMVERSION"
+				elif echo "$arg" | grep -q "ffwa-"; then
+					APPVERSION="WebApp"
+				elif grep -q "usr/local/lib" "$argpath"/remove 2>/dev/null; then
+					_check_version_if_library
+				elif [ -f "$argpath"/updater ] || grep -qi "version=" "$argpath"/*; then
+					_check_version_if_any_version_reference_is_somewhere
 				else
-					APPVERSION=$(echo "$APPVERSION✓" | awk '{gsub(/✓/, "\033[32m✓\033[0m"); print}')
+					APPVERSION="unknown"
+				fi
+				if [ -z "$APPVERSION" ]; then
+					[ -f "$argpath"/"$arg" ] && _check_version_if_binary_in_place || APPVERSION="unknown"
+				fi
+				if echo "$archived_apps" | grep -q "^$arg$"; then
+					APPVERSION="$APPVERSION is ARCHIVED"
+				fi
+				APPVERSION=$(echo "$APPVERSION" | sed 's/  / /g; s/ $//g')
+				if [ -f "$argpath"/AM-VERIFIED ]; then
+					if grep -q "Checksum failure" "$argpath"/AM-VERIFIED; then
+						APPVERSION=$(echo "$APPVERSION✖" | awk '{gsub(/✖/, "\033[31m✖\033[0m"); print}')
+					else
+						APPVERSION=$(echo "$APPVERSION✓" | awk '{gsub(/✓/, "\033[32m✓\033[0m"); print}')
+					fi
+				fi
+				if echo "$obsolete_apps" | grep -q "^$arg [0-9]"; then
+					obsolete_last_release=$(echo "$obsolete_apps" | grep "^$arg " | awk '{print $2}')
+					APPVERSION="$APPVERSION, of $obsolete_last_release"
+				fi
+				if ! grep -q " ◆ $arg	|" "$AMCACHEDIR"/version-args 2>/dev/null; then
+					echo " ◆ $arg	|	$APPVERSION" >> "$AMCACHEDIR"/version-args
 				fi
 			fi
-			if echo "$obsolete_apps" | grep -q "^$arg [0-9]"; then
-				obsolete_last_release=$(echo "$obsolete_apps" | grep "^$arg " | awk '{print $2}')
-				APPVERSION="$APPVERSION, of $obsolete_last_release"
-			fi
-			if ! grep -q " ◆ $arg	|" "$AMCACHEDIR"/version-args 2>/dev/null; then
-				echo " ◆ $arg	|	$APPVERSION" >> "$AMCACHEDIR"/version-args
-			fi
-		fi
+		done
 		) &
 	done
 	wait
