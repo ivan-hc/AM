@@ -383,6 +383,25 @@ _determine_args() {
 	# use "argpath=$(echo "$ARGPATHS" | grep "/$arg$")" to determine the full path of "arg"
 }
 
+_determine_argpath() {
+	argpath_number=$(echo "$ARGPATHS" | grep "/$arg$" | wc -l)
+	if [ "$argpath_number" = 2 ]; then
+		argpath_items=$(echo "$ARGPATHS" | grep "/$arg$" | xargs)
+		printf " Detected multiple paths, please choose one:\n\n"
+		i=1
+		echo "$(for p in $argpath_items; do
+			printf "   %2d. %s	" "$i" "$p"
+			i=$((i + 1))
+		done)" | _fit
+		printf "\n"
+		read -r -p " Type a number and press ENTER: " response
+		response=$(echo "$argpath_items" | awk '{print $'"$response"'}')
+		argpath="$response"
+	else
+		argpath=$(echo "$ARGPATHS" | grep "/$arg$")
+	fi
+}
+
 _icon_theme_export_to_datadir() {
 	PNG="$(file "$APPSPATH"/*/icons/* | grep -i '.png' | awk -F":" '{print $1}' | grep -vi .png)"
 	SVG="$(file "$APPSPATH"/*/icons/* | grep -i '.svg' | awk -F":" '{print $1}' | grep -vi .svg)"
@@ -1221,13 +1240,13 @@ _use_hide_unhide() {
 	entries="$(echo "$@" | cut -f2- -d ' ')"
 	if [ "$1" = hide ]; then
 		for arg in $entries; do
-			argpath=$(echo "$ARGPATHS" | grep "/$arg$")
-			[ -f "$argpath/remove" ] && mv "$argpath/remove" "$argpath/remove.old" && echo $"✔ $argpath has been hidden" || echo $"✖ Can't hide \"$arg\", app already hidden or non-existent"
+			_determine_argpath
+			[ -f "$argpath/remove" ] && mv "$argpath/remove" "$argpath/remove.old" && echo $"✔ $argpath has been hidden" || echo $"✖ Can't hide \"$arg\", app already hidden or non-existent" | _fit
 		done
 	else
 		for arg in $entries; do
-			[ "$AMCLI" = am ] && [ -f "/opt/$arg/remove.old" ] && mv "/opt/$arg/remove.old" "/opt/$arg/remove" && echo $"✔ /opt/$arg can be managed again"
-			[ -n "$APPMAN_APPSPATH" ] && [ -f "$APPMAN_APPSPATH/$arg/remove.old" ] && mv "$APPMAN_APPSPATH/$arg/remove.old" "$APPMAN_APPSPATH/$arg/remove" && echo $"✔ $APPMAN_APPSPATH/$arg can be managed again"
+			[ "$AMCLI" = am ] && [ -f "/opt/$arg/remove.old" ] && mv "/opt/$arg/remove.old" "/opt/$arg/remove" && echo $"✔ /opt/$arg can be managed again" | _fit
+			[ -n "$APPMAN_APPSPATH" ] && [ -f "$APPMAN_APPSPATH/$arg/remove.old" ] && mv "$APPMAN_APPSPATH/$arg/remove.old" "$APPMAN_APPSPATH/$arg/remove" && echo $"✔ $APPMAN_APPSPATH/$arg can be managed again" | _fit
 		done
 		_clean_amcachedir
 	fi
@@ -1711,7 +1730,7 @@ _use_force_latest() {
   	_determine_args
 	ENTRIES="$(echo "$@" | cut -f2- -d ' ')"
   	for arg in $ENTRIES; do
-	  	argpath=$(echo "$ARGPATHS" | grep "/$arg$")
+	  	_determine_argpath
 	  	if [ ! -d "$argpath" ]; then
 			echo $" ERROR: \"$arg\" is not installed, see \"-f\""
 		elif [ ! -f "$argpath"/AM-updater ]; then
