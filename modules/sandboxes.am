@@ -5,7 +5,6 @@
 ###################################################################################################
 
 AMCLIPATH_ORIGIN="$AMCLIPATH"
-SUDOCMD_ORIGIN="$SUDOCMD"
 
 # Get xdg variables for _configure_dirs_access
 for DIR in DESKTOP DOCUMENTS DOWNLOAD GAMES MUSIC PICTURES VIDEOS; do
@@ -23,9 +22,15 @@ VIDEOS="$(echo "${VIDEOS:-~/Videos}" | sed "s|$HOME|~|g")"
 
 _check_appimage() {
 	_determine_args
-	TARGET="$(command -v "$1" 2>/dev/null)"
+	arg="$1"
+	_determine_argpath
+	if echo "$ARGPATHS" | grep -q "^/opt\|^/var/opt" && ! echo "$argpath" | grep -q "^/opt\|^/var/opt"; then
+		TARGET="$(command -v "$BINDIR/$1" 2>/dev/null)"
+	else
+		TARGET="$(command -v "/usr/local/bin/$1" 2>/dev/null)"
+	fi
 	APPIMAGE="$(readlink "$TARGET" 2>/dev/null)"
-	APPIMAGEDIR="$(dirname "$APPIMAGE" 2>/dev/null)"
+	APPIMAGEDIR="$argpath"
 	if grep "aisap-am" "$TARGET" >/dev/null 2>&1; then
 		printf $"%b\n \"%b\" is already sandboxed!\n%b\n" "$DIVIDING_LINE" "$1" "$DIVIDING_LINE"
 		return 1
@@ -39,12 +44,19 @@ _check_appimage() {
 }
 
 _disable_sandbox() {
-	TARGET="$(command -v "$1")"
+	_determine_args
+	arg="$1"
+	_determine_argpath
+	if echo "$ARGPATHS" | grep -q "^/opt\|^/var/opt" && ! echo "$argpath" | grep -q "^/opt\|^/var/opt"; then
+		TARGET="$(command -v "$BINDIR/$1" 2>/dev/null)"
+	else
+		TARGET="$(command -v "/usr/local/bin/$1" 2>/dev/null)"
+	fi
 	if ! grep "aisap-am sandboxing script" "$TARGET" >/dev/null 2>&1; then
 		echo $" ERROR: Not a sandboxed AppImage, aborting"
 		return 1
 	fi
-	"$1" --disable-sandbox
+	"$TARGET" --disable-sandbox
 }
 
 _check_aisap() {
@@ -69,9 +81,6 @@ _check_aisap() {
 		fi
 		command -v sas 1>/dev/null || return 1
 		echo $" sas installed successfully!"
-	fi
-	if [ -f "$BINDIR"/"$1" ]; then
-		SUDOCMD=""
 	fi
 }
 
@@ -235,16 +244,26 @@ _configure_dirs_access() {
 }
 
 _install_sandbox_script() {
-	tmpscript=$(echo "$tmpscript" | sed "s#DUMMY#$APPIMAGE#g; s#SUDO#$SUDOCMD#g")
+	if echo "$argpath" | grep -q "^/opt\|^/var/opt"; then
+		tmpscript=$(echo "$tmpscript" | sed "s#DUMMY#$APPIMAGE#g; s#SUDO#$SUDOCMD#g")
+	else
+		tmpscript=$(echo "$tmpscript" | sed "s#DUMMY#$APPIMAGE#g; s#SUDO##g")
+	fi
 	# Remove exec permission from AppImage and its updater for better safety™
 	chmod a-x "$APPIMAGE" || return 1
 	tmpsedEEE="$(sed 's|chmod a+x|chmod a-x|g' "$APPIMAGEDIR/AM-updater" 2>/dev/null)"
 	[ -n "$tmpsedEEE" ] && echo "$tmpsedEEE" > "$APPIMAGEDIR/AM-updater" || return 1
 	unset tmpsedEEE
 	# Install the script
-	$SUDOCMD rm -f "$TARGET" || return 1
-	echo "$tmpscript" | $SUDOCMD tee "$TARGET" >/dev/null 2>&1 || return 1
-	$SUDOCMD chmod a+x "$TARGET"
+	if echo "$argpath" | grep -q "^/opt\|^/var/opt"; then
+		$SUDOCMD rm -f "$TARGET" || return 1
+		echo "$tmpscript" | $SUDOCMD tee "$TARGET" >/dev/null 2>&1 || return 1
+		$SUDOCMD chmod a+x "$TARGET"
+	else
+		rm -f "$TARGET" || return 1
+		echo "$tmpscript" | tee "$TARGET" >/dev/null 2>&1 || return 1
+		chmod a+x "$TARGET"
+	fi
 	SANDBOXDIR="${SANDBOXDIR:-$HOME/.local/am-sandboxes}"
 	printf $'\033[32m\n%s\n\033[0m' " \"$1\" successfully sandboxed!"
 	printf $'\n%s\n' " $1 will be sandboxed in \"$SANDBOXDIR\""
@@ -255,7 +274,6 @@ _install_sandbox_script() {
 	printf $'\033[0m%s\033[33m\n' " to revert the changes, in this case that is:"
 	printf '\033[33m%s\033[0m' " $1 --disable-sandbox"
 	printf $'%s\033[33m%s\n\033[0m\n' " or " "$AMCLI --disable-sandbox $1"
-	SUDOCMD="$SUDOCMD_ORIGIN"
 }
 
 # Main logic
