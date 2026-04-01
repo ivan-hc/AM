@@ -702,6 +702,7 @@ case "$1" in
 			else
 				printf $"%b\n Reinstalling everything...\n%b\n" "$DIVIDING_LINE" "$DIVIDING_LINE"
 				_determine_args
+				ARGS=$(echo "$ARGS" | tr ' ' '\n' | sort -u | xargs)
 				for arg in $ARGS; do
 					argpath_items=$(echo "$ARGPATHS" | grep "/$arg$" | xargs)
 					for argpath in $argpath_items; do
@@ -709,8 +710,12 @@ case "$1" in
 						[ -z "$scriptname" ] && scriptname="$arg"
 						if [ "$arg" != am ] && grep -q "^◆ $scriptname :" "$AMDATADIR/$ARCH-apps"; then
 							reinstall_true=1
-							"$AMCLIPATH_ORIGIN" -R "$arg"
-							if [ "$AMCLI" = "am" ] && ! echo "$argpath" | grep -q "^/opt"; then
+							if echo "$argpath" | grep -q "^/opt\|^/var/opt"; then
+								$SUDOCMD "$argpath"/remove 2>/dev/null
+							else
+								"$argpath"/remove 2>/dev/null
+							fi
+							if [ "$AMCLI" = "am" ] && ! echo "$argpath" | grep -q "^/opt\|^/var/opt"; then
 								"$AMCLIPATH_ORIGIN" -i --user "$scriptname"
 							else
 								"$AMCLIPATH_ORIGIN" -i "$scriptname"
