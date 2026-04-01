@@ -1184,13 +1184,17 @@ _clone_show_items_msg() {
 	if [ -f "$CLONE_FILE" ]; then
 		CLONE_FILE_CONTENT=$(sort -u "$CLONE_FILE")
 		if echo "$@" | grep -q -- "system"; then
-			CLONE_FILE_CONTENT=$(echo "$CLONE_FILE_CONTENT" | sed 's#^#/opt/#; s#//#/#g')
+			if [ -d /opt ]; then
+				CLONE_FILE_CONTENT=$(echo "$CLONE_FILE_CONTENT" | tr ' ' '\n' | sort -u | sed 's#^#/opt/#; s#//#/#g')
+			else
+				CLONE_FILE_CONTENT=$(echo "$CLONE_FILE_CONTENT" | tr ' ' '\n' | sort -u | sed 's#^#/var/opt/#; s#//#/#g')
+			fi
 		elif echo "$@" | grep -q -- "user"; then
-			CLONE_FILE_CONTENT=$(echo "$CLONE_FILE_CONTENT" | sed 's#^/opt/#/local/#g; s#//#/#g')
+			CLONE_FILE_CONTENT=$(echo "$CLONE_FILE_CONTENT" | tr ' ' '\n' | sort -u | sed 's#^/opt/#/local/#g; s#//#/#g')
 		fi
 		printf "File: %b\n" "$CLONE_FILE"
-		system_apps=$(echo "$CLONE_FILE_CONTENT" | grep "^/opt/" 2>/dev/null | sed -- 's:.*/::; s/^/ - /g' | sort -u)
-		local_apps=$(echo "$CLONE_FILE_CONTENT" | grep -v "^/opt/" 2>/dev/null | sed -- 's:.*/::; s/^/ - /g' | sort -u)
+		system_apps=$(echo "$CLONE_FILE_CONTENT" | grep "^/opt/\|^/var/opt" 2>/dev/null | sed -- 's:.*/::; s/^/ - /g' | sort -u)
+		local_apps=$(echo "$CLONE_FILE_CONTENT" | grep -v "^/opt/\|^/var/opt" 2>/dev/null | sed -- 's:.*/::; s/^/ - /g' | sort -u)
 		[ -n "$system_apps" ] && printf "\nContent (system-wide installation):\n\n%b\n" "$system_apps" | _fit
 		[ -n "$local_apps" ] && printf "\nContent (local/rootless installation):\n\n%b\n" "$local_apps" | _fit
 	else
@@ -1202,14 +1206,16 @@ _clone_show_items_msg() {
 _clone_install() {
 	if [ -f "$CLONE_FILE" ]; then
 		AMCLIPATH_ORIGIN="$AMCLIPATH"
-		ARGS=$(echo "$CLONE_FILE_CONTENT" | sed 's:.*/::' | xargs)
+		ARGS=$(echo "$CLONE_FILE_CONTENT" | tr ' ' '\n' | sort -u | sed 's:.*/::' | xargs)
 		for arg in $ARGS; do
-			argpath=$(echo "$CLONE_FILE_CONTENT" | grep "/$arg$")
-			if [ "$AMCLI" = "am" ] && ! echo "$argpath" | grep -q "^/opt/"; then
-				"$AMCLIPATH_ORIGIN" -i --user "$arg"
-			else
-				"$AMCLIPATH_ORIGIN" -i "$arg"
-			fi
+			argpath_items=$(echo "$CLONE_FILE_CONTENT" | tr ' ' '\n' | sort -u | grep "/$arg$" | xargs)
+			for argpath in $argpath_items; do
+				if [ "$AMCLI" = "am" ] && ! echo "$argpath" | grep -q "^/opt/\|^/var/opt"; then
+					"$AMCLIPATH_ORIGIN" -i --user "$arg"
+				else
+					"$AMCLIPATH_ORIGIN" -i "$arg"
+				fi
+			done
 		done
 	else
 		echo "$DIVIDING_LINE"
