@@ -472,51 +472,47 @@ _validate_and_download_lists_of_archived_and_obsolete_apps() {
 ################################################################################################################################################################
 
 # SAFETY CHECKS
-_am_dependences_check() {
-	# Check for essential commands required by the application
-	missing_deps=""
-	AMDEPENDENCES="cat chmod chown curl grep sed wget"
-	for name in $AMDEPENDENCES; do
-		if ! command -v "$name" >/dev/null 2>&1; then
-			missing_deps="$name $missing_deps"
-		fi
-	done
 
-	# Exit if any essential command is missing
-	if [ -n "$missing_deps" ]; then
-		echo "$DIVIDING_LINE"
-		printf $" ${RED}💀 ERROR! MISSING ESSENTIAL COMMANDS\033[0m: %s\n\n Install the above and try again! \n" "${missing_deps[*]}"
-		echo "$DIVIDING_LINE"
-		printf $"%bList of the %b core dependences\033[0m:\n\n%b\n" "${Green}" "$AMCLIUPPER $AMVERSION" "$AMDEPENDENCES" | _fit
-		echo "$DIVIDING_LINE"
-		printf $"If this message appears it is because you are missing some dependency and if its the first time its because something new has been introduced.\n\n" | _fit
-		printf $" See %bhttps://github.com/ivan-hc/AM#core-dependences\033[0m for more information\n" "${LightBlue}"
-		echo "$DIVIDING_LINE"
-		exit 1
+# Check for essential commands required by the application
+missing_deps=""
+AMDEPENDENCES="cat chmod chown curl grep sed wget"
+for name in $AMDEPENDENCES; do
+	if ! command -v "$name" >/dev/null 2>&1; then
+		missing_deps="$name $missing_deps"
 	fi
-}
+done
 
+# Exit if any essential command is missing
+if [ -n "$missing_deps" ]; then
+	echo "$DIVIDING_LINE"
+	printf $" ${RED}💀 ERROR! MISSING ESSENTIAL COMMANDS\033[0m: %s\n\n Install the above and try again! \n" "${missing_deps[*]}"
+	echo "$DIVIDING_LINE"
+	printf $"%bList of the %b core dependences\033[0m:\n\n%b\n" "${Green}" "$AMCLIUPPER $AMVERSION" "$AMDEPENDENCES" | _fit
+	echo "$DIVIDING_LINE"
+	printf $"If this message appears it is because you are missing some dependency and if its the first time its because something new has been introduced.\n\n" | _fit
+	printf $" See %bhttps://github.com/ivan-hc/AM#core-dependences\033[0m for more information\n" "${LightBlue}"
+	echo "$DIVIDING_LINE"
+	exit 1
+fi
+
+# Check for Linux namespace restrictions that may make some apps unusable (Ubuntu mess)
+if command -v unshare >/dev/null 2>&1 && ! unshare -Urm /bin/true 2>/dev/null; then
+	echo "$DIVIDING_LINE"
+	printf $"\n %b⚠️ WARNING: ACCESS TO USER NAMESPACES IS RESTRICTED! \033[0m\n\n" "${RED}"
+	echo $" Some apps may not run, you need to enable access to user namespaces, see" | _fit | sed "s/  / /g"
+	printf " %bhttps://github.com/ivan-hc/AM/blob/main/docs/troubleshooting.md#ubuntu-mess\033[0m\n" "${LightBlue}"
+	echo $" to know more."
+	echo ""
+	echo "$DIVIDING_LINE"
+fi
+
+# Function to check if the installed version of wget is the real wget or is a fake (Fedora mess)
 _check_fedora_mess() {
 	if wget --version | head -1 | grep -qi ' 2.\|wget2 '; then
 		printf $"\n%bWARNING: your distro maintainer ships \"wget2\" as \"wget\" \033[0m\n\n" "${RED}" | _fit
 		[ -f /etc/redhat-release ] && printf $"Please install \"%bwget1\033[0m\" and \"%bwget1-wget\033[0m\" (use %b--allowerasing\033[0m if you have to)\n\nSee https://bugzilla.redhat.com/show_bug.cgi?id=2358792\n\n" "${Gold}" "${Gold}" "${Green}" | sed "s/^/ /g"
 	fi
 }
-
-_check_ubuntu_mess() {
-	if command -v unshare >/dev/null 2>&1 && ! unshare -Urm /bin/true 2>/dev/null; then
-		echo "$DIVIDING_LINE"
-		printf $"\n %b⚠️ WARNING: ACCESS TO USER NAMESPACES IS RESTRICTED! \033[0m\n\n" "${RED}"
-		echo $" Some apps may not run, you need to enable access to user namespaces, see" | _fit | sed "s/  / /g"
-		printf " %bhttps://github.com/ivan-hc/AM/blob/main/docs/troubleshooting.md#ubuntu-mess\033[0m\n" "${LightBlue}"
-		echo $" to know more."
-		echo ""
-		echo "$DIVIDING_LINE"
-	fi
-}
-
-_am_dependences_check
-_check_ubuntu_mess
 
 # Function to check online connections (uses github.com by default, as the database and CLI itself are stored/hosted there)
 _online_check() {
