@@ -147,10 +147,12 @@ _generate_sandbox_script() {
 	  echo "✔ Giving exec permissions back to $APPEXEC..." \
 	    | fold -sw 77 | sed 's/^/   /g; s/   ✔/ ✔/g'
 	  chmod a+x "$APPEXEC" || exit 1
-	  echo "✔ Patching $APPIMAGEDIR/AM-updater to give permissions back..." \
+	  [ -f "$APPIMAGEDIR/AM-updater" ] && UPDATER_SCRIPT="$APPIMAGEDIR/AM-updater" \
+	  || [ -f "$APPIMAGEDIR/AM-LOCK" ] && UPDATER_SCRIPT="$APPIMAGEDIR/AM-LOCK"
+	  echo "✔ Patching $UPDATER_SCRIPT to give permissions back..." \
 	    | fold -sw 77 | sed 's/^/   /g; s/   ✔/ ✔/g'
-	  tmpsedEEE="$(sed 's|chmod a-x|chmod a+x|g' "$APPIMAGEDIR/AM-updater" 2>/dev/null)"
-	  [ -n "$tmpsedEEE" ] && echo "$tmpsedEEE" > "$APPIMAGEDIR/AM-updater" || return 1
+	  tmpsedEEE="$(sed 's|chmod a-x|chmod a+x|g' "$UPDATER_SCRIPT" 2>/dev/null)"
+	  [ -n "$tmpsedEEE" ] && echo "$tmpsedEEE" > "$UPDATER_SCRIPT" || return 1
 	  unset tmpsedEEE
 	  THISFILE="$(readlink -f "$0")"
 	  echo "✔ Replacing $THISFILE with a link to the AppImage..." \
@@ -251,8 +253,10 @@ _install_sandbox_script() {
 	fi
 	# Remove exec permission from AppImage and its updater for better safety™
 	chmod a-x "$APPIMAGE" || return 1
-	tmpsedEEE="$(sed 's|chmod a+x|chmod a-x|g' "$APPIMAGEDIR/AM-updater" 2>/dev/null)"
-	[ -n "$tmpsedEEE" ] && echo "$tmpsedEEE" > "$APPIMAGEDIR/AM-updater" || return 1
+	[ -f "$APPIMAGEDIR/AM-updater" ] && UPDATER_SCRIPT="$APPIMAGEDIR/AM-updater" \
+	|| [ -f "$APPIMAGEDIR/AM-LOCK" ] && UPDATER_SCRIPT="$APPIMAGEDIR/AM-LOCK"
+	tmpsedEEE="$(sed 's|chmod a+x|chmod a-x|g' "$UPDATER_SCRIPT" 2>/dev/null)"
+	[ -n "$tmpsedEEE" ] && echo "$tmpsedEEE" > "$UPDATER_SCRIPT" || return 1
 	unset tmpsedEEE
 	# Install the script
 	if echo "$argpath" | grep -q "^/opt\|^/var/opt"; then
