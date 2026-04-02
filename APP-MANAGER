@@ -380,9 +380,17 @@ _determine_args() {
 	fi
 	# Detect directories with less than 5 elements
 	for a in $ARGPATHS; do
-		if [ "$a" != "/opt/am" ] && [ "$(ls "$a" | wc -l)" -lt 5 ]; then
+		if ! echo "$a" | grep -q "/am$" && [ "$(ls "$a" | wc -l)" -lt 5 ]; then
 			# Find and hide directories with less than 3 executables
 			if [ "$(find "$a" -type f  -executable 2>/dev/null | wc -l)" -lt 3 ]; then
+				#"$a"/remove 1>/dev/null && printf "\n Removed %b\n" "$a"
+				items_2_del=$(sort "$a"/remove | tr ' ' '\n' | grep "^/" 2>/dev/null | xargs)
+				for i in $items_2_del; do
+					if ! echo "$i" | grep -q "local/share/applications/.*AM.desktop\|$BINDIR\|$a"; then
+						sed -i "\|$i|s|^|#|" "$a"/remove 2>/dev/null
+					fi
+				done
+				"$a"/remove 1>/dev/null
 				ARGPATHS=$(echo "$ARGPATHS" | grep -v "$a")
 			fi
 		fi
