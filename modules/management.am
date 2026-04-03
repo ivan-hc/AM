@@ -55,7 +55,35 @@ _backup() {
 #				RESTORE
 ################################################################################################################################################################
 
+_overwrite_clone_core_scripts() {
+	clone_remove_script=$(cat "$argpath"/remove)
+	if [ -f "$argpath"/AM-updater ]; then
+		clone_am_updater_script=$(cat "$argpath"/AM-updater)
+	fi
+	if [ -f "$argpath"/AM-LOCK ]; then
+		clone_am_lock_script=$(cat "$argpath"/AM-LOCK)
+	fi
+}
+
+_overwrite_core_scripts() {
+	echo "$clone_remove_script" > "$argpath"/remove
+	if [ -n "$clone_am_updater_script" ]; then
+		clone_updater_script="$clone_am_updater_script"
+	elif [ -n "$clone_am_lock_script" ]; then
+		clone_updater_script="$clone_am_lock_script"
+	fi
+	if [ -f "$argpath"/AM-updater ]; then
+		echo "$clone_updater_script" > "$argpath"/AM-updater
+	elif [ -f "$argpath"/AM-LOCK ]; then
+		echo "$clone_updater_script" > "$argpath"/AM-LOCK
+	fi
+}
+
 _overwrite() {
+	clone_remove_script=""
+	clone_am_updater_script=""
+	clone_am_lock_script=""
+	clone_updater_script=""
 	if [ ! -d "$HOME/.am-snapshots/$2" ]; then
 		echo $" ERROR: No snapshot for \"$2\" found."
 	elif [ ! -f "$argpath"/remove ]; then
@@ -75,12 +103,12 @@ _overwrite() {
 					return 1
 				fi
 			done
-			clone_remove_script=$(cat "$argpath"/remove)
-			if [ -z "$clone_remove_script" ]; then
-				exit 1
-			fi
+			_overwrite_clone_core_scripts
 			cp -r --backup=t "$d"/* "$argpath"/
 			rm -R -f ./tmp "$argpath"/*~
+			if [ -n "$clone_remove_script" ]; then
+				_overwrite_core_scripts
+			fi
 			echo "$clone_remove_script" > "$argpath"/remove
 			echo $" RESTORE COMPLETED SUCCESSFULLY!"
 		fi
