@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="10-rc1"
+AMVERSION="10-rc2"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -1270,15 +1270,41 @@ _use_hide_unhide() {
 	if [ "$1" = hide ]; then
 		for arg in $entries; do
 			_determine_argpath
-			[ -f "$argpath/remove" ] && mv "$argpath/remove" "$argpath/remove.old" && echo $"✔ $argpath has been hidden" || echo $"✖ Can't hide \"$arg\", app already hidden or non-existent" | _fit
+			if [ -f "$argpath/remove" ]; then
+				mv "$argpath/remove" "$argpath/remove.old" && echo $"✔ $argpath has been hidden"
+			else
+				echo $"✖ Can't hide \"$arg\", app already hidden or non-existent" | _fit
+			fi
 		done
 	else
 		for arg in $entries; do
-			[ "$AMCLI" = am ] && [ -f "/opt/$arg/remove.old" ] && mv "/opt/$arg/remove.old" "/opt/$arg/remove" && echo $"✔ /opt/$arg can be managed again" | _fit
-			[ -n "$APPMAN_APPSPATH" ] && [ -f "$APPMAN_APPSPATH/$arg/remove.old" ] && mv "$APPMAN_APPSPATH/$arg/remove.old" "$APPMAN_APPSPATH/$arg/remove" && echo $"✔ $APPMAN_APPSPATH/$arg can be managed again" | _fit
+			argpath=""
+			if [ -n "$APPMAN_APPSPATH" ] && [ "$APPSPATH" != "$APPMAN_APPSPATH" ]; then
+				if [ -f "$APPSPATH/$arg/remove.old" ] && [ -f "$APPMAN_APPSPATH/$arg/remove.old" ]; then
+					printf " Detected multiple paths, please choose one:\n\n"
+					echo "1. $APPSPATH/$arg		2. $APPMAN_APPSPATH/$arg" | _fit
+					printf "\n"
+					read -r -p " Type a number and press ENTER: " response
+					if [ "$response" = 1 ]; then
+						argpath="$APPSPATH/$arg"
+					elif [ "$response" = 2 ]; then
+						argpath="$APPMAN_APPSPATH/$arg"
+					fi
+				elif [ -f "$APPSPATH/$arg/remove.old" ]; then
+					argpath="$APPSPATH/$arg"
+				elif [ -f "$APPMAN_APPSPATH/$arg/remove.old" ]; then
+					argpath="$APPMAN_APPSPATH/$arg"
+				fi
+			elif [ -f "$APPSPATH/$arg/remove.old" ]; then
+				argpath="$APPSPATH/$arg"
+			fi
+			if [ -n "$argpath" ]; then
+				mv "$argpath/remove.old" "$argpath/remove"
+				echo $"✔ $argpath can be managed again" | _fit
+			fi
 		done
-		_clean_amcachedir
 	fi
+	_clean_amcachedir
 }
 
 ################################################################################################################################################################
