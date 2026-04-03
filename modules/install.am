@@ -250,6 +250,27 @@ _post_installation_processes() {
 	fi
 }
 
+_installation_cleanup() {
+	# Cleanup incomplete installation when interrupted by a signal (Ctrl+C, kill, etc.)
+	trap - INT TERM HUP QUIT
+	printf "\n\n"
+	LASTDIR=$(ls -td "$APPSPATH"/* 2>/dev/null | head -1 | sed 's:.*/::')
+	if [ -n "$LASTDIR" ] && [ -f "$APPSPATH/$LASTDIR/remove" ]; then
+		echo $" 💀 ERROR DURING INSTALLATION, REMOVED $APPNAME!"
+		$SUDOCMD "$APPSPATH/$LASTDIR/remove" 1>/dev/null 2>&1
+	elif [ -n "$LASTDIR" ] && [ -d "$APPSPATH/$LASTDIR" ]; then
+		echo $" 💀 ERROR DURING INSTALLATION, REMOVED $APPNAME!"
+		$SUDOCMD rm -R -f "$APPSPATH/$LASTDIR" 2>/dev/null
+	fi
+	# Clean up the cached installation script
+	_clean_amcachedir 2>/dev/null
+	echo "____________________________________________________________________________"
+	echo "============================================================================"
+	printf $"\n                  %bEND OF ALL INSTALLATION PROCESSES\n\033[0m" "${LightBlue}"
+	printf "\n============================================================================\n"
+	exit 1
+}
+
 _ending_the_installation() {
 	LASTDIR=$(ls -td "$APPSPATH"/* | head -1 | sed 's:.*/::')
 	[ -f "${LASTDIRPATH}"/AM-updater ] && sed -i "s#$ALT_GH#https://api.github.com#g" "${LASTDIRPATH}"/AM-updater 2>/dev/null
@@ -330,7 +351,7 @@ _install_arg() {
 		fi
 	fi
 	# Set trap to cleanup on interruption (Ctrl+C, kill, hangup, quit)
-	trap _ending_the_installation INT TERM HUP QUIT
+	trap _installation_cleanup INT TERM HUP QUIT
 	# Install script
 	$SUDOCMD ./"$arg" || _install_script_retry
 	echo ""
