@@ -261,28 +261,36 @@ _icon_theme() {
 #				LAUNCHER
 ################################################################################################################################################################
 
+_launcher_handle_launcher() {
+	sed -i "s#Exec=[^ ]*#Exec=\"$arg\"#g" ./"$appimage".desktop
+	mv ./"$appimage".desktop "$DATADIR"/"$LAUNCHERS_DIR"/AppImages/"$appimage"-AM.desktop
+	cd .. || exit 1
+}
+
 _launcher_appimage_integration() {
-	if grep -Eaoq -m 1 "appimage-extract" "$arg"; then
-		"$arg" --appimage-extract *.desktop 1>/dev/null && mv ./squashfs-root/*.desktop ./"$appimage".desktop
-		"$arg" --appimage-extract .DirIcon 1>/dev/null && mv ./squashfs-root/.DirIcon ./DirIcon
+	if grep -Eaoq -m 1 "appimage-extract" "$arg" || file "$arg" 2>/dev/null | grep -q 'static'; then
+		rm -Rf AMLAUNCHER_DIR
+		mkdir -p AMLAUNCHER_DIR && cp -r "$arg" AMLAUNCHER_DIR/AppImage && cd ./AMLAUNCHER_DIR || exit 1
+		./AppImage --appimage-extract *.desktop 1>/dev/null && mv ./squashfs-root/*.desktop ./"$appimage".desktop
+		./AppImage --appimage-extract .DirIcon 1>/dev/null && mv ./squashfs-root/.DirIcon ./DirIcon
 		COUNT=0
 		while [ "$COUNT" -lt 10 ]; do # Tries to get the actual icon/desktop if it is a symlink to another symlink
 			if [ -L ./"$appimage".desktop ]; then
 				LINKPATH="$(readlink ./"$appimage".desktop | sed 's|^\./||' 2>/dev/null)"
-				"$arg" --appimage-extract "$LINKPATH" 1>/dev/null && mv ./squashfs-root/"$LINKPATH" ./"$appimage".desktop
+				./AppImage --appimage-extract "$LINKPATH" 1>/dev/null && mv ./squashfs-root/"$LINKPATH" ./"$appimage".desktop
 			fi
 			if [ -L ./DirIcon ]; then
 				LINKPATH="$(readlink ./DirIcon | sed 's|^\./||' 2>/dev/null)"
-				"$arg" --appimage-extract "$LINKPATH" 1>/dev/null && mv ./squashfs-root/"$LINKPATH" "$DATADIR"/icons/ 1>/dev/null
+				./AppImage --appimage-extract "$LINKPATH" 1>/dev/null && mv ./squashfs-root/"$LINKPATH" "$DATADIR"/icons/ 1>/dev/null
 			fi
 			icon_name=$(grep "^Icon=" ./"$appimage".desktop | head -1 | sed 's/^Icon=//g')
 			if ! test -e "$DATADIR"/icons/"$icon_name"*; then
-				"$arg" --appimage-extract share/icons/*/*/* 1>/dev/null
-				"$arg" --appimage-extract usr/share/icons/*/*/* 1>/dev/null
-				"$arg" --appimage-extract share/icons/*/*/*/* 1>/dev/null
-				"$arg" --appimage-extract usr/share/icons/*/*/*/* 1>/dev/null
-				"$arg" --appimage-extract *.svg 1>/dev/null
-				"$arg" --appimage-extract *.png 1>/dev/null
+				./AppImage --appimage-extract share/icons/*/*/* 1>/dev/null
+				./AppImage --appimage-extract usr/share/icons/*/*/* 1>/dev/null
+				./AppImage --appimage-extract share/icons/*/*/*/* 1>/dev/null
+				./AppImage --appimage-extract usr/share/icons/*/*/*/* 1>/dev/null
+				./AppImage --appimage-extract *.svg 1>/dev/null
+				./AppImage --appimage-extract *.png 1>/dev/null
 				share_dirs="usr/share share"
 				size_dirs="0x0 22x22 24x24 32x32 48x48 64x64 128x128 256x256 512x512"
 				for share in $share_dirs; do
@@ -296,8 +304,11 @@ _launcher_appimage_integration() {
 			[ ! -L ./"$appimage".desktop ] && [ ! -L ./DirIcon ] && break
 			COUNT=$((COUNT + 1))
 		done
+		_launcher_handle_launcher
 	elif command -v 7z >/dev/null 2>&1; then
-		7z x -osquashfs-root "$arg" 1>/dev/null
+		rm -Rf AMLAUNCHER_DIR
+		mkdir -p AMLAUNCHER_DIR && cp -r "$arg" AMLAUNCHER_DIR/AppImage && cd AMLAUNCHER_DIR || exit 1
+		7z x -osquashfs-root ./AppImage 1>/dev/null
 		mv ./squashfs-root/*.desktop ./"$appimage".desktop
 		mv ./squashfs-root/.DirIcon ./DirIcon || test -f ./squashfs-root/*.png && mv ./squashfs-root/*.png ./DirIcon || test -f ./squashfs-root/*.svg && mv ./squashfs-root/*.svg ./DirIcon
 		COUNT=0
@@ -316,17 +327,13 @@ _launcher_appimage_integration() {
 		icon_name=$(grep "^Icon=" ./"$appimage".desktop | head -1 | sed 's/^Icon=//g')
 		sed -i 's/.svg$//g; s/.png$//g' ./"$appimage".desktop
 		mv ./DirIcon "$DATADIR"/icons/"$icon_name" 1>/dev/null
+		_launcher_handle_launcher
 	else
 		echo $"WARNING: cannot extract old type 1 AppImages, install \"7z\" and retry." | _fit
-	fi
-	if [ -d ./squashfs-root ]; then
-		sed -i "s#Exec=[^ ]*#Exec=\"$arg\"#g" ./"$appimage".desktop
-		mv ./"$appimage".desktop "$DATADIR"/"$LAUNCHERS_DIR"/AppImages/"$appimage"-AM.desktop
 	fi
 }
 
 _launcher_appimage_bin() {
-	rm -R -f ./squashfs-root ./DirIcon
 	mkdir -p "$BINDIR"
 	if ! echo "$PATH" | grep "$BINDIR" >/dev/null 2>&1; then
 		echo "$DIVIDING_LINE"
@@ -375,7 +382,9 @@ _launcher(){
 		cd "$(dirname "$arg")" || return
 
 		_launcher_appimage_integration 2>/dev/null
-		[ -d ./squashfs-root ] && _launcher_appimage_bin
+		if [ -d ./AMLAUNCHER_DIR ]; then
+			rm -Rf ./AMLAUNCHER_DIR && _launcher_appimage_bin
+		fi
 	fi
 }
 
