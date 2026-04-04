@@ -4,7 +4,14 @@
 # THIS MODULE IS USED TO CREATE INSTALLATION SCRIPS TO ADD TO THE DATABASE
 ##########################################################################
 
+if [  -f "$AMDATADIR"/betatester ]; then
+	AMREPO_MAIN="https://raw.githubusercontent.com/ivan-hc/AM/main"
+else
+	AMREPO_MAIN="$AMREPO"
+fi
+
 # Installation scripts are mainly for the x86_64 architecture: if there is not one for x86_64, there is no alternative architecture counterpart
+
 MAIN_ARCH="x86_64"
 
 list_header="#########################################################################################################
@@ -40,8 +47,8 @@ _template_create_dirs_and_ask_for_source() {
 	# Create base directories
 	mkdir -p ./am-scripts ./am-scripts/"$MAIN_ARCH"
 	if [ ! -f ./am-scripts/"$MAIN_ARCH"-apps ]; then
-		curl -Lo am-scripts/"$MAIN_ARCH"-apps "$AMREPO/programs/$MAIN_ARCH-apps" 2>/dev/null \
-		|| printf "%b\nERROR: Cannot download \n$AMREPO/programs/$MAIN_ARCH-apps\nPlease download it manually! \n%b\n" "$DIVIDING_LINE" "$DIVIDING_LINE" | _fit
+		curl -Lo am-scripts/"$MAIN_ARCH"-apps "$AMREPO_MAIN/programs/$MAIN_ARCH-apps" 2>/dev/null \
+		|| printf "%b\nERROR: Cannot download \n$AMREPO_MAIN/programs/$MAIN_ARCH-apps\nPlease download it manually! \n%b\n" "$DIVIDING_LINE" "$DIVIDING_LINE" | _fit
 	fi
 	_template_create_README
 	# Download the template and convert the argument into a command
@@ -268,8 +275,8 @@ _template_test_github_alt_architectures_url() {
 		GHURLPREVIEW_ARM64=$(eval "$GHURLPREVIEW_COMMAND_ARM64")
 		if [ -n "$GHURLPREVIEW_ARM64" ]; then
 			if [ ! -f ./am-scripts/aarch64-apps ]; then
-				curl -Lo am-scripts/aarch64-apps "$AMREPO/programs/aarch64-apps" 2>/dev/null \
-				|| printf "%b\nERROR: Cannot download \n$AMREPO/programs/aarch64-apps\nPlease download it manually! \n%b\n" "$DIVIDING_LINE" "$DIVIDING_LINE" | _fit
+				curl -Lo am-scripts/aarch64-apps "$AMREPO_MAIN/programs/aarch64-apps" 2>/dev/null \
+				|| printf "%b\nERROR: Cannot download \n$AMREPO_MAIN/programs/aarch64-apps\nPlease download it manually! \n%b\n" "$DIVIDING_LINE" "$DIVIDING_LINE" | _fit
 			fi
 			mkdir -p ./am-scripts/aarch64
 			cp -r ./am-scripts/"$MAIN_ARCH"/"$arg" ./am-scripts/aarch64/"$arg"
@@ -283,8 +290,15 @@ _template_then_git_repo() {
 	# Set the release as "latest" or keep it generic
 	read -r -p $' Latest release (y) or a generic one (N or leave blank)?' yn
 	if echo "$yn" | grep -qi "^y"; then
-		setlatest="/latest"
-		sed -i 's#/releases #/releases/latest #g' ./am-scripts/"$MAIN_ARCH"/"$arg"
+		warn_about_latest_releases_choice="ARE YOU SURE??? The original project might omit Linux builds from the \"latest\" release section in the future! You might not be able to get any builds at all! Think carefully! Consider using keywords for \"grep\" in the next steps."
+		printf "\n%b%b\033[0m\n\n" "${RED}" "$warn_about_latest_releases_choice" | _fit
+		read -r -p $' Latest release (y) or a generic one (N or leave blank)?' yn
+		if echo "$yn" | grep -qi "^y"; then
+			setlatest="/latest"
+			sed -i 's#/releases #/releases/latest #g' ./am-scripts/"$MAIN_ARCH"/"$arg"
+		else
+			setlatest=""
+		fi
 	else
 		setlatest=""
 	fi
@@ -431,9 +445,9 @@ for arg in $ARGS; do
 
 	# If the argument is a github url, then extract the appname from the URL
 	if echo "$arg" | grep -q "^https://github.com/.*"; then
+		arg_github_repo=$(echo "$arg" | sed -- 's#/releases*$##g')
 		arg=$(echo "$arg" | sed -- 's#/releases*$##g; s/-appimage$//g; s:.*/::')
 	fi
-
 	# Check if the appname already exists in the database
 	if grep -q "^◆ $arg :" "$AMDATADIR"/"$ARCH"-apps; then
 		read -r -p " This appname already exists, want to procede anyway? (y,N): " yn
@@ -468,24 +482,31 @@ for arg in $ARGS; do
 			_template_create_dirs_and_ask_for_source
 
 			# ADD THE NAME OF THE SOURCE
-			read -r -ep $" ◆ ADD THE URL OF THE SITE (BETTER IF IT COME FROM GITHUB), FOR EXAMPLE: $(echo -e $'\n\n - if from github.com, use "https://github.com/USER/PROJECT"\n\n - if from other sources, use "https://www.SITENAME.com" or something\n\n URL: ')" RESPONSE
-			case "$RESPONSE" in
-			*)
-				if echo "$RESPONSE" | grep -qi "^https.*github.com\|codeberg.org"; then
-					_template_then_git_repo
-				elif echo "$RESPONSE" | grep -q "sourceforge"; then
-					_template_if_sourceforge
-				elif echo "$RESPONSE" | grep -qi "^https://download.kde.org/.*stable/"; then
-					_template_if_download_kde_org
-				else
-					_template_description_if_hosted_elsewhere
-					_template_help_by_repology
-				fi
-			esac
-			_template_test_github_alt_architectures_url
-			# END OF THIS FUNCTION
-			echo "$DIVIDING_LINE"
-			echo -e $"\n All files are saved in $SCRIPTDIR/am-scripts\n"
+			if [ -n "$arg_github_repo" ]; then
+				RESPONSE="$arg_github_repo"
+				arg_github_repo=""
+				_template_then_git_repo
+				
+			else
+				read -r -ep $" ◆ ADD THE URL OF THE SITE (BETTER IF IT COME FROM GITHUB), FOR EXAMPLE: $(echo -e $'\n\n - if from github.com, use "https://github.com/USER/PROJECT"\n\n - if from other sources, use "https://www.SITENAME.com" or something\n\n URL: ')" RESPONSE
+				case "$RESPONSE" in
+				*)
+					if echo "$RESPONSE" | grep -qi "^https.*github.com\|codeberg.org"; then
+						_template_then_git_repo
+					elif echo "$RESPONSE" | grep -q "sourceforge"; then
+						_template_if_sourceforge
+					elif echo "$RESPONSE" | grep -qi "^https://download.kde.org/.*stable/"; then
+						_template_if_download_kde_org
+					else
+						_template_description_if_hosted_elsewhere
+						_template_help_by_repology
+					fi
+				esac
+				_template_test_github_alt_architectures_url
+				# END OF THIS FUNCTION
+				echo "$DIVIDING_LINE"
+				echo -e $"\n All files are saved in $SCRIPTDIR/am-scripts\n"
+			fi
 			;;
 
 		'1') # CREATE AN APPIMAGE ON-THE-FLY

@@ -250,6 +250,27 @@ _post_installation_processes() {
 	fi
 }
 
+_installation_cleanup() {
+	# Cleanup incomplete installation when interrupted by a signal (Ctrl+C, kill, etc.)
+	trap - INT TERM HUP QUIT
+	printf "\n\n"
+	LASTDIR=$(ls -td "$APPSPATH"/* 2>/dev/null | head -1 | sed 's:.*/::')
+	if [ -n "$LASTDIR" ] && [ -f "$APPSPATH/$LASTDIR/remove" ]; then
+		echo $" 💀 ERROR DURING INSTALLATION, REMOVED $APPNAME!"
+		$SUDOCMD "$APPSPATH/$LASTDIR/remove" 1>/dev/null 2>&1
+	elif [ -n "$LASTDIR" ] && [ -d "$APPSPATH/$LASTDIR" ]; then
+		echo $" 💀 ERROR DURING INSTALLATION, REMOVED $APPNAME!"
+		$SUDOCMD rm -R -f "$APPSPATH/$LASTDIR" 2>/dev/null
+	fi
+	# Clean up the cached installation script
+	_clean_amcachedir 2>/dev/null
+	echo "____________________________________________________________________________"
+	echo "============================================================================"
+	printf $"\n                  %bEND OF ALL INSTALLATION PROCESSES\n\033[0m" "${LightBlue}"
+	printf "\n============================================================================\n"
+	exit 1
+}
+
 _ending_the_installation() {
 	LASTDIR=$(ls -td "$APPSPATH"/* | head -1 | sed 's:.*/::')
 	[ -f "${LASTDIRPATH}"/AM-updater ] && sed -i "s#$ALT_GH#https://api.github.com#g" "${LASTDIRPATH}"/AM-updater 2>/dev/null
@@ -329,11 +350,15 @@ _install_arg() {
 			sed -i "s#https://api.github.com#$ALT_GH#g" ./"$arg"
 		fi
 	fi
+	# Set trap to cleanup on interruption (Ctrl+C, kill, hangup, quit)
+	trap _installation_cleanup INT TERM HUP QUIT
 	# Install script
 	$SUDOCMD ./"$arg" || _install_script_retry
 	echo ""
 	_post_installation_processes
 	_ending_the_installation
+	# Clear the trap after successful installation
+	trap - INT TERM HUP QUIT
 }
 
 ################################################################################
@@ -702,20 +727,27 @@ case "$1" in
 			else
 				printf $"%b\n Reinstalling everything...\n%b\n" "$DIVIDING_LINE" "$DIVIDING_LINE"
 				_determine_args
+				ARGS=$(echo "$ARGS" | tr ' ' '\n' | sort -u | xargs)
 				for arg in $ARGS; do
-					argpath=$(echo "$ARGPATHS" | grep "/$arg$")
-					[ -d "$argpath"/.am-installer ] && scriptname=$(ls "$argpath/.am-installer/" | head -1)
-					[ -z "$scriptname" ] && scriptname="$arg"
-					if [ "$arg" != am ] && grep -q "^◆ $scriptname :" "$AMDATADIR/$ARCH-apps"; then
-						reinstall_true=1
-						"$AMCLIPATH_ORIGIN" -R "$arg"
-						if [ "$AMCLI" = "am" ] && ! echo "$argpath" | grep -q "^/opt"; then
-							"$AMCLIPATH_ORIGIN" -i --user "$scriptname"
-						else
-							"$AMCLIPATH_ORIGIN" -i "$scriptname"
+					argpath_items=$(echo "$ARGPATHS" | grep "/$arg$" | xargs)
+					for argpath in $argpath_items; do
+						[ -d "$argpath"/.am-installer ] && scriptname=$(ls "$argpath/.am-installer/" | head -1)
+						[ -z "$scriptname" ] && scriptname="$arg"
+						if [ "$arg" != am ] && grep -q "^◆ $scriptname :" "$AMDATADIR/$ARCH-apps"; then
+							reinstall_true=1
+							if echo "$argpath" | grep -q "^/opt\|^/var/opt"; then
+								$SUDOCMD "$argpath"/remove 2>/dev/null
+							else
+								"$argpath"/remove 2>/dev/null
+							fi
+							if [ "$AMCLI" = "am" ] && ! echo "$argpath" | grep -q "^/opt\|^/var/opt"; then
+								"$AMCLIPATH_ORIGIN" -i --user "$scriptname"
+							else
+								"$AMCLIPATH_ORIGIN" -i "$scriptname"
+							fi
 						fi
-					fi
-					scriptname=""
+						scriptname=""
+					done
 				done
 			fi
 			;;
@@ -723,29 +755,31 @@ case "$1" in
 			printf $"%b\n Checking for changes of the installation scripts in the online database...\n%b\n" "$DIVIDING_LINE" "$DIVIDING_LINE"
 			_determine_args
 			for arg in $ARGS; do
-				argpath=$(echo "$ARGPATHS" | grep "/$arg$")
-				if [ -f "$argpath"/AM-updater ]; then
-					mkdir -p "$argpath"/.am-installer
-					scriptname=$(ls "$argpath/.am-installer/" | head -1)
-					if [ -n "$scriptname" ] && grep -q "^◆ $scriptname :" "$AMDATADIR/$ARCH-apps"; then
-						CURRENT=$(cat "$argpath"/.am-installer/"$scriptname")
-						SOURCE=$(curl -Ls "$APPSDB"/"$scriptname")
-						if echo "$SOURCE" | grep -q "APP=$arg"; then
-							if [ "$CURRENT" != "$SOURCE" ]; then
-								reinstall_true=1
-								"$AMCLIPATH_ORIGIN" -R "$arg"
-								if [ "$AMCLI" = "am" ] && ! echo "$argpath" | grep -q "^/opt"; then
-									"$AMCLIPATH_ORIGIN" -i --user "$scriptname"
-								else
-									"$AMCLIPATH_ORIGIN" -i "$scriptname"
+				argpath_items=$(echo "$ARGPATHS" | grep "/$arg$" | xargs)
+				for argpath in $argpath_items; do
+						if [ -f "$argpath"/AM-updater ]; then
+							mkdir -p "$argpath"/.am-installer
+							scriptname=$(ls "$argpath/.am-installer/" | head -1)
+							if [ -n "$scriptname" ] && grep -q "^◆ $scriptname :" "$AMDATADIR/$ARCH-apps"; then
+								CURRENT=$(cat "$argpath"/.am-installer/"$scriptname")
+								SOURCE=$(curl -Ls "$APPSDB"/"$scriptname")
+								if echo "$SOURCE" | grep -q "APP=$arg"; then
+									if [ "$CURRENT" != "$SOURCE" ]; then
+										reinstall_true=1
+										"$AMCLIPATH_ORIGIN" -R "$arg"
+										if [ "$AMCLI" = "am" ] && ! echo "$argpath" | grep -q "^/opt"; then
+											"$AMCLIPATH_ORIGIN" -i --user "$scriptname"
+										else
+											"$AMCLIPATH_ORIGIN" -i "$scriptname"
+										fi
+									fi
 								fi
+								SOURCE=""
 							fi
+							scriptname=""
 						fi
-						SOURCE=""
-					fi
-					scriptname=""
-				fi
-			done
+					done
+				done
 			;;
 		esac
 		[ -n "$reinstall_true" ] && printf $" App removal and reinstallation complete! \n%b\n" "$DIVIDING_LINE" || printf $" Nothing to do here! \n%b\n" "$DIVIDING_LINE"
