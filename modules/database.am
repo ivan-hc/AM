@@ -30,24 +30,28 @@ _about_status() {
 		if ! echo "$ARGPATHS" | grep -q "/$appname$"; then
 			appname=$(echo "$appname" | sed -- 's/-appimage$//g')
 		fi
-		argpath=$(echo "$ARGPATHS" | grep "/$appname$")
-		if [ -n "$argpath" ]; then
-			scriptname=$(basename -- "$(find "$argpath"/.am-installer/* | head -1)")
-			if [ "$arg" != "$appname" ]; then
-				app_status="installed\033[0m, as ${Green}$appname\033[0m"
-			else
-				app_status="installed\033[0m"
+		argpath_items=$(echo "$ARGPATHS" | grep "/$arg$" | xargs)
+		for argpath in $argpath_items; do
+			if [ -n "$argpath" ]; then
+				scriptname=$(basename -- "$(find "$argpath"/.am-installer/* | head -1)")
+				if [ "$arg" != "$appname" ]; then
+					app_status="installed\033[0m, as ${Green}$appname\033[0m"
+				else
+					app_status="installed\033[0m"
+				fi
 			fi
-		fi
+		done
 	# Determine status if no script names
 	elif echo "$ARGPATHS" | grep -q "/$arg$"; then
-		argpath=$(echo "$ARGPATHS" | grep "/$arg$")
-		if [ ! -d "$argpath/.am-installer" ]; then
-			app_status="installed\033[0m"
-		else
-			scriptname=$(basename -- "$(find "$argpath"/.am-installer/* | head -1)")
-			app_status="installed\033[0m, but replaced by ${Green}$scriptname\033[0m\n\n Note, run ${RED}$AMCLI -a $scriptname\033[0m instead"
-		fi
+		argpath_items=$(echo "$ARGPATHS" | grep "/$arg$" | xargs)
+		for argpath in $argpath_items; do
+			if [ ! -d "$argpath/.am-installer" ]; then
+				app_status="installed\033[0m"
+			else
+				scriptname=$(basename -- "$(find "$argpath"/.am-installer/* | head -1)")
+				app_status="installed\033[0m, but replaced by ${Green}$scriptname\033[0m\n\n Note, run ${RED}$AMCLI -a $scriptname\033[0m instead"
+			fi
+		done
 	fi
 	# Determine if the referenced app is a metapackage or part of it
 	METAPACKAGES="kdegames kdeutils node platform-tools"
@@ -146,7 +150,7 @@ _about() {
 		if echo "$app_status" | grep -q "^installed"; then
 			disk_usage=$(du -sm "$argpath" 2>/dev/null | cut -f1)
 			[ -z "$disk_usage" ] && disk_usage=$(du -sm "$metaargpath" | cut -f1)
-			app_version=$(grep -w " ◆ $appname	|" "$AMCACHEDIR"/version-args 2>/dev/null | sed 's:.*|	::')
+			app_version=$(grep -w " ◆ $appname	|" "$AMCACHEDIR"/version-args 2>/dev/null | sed 's:.*|	::' | sed 's/\([✖✓🔒]\)/ \1/g')
 			echo ""
 			echo $" Disk usage: $disk_usage MB"
 			echo $" Installed version: $app_version"
@@ -315,7 +319,7 @@ _files_db() {
 	DB=""
 	if test -f "$APPSPATH"/"$arg"/.am-installer/*.*; then
 		_files_db_third_party
-	elif [ "$arg" = am ]; then
+	elif [ "$arg" = am ] || sort "$APPSPATH"/"$arg"/remove | grep -q "usr/local/lib"; then
 		DB="am"
 	elif [ -f "$AMDATADIR/$ARCH-apps" ] && ! grep -q "^◆ $arg :" "$AMDATADIR/$ARCH-apps"; then
 		DB="unsupported"
@@ -725,8 +729,7 @@ _list() {
 	_detect_appman_apps
 	if [ "$AMCLI" = am ]; then
 		if [ -d "$APPMAN_APPSPATH" ]; then
-			APPMAN_ITEMS=$(echo "$ARGPATHS" | grep "$APPMAN_APPSPATH" 2>/dev/null | sort -u | wc -l | sed 's/ //g')
-			ITEMSNUMBER=$(("$ITEMSNUMBER"+"$APPMAN_ITEMS"))
+			ITEMSNUMBER=$(echo "$ARGPATHS" | sed 's:.*/::' | sort -u | wc -l | sed 's/ //g')
 		fi
 		if test -f /opt/am/remove; then
 			ITEMSNUMBER=$(("$ITEMSNUMBER"-1))
@@ -767,7 +770,7 @@ _list() {
 		grep " ◆ $ARGS	" "$AMCACHEDIR"/version-args > "$AMCACHEDIR"/version-args-real 2>/dev/null
 		sort "$AMCACHEDIR"/version-args-real > "$AMCACHEDIR"/version-args
 	fi
-	INSTALLED=$(sort "$AMCACHEDIR"/version-args 2>/dev/null | sed 's/	|	/ /g' | grep -v "◆ am " | uniq)
+	INSTALLED=$(sort "$AMCACHEDIR"/version-args 2>/dev/null | sed 's/	|	/ /g' | grep -v "◆ am " | sed 's/\([✖✓🔒]\)/ \1/g')
 	MESSAGE2="$INSTALLED"
 	# Check if among the installed apps are available libraries
 	if [ "$LIBNUMBER" != 0 ]; then

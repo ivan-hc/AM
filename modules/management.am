@@ -55,7 +55,35 @@ _backup() {
 #				RESTORE
 ################################################################################################################################################################
 
+_overwrite_clone_core_scripts() {
+	clone_remove_script=$(cat "$argpath"/remove)
+	if [ -f "$argpath"/AM-updater ]; then
+		clone_am_updater_script=$(cat "$argpath"/AM-updater)
+	fi
+	if [ -f "$argpath"/AM-LOCK ]; then
+		clone_am_lock_script=$(cat "$argpath"/AM-LOCK)
+	fi
+}
+
+_overwrite_core_scripts() {
+	echo "$clone_remove_script" > "$argpath"/remove
+	if [ -n "$clone_am_updater_script" ]; then
+		clone_updater_script="$clone_am_updater_script"
+	elif [ -n "$clone_am_lock_script" ]; then
+		clone_updater_script="$clone_am_lock_script"
+	fi
+	if [ -f "$argpath"/AM-updater ]; then
+		echo "$clone_updater_script" > "$argpath"/AM-updater
+	elif [ -f "$argpath"/AM-LOCK ]; then
+		echo "$clone_updater_script" > "$argpath"/AM-LOCK
+	fi
+}
+
 _overwrite() {
+	clone_remove_script=""
+	clone_am_updater_script=""
+	clone_am_lock_script=""
+	clone_updater_script=""
 	if [ ! -d "$HOME/.am-snapshots/$2" ]; then
 		echo $" ERROR: No snapshot for \"$2\" found."
 	elif [ ! -f "$argpath"/remove ]; then
@@ -75,8 +103,13 @@ _overwrite() {
 					return 1
 				fi
 			done
+			_overwrite_clone_core_scripts
 			cp -r --backup=t "$d"/* "$argpath"/
 			rm -R -f ./tmp "$argpath"/*~
+			if [ -n "$clone_remove_script" ]; then
+				_overwrite_core_scripts
+			fi
+			echo "$clone_remove_script" > "$argpath"/remove
 			echo $" RESTORE COMPLETED SUCCESSFULLY!"
 		fi
 	fi
@@ -152,7 +185,7 @@ _downgrade_no_snapshots() {
 }
 
 _downgrade() {
-		# Safety checks
+	# Safety checks
 	if [ ! -f "$argpath"/AM-updater ]; then
 		echo $" No AM-updater available for \"$2\", cannot detect any URL!"
 		return 1
@@ -228,28 +261,36 @@ _icon_theme() {
 #				LAUNCHER
 ################################################################################################################################################################
 
+_launcher_handle_launcher() {
+	sed -i "s#Exec=[^ ]*#Exec=\"$arg\"#g" ./"$appimage".desktop
+	mv ./"$appimage".desktop "$DATADIR"/"$LAUNCHERS_DIR"/AppImages/"$appimage"-AM.desktop
+	cd .. || exit 1
+}
+
 _launcher_appimage_integration() {
-	if grep -Eaoq -m 1 "appimage-extract" "$arg"; then
-		"$arg" --appimage-extract *.desktop 1>/dev/null && mv ./squashfs-root/*.desktop ./"$appimage".desktop
-		"$arg" --appimage-extract .DirIcon 1>/dev/null && mv ./squashfs-root/.DirIcon ./DirIcon
+	if grep -Eaoq -m 1 "appimage-extract" "$arg" || file "$arg" 2>/dev/null | grep -q 'static'; then
+		rm -Rf AMLAUNCHER_DIR
+		mkdir -p AMLAUNCHER_DIR && cp -r "$arg" AMLAUNCHER_DIR/AppImage && cd ./AMLAUNCHER_DIR || exit 1
+		./AppImage --appimage-extract *.desktop 1>/dev/null && mv ./squashfs-root/*.desktop ./"$appimage".desktop
+		./AppImage --appimage-extract .DirIcon 1>/dev/null && mv ./squashfs-root/.DirIcon ./DirIcon
 		COUNT=0
 		while [ "$COUNT" -lt 10 ]; do # Tries to get the actual icon/desktop if it is a symlink to another symlink
 			if [ -L ./"$appimage".desktop ]; then
 				LINKPATH="$(readlink ./"$appimage".desktop | sed 's|^\./||' 2>/dev/null)"
-				"$arg" --appimage-extract "$LINKPATH" 1>/dev/null && mv ./squashfs-root/"$LINKPATH" ./"$appimage".desktop
+				./AppImage --appimage-extract "$LINKPATH" 1>/dev/null && mv ./squashfs-root/"$LINKPATH" ./"$appimage".desktop
 			fi
 			if [ -L ./DirIcon ]; then
 				LINKPATH="$(readlink ./DirIcon | sed 's|^\./||' 2>/dev/null)"
-				"$arg" --appimage-extract "$LINKPATH" 1>/dev/null && mv ./squashfs-root/"$LINKPATH" "$DATADIR"/icons/ 1>/dev/null
+				./AppImage --appimage-extract "$LINKPATH" 1>/dev/null && mv ./squashfs-root/"$LINKPATH" "$DATADIR"/icons/ 1>/dev/null
 			fi
 			icon_name=$(grep "^Icon=" ./"$appimage".desktop | head -1 | sed 's/^Icon=//g')
 			if ! test -e "$DATADIR"/icons/"$icon_name"*; then
-				"$arg" --appimage-extract share/icons/*/*/* 1>/dev/null
-				"$arg" --appimage-extract usr/share/icons/*/*/* 1>/dev/null
-				"$arg" --appimage-extract share/icons/*/*/*/* 1>/dev/null
-				"$arg" --appimage-extract usr/share/icons/*/*/*/* 1>/dev/null
-				"$arg" --appimage-extract *.svg 1>/dev/null
-				"$arg" --appimage-extract *.png 1>/dev/null
+				./AppImage --appimage-extract share/icons/*/*/* 1>/dev/null
+				./AppImage --appimage-extract usr/share/icons/*/*/* 1>/dev/null
+				./AppImage --appimage-extract share/icons/*/*/*/* 1>/dev/null
+				./AppImage --appimage-extract usr/share/icons/*/*/*/* 1>/dev/null
+				./AppImage --appimage-extract *.svg 1>/dev/null
+				./AppImage --appimage-extract *.png 1>/dev/null
 				share_dirs="usr/share share"
 				size_dirs="0x0 22x22 24x24 32x32 48x48 64x64 128x128 256x256 512x512"
 				for share in $share_dirs; do
@@ -263,8 +304,11 @@ _launcher_appimage_integration() {
 			[ ! -L ./"$appimage".desktop ] && [ ! -L ./DirIcon ] && break
 			COUNT=$((COUNT + 1))
 		done
+		_launcher_handle_launcher
 	elif command -v 7z >/dev/null 2>&1; then
-		7z x -osquashfs-root "$arg" 1>/dev/null
+		rm -Rf AMLAUNCHER_DIR
+		mkdir -p AMLAUNCHER_DIR && cp -r "$arg" AMLAUNCHER_DIR/AppImage && cd AMLAUNCHER_DIR || exit 1
+		7z x -osquashfs-root ./AppImage 1>/dev/null
 		mv ./squashfs-root/*.desktop ./"$appimage".desktop
 		mv ./squashfs-root/.DirIcon ./DirIcon || test -f ./squashfs-root/*.png && mv ./squashfs-root/*.png ./DirIcon || test -f ./squashfs-root/*.svg && mv ./squashfs-root/*.svg ./DirIcon
 		COUNT=0
@@ -283,17 +327,13 @@ _launcher_appimage_integration() {
 		icon_name=$(grep "^Icon=" ./"$appimage".desktop | head -1 | sed 's/^Icon=//g')
 		sed -i 's/.svg$//g; s/.png$//g' ./"$appimage".desktop
 		mv ./DirIcon "$DATADIR"/icons/"$icon_name" 1>/dev/null
+		_launcher_handle_launcher
 	else
 		echo $"WARNING: cannot extract old type 1 AppImages, install \"7z\" and retry." | _fit
-	fi
-	if [ -d ./squashfs-root ]; then
-		sed -i "s#Exec=[^ ]*#Exec=\"$arg\"#g" ./"$appimage".desktop
-		mv ./"$appimage".desktop "$DATADIR"/"$LAUNCHERS_DIR"/AppImages/"$appimage"-AM.desktop
 	fi
 }
 
 _launcher_appimage_bin() {
-	rm -R -f ./squashfs-root ./DirIcon
 	mkdir -p "$BINDIR"
 	if ! echo "$PATH" | grep "$BINDIR" >/dev/null 2>&1; then
 		echo "$DIVIDING_LINE"
@@ -342,7 +382,9 @@ _launcher(){
 		cd "$(dirname "$arg")" || return
 
 		_launcher_appimage_integration 2>/dev/null
-		[ -d ./squashfs-root ] && _launcher_appimage_bin
+		if [ -d ./AMLAUNCHER_DIR ]; then
+			rm -Rf ./AMLAUNCHER_DIR && _launcher_appimage_bin
+		fi
 	fi
 }
 
@@ -461,27 +503,17 @@ _nolibfuse() {
 #				REMOVE
 ################################################################################################################################################################
 
-_detect_path_to_remove() {
-	if [ -f "$APPMAN_APPSPATH"/"$arg"/remove ]; then
-		RMPATH="1"
-	elif [ -f "$APPSPATH"/"$arg"/remove ]; then
-		[ -w "$APPSPATH"/"$arg" ] && $SUDOCMD echo -e "\r" >/dev/null
-		RMPATH="1"
-	else
-		RMPATH=""
-	fi
-	echo "$DIVIDING_LINE"
-}
-
 _remove() {
-	[ "$AMCLI" = am ] && _detect_appman_apps
-	_detect_path_to_remove
-	[ -z "$RMPATH" ] && echo -e $" \"${RED}$arg\033[0m\" is not a valid \"APPNAME\", see \"$AMCLI -f\" for more." && return 1
+	[ ! -f "$argpath"/remove ] && echo -e $" \"${RED}$arg\033[0m\" is not a valid \"APPNAME\", see \"$AMCLI -f\" for more." && return 1
 	read -r -p $" ◆ Do you wish to remove \"$arg\"? (Y/n) " yn
 	if echo "$yn" | grep -i '^n' >/dev/null 2>&1; then
 		echo -e $" \"${LightBlue}$arg\033[0m\" has not been removed!"
 	else
-		[ "$AMCLI" = am ] && "$APPMAN_APPSPATH"/"$arg"/remove 2>/dev/null || $SUDOCMD "$APPSPATH"/"$arg"/remove 2>/dev/null || return 1
+		if echo "$ARGPATHS" | grep -q "^/opt\|^/var/opt" && ! echo "$argpath" | grep -q "^/opt\|^/var/opt"; then
+			"$argpath"/remove 2>/dev/null || return 1
+		else
+			$SUDOCMD "$argpath"/remove 2>/dev/null || return 1
+		fi
 		_clean_amcachedir
 		sleep 0.1
 		echo -e $" \"${Green}$arg\033[0m\" has been removed!"
@@ -490,10 +522,12 @@ _remove() {
 }
 
 _hard_remove() {
-	[ "$AMCLI" = am ] && _detect_appman_apps
-	_detect_path_to_remove
-	[ -z "$RMPATH" ] && echo -e $" \"${RED}$arg\033[0m\" is not a valid \"APPNAME\", see \"$AMCLI -f\" for more." && return 1
-	[ "$AMCLI" = am ] && "$APPMAN_APPSPATH"/"$arg"/remove 2>/dev/null || $SUDOCMD "$APPSPATH"/"$arg"/remove 2>/dev/null || return 1
+	[ ! -f "$argpath"/remove ] && echo -e $" \"${RED}$arg\033[0m\" is not a valid \"APPNAME\", see \"$AMCLI -f\" for more." && return 1
+	if echo "$ARGPATHS" | grep -q "^/opt\|^/var/opt" && ! echo "$argpath" | grep -q "^/opt\|^/var/opt"; then
+		"$argpath"/remove 2>/dev/null || return 1
+	else
+		$SUDOCMD "$argpath"/remove 2>/dev/null || return 1
+	fi
 	_clean_amcachedir
 	sleep 0.1
 	echo -e $" \"${Green}$arg\033[0m\" has been removed!"
@@ -512,7 +546,7 @@ case "$1" in
 		_determine_args
 		entries="$(echo "$@" | cut -f2- -d ' ')"
 		for arg in $entries; do
-			argpath=$(echo "$ARGPATHS" | grep "/$arg$")
+			_determine_argpath
 			_backup "${@}"
 			shift
 		done
@@ -524,7 +558,7 @@ case "$1" in
 		echo "$DIVIDING_LINE"
 		entries="$(echo "$@" | cut -f2- -d ' ')"
 		for arg in $entries; do
-			argpath=$(echo "$ARGPATHS" | grep "/$arg$")
+			_determine_argpath
 			_isolate_appimage "${@}"
 			echo "$DIVIDING_LINE"
 			argpath=""
@@ -537,7 +571,7 @@ case "$1" in
 		_determine_args
 		entries="$(echo "$@" | cut -f2- -d ' ')"
 		for arg in $entries; do
-			argpath=$(echo "$ARGPATHS" | grep "/$arg$")
+			_determine_argpath
 			_downgrade "${@}"
 			_clean_amcachedir
 			_update_list_updatable_apps
@@ -557,7 +591,7 @@ case "$1" in
 		fi
 		if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
 			for arg in $entries; do
-				argpath=$(echo "$ARGPATHS" | grep "/$arg$")
+				_determine_argpath
 				_icon_theme "${@}"
 			done
 			echo $" ✔ Success!"
@@ -587,7 +621,7 @@ case "$1" in
 		_determine_args
 		entries="$(echo "$@" | cut -f2- -d ' ')"
 		for arg in $entries; do
-			argpath=$(echo "$ARGPATHS" | grep "/$arg$")
+			_determine_argpath
 			_lock "${@}"
 			shift
 		done
@@ -598,7 +632,7 @@ case "$1" in
 		_determine_args
 		entries="$(echo "$@" | cut -f2- -d ' ')"
 		for arg in $entries; do
-			argpath=$(echo "$ARGPATHS" | grep "/$arg$")
+			_determine_argpath
 			_unlock "${@}"
 			shift
 		done
@@ -609,9 +643,9 @@ case "$1" in
 		_determine_args
 		entries="$(echo "$@" | cut -f2- -d ' ')"
 		for arg in $entries; do
-			argpath=$(echo "$ARGPATHS" | grep "/$arg$")
+			_determine_argpath
 			_nolibfuse "${@}"
-			_remove_info_files
+			_clean_amcachedir
 			shift
 		done
 		echo "$DIVIDING_LINE"
@@ -622,19 +656,22 @@ case "$1" in
 		_determine_args
 		entries="$(echo "$@" | cut -f2- -d ' ')"
 		for arg in $entries; do
-			argpath=$(echo "$ARGPATHS" | grep "/$arg$")
+			_determine_argpath
 			_overwrite "${@}"
-			_remove_info_files
+			_clean_amcachedir
 			shift
 		done
 		;;
 
 	'remove'|'-r')
 		# Remove apps
+		_determine_args
 		entries="$(echo "$@" | cut -f2- -d ' ')"
 		for arg in $entries; do
+			echo "$DIVIDING_LINE"
+			_determine_argpath
 			_remove "${@}"
-			_remove_info_files
+			_clean_amcachedir
 			shift
 		done
 		echo "$DIVIDING_LINE"
@@ -642,10 +679,12 @@ case "$1" in
 
 	'-R')
 		# Remove apps without confirmation
+		_determine_args
 		entries="$(echo "$@" | cut -f2- -d ' ')"
 		for arg in $entries; do
+			echo "$DIVIDING_LINE"
+			_determine_argpath
 			_hard_remove "${@}"
-			_remove_info_files
 			shift
 		done
 		echo "$DIVIDING_LINE"
