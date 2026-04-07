@@ -52,8 +52,10 @@ _template_create_dirs_and_ask_for_source() {
 	fi
 	_template_create_README
 	# Download the template and convert the argument into a command
-	if [ "$templatetype" = 0 ] || [ "$templatetype" = 1 ] || [ -z "$templatetype" ]; then
+	if [ "$templatetype" = 0 ] || [ -z "$templatetype" ]; then
 		wget -q "$AMREPO"/templates/AM-SAMPLE-AppImage -O ./am-scripts/"$MAIN_ARCH"/"$arg"
+	elif [ "$templatetype" = 1 ]; then
+		wget -q "$AMREPO"/templates/AM-SAMPLE-portable2appimage -O ./am-scripts/"$MAIN_ARCH"/"$arg"
 	elif [ "$templatetype" = 2 ]; then
 		wget -q "$AMREPO"/templates/AM-SAMPLE-Archive -O ./am-scripts/"$MAIN_ARCH"/"$arg"
 	elif [ "$templatetype" = 3 ]; then
@@ -161,9 +163,7 @@ _template_help_by_repology() {
 		repology=$(curl -Ls "https://api.rl.pkgforge.dev/project/$arg/versions" | grep -i "version" | grep -i "new\|uniq" | sort | head -1 | tr '><' '\n' | grep "^[0-9]")
 		repology_command="curl -Ls \"https://api.rl.pkgforge.dev/project/\$APP/versions\" | grep -i \"version\" | grep -i \"new\|uniq\" | sort | head -1 | tr '><' '\n' | grep \"^[0-9]\""
 		_template_use_repology
-		if [ "$templatetype" != 1 ]; then
-			_template_use_wget_to_download_a_linear_url_or_a_command
-		fi
+		_template_use_wget_to_download_a_linear_url_or_a_command
 	else
 		echo "$DIVIDING_LINE"
 		_template_custom_download_url_as_version_variable
@@ -259,7 +259,7 @@ _template_if_git_repo() {
 			sed -i "s/SAMPLE/$arg/g" ./am-scripts/"$MAIN_ARCH"/"$arg"
 		fi
 		[ -n "$AIA" ] && FUNCTION=$(echo "$FUNCTION" | sed 's/mage\$//g')
-	elif [ "$templatetype" = 2 ]; then
+	elif [ "$templatetype" = 1 ] || [ "$templatetype" = 2 ]; then
 		FUNCTION=''"$CURL_COMMAND_REF"'/'"$RESPONSE"'/releases | sed '"$q"'s/[()",{} ]/\\n/g'"$q"' | grep -oi "https.*" | grep -vi "i386\\|i686\\|armhf\\|aarch64\\|arm64\\|armv7l" | head -1'
 	fi
 	# Add the above function and reference repository in the installation script
@@ -317,7 +317,7 @@ _template_then_git_repo() {
 		if [ "$templatetype" = 0 ] || [ -z "$templatetype" ]; then
 			GHURLPREVIEW_COMMAND="$CURL_COMMAND_REF_PREVIEW/$RESPONSE/releases$setlatest | sed 's/[()\",{} ]/\n/g' | grep -oi \"https.*mage$\" | grep -vi \"i386\|i686\|armhf\|aarch64\|arm64\|armv7l\" | head -1"
 			_template_test_github_url
-		elif [ "$templatetype" = 2 ]; then
+		elif [ "$templatetype" = 1 ] || [ "$templatetype" = 2 ]; then
 			GHURLPREVIEW_COMMAND="$CURL_COMMAND_REF_PREVIEW/$RESPONSE/releases$setlatest | sed 's/[()\",{} ]/\n/g' | grep -oi \"https.*\" | grep -vi \"i386\|i686\|armhf\|aarch64\|arm64\|armv7l\" | head -1"
 			_template_test_github_url
 		fi
@@ -336,7 +336,7 @@ _template_then_git_repo() {
 				if [ "$templatetype" = 0 ] || [ -z "$templatetype" ]; then
 					GHURLPREVIEW_COMMAND="$CURL_COMMAND_REF_PREVIEW/$RESPONSE/releases$setlatest | sed 's/[()\",{} ]/\n/g' | grep -oi \"https.*mage$\" | grep -vi \"i386\|i686\|armhf\|aarch64\|arm64\|armv7l\" | grep -i \"$response\" | head -1"
 					_template_test_github_url
-				elif [ "$templatetype" = 2 ]; then
+				elif [ "$templatetype" = 1 ] || [ "$templatetype" = 2 ]; then
 					GHURLPREVIEW_COMMAND="$CURL_COMMAND_REF_PREVIEW/$RESPONSE/releases$setlatest | sed 's/[()\",{} ]/\n/g' | grep -oi \"https.*\" | grep -vi \"i386\|i686\|armhf\|aarch64\|arm64\|armv7l\" | grep -i \"$response\" | head -1"
 					_template_test_github_url
 				fi
@@ -353,7 +353,7 @@ _template_then_git_repo() {
 				if [ "$templatetype" = 0 ] || [ -z "$templatetype" ]; then
 					GHURLPREVIEW_COMMAND="$CURL_COMMAND_REF_PREVIEW/$RESPONSE/releases$setlatest | sed 's/[()\",{} ]/\n/g' | grep -oi \"https.*mage$\" | grep -vi \"i386\|i686\|armhf\|aarch64\|arm64\|armv7l\" | grep -v \"$response\" | head -1"
 					_template_test_github_url
-				elif [ "$templatetype" = 2 ]; then
+				elif [ "$templatetype" = 1 ] || [ "$templatetype" = 2 ]; then
 					GHURLPREVIEW_COMMAND="$CURL_COMMAND_REF_PREVIEW/$RESPONSE/releases$setlatest | sed 's/[()\",{} ]/\n/g' | grep -oi \"https.*\" | grep -vi \"i386\|i686\|armhf\|aarch64\|arm64\|armv7l\" | grep -v \"$response\" | head -1"
 					_template_test_github_url
 				fi
@@ -381,7 +381,7 @@ _template_if_sourceforge() {
 	# FILE TYPE
 	if [ "$templatetype" = 0 ] || [ -z "$templatetype" ]; then
 		filetype="appimage"
-	elif [ "$templatetype" = 2 ]; then
+	elif [ "$templatetype" = 1 ] || [ "$templatetype" = 2 ]; then
 		read -r -ep $" ◆ ADD an univoque keyword for the file (for example \"tar.gz\", \"linux\"):" filekeyword
 		case "$filekeyword" in
 		*) filetype="$filekeyword";;
@@ -519,18 +519,19 @@ for arg in $ARGS; do
 		'1') # CREATE AN APPIMAGE ON-THE-FLY
 
 			_template_create_dirs_and_ask_for_source
-			_template_description_if_hosted_elsewhere
-			_template_help_by_repology
 
-			# ADD A LINEAR DOWNLOAD URL
-			read -r -ep $" ◆ ADD A LINEAR DOWNLOAD URL FOR THE SCRIPT OR LEAVE BLANK $(echo -e '\n : ')" dlurl
-			case "$dlurl" in
-			'')
-				sed -i 's#wget "$version"#wget "'"$AMREPO"'/appimage-bulder-scripts/'"$MAIN_ARCH"'/$APP.sh" \&\& chmod a+x "$APP".sh \&\& ./"$APP".sh#g' ./am-scripts/"$MAIN_ARCH"/"$arg"
-			;;
+			# ADD THE NAME OF THE SOURCE
+			read -r -ep $" ◆ ADD THE URL OF THE SITE (BETTER IF IT COME FROM GITHUB), FOR EXAMPLE: $(echo -e $'\n\n - if from github.com, use "https://github.com/USER/PROJECT"\n\n - if from other sources, use "https://www.SITENAME.com" or something\n\n URL: ')" RESPONSE
+			case "$RESPONSE" in
 			*)
-				sed -i 's#wget "$version"#wget "'"$dlurl"'" -O '"$arg"'.sh && chmod '"$arg"'.sh && ./'"$arg"'.sh#g' ./am-scripts/"$MAIN_ARCH"/"$arg"
-			;;
+				if echo "$RESPONSE" | grep -q "https://github.com\|https://codeberg.org"; then
+					_template_then_git_repo
+				elif echo "$RESPONSE" | grep -q "sourceforge"; then
+					_template_if_sourceforge
+				else
+					_template_description_if_hosted_elsewhere
+					_template_help_by_repology
+				fi
 			esac
 			# END OF THIS FUNCTION
 			echo "$DIVIDING_LINE"
