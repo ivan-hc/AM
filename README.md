@@ -316,7 +316,7 @@ am -i appimageupdatetool
 ```
 
 ### *2) `appimagetool`*
-[**appimagetool**](https://github.com/AppImage/appimagetool) is a tool used to create AppImage packages from AppDirs. "AM" uses this to convert old AppImages and remove their dependency on libfuse2 or to assemble AppImage packages on the fly from portable archives [if a build script is available](https://github.com/ivan-hc/AM/tree/main/appimage-bulder-scripts), like in an AUR helper (*see "[Convert Type2 AppImages requiring libfuse2 to New Generation AppImages](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/nolibfuse.md)" and "[Option One: "build AppImages on-the-fly](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/template.md#option-one-build-appimages-on-the-fly)"*)
+[**appimagetool**](https://github.com/AppImage/appimagetool) is a tool used to create AppImage packages from AppDirs. "AM" uses this to convert old AppImages and remove their dependency on libfuse2 or to assemble AppImage packages on the fly from portable archives, like in an AUR helper (*see "[Convert Type2 AppImages requiring libfuse2 to New Generation AppImages](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/nolibfuse.md)" and "[Option One: "build AppImages on-the-fly](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/template.md#option-one-build-appimages-on-the-fly)"*)
 ```
 am -i appimagetool
 ```
@@ -1090,7 +1090,7 @@ Below you can access documentation pages for common issues and frequently asked 
 
 #### External tools and forks used in this project
 - *[aisap](https://github.com/mgord9518/aisap) and [sas](https://github.com/Samueru-sama/simple-appimage-sandbox), sandboxing solutions for AppImages, see sandboxing options above*
-- *[appimagetool](https://github.com/AppImage/appimagetool), get rid of libfuse2 from old AppImages (option `nolibfuse`) and create AppImages on the fly (see [appimage-bulder-scripts](https://github.com/ivan-hc/AM/tree/main/appimage-bulder-scripts))*
+- *[appimagetool](https://github.com/AppImage/appimagetool), get rid of libfuse2 from old AppImages (option `nolibfuse`) and create AppImages on the fly*
 - *[dbin](https://github.com/xplshn/dbin), the easy to use/get, suckless software distribution system, used as OCI registry client to install packages from third-party databases*
 
 #### Organizations and their affiliates that actively contribute to this project

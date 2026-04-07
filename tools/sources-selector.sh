@@ -24,11 +24,6 @@ for arch in $DIRS; do
 		if [ -n "$metapackage_on" ]; then
 			continue
 		fi
-		# Applications built on-the-fly
-		if grep -q "appimage-bulder-scripts" "$a"; then
-			mkdir -p "$SOURCES_DIR"/custom/appimage-bulder-scripts
-			cp -r "$a" "$SOURCES_DIR"/custom/appimage-bulder-scripts/
-		fi
 		# Applications hosted on github.com, using github APIs
 		if grep -q "version=.*api.github.com" "$a" || grep -q "APP=gimp" "$a"; then
 			# Determine if they need an alternative way to download the artifacts
