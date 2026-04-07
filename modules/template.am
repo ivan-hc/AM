@@ -31,14 +31,6 @@ https://github.com/ivan-hc/AM/blob/23d1eb26cff2ad48cbe986ff882a1665e48be638/tool
 
 #########################################################################################################"
 
-_template_create_README() {
-	if [ ! -f ./am-scripts/list ]; then
-		echo "$list_header" > ./am-scripts/list
-		sed -i 's/^/# /g; s/# #/##/g' ./am-scripts/list
-		printf "\n\n" >> ./am-scripts/list
-	fi
-}
-
 # ------------------------------------------------------------------------
 # COMMON FUNCTIONS FOR OPTIONS 0 (APPIMAGES) AND 2 (ARCHIVES/FILES)
 # ------------------------------------------------------------------------
@@ -50,7 +42,12 @@ _template_create_dirs_and_ask_for_source() {
 		curl -Lo am-scripts/"$MAIN_ARCH"-apps "$AMREPO_MAIN/programs/$MAIN_ARCH-apps" 2>/dev/null \
 		|| printf "%b\nERROR: Cannot download \n$AMREPO_MAIN/programs/$MAIN_ARCH-apps\nPlease download it manually! \n%b\n" "$DIVIDING_LINE" "$DIVIDING_LINE" | _fit
 	fi
-	_template_create_README
+	# Create readme "list" file
+	if [ ! -f ./am-scripts/list ]; then
+		echo "$list_header" > ./am-scripts/list
+		sed -i 's/^/# /g; s/# #/##/g' ./am-scripts/list
+		printf "\n\n" >> ./am-scripts/list
+	fi
 	# Download the template and convert the argument into a command
 	if [ "$templatetype" = 0 ] || [ -z "$templatetype" ]; then
 		wget -q "$AMREPO"/templates/AM-SAMPLE-AppImage -O ./am-scripts/"$MAIN_ARCH"/"$arg"
@@ -147,22 +144,18 @@ _template_use_wget_to_download_a_linear_url_or_a_command() {
 	esac
 }
 
-_template_use_repology() {
-	echo ""; echo " $repology"; echo ""
-	_edit_script_head
-	echo "version=\$($repology_command)" >> ./am-scripts/"$MAIN_ARCH"/"$arg"
-	_edit_script_middle
-	echo "version=\$($repology_command)" >> ./am-scripts/"$MAIN_ARCH"/"$arg"
-	_edit_script_ending
-}
-
 _template_help_by_repology() {
 	# IF A DOWNLOAD URL IS LINEAR, USE https://repology.org
 	read -r -ep $" Do you want to use repology.org to identify version (y,N)? " yn
 	if echo "$yn" | grep -qi "^y"; then
 		repology=$(curl -Ls "https://api.rl.pkgforge.dev/project/$arg/versions" | grep -i "version" | grep -i "new\|uniq" | sort | head -1 | tr '><' '\n' | grep "^[0-9]")
 		repology_command="curl -Ls \"https://api.rl.pkgforge.dev/project/\$APP/versions\" | grep -i \"version\" | grep -i \"new\|uniq\" | sort | head -1 | tr '><' '\n' | grep \"^[0-9]\""
-		_template_use_repology
+		echo ""; echo " $repology"; echo ""
+		_edit_script_head
+		echo "version=\$($repology_command)" >> ./am-scripts/"$MAIN_ARCH"/"$arg"
+		_edit_script_middle
+		echo "version=\$($repology_command)" >> ./am-scripts/"$MAIN_ARCH"/"$arg"
+		_edit_script_ending
 		_template_use_wget_to_download_a_linear_url_or_a_command
 	else
 		echo "$DIVIDING_LINE"
