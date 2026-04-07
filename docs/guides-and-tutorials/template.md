@@ -158,15 +158,19 @@ The templates are by @Samueru-sama
 ## Option One: "build AppImages on-the-fly"
 This was one of the very first approaches used to create this project. Before I started building AppImage packages myself, they were first compiled just like using any AUR-helper.
 
-In this video we see how "calibre" was previously installed before it had its own repo (note that a "calibre.sh" file is downloaded during the process):
+During the installation process and at the end of the download, the script will use **portable2appimage** to convert portable applications into AppImage packages.
 
-https://github.com/ivan-hc/AM/assets/88724353/e439bd09-5ec6-4794-8b00-59735039caea
+Visit https://github.com/ivan-hc/portable2appimage for more information.
 
-In this video, I run the aforementioned "calibre.sh" script in a separate directory, in a completely standalone way:
+In this example, we're converting the `windows95` program, available as a deb package, into an AppImage.
 
-https://github.com/ivan-hc/AM/assets/88724353/45844573-cecf-4107-b1d4-7e8fe3984eb1
+https://github.com/user-attachments/assets/15985a7a-743f-425e-9b23-a431988da611
 
-Two different operations (assembly and installation) require two different scripts.
+NOTE: The standard command used in the scripts is this.
+```
+curl -Ls "https://raw.githubusercontent.com/ivan-hc/portable2appimage/refs/heads/main/portable2appimage" | sh -s -- ./* "$APP" || exit 1
+```
+However, you can replace this line manually, for example, to download and run scripts from other sources.
 
 ------------------------------------------------------------------------
 
