@@ -31,14 +31,6 @@ https://github.com/ivan-hc/AM/blob/23d1eb26cff2ad48cbe986ff882a1665e48be638/tool
 
 #########################################################################################################"
 
-_template_create_README() {
-	if [ ! -f ./am-scripts/list ]; then
-		echo "$list_header" > ./am-scripts/list
-		sed -i 's/^/# /g; s/# #/##/g' ./am-scripts/list
-		printf "\n\n" >> ./am-scripts/list
-	fi
-}
-
 # ------------------------------------------------------------------------
 # COMMON FUNCTIONS FOR OPTIONS 0 (APPIMAGES) AND 2 (ARCHIVES/FILES)
 # ------------------------------------------------------------------------
@@ -50,10 +42,17 @@ _template_create_dirs_and_ask_for_source() {
 		curl -Lo am-scripts/"$MAIN_ARCH"-apps "$AMREPO_MAIN/programs/$MAIN_ARCH-apps" 2>/dev/null \
 		|| printf "%b\nERROR: Cannot download \n$AMREPO_MAIN/programs/$MAIN_ARCH-apps\nPlease download it manually! \n%b\n" "$DIVIDING_LINE" "$DIVIDING_LINE" | _fit
 	fi
-	_template_create_README
+	# Create readme "list" file
+	if [ ! -f ./am-scripts/list ]; then
+		echo "$list_header" > ./am-scripts/list
+		sed -i 's/^/# /g; s/# #/##/g' ./am-scripts/list
+		printf "\n\n" >> ./am-scripts/list
+	fi
 	# Download the template and convert the argument into a command
-	if [ "$templatetype" = 0 ] || [ "$templatetype" = 1 ] || [ -z "$templatetype" ]; then
+	if [ "$templatetype" = 0 ] || [ -z "$templatetype" ]; then
 		wget -q "$AMREPO"/templates/AM-SAMPLE-AppImage -O ./am-scripts/"$MAIN_ARCH"/"$arg"
+	elif [ "$templatetype" = 1 ]; then
+		wget -q "$AMREPO"/templates/AM-SAMPLE-portable2appimage -O ./am-scripts/"$MAIN_ARCH"/"$arg"
 	elif [ "$templatetype" = 2 ]; then
 		wget -q "$AMREPO"/templates/AM-SAMPLE-Archive -O ./am-scripts/"$MAIN_ARCH"/"$arg"
 	elif [ "$templatetype" = 3 ]; then
@@ -145,25 +144,19 @@ _template_use_wget_to_download_a_linear_url_or_a_command() {
 	esac
 }
 
-_template_use_repology() {
-	echo ""; echo " $repology"; echo ""
-	_edit_script_head
-	echo "version=\$($repology_command)" >> ./am-scripts/"$MAIN_ARCH"/"$arg"
-	_edit_script_middle
-	echo "version=\$($repology_command)" >> ./am-scripts/"$MAIN_ARCH"/"$arg"
-	_edit_script_ending
-}
-
 _template_help_by_repology() {
 	# IF A DOWNLOAD URL IS LINEAR, USE https://repology.org
 	read -r -ep $" Do you want to use repology.org to identify version (y,N)? " yn
 	if echo "$yn" | grep -qi "^y"; then
 		repology=$(curl -Ls "https://api.rl.pkgforge.dev/project/$arg/versions" | grep -i "version" | grep -i "new\|uniq" | sort | head -1 | tr '><' '\n' | grep "^[0-9]")
 		repology_command="curl -Ls \"https://api.rl.pkgforge.dev/project/\$APP/versions\" | grep -i \"version\" | grep -i \"new\|uniq\" | sort | head -1 | tr '><' '\n' | grep \"^[0-9]\""
-		_template_use_repology
-		if [ "$templatetype" != 1 ]; then
-			_template_use_wget_to_download_a_linear_url_or_a_command
-		fi
+		echo ""; echo " $repology"; echo ""
+		_edit_script_head
+		echo "version=\$($repology_command)" >> ./am-scripts/"$MAIN_ARCH"/"$arg"
+		_edit_script_middle
+		echo "version=\$($repology_command)" >> ./am-scripts/"$MAIN_ARCH"/"$arg"
+		_edit_script_ending
+		_template_use_wget_to_download_a_linear_url_or_a_command
 	else
 		echo "$DIVIDING_LINE"
 		_template_custom_download_url_as_version_variable
@@ -252,15 +245,15 @@ _template_if_git_repo() {
 	q="'"
 	if [ "$templatetype" = 0 ] || [ -z "$templatetype" ]; then
 		AIA=""
-		FUNCTION=''"$CURL_COMMAND_REF"'/'"$RESPONSE"'/releases | sed '"$q"'s/[()",{} ]/\\n/g'"$q"' | grep -oi "https.*mage$" | grep -vi "i386\\|i686\\|armhf\\|aarch64\\|arm64\\|armv7l" | head -1'
-		if ! eval "$CURL_COMMAND_REF/$RESPONSE/releases" | sed 's/[()",{} ]/\n/g' | grep -q "https.*mage$"; then
+		FUNCTION=''"$CURL_COMMAND_REF"'/'"$RESPONSE"'/releases | sed '"$q"'s/[()",{} ]/\\n/g'"$q"' | grep -oi "https.*download.*mage$" | grep -vi "i386\\|i686\\|armhf\\|aarch64\\|arm64\\|armv7l" | head -1'
+		if ! eval "$CURL_COMMAND_REF/$RESPONSE/releases" | sed 's/[()",{} ]/\n/g' | grep -q "https.*download.*mage$"; then
 			AIA="1"
 			wget -q "$AMREPO"/templates/AM-SAMPLE-AppImage-in-archive -O ./am-scripts/"$MAIN_ARCH"/"$arg"
 			sed -i "s/SAMPLE/$arg/g" ./am-scripts/"$MAIN_ARCH"/"$arg"
 		fi
 		[ -n "$AIA" ] && FUNCTION=$(echo "$FUNCTION" | sed 's/mage\$//g')
-	elif [ "$templatetype" = 2 ]; then
-		FUNCTION=''"$CURL_COMMAND_REF"'/'"$RESPONSE"'/releases | sed '"$q"'s/[()",{} ]/\\n/g'"$q"' | grep -oi "https.*" | grep -vi "i386\\|i686\\|armhf\\|aarch64\\|arm64\\|armv7l" | head -1'
+	elif [ "$templatetype" = 1 ] || [ "$templatetype" = 2 ]; then
+		FUNCTION=''"$CURL_COMMAND_REF"'/'"$RESPONSE"'/releases | sed '"$q"'s/[()",{} ]/\\n/g'"$q"' | grep -oi "https.*download.*" | grep -vi "i386\\|i686\\|armhf\\|aarch64\\|arm64\\|armv7l" | head -1'
 	fi
 	# Add the above function and reference repository in the installation script
 	sed -i "s#REPLACETHIS#$RESPONSE#g" ./am-scripts/"$MAIN_ARCH"/"$arg"
@@ -315,10 +308,10 @@ _template_then_git_repo() {
 	read -r -p $' Do you wish to check the link (Y,n)?' yn
 	if ! echo "$yn" | grep -qi "^n"; then
 		if [ "$templatetype" = 0 ] || [ -z "$templatetype" ]; then
-			GHURLPREVIEW_COMMAND="$CURL_COMMAND_REF_PREVIEW/$RESPONSE/releases$setlatest | sed 's/[()\",{} ]/\n/g' | grep -oi \"https.*mage$\" | grep -vi \"i386\|i686\|armhf\|aarch64\|arm64\|armv7l\" | head -1"
+			GHURLPREVIEW_COMMAND="$CURL_COMMAND_REF_PREVIEW/$RESPONSE/releases$setlatest | sed 's/[()\",{} ]/\n/g' | grep -oi \"https.*download.*mage$\" | grep -vi \"i386\|i686\|armhf\|aarch64\|arm64\|armv7l\" | head -1"
 			_template_test_github_url
-		elif [ "$templatetype" = 2 ]; then
-			GHURLPREVIEW_COMMAND="$CURL_COMMAND_REF_PREVIEW/$RESPONSE/releases$setlatest | sed 's/[()\",{} ]/\n/g' | grep -oi \"https.*\" | grep -vi \"i386\|i686\|armhf\|aarch64\|arm64\|armv7l\" | head -1"
+		elif [ "$templatetype" = 1 ] || [ "$templatetype" = 2 ]; then
+			GHURLPREVIEW_COMMAND="$CURL_COMMAND_REF_PREVIEW/$RESPONSE/releases$setlatest | sed 's/[()\",{} ]/\n/g' | grep -oi \"https.*download.*\" | grep -vi \"i386\|i686\|armhf\|aarch64\|arm64\|armv7l\" | head -1"
 			_template_test_github_url
 		fi
 		echo -e $"\n The URL above is an example of what both\n the install and update scripts will point to.\n" | _fit
@@ -334,10 +327,10 @@ _template_then_git_repo() {
 			read -r -p $' Do you wish to check the link for the last time (Y,n)?' yn
 			if ! echo "$yn" | grep -qi "^n"; then
 				if [ "$templatetype" = 0 ] || [ -z "$templatetype" ]; then
-					GHURLPREVIEW_COMMAND="$CURL_COMMAND_REF_PREVIEW/$RESPONSE/releases$setlatest | sed 's/[()\",{} ]/\n/g' | grep -oi \"https.*mage$\" | grep -vi \"i386\|i686\|armhf\|aarch64\|arm64\|armv7l\" | grep -i \"$response\" | head -1"
+					GHURLPREVIEW_COMMAND="$CURL_COMMAND_REF_PREVIEW/$RESPONSE/releases$setlatest | sed 's/[()\",{} ]/\n/g' | grep -oi \"https.*download.*mage$\" | grep -vi \"i386\|i686\|armhf\|aarch64\|arm64\|armv7l\" | grep -i \"$response\" | head -1"
 					_template_test_github_url
-				elif [ "$templatetype" = 2 ]; then
-					GHURLPREVIEW_COMMAND="$CURL_COMMAND_REF_PREVIEW/$RESPONSE/releases$setlatest | sed 's/[()\",{} ]/\n/g' | grep -oi \"https.*\" | grep -vi \"i386\|i686\|armhf\|aarch64\|arm64\|armv7l\" | grep -i \"$response\" | head -1"
+				elif [ "$templatetype" = 1 ] || [ "$templatetype" = 2 ]; then
+					GHURLPREVIEW_COMMAND="$CURL_COMMAND_REF_PREVIEW/$RESPONSE/releases$setlatest | sed 's/[()\",{} ]/\n/g' | grep -oi \"https.*download.*\" | grep -vi \"i386\|i686\|armhf\|aarch64\|arm64\|armv7l\" | grep -i \"$response\" | head -1"
 					_template_test_github_url
 				fi
 				echo -e $"\n The URL above is an example of what both\n the install and update scripts will point to.\n" | _fit
@@ -351,10 +344,10 @@ _template_then_git_repo() {
 			read -r -p $' Do you wish to check the link for the last time (Y,n)?' yn
 			if ! echo "$yn" | grep -qi "^n"; then
 				if [ "$templatetype" = 0 ] || [ -z "$templatetype" ]; then
-					GHURLPREVIEW_COMMAND="$CURL_COMMAND_REF_PREVIEW/$RESPONSE/releases$setlatest | sed 's/[()\",{} ]/\n/g' | grep -oi \"https.*mage$\" | grep -vi \"i386\|i686\|armhf\|aarch64\|arm64\|armv7l\" | grep -v \"$response\" | head -1"
+					GHURLPREVIEW_COMMAND="$CURL_COMMAND_REF_PREVIEW/$RESPONSE/releases$setlatest | sed 's/[()\",{} ]/\n/g' | grep -oi \"https.*download.*mage$\" | grep -vi \"i386\|i686\|armhf\|aarch64\|arm64\|armv7l\" | grep -v \"$response\" | head -1"
 					_template_test_github_url
-				elif [ "$templatetype" = 2 ]; then
-					GHURLPREVIEW_COMMAND="$CURL_COMMAND_REF_PREVIEW/$RESPONSE/releases$setlatest | sed 's/[()\",{} ]/\n/g' | grep -oi \"https.*\" | grep -vi \"i386\|i686\|armhf\|aarch64\|arm64\|armv7l\" | grep -v \"$response\" | head -1"
+				elif [ "$templatetype" = 1 ] || [ "$templatetype" = 2 ]; then
+					GHURLPREVIEW_COMMAND="$CURL_COMMAND_REF_PREVIEW/$RESPONSE/releases$setlatest | sed 's/[()\",{} ]/\n/g' | grep -oi \"https.*download.*\" | grep -vi \"i386\|i686\|armhf\|aarch64\|arm64\|armv7l\" | grep -v \"$response\" | head -1"
 					_template_test_github_url
 				fi
 				echo -e $"\n The URL above is an example of what both\n the install and update scripts will point to.\n" | _fit
@@ -381,7 +374,7 @@ _template_if_sourceforge() {
 	# FILE TYPE
 	if [ "$templatetype" = 0 ] || [ -z "$templatetype" ]; then
 		filetype="appimage"
-	elif [ "$templatetype" = 2 ]; then
+	elif [ "$templatetype" = 1 ] || [ "$templatetype" = 2 ]; then
 		read -r -ep $" ◆ ADD an univoque keyword for the file (for example \"tar.gz\", \"linux\"):" filekeyword
 		case "$filekeyword" in
 		*) filetype="$filekeyword";;
@@ -457,7 +450,7 @@ for arg in $ARGS; do
 		arg=$(echo "$arg" | sed -- 's#/releases*$##g; s/-appimage$//g; s:.*/::')
 	fi
 	# Check if the appname already exists in the database
-	if grep -q "^◆ $arg :" "$AMDATADIR"/"$ARCH"-apps; then
+	if [ ! -f "$AMDATADIR"/betatester ] && grep -q "^◆ $arg :" "$AMDATADIR"/"$ARCH"-apps; then
 		read -r -p " This appname already exists, want to procede anyway? (y,N): " yn
 		if ! echo "$yn" | grep -qi "^y"; then
 			continue
@@ -485,7 +478,7 @@ for arg in $ARGS; do
 		read -r -p $" WHAT KIND OF PROGRAM DO YOU WANT TO WRITE A SCRIPT FOR? : " templatetype
 		case "$templatetype" in
 
-		'0'|'') # APPIMAGE (ANY)
+		'0'|''|'1') # APPIMAGE (ANY)
 
 			_template_create_dirs_and_ask_for_source
 
@@ -502,36 +495,25 @@ for arg in $ARGS; do
 						_template_then_git_repo
 					elif echo "$RESPONSE" | grep -q "sourceforge"; then
 						_template_if_sourceforge
-					elif echo "$RESPONSE" | grep -qi "^https://download.kde.org/.*stable/"; then
+					elif echo "$RESPONSE" | grep -qi "^https://download.kde.org/.*stable/" &&  [ "$templatetype" != 1 ]; then
 						_template_if_download_kde_org
 					else
 						_template_description_if_hosted_elsewhere
 						_template_help_by_repology
 					fi
 				esac
-				_template_test_github_alt_architectures_url
-				# END OF THIS FUNCTION
-				echo "$DIVIDING_LINE"
-				echo -e $"\n All files are saved in $SCRIPTDIR/am-scripts\n"
+				if [ "$templatetype" != 1 ]; then
+					_template_test_github_alt_architectures_url
+				fi
 			fi
-			;;
-
-		'1') # CREATE AN APPIMAGE ON-THE-FLY
-
-			_template_create_dirs_and_ask_for_source
-			_template_description_if_hosted_elsewhere
-			_template_help_by_repology
-
-			# ADD A LINEAR DOWNLOAD URL
-			read -r -ep $" ◆ ADD A LINEAR DOWNLOAD URL FOR THE SCRIPT OR LEAVE BLANK $(echo -e '\n : ')" dlurl
-			case "$dlurl" in
-			'')
-				sed -i 's#wget "$version"#wget "'"$AMREPO"'/appimage-bulder-scripts/'"$MAIN_ARCH"'/$APP.sh" \&\& chmod a+x "$APP".sh \&\& ./"$APP".sh#g' ./am-scripts/"$MAIN_ARCH"/"$arg"
-			;;
-			*)
-				sed -i 's#wget "$version"#wget "'"$dlurl"'" -O '"$arg"'.sh && chmod '"$arg"'.sh && ./'"$arg"'.sh#g' ./am-scripts/"$MAIN_ARCH"/"$arg"
-			;;
-			esac
+			# Set binary name for AppImages built on-the-fly
+			if [ "$templatetype" = 1 ]; then
+				echo "$DIVIDING_LINE"
+				read -r -p " Set a binary name or leave blank if it is \"$arg\": " binaryname
+				if [ -n "$binaryname" ]; then
+					 sed -i "s/\* \"\$APP\" /\* $binaryname /g" ./am-scripts/"$MAIN_ARCH"/"$arg"
+				fi
+			fi
 			# END OF THIS FUNCTION
 			echo "$DIVIDING_LINE"
 			echo -e $"\n All files are saved in $SCRIPTDIR/am-scripts\n"
