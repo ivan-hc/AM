@@ -158,19 +158,19 @@ The templates are by @Samueru-sama
 ## Option One: "build AppImages on-the-fly"
 This was one of the very first approaches used to create this project. Before I started building AppImage packages myself, they were first compiled just like using any AUR-helper.
 
-From version 7.1, the installation script for the AppImages is used, with the only difference that it points only to the version, while a second script will be downloaded, published separately, at [github.com/ivan-hc/AM/tree/main/appimage-bulder-scripts](https://github.com/ivan-hc/AM/tree/main/appimage-bulder-scripts), which will have the task of assembling the AppImage in the directory on the fly "tmp", during the installation process. When the second script has created the .AppImage file, the first script will continue the installation treating the created AppImage as a ready-made one downloaded from the internet.
+During the installation process and at the end of the download, the script will use **portable2appimage** to convert portable applications into AppImage packages.
 
-In this video we see how "calibre" was previously installed before it had its own repo (note that a "calibre.sh" file is downloaded during the process):
+Visit https://github.com/ivan-hc/portable2appimage for more information.
 
-https://github.com/ivan-hc/AM/assets/88724353/e439bd09-5ec6-4794-8b00-59735039caea
+In this example, we're converting the `windows95` program, available as a deb package, into an AppImage.
 
-In this video, I run the aforementioned "calibre.sh" script in a separate directory, in a completely standalone way:
+https://github.com/user-attachments/assets/15985a7a-743f-425e-9b23-a431988da611
 
-https://github.com/ivan-hc/AM/assets/88724353/45844573-cecf-4107-b1d4-7e8fe3984eb1
-
-Two different operations (assembly and installation) require two different scripts.
-
-Fun fact, up until version 7, this option included a unique template that installed and assembled the AppImage on the fly (see [this video](https://github.com/ivan-hc/AM/assets/88724353/6ae38787-e0e5-4b63-b020-c89c1e975ddd)). This method has been replaced as it was too pretentious for a process, assembly, which may instead require many more steps, too many to be included in both an installation script and an update script (AM-updater).
+NOTE: The standard command used in the scripts is this.
+```
+curl -Ls "https://raw.githubusercontent.com/ivan-hc/portable2appimage/refs/heads/main/portable2appimage" | sh -s -- ./* "$APP" || exit 1
+```
+However, you can replace this line manually, for example, to download and run scripts from other sources.
 
 ------------------------------------------------------------------------
 
