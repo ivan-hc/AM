@@ -33,7 +33,6 @@ on:
         type: integer
 
   schedule:
-    #- cron: '0 0-12 * * 1'
     - cron: '0 * * * *'
 
 concurrency:
@@ -249,7 +248,7 @@ jobs:
       - name: "Cache dependencies"
         uses: awalsh128/cache-apt-pkgs-action@latest
         with:
-          packages: wget curl ripgrep
+          packages: wget curl ripgrep desktop-file-utils
           version: 1.0
 
       - name: "Fix AppArmor"
@@ -341,73 +340,56 @@ jobs:
 
           # Install the application
 
-          if [[ "$pure_arg" =~ (clipgrab|kvrt|suyu) ]]; then
+          if [[ "$pure_arg" =~ (animashooter-junior|animashooter-pioneer|apifox|artifact|eudic|kvrt|mudlet|openxcom|openxcom-extended|tulip|vhc-viewer-wayland|vhc-viewer-x11|wiznote) ]]; then
 
-            echo "This application cannot be installed on GitHub Actions" | tee -a results/log-"${{ matrix.file }}"
+            echo "This application cannot be installed on GitHub Actions (weak mirror or other issues)" | tee -a results/log-"${{ matrix.file }}"
             echo "${{ matrix.file }}" >> results/ok-${{ matrix.file }}
 
-          elif [[ "$pure_arg" =~ (artifact|hashsum|mudlet|vhc-viewer-wayland|vhc-viewer-x11) ]]; then
-
-            echo "This application is susceptible to failure on GitHub Actions" | tee -a results/log-"${{ matrix.file }}"
-            echo "${{ matrix.file }}" >> results/ok-${{ matrix.file }}
-
-          elif [[ "$pure_arg" =~ (animashooter-junior|animashooter-pioneer|vikunja) ]]; then
-
-            echo "This application takes too long to install on GitHub Actions, the mirror is too weak" | tee -a results/log-"${{ matrix.file }}"
-            echo "${{ matrix.file }}" >> results/ok-${{ matrix.file }}
-
-          #elif grep -q 'sourceforge.net' "${{ matrix.file }}" 1>/dev/null; then
-
-          #  echo "Applications on sourceforge.net are susceptible to failure on GitHub Actions" | tee -a results/log-"${{ matrix.file }}"
-          #  echo "${{ matrix.file }}" >> results/ok-${{ matrix.file }}
-
-          elif [[ "$pure_arg" =~ (omnipull) ]]; then
-
-            echo "This application has a pending issue report, and for now is susceptible to failure on GitHub Actions" | tee -a results/log-"${{ matrix.file }}"
-            echo "${{ matrix.file }}" >> results/ok-${{ matrix.file }}
+          # Filter programs that have an issue report (comment the line below if the issue has been fixed)
+          elif [[ "$pure_arg" =~ (fluxer) ]]; then echo "This application has a pending issue report" | tee -a results/log-"${{ matrix.file }}"; echo "${{ matrix.file }}" >> results/ok-${{ matrix.file }}
 
           else
           
             if grep -qe "^read " "${{ matrix.file }}" 1>/dev/null || [[ "$pure_arg" =~ (wine) ]]; then
 
-              echo 1 | am -i "${{ matrix.file }}" --debug 2>&1
+              echo 1 | timeout 1800 am -i "${{ matrix.file }}" --debug 2>&1
               ARGSNUMB=$(find /opt -maxdepth 2 -name 'remove' -print 2>/dev/null | sed 's|/remove||g' | tr ' ' '\n' | wc -l)
               if [ "$ARGSNUMB" = 1 ]; then
                 sleep 30
-                echo 1 | am -i "${{ matrix.file }}" --debug 2>&1
+                echo 1 | timeout 1800 am -i "${{ matrix.file }}" --debug 2>&1
               fi
               ARGSNUMB=$(find /opt -maxdepth 2 -name 'remove' -print 2>/dev/null | sed 's|/remove||g' | tr ' ' '\n' | wc -l)
               if [ "$ARGSNUMB" = 1 ]; then
                 sleep 30
-                echo 1 | am -i "${{ matrix.file }}" --debug 2>&1
+                echo 1 | timeout 1800 am -i "${{ matrix.file }}" --debug 2>&1
               fi
 
             elif [[ "$pure_arg" =~ (bat-extras) ]]; then
 
-              echo y | am -i bat "${{ matrix.file }}" --debug 2>&1
+              echo y | timeout 1800 am -i bat "${{ matrix.file }}" --debug 2>&1
               ARGSNUMB=$(find /opt -maxdepth 2 -name 'remove' -print 2>/dev/null | sed 's|/remove||g' | tr ' ' '\n' | wc -l)
               if [ "$ARGSNUMB" = 1 ]; then
                 sleep 30
-                echo y | am -i bat "${{ matrix.file }}" --debug 2>&1
+                echo y | timeout 1800 am -i bat "${{ matrix.file }}" --debug 2>&1
               fi
               ARGSNUMB=$(find /opt -maxdepth 2 -name 'remove' -print 2>/dev/null | sed 's|/remove||g' | tr ' ' '\n' | wc -l)
               if [ "$ARGSNUMB" = 1 ]; then
                 sleep 30
-                echo y | am -i bat "${{ matrix.file }}" --debug 2>&1
+                echo y | timeout 1800 am -i bat "${{ matrix.file }}" --debug 2>&1
               fi
 
             else
 
-              echo y | am -i "${{ matrix.file }}" --debug 2>&1
+              echo y | timeout 1800 am -i "${{ matrix.file }}" --debug 2>&1
               ARGSNUMB=$(find /opt -maxdepth 2 -name 'remove' -print 2>/dev/null | sed 's|/remove||g' | tr ' ' '\n' | wc -l)
               if [ "$ARGSNUMB" = 1 ]; then
                 sleep 30
-                echo y | am -i "${{ matrix.file }}" --debug 2>&1
+                echo y | timeout 1800 am -i "${{ matrix.file }}" --debug 2>&1
               fi
               ARGSNUMB=$(find /opt -maxdepth 2 -name 'remove' -print 2>/dev/null | sed 's|/remove||g' | tr ' ' '\n' | wc -l)
               if [ "$ARGSNUMB" = 1 ]; then
                 sleep 30
-                echo y | am -i "${{ matrix.file }}" --debug 2>&1
+                echo y | timeout 1800 am -i "${{ matrix.file }}" --debug 2>&1
               fi
 
             fi
@@ -429,6 +411,12 @@ jobs:
               echo " Structure of the directory in /opt"
               echo ""
               ls /opt/"$LASTDIR" | tee -a results/log-"${{ matrix.file }}"
+
+              # Try to upload the icons (you need to uncomment the "Upload icons" workflow to have them, see below)
+              if test -f /opt/"$LASTDIR"/icons/*; then
+                mkdir -p results/icons
+                cp -r /opt/"$LASTDIR"/icons/* results/icons/
+              fi
 
               printf "\n-------------------------------------------------------------\n\n"
 
@@ -469,6 +457,13 @@ jobs:
           if-no-files-found: error
           retention-days: 1
           compression-level: 0
+
+      #- name: "Upload icons ⬆️"
+      #  uses: actions/upload-artifact@v4
+      #  with:
+      #    name: ${{ matrix.file }}
+      #    path: programs/x86_64/results/icons/${{ matrix.file }}
+      #    retention-days: 1
 
       - name: "Upload KO Results ☝️"
         if: failure()
