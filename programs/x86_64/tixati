@@ -12,14 +12,14 @@ printf '\n%s' "rm -f /usr/local/share/applications/$APP-AM.desktop" >> ../remove
 chmod a+x ../remove || exit 1
 
 # DOWNLOAD AND PREPARE THE APP, $version is also used for updates
-version=$(curl -Ls https://tixati.com/linux | tr '">< ' '\n' | grep -Eo "^http.*x86_64" | head -1 | sed 's/tixati-/\n/g; s/\.x86_64//g' | grep "^[0-9]")
-wget "https://raw.githubusercontent.com/ivan-hc/AM/main/appimage-bulder-scripts/x86_64/$APP.sh" && chmod a+x "$APP".sh && ./"$APP".sh || exit 1
-# Keep this space in sync with other installation scripts
-# Use tar fx ./*tar* here for example in this line in case a compressed file is downloaded.
-cd ..
-mv ./tmp/*mage ./"$APP"
-# Keep this space in sync with other installation scripts
-rm -R -f ./tmp || exit 1
+version=$(curl -Ls "https://tixati.com/linux" | tr '">< ' '\n' | grep -Eo "^http.*x86_64.*tar.gz" | head -1)
+download="$version"
+wget "$download" || exit 1
+# Add custom AppRun here
+# Add custom launcher here
+# Add custom icon here
+curl -Ls "https://raw.githubusercontent.com/ivan-hc/portable2appimage/refs/heads/main/portable2appimage" | sh -s -- ./* "$APP" || exit 1
+cd .. && mv ./tmp/*mage ./"$APP" && rm -R -f ./tmp || exit 1; rm -f ./AppRun ./*.desktop ./*png
 echo "$version" > ./version
 chmod a+x ./"$APP" || exit 1
 
@@ -33,7 +33,7 @@ set -u
 APP=tixati
 SITE="https://tixati.com"
 version0=$(cat "/opt/$APP/version")
-version=$(curl -Ls https://tixati.com/linux | tr '">< ' '\n' | grep -Eo "^http.*x86_64" | head -1 | sed 's/tixati-/\n/g; s/\.x86_64//g' | grep "^[0-9]")
+version=$(curl -Ls "https://tixati.com/linux" | tr '">< ' '\n' | grep -Eo "^http.*x86_64.*tar.gz" | head -1)
 [ -n "$version" ] || { echo "Error getting link"; exit 1; }
 if command -v appimageupdatetool >/dev/null 2>&1; then
 	cd "/opt/$APP" || exit 1
@@ -42,11 +42,13 @@ fi
 if [ "$version" != "$version0" ]; then
 	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
 	notify-send "A new version of $APP is available, please wait"
-	wget "https://raw.githubusercontent.com/ivan-hc/AM/main/appimage-bulder-scripts/x86_64/$APP.sh" && chmod a+x "$APP".sh && ./"$APP".sh || exit 1
-	# Use tar fx ./*tar* here for example in this line in case a compressed file is downloaded.
-	cd ..
-	mv --backup=t ./tmp/*mage ./"$APP"
-	chmod a+x ./"$APP" || exit 1
+	download="$version"
+	wget "$download" || exit 1
+	# Add custom AppRun here
+	# Add custom launcher here
+	# Add custom icon here
+	curl -Ls "https://raw.githubusercontent.com/ivan-hc/portable2appimage/refs/heads/main/portable2appimage" | sh -s -- ./* "$APP" || exit 1
+	cd .. && mv --backup=t ./tmp/*mage ./"$APP" && chmod a+x ./"$APP" || exit 1; rm -f ./AppRun ./*.desktop ./*png
 	echo "$version" > ./version
 	rm -R -f ./*zs-old ./*.part ./tmp ./*~
 	notify-send "$APP is updated!"
