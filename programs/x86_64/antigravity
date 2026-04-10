@@ -13,15 +13,15 @@ chmod a+x ../remove || exit 1
 
 # DOWNLOAD AND PREPARE THE APP, $version is also used for updates
 version=$(curl -Ls https://raw.githubusercontent.com/BOTOOM/google-antigravity-bin-arch/main/package/PKGBUILD | grep -oP 'https://[^"]+\.deb' | head -1)
-wget "$version" -O antigravity.deb || exit 1
-[ -e ./*deb ] && ar x ./*deb && tar fx ./data.tar.* && rm -f ./*tar* ./*deb
-cd ..
-mv ./tmp/usr/share/antigravity/* ./
-cp ./resources/app/resources/linux/code.png ./icons/"$APP".png 2>/dev/null
-rm -R -f ./tmp || exit 1
+download="$version"
+wget "$download" || exit 1
+# Add custom AppRun here
+# Add custom launcher here
+# Add custom icon here
+curl -Ls "https://raw.githubusercontent.com/ivan-hc/portable2appimage/refs/heads/main/portable2appimage" | sh -s -- ./* "$APP" || exit 1
+cd .. && mv ./tmp/*mage ./"$APP" && rm -R -f ./tmp || exit 1; rm -f AppRun *.desktop *.png *.svg *.xpm
 echo "$version" > ./version
 chmod a+x ./"$APP" || exit 1
-chmod 4755 ./chrome-sandbox 2>/dev/null || true
 
 # LINK TO PATH
 ln -s "/opt/$APP/$APP" "/usr/local/bin/$APP"
@@ -35,15 +35,20 @@ SITE="https://antigravity.google"
 version0=$(cat "/opt/$APP/version")
 version=$(curl -Ls https://raw.githubusercontent.com/BOTOOM/google-antigravity-bin-arch/main/package/PKGBUILD | grep -oP 'https://[^"]+\.deb' | head -1)
 [ -n "$version" ] || { echo "Error getting link"; exit 1; }
+if command -v appimageupdatetool >/dev/null 2>&1; then
+	cd "/opt/$APP" || exit 1
+	appimageupdatetool -Or ./"$APP" && chmod a+x ./"$APP" && echo "$version" > ./version && exit 0
+fi
 if [ "$version" != "$version0" ]; then
 	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
 	notify-send "A new version of $APP is available, please wait"
-	wget "$version" -O antigravity.deb || exit 1
-	[ -e ./*deb ] && ar x ./*deb && tar fx ./data.tar.* && rm -f ./*tar* ./*deb
-	cd ..
-	mv --backup=t ./tmp/usr/share/antigravity/* ./
-	chmod a+x ./"$APP" || exit 1
-	chmod 4755 ./chrome-sandbox 2>/dev/null || true
+	download="$version"
+	wget "$download" || exit 1
+	# Add custom AppRun here
+	# Add custom launcher here
+	# Add custom icon here
+	curl -Ls "https://raw.githubusercontent.com/ivan-hc/portable2appimage/refs/heads/main/portable2appimage" | sh -s -- ./* "$APP" || exit 1
+	cd .. && mv --backup=t ./tmp/*mage ./"$APP" && chmod a+x ./"$APP" || exit 1; rm -f AppRun *.desktop *.png *.svg *.xpm
 	echo "$version" > ./version
 	rm -R -f ./*zs-old ./*.part ./tmp ./*~
 	notify-send "$APP is updated!"
@@ -53,12 +58,22 @@ fi
 EOF
 chmod a+x ./AM-updater || exit 1
 
-# LAUNCHER
-echo "[Desktop Entry]
-Name=Antigravity
-Exec=$APP
-Icon=/opt/$APP/icons/$APP.png
-Terminal=false
-Type=Application
-Comment=Google Antigravity IDE.
-Categories=Development;" > /usr/local/share/applications/"$APP"-AM.desktop
+# LAUNCHER & ICON
+./"$APP" --appimage-extract *.desktop 1>/dev/null && mv ./squashfs-root/*.desktop ./"$APP".desktop
+./"$APP" --appimage-extract .DirIcon 1>/dev/null && mv ./squashfs-root/.DirIcon ./DirIcon
+COUNT=0
+while [ "$COUNT" -lt 10 ]; do # Tries to get the actual icon/desktop if it is a symlink to another symlink
+	if [ -L ./"$APP".desktop ]; then
+		LINKPATH="$(readlink ./"$APP".desktop | sed 's|^\./||' 2>/dev/null)"
+		./"$APP" --appimage-extract "$LINKPATH" 1>/dev/null && mv ./squashfs-root/"$LINKPATH" ./"$APP".desktop
+	fi
+	if [ -L ./DirIcon ]; then
+		LINKPATH="$(readlink ./DirIcon | sed 's|^\./||' 2>/dev/null)"
+		./"$APP" --appimage-extract "$LINKPATH" 1>/dev/null && mv ./squashfs-root/"$LINKPATH" ./DirIcon
+	fi
+	[ ! -L ./"$APP".desktop ] && [ ! -L ./DirIcon ] && break
+	COUNT=$((COUNT + 1))
+done
+sed -i "s#Exec=[^ ]*#Exec=$APP#g; s#Icon=.*#Icon=/opt/$APP/icons/$APP#g; s# --no-sandbox##g" ./"$APP".desktop
+mv ./"$APP".desktop /usr/local/share/applications/"$APP"-AM.desktop && mv ./DirIcon ./icons/"$APP" 1>/dev/null
+rm -R -f ./squashfs-root
