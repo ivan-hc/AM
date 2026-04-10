@@ -3,7 +3,7 @@
 # AM INSTALL SCRIPT VERSION 3. 
 set -u
 APP=libreoffice
-SITE="https://www.libreoffice.org"
+SITE1="Portable-Linux-Apps/LibreOffice-appimage"; SITE2="ivan-hc/LibreOffice-appimage"
 
 # CREATE DIRECTORIES AND ADD REMOVER
 [ -n "$APP" ] && mkdir -p "/opt/$APP/icons" "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
@@ -11,88 +11,70 @@ printf "#!/bin/sh\nset -e\nrm -f /usr/local/bin/$APP\nrm -R -f /opt/$APP" > "/op
 printf '\n%s' "rm -f /usr/local/share/applications/$APP*-AM.desktop" >> "/opt/$APP/remove"
 chmod a+x "/opt/$APP/remove"
 
-_release_still() {
-	lovariant="still"
-	version=$(curl -Ls https://api.github.com/repos/ivan-hc/LibreOffice-appimage/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*continuous-still.*$edition.*mage$" | head -1)
-}
-
-_release_fresh() {
-	lovariant="fresh"
-	version=$(curl -Ls https://api.github.com/repos/ivan-hc/LibreOffice-appimage/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*continuous-fresh.*$edition.*mage$" | head -1)
-}
-
 # CHOOSE A VERSION
 
-read -r -p " Please choose a LibreOffice edition:
+_fit() { command -v tput >/dev/null 2>&1 && fold -sw "${COLUMNS:-80}" | sed 's/^/   /g' || fold -sw 77 | sed 's/^/   /g'; }
 
- - STILL is slightly older but tested longer.
- - FRESH includes all the latest features.
- - BASIC only supports English (US and GB).
- - STANDARD includes English (US/GB), Arabic, Chinese (Simplified and 
-   Traditional), French, German, Italian, Japanese, Korean, Portuguese 
-   (BR/PT), Russian, and Spanish.
- - FULL includes all supported languages.
+echo "   === Available editions ===
 
- 1) Still-basic			2) Still-basic with manuals
- 3) Still-standard		4) Still-standard with manuals
- 5) Still-full			6) Still-full with manuals
- 7) Fresh-basic			8) Fresh-basic with manuals
- 9) Fresh-standard		10) Fresh-standard with manuals
- 11) Fresh-full			12) Fresh-full with manuals
-
- Type a number from the above list and press ENTER: " response
+   1. \"LibreOffice Still\" is slightly older but tested longer (default).
+   2. \"LibreOffice Fresh\" includes all the latest features.
+"
+read -r -p "   Type 2 for \"Fresh\", or any other key for \"Still\": " response
 case "$response" in
-	1)	edition="basic-x86_64"
-		_release_still 2>/dev/null 
-		wget "$version"
-		;;
-	2)	edition="basic.help-x86_64"
-		_release_still 2>/dev/null 
-		wget "$version"
-		;;
-	3)	edition="standard-x86_64"
-		_release_still 2>/dev/null 
-		wget "$version"
-		;;
-	4)	edition="standard.help-x86_64"
-		_release_still 2>/dev/null 
-		wget "$version"
-		;;
-	5)	edition="full-x86_64"
-		_release_still 2>/dev/null 
-		wget "$version"
-		;;
-	6)	edition="full.help-x86_64"
-		_release_still 2>/dev/null 
-		wget "$version"
-		;;
-	7)	edition="basic-x86_64"
-		_release_fresh 2>/dev/null 
-		wget "$version"
-		;;
-	8)	edition="basic.help-x86_64"
-		_release_fresh 2>/dev/null 
-		wget "$version"
-		;;
-	9)	edition="standard-x86_64"
-		_release_fresh 2>/dev/null 
-		wget "$version"
-		;;
-	10)	edition="standard.help-x86_64"
-		_release_fresh 2>/dev/null 
-		wget "$version"
-		;;
-	11)	edition="full-x86_64"
-		_release_fresh 2>/dev/null 
-		wget "$version"
-		;;
-	12)	edition="full.help-x86_64"
-		_release_fresh 2>/dev/null 
-		wget "$version"
-		;;
-	''|*)	mkdir -p "/opt/$APP/tmp"
-		;;
+	'2') edition="fresh";;
+	''|*) edition="still";;
 esac
+echo "
+   === Available sources ===
+
+   1. AppImage, classic, built on top of the official packages (default).
+   2. Archimage, container-based AppImage that works also on musl systems.
+"
+read -r -p "   Type 2 for the Archimage, or leave blank: " response
+case "$response" in
+	2)
+		SITE="$SITE2"
+		printf "\n   === Available languages ===\n\n"
+		printf "1. base (default)\n2. italian\n3. european\n4. standard\n5. full\n\n" | _fit
+		read -r -p "   Choose a language or leave blank: " response
+		case "$response" in
+			'2') edition="$edition.*italian.*archimage";;
+			'3') edition="$edition.*european.*archimage";;
+			'4') edition="$edition.*standard.*archimage";;
+			'5') edition="$edition.*full.*archimage";;
+			''|*) edition="$edition.*base.*archimage";;
+		esac
+		;;
+	''|*)
+		SITE="$SITE1"
+		printf "\n   === Available languages ===\n\n"
+		languages="ar de en-GB es fr it ja ko pt pt-BR ru zh-CN zh-TW standard full"
+		i=1
+		echo "$(for lang in $languages; do
+			printf "   %2d. %s	" "$i" "$lang"
+			i=$((i + 1))
+		done)" | _fit
+		printf "\n"
+		read -r -p "   Choose a language by number or leave blank for \"en-GB\" (default): " response
+		if [ -z "$response" ]; then
+			edition="$edition.*-en-GB.help"
+		else
+			response=$(echo "$languages" | awk '{print $'"$response"'}')
+			edition="$edition.*-$response.help"
+		fi
+		# Offline documentation
+		printf "\n"
+		read -r -p "   === Want to include offline documentation? (N,y) " response
+		case "$response" in
+			'Y'|'y') edition="$edition";;
+			''|*) edition=$(echo "$edition" | sed -- 's/\.help/-x/g');;
+		esac
+		;;
+esac; printf "\n"
+
+version=$(curl -Ls https://api.github.com/repos/"$SITE"/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*$edition.*mage$" | head -1)
+wget "$version" || exit 1
 cd ..
 mv ./tmp/*mage ./"$APP"
 
@@ -108,11 +90,13 @@ cat >> "/opt/$APP/AM-updater" << 'EOF'
 #!/bin/sh
 set -u
 APP=libreoffice
-SITE="https://www.libreoffice.org"
+SITE="SITEREF"
 version0=$(cat "/opt/$APP/version")
-edition="EDITION"
-lovariant="LOVARIANT"
-version=$(curl -Ls https://api.github.com/repos/ivan-hc/LibreOffice-appimage/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*continuous-$lovariant.*$edition.*mage$" | head -1)
+EOF
+cat >> "/opt/$APP/AM-updater" << EOF
+version=\$(curl -Ls https://api.github.com/repos/$SITE/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*$edition.*mage$" | head -1)
+EOF
+cat >> "/opt/$APP/AM-updater" << 'EOF'
 if command -v appimageupdatetool >/dev/null 2>&1; then
 	cd "/opt/$APP" || exit 1
 	appimageupdatetool -Or ./"$APP" && chmod a+x ./"$APP" && echo "$version" > ./version && exit 0
@@ -132,33 +116,34 @@ else
 	echo "Update not needed!"
 fi
 EOF
-sed -i "s#EDITION#$edition#g; s#LOVARIANT#$lovariant#g" "/opt/$APP/AM-updater"
+sed -i "s#SITEREF#$SITE#g" "/opt/$APP/AM-updater"
 chmod a+x "/opt/$APP/AM-updater"
 
 # ICONS
 cd "/opt/$APP" || exit 1
 ./libreoffice --appimage-extract usr/share/icons/hicolor/scalable/apps/*.svg && mv squashfs-root/usr/share/icons/hicolor/scalable/apps/*.svg ./icons 2>/dev/null
+./libreoffice --appimage-extract .junest/usr/share/icons/hicolor/scalable/apps/*.svg && mv squashfs-root/.junest/usr/share/icons/hicolor/scalable/apps/*.svg ./icons 2>/dev/null
 RELEASE=$(ls ./icons | head -1 | rev | cut -c 10- | rev)
-mv ./icons/"$RELEASE"-base* ./icons/"$APP"-base 2>/dev/null
-mv ./icons/"$RELEASE"-basic* ./icons/"$APP"-basic 2>/dev/null
-mv ./icons/"$RELEASE"-calc* ./icons/"$APP"-calc 2>/dev/null
-mv ./icons/"$RELEASE"-chart* ./icons/"$APP"-chart 2>/dev/null
-mv ./icons/"$RELEASE"-draw* ./icons/"$APP"-draw 2>/dev/null
-mv ./icons/"$RELEASE"-extension* ./icons/"$APP"-extension 2>/dev/null
-mv ./icons/"$RELEASE"-impress* ./icons/"$APP"-impress 2>/dev/null
-mv ./icons/"$RELEASE"-main* ./icons/"$APP"-main 2>/dev/null
-mv ./icons/"$RELEASE"-math* ./icons/"$APP"-math 2>/dev/null
-mv ./icons/"$RELEASE"-startcenter* ./icons/"$APP"-startcenter 2>/dev/null
-mv ./icons/"$RELEASE"-writer* ./icons/"$APP"-writer 2>/dev/null
+mv ./icons/*-base* ./icons/"$APP"-base 2>/dev/null
+mv ./icons/*-basic* ./icons/"$APP"-basic 2>/dev/null
+mv ./icons/*-calc* ./icons/"$APP"-calc 2>/dev/null
+mv ./icons/*-chart* ./icons/"$APP"-chart 2>/dev/null
+mv ./icons/*-draw* ./icons/"$APP"-draw 2>/dev/null
+mv ./icons/*-extension* ./icons/"$APP"-extension 2>/dev/null
+mv ./icons/*-impress* ./icons/"$APP"-impress 2>/dev/null
+mv ./icons/*-main* ./icons/"$APP"-main 2>/dev/null
+mv ./icons/*-math* ./icons/"$APP"-math 2>/dev/null
+mv ./icons/*-startcenter* ./icons/"$APP"-startcenter 2>/dev/null
+mv ./icons/*-writer* ./icons/"$APP"-writer 2>/dev/null
 
 # LAUNCHERS
-./libreoffice --appimage-extract opt/libreoffice*/share/xdg
+./libreoffice --appimage-extract opt/libreoffice*/share/xdg 2>/dev/null
+./libreoffice --appimage-extract .junest/usr/lib/libreoffice/share/xdg 2>/dev/null
 LAUNCHERS=$(find squashfs-root -name *.desktop -type f | xargs)
 for f in $LAUNCHERS ; do
 	launcher=$(echo "$f" | sed 's:.*/::')
 	mv "$f" ./"$APP-${launcher%.desktop}-AM.desktop"
 done
-sed -i "s# $(echo $RELEASE | cut -c 12-) # #g; s#Icon=$APP#Icon=/opt/$APP/icons/$APP#g; s#$RELEASE#$APP#g" *.desktop
-sed -i '/Name=LibreOffice/c\Name=LibreOffice' *startcenter-AM.desktop
+sed -i "s/LibreOffice [0-9].*[0-9] /LibreOffice /g; s/LibreOffice [0-9].*[0-9]$/LibreOffice/g; s#Icon=$APP#Icon=/opt/$APP/icons/$APP#g; s#$RELEASE#$APP#g; s/libreoffice[0-9].*[0-9]-/libreoffice-/g; s/libreoffice[0-9].*[0-9]-/libreoffice-/g; s/libreoffice[0-9].*[0-9] /libreoffice /g" *.desktop
 mv *.desktop /usr/local/share/applications/
 rm -R -f ./squashfs-root

@@ -1,45 +1,39 @@
 #!/usr/bin/env bash
 
+# AM INSTALL SCRIPT VERSION 3.5
+set -u
 APP=wine
 SITE="mmtrt/WINE_AppImage"
 
-# CREATE DIRECTORIES
-if [ -z "$APP" ]; then exit 1; fi
-mkdir -p "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
+# CREATE DIRECTORIES AND ADD REMOVER
+[ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
+printf "#!/bin/sh\nset -e\nrm -f /usr/local/bin/$APP /usr/local/bin/wine64\nrm -R -f /opt/$APP" > ../remove
+printf '\n%s' "rm -f /usr/local/share/applications/$APP-AM.desktop" >> ../remove
+chmod a+x ../remove || exit 1
 
-# ADD THE REMOVER
-echo "#!/bin/sh
-rm -f /usr/local/bin/$APP /usr/local/bin/wine64
-rm -R -f /opt/$APP" > "/opt/$APP/remove"
-chmod a+x "/opt/$APP/remove"
-
-# DOWNLOAD AND PREPARE THE APP
-# $version is also used for updates
-
-printf "%s\n" "$(curl -Ls https://api.github.com/repos/mmtrt/WINE_AppImage/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$")" >> ./wine-args
-printf "Select a URL from this menu (read carefully) or press CTRL+C to abort:\n-----------------------------------------------------------------------\n"; sleep 1;
-	select version in $(cat ./wine-args | sort -u | uniq); do test -n "$version" && break; echo ">>> Invalid Selection"; done
-wget "$version"
-echo "$version" >> /opt/$APP/version
-# Use tar fx ./*tar* for example in this line in case a compressed file is downloaded.
+# DOWNLOAD AND PREPARE THE APP, $version is also used for updates
+wine_args=$(curl -Ls https://api.github.com/repos/mmtrt/WINE_AppImage/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*x86_64.*mage$" | sort -u | uniq)
+printf "Select a URL from this menu (read carefully) or any other key to abort:\n-----------------------------------------------------------------------\n"; sleep 1
+	select version in $wine_args; do [ -n "$version" ] && break || echo ">>> Invalid Selection, aborted!" && exit 0
+done
+wget "$version" || exit 1
 cd ..
 mv ./tmp/*mage ./"$APP"
-chmod a+x "/opt/$APP/$APP"
-rm -R -f ./tmp
+rm -R -f ./tmp || exit 1
+echo "$version" > ./version
+chmod a+x ./"$APP" || exit 1
 
-# LINK
-ln -s "/opt/$APP/$APP" "/usr/local/bin/$APP"
-ln -s "/usr/local/bin/$APP" "/usr/local/bin/wine64"
+# LINK TO PATH
+ln -s "/opt/$APP/$APP" "/usr/local/bin/$APP"; ln -s "/usr/local/bin/$APP" "/usr/local/bin/wine64"
 
 # SCRIPT TO UPDATE THE PROGRAM
-cat >> "/opt/$APP/AM-updater" << 'EOF'
+cat >> ./AM-updater << 'EOF'
 #!/bin/sh
+set -u
 APP=wine
 SITE="mmtrt/WINE_AppImage"
-if [ -z "$APP" ]; then exit 1; fi
-version0=$(cat "/opt/$APP/version")
-tag=$(echo "$version0" | tr '/' '\n' | tail -2 | head -1)
-version=$(curl -Ls https://api.github.com/repos/mmtrt/WINE_AppImage/releases | grep browser_download_url | grep -i "download/$tag/$app" | grep -i appimage | cut -d '"' -f 4 | head -1)
+version0=$(cat "/opt/$APP/version"); tag=$(echo "$version0" | tr '/' '\n' | tail -2 | head -1)
+version=$(curl -Ls https://api.github.com/repos/mmtrt/WINE_AppImage/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*/download/$tag/.*x86_64.*mage$" | head -1)
 [ -n "$version" ] || { echo "Error getting link"; exit 1; }
 if command -v appimageupdatetool >/dev/null 2>&1; then
 	cd "/opt/$APP" || exit 1
@@ -60,4 +54,4 @@ else
 	echo "Update not needed!"
 fi
 EOF
-chmod a+x "/opt/$APP/AM-updater"
+chmod a+x ./AM-updater || exit 1

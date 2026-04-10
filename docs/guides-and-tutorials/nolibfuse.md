@@ -1,3 +1,18 @@
+# The `libfuse2` dependency issue in old AppImages
+The "libfuse.so.2" library (also known as "libfuse2") is a system library whose [support ended in January 2019](https://github.com/libfuse/libfuse/releases/tag/fuse-2.9.9). Old AppImages built with the old runtime still depend on it.
+
+Because it is insecure, **many Linux distributions stopped including it by default long ago**, while still maintaining the package in their repositories.
+
+In "AM", to allow old AppImages to run on systems without libfuse2, there are two solutions:
+1. The `--sandbox` option, to run the AppImage in a Bubblewrap sandbox (using SAS or Aisap as a frontend). Certainly the safest and most convenient solution.
+2. The `nolibfuse` option, which extracts and repackages the AppImage using the new runtime. A harmless solution, but it may impact system resources, depending on the size of the AppImage.
+
+This section focuses on the `nolibfuse` option. For `--sandbox`, [see the dedicated section](./sandbox.md).
+
+NOTE, what's done with the `nolibfuse` option should be done by upstream developers, in their workflows, with all the benefits that come with it, including the ability to include the necessary information in the package to allow delta updates to work with the appropriate tools. "AM" only extracts and repackages the AppImages, replacing the obsolete runtime they included, but if these include information for delta updates, they will be unusable (i.e., the "AM" update will be performed by downloading the AppImage from scratch, instead of the few bits that actually changed).
+
+------------------------------------------------------------------------
+
 ## Convert Type2 AppImages requiring libfuse2 to New Generation AppImages
 Option `nolibfuse` converts old Type2 AppImages asking for "libfuse2" into new generation AppImages:
 ```
@@ -32,11 +47,7 @@ so if an update happens through "comparison" of versions, the converted AppImage
 
 https://github.com/user-attachments/assets/03683d8b-32d8-4617-83e3-5278e33b46f4
 
-Instead, if the installed AppImage can be updated via `zsync`, **this may no longer be updatable**, anyway a solution may be the use of `appimageupdatetool`, at https://github.com/AppImageCommunity/AppImageUpdate .
-
-The `nolibfuse` option has been improved since version 7.8, so everyone can say goodbye to the old "libfuse2" dependence.
-
-Anyway, **I suggest anyone to contact the developers to update the packaging method of their AppImage!** This is also a way to keep open source projects alive: your participation through feedback to the upstream.
+NOTE, AppImage will lose the ability to receive delta updates, **I suggest anyone to contact the developers to update the packaging method of their AppImage!** This is also a way to keep open source projects alive: your participation through feedback to the upstream.
 
 The `nolibfuse` option is not intended to replace the work of the owners of these AppImage packages, but to encourage the use of AppImage packages on systems that do not have "libfuse2", a library that is now obsolete and in fact no longer available out-of-the-box by default in many distributions, first and foremost Ubuntu and Fedora.
 

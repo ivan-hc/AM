@@ -8,13 +8,12 @@ assignees: ''
 ---
 
 # Premise
-"AM"/"AppMan" is just a tool to provide applications easily and quickly and is only responsible for integrating the AppImages into the system and installing the various programs available, respecting the following order (refer to the option "-d" to download the installation script without installing it):
-- creation of the base directories and the removal script
-- download of the package
-- creation of the version file and the update script
-- possibly, extraction of the icons and .desktop files, if needed
-
-The malfunction of the installation scripts will then be taken into account. On the contrary, any malfunction related to individual applications is the responsibility of the related developer or packager. Refer to the option "-a" to know the sources of each program listed here, so you can contact them to report the bug.
+By opening this issue, I certify:
+- that I have updated "AM"/"AppMan" to the latest version
+- that I have read the README https://github.com/ivan-hc/AM/blob/main/README.md
+- that I have read the documentation https://github.com/ivan-hc/AM/tree/main/docs
+- that I have searched for an option or flag in `-h` that covers my use case
+- that I have searched for an issue that covers my use case https://github.com/ivan-hc/AM/issues
 
 --------------------------------------------------
 

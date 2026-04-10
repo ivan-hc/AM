@@ -3,7 +3,7 @@
 # AM INSTALL SCRIPT VERSION 3.5
 set -u
 APP=harmonoid
-SITE="https://harmonoid.com"
+SITE="alexmercerind2/harmonoid-releases"
 
 # CREATE DIRECTORIES AND ADD REMOVER
 [ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
@@ -12,8 +12,8 @@ printf '\n%s' "rm -f /usr/local/share/applications/$APP-AM.desktop" >> ../remove
 chmod a+x ../remove || exit 1
 
 # DOWNLOAD AND PREPARE THE APP, $version is also used for updates
-version=$(curl -Ls https://raw.githubusercontent.com/ivan-hc/repology-versions/main/versions-list | grep "◆ $APP " | tr ' ' '\n' | tail -1)
-wget "https://github.com/alexmercerind2/_/releases/latest/download/harmonoid-linux-x86_64.tar.gz" || exit 1
+version=$(curl -Ls https://api.github.com/repos/alexmercerind2/harmonoid-releases/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | grep -i "linux.*x86_64.*tar.gz" | head -1)
+wget "$version" || exit 1
 [ -e ./*7z ] && 7z x ./*7z && rm -f ./*7z
 [ -e ./*tar.* ] && tar fx ./*tar.* && rm -f ./*tar.*
 [ -e ./*zip ] && unzip -qq ./*zip 1>/dev/null && rm -f ./*zip
@@ -31,14 +31,14 @@ cat >> ./AM-updater << 'EOF'
 #!/bin/sh
 set -u
 APP=harmonoid
-SITE="https://harmonoid.com"
+SITE="alexmercerind2/harmonoid-releases"
 version0=$(cat "/opt/$APP/version")
-version=$(curl -Ls https://raw.githubusercontent.com/ivan-hc/repology-versions/main/versions-list | grep "◆ $APP " | tr ' ' '\n' | tail -1)
+version=$(curl -Ls https://api.github.com/repos/alexmercerind2/harmonoid-releases/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | grep -i "linux.*x86_64.*tar.gz" | head -1)
 [ -n "$version" ] || { echo "Error getting link"; exit 1; }
 if [ "$version" != "$version0" ]; then
 	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
 	notify-send "A new version of $APP is available, please wait"
-	wget "https://github.com/alexmercerind2/_/releases/latest/download/harmonoid-linux-x86_64.tar.gz" || exit 1
+	wget "$version" || exit 1
 	[ -e ./*7z ] && 7z x ./*7z && rm -f ./*7z
 	[ -e ./*tar.* ] && tar fx ./*tar.* && rm -f ./*tar.*
 	[ -e ./*zip ] && unzip -qq ./*zip 1>/dev/null && rm -f ./*zip
