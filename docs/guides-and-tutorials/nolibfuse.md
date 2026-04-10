@@ -35,12 +35,12 @@ The original AppImage will be extracted using the `--appimage-extract` option, a
 #### Updating converted AppImages
 The `nolibfuse` option adds the following lines at the end of the AM-updater script
 ```
-echo y | am nolibfuse $APP
+yes | am nolibfuse $APP
 notify-send "$APP has been converted too! "
 ```
 or
 ```
-echo y | appman nolibfuse $APP
+yes | appman nolibfuse $APP
 notify-send "$APP has been converted too! "
 ```
 so if an update happens through "comparison" of versions, the converted AppImage will be replaced by the upstream version and then the `nolibfuse` option will automatically start the conversion (prolonging the update time, depending on the size of the AppImage). In this example, I update all the apps, including the original Avidemux, that is an old Type2 AppImage:
