@@ -540,6 +540,18 @@ _online_check() {
 	fi
 }
 
+# Check if appimagetool is installed, and if it is not installed, download and use it where it is needed
+_download_appimagetool() {
+	if ! command -v appimagetool >/dev/null 2>&1; then
+		mkdir -p "$CACHEDIR"/AMCACHEPATH
+		if [ ! -f "$CACHEDIR"/AMCACHEPATH/appimagetool ]; then
+			wget -q https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-"$(uname -m)".AppImage -O "$CACHEDIR"/AMCACHEPATH/appimagetool
+			chmod a+x "$CACHEDIR"/AMCACHEPATH/appimagetool
+		fi
+		export PATH="$CACHEDIR"/AMCACHEPATH/:"${PATH}"
+	fi
+}
+
 # BLACKLIST FILES
 appimagelauncher_msg="Your installation of AppImageLauncher may have been done via DEB, RPM, or AUR, which interrupts the natural operation of \"systemd-binfmt\" in addition to launching the aforementioned daemon. To avoid problems with \"$AMCLIUPPER\" and any other AppImages helper, it's preferable to use \"only\" the standalone AppImage of AppImageLauncher, whose official updated release can also be installed via \"$AMCLIUPPER\". But as long as you have the currently installed version, you can't use this CLI."
 
@@ -1150,6 +1162,12 @@ _clean_old_modules() {
 	done
 }
 
+_clean_amcachepath() {
+	if [ -d "$CACHEDIR"/AMCACHEPATH ] && [ "$(ls -A "$CACHEDIR"/AMCACHEPATH)" ]; then
+		rm -f "$CACHEDIR"/AMCACHEPATH/* && echo $" ✔ Clear the contents of $CACHEDIR/appman" | sed 's#/appman$#/AMCACHEPATH#g'
+	fi
+}
+
 _use_clean() {
 	echo $" Cleaning temporary files and folders..." && sleep 0.1
 	i=100 && while [ "$i" -ge 0 ]; do
@@ -1162,6 +1180,7 @@ _use_clean() {
 	_clean_all_tmp_directories_from_appspath
 	_clean_launchers 2>/dev/null
 	_clean_old_modules
+	_clean_amcachepath
 }
 
 ################################################################################################################################################################
@@ -1721,6 +1740,7 @@ _use_update() {
 	_update_github_api_key_in_the_updater_files
 	_clean_all_tmp_directories_from_appspath >/dev/null
 	_check_fedora_mess
+	_download_appimagetool
 
 	ENTRIES="$(echo "$@" | cut -f2- -d ' ' | tr ' ' '\n' | grep -v -- "^-\|^$1$")"
 	FLAGS=$(echo "$@" | tr ' ' '\n' | grep -- "--" | tr '\n ' ' ')
