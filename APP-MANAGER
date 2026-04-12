@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="10"
+AMVERSION="10.1"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -537,6 +537,33 @@ _online_check() {
 	if ! wget -q --tries=10 --timeout=20 --spider https://github.com; then
 		printf $"\n %b is offline, please check your internet connection and try again\n\n" "$AMCLI"
 		exit 0
+	fi
+}
+
+# Check AMCACHEPATH integrity
+if [ -d "$CACHEDIR"/AMCACHEPATH ]; then
+	am_bins_allowed=$(echo "appimagetool" | tr ' ' '\n' | sed "s#^#$CACHEDIR/AMCACHEPATH/#g")
+	am_bins_all=$(find "$CACHEDIR"/AMCACHEPATH -mindepth 1 -maxdepth 1 \( -type d -o -type f -o -type l \))
+	for f in $am_bins_all; do if ! echo "$am_bins_allowed" | grep -q "$f$" 2>/dev/null; then rm "$f" 2>/dev/null; fi; done
+fi
+
+# Check if appimagetool is installed, and if it is not installed, download and use it where it is needed
+_download_appimagetool() {
+	_determine_args
+	if ! command -v appimagetool >/dev/null 2>&1; then
+		mkdir -p "$CACHEDIR"/AMCACHEPATH
+		if [ ! -f "$CACHEDIR"/AMCACHEPATH/appimagetool ]; then
+			_online_check
+			wget -q https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-"$(uname -m)".AppImage -O "$CACHEDIR"/AMCACHEPATH/appimagetool
+			chmod a+x "$CACHEDIR"/AMCACHEPATH/appimagetool
+		fi
+	fi
+	if ! echo "$ARGPATHS" | grep -q "/appimagetool$"; then
+		if ! echo "$PATH" | grep -q "AMCACHEPATH"; then
+			export PATH="$CACHEDIR"/AMCACHEPATH/:"${PATH}"
+		fi
+	else
+		rm -f "$CACHEDIR"/AMCACHEPATH/appimagetool
 	fi
 }
 
@@ -1150,6 +1177,12 @@ _clean_old_modules() {
 	done
 }
 
+_clean_amcachepath() {
+	if [ -d "$CACHEDIR"/AMCACHEPATH ] && [ "$(ls -A "$CACHEDIR"/AMCACHEPATH)" ]; then
+		rm -f "$CACHEDIR"/AMCACHEPATH/* && echo $" ✔ Clear the contents of $CACHEDIR/appman" | sed 's#/appman$#/AMCACHEPATH#g'
+	fi
+}
+
 _use_clean() {
 	echo $" Cleaning temporary files and folders..." && sleep 0.1
 	i=100 && while [ "$i" -ge 0 ]; do
@@ -1162,6 +1195,7 @@ _use_clean() {
 	_clean_all_tmp_directories_from_appspath
 	_clean_launchers 2>/dev/null
 	_clean_old_modules
+	_clean_amcachepath
 }
 
 ################################################################################################################################################################
