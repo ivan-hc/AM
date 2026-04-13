@@ -59,7 +59,17 @@ EOF
 chmod a+x ./AM-updater || exit 1
 
 # LAUNCHER & ICON
-./"$APP" --appimage-extract 1>/dev/null
+./"$APP" --appimage-extract usr/share/applications/*.desktop 1>/dev/null
+./"$APP" --appimage-extract .DirIcon 1>/dev/null && mv ./squashfs-root/.DirIcon ./DirIcon
+COUNT=0
+while [ "$COUNT" -lt 10 ]; do # Tries to get the actual icon/desktop if it is a symlink to another symlink
+	if [ -L ./DirIcon ]; then
+		LINKPATH="$(readlink ./DirIcon | sed 's|^\./||' 2>/dev/null)"
+		./"$APP" --appimage-extract "$LINKPATH" 1>/dev/null && mv ./squashfs-root/"$LINKPATH" ./DirIcon
+	fi
+	[ ! -L ./DirIcon ] && break
+	COUNT=$((COUNT + 1))
+done
 desktop_main=$(find ./squashfs-root -name "$APP.desktop" | head -1)
 desktop_url=$(grep -rl "NoDisplay=true" ./squashfs-root --include="*.desktop" | head -1)
 if [ -n "$desktop_main" ]; then
@@ -70,10 +80,5 @@ if [ -n "$desktop_url" ]; then
 	sed -i "s#Exec=[^ ]*#Exec=$APP#g; s#Icon=.*#Icon=/opt/$APP/icons/$APP#g; s# --no-sandbox##g" "$desktop_url"
 	cp "$desktop_url" /usr/local/share/applications/"$APP"-url-handler-AM.desktop
 fi
-if [ -f ./squashfs-root/.DirIcon ]; then
-	cp ./squashfs-root/.DirIcon ./icons/"$APP"
-else
-	icon_src=$(find ./squashfs-root -name "*.png" -o -name "*.svg" | head -1)
-	[ -n "$icon_src" ] && cp "$icon_src" ./icons/"$APP"
-fi
+mv ./DirIcon ./icons/"$APP" 1>/dev/null
 rm -R -f ./squashfs-root
