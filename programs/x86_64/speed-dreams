@@ -3,7 +3,7 @@
 # AM INSTALL SCRIPT VERSION 3.5
 set -u
 APP=speed-dreams
-SITE="https://www.speed-dreams.net"
+SITE="https://sourceforge.net/projects/speed-dreams"
 
 # CREATE DIRECTORIES AND ADD REMOVER
 [ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
@@ -12,10 +12,9 @@ printf '\n%s' "rm -f /usr/local/share/applications/$APP-AM.desktop" >> ../remove
 chmod a+x ../remove || exit 1
 
 # DOWNLOAD AND PREPARE THE APP, $version is also used for updates
-pageref=$(curl -Ls https://www.speed-dreams.net/en/downloads | sed 's/id=/\n/g' | grep -Eo "#[0-9].*appimage.*amd64" | tr '#">< ' '\n')
-version=$(echo "$pageref" | grep "^[0-9]" | head -1 | sed -- 's/-appim.*//g')
-wget "$(echo "$pageref" | grep "^http" | head -1)" -O "$APP-$version.AppImage" || exit 1
-# Keep this space in sync with other installation scripts
+tag=$(curl -Ls https://sourceforge.net/projects/speed-dreams/files/ | tr '">< ' '\n' | grep "files/[0-9].*[0-9]/download" | tr '/' '\n' | grep "^[0-9]" | head -1)
+version=$(curl -Ls https://sourceforge.net/projects/speed-dreams/files/"$tag"/ | tr '">< ' '\n' | grep -i "http.*files.*x86_64.*appimage.*download" | head -1)
+wget "$version" || exit 1
 # Use tar fx ./*tar* here for example in this line in case a compressed file is downloaded.
 cd ..
 mv ./tmp/* ./"$APP"
@@ -32,10 +31,10 @@ cat >> ./AM-updater << 'EOF'
 #!/bin/sh
 set -u
 APP=speed-dreams
-SITE="https://www.speed-dreams.net"
+SITE="https://sourceforge.net/projects/speed-dreams"
 version0=$(cat "/opt/$APP/version")
-pageref=$(curl -Ls https://www.speed-dreams.net/en/downloads | sed 's/id=/\n/g' | grep -Eo "#[0-9].*appimage.*amd64" | tr '#">< ' '\n')
-version=$(echo "$pageref" | grep "^[0-9]" | head -1 | sed -- 's/-appim.*//g')
+tag=$(curl -Ls https://sourceforge.net/projects/speed-dreams/files/ | tr '">< ' '\n' | grep "files/[0-9].*[0-9]/download" | tr '/' '\n' | grep "^[0-9]" | head -1)
+version=$(curl -Ls https://sourceforge.net/projects/speed-dreams/files/"$tag"/ | tr '">< ' '\n' | grep -i "http.*files.*x86_64.*appimage.*download" | head -1)
 [ -n "$version" ] || { echo "Error getting link"; exit 1; }
 if command -v appimageupdatetool >/dev/null 2>&1; then
 	cd "/opt/$APP" || exit 1
@@ -44,7 +43,7 @@ fi
 if [ "$version" != "$version0" ]; then
 	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
 	notify-send "A new version of $APP is available, please wait"
-	wget "$(echo "$pageref" | grep "^http" | head -1)" -O "$APP-$version.AppImage" || exit 1
+	wget "$version" || exit 1
 	# Use tar fx ./*tar* here for example in this line in case a compressed file is downloaded.
 	cd ..
 	mv --backup=t ./tmp/* ./"$APP"
