@@ -1,6 +1,6 @@
 ## To run this image using podman:
 ## 1. podman build -t am-debian -f am-debian.dockerfile
-## 2. podman run -it --device /dev/fuse --cap-add SYS_ADMIN debian:latest /bin/bash
+## 2. podman run -it --device /dev/fuse --cap-add SYS_ADMIN am-debian:latest /bin/bash
 
 # Use the official Debian image as a parent image
 FROM debian:latest
