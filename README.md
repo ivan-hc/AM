@@ -72,6 +72,8 @@ You can use the command `am -a {PROGRAM}` to view the description and get the so
 
 [Guides and tutorials](#guides-and-tutorials)
 
+[Regression Testing (for developers)](regress)
+
 [Instructions for Linux Distro Maintainers](#instructions-for-linux-distro-maintainers)
 
 [Troubleshooting](#troubleshooting)
