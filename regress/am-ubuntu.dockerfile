@@ -1,9 +1,9 @@
 ## To run this image using podman:
-## 1. podman build -t am-debian -f am-debian.dockerfile
-## 2. podman run -it --device /dev/fuse --cap-add SYS_ADMIN --tmpfs /opt --tmpfs /root/.local/share/applications am-debian:latest
+## 1. podman build -t am-ubuntu -f am-ubuntu.dockerfile
+## 2. podman run -it --device /dev/fuse --cap-add SYS_ADMIN --tmpfs /opt --tmpfs /root/.local/share/applications am-ubuntu:latest
 
-# Use the official Debian image as a parent image
-FROM debian:latest
+# Use the official Ubuntu image as a parent image
+FROM ubuntu:latest
 
 # Install dependencies and AM
 RUN apt update && apt full-upgrade -y && apt install -y sudo wget curl git fuse bsdextrautils file locales unzip
@@ -19,6 +19,6 @@ RUN locale-gen && update-locale LANG=en_US.UTF-8
 # Setup env
 RUN echo "export LC_ALL=en_US.UTF-8" >> ~/.bashrc
 RUN echo "export PATH=$PATH:/root/.local/bin" >> ~/.bashrc
-RUN echo "echo AM-Debian testing container started" >> ~/.bashrc
+RUN echo "echo AM-Ubuntu testing container started" >> ~/.bashrc
 WORKDIR /root/regress
 CMD ["/bin/bash"]
