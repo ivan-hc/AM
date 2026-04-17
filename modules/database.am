@@ -756,12 +756,23 @@ _list() {
 	for t in $third_party_lists; do
 		[ ! -f "$AMDATADIR/$ARCH-$t" ] && _online_check && _sync_third_party_lists && _completion_lists
 	done
+	wait
 	tp_lists=$(find "$AMDATADIR" -type f -name "$ARCH-*" | grep -v "appimages\|portable\|apps")
 	for t in $tp_lists; do
-		[ -z "$TP_LISTS" ] && TP_LISTS=$(sort -u "$t") || TP_LISTS="$TP_LISTS\n$(sort -u "$t")"
+		if [ -z "$TP_LISTS" ]; then
+			TP_LISTS=$(sort -u "$t")
+		else
+			TP_LISTS="$TP_LISTS\n$(sort -u "$t")"
+		fi
 	done
-	[ -n "$third_party_lists" ] && AVAILABLE_THIRD_PARTY_NUMBER=$(printf "%b" "$TP_LISTS" | grep -Eo "^◆ .* : " | sort -u | grep -e "^◆.*$" -c)
-	[ -n "$AVAILABLE_THIRD_PARTY_NUMBER" ] && AVAILABLE_TOTAL_APPS_NUMBER=$(("$AVAILABLE_APPS_NUMBER" + "$AVAILABLE_THIRD_PARTY_NUMBER")) || AVAILABLE_TOTAL_APPS_NUMBER="$AVAILABLE_APPS_NUMBER"
+	if [ -n "$third_party_lists" ]; then
+		AVAILABLE_THIRD_PARTY_NUMBER=$(printf "%b" "$TP_LISTS" | grep -Eo "^◆ .* : " | sort -u | grep -e "^◆.*$" -c)
+	fi
+	if [ -n "$AVAILABLE_THIRD_PARTY_NUMBER" ]; then
+		AVAILABLE_TOTAL_APPS_NUMBER=$(("$AVAILABLE_APPS_NUMBER" + "$AVAILABLE_THIRD_PARTY_NUMBER"))
+	else
+		AVAILABLE_TOTAL_APPS_NUMBER="$AVAILABLE_APPS_NUMBER"
+	fi
 	# Generate a list of the installed apps with version
 	[ ! -f "$AMCACHEDIR"/version-args ] && _check_version
 	if [ -n "$APPMAN_ITEMS" ]; then
