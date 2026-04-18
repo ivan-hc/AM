@@ -5,8 +5,7 @@
 
 # Test variables
 test_results=".results.tmp"
-app_name1=$(_pick_random_app "$TEST_APP_LIST_ZSYNC")
-TEST_APP_LIST_ZSYNC=$(_remove_item "$TEST_APP_LIST_ZSYNC" "$app_name1")
+app_name1=$(_pick_random_app "$TEST_APP_LIST_ZSYNC") && TEST_APP_LIST_ZSYNC=$(_remove_item "$TEST_APP_LIST_ZSYNC" "$app_name1")
 app_name2=$(_pick_random_app "$TEST_APP_LIST_ZSYNC")
 app_name_digest=$(_pick_random_app "$TEST_APP_LIST_DIG")
 app_name_zip=$(_pick_random_app "$TEST_APP_LIST_ZIP")
