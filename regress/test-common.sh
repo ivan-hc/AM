@@ -7,7 +7,7 @@ TEST_APP_LIST_ZSYNC="zsync2 xeyes rofi foot pavucontrol-qt"
 TEST_APP_LIST_DIG="keepassxc"
 
 # List of test apps that are zipped (REQUIREMENTS: Under 10MB, no .zsync, simple install script)
-TEST_APP_LIST_ZIP="clifm cheat doggo dra nyan navi lsd hyperfine fcp"
+TEST_APP_LIST_ZIP="clifm cheat dra nyan navi lsd hyperfine fcp"
 
 # List of test apps that cant be verified (REQUIREMENTS: Under 10MB, no .zsync/digest, not zipped, simple install script)
 TEST_APP_LIST_NOCHK="bench-cli helio appimagen appimageupdate crabfetch"
