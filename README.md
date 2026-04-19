@@ -557,7 +557,7 @@ NOTE: Since this is an "install" option, you can add the "`--user`" flag (before
 Shows the list of all installed programs, with sizes. By default apps are sorted by size, use "`--byname`" to sort by name. With the option "`--less`" it shows only the number of installed apps. Option "`-fi`" only shows installed apps, not the AppImages integrated with the "`--launcher`" option.
 
 ------------------------------------------------------------------------
-### `help`, `-h`
+### `help`, `-h`, `--help`
 
 		am -h
 
