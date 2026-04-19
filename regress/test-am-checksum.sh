@@ -14,6 +14,9 @@ app_name_nochk=$(_pick_random_app "$TEST_APP_LIST_NOCHK")
 ## Setup
 _log "Running checksum test: $0"
 am --system
+
+# Remove all apps first
+printf "y\ny\ny\ny\ny\n" |\
 am -r "$app_name1" "$app_name2" "$app_name_digest" "$app_name_zip" "$app_name_nochk"
 
 # Test install

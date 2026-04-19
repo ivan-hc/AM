@@ -17,6 +17,7 @@ am -i "$app_name"
 
 # Install in User Mode
 _log "Installing $app_name in user mode..."
+printf "y\n" |\
 am --user
 am -i "$app_name"
 
@@ -28,21 +29,30 @@ _check_count "$app_name" 2 "$test_results"
 
 # Remove in User Mode
 _log "Removing $app_name in user mode..."
+printf "y\n" |\
 am --user
+printf "y\n" |\
 am -r "$app_name"
 
 # Check for Errors
-_log "Checking if $app_name is removed from user mode..."
+_log "Checking if $app_name is removed in user mode..."
 am -f > "$test_results"
 _check_count "$app_name" 0 "$test_results"
 
-# Remove in System Mode
-_log "Removing $app_name in system mode..."
+# Reinstall in User Mode
+_log "Installing $app_name in user mode again..."
+am -i "$app_name"
+
+# Remove in System Mode and User Mode (option 2)
+_log "Removing $app_name in user & system mode..."
 am --system
+printf "2\n" |\
+am -r "$app_name"
+printf "y\n" |\
 am -r "$app_name"
 
 # Check for Errors
-_log "Checking if $app_name is removed from system mode..."
+_log "Checking if $app_name is completely removed in system mode..."
 am -f > "$test_results"
 _check_count "$app_name" 0 "$test_results"
 

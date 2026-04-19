@@ -16,25 +16,25 @@ am --system
 am -i "$app_name1" "$app_name2"
 
 # Test hide
-_log "Test hide $app_name1:"
+_log "Test hide $app_name1..."
 am hide "$app_name1"
 am -f > "$test_results"
 _check_count "$app_name1" 0 "$test_results"
 
 # Test hide for another app
-_log "Test hide $app_name2:"
+_log "Test hide $app_name2..."
 am hide "$app_name2"
 am -f > "$test_results"
 _check_count "$app_name2" 0 "$test_results"
 
 # Test unhide
-_log "Test unhide $app_name1:"
+_log "Test unhide $app_name1..."
 am unhide "$app_name1"
 am -f > "$test_results"
 _check_count "$app_name1" 1 "$test_results"
 
 # Test hide for another app
-_log "Test unhide $app_name2:"
+_log "Test unhide $app_name2..."
 am unhide "$app_name2"
 am -f > "$test_results"
 _check_count "$app_name2" 1 "$test_results"
