@@ -1,5 +1,8 @@
 #!/usr/bin/env sh
 
+# Test logfile
+TEST_LOG="test-summary.log"
+
 # List of test apps (REQUIREMENTS: Under 20MB, has .zsync, simple install script)
 TEST_APP_LIST_ZSYNC="zsync2 xeyes rofi foot pavucontrol-qt"
 
@@ -49,6 +52,28 @@ _remove_item() {
 	echo "$new_list"
 }
 
+# Message log function
+_log() {
+	echo "\033[1;34m$1\033[0m"
+	echo "$1" >> "$TEST_LOG"
+}
+
+# Test fail log function
+_fail() {
+	echo "\033[0;31m$1\033[0m\n"
+	echo "$1" >> "$TEST_LOG"
+	echo "Test failed!\n" >> "$TEST_LOG"
+	exit 1
+}
+
+# Test pass log function
+_pass() {
+	PASS_MSG="Test passed!"
+	echo "\033[0;32m$PASS_MSG\033[0m\n"
+	echo "$PASS_MSG\n" >> "$TEST_LOG"
+	exit 0
+}
+
 # Function to check the count of a specific message/text in the results
 _check_count() {
 	chk_msg_name="$1"
@@ -58,13 +83,7 @@ _check_count() {
 
 	# Check msg count
 	if [ "$chk_actual_count" -ne "$chk_expected_count" ]; then
-		echo "Error: Test failed, $chk_msg_name should occur $chk_expected_count times, but found $chk_actual_count times."
-		exit 1
+		_fail "Error: $chk_msg_name should occur $chk_expected_count times, but was found $chk_actual_count times."
 	fi
-}
-
-# Function to log messages
-_log() {
-	echo "$1"
 }
 
