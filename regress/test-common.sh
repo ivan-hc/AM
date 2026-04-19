@@ -60,7 +60,7 @@ _log() {
 
 # Test fail log function
 _fail() {
-	echo "\033[0;31m$1\033[0m"
+	echo "\033[0;31m$1\033[0m\n"
 	echo "$1" >> "$TEST_LOG"
 	echo "Test failed!\n" >> "$TEST_LOG"
 	exit 1
@@ -69,7 +69,7 @@ _fail() {
 # Test pass log function
 _pass() {
 	PASS_MSG="Test passed!"
-	echo "\033[0;32m$PASS_MSG\033[0m"
+	echo "\033[0;32m$PASS_MSG\033[0m\n"
 	echo "$PASS_MSG\n" >> "$TEST_LOG"
 	exit 0
 }
