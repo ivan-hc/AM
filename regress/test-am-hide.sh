@@ -8,6 +8,10 @@ test_results=".results.tmp"
 app_name1=$(_pick_random_app "$TEST_APP_LIST_ZIP") && TEST_APP_LIST_ZIP=$(_remove_item "$TEST_APP_LIST_ZIP" "$app_name1")
 app_name2=$(_pick_random_app "$TEST_APP_LIST_ZIP")
 
+## Setup
+_log "Running hide/unhide test: $0"
+am --system
+
 # Install apps
 am -i "$app_name1" "$app_name2"
 
@@ -35,6 +39,6 @@ am unhide "$app_name2"
 am -f > "$test_results"
 _check_count "$app_name2" 1 "$test_results"
 
-# Pass the test if all was good
-_log "Test passed!"
+# Pass the test
+_pass
 

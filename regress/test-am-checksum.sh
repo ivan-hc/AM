@@ -11,7 +11,8 @@ app_name_digest=$(_pick_random_app "$TEST_APP_LIST_DIG")
 app_name_zip=$(_pick_random_app "$TEST_APP_LIST_ZIP")
 app_name_nochk=$(_pick_random_app "$TEST_APP_LIST_NOCHK")
 
-# Remove all apps first
+## Setup
+_log "Running checksum test: $0"
 am --system
 am -r "$app_name1" "$app_name2" "$app_name_digest" "$app_name_zip" "$app_name_nochk"
 
@@ -35,6 +36,6 @@ _check_count "checksum auto-verified" 1 "$test_results"
 am -i "$app_name_nochk" > "$test_results"
 _check_count "checksum verified" 0 "$test_results"
 
-# Pass the test if all was good
-_log "Test passed!"
+# Pass the test
+_pass
 
