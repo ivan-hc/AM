@@ -62,7 +62,7 @@ _log() {
 _fail() {
 	echo "\033[0;31m$1\033[0m"
 	echo "$1" >> "$TEST_LOG"
-	echo "Test failed!" >> "$TEST_LOG"
+	echo "Test failed!\n" >> "$TEST_LOG"
 	exit 1
 }
 
