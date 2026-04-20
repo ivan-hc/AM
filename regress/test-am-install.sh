@@ -48,8 +48,7 @@ _log "Removing $app_name in user & system mode..."
 am --system
 printf "2\n" |\
 am -r "$app_name"
-printf "y\n" |\
-am -r "$app_name"
+am -R "$app_name"
 
 # Check for Errors
 _log "Checking if $app_name is completely removed in system mode..."
@@ -57,5 +56,6 @@ am -f > "$test_results"
 _check_count "$app_name" 0 "$test_results"
 
 # Pass the test
+_remove_all_apps
 _pass
 

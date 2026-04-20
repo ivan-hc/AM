@@ -40,5 +40,6 @@ am -f > "$test_results"
 _check_count "$app_name2" 1 "$test_results"
 
 # Pass the test
+_remove_all_apps
 _pass
 
