@@ -683,18 +683,18 @@ _files_db_third_party() {
 	done
 }
 
-_third_party_lsts_filter() {
-	grep -v -- "---\|^| appname" | grep "^| .* | .* | http.* | http.* | .* |$" 2>/dev/null | awk -F'|' '{print $2, $3}' | sed 's/^/◆/g; s/   / : /g; s/ $//g'
-}
-
 _third_party_lsts_generator() {
-	tprepo_readme="${tp_list}_readme" && curl -Ls "${!tprepo_readme}" 2>/dev/null | _third_party_lsts_filter \
-	| sed "s/$/. To install it use the --$tp_list flag or the .$tp_list extension./g" | sort > "$AMDATADIR"/"$ARCH"-"$tp_list" || touch "$AMDATADIR"/"$ARCH"-"$tp_list"
+	if echo "$tprepo_readme" | grep -q -- "--$tp_list "; then
+		echo "$tprepo_readme" | grep -- "--$tp_list " | sort > "$AMDATADIR"/"$ARCH"-"$tp_list"
+	else
+		touch "$AMDATADIR"/"$ARCH"-"$tp_list"
+	fi
 }
 
 _sync_third_party_lists() {
 	_am_extras_sources
-	for tp_list in $third_party_lists; do
+	[ -z "$tprepo_readme" ] && tprepo_readme=$(curl -Ls "https://raw.githubusercontent.com/ivan-hc/am-extras/main/ALL/${ARCh}-all")
+		for tp_list in $tprepo_readme; do
 		_third_party_lsts_generator &
 	done
 }
