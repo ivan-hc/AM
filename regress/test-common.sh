@@ -4,16 +4,19 @@
 TEST_LOG="test-summary.log"
 
 # List of test apps (REQUIREMENTS: Under 20MB, has .zsync, simple install script)
-TEST_APP_LIST_ZSYNC="zsync2 xeyes rofi foot pavucontrol-qt"
+TEST_APP_LIST_ZSYNC="zsync2 xeyes rofi sas aisap clagrange"
 
 # List of test apps with DIGEST files (REQUIREMENTS: Under 20MB, a digest file, simple install script)
-TEST_APP_LIST_DIG="keepassxc"
+TEST_APP_LIST_DIG="rmw"
 
 # List of test apps that are zipped (REQUIREMENTS: Under 10MB, no .zsync, simple install script)
-TEST_APP_LIST_ZIP="clifm cheat dra nyan navi lsd hyperfine fcp"
+TEST_APP_LIST_ZIP="clifm gotimer dra nyan navi lsd hyperfine fcp"
 
 # List of test apps that cant be verified (REQUIREMENTS: Under 10MB, no .zsync/digest, not zipped, simple install script)
-TEST_APP_LIST_NOCHK="bench-cli helio appimagen appimageupdate crabfetch"
+TEST_APP_LIST_NOCHK="bench-cli helio appimagen appimageupdate crabfetch colorstatic-bash"
+
+# List of test apps that are outdated (REQUIREMENTS: Under 10MB, simple install script)
+TEST_APP_LIST_OLD="aisap bench-cli colorstatic-bash fcp"
 
 # Function to randomly pick an app from a list
 _pick_random_app() {
