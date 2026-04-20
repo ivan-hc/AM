@@ -4,15 +4,18 @@
 . "$(dirname "$0")/test-common.sh"
 
 # Setup
-_log "Running all regression tests:"
 rm $TEST_LOG
+_log "Regression testing setup:"
+_remove_all_apps
 am --system
 am clean
+_log "Done.\n"
 
 # Run all regression tests
-./test-am-checksum.sh
 ./test-am-hide.sh
 ./test-am-install.sh
+./test-am-checksum.sh
+./test-am-repair.sh
 
 # Done
 _log "Regression testing complete!"

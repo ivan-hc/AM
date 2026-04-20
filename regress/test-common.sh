@@ -100,7 +100,7 @@ _check_count() {
 
 	# Check msg count
 	if [ "$chk_actual_count" -ne "$chk_expected_count" ]; then
-		_fail "Error: $chk_msg_name should occur $chk_expected_count times, but was found $chk_actual_count times."
+		_fail "Error: \"$chk_msg_name\" should occur $chk_expected_count times, but was found $chk_actual_count times."
 	fi
 }
 
