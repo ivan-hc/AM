@@ -16,8 +16,7 @@ _log "Running checksum test: $0"
 am --system
 
 # Remove all apps first
-printf "y\ny\ny\ny\ny\n" |\
-am -r "$app_name1" "$app_name2" "$app_name_digest" "$app_name_zip" "$app_name_nochk"
+am -R "$app_name1" "$app_name2" "$app_name_digest" "$app_name_zip" "$app_name_nochk"
 
 # Test install
 am -i "$app_name1" > "$test_results"
@@ -40,5 +39,6 @@ am -i "$app_name_nochk" > "$test_results"
 _check_count "checksum verified" 0 "$test_results"
 
 # Pass the test
+_remove_all_apps
 _pass
 
