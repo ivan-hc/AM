@@ -26,7 +26,7 @@ am -i "$app_name"
 _log "Checking if $app_name is installed in both user/system modes..."
 am --system
 am -f > "$test_results"
-_check_count "$app_name.*MiB" 2 "$test_results"
+_check_count "$app_name.*|" 2 "$test_results"
 
 # Remove in User Mode
 _log "Removing $app_name in user mode..."
@@ -38,7 +38,7 @@ am -r "$app_name"
 # Check for Errors
 _log "Checking if $app_name is removed in user mode..."
 am -f > "$test_results"
-_check_count "$app_name.*MiB" 0 "$test_results"
+_check_count "$app_name.*|" 0 "$test_results"
 
 # Reinstall in User Mode
 _log "Installing $app_name in user mode again..."
@@ -54,7 +54,7 @@ am -R "$app_name"
 # Check for Errors
 _log "Checking if $app_name is completely removed in system mode..."
 am -f > "$test_results"
-_check_count "$app_name.*MiB" 0 "$test_results"
+_check_count "$app_name.*|" 0 "$test_results"
 
 # Install old app in both modes
 _log "Installing $app_name_old (outdated) in both system/user modes..."
