@@ -31,9 +31,9 @@ Alternatively, you may select a different container image such as am-ubuntu:\
 `podman build -t am-ubuntu -f am-ubuntu.dockerfile`
 
 3. Start am-debian container session in default mode (persistent Appimages):\
-`podman run -it --device /dev/fuse --cap-add SYS_ADMIN am-debian:latest`\
+`podman run -it --device /dev/fuse --cap-add SYS_ADMIN --security-opt unmask=ALL am-debian:latest`\
 Alternatively, start am-debian container session with tmpfs for Appimage dirs (stores in RAM to avoid wearing out your SSD):\
-`podman run -it --device /dev/fuse --cap-add SYS_ADMIN --tmpfs /opt --tmpfs /root/.local/share/applications am-debian:latest`\
+`podman run -it --device /dev/fuse --cap-add SYS_ADMIN --security-opt unmask=ALL --tmpfs /opt --tmpfs /root/.local/share/applications am-debian:latest`\
 You will now be within the container.
 
 4. Setup AM as needed (eg. switch to dev branch):\
