@@ -81,10 +81,10 @@ _pass() {
 _remove_all_apps() {
 	# Remove AM local apps
 	printf "y\n" | am --user
-	apps=$(ls /root/Applications/ | xargs)
+	apps=$(ls ~/Applications/ | xargs)
 	for a in $apps; do
 		am unhide "$a"
-		/root/Applications/"$a"/remove
+		~/Applications/"$a"/remove
 	done
 
 	# Remove AM system apps
@@ -96,6 +96,11 @@ _remove_all_apps() {
 			/opt/"$a"/remove
 		fi
 	done
+
+	# Clean up symlinks
+	rm -rf ~/.local/bin/*
+	rm -rf /usr/local/bin/*
+	ln -s /opt/am/APP-MANAGER /usr/local/bin/am
 
 	# Check if number of apps is as expected
 	if [ "$(am -f --less | sed -n 1p)" != "1" ]; then
