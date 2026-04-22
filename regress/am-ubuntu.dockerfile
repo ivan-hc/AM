@@ -1,12 +1,12 @@
 ## To run this image using podman:
 ## 1. podman build -t am-ubuntu -f am-ubuntu.dockerfile
-## 2. podman run -it --device /dev/fuse --cap-add SYS_ADMIN --tmpfs /opt --tmpfs /root/.local/share/applications am-ubuntu:latest
+## 2. podman run -it --device /dev/fuse --cap-add SYS_ADMIN --security-opt unmask=ALL --tmpfs /opt --tmpfs /root/.local/share/applications am-ubuntu:latest
 
 # Use the official Ubuntu image as a parent image
 FROM ubuntu:latest
 
 # Install dependencies and AM
-RUN apt update && apt full-upgrade -y && apt install -y sudo wget curl git fuse bsdextrautils file locales unzip
+RUN apt update && apt full-upgrade -y && apt install -y sudo wget curl git fuse3 bsdextrautils file locales unzip
 RUN cd && wget https://raw.githubusercontent.com/ivan-hc/AM/main/INSTALL && chmod a+x ./INSTALL && sudo ./INSTALL && rm ./INSTALL
 
 # Copy regression folder
