@@ -10,9 +10,10 @@ The following is a brief explanation for the files in the regression dir:
   - Contains TEST_APP_LIST* that has a list of predefined apps to be randomly selected for testing.
   - All apps in the test list are selected to be small downloads, and do not have complex install scripts.
 - `test-am-*.sh` - Performs a POSIX sh compliant structured AM test to check for a specific function/feature. Test sequence depends on the contents of the test file.
+- `test-am-regress.sh` - Runs all of the available regression tests in one go. May take a while to complete.
 - `am-*.dockerfile` - Needed for building a container image based on the selected OS (eg. Debian or Ubuntu), with the correct environment setup for testing. AM will work out-of-the-box.
 
-Of course, these tests can be directly run on your main OS. However, running them may produce undesirable artifacts, such as installing unnecessary apps in your system, or uninstalling important ones, switching AM modes, etc. Therefore, it is recommended to run them in a Podman/Docker container instead.
+While these tests can be directly run on your main OS, **do not attempt this**. Running them may produce very undesirable artifacts, such as installing unnecessary apps in your system, or uninstalling all apps, switching AM modes, etc. Instead, it is strongly recommended to run them in a Podman/Docker container instead.
 
 ----------------------------------------------------
 #### How to start testing AM in a safe container environment
@@ -38,7 +39,9 @@ You will now be within the container.
 4. Setup AM as needed (eg. switch to dev branch):\
 `am --devmode-enable`
 
-5. Run tests:\
+5. Run all regression tests:\
+`./test-am-regress.sh`\
+Alternatively, run individual tests:\
 `./test-am-checksum.sh`\
 `./test-am-install.sh`
 
