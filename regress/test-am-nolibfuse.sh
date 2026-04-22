@@ -11,7 +11,7 @@ app_name="bench-cli"
 _log "Running libfuse2 removal test: $0"
 am --system
 
-# Installing a known archieved tool command line tool using libfuse2
+# Install a known archived command line tool that uses libfuse2
 _log "Installing a known libfuse2 app..."
 am -R "$app_name"
 am -i "$app_name"
