@@ -10,16 +10,34 @@ app_name2=$(_pick_random_app "$TEST_APP_LIST_ZIP")
 
 ## Setup
 _log "Running hide/unhide test: $0"
-am --system
 
-# Install apps
+# Install app locally
+printf "y\n" |\
+am --user
+am -i "$app_name1"
+
+# Test hide
+_log "Test hide $app_name1 (local)..."
+am hide "$app_name1"
+am -f > "$test_results"
+_check_count "$app_name1.*|" 0 "$test_results"
+
+# Test unhide
+_log "Test unhide $app_name1 (local)..."
+am unhide "$app_name1"
+am -f > "$test_results"
+_check_count "$app_name1.*|" 1 "$test_results"
+
+# Install apps in system level
+am --system
 am -i "$app_name1" "$app_name2"
 
 # Test hide
 _log "Test hide $app_name1..."
+printf "1\n" |\
 am hide "$app_name1"
 am -f > "$test_results"
-_check_count "$app_name1.*|" 0 "$test_results"
+_check_count "$app_name1.*|" 1 "$test_results"
 
 # Test hide for another app
 _log "Test hide $app_name2..."
@@ -31,7 +49,7 @@ _check_count "$app_name2.*|" 0 "$test_results"
 _log "Test unhide $app_name1..."
 am unhide "$app_name1"
 am -f > "$test_results"
-_check_count "$app_name1.*|" 1 "$test_results"
+_check_count "$app_name1.*|" 2 "$test_results"
 
 # Test hide for another app
 _log "Test unhide $app_name2..."

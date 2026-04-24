@@ -18,6 +18,9 @@ TEST_APP_LIST_NOCHK="bench-cli helio appimagen appimageupdate crabfetch colorsta
 # List of test apps that are outdated (REQUIREMENTS: Under 10MB, simple install script)
 TEST_APP_LIST_OLD="aisap bench-cli colorstatic-bash fcp"
 
+# List of test apps that can be downgraded (REQUIREMENTS: Under 5MB, simple install script)
+TEST_APP_LIST_DOWN="clifm aisap fcp zsync2"
+
 # Function to randomly pick an app from a list
 _pick_random_app() {
 	# Get count
@@ -51,7 +54,7 @@ _remove_item() {
 		fi
 	done
 
-	# Output both picked item and new list
+	# Output new list with item removed
 	echo "$new_list"
 }
 
@@ -109,6 +112,14 @@ _remove_all_apps() {
 	if [ "$(am -f --less | sed -n 3p)" != "0" ]; then
 		_fail "Error: Unable to fully remove AM local apps."
 	fi
+}
+
+# Function to get app info from am -f table collumns
+_get_app_info() {
+	app_name="$1"
+	info_collumn="$2"
+	app_info=$(am -f | grep "$app_name" | cut -d'|' -f"$info_collumn" | head -n 1)
+	echo "$app_info"
 }
 
 # Function to check the count of a specific message/text in the results
