@@ -18,6 +18,7 @@ _log "Done.\n"
 ./test-am-repair.sh
 ./test-am-sandbox.sh
 ./test-am-nolibfuse.sh
+./test-am-rollback.sh
 
 # Done
 _log "Regression testing complete:"
