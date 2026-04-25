@@ -13,7 +13,7 @@ TEST_APP_LIST_DIG="conky" #Too big: joplin dinox
 TEST_APP_LIST_ZIP="clifm gotimer dra nyan navi lsd hyperfine fcp"
 
 # List of test apps that cant be verified (REQUIREMENTS: Under 10MB, no .zsync/digest, not zipped, simple install script)
-TEST_APP_LIST_NOCHK="bench-cli helio appimagen appimageupdate crabfetch colorstatic-bash"
+TEST_APP_LIST_NOCHK="bench-cli helio appimagen crabfetch colorstatic-bash"
 
 # List of test apps that are outdated (REQUIREMENTS: Under 10MB, simple install script)
 TEST_APP_LIST_OLD="aisap bench-cli colorstatic-bash fcp"
