@@ -859,10 +859,6 @@ _check_version_filters() {
 	}' | sed 's/^v//'
 }
 
-_check_version_grep_numbers() {
-	grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1
-}
-
 # Versions
 _check_version_if_any_version_reference_is_somewhere() {
 	if [ -f "$argpath"/tbb_version.json ] && grep -qi "\"version\":" "$argpath"/tbb_version.json; then
@@ -882,20 +878,16 @@ _check_version_if_any_version_reference_is_somewhere() {
 _check_version_if_version_file_exists() {
 	APPVERSION=$(sort "$argpath"/version | head -1 | sed 's:.*/::' | _check_version_filters)
 	if [ -z "$APPVERSION" ]; then
-		if grep -q "download$" "$argpath"/version; then
-			APPVERSION=$(sort "$argpath"/version | tr '/' '\n' | _check_version_filters)
-		elif grep -q "://" "$argpath"/version; then
-			APPVERSION=$(sort "$argpath"/version | tr '/' '\n' | _check_version_grep_numbers)
-		elif grep -q "/v[0-9]*" "$argpath"/version; then
-			APPVERSION=$(sort "$argpath"/version | tr '/' '\n' | grep "^v[0-9]" | head -1 | sed 's/^v//g')
-		elif [ "$(sort "$argpath"/version | wc -w | sed 's/ //g')" = 1 ]; then
-			APPVERSION=$(sort "$argpath"/version | head -1)
-		fi
+		APPVERSION=$(sort "$argpath"/version | tr '/' '\n' | _check_version_filters)
 	fi
 	if [ -z "$APPVERSION" ]; then
-		if grep -q "http.*download/.*[0-9].*/" "$argpath"/version; then
-			APPVERSION=$(sort "$argpath"/version | tr '/-' '\n' | grep "[0-9]" | _check_version_filters | tail -1)
-		fi
+		APPVERSION=$(sort "$argpath"/version | tr '/-' '\n' | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+' | tail -1)
+	fi
+	if [ -z "$APPVERSION" ]; then
+		APPVERSION=$(sort "$argpath"/version | tr '/-' '\n' | grep -o '[a-zA-Z]*\?\.[0-9]\+\(\.[0-9]\+\)*' | tail -1)
+	fi
+	if [ -z "$APPVERSION" ]; then
+		APPVERSION=$(sort "$argpath"/version | grep -oP '(?<=/download/)[^/]+|[a-zA-Z]+\d+(?=_)' | head -1)
 	fi
 }
 
@@ -926,8 +918,6 @@ _check_version() {
 					_check_version_if_library
 				elif [ -f "$argpath"/updater ] || grep -qi "version=" "$argpath"/*; then
 					_check_version_if_any_version_reference_is_somewhere
-				else
-					APPVERSION="unknown"
 				fi
 				if [ -z "$APPVERSION" ]; then
 					[ -f "$argpath"/"$arg" ] && _check_version_if_binary_in_place || APPVERSION="unknown"
