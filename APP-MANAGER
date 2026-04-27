@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="10.1"
+AMVERSION="10.1-1"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -829,12 +829,34 @@ fi
 # VERSION OF THE INSTALLED APPS
 # Filters
 _check_version_filters() {
-	sed -E "s/$ARCH|amd64|x86-64|x64|basic|standard|full|help|Qt[0-9]//g; s/-/\n/g; s/_/\n/g;" |\
-	grep -vi "appimage\|$arg\|?\|tar." | grep "[0-9]" | head -1 | sed 's/^v//g; s/^\.//g; s/\.$//g;'
-}
+	awk '
+	{
+		# 1. Best: full version
+		if (match($0, /v?[0-9]+(\.[0-9]+){2,}(-[0-9]+(-g[0-9a-f]+)?)?/)) {
+			print substr($0, RSTART, RLENGTH)
+			exit
+		}
 
-_check_version_grep_numbers() {
-	grep -Eo "([0-9]{1,}\.)+[0-9]{1,}" | head -1
+		# 2. Hash in /.../ (extract manually)
+		if (!pathhash && match($0, /\/[0-9a-f]{7,40}\//)) {
+			pathhash = substr($0, RSTART+1, RLENGTH-2)
+		}
+
+		# 3. Short version
+		if (!short && match($0, /v?[0-9]+\.[0-9]+/)) {
+			short = substr($0, RSTART, RLENGTH)
+		}
+
+		# 4. Generic hash
+		if (!hash && match($0, /[0-9a-f]{7,40}/)) {
+			hash = substr($0, RSTART, RLENGTH)
+		}
+	}
+	END {
+		if (pathhash) print pathhash
+		else if (short) print short
+		else if (hash) print hash
+	}' | sed 's/^v//'
 }
 
 # Versions
@@ -856,21 +878,18 @@ _check_version_if_any_version_reference_is_somewhere() {
 _check_version_if_version_file_exists() {
 	APPVERSION=$(sort "$argpath"/version | head -1 | sed 's:.*/::' | _check_version_filters)
 	if [ -z "$APPVERSION" ]; then
-		if grep -q "download$" "$argpath"/version; then
-			APPVERSION=$(sort "$argpath"/version | tr '/' '\n' | _check_version_filters)
-		elif grep -q "://" "$argpath"/version; then
-			APPVERSION=$(sort "$argpath"/version | tr '/' '\n' | _check_version_grep_numbers)
-		elif grep -q "/v[0-9]*" "$argpath"/version; then
-			APPVERSION=$(sort "$argpath"/version | tr '/' '\n' | grep "^v[0-9]" | head -1 | sed 's/^v//g')
-		elif [ "$(sort "$argpath"/version | wc -w | sed 's/ //g')" = 1 ]; then
-			APPVERSION=$(sort "$argpath"/version | head -1)
-		fi
+		APPVERSION=$(sort "$argpath"/version | tr '/' '\n' | _check_version_filters)
 	fi
 	if [ -z "$APPVERSION" ]; then
-		if grep -q "http.*download/.*[0-9].*/" "$argpath"/version; then
-			APPVERSION=$(sort "$argpath"/version | tr '/-' '\n' | grep "[0-9]" | _check_version_filters | tail -1)
-		fi
+		APPVERSION=$(sort "$argpath"/version | tr '/-' '\n' | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+' | tail -1)
 	fi
+	if [ -z "$APPVERSION" ]; then
+		APPVERSION=$(sort "$argpath"/version | tr '/-' '\n' | grep -o '[a-zA-Z]*\?\.[0-9]\+\(\.[0-9]\+\)*' | tail -1)
+	fi
+	if [ -z "$APPVERSION" ]; then
+		APPVERSION=$(sort "$argpath"/version | grep -oP '(?<=/download/)[^/]+|[a-zA-Z]+\d+(?=_)' | head -1)
+	fi
+	APPVERSION=$(echo "$APPVERSION" | tr '[:upper:]' '[:lower:]' | sed "s/$arg//g")
 }
 
 _check_version_if_library() {
@@ -900,8 +919,6 @@ _check_version() {
 					_check_version_if_library
 				elif [ -f "$argpath"/updater ] || grep -qi "version=" "$argpath"/*; then
 					_check_version_if_any_version_reference_is_somewhere
-				else
-					APPVERSION="unknown"
 				fi
 				if [ -z "$APPVERSION" ]; then
 					[ -f "$argpath"/"$arg" ] && _check_version_if_binary_in_place || APPVERSION="unknown"
