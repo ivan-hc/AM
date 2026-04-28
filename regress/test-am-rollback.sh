@@ -66,10 +66,8 @@ am -o "$app_name1"
 app_ver_old_restored="$(_get_app_info "$app_name1" 2)"
 [ "$app_ver_old_restored" != "$app_ver_old_locked" ] && _fail "Error: \"$app_name1\" version was not restored correctly"
 
-# Remove snapshot
-rm -rf ~/.am-snapshots
-
 # Pass the test
+rm -rf ~/.am-snapshots
 _remove_all_apps
 _pass
 
