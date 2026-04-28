@@ -33,6 +33,11 @@ am lock "$app_name1"
 app_ver_old_locked="$(_get_app_info "$app_name1" 2)"
 [ "$app_ver_old_locked" = "$app_ver_old" ] && _fail "Error: \"$app_name1\" version lock failed"
 
+# Test backup
+_log "Backing up old version of $app_name1..."
+printf "y\n\n" |\
+am backup "$app_name1"
+
 # Try to update locked app
 _log "Test update locked $app_name1..."
 am -u "$app_name1" > "$test_results"
@@ -53,6 +58,16 @@ am -u "$app_name1" > "$test_results"
 _check_count "cannot be updated" 0 "$test_results"
 app_ver_old_updated="$(_get_app_info "$app_name1" 2)"
 [ "$app_ver_old_updated" != "$app_ver_latest" ] && _fail "Error: \"$app_name1\" version cannot be updated despite unlocked status"
+
+# Test restore
+_log "Test restore backed up version of $app_name1..."
+printf "y\n1\n" |\
+am -o "$app_name1"
+app_ver_old_restored="$(_get_app_info "$app_name1" 2)"
+[ "$app_ver_old_restored" != "$app_ver_old_locked" ] && _fail "Error: \"$app_name1\" version was not restored correctly"
+
+# Remove snapshot
+rm -rf ~/.am-snapshots
 
 # Pass the test
 _remove_all_apps

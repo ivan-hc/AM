@@ -13,10 +13,10 @@ app_name3=$(_pick_random_app "$TEST_APP_LIST_NOCHK")
 _log "Running clone install list test: $0"
 rm -f ~/Desktop/am-clone.source
 _remove_all_apps
-am --system
 
 # Install in System Mode
 _log "Installing all apps in system mode..."
+am --system
 am -i "$app_name1" "$app_name2" "$app_name3"
 
 # Install in User Mode
