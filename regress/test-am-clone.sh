@@ -11,7 +11,7 @@ app_name3=$(_pick_random_app "$TEST_APP_LIST_NOCHK")
 
 ## Setup
 _log "Running clone install list test: $0"
-rm -f ~/Desktop/am-clone.source
+rm -f ~/Desktop/am-clone.source am-clone.source
 _remove_all_apps
 
 # Install in System Mode
@@ -48,7 +48,7 @@ am lock "$app_name3"
 # Create cloned app list and check if it exists
 _log "Create app list (am clone)..."
 am clone
-ls ~/Desktop > "$test_results"
+ls ~/Desktop . > "$test_results"
 _check_count "am-clone.source" 1 "$test_results"
 
 # Remove all apps and and then reinstall them (clone previous setup)
