@@ -6,7 +6,7 @@
 FROM ubuntu:latest
 
 # Install dependencies and AM
-RUN apt update && apt full-upgrade -y && apt install -y sudo wget curl git fuse3 bsdextrautils file locales unzip
+RUN apt update && apt full-upgrade -y && apt install -y sudo wget curl git fuse3 bsdextrautils file locales unzip xz-utils
 RUN cd && wget https://raw.githubusercontent.com/ivan-hc/AM/main/INSTALL && chmod a+x ./INSTALL && sudo ./INSTALL && rm ./INSTALL
 
 # Copy regression folder
