@@ -60,23 +60,23 @@ _remove_item() {
 
 # Message log function
 _log() {
-	printf "\033[1;34m%s\033[0m\n" "$1"
-	printf "%s\n" "$1" >> "$TEST_LOG"
+	printf "\033[1;34m%b\033[0m\n" "$1"
+	printf "%b\n" "$1" >> "$TEST_LOG"
 }
 
 # Test fail log function
 _fail() {
-	printf "\033[0;31m%s\033[0m\n" "$1"
-	printf "%s\n" "$1" >> "$TEST_LOG"
-	printf "%s\n" "Test failed!" >> "$TEST_LOG"
+	printf "\033[0;31m%b\033[0m\n" "$1"
+	printf "%b\n" "$1" >> "$TEST_LOG"
+	printf "%s\n\n" "Test failed!" >> "$TEST_LOG"
 	exit 1
 }
 
 # Test pass log function
 _pass() {
 	PASS_MSG="Test passed!"
-	printf "\033[0;32m%s\033[0m\n" "$PASS_MSG"
-	printf "%s\n" "$PASS_MSG" >> "$TEST_LOG"
+	printf "\033[0;32m%s\033[0m\n\n" "$PASS_MSG"
+	printf "%s\n\n" "$PASS_MSG" >> "$TEST_LOG"
 	exit 0
 }
 
