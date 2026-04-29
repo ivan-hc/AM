@@ -16,7 +16,7 @@ TEST_APP_LIST_ZIP="clifm gotimer dra nyan navi lsd hyperfine fcp"
 TEST_APP_LIST_NOCHK="bench-cli helio appimagen crabfetch colorstatic-bash"
 
 # List of test apps that are outdated (REQUIREMENTS: Under 10MB, simple install script)
-TEST_APP_LIST_OLD="aisap bench-cli colorstatic-bash fcp"
+TEST_APP_LIST_OLD="aisap bench-cli colorstatic-bash"
 
 # List of test apps that can be downgraded (REQUIREMENTS: Under 5MB, simple install script)
 TEST_APP_LIST_DOWN="clifm aisap fcp zsync2"
@@ -60,23 +60,23 @@ _remove_item() {
 
 # Message log function
 _log() {
-	echo "\033[1;34m$1\033[0m"
-	echo "$1" >> "$TEST_LOG"
+	printf "\033[1;34m%s\033[0m\n" "$1"
+	printf "%s\n" "$1" >> "$TEST_LOG"
 }
 
 # Test fail log function
 _fail() {
-	echo "\033[0;31m$1\033[0m\n"
-	echo "$1" >> "$TEST_LOG"
-	echo "Test failed!\n" >> "$TEST_LOG"
+	printf "\033[0;31m%s\033[0m\n" "$1"
+	printf "%s\n" "$1" >> "$TEST_LOG"
+	printf "%s\n" "Test failed!" >> "$TEST_LOG"
 	exit 1
 }
 
 # Test pass log function
 _pass() {
 	PASS_MSG="Test passed!"
-	echo "\033[0;32m$PASS_MSG\033[0m\n"
-	echo "$PASS_MSG\n" >> "$TEST_LOG"
+	printf "\033[0;32m%s\033[0m\n" "$PASS_MSG"
+	printf "%s\n" "$PASS_MSG" >> "$TEST_LOG"
 	exit 0
 }
 

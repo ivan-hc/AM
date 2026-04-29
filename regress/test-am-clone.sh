@@ -36,14 +36,14 @@ _check_count "$app_name3.*|" 2 "$test_results"
 # Hide/lock apps to complicate clone process
 printf "y\n" |\
 am --user
-am hide $app_name1
+am hide "$app_name1"
 printf "y\n" |\
-am lock $app_name2
+am lock "$app_name2"
 am --system
 printf "1\n" |\
-am hide $app_name2
+am hide "$app_name2"
 printf "1\ny\n" |\
-am lock $app_name3
+am lock "$app_name3"
 
 # Create cloned app list and check if it exists
 _log "Create app list (am clone)..."
