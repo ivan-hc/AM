@@ -15,13 +15,13 @@ RUN cd && git clone --depth 1 https://github.com/ivan-hc/AM && mv AM/regress . &
 # Setup locale
 RUN echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
 RUN locale-gen && update-locale LANG=en_US.UTF-8
+ENV LC_ALL en_US.UTF-8
 
 # Setup AM with safe defaults
 RUN printf "y\n\n" | am --user && am --system && am --disable-notifications
 
 # Setup env
-RUN echo "export LC_ALL=en_US.UTF-8" >> ~/.bashrc
 RUN echo "export PATH=$PATH:/root/.local/bin" >> ~/.bashrc
-RUN echo "echo AM-Ubuntu testing container started" >> ~/.bashrc
+RUN echo "echo \"AM-Ubuntu testing container started\"" >> ~/.bashrc
 WORKDIR /root/regress
 CMD ["/bin/bash"]
