@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="10.1-7"
+AMVERSION="10.1-8"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -511,9 +511,21 @@ _online_check() {
 	fi
 }
 
+_checksum_on_standard_dependencies() {
+	if [ -f "$CACHEDIR"/AMCACHEPATH/"$name" ]; then
+		dep_sum256_local=$(sha256sum "$CACHEDIR"/AMCACHEPATH/"$name" 2>/dev/null | awk '{print $1}')
+		dep_sum256_host=$(curl -Ls "$AM_UTILS_SOURCE"/"$name"-$ARCH-static 2>/dev/null| sha256sum | awk '{print $1}')
+		if [ "$dep_sum256_local" != "$dep_sum256_host" ]; then
+			rm -Rf "$CACHEDIR"/AMCACHEPATH/"$name"
+			_deps_dl && chmod a+x "$CACHEDIR"/AMCACHEPATH/"$name" && printf " - %b, downloaded from https://github.com/ivan-hc/am-utils\n" "$name"
+		fi
+	fi
+}
+
 # Use static binaries as a fallback solution in case there are no dependencies
 AM_core_dependencies="cat chmod chown curl grep sed wget"
 AM_opt_dependencies="7z ar column file md5sum notify-send sha1sum sha256sum sha512sum tar unxz unzip xz xzcat"
+AM_standard_dependencies="$AM_core_dependencies $AM_opt_dependencies"
 _deps_dl() {
 	if command -v curl >/dev/null 2>&1; then
 		curl -Lo "$CACHEDIR"/AMCACHEPATH/"$name" "$AM_UTILS_SOURCE/$name-$ARCH-static" 2>/dev/null
@@ -525,7 +537,7 @@ _deps_dl() {
 if [ "$ARCH" = aarch64 ] || [ "$ARCH" = x86_64 ]; then
 	mkdir -p "$CACHEDIR"/AMCACHEPATH
 	# Download static binaries if commands are not available
-	amutils="$AM_core_dependencies $AM_opt_dependencies"
+	amutils="$AM_standard_dependencies"
 	AM_UTILS_SOURCE="https://github.com/ivan-hc/am-utils/releases/download/continuous-$ARCH"
 	for name in $amutils; do
 		if ! command -v "$name" >/dev/null 2>&1; then
@@ -567,6 +579,11 @@ if [ "$ARCH" = aarch64 ] || [ "$ARCH" = x86_64 ]; then
 		done
 	fi
 	export PATH="$CACHEDIR"/AMCACHEPATH/:"${PATH}"
+	# Check binaries integrity
+	for name in $AM_standard_dependencies; do
+		_checksum_on_standard_dependencies &
+	done
+	wait
 fi
 
 # Check for essential commands required by the application
