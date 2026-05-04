@@ -298,6 +298,14 @@ _ending_the_installation() {
 	fi
 }
 
+_install_exec_installation_script() {
+	if [ "$(ls -A "$CACHEDIR"/AMCACHEPATH 2>/dev/null)" ]; then
+		$SUDOCMD PATH="$PATH" ./"$arg"
+	else
+		$SUDOCMD ./"$arg"
+	fi
+}
+
 _install_script_retry() {
 	# Determine if the installation has stopped when trying to download the app
 	test_lastdir=$(ls -td "$APPSPATH"/* | head -1 | sed 's:.*/::')
@@ -309,7 +317,7 @@ _install_script_retry() {
 			if [ -z "$( ls -A "$test_lastdir_tmp" )" ]; then
 				printf "\n The file was not downloaded, attempt %b of 5 will start in 5 seconds...\n\n" "$((TAKES_COUNT + 1))"
 				sleep 5
-				$SUDOCMD ./"$arg"
+				_install_exec_installation_script
 			fi
 		fi
 		TAKES_COUNT=$((TAKES_COUNT + 1))
@@ -326,7 +334,7 @@ _install_script_retry() {
 				printf -- "\n %b✔ Attempting to extend pages in progress...\033[0m\n\n" "${Gold}"
 				sleep 5
 				sed -i 's#/releases #/releases?per\_page=100 #g' ./"$arg"
-				$SUDOCMD ./"$arg" || printf -- "\n %b✖ Failed! \033[0m \n" "${RED}"
+				_install_exec_installation_script || printf -- "\n %b✖ Failed! \033[0m \n" "${RED}"
 			else
 				# No patches found
 				printf -- "\n %b✖ No patch available! \033[0m \n" "${RED}"
@@ -354,7 +362,7 @@ _install_arg() {
 	# Set trap to cleanup on interruption (Ctrl+C, kill, hangup, quit)
 	trap _installation_cleanup INT TERM HUP QUIT
 	# Install script
-	$SUDOCMD ./"$arg" || _install_script_retry
+	_install_exec_installation_script || _install_script_retry
 	echo ""
 	_post_installation_processes
 	_ending_the_installation
