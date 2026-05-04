@@ -1720,7 +1720,15 @@ _update_print_updated_apps_table() {
 	app_header=$(printf $"App")
 	old_header=$(printf $"Previous")
 	new_header=$(printf $"Current")
-	diff "$OLDVER" "$NEWVER" | grep "^>" | sed 's/^> //g' | while IFS= read -r updated_app; do
+	awk '
+	NR==FNR { a[NR]=$0; next }
+	{
+		if ($0 != a[FNR]) {
+			print "< " a[FNR]
+			print "> " $0
+		}
+	}
+	' "$OLDVER" "$NEWVER" | grep "^>" | sed 's/^> //g' | while IFS= read -r updated_app; do
 		arg=$(printf "%s\n" "$updated_app" | awk '{print $2}')
 		old_app=$(grep -F " ◆ $arg " "$OLDVER" | head -1)
 		old_version=$(printf "%s\n" "$old_app" | sed "s/^ ◆ $arg //; s/\x1b\[[0-9;]*m//g; s/[✖✓🔒]//g; s/  */ /g; s/ $//")
