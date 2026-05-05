@@ -39,46 +39,22 @@ You can use the command `am -a {PROGRAM}` to view the description and get the so
 # Main index
 ------------------------------------------------------------------------
 
-[Installation](#installation)
+* [Installation](#installation)
+  * [Using the "AM\-installer" script to choose between local and system\-wide installation](#using-the-am-installer-script-to-choose-between-local-and-system-wide-installation)
+  * [Using "GIT" (only system\-wide installation)](#using-git-only-system-wide-installation)
+  * [Using a one\-line command (only system\-wide installation)](#using-a-one-line-command-only-system-wide-installation)
+  * [What is AppMan?](#what-is-appman)
+  * [Recommended packages](#recommended-packages)
+* [Graphical User Interface](#graphical-user-interface)
+* [Translate "AM" in your local language](#translate-am-in-your-local-language)
+  * [How to update all programs, for real\!](#how-to-update-all-programs-for-real)
+* [OPTIONS](#options)
+* [Guides and tutorials](#guides-and-tutorials)
+* [Instructions for Linux Distro Maintainers](#instructions-for-linux-distro-maintainers)
+* [Troubleshooting](#troubleshooting)
+* [Related projects](#related-projects)
 
-- [Using the "AM-installer" script to choose between local and system-wide installation](#using-the-am-installer-script-to-choose-between-local-and-system-wide-installation)
-- [Using "GIT" (only system-wide installation)](#using-git-only-system-wide-installation)
-- [Using a one-line command (only system-wide installation)](#using-a-one-line-command-only-system-wide-installation)
-
-   - [What is AppMan?](#what-is-appman)
-     - [How to install AppMan manually](#how-to-install-appman-manually)
-
-   - [AM installation structure](#am-installation-structure)
-   - [Uninstall](#uninstall)
-   - [How are apps installed](#how-are-apps-installed)
-   - [How to set the path to local apps](#how-to-set-the-path-to-local-apps)
-   - [What programs can be installed](#what-programs-can-be-installed)
-     - [Supported third-party databases](#supported-third-party-databases)
-     - [How to replace AM database](#how-to-replace-am-database)
-
-   - [Recommended packages](#recommended-packages)
-
-   - [Do you own a repository for AppImages external to this database? Follow these instructions!](#do-you-own-a-repository-for-appimages-external-to-this-database-follow-these-instructions)
-
-[Graphical User Interface (GUI)](#graphical-user-interface)
-
-[Translate "AM" in your local language](#translate-am-in-your-local-language)
-
-[How to update all programs, for real!](#how-to-update-all-programs-for-real)
- - [How to update all installed apps](#how-to-update-all-installed-apps)
- - [How to update everything using Topgrade](#how-to-update-everything-using-topgrade)
-
-[Options](#options)
-
-[Guides and tutorials](#guides-and-tutorials)
-
-[Regression Testing (for developers)](regress)
-
-[Instructions for Linux Distro Maintainers](#instructions-for-linux-distro-maintainers)
-
-[Troubleshooting](#troubleshooting)
-
-[Related projects](#related-projects)
+<!-- Created by [gh-md-toc](https://github.com/ekalinin/github-markdown-toc.go) -->
 
 ------------------------------------------------------------------------
 # Installation
@@ -140,7 +116,7 @@ This is definitely the quickest method of all!
 **NOTE, the reason why I gave priority to the "AM-INSTALLER" script in this guide is because "AM" can be used in different forms. In fact, not all users can afford to install "AM" with root privileges. That's why "[AppMan](#what-is-appman)" also exists.**
 
 ------------------------------------------------------------------------
-### What is AppMan?
+## What is AppMan?
 AppMan is a portable version of "AM", limited to installing and managing apps only locally and without root privileges.
 
 The command name changes, from `am` to `appman`, but the script is the same.
@@ -172,7 +148,7 @@ To install it into $PATH manually, run the following commands:
 ZSHRC="${ZDOTDIR:-$HOME}/.zshrc"
 BINDIR="${XDG_BIN_HOME:-$HOME/.local/bin}"
 mkdir -p "$BINDIR"
-if ! echo $PATH | grep "$BINDIR" >/dev/null 2>&1; then 
+if ! echo $PATH | grep "$BINDIR" >/dev/null 2>&1; then
 	if [ -e ~/.bashrc ] && ! grep 'PATH="$PATH:$BINDIR"' ~/.bashrc >/dev/null 2>&1; then
 		printf '\n%s\n' 'BINDIR="${XDG_BIN_HOME:-$HOME/.local/bin}"' >> ~/.bashrc
 		printf '\n%s\n' 'if ! echo $PATH | grep "$BINDIR" >/dev/null 2>&1; then' >> ~/.bashrc
@@ -447,9 +423,9 @@ Visit [github.com/topgrade-rs/topgrade](https://github.com/topgrade-rs/topgrade)
 
 <details>
   <summary>Click here to see the full list of options</summary>
-  
+
 ------------------------------------------------------------------------
-## USAGE:
+**USAGE:**
 
 		am {OPTION}
 		am {OPTION} {PROGRAM}
@@ -502,7 +478,7 @@ Removes all the unnecessary files and folders.
 **Description**:
 
 Clone the list of installed apps to an "am-clone.source" file, or search for an existing one on the desktop (priority), in `$HOME`, or across the entire system and removable devices. Add "`-i`" or "`install`" if you want to install or add the listed apps to a new configuration, to share it with anyone on other PCs and configurations. Add the "`--system`" or "`--user`" flag if you want all listed apps to be installed system-wide or locally respectively.
- 
+
 You can also set the path to a custom file by exporting the `$CLONE_FILE` variable.
 
 ------------------------------------------------------------------------
@@ -773,7 +749,7 @@ Generate a custom installation script. To test the scripts, use the "`am -i '/pa
 **Description**:
 
 Download and set one or more language packs (if available), set "am" to English (default), your language or other languages.
- 
+
 See **[translations/README.md](translations/README.md)** for more information.
 
 ------------------------------------------------------------------------
@@ -933,7 +909,7 @@ NOTE, "AM" 9 or higher is also able to, update and manage apps locally, by defau
 
 ------------------------------------------------------------------------
 
-## THIRD-PARTY FLAGS: 
+### THIRD-PARTY FLAGS:
 
 ------------------------------------------------------------------------
 
@@ -1002,13 +978,13 @@ Below you can access the documentation pages related to the use of "AM", complet
 
 ------------------------------------------------------------------------
 # Instructions for Linux Distro Maintainers
-**Glossary**:  
+**Glossary**:
 - System `am` (`/usr/bin/am`)
 - Local-system `am` (`/usr/local/bin/am` symlinked to `/opt/am/APP-MANAGER`)
 - Local-user `appman` (`$HOME/.local/bin/appman`)
 - APPMANCONFIG=`$XDG_CONFIG_HOME/appman-config`
 
-You can package "AM" for Debian, Fedora, Arch Linux, Gentoo and many more GNU/Linux distros using the following configuration:  
+You can package "AM" for Debian, Fedora, Arch Linux, Gentoo and many more GNU/Linux distros using the following configuration:
 - `/usr/bin/am`
 - `/usr/lib/am/modules/`
 
@@ -1016,29 +992,29 @@ where "`/usr/bin/am`" is the script "[APP-MANAGER](https://github.com/ivan-hc/AM
 
 Applications will continue to be installed in `/opt/` or `$HOME` location when `--user` flag is used for installation, according to the `$APPMANCONFIG` file configuration.
 
-What changes from the locally-installed `am` or `appman` is the update process of the CLI and modules.  
+What changes from the locally-installed `am` or `appman` is the update process of the CLI and modules.
 System `am` intentionally ignores updates of CLI and modules in this scenario & hands that responsibility to the distro package manager in use (APT, DNF, PacMan/YaY...)
 
-`--devmode` option is completely disabled in this mode, as it's only intended to update locally-installed `am` or `appman` in run-time to `dev` branch.  
+`--devmode` option is completely disabled in this mode, as it's only intended to update locally-installed `am` or `appman` in run-time to `dev` branch.
 You as a packager or distro-maintainer can optionally make `am-dev` or `am-git` package separately from `am` for this usage.
 
-Generation of shell completions in `$HOME` is also disabled in this mode, as they can be easily packaged in respective system directories.  
+Generation of shell completions in `$HOME` is also disabled in this mode, as they can be easily packaged in respective system directories.
 That can be done like this:
 
-**Bash**  
-Located in `/usr/share/bash-completion/completions/am`:  
+**Bash**
+Located in `/usr/share/bash-completion/completions/am`:
 - `complete -W "$(cat "${XDG_DATA_HOME:-$HOME/.local/share}/AM/list" 2>/dev/null)" am`
 
-**Zsh**  
-Zsh completion currently depends on the bash one, which can be inserted into `zshrc`:  
+**Zsh**
+Zsh completion currently depends on the bash one, which can be inserted into `zshrc`:
 ```zsh
 autoload bashcompinit
 bashcompinit
 source "/usr/share/bash-completion/completions/am"
 ```
 
-**Fish**  
-Located in `/usr/share/fish/vendor_completions.d/am`:  
+**Fish**
+Located in `/usr/share/fish/vendor_completions.d/am`:
 ```fish
 set data_home "$XDG_DATA_HOME"
 if test -z "$data_home"
@@ -1115,7 +1091,7 @@ Below you can access documentation pages for common issues and frequently asked 
 
 --------
 
-*© 2020-present Ivan Alessandro Sala aka 'Ivan-HC'* - I'm here just for fun! 
+*© 2020-present Ivan Alessandro Sala aka 'Ivan-HC'* - I'm here just for fun!
 
 ------------------------------------------------------------------------
 
