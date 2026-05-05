@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="10.1-9"
+AMVERSION="10.1-10"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -580,12 +580,19 @@ if [ "$ARCH" = aarch64 ] || [ "$ARCH" = x86_64 ]; then
 	fi
 	export PATH="$CACHEDIR"/AMCACHEPATH/:"${PATH}"
 	# Check binaries integrity
-	deps_sum256_all=$(curl -Ls "$AM_UTILS_SOURCE/$ARCH.sha256sum.txt" 2>/dev/null)
-	if [ -n "$deps_sum256_all" ]; then
-		for name in $AM_standard_dependencies; do
-			_checksum_on_standard_dependencies &
-		done
-		wait
+	if [ "$(ls -A "$CACHEDIR"/AMCACHEPATH 2>/dev/null)" ]; then
+		if curl --output /dev/null --silent --head --fail https://github.com 1> /dev/null; then
+			deps_sum256_all=$(curl -Ls "$AM_UTILS_SOURCE/$ARCH.sha256sum.txt" 2>/dev/null)
+			if [ -n "$deps_sum256_all" ]; then
+				printf "%b\n" "$DIVIDING_LINE"
+				printf "Temporary static fallback binaries are used for the following commands:\n%b%b\033[0m\nInstall them via your system's package manager to avoid slowdowns.\n" "${Green}" "$(ls "$CACHEDIR"/AMCACHEPATH/ | xargs | _fit )" | _fit
+				printf "%b\n" "$DIVIDING_LINE"
+				for name in $AM_standard_dependencies; do
+					_checksum_on_standard_dependencies &
+				done
+				wait
+			fi
+		fi
 	fi
 fi
 
