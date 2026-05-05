@@ -63,29 +63,17 @@ _check_argument() {
 }
 
 _check_if_optional_dependences_are_needed() {
-	# Determine generic build utils
-	app_deps="ar gcc glib-compile-schemas make tar unzip"
 	# Determine if the argument is a script and not something else
-	if head -c10 ./"$arg" 2>/dev/null | grep -q "^#!"; then
-		script_content=$(cat ./"$arg")
-	elif head -c10 ./"$arg" 2>/dev/null | grep -qa '^.ELF....AI$'; then
+	if head -c10 ./"$arg" 2>/dev/null | grep -qa '^.ELF....AI$'; then
 		printf $"💀 ERROR: this option is ment to handle installation scripts only! \n\n" | _fit
 		printf $" If this AppImage is not in our database, open an issue or a pull request at\n https://github.com/ivan-hc/AM\n\n" | _fit
 		_check_argument
 		return 1
-	else
+	elif ! head -c10 ./"$arg" 2>/dev/null | grep -q "^#!"; then
 		printf $"💀 ERROR: \"$arg\" is not a valid file! \n\n" | _fit
 		printf $"This option is ment to handle installation scripts only! \n\n" | _fit
 		_check_argument
 		return 1
-	fi
-	# Determine if this is an AppImage that can be compiled on-the-fly
-	if grep -qi "^wget.*.sh.*chmod.*&&" ./"$arg"; then
-		appimage_bulder_script=$(grep "^wget " ./"$arg" | tr '"' '\n' | grep -i "^http" | sed "s/\$APP/$arg/g")
-		if ! curl --output /dev/null --silent --head --fail "$appimage_bulder_script" 1> /dev/null; then
-			echo $" 💀 ERROR: cannot create \"$arg\", the builder does not exists"
-			return 1
-		fi
 	fi
 	# Determine if this script installs a Firefox webapp
 	if grep -q 'ffwa-' ./"$arg"; then
@@ -97,15 +85,6 @@ _check_if_optional_dependences_are_needed() {
 			sed -i 's#firefox --class#'"$(echo "$ffbrowser" | xargs -L 1 basename)"' --class#g' ./"$arg"
 		fi
 	fi
-	# Check missing dependency
-	for name in $app_deps; do
-		dependency_name="$name"
-		[ "$name" = "ar" ] && dependency_name="binutils"
-		if echo "$script_content" | grep -q "^$name" && ! command -v "$name" >/dev/null 2>&1; then
-			echo $" 💀 ERROR: cannot install \"$arg\" without \"$dependency_name\""
-			return 1
-		fi
-	done
 }
 
 _check_if_script_installs_a_metapackage() {
