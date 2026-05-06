@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="10.1-12"
+AMVERSION="10.1-13"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -514,7 +514,7 @@ _online_check() {
 _checksum_on_standard_dependencies() {
 	if [ -f "$CACHEDIR"/AMCACHEPATH/"$name" ]; then
 		dep_sum256_local=$(sha256sum "$CACHEDIR"/AMCACHEPATH/"$name" 2>/dev/null | awk '{print $1}')
-		dep_sum256_host=$(echo "$deps_sum256_all" | grep "$name-$ARCH-static$" 2>/dev/null | awk '{print $1}')
+		dep_sum256_host=$(sort "$AMCACHEDIR/$ARCH.sha256sum.txt" | grep "$name-$ARCH-static$" 2>/dev/null | awk '{print $1}')
 		if [ "$dep_sum256_local" != "$dep_sum256_host" ]; then
 			rm -Rf "$CACHEDIR"/AMCACHEPATH/"$name"
 			_deps_dl && chmod a+x "$CACHEDIR"/AMCACHEPATH/"$name" && printf $" - %b, downloaded from https://github.com/ivan-hc/am-utils\n" "$name"
@@ -523,7 +523,7 @@ _checksum_on_standard_dependencies() {
 }
 
 # Use static binaries as a fallback solution in case there are no dependencies
-AM_core_dependencies="cat chmod chown curl grep sed wget"
+AM_core_dependencies="cat chmod chown curl grep sed wget swapon swapoff chroot"
 AM_opt_dependencies="7z ar column file md5sum notify-send sha1sum sha256sum sha512sum tar unxz unzip xz xzcat"
 AM_standard_dependencies="$AM_core_dependencies $AM_opt_dependencies"
 _deps_dl() {
@@ -556,8 +556,9 @@ if [ "$ARCH" = aarch64 ] || [ "$ARCH" = x86_64 ]; then
 		printf "%b\n" "$DIVIDING_LINE"
 		printf $"Missing commands will be temporarily downloaded as static binaries:\n\n" | _fit
 		for name in $fallback_binaries_needed; do
-			_deps_dl && chmod a+x "$CACHEDIR"/AMCACHEPATH/"$name" && printf $" - %b, downloaded from https://github.com/ivan-hc/am-utils\n" "$name"
+			_deps_dl && chmod a+x "$CACHEDIR"/AMCACHEPATH/"$name" && printf $" - %b, downloaded from https://github.com/ivan-hc/am-utils\n" "$name" &
 		done
+		wait
 		printf "\n%b\n" "$DIVIDING_LINE"
 	fi
 	# Remove static binaries and other temporary utilities if related commands are already available in PATH
@@ -580,19 +581,24 @@ if [ "$ARCH" = aarch64 ] || [ "$ARCH" = x86_64 ]; then
 	fi
 	# Check binaries integrity
 	if [ "$(ls -A "$CACHEDIR"/AMCACHEPATH 2>/dev/null)" ]; then
-		if curl --output /dev/null --silent --head --fail https://github.com 1> /dev/null; then
-			deps_sum256_all=$(curl -Ls "$AM_UTILS_SOURCE/$ARCH.sha256sum.txt" 2>/dev/null)
-			if [ -n "$deps_sum256_all" ]; then
-				printf "%b\n" "$DIVIDING_LINE"
-				printf $"Temporary fallback binaries are in use for the commands below:\n%b%b\033[0m\nInstall them to avoid slow performance.\n" "${Green}" "$(ls "$CACHEDIR"/AMCACHEPATH/ | xargs | _fit )" | _fit
-				printf "%b\n" "$DIVIDING_LINE"
-				for name in $AM_standard_dependencies; do
-					_checksum_on_standard_dependencies &
-				done
-				wait
+		if [ ! -f "$AMCACHEDIR"/"$ARCH".sha256sum.txt ]; then
+			if curl --output /dev/null --silent --head --fail https://github.com 1> /dev/null; then
+				deps_sum256_all=$(curl -Ls "$AM_UTILS_SOURCE/$ARCH.sha256sum.txt" 2>/dev/null)
+				if [ -n "$deps_sum256_all" ]; then
+					echo "$deps_sum256_all" > "$AMCACHEDIR"/"$ARCH".sha256sum.txt
+				fi
 			fi
+			printf "%b\n" "$DIVIDING_LINE"
+			printf $"Temporary fallback binaries are in use for the commands below:\n%b%b\033[0m\nInstall them to avoid slow performance.\n" "${Green}" "$(ls "$CACHEDIR"/AMCACHEPATH/ | xargs | _fit )" | _fit
+			printf "%b\n" "$DIVIDING_LINE"
 		fi
-		export PATH="$CACHEDIR"/AMCACHEPATH/:"${PATH}"
+		if [ -f "$AMCACHEDIR"/"$ARCH".sha256sum.txt ]; then
+			for name in $AM_standard_dependencies; do
+				_checksum_on_standard_dependencies &
+			done
+			wait
+			export PATH="$CACHEDIR"/AMCACHEPATH/:"${PATH}"
+		fi
 	fi
 fi
 
