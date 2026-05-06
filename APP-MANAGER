@@ -511,13 +511,25 @@ _online_check() {
 	fi
 }
 
+_set_access_privilege() {
+       if [ "$AMCLI" = am ]; then
+               # Lock ownership to prevent tampering (AM)
+               "$SUDOCMD" chmod a+x "$1"
+               "$SUDOCMD" chown "$("$SUDOCMD" id -u):$("$SUDOCMD" id -g)" "$1"
+       else
+               # Else the user is the owner (APPMAN)
+               chmod a+x "$1"
+               chown "$(id -u):$(id -g)" "$1"
+       fi
+}
+
 _checksum_on_standard_dependencies() {
 	if [ -f "$CACHEDIR"/AMCACHEPATH/"$name" ]; then
 		dep_sum256_local=$(sha256sum "$CACHEDIR"/AMCACHEPATH/"$name" 2>/dev/null | awk '{print $1}')
 		dep_sum256_host=$(sort "$AMCACHEDIR/$ARCH.sha256sum.txt" | grep "$name-$ARCH-static$" 2>/dev/null | awk '{print $1}')
 		if [ "$dep_sum256_local" != "$dep_sum256_host" ]; then
-			rm -Rf "$CACHEDIR"/AMCACHEPATH/"$name"
-			_deps_dl && chmod a+x "$CACHEDIR"/AMCACHEPATH/"$name" && printf $" - %b, downloaded from https://github.com/ivan-hc/am-utils\n" "$name"
+			"$SUDOCMD" rm -Rf "$CACHEDIR"/AMCACHEPATH/"$name"
+			_deps_dl && _set_access_privilege "$CACHEDIR"/AMCACHEPATH/"$name" && printf $" - %b, downloaded from https://github.com/ivan-hc/am-utils\n" "$name"
 		fi
 	fi
 }
@@ -536,13 +548,14 @@ _deps_dl() {
 
 if [ "$ARCH" = aarch64 ] || [ "$ARCH" = x86_64 ]; then
 	mkdir -p "$CACHEDIR"/AMCACHEPATH
+	_set_access_privilege "$CACHEDIR"/AMCACHEPATH
 	# Download static binaries if commands are not available
 	amutils="$AM_standard_dependencies"
 	AM_UTILS_SOURCE="https://github.com/ivan-hc/am-utils/releases/download/continuous-$ARCH"
 	for name in $amutils; do
 		if ! command -v "$name" >/dev/null 2>&1; then
 			if [ -d "$CACHEDIR"/AMCACHEPATH/"$name" ] || [ -L "$CACHEDIR"/AMCACHEPATH/"$name" ] || [ ! -f "$CACHEDIR"/AMCACHEPATH/"$name" ]; then
-				rm -Rf "$CACHEDIR"/AMCACHEPATH/"$name"
+				"$SUDOCMD" rm -Rf "$CACHEDIR"/AMCACHEPATH/"$name"
 				if [ -z "$fallback_binaries_needed" ]; then
 					fallback_binaries_needed="$name"
 				else
@@ -556,7 +569,7 @@ if [ "$ARCH" = aarch64 ] || [ "$ARCH" = x86_64 ]; then
 		printf "%b\n" "$DIVIDING_LINE"
 		printf $"Missing commands will be temporarily downloaded as static binaries:\n\n" | _fit
 		for name in $fallback_binaries_needed; do
-			_deps_dl && chmod a+x "$CACHEDIR"/AMCACHEPATH/"$name" && printf $" - %b, downloaded from https://github.com/ivan-hc/am-utils\n" "$name" &
+			_deps_dl && _set_access_privilege "$CACHEDIR"/AMCACHEPATH/"$name" && printf $" - %b, downloaded from https://github.com/ivan-hc/am-utils\n" "$name" &
 		done
 		wait
 		printf "\n%b\n" "$DIVIDING_LINE"
@@ -565,7 +578,7 @@ if [ "$ARCH" = aarch64 ] || [ "$ARCH" = x86_64 ]; then
 	amutils="appimagetool $amutils"
 	for name in $amutils; do
 		if command -v "$name" >/dev/null 2>&1 && [ -f "$CACHEDIR"/AMCACHEPATH/"$name" ]; then
-			rm -Rf "$CACHEDIR"/AMCACHEPATH/"$name"
+			"$SUDOCMD" rm -Rf "$CACHEDIR"/AMCACHEPATH/"$name"
 		fi
 	done
 	# Check AMCACHEPATH integrity
@@ -575,7 +588,7 @@ if [ "$ARCH" = aarch64 ] || [ "$ARCH" = x86_64 ]; then
 		for f in "$CACHEDIR"/AMCACHEPATH/*; do
 			am_bin_item=$(echo "$f" | sed 's:.*/::')
 			if ! echo "$am_bins_allowed" | grep -q "$am_bin_item$" 2>/dev/null; then
-				rm -Rf "$f"
+				"$SUDOCMD" rm -Rf "$f"
 			fi
 		done
 	fi
