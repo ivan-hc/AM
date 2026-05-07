@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="10.1-14"
+AMVERSION="10.1-15"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -534,6 +534,9 @@ _deps_dl() {
 	fi
 }
 
+missing_cmd_msg_header=$(echo $"The following commands are missing and can be temporarily downloaded from https://github.com/ivan-hc/am-utils as static binaries")
+missing_cmd_msg_footer=$(echo $"Press \"Y\" to store them in cache until you clear it (with \"-c\" option) or install them (ideally via your package manager). Press \"N\" to ignore this message (default).")
+
 if [ "$ARCH" = aarch64 ] || [ "$ARCH" = x86_64 ]; then
 	mkdir -p "$CACHEDIR"/AMCACHEPATH
 	# Download static binaries if commands are not available
@@ -552,8 +555,7 @@ if [ "$ARCH" = aarch64 ] || [ "$ARCH" = x86_64 ]; then
 		fi
 	done
 	if [ -n "$fallback_binaries_needed" ] && [ ! -f "$AMDATADIR"/disable-dependencies-prompt ]; then
-		printf "%b\n" "$DIVIDING_LINE"
-		printf $"Missing commands will be temporarily downloaded as static binaries:\n %b\n%b\n\033[0m\n" "${Green}" "$fallback_binaries_needed" | _fit
+		printf "%b\n%b:\n %b\n%b\n\033[0m\n%b\n\n" "$DIVIDING_LINE" "$missing_cmd_msg_header" "${Green}" "$fallback_binaries_needed" "$missing_cmd_msg_footer" | _fit
 		read -r -p $" Do you wish to continue? (N/y): " yn
 		if echo "$yn" | grep -qi "^y"; then
 			printf "\n"
@@ -562,17 +564,16 @@ if [ "$ARCH" = aarch64 ] || [ "$ARCH" = x86_64 ]; then
 				_deps_dl && chmod a+x "$CACHEDIR"/AMCACHEPATH/"$name" && printf $" - %b, downloaded from https://github.com/ivan-hc/am-utils\n" "$name" &
 			done
 			wait
-			printf "\n"
-			printf $"Note, the above are fallback binaries. Install them to avoid slowdowns.\n" | _fit
-			printf "%b\n" "$DIVIDING_LINE"
+			printf "\n%b\n" "$DIVIDING_LINE"
 		else
-			printf $"This prompt will appear until the above commands are installed via your system package manager or AM/AppMan, or until you confirm next time. You may ignore it permanently, but installing them ensures the best experience.\n" | _fit
-			read -r -p $" Want to see this message again in the future? (Y,n): " yn
-			if echo "$yn" | grep -qi "^n"; then
-				touch "$AMDATADIR"/disable-dependencies-prompt
-			fi
-			printf "%b\n" "$DIVIDING_LINE"
+			[ ! -f "$AMDATADIR"/disable-dependencies-prompt ] && touch "$AMDATADIR"/disable-dependencies-prompt
 		fi
+	elif [ -z "$fallback_binaries_needed" ] && [ -f "$AMDATADIR"/disable-dependencies-prompt ]; then
+		rm -f "$AMDATADIR"/disable-dependencies-prompt
+	elif [ -f "$AMDATADIR"/disable-dependencies-prompt ]; then
+		printf "%b\n" "$DIVIDING_LINE"
+		printf $"Missing command(s): %b%b\033[0m\n" "${Green}" "$fallback_binaries_needed" | _fit
+		printf "%b\n" "$DIVIDING_LINE"
 	fi
 	# Remove static binaries and other temporary utilities if related commands are already available in PATH
 	amutils="appimagetool $amutils"
