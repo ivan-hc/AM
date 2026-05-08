@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="10.1-15"
+AMVERSION="10.1-16"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -524,7 +524,7 @@ _checksum_on_standard_dependencies() {
 
 # Use static binaries as a fallback solution in case there are no dependencies
 AM_core_dependencies="cat chmod chown curl grep sed wget"
-AM_opt_dependencies="7z ar column file md5sum notify-send sha1sum sha256sum sha512sum tar unxz unzip xz xzcat"
+AM_opt_dependencies="7z ar column du file md5sum notify-send sha1sum sha256sum sha512sum tar unxz unzip xz xzcat"
 AM_standard_dependencies="$AM_core_dependencies $AM_opt_dependencies"
 _deps_dl() {
 	if command -v curl >/dev/null 2>&1; then
@@ -534,8 +534,20 @@ _deps_dl() {
 	fi
 }
 
-missing_cmd_msg_header=$(echo $"The following commands are missing and can be temporarily downloaded from https://github.com/ivan-hc/am-utils as static binaries")
+if uname | grep -q BSD; then
+	missing_cmd_msg_header=$(echo $"The following commands may be missing or may not be GNU-compatible and can be temporarily downloaded from https://github.com/ivan-hc/am-utils as static binaries")
+else
+	missing_cmd_msg_header=$(echo $"The following commands are missing and can be temporarily downloaded from https://github.com/ivan-hc/am-utils as static binaries")
+fi
 missing_cmd_msg_footer=$(echo $"Press \"Y\" to store them in cache until you clear it (with \"-c\" option) or install them (ideally via your package manager). Press \"N\" to ignore this message (default).")
+
+_collect_fallback_dependencies() {
+	if [ -z "$fallback_binaries_needed" ]; then
+		fallback_binaries_needed="$name"
+	else
+		fallback_binaries_needed=$(echo "$fallback_binaries_needed $name" | tr ' ' '\n' | sort | xargs)
+	fi
+}
 
 if [ "$ARCH" = aarch64 ] || [ "$ARCH" = x86_64 ]; then
 	mkdir -p "$CACHEDIR"/AMCACHEPATH
@@ -546,12 +558,17 @@ if [ "$ARCH" = aarch64 ] || [ "$ARCH" = x86_64 ]; then
 		if ! command -v "$name" >/dev/null 2>&1; then
 			if [ -d "$CACHEDIR"/AMCACHEPATH/"$name" ] || [ -L "$CACHEDIR"/AMCACHEPATH/"$name" ] || [ ! -f "$CACHEDIR"/AMCACHEPATH/"$name" ]; then
 				rm -Rf "$CACHEDIR"/AMCACHEPATH/"$name"
-				if [ -z "$fallback_binaries_needed" ]; then
-					fallback_binaries_needed="$name"
-				else
-					fallback_binaries_needed=$(echo "$fallback_binaries_needed $name" | tr ' ' '\n' | sort | xargs)
-				fi
+				_collect_fallback_dependencies
 			fi
+		fi
+		if uname | grep -q BSD; then
+			if [ -d "$CACHEDIR"/AMCACHEPATH/"$name" ] || [ -L "$CACHEDIR"/AMCACHEPATH/"$name" ] || [ ! -f "$CACHEDIR"/AMCACHEPATH/"$name" ]; then
+				case $name in
+  					'column'|'du')
+  					_collect_fallback_dependencies
+  					;;
+  				esac
+  			fi
 		fi
 	done
 	if [ -n "$fallback_binaries_needed" ] && [ ! -f "$AMDATADIR"/disable-dependencies-prompt ]; then
@@ -578,8 +595,22 @@ if [ "$ARCH" = aarch64 ] || [ "$ARCH" = x86_64 ]; then
 	# Remove static binaries and other temporary utilities if related commands are already available in PATH
 	amutils="appimagetool $amutils"
 	for name in $amutils; do
-		if command -v "$name" >/dev/null 2>&1 && [ -f "$CACHEDIR"/AMCACHEPATH/"$name" ]; then
-			rm -Rf "$CACHEDIR"/AMCACHEPATH/"$name"
+		if command -v "$name" >/dev/null 2>&1; then
+			if uname | grep -q BSD; then
+				case $name in
+  					'column'|'du')
+  						:	# do nothing
+  						;;
+  					*)
+  						rm -Rf "$CACHEDIR"/AMCACHEPATH/"$name"
+  						;;
+  				esac
+			else
+				if [ -f "$CACHEDIR"/AMCACHEPATH/"$name" ]; then
+					rm -Rf "$CACHEDIR"/AMCACHEPATH/"$name"
+				fi
+			fi
+			wait
 		fi
 	done
 	# Check AMCACHEPATH integrity
