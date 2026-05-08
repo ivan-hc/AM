@@ -340,6 +340,14 @@ _files_db() {
 }
 
 # CREATE THE TABLE
+_du_bytes() {
+	if du -sb . >/dev/null 2>&1; then
+		du -sb "$1"
+	else
+		du -sk "$1" | awk '{print $1 * 1024}'
+	fi
+}
+
 _files() {
 	cd "$APPSPATH" || exit 1
 	# Compute bytes for installed apps once to avoid repeated du calls and rescanning large trees.
@@ -395,7 +403,7 @@ _files() {
 			(
 				[ -z "$path" ] && exit 0
 				# Measure entire tree for this app (includes data dirs like Steam's)
-				bytes=$(du -sb "$path" 2>/dev/null | awk '{print $1}' || true)
+				bytes=$(_du_bytes "$path" 2>/dev/null | awk '{print $1}' || true)
 				if echo "$bytes" | grep -qE '^[0-9]+$'; then
 					printf "%s\t%s\n" "$bytes" "$path" >>"$TMPDU"
 				else
@@ -604,7 +612,7 @@ _files_total_size() {
 			TOTAL_BYTES=$(echo "$FILES_SIZES_BYTES_CONTENT" | awk '{s+=$4}END{print s+0}')
 		else
 			# Fallback: sum exact bytes with du -sb (may be slower)
-			TOTAL_BYTES=$(du -sb $INSTALLED_APPS_PLAN 2>/dev/null | awk '{s+=$1}END{print s+0}')
+			TOTAL_BYTES=$(_du_bytes $INSTALLED_APPS_PLAN 2>/dev/null | awk '{s+=$1}END{print s+0}')
 		fi
 
 		# Format total using _hr_bytes (returns e.g. "123.00G" / "301.40M" / "199.00K" / "5.00B")
