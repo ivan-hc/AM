@@ -111,10 +111,19 @@ wget -q https://raw.githubusercontent.com/ivan-hc/AM/main/AM-INSTALLER && chmod 
 ```
 ...below, the screenshot of what will appear.
 
+------------------------------------------------------------------------
+
 <img width="747" height="600" alt="Istantanea_2026-05-09_05-19-44" src="https://github.com/user-attachments/assets/91edfc60-b9ee-4133-9c65-a01a569d636f" />
 
+------------------------------------------------------------------------
 
 Type "1" to install "AM", "2" to install "[AppMan](#what-is-appman)". Any other key will abort the installation.
+
+------------------------------------------------------------------------
+
+<img width="747" height="798" alt="Istantanea_2026-05-09_04-37-22" src="https://github.com/user-attachments/assets/f011638e-11f6-4a8b-a8fb-c791e90d30f5" />
+
+------------------------------------------------------------------------
 
 **Installation is complete!**
 
