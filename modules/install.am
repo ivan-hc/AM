@@ -277,9 +277,35 @@ _ending_the_installation() {
 	fi
 }
 
+# Collect checksum for binaries in custom PATH
+if [ "$(ls -A "$CACHEDIR"/AMCACHEPATH 2>/dev/null)" ]; then
+	for a in "$CACHEDIR"/AMCACHEPATH/*; do
+		if [ -z "$dep_sum256_old" ]; then
+			dep_sum256_old=$(sha256sum "$a" 2>/dev/null)
+		else
+			dep_sum256_old=$(printf "%b\n%b\n" "$dep_sum256_old" "$(sha256sum "$a" 2>/dev/null)")
+		fi
+	done
+fi
+
 _install_exec_installation_script() {
 	if [ "$(ls -A "$CACHEDIR"/AMCACHEPATH 2>/dev/null)" ] && [ -n "$SUDOCMD" ]; then
 		$SUDOCMD chmod a-w "$CACHEDIR"/AMCACHEPATH
+		# Check if binaries in PATH are still the same
+		for a in "$CACHEDIR"/AMCACHEPATH/*; do
+			if [ -z "$dep_sum256_new" ]; then
+				dep_sum256_new=$(sha256sum "$a" 2>/dev/null)
+			else
+				dep_sum256_new=$(printf "%b\n%b\n" "$dep_sum256_new" "$(sha256sum "$a" 2>/dev/null)")
+			fi
+		done
+		for a in "$CACHEDIR"/AMCACHEPATH/*; do
+			test_dep_sum256_old=$(echo "$dep_sum256_old" | grep "$a")
+			test_dep_sum256_new=$(echo "$dep_sum256_new" | grep "$a")
+			if [ "$test_dep_sum256_old" != "$test_dep_sum256_new" ]; then
+				$SUDOCMD rm -f "$a"
+			fi
+		done
 		trap '$SUDOCMD chmod u+w "$CACHEDIR"/AMCACHEPATH' EXIT INT TERM
 		$SUDOCMD PATH="$PATH" ./"$arg"
 	else
