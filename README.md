@@ -143,7 +143,7 @@ wget -q https://raw.githubusercontent.com/ivan-hc/AM/main/AM-INSTALLER && chmod 
 
 ------------------------------------------------------------------------
 
-<img width="747" height="654" alt="Istantanea_2026-05-10_21-44-19" src="https://github.com/user-attachments/assets/83768aed-ed06-48e3-9d83-cf2df0adf00d" />
+<img width="747" height="600" alt="installer" src="https://github.com/user-attachments/assets/f8a153e8-d410-4a7e-9e5c-b48e686547ee" />
 
 ------------------------------------------------------------------------
 
@@ -153,7 +153,7 @@ Type "1" to install "AM", "2" to install "[AppMan](#what-is-appman)". Any other 
 
 | AM (system-wide installation) | AppMan (local installation)
 | - | - |
-| <img width="747" height="798" alt="AM" src="https://github.com/user-attachments/assets/173960e0-89d3-4dc8-bfb7-187591e97e5e" /> | <img width="747" height="798" alt="appman" src="https://github.com/user-attachments/assets/d4a64ae2-9f27-448d-bbf2-483a7fd9c6d2" /> |
+| <img width="747" height="798" alt="AM" src="https://github.com/user-attachments/assets/51e45525-d858-42a0-9e33-ff2a087968fd" /> | <img width="747" height="798" alt="AppMan" src="https://github.com/user-attachments/assets/99296420-f6da-4d6f-8080-e6ad03aaf0d2" /> |
 
 ------------------------------------------------------------------------
 
