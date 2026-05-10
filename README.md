@@ -101,8 +101,10 @@ If the following dependencies are not present in your system, "AM"/"AppMan" will
 
 ### ◆ OPTIONAL commands
 
+These commands are considered "optional" because they are not strictly necessary for the functioning of "AM" itself, but are nevertheless necessary for the applications you will install.
+
 <details>
-  <summary>click to expand</summary>
+  <summary> >>> Click here to expand <<< </summary>
 
 While it covers many basic commands, "AM"/"AppMan" has the drawback of having to adapt to the various platforms and packaging formats distributed portablely by upstream developers.
 
