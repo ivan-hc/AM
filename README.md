@@ -83,11 +83,7 @@ You can use the command `am -a {PROGRAM}` to view the description and get the so
 ------------------------------------------------------------------------
 # Installation
 
-"AM" (system) or "AppMan" (local) is a program that comes in the form of a versatile BASH script, fully compatible with ZSH, FISH, and most POSIX-compliant shells.
-
-As such, it calls other programs already present on the host, some "core," others "optional."
-
-Below, we'll distinguish between them in separate tables:
+"AM" (system) or "AppMan" (local) is a program that comes in the form of a versatile BASH script, fully compatible with ZSH, FISH, and most POSIX-compliant shells. As such, it calls other programs already present on the host, some "**CORE**", others "**OPTIONAL**".
 
 ### ◆ CORE dependencies
 
@@ -105,6 +101,9 @@ If the following dependencies are not present in your system, "AM"/"AppMan" will
 
 ### ◆ OPTIONAL commands
 
+<details>
+  <summary>click to expand</summary>
+
 While it covers many basic commands, "AM"/"AppMan" has the drawback of having to adapt to the various platforms and packaging formats distributed portablely by upstream developers.
 
 In fact, unlike APT, DNF, Pacman, Snap, and Flatpak, which have their own packaging formats (.deb, .rpm, .tar.xz, .snap, and .flatpak), "AM" is more like an AUR helper and may require additional commands to handle multiple packaging formats beyond .AppImage.
@@ -112,9 +111,6 @@ In fact, unlike APT, DNF, Pacman, Snap, and Flatpak, which have their own packag
 Many of them are not pre-installed.
 
 Here is a table of "optional" commands that may be needed on your system:
-
-<details>
-  <summary>click to expand</summary>
 
 | command | motivation |
 | - | - |
@@ -131,7 +127,7 @@ Here is a table of "optional" commands that may be needed on your system:
 
 </details>
 
-*NOTE, optional dependencies can be covered by **[static binaries](https://github.com/ivan-hc/am-utils)** if necessary. However, **it is recommended to rely on your preferred package manager**.*
+*NOTE, optional dependencies can be covered by **[static binaries](https://github.com/ivan-hc/am-utils)** if necessary. However, **it is recommended to rely on your system package manager**.*
 
 ------------------------------------------------------------------------
 ## Using the "AM-installer" script to choose between local and system-wide installation
