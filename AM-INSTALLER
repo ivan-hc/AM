@@ -8,6 +8,21 @@ RED='\033[0;31m'; LightBlue='\033[1;34m'; Green='\033[0;32m'
 # For developers
 AM_BRANCH="main"
 
+if command -v tput >/dev/null 2>&1; then
+	TERMINAL_WIDTH=$(($(tput cols)-3))
+else
+	TERMINAL_WIDTH=${COLUMNS:-80}
+fi
+DIVIDING_LINE=$(printf '%*s' "$TERMINAL_WIDTH" '' | tr ' ' '-')
+
+_fit() {
+	if command -v tput >/dev/null 2>&1; then
+		fold -sw "$TERMINAL_WIDTH" | sed 's/^/ /g'
+	else
+		fold -sw 77 | sed 's/^/ /g'
+	fi
+}
+
 # Function to check online connections (uses github.com by default, as the database and CLI itself are stored/hosted there)
 _online_check_tool() {
 	if command -v wget >/dev/null 2>&1; then
@@ -96,42 +111,43 @@ _install_appman() {
 }
 
 # CHOOSE BETWEEN "AM" AND "APPMAN"
+echo "$DIVIDING_LINE"
 printf "
-          Choose how to install \"AM\" and all its managed applications.
- ______________________________________________________________________________
-|                  |                              |                            |
-| Feature          |             %bAM\033[0m               |           %bAppMan\033[0m           |
-|__________________|______________________________|____________________________|
-|                  |                              |                            |
-| Command          | %bam\033[0m                           | %bappman\033[0m                     |
-|------------------|------------------------------|----------------------------|
-| Installation     | System-wide (root)           | Locally                    |
-|------------------|------------------------------|----------------------------|
-| Command Location | /usr/local/bin/am ->         | ~/.local/bin/appman        |
-|                  | /opt/am/APP-MANAGER          |                            |
-|------------------|------------------------------|----------------------------|
-| Apps are managed | Both System-wide and locally | Locally only               |
-|------------------|------------------------------|----------------------------|
-| Install Location | /opt (require root)          | Wherever you want          |
-|------------------|------------------------------|----------------------------|
-| Permissions      | You and you only control AM  | Anyone can use, replicate  |
-|                  | Others have limited access   | and share your configs     |
-|------------------|------------------------------|----------------------------|
-| Other Users      | Can only use programs you    | Can have their own configs |
-|                  | install and run AppMan mode  | and may need more storage  |
-|__________________|______________________________|____________________________|
+Choose how to install \"AM\" and its managed applications:
 
-" "${RED}" "${LightBlue}" "${Green}" "${Green}"
-read -r -p "Choose between \"AM\" (type 1) and \"AppMan\" (2), or leave blank to exit: " response
+1. System Installation, as \"%bAM\033[0m\"
+
+- Command: %bam\033[0m
+- Path: symlink /usr/local/bin/am → /opt/am/APP-MANAGER
+- Programs: are installed in /opt or locally
+- Root: YES, only for installations and removals
+- Ownership: only you have read-write permissions
+- Target: power users
+- Others: can only use programs and AppMan mode
+
+2. Local Installation, as \"%bAppMan\033[0m\"
+
+- Command: %bappman\033[0m
+- Path: ~/.local/bin/appman
+- Programs: can be installed anywhere
+- Root: NO
+- Ownership: anyone with read-write access in \$HOME
+- Target: anyone
+- Others: can have separate configs or replicate yours
+\n" "${RED}" "${Green}" "${LightBlue}" "${Green}" | _fit
+
+read -r -p " Choose between \"AM\" (type 1) and \"AppMan\" (2), or leave blank to exit: " response
 case "$response" in
 	1)	_install_am || exit 1
 		;;
 	2)	_install_appman || exit 1
-		echo '--------------------------------------------------------------------------'
-		printf " ${Green}\"AppMan\" has been successfully installed!\033[0m\n"
-		printf " Please, run \"${LightBlue}appman -h\033[0m\" to see the list of the options.\n"
-		echo '--------------------------------------------------------------------------'
+		echo "$DIVIDING_LINE"
+		printf " %b\"AppMan\" has been successfully installed! \033[0m\n" "${Green}"
+		printf " Please, run \"%bappman -h\033[0m\" to see the list of the options.\n" "${LightBlue}"
+		echo "$DIVIDING_LINE"
 		;;
-	''|*)	echo "Installation aborted, exiting." && exit 1
+	''|*)
+		echo "$DIVIDING_LINE"
+		echo "Installation aborted, exiting." && echo "$DIVIDING_LINE" && exit 1
 		;;
 esac
