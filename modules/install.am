@@ -308,20 +308,22 @@ _install_exec_installation_script() {
 			fi
 		done
 		for a in "$CACHEDIR"/AMCACHEPATH/*; do
-			test_dep_sum256_old=$(echo "$dep_sum256_old" | grep "$a")
-			test_dep_sum256_new=$(echo "$dep_sum256_new" | grep "$a")
-			if [ "$test_dep_sum256_old" != "$test_dep_sum256_new" ]; then
-				name=$(echo "$a" | sed 's:.*/::')
-				$SUDOCMD rm -f "$a"
-				printf " - %b: checksum does not match, re-downloading...\n" "$name"
-				$SUDOCMD wget -q "$AM_UTILS_SOURCE/$name-$ARCH-static" -O "$CACHEDIR"/AMCACHEPATH/"$name"
-				$SUDOCMD chmod a+x "$CACHEDIR"/AMCACHEPATH/"$name"
-				printf $" - %b, downloaded from https://github.com/ivan-hc/am-utils\n" "$name" && printf "\n"
+			name=$(echo "$a" | sed 's:.*/::')
+			if echo "$AM_standard_dependencies" | tr ' ' '\n' | grep -q "^$name$"; then
+				test_dep_sum256_old=$(echo "$dep_sum256_old" | grep "$a")
+				test_dep_sum256_new=$(echo "$dep_sum256_new" | grep "$a")
+				if [ "$test_dep_sum256_old" != "$test_dep_sum256_new" ]; then
+					$SUDOCMD rm -f "$a"
+					printf " - %b: checksum does not match, re-downloading...\n" "$name"
+					$SUDOCMD wget -q "$AM_UTILS_SOURCE/$name-$ARCH-static" -O "$CACHEDIR"/AMCACHEPATH/"$name"
+					$SUDOCMD chmod a+x "$CACHEDIR"/AMCACHEPATH/"$name"
+					printf $" - %b, downloaded from https://github.com/ivan-hc/am-utils\n" "$name" && printf "\n"
+				fi
 			fi
 		done
 		# Download missing dependencies
 		if [ ! -f "$AMDATADIR"/disable-dependencies-prompt ]; then
-			for name in $amutils; do
+			for name in $AM_standard_dependencies; do
 				if ! command -v "$name" >/dev/null 2>&1; then
 					$SUDOCMD wget -q "$AM_UTILS_SOURCE/$name-$ARCH-static" -O "$CACHEDIR"/AMCACHEPATH/"$name"
 					$SUDOCMD chmod a+x "$CACHEDIR"/AMCACHEPATH/"$name"
