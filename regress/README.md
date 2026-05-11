@@ -52,15 +52,17 @@ Running a container with *tmpfs* for Appimage install directories is useful for 
 Stopping/exiting the container with *tmpfs* for Appimage install directories will instantly release the used RAM and the installed Appimages in the container will be lost. However, non-Appimage related directories are not affected, changes to them will be persistent as expected.
 
 ----------------------------------------------------
-#### Running an emulated aarch64 (ARM 64-bit) AM test containers
-To start an ARM 64-bit podman container on your PC, you must use QEMU to emulate the system. The am-alpine test container works well for this purpose, but the others may also work.
+#### Running an emulated ARM 64-bit (aarch64) AM test container
+To start an ARM 64-bit podman container on your PC, QEMU must be used on the host machine to emulate the system. The am-alpine test container works well for this purpose, but the other available containers may also work.
 
-1. Make sure the following packages are installed in your system (example below applies for apt):\
+1. Make sure the following packages are installed in your host machine (example below applies for Debian's apt):\
 `sudo apt-get install qemu-user-static binfmt-support`
 
 2. Make sure to set the `--platform linux/arm64` option to select aarch64 correctly when building and running a container:\
 `podman build --platform linux/arm64 -t am-alpine-arm64 -f am-alpine.dockerfile`\
 `podman run -it --platform linux/arm64 --device /dev/fuse --cap-add SYS_ADMIN --security-opt unmask=ALL am-alpine-arm64:latest`
+
+It is normal for an aarch64 container to run slightly slower than usual due to the fact that the host machine will need to emulate an ARM 64-bit processor.
 
 Also, remember to set a unique image name (eg. `-t am-alpine-arm64`) so that it does not conflict with the regular x86-64 version.
 
