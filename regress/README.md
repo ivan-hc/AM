@@ -26,14 +26,14 @@ Test steps (replace podman with docker if needed):
 `cd AM/regress`
 
 2. Build am-debian container image:\
-`podman build -t am-debian -f am-debian.dockerfile`\
+`podman build --platform linux/x86-64 -t am-debian -f am-debian.dockerfile`\
 Alternatively, you may select a different container image such as am-ubuntu:\
-`podman build -t am-ubuntu -f am-ubuntu.dockerfile`
+`podman build --platform linux/x86-64 -t am-ubuntu -f am-ubuntu.dockerfile`
 
 3. Start am-debian container session in default mode (persistent Appimages):\
-`podman run -it --device /dev/fuse --cap-add SYS_ADMIN --security-opt unmask=ALL am-debian:latest`\
+`podman run -it --platform linux/x86-64 --device /dev/fuse --cap-add SYS_ADMIN --security-opt unmask=ALL am-debian:latest`\
 Alternatively, start am-debian container session with tmpfs for Appimage dirs (stores in RAM to avoid wearing out your SSD):\
-`podman run -it --device /dev/fuse --cap-add SYS_ADMIN --security-opt unmask=ALL --tmpfs /opt --tmpfs /root/.local/share/applications am-debian:latest`\
+`podman run -it --platform linux/x86-64 --device /dev/fuse --cap-add SYS_ADMIN --security-opt unmask=ALL --tmpfs /opt --tmpfs /root/.local/share/applications am-debian:latest`\
 You will now be within the container.
 
 4. Setup AM as needed (eg. switch to dev branch):\
@@ -45,11 +45,24 @@ Alternatively, run individual tests:\
 `./test-am-checksum.sh`\
 `./test-am-install.sh`
 
-The AM tests will execute within the container's enviroment. It will not affect your main OS, so it is completely safe for testing.
+The AM tests will execute within the container's environment. It will not affect your main OS, so it is completely safe for testing.
 
 Running a container with *tmpfs* for Appimage install directories is useful for testing the installation of large apps repeatedly without wearing out the SSD drive. But make sure you have enough RAM in your system to handle this.
 
 Stopping/exiting the container with *tmpfs* for Appimage install directories will instantly release the used RAM and the installed Appimages in the container will be lost. However, non-Appimage related directories are not affected, changes to them will be persistent as expected.
+
+----------------------------------------------------
+#### Running an emulated aarch64 (ARM 64-bit) AM test containers
+To start an ARM 64-bit podman container on your PC, you must use QEMU to emulate the system. The am-alpine test container works well for this purpose, but the others may also work.
+
+1. Make sure the following packages are installed in your system (example below applies for apt):\
+`sudo apt-get install qemu-user-static binfmt-support`
+
+2. Make sure to set the `--platform linux/arm64` option to select aarch64 correctly when building and running a container:\
+`podman build --platform linux/arm64 -t am-alpine-arm64 -f am-alpine.dockerfile`\
+`podman run -it --platform linux/arm64 --device /dev/fuse --cap-add SYS_ADMIN --security-opt unmask=ALL am-alpine-arm64:latest`
+
+Also, remember to set a unique image name (eg. `-t am-alpine-arm64`) so that it does not conflict with the regular x86-64 version.
 
 ----------------------------------------------------
 #### Podman usage cheatsheet
