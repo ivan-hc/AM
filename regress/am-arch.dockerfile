@@ -1,12 +1,12 @@
 ## To run this image using podman:
-## 1. podman build -t am-arch -f am-arch.dockerfile
-## 2. podman run -it --device /dev/fuse --cap-add SYS_ADMIN --security-opt unmask=ALL --tmpfs /opt --tmpfs /root/.local/share/applications am-arch:latest
+## 1. podman build --platform linux/x86-64 -t am-arch -f am-arch.dockerfile
+## 2. podman run -it --platform linux/x86-64 --name am-arch-test --device /dev/fuse --cap-add SYS_ADMIN --security-opt unmask=ALL --tmpfs /opt --tmpfs /root/.local/share/applications am-arch:latest
 
 # Use the official Arch image as a parent image
 FROM archlinux:latest
 
 # Install dependencies and AM
-RUN pacman-key --init && pacman -Sy && pacman -Su --noconfirm sudo wget curl less git glibc fuse3 file unzip xz
+RUN pacman-key --init && pacman -Sy && pacman -Su --noconfirm sudo wget curl less git glibc fuse3 file unzip xz 7zip libnotify
 RUN cd && wget https://raw.githubusercontent.com/ivan-hc/AM/main/INSTALL && chmod a+x ./INSTALL && sudo ./INSTALL && rm ./INSTALL
 
 # Copy regression folder

@@ -1,15 +1,16 @@
 ## To run this image using podman:
-## 1. podman build -t am-debian-old -f am-debian-old.dockerfile
-## 2. podman run -it --device /dev/fuse --cap-add SYS_ADMIN --security-opt unmask=ALL --tmpfs /opt --tmpfs /root/.local/share/applications am-debian-old:latest
+## 1. podman build --platform linux/x86-64 -t am-debian-old -f am-debian-old.dockerfile
+## 2. podman run -it --platform linux/x86-64 --name am-jessie-test --device /dev/fuse --cap-add SYS_ADMIN --security-opt unmask=ALL --tmpfs /opt --tmpfs /root/.local/share/applications am-debian-old:latest
 
 # Use the official Debian Jessie image as a parent image
 FROM debian:jessie
 
 # Install dependencies and AM
+# Notes: 7zip not available in Jessie, and GPG warnings is normal, repos are archieved
 RUN echo 'deb http://archive.debian.org/debian jessie main contrib non-free' > /etc/apt/sources.list
 RUN echo 'deb http://archive.debian.org/debian-security jessie/updates main contrib non-free' >> /etc/apt/sources.list
 RUN echo 'Apt::Get::AllowUnauthenticated "true";' > /etc/apt/apt.conf.d/99verify-apt-https
-RUN apt update && apt full-upgrade -y && apt install -y sudo wget curl git fuse bsdmainutils file locales unzip xz-utils libterm-readline-gnu-perl
+RUN apt update && apt full-upgrade -y && apt install -y sudo wget curl git fuse bsdmainutils file locales unzip xz-utils libterm-readline-gnu-perl libnotify-bin binutils
 RUN cd && wget https://raw.githubusercontent.com/ivan-hc/AM/main/INSTALL && chmod a+x ./INSTALL && sudo ./INSTALL && rm ./INSTALL
 
 # Copy regression folder

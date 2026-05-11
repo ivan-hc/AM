@@ -1,12 +1,12 @@
 ## To run this image using podman:
-## 1. podman build -t am-alpine -f am-alpine.dockerfile
-## 2. podman run -it --device /dev/fuse --cap-add SYS_ADMIN --security-opt unmask=ALL --tmpfs /opt --tmpfs /root/.local/share/applications am-alpine:latest
+## 1. podman build --platform linux/x86-64 -t am-alpine -f am-alpine.dockerfile
+## 2. podman run -it --platform linux/x86-64 --name am-alpine-test --device /dev/fuse --cap-add SYS_ADMIN --security-opt unmask=ALL --tmpfs /opt --tmpfs /root/.local/share/applications am-alpine:latest
 
 # Use the official Alpine image as a parent image
 FROM alpine:latest
 
 # Install dependencies and AM
-RUN apk update && apk upgrade && apk add bash grep sudo wget curl git fuse3 util-linux file unzip xz musl musl-utils musl-locales tzdata
+RUN apk update && apk upgrade && apk add bash grep sudo wget coreutils curl git fuse3 util-linux file unzip xz musl musl-utils musl-locales tzdata libnotify binutils 7zip
 RUN cd && wget https://raw.githubusercontent.com/ivan-hc/AM/main/INSTALL && chmod a+x ./INSTALL && sudo ./INSTALL && rm ./INSTALL
 
 # Copy regression folder

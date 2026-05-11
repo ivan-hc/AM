@@ -1,12 +1,12 @@
 ## To run this image using podman:
-## 1. podman build -t am-debian -f am-debian.dockerfile
-## 2. podman run -it --device /dev/fuse --cap-add SYS_ADMIN --security-opt unmask=ALL --tmpfs /opt --tmpfs /root/.local/share/applications am-debian:latest
+## 1. podman build --platform linux/x86-64 -t am-debian -f am-debian.dockerfile
+## 2. podman run -it --platform linux/x86-64 --name am-debian-test --device /dev/fuse --cap-add SYS_ADMIN --security-opt unmask=ALL --tmpfs /opt --tmpfs /root/.local/share/applications am-debian:latest
 
 # Use the official Debian image as a parent image
 FROM debian:latest
 
 # Install dependencies and AM
-RUN apt update && apt full-upgrade -y && apt install -y sudo wget curl git fuse3 bsdextrautils file locales unzip xz-utils
+RUN apt update && apt full-upgrade -y && apt install -y sudo wget curl git fuse3 bsdextrautils file locales unzip xz-utils libnotify-bin 7zip binutils
 RUN cd && wget https://raw.githubusercontent.com/ivan-hc/AM/main/INSTALL && chmod a+x ./INSTALL && sudo ./INSTALL && rm ./INSTALL
 
 # Copy regression folder
