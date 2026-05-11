@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="10.1.1"
+AMVERSION="10.1.1-1"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -534,6 +534,14 @@ _deps_dl() {
 	fi
 }
 
+_check_dl_deps() {
+	if command -v curl >/dev/null 2>&1; then
+		curl --output /dev/null --silent --head --fail "$AM_UTILS_SOURCE/$name-$ARCH-static" 1> /dev/null
+	elif command -v wget >/dev/null 2>&1; then
+		wget -q --tries=10 --timeout=20 --spider "$AM_UTILS_SOURCE/$name-$ARCH-static"
+	fi
+}
+
 if uname | grep -q BSD; then
 	missing_cmd_msg_header=$(echo $"The following commands may be missing or may not be GNU-compatible and can be temporarily downloaded from https://github.com/ivan-hc/am-utils as static binaries")
 else
@@ -556,13 +564,14 @@ if [ "$ARCH" = aarch64 ] || [ "$ARCH" = x86_64 ]; then
 	AM_UTILS_SOURCE="https://github.com/ivan-hc/am-utils/releases/download/continuous-$ARCH"
 	for name in $amutils; do
 		if ! command -v "$name" >/dev/null 2>&1; then
-			if [ -d "$CACHEDIR"/AMCACHEPATH/"$name" ] || [ -L "$CACHEDIR"/AMCACHEPATH/"$name" ] || [ ! -f "$CACHEDIR"/AMCACHEPATH/"$name" ]; then
+			if [ -d "$CACHEDIR"/AMCACHEPATH/"$name" ] || [ -L "$CACHEDIR"/AMCACHEPATH/"$name" ] || ! head -c 4 "$CACHEDIR"/AMCACHEPATH/"$name" 2>/dev/null | grep -q $'\x7fELF' || [ ! -f "$CACHEDIR"/AMCACHEPATH/"$name" ]; then
 				rm -Rf "$CACHEDIR"/AMCACHEPATH/"$name"
 				_collect_fallback_dependencies
 			fi
 		fi
 		if uname | grep -q BSD; then
-			if [ -d "$CACHEDIR"/AMCACHEPATH/"$name" ] || [ -L "$CACHEDIR"/AMCACHEPATH/"$name" ] || [ ! -f "$CACHEDIR"/AMCACHEPATH/"$name" ]; then
+			if [ -d "$CACHEDIR"/AMCACHEPATH/"$name" ] || [ -L "$CACHEDIR"/AMCACHEPATH/"$name" ] || ! head -c 4 "$CACHEDIR"/AMCACHEPATH/"$name" 2>/dev/null | grep -q $'\x7fELF' || [ ! -f "$CACHEDIR"/AMCACHEPATH/"$name" ]; then
+				rm -Rf "$CACHEDIR"/AMCACHEPATH/"$name"
 				case $name in
   					'column'|'du')
   						if ! "$name" --version 2>/dev/null; then
@@ -574,18 +583,27 @@ if [ "$ARCH" = aarch64 ] || [ "$ARCH" = x86_64 ]; then
 		fi
 	done
 	if [ -n "$fallback_binaries_needed" ] && [ ! -f "$AMDATADIR"/disable-dependencies-prompt ]; then
-		printf "%b\n%b:\n %b\n%b\n\033[0m\n%b\n\n" "$DIVIDING_LINE" "$missing_cmd_msg_header" "${Green}" "$fallback_binaries_needed" "$missing_cmd_msg_footer" | _fit
-		read -r -p $" Do you wish to continue? (N/y): " yn
-		if echo "$yn" | grep -qi "^y"; then
-			printf "\n"
-			_online_check
-			for name in $fallback_binaries_needed; do
-				_deps_dl && chmod a+x "$CACHEDIR"/AMCACHEPATH/"$name" && printf $" - %b, downloaded from https://github.com/ivan-hc/am-utils\n" "$name" &
-			done
-			wait
-			printf "\n%b\n" "$DIVIDING_LINE"
-		else
-			[ ! -f "$AMDATADIR"/disable-dependencies-prompt ] && touch "$AMDATADIR"/disable-dependencies-prompt
+		for name in $fallback_binaries_needed; do
+			if ! _check_dl_deps 2>/dev/null; then
+				amutils=$(echo "$amutils" | tr ' ' '\n' | sed "s/^$name$//g" | xargs)
+				AM_standard_dependencies=$(echo "$AM_standard_dependencies" | tr ' ' '\n' | sed "s/^$name$//g" | xargs)
+				fallback_binaries_needed=$(echo "$fallback_binaries_needed" | tr ' ' '\n' | sed "s/^$name$//g" | xargs)
+			fi
+		done
+		if [ -n "$fallback_binaries_needed" ]; then
+			printf "%b\n%b:\n %b\n%b\n\033[0m\n%b\n\n" "$DIVIDING_LINE" "$missing_cmd_msg_header" "${Green}" "$fallback_binaries_needed" "$missing_cmd_msg_footer" | _fit
+			read -r -p $" Do you wish to continue? (N/y): " yn
+			if echo "$yn" | grep -qi "^y"; then
+				printf "\n"
+				_online_check
+				for name in $fallback_binaries_needed; do
+					_deps_dl && chmod a+x "$CACHEDIR"/AMCACHEPATH/"$name" && printf $" - %b, downloaded from https://github.com/ivan-hc/am-utils\n" "$name" &
+				done
+				wait
+				printf "\n%b\n" "$DIVIDING_LINE"
+			else
+				[ ! -f "$AMDATADIR"/disable-dependencies-prompt ] && touch "$AMDATADIR"/disable-dependencies-prompt
+			fi
 		fi
 	elif [ -z "$fallback_binaries_needed" ] && [ -f "$AMDATADIR"/disable-dependencies-prompt ]; then
 		rm -f "$AMDATADIR"/disable-dependencies-prompt
