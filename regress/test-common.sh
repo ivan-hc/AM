@@ -106,10 +106,10 @@ _remove_all_apps() {
 	ln -s /opt/am/APP-MANAGER /usr/local/bin/am
 
 	# Check if number of apps is as expected
-	if [ "$(am -f --less | sed -n 1p)" != "1" ]; then
+	if [ "$(am -f --less | tail -n 3 | head -n 1)" != "1" ]; then
 		_fail "Error: Unable to fully remove AM system apps."
 	fi
-	if [ "$(am -f --less | sed -n 3p)" != "0" ]; then
+	if [ "$(am -f --less | tail -n 1)" != "0" ]; then
 		_fail "Error: Unable to fully remove AM local apps."
 	fi
 }
