@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="10.1.1-4"
+AMVERSION="10.1.1-5"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -121,6 +121,10 @@ export CURLLS="curl -Ls" # This will be added in variables
 CURLCMD="curl"
 WGETCMD="wget"
 
+if command -v wget >/dev/null 2>&1 && wget --version 2>/dev/null | head -1 | grep -qi "$WGETCMD.* 1." ; then
+	WGETV="1"
+fi
+
 # Identify objects online
 _use_online_check_tool() {
 	local url="$1"
@@ -149,6 +153,16 @@ _use_online_downloader() {
 		curl -s -Lo "$file" "$url" 2>/dev/null
 	elif command -v wget >/dev/null 2>&1; then
 		wget -q "$url" -O "$file" 2>/dev/null
+	fi
+}
+
+_use_online_downloader_as_root() {
+	local file="$2"
+	local url="$1"
+	if command -v curl >/dev/null 2>&1; then
+		$SUDOCMD curl -s -Lo "$file" "$url" 2>/dev/null
+	elif command -v wget >/dev/null 2>&1; then
+		$SUDOCMD wget -q "$url" -O "$file" 2>/dev/null
 	fi
 }
 
@@ -700,7 +714,7 @@ fi
 
 # Function to check if the installed version of $WGETCMD is the real $WGETCMD or is a fake (Fedora mess)
 _check_fedora_mess() {
-	if command -v wget >/dev/null 2>&1 && wget --version 2>/dev/null | head -1 | grep -qi ' 2.\|wget2 '; then
+	if [ -z "$WGETV" ]; then
 		printf $"\n%bWARNING: your distro maintainer ships \"wget2\" as \"wget\" \033[0m\n\n" "${RED}" | _fit
 		[ -f /etc/redhat-release ] && printf $"Please install \"%bwget1\033[0m\" and \"%bwget1-wget\033[0m\" (use %b--allowerasing\033[0m if you have to)\n\nSee https://bugzilla.redhat.com/show_bug.cgi?id=2358792\n\n" "${Gold}" "${Gold}" "${Green}" | _fit
 	fi
@@ -1186,7 +1200,11 @@ _validate_github_token() {
 
 	# Check HTTP status code for proper validation
 	local HTTP_STATUS
-	HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --header "Authorization: token $token" "https://api.github.com/repos/ivan-hc/AM/releases")
+		if command -v curl >/dev/null 2>&1; then
+		HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --header "Authorization: token $token" "https://api.github.com/repos/ivan-hc/AM/releases")
+	elif command -v wget >/dev/null 2>&1; then
+		HTTP_STATUS=$(wget --quiet --server-response --header="Authorization: token $token" --output-document=/dev/null "https://api.github.com/repos/ivan-hc/AM/releases" 2>&1 | awk '/HTTP\// {print $2}')
+	fi
 
 	if [ "$HTTP_STATUS" = "200" ]; then
 		[ "$quiet" != "true" ] && echo $"Validation successful!"
@@ -1751,11 +1769,11 @@ _use_verify() {
 		fi
 		if [ -n "$download_url" ]; then
 			# Search for zsync file
-			digest=$(curl -Lsf "$download_url.zsync" | grep -a "SHA\|MD5" | tr -d '\0')
+			digest=$(_use_online_reading_tool "$download_url.zsync" | grep -a "SHA\|MD5" | tr -d '\0')
 			if [ -z "$digest" ]; then
 				# Search other sources if no zsync file
 				for ext in digest DIGEST sha512 sha256 sha1 md5; do
-					digest=$(curl -Lsf "$download_url.$ext")
+					digest=$(_use_online_reading_tool "$download_url.$ext")
 					# Skip empty responses (some CDNs return HTTP 404 with empty body)
 					[ -z "$digest" ] && continue
 					if ! echo "$digest" | grep -qi "not found\|access denied"; then
