@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="10.1.1-1"
+AMVERSION="10.1.1-2"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -110,6 +110,19 @@ _fit() {
 AMBRANCH=$(basename "$AMREPO")
 MODULES_SOURCE="$AMREPO/modules"
 
+# Toggle between curl and wget to identify objects online
+_use_online_check_tool() {
+	local url="$@"
+	if command -v curl >/dev/null 2>&1; then
+		curl --output /dev/null --silent --head --fail "$url" 1>/dev/null
+	elif command -v wget >/dev/null 2>&1; then
+		wget -q --tries=10 --timeout=20 --spider "$url"
+	else
+		printf $" ${RED}💀 ERROR! MISSING ESSENTIAL COMMANDS\033[0m: %s\n\n Install the above and try again! \n" "$(echo "curl, wget")"
+		exit 0
+	fi
+}
+
 # Translations
 ISO_CODES="ab ace ach af ain ak am am_ET an ang ar as as_IN ast ay az az_AZ az_IR ba bal bar be be@latin ber be@tarask bg bi bn bn_BD bn_IN bo br brx bs byn ca ca@valencia ce cgg ch chr ckb cmn co crh cs csb cs_CZ cv cy da de de_CH de_DE de@hebrew dv dz ee el en en@arabic en_AU en@boldquot en_CA en@cyrillic en_GB en@greek en@hebrew en_NZ en@piglatin en@quot en@shaw en_US eo es es_AR es_CO es_ES es_EU es_MX et eu fa fa_IR ff fi fil fo fr fr_CA fr_FR frp fur fy ga gd gez gl gn gu gv ha haw he hi hne hr hsb ht hu hu_HU hy hy_AM hye hye_RU ia id id_ID ie ig io is it iu ja jam ka kab kg ki kk kl km kmr kn ko kok ks ks_IN ku ku_IQ kv kw kw_GB ky la lb lg li lo locale.alias lt ltg lv mai mg mhr mi mjw mk ml mn mo mr ms mt my na nah nan nap nb nb_NO nds ne nl nl_BE nl_NL nn no nso nv oc om or or_IN pa pap pa_PK pi pl pms ps pt pt_BR pt_PT qu quz ro rom ro_MD ru rue ru_UA rw sa sat sc sd se shn si sk sl sm sma sn so son sq sr sr@ije sr@ijekavian sr@ijekavianlatin sr@latin sr@Latn sr_RS sr_RS@latin sv sw szl ta ta_LK te tet tg th ti tig tk tl tr tt tt@iqtelif tzm ug uk ur ur_PK uz uz@cyrillic uz@Latn ve vec vi wa wae wal wo xh yi yo zgh zh_CN zh_Hans zh_Hant zh_HK zh_SG zh_TW zu"
 _check_valid_iso_codes() {
@@ -122,7 +135,7 @@ _check_valid_iso_codes() {
 }
 
 _set_locale() {
-	if curl --output /dev/null --silent --head --fail "https://github.com/ivan-hc/AM/raw/$AMBRANCH/translations/usr/share/locale/$iso_code/LC_MESSAGES/am.mo" 1>/dev/null; then
+	if _use_online_check_tool "https://github.com/ivan-hc/AM/raw/$AMBRANCH/translations/usr/share/locale/$iso_code/LC_MESSAGES/am.mo"; then
 		mkdir -p "$DATADIR/locale/$iso_code/LC_MESSAGES" && rm -f "$DATADIR"/locale/"$iso_code"/LC_MESSAGES/am.mo "$DATADIR"/locale/"$iso_code"/LC_MESSAGES/appman.mo
 		curl -s -Lo "$DATADIR/locale/$iso_code/LC_MESSAGES/am.mo" "https://github.com/ivan-hc/AM/raw/$AMBRANCH/translations/usr/share/locale/$iso_code/LC_MESSAGES/am.mo"
 		ln -sf "$DATADIR/locale/$iso_code/LC_MESSAGES/am.mo" "$DATADIR/locale/$iso_code/LC_MESSAGES/appman.mo"
@@ -463,45 +476,15 @@ _betatester_message_on() {
 APPSDB="${APPSDB:-$AMREPO/programs/$ARCH}"
 APPSLISTDB="${APPSLISTDB:-$AMREPO/programs/$ARCH-apps}"
 
-# List of apps from archived repositories or not updated for more than a year
-archived_apps_source="$AMREPO/programs/archived-apps"
-obsolete_apps_source="$AMREPO/programs/obsolete-apps"
-
-_validate_and_download_lists_of_archived_and_obsolete_apps() {
-	if wget -q --tries=10 --timeout=20 --spider https://github.com; then
-		archived_apps_list_content=$(curl -Ls "$archived_apps_source")
-		if [ -n "$archived_apps_list_content" ]; then
-			echo "$archived_apps_list_content" | grep -q "^# ARCHIVED SOURCES$" && echo "$archived_apps_list_content" > "$AMDATADIR"/archived-sources
-		fi
-		obsolete_apps_list_content=$(curl -Ls "$obsolete_apps_source")
-		if [ -n "$obsolete_apps_list_content" ]; then
-			echo "$obsolete_apps_list_content" | grep -q "^# OBSOLETE SOURCES$" && echo "$obsolete_apps_list_content" > "$AMDATADIR"/obsolete-sources
-		fi
-	fi
-}
-
-[ ! -f "$AMDATADIR"/archived-sources ] && _validate_and_download_lists_of_archived_and_obsolete_apps 2>/dev/null
-[ ! -f "$AMDATADIR"/obsolete-sources ] && _validate_and_download_lists_of_archived_and_obsolete_apps 2>/dev/null
-
-[ -f "$AMDATADIR"/archived-sources ] && archived_apps=$(sort -u "$AMDATADIR"/archived-sources)
-[ -f "$AMDATADIR"/obsolete-sources ] && obsolete_apps=$(sort -u "$AMDATADIR"/obsolete-sources)
-
 ################################################################################################################################################################
 #				SECURITY
 ################################################################################################################################################################
 
 # SAFETY CHECKS
 
-# Function to check online connections (uses github.com by default, as the database and CLI itself are stored/hosted there)
+# Function to check online connections
 _online_check_tool() {
-	if command -v wget >/dev/null 2>&1; then
-		wget -q --tries=10 --timeout=20 --spider https://github.com
-	elif command -v curl >/dev/null 2>&1; then
-		curl --output /dev/null --silent --head --fail https://github.com 1> /dev/null
-	else
-		printf $" ${RED}💀 ERROR! MISSING ESSENTIAL COMMANDS\033[0m: %s\n\n Install the above and try again! \n" "$(echo "curl, wget")"
-		exit 0
-	fi
+	_use_online_check_tool "${APPSLISTDB}"
 }
 
 _online_check() {
@@ -531,14 +514,6 @@ _deps_dl() {
 		curl -Lo "$CACHEDIR"/AMCACHEPATH/"$name" "$AM_UTILS_SOURCE/$name-$ARCH-static" 2>/dev/null
 	elif command -v wget >/dev/null 2>&1; then
 		wget -q "$AM_UTILS_SOURCE/$name-$ARCH-static" -O "$CACHEDIR"/AMCACHEPATH/"$name"
-	fi
-}
-
-_check_dl_deps() {
-	if command -v curl >/dev/null 2>&1; then
-		curl --output /dev/null --silent --head --fail "$AM_UTILS_SOURCE/$name-$ARCH-static" 1> /dev/null
-	elif command -v wget >/dev/null 2>&1; then
-		wget -q --tries=10 --timeout=20 --spider "$AM_UTILS_SOURCE/$name-$ARCH-static"
 	fi
 }
 
@@ -584,7 +559,7 @@ if [ "$ARCH" = aarch64 ] || [ "$ARCH" = x86_64 ]; then
 	done
 	if [ -n "$fallback_binaries_needed" ] && [ ! -f "$AMDATADIR"/disable-dependencies-prompt ]; then
 		for name in $fallback_binaries_needed; do
-			if ! _check_dl_deps 2>/dev/null; then
+			if ! _use_online_check_tool "$AM_UTILS_SOURCE/$name-$ARCH-static" 2>/dev/null; then
 				amutils=$(echo "$amutils" | tr ' ' '\n' | sed "s/^$name$//g" | xargs)
 				AM_standard_dependencies=$(echo "$AM_standard_dependencies" | tr ' ' '\n' | sed "s/^$name$//g" | xargs)
 				fallback_binaries_needed=$(echo "$fallback_binaries_needed" | tr ' ' '\n' | sed "s/^$name$//g" | xargs)
@@ -649,7 +624,7 @@ if [ "$ARCH" = aarch64 ] || [ "$ARCH" = x86_64 ]; then
 	# Check binaries integrity
 	if [ "$(ls -A "$CACHEDIR"/AMCACHEPATH 2>/dev/null)" ]; then
 		if [ ! -f "$AMCACHEDIR"/"$ARCH".sha256sum.txt ]; then
-			if curl --output /dev/null --silent --head --fail https://github.com 1> /dev/null; then
+			if _online_check_tool; then
 				deps_sum256_all=$(curl -Ls "$AM_UTILS_SOURCE/$ARCH.sha256sum.txt" 2>/dev/null)
 				if [ -n "$deps_sum256_all" ]; then
 					echo "$deps_sum256_all" > "$AMCACHEDIR"/"$ARCH".sha256sum.txt
@@ -957,6 +932,29 @@ _completion_lists() {
 		! echo "$l" | grep -q "$valid_lists" && rm -f "$l"
 	done
 }
+
+# List of apps from archived repositories or not updated for more than a year
+archived_apps_source="$AMREPO/programs/archived-apps"
+obsolete_apps_source="$AMREPO/programs/obsolete-apps"
+
+_validate_and_download_lists_of_archived_and_obsolete_apps() {
+	if _online_check_tool; then
+		archived_apps_list_content=$(curl -Ls "$archived_apps_source")
+		if [ -n "$archived_apps_list_content" ]; then
+			echo "$archived_apps_list_content" | grep -q "^# ARCHIVED SOURCES$" && echo "$archived_apps_list_content" > "$AMDATADIR"/archived-sources
+		fi
+		obsolete_apps_list_content=$(curl -Ls "$obsolete_apps_source")
+		if [ -n "$obsolete_apps_list_content" ]; then
+			echo "$obsolete_apps_list_content" | grep -q "^# OBSOLETE SOURCES$" && echo "$obsolete_apps_list_content" > "$AMDATADIR"/obsolete-sources
+		fi
+	fi
+}
+
+[ ! -f "$AMDATADIR"/archived-sources ] && _validate_and_download_lists_of_archived_and_obsolete_apps 2>/dev/null
+[ ! -f "$AMDATADIR"/obsolete-sources ] && _validate_and_download_lists_of_archived_and_obsolete_apps 2>/dev/null
+
+[ -f "$AMDATADIR"/archived-sources ] && archived_apps=$(sort -u "$AMDATADIR"/archived-sources)
+[ -f "$AMDATADIR"/obsolete-sources ] && obsolete_apps=$(sort -u "$AMDATADIR"/obsolete-sources)
 
 # BASH, FISH AND ZSH COMPLETION
 if [ "$CLI_PATH" != "/usr/bin/am" ]; then
@@ -1584,7 +1582,7 @@ _sync_installation_scripts() {
 						to_reinstall_true=1
 					fi
 				else
-					if [ -z "$scriptname" ] && curl --output /dev/null --silent --head --fail "$APPSDB"/"$arg"  1>/dev/null; then
+					if [ -z "$scriptname" ] && _use_online_check_tool "$APPSDB"/"$arg"; then
 						printf $" ◆ No installation script for %b, downloading one...\n" "$arg"
 						mkdir -p "$argpath"/.am-installer
 						wget -q "$APPSDB/$arg" -O "$argpath"/.am-installer/"$arg"
@@ -1625,7 +1623,7 @@ _sync_locale() {
 		curl -s -Lo "$DATADIR/locale/$iso_code/LC_MESSAGES/am.mo" "https://github.com/ivan-hc/AM/raw/$AMBRANCH/translations/usr/share/locale/$iso_code/LC_MESSAGES/am.mo"
 	elif [ "$iso_code" = "en" ]; then
 		_check_valid_iso_codes
-		if curl --output /dev/null --silent --head --fail "https://github.com/ivan-hc/AM/raw/$AMBRANCH/translations/usr/share/locale/$iso_code/LC_MESSAGES/am.mo" 1>/dev/null; then
+		if _use_online_check_tool "https://github.com/ivan-hc/AM/raw/$AMBRANCH/translations/usr/share/locale/$iso_code/LC_MESSAGES/am.mo"; then
 			printf "%b\n Found a translation file, run the \"%b%b translate %b\033[0m\" command to use it...\n" "$DIVIDING_LINE" "$Gold" "$AMCLI" "$iso_code"
 		fi
 	fi
