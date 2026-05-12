@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="10.1.1-2"
+AMVERSION="10.1.1-3"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -110,6 +110,13 @@ _fit() {
 AMBRANCH=$(basename "$AMREPO")
 MODULES_SOURCE="$AMREPO/modules"
 
+# ALTERNATE CURL AND WGET
+
+if ! command -v wget >/dev/null 2>&1 && ! command -v curl >/dev/null 2>&1; then
+	printf $" ${RED}💀 ERROR! MISSING ESSENTIAL COMMANDS\033[0m: %s\n\n Install the above and try again! \n" "$(echo "curl, wget")"
+	exit 0
+fi
+
 # Toggle between curl and wget to identify objects online
 _use_online_check_tool() {
 	local url="$1"
@@ -117,13 +124,20 @@ _use_online_check_tool() {
 		curl --output /dev/null --silent --head --fail "$url" 1>/dev/null
 	elif command -v wget >/dev/null 2>&1; then
 		wget -q --tries=10 --timeout=20 --spider "$url"
-	else
-		printf $" ${RED}💀 ERROR! MISSING ESSENTIAL COMMANDS\033[0m: %s\n\n Install the above and try again! \n" "$(echo "curl, wget")"
-		exit 0
 	fi
 }
 
-# Translations
+# Toggle between curl and wget to read online text
+_use_online_reading_tool() {
+	local url="$1"
+	if command -v curl >/dev/null 2>&1; then
+		curl -Ls "$url" 2>/dev/null
+	elif command -v wget >/dev/null 2>&1; then
+		wget -q -O - "$url" 2>/dev/null
+	fi
+}
+
+# TRANSLATIONS
 ISO_CODES="ab ace ach af ain ak am am_ET an ang ar as as_IN ast ay az az_AZ az_IR ba bal bar be be@latin ber be@tarask bg bi bn bn_BD bn_IN bo br brx bs byn ca ca@valencia ce cgg ch chr ckb cmn co crh cs csb cs_CZ cv cy da de de_CH de_DE de@hebrew dv dz ee el en en@arabic en_AU en@boldquot en_CA en@cyrillic en_GB en@greek en@hebrew en_NZ en@piglatin en@quot en@shaw en_US eo es es_AR es_CO es_ES es_EU es_MX et eu fa fa_IR ff fi fil fo fr fr_CA fr_FR frp fur fy ga gd gez gl gn gu gv ha haw he hi hne hr hsb ht hu hu_HU hy hy_AM hye hye_RU ia id id_ID ie ig io is it iu ja jam ka kab kg ki kk kl km kmr kn ko kok ks ks_IN ku ku_IQ kv kw kw_GB ky la lb lg li lo locale.alias lt ltg lv mai mg mhr mi mjw mk ml mn mo mr ms mt my na nah nan nap nb nb_NO nds ne nl nl_BE nl_NL nn no nso nv oc om or or_IN pa pap pa_PK pi pl pms ps pt pt_BR pt_PT qu quz ro rom ro_MD ru rue ru_UA rw sa sat sc sd se shn si sk sl sm sma sn so son sq sr sr@ije sr@ijekavian sr@ijekavianlatin sr@latin sr@Latn sr_RS sr_RS@latin sv sw szl ta ta_LK te tet tg th ti tig tk tl tr tt tt@iqtelif tzm ug uk ur ur_PK uz uz@cyrillic uz@Latn ve vec vi wa wae wal wo xh yi yo zgh zh_CN zh_Hans zh_Hant zh_HK zh_SG zh_TW zu"
 _check_valid_iso_codes() {
 	for lang in $ISO_CODES; do
@@ -625,7 +639,7 @@ if [ "$ARCH" = aarch64 ] || [ "$ARCH" = x86_64 ]; then
 	if [ "$(ls -A "$CACHEDIR"/AMCACHEPATH 2>/dev/null)" ]; then
 		if [ ! -f "$AMCACHEDIR"/"$ARCH".sha256sum.txt ]; then
 			if _online_check_tool; then
-				deps_sum256_all=$(curl -Ls "$AM_UTILS_SOURCE/$ARCH.sha256sum.txt" 2>/dev/null)
+				deps_sum256_all=$(_use_online_reading_tool "$AM_UTILS_SOURCE/$ARCH.sha256sum.txt" 2>/dev/null)
 				if [ -n "$deps_sum256_all" ]; then
 					echo "$deps_sum256_all" > "$AMCACHEDIR"/"$ARCH".sha256sum.txt
 				fi
@@ -797,7 +811,7 @@ _am_newrepo_check "$@"
 ################################################################################################################################################################
 
 _am_extras_sources() {
-	AM_EXTRA_SOURCES=$(curl -Ls "$AM_EXTRA_SOURCES")
+	AM_EXTRA_SOURCES=$(_use_online_reading_tool "$AM_EXTRA_SOURCES")
 	if echo "$AM_EXTRA_SOURCES" | grep -q "^# "; then
 		echo "$AM_EXTRA_SOURCES" > "$AMDATADIR"/am-extras
 	fi
@@ -827,7 +841,7 @@ _third_party_lsts_filter() {
 }
 
 _third_party_lsts_generator() {
-	tprepo_readme="${tp_list}_readme" && curl -Ls "${!tprepo_readme}" 2>/dev/null | _third_party_lsts_filter \
+	tprepo_readme="${tp_list}_readme" && _use_online_reading_tool "${!tprepo_readme}" 2>/dev/null | _third_party_lsts_filter \
 	| sed "s/$/. To install it use the --$tp_list flag or the .$tp_list extension./g" | sort > "$AMDATADIR"/"$ARCH"-"$tp_list" || touch "$AMDATADIR"/"$ARCH"-"$tp_list"
 }
 
@@ -916,7 +930,7 @@ available_options="about add apikey backup clean clone config disable downgrade 
 
 _completion_lists() {
 	# Remove existing lists and download new ones
-	curl -Ls "$APPSLISTDB" 2>/dev/null | grep "^◆" > "$AMDATADIR/$ARCH-apps"
+	_use_online_reading_tool "$APPSLISTDB" 2>/dev/null | grep "^◆" > "$AMDATADIR/$ARCH-apps"
 	awk -v FS="(◆ | : )" '{print $2}' <"$AMDATADIR"/"$ARCH"-apps > "$AMDATADIR"/list
 	_completion_list_third_party
 	# Append options to the list
@@ -939,11 +953,11 @@ obsolete_apps_source="$AMREPO/programs/obsolete-apps"
 
 _validate_and_download_lists_of_archived_and_obsolete_apps() {
 	if _online_check_tool; then
-		archived_apps_list_content=$(curl -Ls "$archived_apps_source")
+		archived_apps_list_content=$(_use_online_reading_tool "$archived_apps_source")
 		if [ -n "$archived_apps_list_content" ]; then
 			echo "$archived_apps_list_content" | grep -q "^# ARCHIVED SOURCES$" && echo "$archived_apps_list_content" > "$AMDATADIR"/archived-sources
 		fi
-		obsolete_apps_list_content=$(curl -Ls "$obsolete_apps_source")
+		obsolete_apps_list_content=$(_use_online_reading_tool "$obsolete_apps_source")
 		if [ -n "$obsolete_apps_list_content" ]; then
 			echo "$obsolete_apps_list_content" | grep -q "^# OBSOLETE SOURCES$" && echo "$obsolete_apps_list_content" > "$AMDATADIR"/obsolete-sources
 		fi
@@ -1574,7 +1588,7 @@ _sync_installation_scripts() {
 				scriptname=$(ls "$argpath/.am-installer/" | head -1)
 				if [ -n "$scriptname" ] && grep -q "^◆ $scriptname :" "$AMDATADIR/$ARCH-apps"; then
 					CURRENT=$(cat "$argpath"/.am-installer/"$scriptname")
-					SOURCE=$(curl -Ls "$APPSDB"/"$scriptname")
+					SOURCE=$(_use_online_reading_tool "$APPSDB"/"$scriptname")
 					if [ "$CURRENT" = "$SOURCE" ]; then
 						echo -ne "\r" 2>/dev/null
 					else
@@ -1598,12 +1612,12 @@ _sync_installation_scripts() {
 
 _sync_appimages_list() {
 	APPIMAGES_LIST="${APPIMAGES_LIST:-$AMREPO/programs/$ARCH-appimages}"
-	curl -Ls "$APPIMAGES_LIST" 2>/dev/null | grep "^◆" > "$AMDATADIR/$ARCH-appimages"
+	_use_online_reading_tool "$APPIMAGES_LIST" 2>/dev/null | grep "^◆" > "$AMDATADIR/$ARCH-appimages"
 }
 
 _sync_portable_list() {
 	PORTABLE_LIST="${PORTABLE_LIST:-$AMREPO/programs/$ARCH-portable}"
-	curl -Ls "$PORTABLE_LIST" 2>/dev/null | grep "^◆" > "$AMDATADIR/$ARCH-portable"
+	_use_online_reading_tool "$PORTABLE_LIST" 2>/dev/null | grep "^◆" > "$AMDATADIR/$ARCH-portable"
 }
 
 _sync_databases() {
@@ -1640,7 +1654,7 @@ _sync_modules() {
 			chmod a+x ./"$MODULENAME"
 		fi
 		CURRENT=$(cat ./"$module_name" 2>/dev/null)
-		SOURCE=$(curl -Ls "$MODULES_SOURCE/$module_name")
+		SOURCE=$(_use_online_reading_tool "$MODULES_SOURCE/$module_name")
 		if echo "$SOURCE" | grep -q AMCLI; then
 			if [ "$CURRENT" = "$SOURCE" ]; then
 				echo -ne "\r" 2>/dev/null
@@ -1681,7 +1695,7 @@ _use_sync() {
 	_sync_installation_scripts
 	_validate_and_download_lists_of_archived_and_obsolete_apps
 	if [ "$CLI_PATH" != "/usr/bin/am" ] && [ "$AMSYNC" != 1 ]; then
-		AMCLI_ONLINE_CONTENT=$(curl -Ls "$AMREPO"/APP-MANAGER)
+		AMCLI_ONLINE_CONTENT=$(_use_online_reading_tool "$AMREPO"/APP-MANAGER)
 		if echo "$AMCLI_ONLINE_CONTENT" | grep -q AMCLI; then
 			if [ "$CLI" = am ]; then
 				if [ -f "$APPMANCONFIG"/appman-mode ]; then
@@ -1892,7 +1906,7 @@ _update_determine_gh_apps_number() {
 	wait
 	[ -z "$GH_APPS" ] && GH_APPS_NUMBER="" || GH_APPS_NUMBER=$(echo "$GH_APPS" | wc -l | sed 's/ //g')
 	if [ -n "$GH_APPS_NUMBER" ]; then
-		GH_API_REMAINING=$(curl -Ls "https://api.github.com/rate_limit" | tr '{,' '\n' | grep -i remaining | tail -1 | grep -Eo "[0-9]*")
+		GH_API_REMAINING=$(_use_online_reading_tool "https://api.github.com/rate_limit" | tr '{,' '\n' | grep -i remaining | tail -1 | grep -Eo "[0-9]*")
 		GH_API_ALLOWED=$((GH_API_REMAINING - GH_APPS_NUMBER))
 	fi
 }

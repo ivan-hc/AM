@@ -37,16 +37,15 @@ _convert_to_appman_compatible_script() {
 }
 
 _download() {
-	arg_script=$(curl -Ls "$APPSDB/$arg" 2>/dev/null)
-	if echo "$arg_script" | grep -q "^#"; then
-		cd "$SCRIPTDIR" || return 1
-		if [ -f ./"$arg" ] || [ -d ./"$arg" ]; then
-			echo $"✖ \"$SCRIPTDIR/$arg\" already exists!" | _fit && return 1
-		else
-			wget -q "$APPSDB/$arg" && echo $"◆ \"$arg\" installation script downloaded to \"$SCRIPTDIR\"! " | _fit
-		fi
+	if [ -f "$SCRIPTDIR"/"$arg" ] || [ -d "$SCRIPTDIR"/"$arg" ]; then
+		echo $"✖ \"$SCRIPTDIR/$arg\" already exists!" | _fit && return 1
 	else
-		echo $" 💀 ERROR: \"$arg\" is NOT a valid argument"
+		arg_script=$(_use_online_reading_tool "$APPSDB/$arg" 2>/dev/null)
+		if echo "$arg_script" | grep -q "^#"; then
+			echo "$arg_script" > "$SCRIPTDIR"/"$arg" && echo $"◆ \"$arg\" installation script downloaded to \"$SCRIPTDIR\"! " | _fit
+		else
+			echo $" 💀 ERROR: \"$arg\" is NOT a valid argument"
+		fi
 	fi
 }
 
@@ -388,7 +387,7 @@ _install_arg() {
 	_apply_patches
 	# Determine if the app is hosted on github
 	if grep -q "api.github.com" ./"$arg"; then
-		GH_API_ALLOWED=$(curl -Ls "https://api.github.com/rate_limit" | tr '{,' '\n' | grep -i remaining | tail -1 | grep -Eo "[0-9]*")
+		GH_API_ALLOWED=$(_use_online_reading_tool "https://api.github.com/rate_limit" | tr '{,' '\n' | grep -i remaining | tail -1 | grep -Eo "[0-9]*")
 		if [ "$GH_API_ALLOWED" -le 10 ]; then
 			sed -i "s#https://api.github.com#$ALT_GH#g" ./"$arg"
 		fi
@@ -475,7 +474,7 @@ _3rd_party_curl_detect_item() {
 }
 
 _3rd_party_template_manager() {
-	TEMPLATE_CONTENT=$(curl -Ls "$AMREPO/templates/$TEMPLATE_NAME" 2>/dev/null)
+	TEMPLATE_CONTENT=$(_use_online_reading_tool "$AMREPO/templates/$TEMPLATE_NAME" 2>/dev/null)
 	if echo "$TEMPLATE_CONTENT" | grep -q "^#"; then
 		# Commom patches
 		echo "$TEMPLATE_CONTENT" | sed "s#APP=SAMPLE#APP=$arg#g; \
@@ -512,7 +511,7 @@ _3rd_party_apps_handler() {
 	awk_version="curl -Ls $third_party_readme | grep -i \"^| $arg | .* | http.* | http.* | .* |$\" | tr '|' '\\\n' | cut -c 2- | grep . | awk -F: \"NR==$awk_ver\""
 	third_party_url="curl -Ls $third_party_readme | grep -i \"^| $arg | .* | http.* | http.* | .* |$\" | tr '|' '\\\n' | cut -c 2- | grep . | awk -F: \"NR==$awk_dl\""
 	# Determine if a third-party app has multiple variants
-	third_party_readme_content=$(curl -Ls "$third_party_readme")
+	third_party_readme_content=$(_use_online_reading_tool "$third_party_readme")
 	tpnumber=$(echo "$third_party_readme_content" | grep "^| $arg | .* | http.* | http.* | .* |$" | wc -l | sed 's/ //g')
 	if [ "$tpnumber" != 1 ]; then
 		about_site=$(echo "$third_party_readme_content" | grep "^| $arg | .* | http.* | http.* | .* |$" | awk -F'|' '{print $4}' | uniq)
@@ -653,9 +652,9 @@ case "$1" in
 			arg_origin="$arg"
 			pure_arg=$(echo "$arg" | sed 's/\-appimage$//g' | sed 's:.*/::')
 			_remove_extensions_from_appname
-			echo "$arg" | grep -q -- "-appimage$" && curl -Ls "$APPSDB"/"$arg" | grep -q "APP=.*-appimage$" && pure_arg="$arg"
+			echo "$arg" | grep -q -- "-appimage$" && _use_online_reading_tool "$APPSDB"/"$arg" | grep -q "APP=.*-appimage$" && pure_arg="$arg"
 
-			arg_script=$(curl -Ls "$APPSDB/$arg" 2>/dev/null)
+			arg_script=$(_use_online_reading_tool "$APPSDB/$arg" 2>/dev/null)
 
 			# Test if a symlink is broken
 			[ -n "$BINDIR" ] && find "$BINDIR" -xtype l -name "$pure_arg" -delete 2>/dev/null
@@ -730,9 +729,9 @@ case "$1" in
 		esac
 		mkdir -p "$CACHEDIR/extra"
 		if [ "$EXTERNAL_APP_NAME" = libreoffice ]; then
-			TEMPLATE_CONTENT=$(curl -Ls "$AMREPO"/templates/AM-SAMPLE-AppImage-libreoffice 2>/dev/null)
+			TEMPLATE_CONTENT=$(_use_online_reading_tool "$AMREPO"/templates/AM-SAMPLE-AppImage-libreoffice 2>/dev/null)
 		else
-			TEMPLATE_CONTENT=$(curl -Ls "$AMREPO"/templates/AM-SAMPLE-AppImage 2>/dev/null)
+			TEMPLATE_CONTENT=$(_use_online_reading_tool "$AMREPO"/templates/AM-SAMPLE-AppImage 2>/dev/null)
 		fi
 		if echo "$TEMPLATE_CONTENT" | grep -q "^#"; then
 			echo "$TEMPLATE_CONTENT" > "$CACHEDIR/extra/$EXTERNAL_APP_NAME" || exit 1
@@ -803,7 +802,7 @@ case "$1" in
 							scriptname=$(ls "$argpath/.am-installer/" | head -1)
 							if [ -n "$scriptname" ] && grep -q "^◆ $scriptname :" "$AMDATADIR/$ARCH-apps"; then
 								CURRENT=$(cat "$argpath"/.am-installer/"$scriptname")
-								SOURCE=$(curl -Ls "$APPSDB"/"$scriptname")
+								SOURCE=$(_use_online_reading_tool "$APPSDB"/"$scriptname")
 								if echo "$SOURCE" | grep -q "APP=$arg"; then
 									if [ "$CURRENT" != "$SOURCE" ]; then
 										reinstall_true=1
