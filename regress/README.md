@@ -17,29 +17,33 @@ While these tests can be directly run on your main OS, **do not attempt this**. 
 
 ----------------------------------------------------
 #### How to start testing AM in a safe container environment
-Podman (recommended) or Docker must be installed in your system in order to perform the tests in an isolated and controlled environment, without messing up your main OS.
-The provided dockerfiles will allow you to build a container image in your system, which you can then start and use for testing.
+Podman is recommended for AM testing because it does not require sudo/root (rootless), whereas Docker or a traditional VM will require it.
+It will allow you to perform the tests in an isolated and controlled environment, without messing up your main OS.
+The provided dockerfiles will allow you to quickly/easily build these test container images with all the needed dependencies.
 
-Test steps (replace podman with docker if needed):
-1. Clone the AM repo and go to the regression dir:\
+Steps to begin regression testing:
+1. Make sure Podman is installed, eg. for Debian:\
+`sudo apt install podman`\
+
+2. Clone the AM repo and go to the regression dir:\
 `git clone https://github.com/ivan-hc/AM`\
 `cd AM/regress`
 
-2. Build am-debian container image:\
+3. Build am-debian container image:\
 `podman build --platform linux/x86-64 -t am-debian -f am-debian.dockerfile`\
 Alternatively, you may select a different container image such as am-ubuntu:\
 `podman build --platform linux/x86-64 -t am-ubuntu -f am-ubuntu.dockerfile`
 
-3. Start am-debian container session in default mode (persistent Appimages):\
+4. Start am-debian container session in default mode (persistent Appimages):\
 `podman run -it --platform linux/x86-64 --device /dev/fuse --cap-add SYS_ADMIN --security-opt unmask=ALL am-debian:latest`\
 Alternatively, start am-debian container session with tmpfs for Appimage dirs (stores in RAM to avoid wearing out your SSD):\
 `podman run -it --platform linux/x86-64 --device /dev/fuse --cap-add SYS_ADMIN --security-opt unmask=ALL --tmpfs /opt --tmpfs /root/.local/share/applications am-debian:latest`\
-You will now be within the container.
+**You will now be inside the container**.
 
-4. Setup AM as needed (eg. switch to dev branch):\
+5. Setup AM as needed (eg. switch to dev branch):\
 `am --devmode-enable`
 
-5. Run all regression tests:\
+6. Run all regression tests:\
 `./test-am-regress.sh`\
 Alternatively, run individual tests:\
 `./test-am-checksum.sh`\
@@ -55,8 +59,8 @@ Stopping/exiting the container with *tmpfs* for Appimage install directories wil
 #### Running an emulated ARM 64-bit (aarch64) AM test container
 To start an ARM 64-bit podman container on your PC, QEMU must be used on the host machine to emulate the system. The am-alpine test container works well for this purpose, but the other available containers may also work.
 
-1. Make sure the following packages are installed in your host machine (example below applies for Debian's apt):\
-`sudo apt-get install qemu-user-static binfmt-support`
+1. Make sure QEMU and the following packages are installed in your host machine, eg. for Debian:\
+`sudo apt install qemu-user-static binfmt-support`
 
 2. Make sure to set the `--platform linux/arm64` option to select aarch64 correctly when building and running a container:\
 `podman build --platform linux/arm64 -t am-alpine-arm64 -f am-alpine.dockerfile`\
