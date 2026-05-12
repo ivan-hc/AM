@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="10.1.1-3"
+AMVERSION="10.1.1-4"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -111,13 +111,17 @@ AMBRANCH=$(basename "$AMREPO")
 MODULES_SOURCE="$AMREPO/modules"
 
 # ALTERNATE CURL AND WGET
-
 if ! command -v wget >/dev/null 2>&1 && ! command -v curl >/dev/null 2>&1; then
 	printf $" ${RED}💀 ERROR! MISSING ESSENTIAL COMMANDS\033[0m: %s\n\n Install the above and try again! \n" "$(echo "curl, wget")"
 	exit 0
 fi
 
-# Toggle between curl and wget to identify objects online
+# Export variables for such commands to avoid confusion
+export CURLLS="curl -Ls" # This will be added in variables
+CURLCMD="curl"
+WGETCMD="wget"
+
+# Identify objects online
 _use_online_check_tool() {
 	local url="$1"
 	if command -v curl >/dev/null 2>&1; then
@@ -127,13 +131,24 @@ _use_online_check_tool() {
 	fi
 }
 
-# Toggle between curl and wget to read online text
+# Read online text
 _use_online_reading_tool() {
 	local url="$1"
 	if command -v curl >/dev/null 2>&1; then
 		curl -Ls "$url" 2>/dev/null
 	elif command -v wget >/dev/null 2>&1; then
 		wget -q -O - "$url" 2>/dev/null
+	fi
+}
+
+# Download files
+_use_online_downloader() {
+	local file="$2"
+	local url="$1"
+	if command -v curl >/dev/null 2>&1; then
+		curl -s -Lo "$file" "$url" 2>/dev/null
+	elif command -v wget >/dev/null 2>&1; then
+		wget -q "$url" -O "$file" 2>/dev/null
 	fi
 }
 
@@ -151,7 +166,7 @@ _check_valid_iso_codes() {
 _set_locale() {
 	if _use_online_check_tool "https://github.com/ivan-hc/AM/raw/$AMBRANCH/translations/usr/share/locale/$iso_code/LC_MESSAGES/am.mo"; then
 		mkdir -p "$DATADIR/locale/$iso_code/LC_MESSAGES" && rm -f "$DATADIR"/locale/"$iso_code"/LC_MESSAGES/am.mo "$DATADIR"/locale/"$iso_code"/LC_MESSAGES/appman.mo
-		curl -s -Lo "$DATADIR/locale/$iso_code/LC_MESSAGES/am.mo" "https://github.com/ivan-hc/AM/raw/$AMBRANCH/translations/usr/share/locale/$iso_code/LC_MESSAGES/am.mo"
+		_use_online_downloader "https://github.com/ivan-hc/AM/raw/$AMBRANCH/translations/usr/share/locale/$iso_code/LC_MESSAGES/am.mo" "$DATADIR/locale/$iso_code/LC_MESSAGES/am.mo"
 		ln -sf "$DATADIR/locale/$iso_code/LC_MESSAGES/am.mo" "$DATADIR/locale/$iso_code/LC_MESSAGES/appman.mo"
 		mkdir -p "$DATADIR/AM" && echo "$iso_code" > "$DATADIR/AM/locale"
 	else
@@ -520,15 +535,11 @@ _checksum_on_standard_dependencies() {
 }
 
 # Use static binaries as a fallback solution in case there are no dependencies
-AM_core_dependencies="cat chmod chown curl grep sed wget"
+AM_core_dependencies="cat chmod chown $CURLCMD grep sed $WGETCMD"
 AM_opt_dependencies="7z ar column du file md5sum notify-send sha1sum sha256sum sha512sum tar unxz unzip xz xzcat"
 AM_standard_dependencies="$AM_core_dependencies $AM_opt_dependencies"
 _deps_dl() {
-	if command -v curl >/dev/null 2>&1; then
-		curl -Lo "$CACHEDIR"/AMCACHEPATH/"$name" "$AM_UTILS_SOURCE/$name-$ARCH-static" 2>/dev/null
-	elif command -v wget >/dev/null 2>&1; then
-		wget -q "$AM_UTILS_SOURCE/$name-$ARCH-static" -O "$CACHEDIR"/AMCACHEPATH/"$name"
-	fi
+	_use_online_downloader "$AM_UTILS_SOURCE/$name-$ARCH-static" "$CACHEDIR"/AMCACHEPATH/"$name"
 }
 
 if uname | grep -q BSD; then
@@ -687,7 +698,7 @@ if command -v unshare >/dev/null 2>&1 && ! unshare -Urm /bin/true 2>/dev/null; t
 	echo "$DIVIDING_LINE"
 fi
 
-# Function to check if the installed version of wget is the real wget or is a fake (Fedora mess)
+# Function to check if the installed version of $WGETCMD is the real $WGETCMD or is a fake (Fedora mess)
 _check_fedora_mess() {
 	if wget --version | head -1 | grep -qi ' 2.\|wget2 '; then
 		printf $"\n%bWARNING: your distro maintainer ships \"wget2\" as \"wget\" \033[0m\n\n" "${RED}" | _fit
@@ -707,7 +718,7 @@ _download_appimagetool() {
 		mkdir -p "$CACHEDIR"/AMCACHEPATH
 		if [ ! -f "$CACHEDIR"/AMCACHEPATH/appimagetool ]; then
 			_online_check
-			wget -q https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-"${ARCH}".AppImage -O "$CACHEDIR"/AMCACHEPATH/appimagetool
+			_use_online_downloader https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-"${ARCH}".AppImage "$CACHEDIR"/AMCACHEPATH/appimagetool
 			chmod a+x "$CACHEDIR"/AMCACHEPATH/appimagetool
 		fi
 	fi
@@ -1599,7 +1610,7 @@ _sync_installation_scripts() {
 					if [ -z "$scriptname" ] && _use_online_check_tool "$APPSDB"/"$arg"; then
 						printf $" ◆ No installation script for %b, downloading one...\n" "$arg"
 						mkdir -p "$argpath"/.am-installer
-						wget -q "$APPSDB/$arg" -O "$argpath"/.am-installer/"$arg"
+						_use_online_downloader "$APPSDB/$arg" "$argpath"/.am-installer/"$arg"
 					fi
 					SOURCE=""
 				fi
@@ -1634,7 +1645,7 @@ _sync_locale() {
 	if [ -f "$DATADIR/locale/$iso_code/LC_MESSAGES/am.mo" ]; then
 		printf $"%b\n Check and update localization...\n" "$DIVIDING_LINE"
 		rm -f "$DATADIR/locale/$iso_code/LC_MESSAGES/am.mo"
-		curl -s -Lo "$DATADIR/locale/$iso_code/LC_MESSAGES/am.mo" "https://github.com/ivan-hc/AM/raw/$AMBRANCH/translations/usr/share/locale/$iso_code/LC_MESSAGES/am.mo"
+		_use_online_downloader "https://github.com/ivan-hc/AM/raw/$AMBRANCH/translations/usr/share/locale/$iso_code/LC_MESSAGES/am.mo" "$DATADIR/locale/$iso_code/LC_MESSAGES/am.mo"
 	elif [ "$iso_code" = "en" ]; then
 		_check_valid_iso_codes
 		if _use_online_check_tool "https://github.com/ivan-hc/AM/raw/$AMBRANCH/translations/usr/share/locale/$iso_code/LC_MESSAGES/am.mo"; then
@@ -1650,8 +1661,7 @@ _sync_modules() {
 		mkdir -p "$MODULES_PATH" && cd "$MODULES_PATH" || return 1
 		if ! test -f ./"$module_name"; then
 			echo $" ◆ Downloading $module_name (not previously installed)..."
-			curl -Os "$MODULES_SOURCE/$module_name" 2>/dev/null
-			chmod a+x ./"$MODULENAME"
+			_use_online_downloader "$MODULES_SOURCE/$module_name" ./"$module_name" 2>/dev/null
 		fi
 		CURRENT=$(cat ./"$module_name" 2>/dev/null)
 		SOURCE=$(_use_online_reading_tool "$MODULES_SOURCE/$module_name")
@@ -1727,7 +1737,7 @@ _use_verify() {
 		[ -f "$argpath/AM-VERIFIED" ] && rm -f "$argpath"/AM-VERIFIED # Remove verified status
 		# Check if the download was a tarball/zip file
 		if { [ -f "$argpath/version" ] && grep -q '\.xz$\|\.zip$\|\.gz$' "$argpath/version"; } \
-		|| { [ -f "$argpath/AM-updater" ] && grep -q 'wget.*\.xz \|wget.*\.zip \|wget.*\.gz ' "$argpath/AM-updater"; } \
+		|| { [ -f "$argpath/AM-updater" ] && grep -q "$WGETCMD.*\.xz \|$WGETCMD.*\.zip \|$WGETCMD.*\.gz " "$argpath/AM-updater"; } \
 		|| { [ ! -f "$argpath/version" ] && [ ! -f "$argpath/AM-updater" ] && [ -f "$argpath/updater.ini" ]; }; then
 			checksum_msg=$(echo $"Checksum auto-verified.")
 			printf "%b✔\033[0m %b \n" "${Green}" "$checksum_msg" | _fit
@@ -1736,8 +1746,8 @@ _use_verify() {
 		# Search for hash files
 		elif [ -f "$argpath"/version ] && grep -qi "^http" "$argpath"/version; then
 			download_url=$(sort "$argpath"/version)
-		elif [ -f "$argpath"/AM-updater ] && grep -q "wget .*am-extras" "$argpath"/AM-updater; then
-			download_url=$(eval "$(grep "wget .*am-extras" "$argpath"/AM-updater | tr '()' '\n' | grep curl | head -1)" | xargs 2>/dev/null)
+		elif [ -f "$argpath"/AM-updater ] && grep -q "$WGETCMD .*am-extras" "$argpath"/AM-updater; then
+			download_url=$(eval "$(grep "$WGETCMD .*am-extras" "$argpath"/AM-updater | tr '()' '\n' | grep curl | head -1)" | xargs 2>/dev/null)
 		fi
 		if [ -n "$download_url" ]; then
 			# Search for zsync file
@@ -2094,7 +2104,7 @@ _use_module() {
 	fi
 	if [ ! -f "$MODULES_PATH/$MODULE" ]; then
 		_online_check
-		if ! wget -q "$MODULES_SOURCE/$MODULE" -O "$MODULES_PATH/$MODULE"; then
+		if ! _use_online_downloader "$MODULES_SOURCE/$MODULE" "$MODULES_PATH/$MODULE"; then
 			echo $" Module not found, run \"$AMCLI -s\" to update \"$AMCLIUPPER\""
 			exit 1
 		fi

@@ -39,7 +39,7 @@ _template_create_dirs_and_ask_for_source() {
 	# Create base directories
 	mkdir -p ./am-scripts ./am-scripts/"$MAIN_ARCH"
 	if [ ! -f ./am-scripts/"$MAIN_ARCH"-apps ]; then
-		curl -Lo am-scripts/"$MAIN_ARCH"-apps "$AMREPO_MAIN/programs/$MAIN_ARCH-apps" 2>/dev/null \
+		_use_online_downloader "$AMREPO_MAIN/programs/$MAIN_ARCH-apps" am-scripts/"$MAIN_ARCH"-apps \
 		|| printf "%b\nERROR: Cannot download \n$AMREPO_MAIN/programs/$MAIN_ARCH-apps\nPlease download it manually! \n%b\n" "$DIVIDING_LINE" "$DIVIDING_LINE" | _fit
 	fi
 	# Create readme "list" file
@@ -50,13 +50,13 @@ _template_create_dirs_and_ask_for_source() {
 	fi
 	# Download the template and convert the argument into a command
 	if [ "$templatetype" = 0 ] || [ -z "$templatetype" ]; then
-		wget -q "$AMREPO"/templates/AM-SAMPLE-AppImage -O ./am-scripts/"$MAIN_ARCH"/"$arg"
+		_use_online_downloader "$AMREPO"/templates/AM-SAMPLE-AppImage ./am-scripts/"$MAIN_ARCH"/"$arg"
 	elif [ "$templatetype" = 1 ]; then
-		wget -q "$AMREPO"/templates/AM-SAMPLE-portable2appimage -O ./am-scripts/"$MAIN_ARCH"/"$arg"
+		_use_online_downloader "$AMREPO"/templates/AM-SAMPLE-portable2appimage ./am-scripts/"$MAIN_ARCH"/"$arg"
 	elif [ "$templatetype" = 2 ]; then
-		wget -q "$AMREPO"/templates/AM-SAMPLE-Archive -O ./am-scripts/"$MAIN_ARCH"/"$arg"
+		_use_online_downloader "$AMREPO"/templates/AM-SAMPLE-Archive ./am-scripts/"$MAIN_ARCH"/"$arg"
 	elif [ "$templatetype" = 3 ]; then
-		wget -q "$AMREPO"/templates/AM-SAMPLE-Firefox-webapp -O ./am-scripts/"$MAIN_ARCH"/"$arg"
+		_use_online_downloader "$AMREPO"/templates/AM-SAMPLE-Firefox-webapp ./am-scripts/"$MAIN_ARCH"/"$arg"
 	fi
 	sed -i "s/SAMPLE/$arg/g" ./am-scripts/"$MAIN_ARCH"/"$arg"
 	echo "$DIVIDING_LINE"
@@ -121,29 +121,6 @@ _template_custom_download_url_as_version_variable() {
 	esac
 }
 
-_template_use_wget_to_download_a_linear_url_or_a_command() {
-	# FOR "WGET", ADD A LINEAR DOWNLOAD URL OR CHECK THE URL USING THE "$( ... )" SYNTAX
-	read -r -ep $" ◆ FOR \"WGET\", ADD A COMMAND AS \"\$( ... )\" OR A LINEAR DOWNLOAD URL $(echo -e '\n : ')" DOWNLOADURL
-	case "$DOWNLOADURL" in
-	*)
-		mv ./am-scripts/"$MAIN_ARCH"/"$arg" ./am-scripts/"$MAIN_ARCH"/"$arg".old
-		sed -n '1,15p' ./am-scripts/"$MAIN_ARCH"/"$arg".old >> ./am-scripts/"$MAIN_ARCH"/"$arg"
-		echo "wget \"$DOWNLOADURL\" || exit 1" >> ./am-scripts/"$MAIN_ARCH"/"$arg"
-		if grep -q "appimage" ./am-scripts/"$MAIN_ARCH"/"$arg".old; then
-			sed -n '17,44p' ./am-scripts/"$MAIN_ARCH"/"$arg".old >> ./am-scripts/"$MAIN_ARCH"/"$arg"
-			echo "	wget \"$DOWNLOADURL\" || exit 1" >> ./am-scripts/"$MAIN_ARCH"/"$arg"
-			sed -n '46,150p' ./am-scripts/"$MAIN_ARCH"/"$arg".old >> ./am-scripts/"$MAIN_ARCH"/"$arg"
-		else
-			sed -n '17,40p' ./am-scripts/"$MAIN_ARCH"/"$arg".old >> ./am-scripts/"$MAIN_ARCH"/"$arg"
-			echo "	wget \"$DOWNLOADURL\" || exit 1" >> ./am-scripts/"$MAIN_ARCH"/"$arg"
-			sed -n '42,150p' ./am-scripts/"$MAIN_ARCH"/"$arg".old >> ./am-scripts/"$MAIN_ARCH"/"$arg"
-		fi
-		rm -f ./am-scripts/"$MAIN_ARCH"/"$arg".old
-		echo "$DIVIDING_LINE"
-		;;
-	esac
-}
-
 # ------------------------------------------------------------------------
 # CUSTOM LAUNCHERS GENERATOR
 # ------------------------------------------------------------------------
@@ -197,21 +174,21 @@ _template_desktop_file_select_category() {
 _template_if_github() {
 	SITE="https://github.com"
 	RESPONSE=$(echo "$RESPONSE" | sed 's#https://github.com/##g' | cut -f1,2 -d'/')
-	COMMENT=$(curl $HeaderAuthWithGITPAT https://api.github.com/repos/"$RESPONSE" 2>/dev/null | grep description | sed 's/"description": "//' | sed 's/",//' | cut -c 3-)
-	[ -z "$COMMENT" ] && [ -z "$HeaderAuthWithGITPAT" ] && COMMENT=$(curl "$ALT_GH"/repos/"$RESPONSE" 2>/dev/null | grep description | sed 's/"description": "//' | sed 's/",//' | cut -c 3-)
-	CURL_COMMAND_REF="curl -Ls https://api.github.com/repos"
-	CURL_COMMAND_REF_PREVIEW="curl -Ls $HeaderAuthWithGITPAT https://api.github.com/repos"
+	COMMENT=$(_use_online_reading_tool $HeaderAuthWithGITPAT https://api.github.com/repos/"$RESPONSE" 2>/dev/null | grep description | sed 's/"description": "//' | sed 's/",//' | cut -c 3-)
+	[ -z "$COMMENT" ] && [ -z "$HeaderAuthWithGITPAT" ] && COMMENT=$(_use_online_reading_tool "$ALT_GH"/repos/"$RESPONSE" 2>/dev/null | grep description | sed 's/"description": "//' | sed 's/",//' | cut -c 3-)
+	CURL_COMMAND_REF="$CURLLS https://api.github.com/repos"
+	CURL_COMMAND_REF_PREVIEW="$CURLLS $HeaderAuthWithGITPAT https://api.github.com/repos"
 	GH_API_ALLOWED=$(_use_online_reading_tool "https://api.github.com/rate_limit" | tr '{,' '\n' | grep -i remaining | tail -1 | grep -Eo "[0-9]*")
 	if [ "$GH_API_ALLOWED" -le 10 ]; then
-		CURL_COMMAND_REF_PREVIEW="curl -Ls $ALT_GH/repos"
+		CURL_COMMAND_REF_PREVIEW="$CURLLS $ALT_GH/repos"
 	fi
 }
 
 _template_if_codeberg() {
 	SITE="https://codeberg.org"
 	RESPONSE=$(echo "$RESPONSE" | sed 's#https://codeberg.org/##g' | cut -f1,2 -d'/')
-	COMMENT=$(curl https://codeberg.org/"$RESPONSE" 2>/dev/null | grep "description.*content" | tail -1 | sed 's/content="/\n/; s/">//g' | tail -1)
-	CURL_COMMAND_REF="curl -Ls https://codeberg.org"
+	COMMENT=$(_use_online_reading_tool https://codeberg.org/"$RESPONSE" 2>/dev/null | grep "description.*content" | tail -1 | sed 's/content="/\n/; s/">//g' | tail -1)
+	CURL_COMMAND_REF="$CURLLS https://codeberg.org"
 	CURL_COMMAND_REF_PREVIEW="$CURL_COMMAND_REF"
 }
 
@@ -229,7 +206,7 @@ _template_if_git_repo() {
 		FUNCTION=''"$CURL_COMMAND_REF"'/'"$RESPONSE"'/releases | sed '"$q"'s/[()",{} ]/\\n/g'"$q"' | grep -oi "https.*download.*mage$" | grep -vi "i386\\|i686\\|armhf\\|aarch64\\|arm64\\|armv7l" | head -1'
 		if ! eval "$CURL_COMMAND_REF/$RESPONSE/releases" | sed 's/[()",{} ]/\n/g' | grep -q "https.*download.*mage$"; then
 			AIA="1"
-			wget -q "$AMREPO"/templates/AM-SAMPLE-AppImage-in-archive -O ./am-scripts/"$MAIN_ARCH"/"$arg"
+			_use_online_downloader "$AMREPO"/templates/AM-SAMPLE-AppImage-in-archive ./am-scripts/"$MAIN_ARCH"/"$arg"
 			sed -i "s/SAMPLE/$arg/g" ./am-scripts/"$MAIN_ARCH"/"$arg"
 		fi
 		[ -n "$AIA" ] && FUNCTION=$(echo "$FUNCTION" | sed 's/mage\$//g')
@@ -257,7 +234,7 @@ _template_test_github_alt_architectures_url() {
 		GHURLPREVIEW_ARM64=$(eval "$GHURLPREVIEW_COMMAND_ARM64")
 		if [ -n "$GHURLPREVIEW_ARM64" ]; then
 			if [ ! -f ./am-scripts/aarch64-apps ]; then
-				curl -Lo am-scripts/aarch64-apps "$AMREPO_MAIN/programs/aarch64-apps" 2>/dev/null \
+				_use_online_downloader "$AMREPO_MAIN/programs/aarch64-apps" am-scripts/aarch64-apps \
 				|| printf "%b\nERROR: Cannot download \n$AMREPO_MAIN/programs/aarch64-apps\nPlease download it manually! \n%b\n" "$DIVIDING_LINE" "$DIVIDING_LINE" | _fit
 			fi
 			mkdir -p ./am-scripts/aarch64
@@ -372,9 +349,9 @@ _template_if_sourceforge() {
 	sourceforge_url_test=$(_use_online_reading_tool "$SOURCEFORGE" | tr '">< ' '\n' | grep -i "^https://sourceforge.net/projects/.*download" | grep -i "$filetype" | grep -vi "i386\|i686\|armhf\|aarch64\|arm64\|armv7l" | head -1)
 	if _use_online_check_tool "$sourceforge_url_test" 1> /dev/null; then
 		_edit_script_head
-		echo "version=\$(curl -Ls $SOURCEFORGE | tr '\">< ' '\n' | grep -i \"^https://sourceforge.net/projects/.*download\" | grep -i \"$filetype\" | grep -vi \"i386\\|i686\\|armhf\\|aarch64\\|arm64\\|armv7l\" | head -1)" >> ./am-scripts/"$MAIN_ARCH"/"$arg"
+		echo "version=\$($CURLLS $SOURCEFORGE | tr '\">< ' '\n' | grep -i \"^https://sourceforge.net/projects/.*download\" | grep -i \"$filetype\" | grep -vi \"i386\\|i686\\|armhf\\|aarch64\\|arm64\\|armv7l\" | head -1)" >> ./am-scripts/"$MAIN_ARCH"/"$arg"
 		_edit_script_middle
-		echo "version=\$(curl -Ls $SOURCEFORGE | tr '\">< ' '\n' | grep -i \"^https://sourceforge.net/projects/.*download\" | grep -i \"$filetype\" | grep -vi \"i386\\|i686\\|armhf\\|aarch64\\|arm64\\|armv7l\" | head -1)" >> ./am-scripts/"$MAIN_ARCH"/"$arg"
+		echo "version=\$($CURLLS $SOURCEFORGE | tr '\">< ' '\n' | grep -i \"^https://sourceforge.net/projects/.*download\" | grep -i \"$filetype\" | grep -vi \"i386\\|i686\\|armhf\\|aarch64\\|arm64\\|armv7l\" | head -1)" >> ./am-scripts/"$MAIN_ARCH"/"$arg"
 		_edit_script_ending
 		_use_online_reading_tool "$SOURCEFORGE" | tr '">< ' '\n' | grep -i "^https://sourceforge.net/projects/.*download" | grep -i "$filetype" | grep -vi "i386\|i686\|armhf\|aarch64\|arm64\|armv7l" | head -1
 		echo -e $"\n The URL above is an example of what both\n the install and update scripts will point to.\n" | _fit
@@ -391,7 +368,7 @@ _template_if_download_kde_org() {
 	download_kde_org_url_test="$RESPONSE/$tag$(_use_online_reading_tool "$RESPONSE/$tag" | tr '">< ' '\n' | grep -i "x86.64.*appimage$" | head -1)"
 	if _use_online_check_tool "$download_kde_org_url_test" 1> /dev/null; then
 		# REPLACE SCRIPT
-		wget -q "$AMREPO"/templates/AM-SAMPLE-AppImage-download_kde_org -O ./am-scripts/"$MAIN_ARCH"/"$arg"
+		_use_online_downloader "$AMREPO"/templates/AM-SAMPLE-AppImage-download_kde_org ./am-scripts/"$MAIN_ARCH"/"$arg"
 		sed -i "s/SAMPLE/$arg/g" ./am-scripts/"$MAIN_ARCH"/"$arg"
 		printf "\n $download_kde_org_url_test\n"
 		echo -e $"\n The URL above is an example of what both\n the install and update scripts will point to.\n" | _fit

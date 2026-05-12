@@ -133,7 +133,7 @@ _check_if_spooky_flag_exists() {
 _check_kind_of_installation_script() {
 	# Check if you are installing an app or a library
 	echo $" ◆ $APPNAME: starting installation script"
-	if grep -qi "^wget.*.sh.*chmod.*&&\|^curl.*main/portable2appimage" ./"$arg"; then
+	if grep -qi "^$WGETCMD.*.sh.*chmod.*&&\|^$CURLCMD.*main/portable2appimage" ./"$arg"; then
 		_download_appimagetool
 		printf $"\n This script will create an AppImage on the fly, please wait...\n"
 	elif grep -q "/usr/local/lib" ./"$arg"; then
@@ -148,13 +148,13 @@ _check_kind_of_installation_script() {
 }
 
 _apply_patches() {
-	# Patch "wget" (version 1.x) to have a progress bar and fix errors when applying patches
+	# Patch "$WGETCMD" (version 1.x) to have a progress bar and fix errors when applying patches
 	if ! echo "$FLAGS" | grep -q -- "--debug" && wget --version | head -1 | grep -q ' 1.'; then
-		wget_quiet_progress="-q --no-verbose --show-progress --progress=bar"
-		if [ "$pure_arg" != "wget" ]; then
-			sed -i "s#wget #wget $wget_quiet_progress #g" ./"$arg"
+		WGET_QUIET_PROGRESS="-q --no-verbose --show-progress --progress=bar"
+		if [ "$pure_arg" != "$WGETCMD" ]; then
+			sed -i "s#$WGETCMD #$WGETCMD $WGET_QUIET_PROGRESS #g" ./"$arg"
 		else
-			sed -i "s#^wget #wget $wget_quiet_progress #g; s#	wget #	wget $wget_quiet_progress #g" ./"$arg"
+			sed -i "s#^$WGETCMD #$WGETCMD $WGET_QUIET_PROGRESS #g; s#	$WGETCMD #	$WGETCMD $WGET_QUIET_PROGRESS #g" ./"$arg"
 		fi
 	fi
 	# Install the app so that it can rely on an icon theme (if available)
@@ -214,7 +214,7 @@ _post_installation_processes() {
 	find "${LASTDIRPATH}"/icons/* -xtype l -delete 2>/dev/null # Removes broken links
 	# If you have a broken or missing icon in your "icons" directory, download one from the catalog
 	[ -z "$(ls -A "${LASTDIRPATH}"/icons 2>/dev/null)" ] \
-		&& wget -q "$AMCATALOGUEICONS"/"$arg".png -O "${LASTDIRPATH}"/icons/"$arg" 2>/dev/null
+		&& _use_online_downloader "$AMCATALOGUEICONS"/"$arg".png "${LASTDIRPATH}"/icons/"$arg"
 	# Patch .desktop to change paths if the app is installed locally
 	if [ "$AMCLI" = "appman" ]; then
 		for a in $DATADIR/$LAUNCHERS_DIR/*-AM.desktop; do
@@ -287,6 +287,16 @@ if [ "$(ls -A "$CACHEDIR"/AMCACHEPATH 2>/dev/null)" ]; then
 	done
 fi
 
+_use_online_downloader_as_root() {
+	local file="$2"
+	local url="$1"
+	if command -v curl >/dev/null 2>&1; then
+		$SUDOCMD curl -s -Lo "$file" "$url" 2>/dev/null
+	elif command -v wget >/dev/null 2>&1; then
+		$SUDOCMD wget -q "$url" -O "$file" 2>/dev/null
+	fi
+}
+
 _install_exec_installation_script() {
 	if [ "$(ls -A "$CACHEDIR"/AMCACHEPATH 2>/dev/null)" ] && [ -n "$SUDOCMD" ]; then
 		$SUDOCMD chmod a-w "$CACHEDIR"/AMCACHEPATH
@@ -314,7 +324,7 @@ _install_exec_installation_script() {
 				if [ -n "$test_dep_sum256_old" ] && [ "$test_dep_sum256_old" != "$test_dep_sum256_new" ]; then
 					$SUDOCMD rm -f "$a"
 					printf " - %b: checksum does not match, re-downloading...\n" "$name"
-					$SUDOCMD wget -q "$AM_UTILS_SOURCE/$name-$ARCH-static" -O "$CACHEDIR"/AMCACHEPATH/"$name"
+					_use_online_downloader_as_root "$AM_UTILS_SOURCE/$name-$ARCH-static" "$CACHEDIR"/AMCACHEPATH/"$name"
 					$SUDOCMD chmod a+x "$CACHEDIR"/AMCACHEPATH/"$name"
 					printf $" - %b, downloaded from https://github.com/ivan-hc/am-utils\n" "$name" && printf "\n"
 				elif [ -z "$test_dep_sum256_old" ]; then
@@ -326,7 +336,7 @@ _install_exec_installation_script() {
 		if [ ! -f "$AMDATADIR"/disable-dependencies-prompt ]; then
 			for name in $AM_standard_dependencies; do
 				if ! command -v "$name" >/dev/null 2>&1; then
-					$SUDOCMD wget -q "$AM_UTILS_SOURCE/$name-$ARCH-static" -O "$CACHEDIR"/AMCACHEPATH/"$name"
+					_use_online_downloader_as_root "$AM_UTILS_SOURCE/$name-$ARCH-static" "$CACHEDIR"/AMCACHEPATH/"$name"
 					$SUDOCMD chmod a+x "$CACHEDIR"/AMCACHEPATH/"$name"
 					printf $" - %b, downloaded from https://github.com/ivan-hc/am-utils\n" "$name" && printf "\n"
 				fi
@@ -466,7 +476,7 @@ _3rd_party_check() {
 	echo "$@" | grep -q -- "$tp_flags" || echo "$arg" | grep -q "$tp_extensions"
 }
 
-_3rd_party_curl_detect_item() {
+_3rd_party_detect_online_item() {
 	for tp_list in $third_party_lists; do
 		[ -f "$AMDATADIR"/"$ARCH"-"$tp_list" ] && tp_lists="$tp_lists\n$(sort -u "$AMDATADIR"/"$ARCH"-"$tp_list")"
 	done
@@ -480,7 +490,7 @@ _3rd_party_template_manager() {
 		echo "$TEMPLATE_CONTENT" | sed "s#APP=SAMPLE#APP=$arg#g; \
 			s#REPLACETHIS#$tp_site_ref#g; \
 			s#FUNCTION#$awk_version#g; \
-			s#wget \"\$version\"#wget \$($third_party_url)#g; \
+			s#$WGETCMD \"\$version\"#$WGETCMD \$($third_party_url)#g; \
 			s/\*mage/\*/g" > "$CACHEDIR/extra/$arg.$tp_extension"
 		# Patch if local installation
 		[ "$AMCLI" = appman ] && sed -i "s#Exec=\$APP#Exec=$BINDIR/\$APP#g" "$CACHEDIR/extra/$arg.$tp_extension"
@@ -508,8 +518,8 @@ _3rd_party_apps_handler() {
 	tprepo_readme="${tp_extension}_readme"
 	third_party_readme="${!tprepo_readme}"
 	tp_missing_file_msg="It appears that the selected item is not available:\n\nINSTALLATION ABORTED! \n"
-	awk_version="curl -Ls $third_party_readme | grep -i \"^| $arg | .* | http.* | http.* | .* |$\" | tr '|' '\\\n' | cut -c 2- | grep . | awk -F: \"NR==$awk_ver\""
-	third_party_url="curl -Ls $third_party_readme | grep -i \"^| $arg | .* | http.* | http.* | .* |$\" | tr '|' '\\\n' | cut -c 2- | grep . | awk -F: \"NR==$awk_dl\""
+	awk_version="$CURLLS $third_party_readme | grep -i \"^| $arg | .* | http.* | http.* | .* |$\" | tr '|' '\\\n' | cut -c 2- | grep . | awk -F: \"NR==$awk_ver\""
+	third_party_url="$CURLLS $third_party_readme | grep -i \"^| $arg | .* | http.* | http.* | .* |$\" | tr '|' '\\\n' | cut -c 2- | grep . | awk -F: \"NR==$awk_dl\""
 	# Determine if a third-party app has multiple variants
 	third_party_readme_content=$(_use_online_reading_tool "$third_party_readme")
 	tpnumber=$(echo "$third_party_readme_content" | grep "^| $arg | .* | http.* | http.* | .* |$" | wc -l | sed 's/ //g')
@@ -530,8 +540,8 @@ _3rd_party_apps_handler() {
 				return 1
 			fi
 		done
-		awk_version="curl -Ls $third_party_readme | grep -i \"$d\" | tr '|' '\\\n' | cut -c 2- | grep . | awk -F: \"NR==$awk_ver\""
-		third_party_url="curl -Ls $third_party_readme | grep -i \"$d\" | tr '|' '\\\n' | cut -c 2- | grep . | awk -F: \"NR==$awk_dl\""
+		awk_version="$CURLLS $third_party_readme | grep -i \"$d\" | tr '|' '\\\n' | cut -c 2- | grep . | awk -F: \"NR==$awk_ver\""
+		third_party_url="$CURLLS $third_party_readme | grep -i \"$d\" | tr '|' '\\\n' | cut -c 2- | grep . | awk -F: \"NR==$awk_dl\""
 		tp_site_ref="$d"
 	else
 		tp_site_ref=$(echo "$third_party_readme_content" | grep -i "^| $arg | .* | http.* | http.* | .* |$" | tr '|' '\n' | cut -c 2- | grep . | awk -F: "NR==$awk_site" | sed 's/ //g')
@@ -568,7 +578,7 @@ _install_3rd_party_app() {
 	for e in $third_party_lists; do
 		arg=$(echo "$arg" | sed "s/\.$e$//g")
 	done
-	if _3rd_party_curl_detect_item; then
+	if _3rd_party_detect_online_item; then
 		_3rd_party_apps_handler
 		_install_local_script
 	else
@@ -746,7 +756,7 @@ case "$1" in
 			elif [ "$ARCH" = "aarch64" ]; then
 				FILTER=' | grep -ie "aarch64\\|arm64" '
 			fi
-			FUNCTION='curl -Ls '"$API_GITHUB_REPO"' | sed '"$q"'s/[()",{} ]/\\n/g'"$q"' | grep -oi "https.*mage$"'"$FILTER"' | head -1'
+			FUNCTION=''$CURLLS' '"$API_GITHUB_REPO"' | sed '"$q"'s/[()",{} ]/\\n/g'"$q"' | grep -oi "https.*mage$"'"$FILTER"' | head -1'
 			sed -i "s#FUNCTION)#$FUNCTION)#g" "$CACHEDIR/extra/$EXTERNAL_APP_NAME"
 			[ -n "$APP_KEYWORD" ] && sed -i "s# head -1# grep -i \"$APP_KEYWORD\" | head -1#g" "$CACHEDIR/extra/$EXTERNAL_APP_NAME"
 			chmod a+x "$CACHEDIR/extra/$EXTERNAL_APP_NAME"
