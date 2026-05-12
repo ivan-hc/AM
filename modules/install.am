@@ -149,12 +149,15 @@ _check_kind_of_installation_script() {
 
 _apply_patches() {
 	# Patch "$WGETCMD" (version 1.x) to have a progress bar and fix errors when applying patches
-	if ! echo "$FLAGS" | grep -q -- "--debug" && [ -n "$WGETV" ]; then
-		WGET_QUIET_PROGRESS="-q --no-verbose --show-progress --progress=bar"
-		if [ "$pure_arg" != "$WGETCMD" ]; then
-			sed -i "s#$WGETCMD #$WGETCMD $WGET_QUIET_PROGRESS #g" ./"$arg"
-		else
-			sed -i "s#^$WGETCMD #$WGETCMD $WGET_QUIET_PROGRESS #g; s#	$WGETCMD #	$WGETCMD $WGET_QUIET_PROGRESS #g" ./"$arg"
+	if ! echo "$FLAGS" | grep -q -- "--debug"; then
+		if [ -n "$WGETV" ]; then
+			if [ "$pure_arg" != "$WGETCMD" ]; then
+				sed -i "s#$WGETCMD #$WGETCMD -q --no-verbose --show-progress --progress=bar #g" ./"$arg"
+			else
+				sed -i "s#$WGETCMD #$CURLCMD -LJO --progress-bar --write-out 'Downloaded %{size_download} bytes in %{time_total} seconds' #g" ./"$arg"
+			fi
+		elif command -v curl >/dev/null 2>&1; then
+			sed -i "s#$WGETCMD #$CURLCMD -LJO --progress-bar --write-out 'Downloaded %{size_download} bytes in %{time_total} seconds' #g" ./"$arg"
 		fi
 	fi
 	# Install the app so that it can rely on an icon theme (if available)
