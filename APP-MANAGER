@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="10.1.1-5"
+AMVERSION="10.1.1-6"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -117,9 +117,11 @@ if ! command -v wget >/dev/null 2>&1 && ! command -v curl >/dev/null 2>&1; then
 fi
 
 # Export variables for such commands to avoid confusion
-export CURLLS="curl -Ls" # This will be added in variables
 CURLCMD="curl"
 WGETCMD="wget"
+export CURLLS="curl -Ls" # This will be added in variables
+export CURLPROGRES="$CURLCMD -LJO --progress-bar --write-out 'Downloaded %{size_download} bytes in %{time_total} seconds'"
+export WGETPROGRESS="$WGETCMD -q --no-verbose --show-progress --progress=bar"
 
 if command -v wget >/dev/null 2>&1 && wget --version 2>/dev/null | head -1 | grep -qi "$WGETCMD.* 1." ; then
 	WGETV="1"
@@ -549,8 +551,8 @@ _checksum_on_standard_dependencies() {
 }
 
 # Use static binaries as a fallback solution in case there are no dependencies
-AM_core_dependencies="cat chmod chown $CURLCMD grep sed $WGETCMD"
-AM_opt_dependencies="7z ar column du file md5sum mv notify-send sha1sum sha256sum sha512sum tar unxz unzip xz xzcat"
+AM_core_dependencies="cat chmod chown $CURLCMD grep sed"
+AM_opt_dependencies="7z ar column du file md5sum mv notify-send sha1sum sha256sum sha512sum tar unxz unzip $WGETCMD xz xzcat"
 AM_standard_dependencies="$AM_core_dependencies $AM_opt_dependencies"
 _deps_dl() {
 	_use_online_downloader "$AM_UTILS_SOURCE/$name-$ARCH-static" "$CACHEDIR"/AMCACHEPATH/"$name"
@@ -711,14 +713,6 @@ if command -v unshare >/dev/null 2>&1 && ! unshare -Urm /bin/true 2>/dev/null; t
 	echo ""
 	echo "$DIVIDING_LINE"
 fi
-
-# Function to check if the installed version of $WGETCMD is the real $WGETCMD or is a fake (Fedora mess)
-_check_fedora_mess() {
-	if [ -z "$WGETV" ]; then
-		printf $"\n%bWARNING: your distro maintainer ships \"wget2\" as \"wget\" \033[0m\n\n" "${RED}" | _fit
-		[ -f /etc/redhat-release ] && printf $"Please install \"%bwget1\033[0m\" and \"%bwget1-wget\033[0m\" (use %b--allowerasing\033[0m if you have to)\n\nSee https://bugzilla.redhat.com/show_bug.cgi?id=2358792\n\n" "${Gold}" "${Gold}" "${Green}" | _fit
-	fi
-}
 
 # Check if appimagetool is installed, and if it is not installed, download and use it where it is needed
 _download_appimagetool() {
@@ -2032,7 +2026,6 @@ _use_update() {
 	_online_check
 	_update_github_api_key_in_the_updater_files
 	_clean_all_tmp_directories_from_appspath >/dev/null
-	_check_fedora_mess
 
 	ENTRIES="$(echo "$@" | cut -f2- -d ' ' | tr ' ' '\n' | grep -v -- "^-\|^$1$")"
 	FLAGS=$(echo "$@" | tr ' ' '\n' | grep -- "--" | tr '\n ' ' ')
@@ -2174,7 +2167,6 @@ case "$1" in
 	'reinstall')
 		MODULE="install.am"
 		_online_check
-		_check_fedora_mess
 		[ "$CLI" = am ] && [ -f "$APPMANCONFIG"/appman-mode ] && [ -z "$IMMUTABLE_ON" ] && printf "%b\n" "$APPMAN_MSG"
 		_use_module "$@"
 		;;
