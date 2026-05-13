@@ -95,7 +95,6 @@ If the following dependencies are not present in your system, "AM"/"AppMan" will
 | `curl` | network utility needed to read online text like lists, URLs and versions | not in all distibutions |
 | `grep` | a string search utility | YES, on many distributions |
 | `sed` | stream editor for filtering and transforming text | YES, in almost all distributions |
-| `wget` | network utility needed to download files from the web like scripts and packages | not in all distibutions, sometime replaced with different commands like `curl` or as wrapper for `wget2` |
 
 *NOTE, if you install "AM" (system) and not "AppMan" (local), **you need `sudo` or `doas` for root privileges**.*
 
@@ -126,6 +125,7 @@ Here is a table of "optional" commands that may be needed on your system:
 | `tar` | required for .tar packages, and available in the `tar` package |
 | `unxz` `xz` `xzcat` | required as support for other commands for extracting .deb, .tar and similar packages, and package name may be vary |
 | `unzip` | required for .zip packages, and available in the `unzip` package |
+| `wget` | network utility needed to download files from the web like scripts and packages | not in all distibutions, sometime replaced with different commands like `curl` or as wrapper for `wget2` |
 
 </details>
 
