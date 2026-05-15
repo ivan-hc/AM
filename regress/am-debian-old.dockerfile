@@ -5,12 +5,11 @@
 # Use the official Debian Jessie image as a parent image
 FROM debian:jessie
 
-# Install dependencies and AM
-# Notes: 7zip not available in Jessie, and GPG warnings is normal, repos are archieved
+# Install dependencies and AM (GPG warnings are normal as repos are archieved)
 RUN echo 'deb http://archive.debian.org/debian jessie main contrib non-free' > /etc/apt/sources.list
 RUN echo 'deb http://archive.debian.org/debian-security jessie/updates main contrib non-free' >> /etc/apt/sources.list
 RUN echo 'Apt::Get::AllowUnauthenticated "true";' > /etc/apt/apt.conf.d/99verify-apt-https
-RUN apt update && apt full-upgrade -y && apt install -y sudo wget curl git fuse bsdmainutils file locales unzip xz-utils libterm-readline-gnu-perl libnotify-bin binutils
+RUN apt update && apt full-upgrade -y && apt install -y sudo wget curl git fuse bsdmainutils file locales unzip xz-utils libterm-readline-gnu-perl libnotify-bin p7zip-full binutils
 RUN cd && wget https://raw.githubusercontent.com/ivan-hc/AM/main/INSTALL && chmod a+x ./INSTALL && sudo ./INSTALL && rm ./INSTALL
 
 # Copy regression folder

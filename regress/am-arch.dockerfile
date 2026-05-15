@@ -6,7 +6,7 @@
 FROM archlinux:latest
 
 # Install dependencies and AM
-RUN pacman-key --init && pacman -Sy && pacman -Su --noconfirm sudo wget curl less git glibc fuse3 file unzip xz 7zip libnotify
+RUN pacman-key --init && pacman -Sy && pacman -Su --noconfirm sudo wget curl less git glibc fuse3 file unzip xz 7zip libnotify which
 RUN cd && wget https://raw.githubusercontent.com/ivan-hc/AM/main/INSTALL && chmod a+x ./INSTALL && sudo ./INSTALL && rm ./INSTALL
 
 # Copy regression folder
