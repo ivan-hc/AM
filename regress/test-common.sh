@@ -86,8 +86,8 @@ _pass() {
 # Function to remove all AM apps
 _remove_all_apps() {
 	# Remove AM local apps
-	printf "y\n" | am --user
-	apps=$(ls ~/Applications/ | xargs)
+	printf "Y\n" | am --user
+	apps=$(ls ~/Applications/ 2>/dev/null | xargs)
 	for a in $apps; do
 		am unhide "$a"
 		~/Applications/"$a"/remove
@@ -95,7 +95,7 @@ _remove_all_apps() {
 
 	# Remove AM system apps
 	am --system
-	apps=$(ls /opt/ | xargs)
+	apps=$(ls /opt/ 2>/dev/null | xargs)
 	for a in $apps; do
 		if [ "$a" != am ]; then
 			am unhide "$a"

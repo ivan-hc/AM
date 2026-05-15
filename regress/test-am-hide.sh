@@ -8,11 +8,11 @@ test_results=".results.tmp"
 app_name1=$(_pick_random_app "$TEST_APP_LIST_ZIP") && TEST_APP_LIST_ZIP=$(_remove_item "$TEST_APP_LIST_ZIP" "$app_name1")
 app_name2=$(_pick_random_app "$TEST_APP_LIST_ZIP")
 
-## Setup
+# Setup
 _log "Running hide/unhide test: $0"
 
 # Install app locally
-printf "y\n" |\
+printf "Y\n" |\
 am --user
 am -i "$app_name1"
 

@@ -18,7 +18,7 @@ RUN locale-gen && update-locale LANG=en_US.UTF-8
 ENV LC_ALL en_US.UTF-8
 
 # Setup AM with safe defaults
-RUN printf "y\n\n" | am --user && am --system && am --disable-notifications
+RUN printf "Y\n\n" | am --user && am --system && am --disable-notifications
 
 # Setup env
 RUN echo "export PATH=$PATH:/root/.local/bin" >> ~/.bashrc

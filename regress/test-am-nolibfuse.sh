@@ -24,7 +24,7 @@ _check_count "error.*libfuse" 1 "$test_results"
 
 # Remove libfuse2 dependency
 _log "Removing libfuse2 dependency..."
-printf "y\n" |\
+printf "Y\n" |\
 am nolibfuse "$app_name"
 
 # Test app

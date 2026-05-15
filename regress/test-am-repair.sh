@@ -7,7 +7,7 @@
 test_results=".results.tmp"
 app_name=$(_pick_random_app "$TEST_APP_LIST_ZSYNC")
 
-## Setup
+# Setup
 _log "Running app repair test: $0"
 am --system
 

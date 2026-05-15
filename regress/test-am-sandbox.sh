@@ -6,7 +6,7 @@
 # Test variables
 test_results=".results.tmp"
 
-## Setup
+# Setup
 _log "Running sandbox test: $0"
 mkdir -p ~/Desktop/test_dir
 mkdir -p ~/Documents/test_dir
@@ -18,7 +18,7 @@ am -i aisap
 # Install and sandbox a simple appimage command line tool
 _log "Sandboxing app (access to only ~/Desktop)..."
 am -R bench-cli
-printf "y\ny\nn\nn\nn\nn\nn\nn\nn\n" |\
+printf "Y\nY\nN\nN\nN\nN\nN\nN\nN\n" |\
 am -ias bench-cli
 
 # Test directory access
@@ -35,7 +35,7 @@ am --disable-sandbox bench-cli
 
 # Remove libfuse2 dependency
 _log "Removing libfuse2 dependency..."
-printf "y\n" |\
+printf "Y\n" |\
 am nolibfuse bench-cli
 
 # Test directory access

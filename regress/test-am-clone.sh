@@ -9,7 +9,7 @@ app_name1=$(_pick_random_app "$TEST_APP_LIST_ZIP")
 app_name2=$(_pick_random_app "$TEST_APP_LIST_ZSYNC")
 app_name3=$(_pick_random_app "$TEST_APP_LIST_NOCHK")
 
-## Setup
+# Setup
 _log "Running clone install list test: $0"
 rm -f ~/Desktop/am-clone.source am-clone.source
 _remove_all_apps
@@ -21,7 +21,7 @@ am -i "$app_name1" "$app_name2" "$app_name3"
 
 # Install in User Mode
 _log "Installing all apps in user mode..."
-printf "y\n" |\
+printf "Y\n" |\
 am --user
 am -i "$app_name1" "$app_name2" "$app_name3"
 
@@ -34,10 +34,10 @@ _check_count "$app_name2.*|" 2 "$test_results"
 _check_count "$app_name3.*|" 2 "$test_results"
 
 # Hide/lock apps to complicate clone process
-printf "y\n" |\
+printf "Y\n" |\
 am --user
 am hide "$app_name1"
-printf "y\n" |\
+printf "Y\n" |\
 am lock "$app_name2"
 am --system
 printf "1\n" |\
@@ -53,7 +53,7 @@ _check_count "am-clone.source" 1 "$test_results"
 
 # Remove all apps and and then reinstall them (clone previous setup)
 _remove_all_apps
-printf "y\n" |\
+printf "Y\n" |\
 am clone install
 
 # Check listing

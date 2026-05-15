@@ -8,7 +8,7 @@ test_results=".results.tmp"
 app_name=$(_pick_random_app "$TEST_APP_LIST_ZIP")
 app_name_old=$(_pick_random_app "$TEST_APP_LIST_OLD")
 
-## Setup
+# Setup
 _log "Running multi-user install test: $0"
 am --system
 
@@ -18,7 +18,7 @@ am -i "$app_name"
 
 # Install in User Mode
 _log "Installing $app_name in user mode..."
-printf "y\n" |\
+printf "Y\n" |\
 am --user
 am -i "$app_name"
 
@@ -30,9 +30,9 @@ _check_count "$app_name.*|" 2 "$test_results"
 
 # Remove in User Mode
 _log "Removing $app_name in user mode..."
-printf "y\n" |\
+printf "Y\n" |\
 am --user
-printf "y\n" |\
+printf "Y\n" |\
 am -r "$app_name"
 
 # Check for Errors

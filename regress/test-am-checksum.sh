@@ -11,7 +11,7 @@ app_name_digest=$(_pick_random_app "$TEST_APP_LIST_DIG")
 app_name_zip=$(_pick_random_app "$TEST_APP_LIST_ZIP")
 app_name_nochk=$(_pick_random_app "$TEST_APP_LIST_NOCHK")
 
-## Setup
+# Setup
 _log "Running checksum test: $0"
 am --system
 

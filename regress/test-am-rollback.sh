@@ -7,7 +7,7 @@
 test_results=".results.tmp"
 app_name1=$(_pick_random_app "$TEST_APP_LIST_DOWN")
 
-## Setup
+# Setup
 _log "Running version rollback test: $0"
 am --system
 am -R "$app_name1"
@@ -21,21 +21,21 @@ app_ver_latest="$(_get_app_info "$app_name1" 2)"
 
 # Test rollback
 _log "Test rollback $app_name1..."
-printf "y\n2\n" |\
+printf "Y\n2\n" |\
 am downgrade "$app_name1"
 app_ver_old="$(_get_app_info "$app_name1" 2)"
 [ "$app_ver_old" = "$app_ver_latest" ] && _fail "Error: \"$app_name1\" version rollback failed"
 
 # Test lock
 _log "Test lock $app_name1..."
-printf "y\n" |\
+printf "Y\n" |\
 am lock "$app_name1"
 app_ver_old_locked="$(_get_app_info "$app_name1" 2)"
 [ "$app_ver_old_locked" = "$app_ver_old" ] && _fail "Error: \"$app_name1\" version lock failed"
 
 # Test backup
 _log "Backing up old version of $app_name1..."
-printf "y\n\n" |\
+printf "Y\n\n" |\
 am backup "$app_name1"
 
 # Try to update locked app
@@ -47,7 +47,7 @@ app_ver_old_updated="$(_get_app_info "$app_name1" 2)"
 
 # Test unlock
 _log "Test unlock $app_name1..."
-printf "y\n" |\
+printf "Y\n" |\
 am unlock "$app_name1"
 app_ver_old_unlocked="$(_get_app_info "$app_name1" 2)"
 [ "$app_ver_old_unlocked" != "$app_ver_old" ] && _fail "Error: \"$app_name1\" version unlock failed"
@@ -61,7 +61,7 @@ app_ver_old_updated="$(_get_app_info "$app_name1" 2)"
 
 # Test restore
 _log "Test restore backed up version of $app_name1..."
-printf "y\n1\n" |\
+printf "Y\n1\n" |\
 am -o "$app_name1"
 app_ver_old_restored="$(_get_app_info "$app_name1" 2)"
 [ "$app_ver_old_restored" != "$app_ver_old_locked" ] && _fail "Error: \"$app_name1\" version was not restored correctly"
