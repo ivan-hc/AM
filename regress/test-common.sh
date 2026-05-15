@@ -24,6 +24,9 @@ TEST_APP_LIST_DOWN="clifm aisap fcp zsync2"
 # List of test apps that use tar.xz (REQUIREMENTS: Under 5MB, simple install script)
 TEST_APP_LIST_XZ="boxxy onefetch spotifetch lovesay"
 
+# List of core utility apps that is to be hidden/restored for dependency testing
+AM_OPT_DEPS="7z ar md5sum sha1sum sha256sum sha512sum tar unzip wget xz xzcat"
+
 # Function to randomly pick an app from a list
 _pick_random_app() {
 	# Get count
