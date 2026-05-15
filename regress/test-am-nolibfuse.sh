@@ -7,8 +7,9 @@
 test_results=".results.tmp"
 app_name="bench-cli"
 
-## Setup
+# Setup
 _log "Running libfuse2 removal test: $0"
+_hide_libfuse2
 am --system
 
 # Install a known archived command line tool that uses libfuse2
@@ -32,6 +33,7 @@ _log "Testing app to see if libfuse2 error is gone..."
 _check_count "error.*libfuse" 0 "$test_results"
 
 # Pass the test
+_restore_libfuse2
 _remove_all_apps
 _pass
 
