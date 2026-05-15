@@ -20,6 +20,7 @@ _log "Done.\n"
 ./test-am-nolibfuse.sh
 ./test-am-rollback.sh
 ./test-am-clone.sh
+./test-am-utils.sh
 
 # Done
 _log "Regression testing complete:"

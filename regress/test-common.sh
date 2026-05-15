@@ -21,6 +21,9 @@ TEST_APP_LIST_OLD="aisap bench-cli colorstatic-bash"
 # List of test apps that can be downgraded (REQUIREMENTS: Under 5MB, simple install script)
 TEST_APP_LIST_DOWN="clifm aisap fcp zsync2"
 
+# List of test apps that use tar.xz (REQUIREMENTS: Under 5MB, simple install script)
+TEST_APP_LIST_XZ="boxxy onefetch spotifetch lovesay"
+
 # Function to randomly pick an app from a list
 _pick_random_app() {
 	# Get count
