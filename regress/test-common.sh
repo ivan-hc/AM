@@ -135,3 +135,45 @@ _check_count() {
 	fi
 }
 
+# Function to hide libfuse.so.2
+_hide_libfuse2() {
+	libfuse_path=$(find /usr/lib* /lib* -name "libfuse.so.2" 2>/dev/null | head -1)
+
+	if [ -n "$libfuse_path" ] && [ -f "$libfuse_path" ]; then
+		echo "Renaming $libfuse_path to ${libfuse_path}.bak"
+		mv "$libfuse_path" "${libfuse_path}.bak" && sync
+	else
+		echo "libfuse.so.2 not found, backup not needed."
+	fi
+}
+
+# Function to restore libfuse.so.2
+_restore_libfuse2() {
+	libfusebak_path=$(find /usr/lib* /lib* -name "libfuse.so.2.bak" 2>/dev/null | head -1)
+	libfuse_path="${libfusebak_path%.bak}"
+
+	if [ -n "$libfusebak_path" ] && [ -f "$libfusebak_path" ]; then
+		echo "Restoring $libfuse_path from ${libfusebak_path}"
+		mv "$libfusebak_path" "$libfuse_path" && sync
+	else
+		echo "libfuse.so.2.bak not found, restore not needed."
+	fi
+}
+
+# Function to hide a list binaries
+_hide_binaries() {
+	for bin in $1; do
+		path=$(which "$bin" 2>/dev/null)
+		[ -n "$path" ] && [ -x "$path" ] && mv "$path" "$path.bak" && sync && echo "$path hidden"
+	done
+}
+
+# Function to restore a list binaries
+_restore_binaries() {
+	for bin in $1; do
+		path_bak=$(which "$bin.bak" 2>/dev/null)
+		path="${path_bak%.bak}"
+		[ -n "$path_bak" ] && [ -f "$path_bak" ] && mv "$path_bak" "$path" && sync && echo "$path restored"
+	done
+}
+
