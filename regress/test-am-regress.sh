@@ -6,7 +6,7 @@
 # Setup
 rm -f $TEST_LOG
 _log "Regression testing setup:"
-_restore_binaries
+_restore_binaries "$AM_OPT_DEPS"
 _remove_all_apps
 am --system
 am clean
