@@ -15,12 +15,14 @@ am --system
 # Install in System Mode
 _log "Installing $app_name in system mode..."
 am -i "$app_name"
+_test_apps "$app_name"
 
 # Install in User Mode
 _log "Installing $app_name in user mode..."
 printf "Y\n" |\
 am --user
 am -i "$app_name"
+_test_apps "$app_name"
 
 # Check Listing
 _log "Checking if $app_name is installed in both user/system modes..."
@@ -43,6 +45,7 @@ _check_count "$app_name.*|" 0 "$test_results"
 # Reinstall in User Mode
 _log "Installing $app_name in user mode again..."
 am -i "$app_name"
+_test_apps "$app_name"
 
 # Remove in System Mode and User Mode (option 2)
 _log "Removing $app_name in user & system mode..."
@@ -60,6 +63,7 @@ _check_count "$app_name.*|" 0 "$test_results"
 _log "Installing $app_name_old (outdated) in both system/user modes..."
 am -i "$app_name_old"
 am -i --user "$app_name_old"
+_test_apps "$app_name_old"
 
 # Check for "old release msg"
 _log "Checking if $app_name_old (outdated) is listed in both system/user modes with warnings..."

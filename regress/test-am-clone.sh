@@ -64,6 +64,9 @@ _check_count "$app_name1.*|" 1 "$test_results"
 _check_count "$app_name2.*|" 1 "$test_results"
 _check_count "$app_name3.*|" 2 "$test_results"
 
+# Check if apps were installed correctly
+_test_apps "$app_name1 $app_name2 $app_name3"
+
 # Pass the test
 _remove_all_apps
 _pass

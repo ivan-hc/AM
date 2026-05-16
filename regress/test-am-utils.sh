@@ -15,7 +15,7 @@ all_apps="$app_name1 $app_name2 $app_name3 $app_name4"
 _log "Running am-utils dependency test: $0"
 
 # Hide core tools and check if AM detects them as missing
-_hide_binaries "$AM_OPT_DEPS"
+_hide_binaries
 printf "N\n" |\
 am clean
 printf "N\n" |\
@@ -35,13 +35,7 @@ _check_count "Missing command(s)" 0 "$test_results"
 _log "Installing all apps in system mode..."
 am -i "$all_apps" > "$test_results"
 _check_count "checksum.*verified" 4 "$test_results"
-
-# Check if apps were installed correctly
-for prog in $all_apps; do
-    if ! command -v "$prog" > /dev/null 2>&1; then
-		_fail "Error: $prog was not installed correctly (--system)."
-    fi
-done
+_test_apps "$all_apps"
 
 # Install in User Mode
 _log "Installing all apps in user mode..."
@@ -50,16 +44,10 @@ printf "Y\n" |\
 am --user
 am -i "$all_apps" > "$test_results"
 _check_count "checksum.*verified" 4 "$test_results"
-
-# Check if apps were installed correctly
-for prog in $all_apps; do
-    if ! command -v "$prog" > /dev/null 2>&1; then
-		_fail "Error: $prog was not installed correctly (--user)."
-    fi
-done
+_test_apps "$all_apps"
 
 # Restore binaries
-_restore_binaries "$AM_OPT_DEPS"
+_restore_binaries
 am clean
 printf "N\n" |\
 am -f > "$test_results"

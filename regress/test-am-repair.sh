@@ -32,6 +32,7 @@ _log "Fixing $app_name and checking for checksum verification success..."
 am -u "$app_name"
 am -f > "$test_results"
 _check_count "$app_name.*\✓" 1 "$test_results"
+_test_apps "$app_name"
 
 # Pass the test
 _remove_all_apps

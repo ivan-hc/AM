@@ -18,6 +18,7 @@ am -i "$app_name1"
 am -f > "$test_results"
 _check_count "$app_name1.*|" 1 "$test_results"
 app_ver_latest="$(_get_app_info "$app_name1" 2)"
+_test_apps "$app_name1"
 
 # Test rollback
 _log "Test rollback $app_name1..."
@@ -25,6 +26,7 @@ printf "Y\n2\n" |\
 am downgrade "$app_name1"
 app_ver_old="$(_get_app_info "$app_name1" 2)"
 [ "$app_ver_old" = "$app_ver_latest" ] && _fail "Error: \"$app_name1\" version rollback failed"
+_test_apps "$app_name1"
 
 # Test lock
 _log "Test lock $app_name1..."
@@ -58,6 +60,7 @@ am -u "$app_name1" > "$test_results"
 _check_count "cannot be updated" 0 "$test_results"
 app_ver_old_updated="$(_get_app_info "$app_name1" 2)"
 [ "$app_ver_old_updated" != "$app_ver_latest" ] && _fail "Error: \"$app_name1\" version cannot be updated despite unlocked status"
+_test_apps "$app_name1"
 
 # Test restore
 _log "Test restore backed up version of $app_name1..."
@@ -65,6 +68,7 @@ printf "Y\n1\n" |\
 am -o "$app_name1"
 app_ver_old_restored="$(_get_app_info "$app_name1" 2)"
 [ "$app_ver_old_restored" != "$app_ver_old_locked" ] && _fail "Error: \"$app_name1\" version was not restored correctly"
+_test_apps "$app_name1"
 
 # Pass the test
 rm -rf ~/.am-snapshots

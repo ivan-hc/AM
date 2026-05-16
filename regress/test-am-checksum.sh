@@ -38,6 +38,9 @@ _check_count "checksum auto-verified" 1 "$test_results"
 am -i "$app_name_nochk" > "$test_results"
 _check_count "checksum verified" 0 "$test_results"
 
+# Check if apps were installed correctly
+_test_apps "$app_name1 $app_name2 $app_name_digest $app_name_zip $app_name_nochk"
+
 # Pass the test
 _remove_all_apps
 _pass
