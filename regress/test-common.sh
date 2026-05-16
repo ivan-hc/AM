@@ -168,7 +168,11 @@ _restore_libfuse2() {
 
 # Function to hide a list binaries
 _hide_binaries() {
-	for bin in $1; do
+	# Use default list if none specified
+	binaries=$1
+	[ -z "$binaries" ] && binaries="$AM_OPT_DEPS"
+	# Iterate through list and hide each one
+	for bin in $binaries; do
 		path=$(which "$bin" 2>/dev/null)
 		[ -n "$path" ] && [ -x "$path" ] && mv "$path" "$path.bak" && sync && echo "$path hidden"
 	done
@@ -176,10 +180,23 @@ _hide_binaries() {
 
 # Function to restore a list binaries
 _restore_binaries() {
-	for bin in $1; do
+	# Use default list if none specified
+	binaries=$1
+	[ -z "$binaries" ] && binaries="$AM_OPT_DEPS"
+	# Iterate through list and restore each one
+	for bin in $binaries; do
 		path_bak=$(which "$bin.bak" 2>/dev/null)
 		path="${path_bak%.bak}"
 		[ -n "$path_bak" ] && [ -f "$path_bak" ] && mv "$path_bak" "$path" && sync && echo "$path restored"
+	done
+}
+
+# Function to test a list installed appimages if their binaries are available and executable
+_test_apps() {
+	for prog in $1; do
+		if ! command -v "$prog" > /dev/null 2>&1; then
+			_fail "Error: $prog was not installed correctly."
+		fi
 	done
 }
 
