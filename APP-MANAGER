@@ -1876,7 +1876,11 @@ _update_print_updated_apps_table() {
 		old_app=$(grep -F " ◆ $arg " "$OLDVER" | head -1)
 		old_version=$(printf "%s\n" "$old_app" | sed "s/^ ◆ $arg //; s/\x1b\[[0-9;]*m//g; s/[✖✓🔒]//g; s/  */ /g; s/ $//")
 		new_version=$(printf "%s\n" "$updated_app" | sed "s/^ ◆ $arg //; s/\x1b\[[0-9;]*m//g; s/[✖✓🔒]//g; s/  */ /g; s/ $//")
-		printf "%s\t%s\t%s\n" "$arg" "$old_version" "$new_version"
+		old_marker=$(printf "%s\n" "$old_app" | grep -o '[✖✓🔒]' | head -1)
+		new_marker=$(printf "%s\n" "$updated_app" | grep -o '[✖✓🔒]' | head -1)
+		checksum_note=""
+		[ "$old_version" = "$new_version" ] && [ "$old_marker" != "$new_marker" ] && checksum_note="($(echo $"checksum changed"))"
+		printf "%s\t%s\t%s\t%s\n" "$arg" "$old_version" "$new_version" "$checksum_note"
 	done | awk -F '\t' -v blue="$LightBlue" -v reset="\033[0m" -v app_header="$app_header" -v old_header="$old_header" -v new_header="$new_header" '
 		BEGIN {
 			app_width = length(app_header)
@@ -1887,16 +1891,17 @@ _update_print_updated_apps_table() {
 			apps[NR] = $1
 			old_versions[NR] = $2
 			new_versions[NR] = $3
+			notes[NR] = $4
 			if (length($1) > app_width) app_width = length($1)
 			if (length($2) > old_width) old_width = length($2)
 			if (length($3) > new_width) new_width = length($3)
 		}
 		END {
 			header_format = "     %s%-" app_width "s%s  %s%-" old_width "s%s  %s%-" new_width "s%s\n\n"
-			row_format = "%2d.  %-" app_width "s  %-" old_width "s  %-" new_width "s\n"
+			row_format = "%2d.  %-" app_width "s  %-" old_width "s  %-" new_width "s  %s\n"
 			printf header_format, blue, app_header, reset, blue, old_header, reset, blue, new_header, reset
 			for (i = 1; i <= NR; i++) {
-				printf row_format, i, apps[i], old_versions[i], new_versions[i]
+				printf row_format, i, apps[i], old_versions[i], new_versions[i], notes[i]
 			}
 		}
 	'
