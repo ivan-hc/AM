@@ -575,6 +575,75 @@ _install_3rd_party_app() {
 }
 
 ################################################################################
+#			INSTALL HELPER
+################################################################################
+
+_prepare_arg() {
+	arg_origin="$arg"
+	pure_arg=$(echo "$arg" | sed 's/\-appimage$//g' | sed 's:.*/::')
+	_remove_extensions_from_appname
+	echo "$arg" | grep -q -- "-appimage$" && _use_online_reading_tool "$APPSDB"/"$arg" | grep -q "APP=.*-appimage$" && pure_arg="$arg"
+}
+
+_check_and_install() {
+	[ -n "$BINDIR" ] && find "$BINDIR" -xtype l -name "$pure_arg" -delete 2>/dev/null
+	if test -f "$APPSPATH"/"$pure_arg"/remove || test -f "$APPSPATH"/"$pure_arg"/remove.old; then
+		echo $" ◆ \"$pure_arg\" is already installed!" | tr '[:lower:]' '[:upper:]'
+	else
+		arg_script=$(_use_online_reading_tool "$APPSDB/$arg" 2>/dev/null)
+		echo "$arg_script" | grep -q "^#" && _install_normally
+	fi
+}
+
+################################################################################
+#			DID YOU MEAN (FUZZY SUGGEST)
+################################################################################
+
+_levenshtein() {
+	local s="$1" t="$2"
+	local sl=${#s} tl=${#t}
+	local i j sc min del ins sub
+	local -a d
+	for ((i=0; i<=sl; i++)); do d[i*(tl+1)]=$i; done
+	for ((j=0; j<=tl; j++)); do d[j]=$j; done
+	for ((i=1; i<=sl; i++)); do
+		for ((j=1; j<=tl; j++)); do
+			sc=0; [ "${s:i-1:1}" != "${t:j-1:1}" ] && sc=1
+			del=$(( d[(i-1)*(tl+1)+j] + 1 ))
+			ins=$(( d[i*(tl+1)+j-1] + 1 ))
+			sub=$(( d[(i-1)*(tl+1)+j-1] + sc ))
+			min=$del; [ $ins -lt $min ] && min=$ins; [ $sub -lt $min ] && min=$sub
+			d[i*(tl+1)+j]=$min
+		done
+	done
+	echo "${d[sl*(tl+1)+tl]}"
+}
+
+_did_you_mean() {
+	local input="$1"
+	local applist="$AMDATADIR/$ARCH-apps"
+	[ ! -f "$applist" ] && return
+	local names match="" input_len=${#input} first_char="${input:0:1}" best_dist=3 diff dist
+	names=$(grep "^◆ " "$applist" | sed 's/^◆ //;s/ :.*$//')
+	while IFS= read -r name; do
+		[ -z "$name" ] && continue
+		diff=$(( ${#name} - input_len ))
+		[ $diff -lt 0 ] && diff=$(( -diff ))
+		[ $diff -gt 2 ] && continue
+		[ "${name:0:1}" != "$first_char" ] && continue
+		dist=$(_levenshtein "$input" "$name")
+		if [ "$dist" -lt "$best_dist" ]; then
+			best_dist=$dist
+			match=$name
+		fi
+	done <<< "$names"
+	if [ -n "$match" ]; then
+		printf $"\n Did you mean \"%b%b\033[0m\"?\n" "${LightBlue}" "$match"
+		DID_YOU_MEAN="$match"
+	fi
+}
+
+################################################################################
 #				USAGE
 ################################################################################
 
@@ -646,11 +715,7 @@ case "$1" in
 			[ -d "$APPSPATH"/"$arg"/tmp ] && $SUDOCMD "$APPSPATH"/"$arg"/remove 2> /dev/null
 
 			# Check if the app wil be installed with the same name as the argument
-			arg_origin="$arg"
-			pure_arg=$(echo "$arg" | sed 's/\-appimage$//g' | sed 's:.*/::')
-			_remove_extensions_from_appname
-			echo "$arg" | grep -q -- "-appimage$" && _use_online_reading_tool "$APPSDB"/"$arg" | grep -q "APP=.*-appimage$" && pure_arg="$arg"
-
+			_prepare_arg
 			arg_script=$(_use_online_reading_tool "$APPSDB/$arg" 2>/dev/null)
 
 			# Test if a symlink is broken
@@ -673,6 +738,17 @@ case "$1" in
 				_install_normally
 			else
 				echo $"💀 ERROR: \"$arg\" does NOT exist in the \"AM\" database, $(printf "please check the list, run the \"%b$AMCLIPATH_ORIGIN -l\033[0m\" command.\n\n" "${Gold}")" | fold -sw 72 | sed 's/^/ /g'
+				DID_YOU_MEAN=""
+				_did_you_mean "$arg"
+				if [ -n "$DID_YOU_MEAN" ]; then
+					read -r -p $" Install \"$DID_YOU_MEAN\" instead? (Y/n) " yn
+					echo ""
+					if ! echo "$yn" | grep -i '^n' >/dev/null 2>&1; then
+						arg="$DID_YOU_MEAN"
+						_prepare_arg
+						_check_and_install
+					fi
+				fi
 			fi
 			# Disable notifications if needed
 			[ -f "$AMDATADIR"/disable-notifications ] && [ -f "$APPSPATH/$LASTDIR/AM-updater" ] && sed -e '/notify-send/ s/^#*/#/' -i "$APPSPATH/$LASTDIR/AM-updater" 2>/dev/null
