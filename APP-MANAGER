@@ -114,19 +114,20 @@ MODULES_SOURCE="$AMREPO/modules"
 CURLCMD="curl"
 WGETCMD="wget"
 
-if ! command -v wget >/dev/null 2>&1 && ! command -v curl >/dev/null 2>&1; then
-	printf $" ${RED}💀 ERROR! MISSING ESSENTIAL COMMANDS\033[0m: %s\n\n Install the above and try again! \n" "$CURLCMD, $WGETCMD"
-	exit 0
-fi
-
 # Export variables for such commands to avoid confusion
 export CURLLS="$CURLCMD -Ls" # This will be added in variables
 export CURLPROGRES="$CURLCMD -LJO --progress-bar --write-out 'Downloaded %{size_download} bytes in %{time_total} seconds'"
 export WGETPROGRESS="$WGETCMD -q --no-verbose --show-progress --progress=bar"
 
-if command -v wget >/dev/null 2>&1 && wget --version 2>/dev/null | head -1 | grep -qi "$WGETCMD.* 1." ; then
-	WGETV="1"
-fi
+# Check if essential commands are available
+_check_essential_commands() {
+	if ! command -v wget >/dev/null 2>&1 && ! command -v curl >/dev/null 2>&1; then
+		printf $" ${RED}💀 ERROR! MISSING ESSENTIAL COMMANDS\033[0m: %s\n\n Install the above and try again! \n" "$CURLCMD, $WGETCMD"
+		exit 0
+	elif command -v wget >/dev/null 2>&1 && wget --version 2>/dev/null | head -1 | grep -qi "$WGETCMD.* 1." ; then
+		WGETV="1"
+	fi
+}
 
 # Identify objects online
 _use_online_check_tool() {
@@ -551,6 +552,9 @@ _checksum_on_standard_dependencies() {
 	fi
 }
 
+# Check for essential commands
+_check_essential_commands
+
 # Use static binaries as a fallback solution in case there are no dependencies
 AM_core_dependencies="cat chmod chown $CURLCMD grep sed"
 AM_opt_dependencies="7z ar column du file md5sum mv notify-send sha1sum sha256sum sha512sum tar unxz unzip $WGETCMD xz xzcat"
@@ -679,6 +683,8 @@ if [ "$ARCH" = aarch64 ] || [ "$ARCH" = x86_64 ]; then
 			done
 			wait
 			export PATH="$CACHEDIR"/AMCACHEPATH/:"${PATH}"
+            # Check for essential commands (again, with new $PATH)
+			_check_essential_commands
 		fi
 	fi
 fi
