@@ -571,6 +571,24 @@ _install_3rd_party_app() {
 	else
 		echo $" 💀 ERROR, \"$arg\" does NOT exist in 3rd-party databases"
 		printf $"\n Try again but WITHOUT the third-party flag\n"
+		local active_tp=""
+		for tp_list in $third_party_lists; do
+			echo "$FLAGS" | grep -q -- "$tp_list" && active_tp="$tp_list" && break
+		done
+		_did_you_mean "$arg" "$active_tp"
+		if [ -n "$DID_YOU_MEAN" ]; then
+			if [ -n "$DID_YOU_MEAN_FLAG" ]; then
+				read -r -p $" Install \"$DID_YOU_MEAN\" with --$DID_YOU_MEAN_FLAG flag? (Y/n) " yn
+			else
+				read -r -p $" Install \"$DID_YOU_MEAN\" instead? (Y/n) " yn
+			fi
+			echo ""
+			if ! echo "$yn" | grep -i '^n' >/dev/null 2>&1; then
+				arg="$DID_YOU_MEAN"
+				FLAGS="$FLAGS --$DID_YOU_MEAN_FLAG"
+				_install_3rd_party_app
+			fi
+		fi
 	fi
 }
 
@@ -620,26 +638,49 @@ _levenshtein() {
 }
 
 _did_you_mean() {
-	local input="$1"
-	local applist="$AMDATADIR/$ARCH-apps"
-	[ ! -f "$applist" ] && return
-	local names match="" input_len=${#input} first_char="${input:0:1}" best_dist=3 diff dist
-	names=$(grep "^◆ " "$applist" | sed 's/^◆ //;s/ :.*$//')
-	while IFS= read -r name; do
-		[ -z "$name" ] && continue
-		diff=$(( ${#name} - input_len ))
-		[ $diff -lt 0 ] && diff=$(( -diff ))
-		[ $diff -gt 2 ] && continue
-		[ "${name:0:1}" != "$first_char" ] && continue
-		dist=$(_levenshtein "$input" "$name")
-		if [ "$dist" -lt "$best_dist" ]; then
-			best_dist=$dist
-			match=$name
-		fi
-	done <<< "$names"
+	local input="$1" only_flag="$2"
+	local names match="" match_flag="" input_len=${#input} first_char="${input:0:1}" best_dist=3 diff dist
+	DID_YOU_MEAN=""
+	DID_YOU_MEAN_FLAG=""
+
+	_did_you_mean_search() {
+		local list="$1"
+		[ ! -f "$list" ] && return
+		[ "$best_dist" -eq 0 ] && return
+		names=$(grep "^◆ " "$list" | sed 's/^◆ //;s/ :.*$//')
+		while IFS= read -r name; do
+			[ -z "$name" ] && continue
+			[ "$name" = "$input" ] && [ -n "$2" ] && best_dist=0 && match=$name && match_flag="$2" && return
+			diff=$(( ${#name} - input_len ))
+			[ $diff -lt 0 ] && diff=$(( -diff ))
+			[ $diff -gt 2 ] && continue
+			[ "${name:0:1}" != "$first_char" ] && continue
+			dist=$(_levenshtein "$input" "$name")
+			if [ "$dist" -lt "$best_dist" ]; then
+				best_dist=$dist
+				match=$name
+				match_flag="$2"
+			fi
+		done <<< "$names"
+	}
+
+	if [ -n "$only_flag" ]; then
+		_did_you_mean_search "$AMDATADIR/$ARCH-$only_flag" "$only_flag"
+	else
+		_did_you_mean_search "$AMDATADIR/$ARCH-apps" ""
+		for tp_list in $third_party_lists; do
+			_did_you_mean_search "$AMDATADIR/$ARCH-$tp_list" "$tp_list"
+		done
+	fi
+
 	if [ -n "$match" ]; then
-		printf $"\n Did you mean \"%b%b\033[0m\"?\n" "${LightBlue}" "$match"
+		if [ "$best_dist" -eq 0 ] && [ -n "$match_flag" ]; then
+			printf $"\n \"%b%b\033[0m\" is not in the main database, but found in --%b%b\033[0m.\n" "${LightBlue}" "$match" "${LightBlue}" "$match_flag"
+		else
+			printf $"\n Did you mean \"%b%b\033[0m\"?\n" "${LightBlue}" "$match"
+		fi
 		DID_YOU_MEAN="$match"
+		DID_YOU_MEAN_FLAG="$match_flag"
 	fi
 }
 
@@ -738,15 +779,24 @@ case "$1" in
 				_install_normally
 			else
 				echo $"💀 ERROR: \"$arg\" does NOT exist in the \"AM\" database, $(printf "please check the list, run the \"%b$AMCLIPATH_ORIGIN -l\033[0m\" command.\n\n" "${Gold}")" | fold -sw 72 | sed 's/^/ /g'
-				DID_YOU_MEAN=""
 				_did_you_mean "$arg"
 				if [ -n "$DID_YOU_MEAN" ]; then
-					read -r -p $" Install \"$DID_YOU_MEAN\" instead? (Y/n) " yn
+					if [ -n "$DID_YOU_MEAN_FLAG" ]; then
+						read -r -p $" Install \"$DID_YOU_MEAN\" with --$DID_YOU_MEAN_FLAG flag? (Y/n) " yn
+					else
+						read -r -p $" Install \"$DID_YOU_MEAN\" instead? (Y/n) " yn
+					fi
 					echo ""
 					if ! echo "$yn" | grep -i '^n' >/dev/null 2>&1; then
 						arg="$DID_YOU_MEAN"
-						_prepare_arg
-						_check_and_install
+						if [ -n "$DID_YOU_MEAN_FLAG" ]; then
+							FLAGS="$FLAGS --$DID_YOU_MEAN_FLAG"
+							_prepare_arg
+							_install_3rd_party_app
+						else
+							_prepare_arg
+							_check_and_install
+						fi
 					fi
 				fi
 			fi

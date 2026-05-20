@@ -17,6 +17,8 @@ eval "$(awk '/^_did_you_mean\(\)/,/^}$/' "$_module")"
 # Variables required by _did_you_mean
 AMDATADIR="${AMDATADIR:-$HOME/.local/share/AM}"
 ARCH="${ARCH:-$(uname -m)}"
+LightBlue="${LightBlue:-}"
+third_party_lists="${third_party_lists:-}"
 
 ################################################################################
 # Assertion helpers
@@ -225,6 +227,99 @@ _test_did_you_mean() {
 }
 
 ################################################################################
+# _did_you_mean third-party database tests
+################################################################################
+
+_test_did_you_mean_tp() {
+	local tmpdir
+	tmpdir=$(mktemp -d)
+	trap 'rm -rf "$tmpdir"' RETURN
+
+	# Fake main app list
+	cat > "$tmpdir/${ARCH}-apps" <<'EOF'
+◆ inkscape : Vector graphics editor
+◆ blender : 3D creation suite
+◆ anydesk : Remote desktop tool
+EOF
+
+	# Fake tp lists
+	cat > "$tmpdir/${ARCH}-busybox" <<'EOF'
+◆ acpid : Listen to ACPI events. To install it use the --busybox flag or the .busybox extension.
+◆ adduser : Add a user to the System. To install it use the --busybox flag or the .busybox extension.
+EOF
+
+	cat > "$tmpdir/${ARCH}-appbundle" <<'EOF'
+◆ xfce4-multicall : Xfce4 multicall binary. To install it use the --appbundle flag or the .appbundle extension.
+◆ xfce4-terminal : Terminal emulator. To install it use the --appbundle flag or the .appbundle extension.
+EOF
+
+	local saved_amdatadir="$AMDATADIR"
+	local saved_tp="$third_party_lists"
+	AMDATADIR="$tmpdir"
+	third_party_lists="busybox appbundle"
+
+	printf "\n=== _did_you_mean third-party tests ===\n"
+	local out
+
+	# Exact match in tp list → special message, flag set
+	out=$(_did_you_mean "xfce4-multicall")
+	_assert_contains "xfce4-multicall exact → mentions app name"       "$out" "xfce4-multicall"
+	_assert_contains "xfce4-multicall exact → mentions appbundle"      "$out" "appbundle"
+	DID_YOU_MEAN="" DID_YOU_MEAN_FLAG=""
+	_did_you_mean "xfce4-multicall" > /dev/null
+	_assert_eq "xfce4-multicall exact → DID_YOU_MEAN set"              "$DID_YOU_MEAN" "xfce4-multicall"
+	_assert_eq "xfce4-multicall exact → DID_YOU_MEAN_FLAG=appbundle"   "$DID_YOU_MEAN_FLAG" "appbundle"
+
+	# Exact match in tp list → no "Did you mean" phrase
+	out=$(_did_you_mean "xfce4-multicall")
+	if echo "$out" | grep -q "Did you mean"; then
+		_ko "xfce4-multicall exact → no 'Did you mean' phrase" "(found)" "(absent)"
+	else
+		_ok "xfce4-multicall exact → no 'Did you mean' phrase"
+	fi
+
+	# Fuzzy match in tp list → "Did you mean" + flag
+	out=$(_did_you_mean "acpid2")
+	_assert_contains "acpid2 → suggests acpid"                         "$out" "acpid"
+	_assert_contains "acpid2 → output contains 'Did you mean'"         "$out" "Did you mean"
+	DID_YOU_MEAN="" DID_YOU_MEAN_FLAG=""
+	_did_you_mean "acpid2" > /dev/null
+	_assert_eq "acpid2 → DID_YOU_MEAN=acpid"                           "$DID_YOU_MEAN" "acpid"
+	_assert_eq "acpid2 → DID_YOU_MEAN_FLAG=busybox"                    "$DID_YOU_MEAN_FLAG" "busybox"
+
+	# Match in main list wins over tp list (anydesk is in main, not tp)
+	DID_YOU_MEAN="" DID_YOU_MEAN_FLAG=""
+	_did_you_mean "amydesk" > /dev/null
+	_assert_eq "amydesk → DID_YOU_MEAN=anydesk (main list)"            "$DID_YOU_MEAN" "anydesk"
+	_assert_eq "amydesk → DID_YOU_MEAN_FLAG empty (main list)"         "$DID_YOU_MEAN_FLAG" ""
+
+	# With only_flag: search restricted to that tp list
+	DID_YOU_MEAN="" DID_YOU_MEAN_FLAG=""
+	_did_you_mean "acpid2" "busybox" > /dev/null
+	_assert_eq "acpid2 --busybox → DID_YOU_MEAN=acpid"                 "$DID_YOU_MEAN" "acpid"
+
+	DID_YOU_MEAN="" DID_YOU_MEAN_FLAG=""
+	_did_you_mean "acpid2" "appbundle" > /dev/null
+	_assert_empty "acpid2 --appbundle → no match (acpid not in appbundle)" "$DID_YOU_MEAN"
+
+	# Exact match in multiple tp lists → first list wins
+	cat >> "$tmpdir/${ARCH}-appbundle" <<'EOF'
+◆ acpid : Also in appbundle. To install it use the --appbundle flag or the .appbundle extension.
+EOF
+	DID_YOU_MEAN="" DID_YOU_MEAN_FLAG=""
+	_did_you_mean "acpid" > /dev/null
+	_assert_eq "acpid in busybox+appbundle → first list (busybox) wins" "$DID_YOU_MEAN_FLAG" "busybox"
+
+	# No match anywhere
+	DID_YOU_MEAN="" DID_YOU_MEAN_FLAG=""
+	_did_you_mean "qqqxxx" > /dev/null
+	_assert_empty "qqqxxx → no match in any list" "$DID_YOU_MEAN"
+
+	AMDATADIR="$saved_amdatadir"
+	third_party_lists="$saved_tp"
+}
+
+################################################################################
 # Main
 ################################################################################
 
@@ -232,6 +327,7 @@ _log "Running fuzzy-suggest tests: $0"
 
 _test_levenshtein
 _test_did_you_mean
+_test_did_you_mean_tp
 
 printf "\n=== Results: \033[0;32m%d passed\033[0m, \033[0;31m%d failed\033[0m ===\n\n" "$PASS" "$FAIL"
 printf "Results: %d passed, %d failed\n" "$PASS" "$FAIL" >> "$TEST_LOG"
