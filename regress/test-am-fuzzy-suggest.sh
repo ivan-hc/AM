@@ -119,7 +119,7 @@ _test_did_you_mean() {
 	printf "\n=== _did_you_mean unit tests ===\n"
 	local out
 
-	# Fast path: extra char(s) at end
+	# Extra char at end
 	out=$(_did_you_mean "zen-browser2")
 	_assert_contains "zen-browser2 → suggests zen-browser"  "$out" "zen-browser"
 	_assert_contains "zen-browser2 → output contains 'Did you mean'" "$out" "Did you mean"
@@ -130,25 +130,25 @@ _test_did_you_mean() {
 	out=$(_did_you_mean "blenders")
 	_assert_contains "blenders → suggests blender"          "$out" "blender"
 
-	# Fast path: missing char at end
+	# Missing char at end
 	out=$(_did_you_mean "inkscap")
 	_assert_contains "inkscap → suggests inkscape"          "$out" "inkscape"
 
 	out=$(_did_you_mean "blende")
 	_assert_contains "blende → suggests blender"            "$out" "blender"
 
-	# Slow path: one wrong char in middle
+	# One wrong char in middle
 	out=$(_did_you_mean "amydesk")
 	_assert_contains "amydesk → suggests anydesk"           "$out" "anydesk"
 
 	out=$(_did_you_mean "audaxity")
 	_assert_contains "audaxity → suggests audacity"         "$out" "audacity"
 
-	# Slow path: transposed chars (distance = 2, within threshold)
+	# Transposed chars (distance = 2, within threshold)
 	out=$(_did_you_mean "inksacpe")
 	_assert_contains "inksacpe → suggests inkscape"         "$out" "inkscape"
 
-	# Slow path: missing char in middle
+	# Missing char in middle
 	out=$(_did_you_mean "blendr")
 	_assert_contains "blendr → suggests blender"            "$out" "blender"
 
