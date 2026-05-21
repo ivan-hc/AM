@@ -404,20 +404,6 @@ _install_arg() {
 #			INSTALLATION CASES
 ################################################################################
 
-_install_appimage() {
-	# This function is ment to select and install only AppImages
-	rm -f "$AMCACHEDIR"/install-args
-	_sync_appimages_list
-	for arg in $entries; do
-		if grep -q "^◆ $arg : " "$AMDATADIR/$ARCH-appimages"; then
-			echo "$arg" >> "$AMCACHEDIR"/install-args
-		else
-			printf $"%b\n ERROR: \"%b\" is NOT an AppImage\n%b\n" "$DIVIDING_LINE" "$arg" "$DIVIDING_LINE"
-		fi
-	done
-	entries=$(cat "$AMCACHEDIR"/install-args 2>/dev/null)
-}
-
 _install_local_script() {
 	# This function is for local installation scripts
 	path2arg="$arg"
@@ -674,6 +660,14 @@ _did_you_mean() {
 		DID_YOU_MEAN="$match"
 		DID_YOU_MEAN_FLAG="$match_flag"
 	fi
+
+	if [ -n "$install_appimage" ] || [ -n "$install_appimage_and_sandbox" ]; then
+		_sync_appimages_list
+		if ! grep -q "^◆ $match : " "$AMDATADIR/$ARCH-appimages"; then
+			printf $"%b\n ERROR: \"%b\" is NOT an AppImage\n%b\n" "$DIVIDING_LINE" "$match" "$DIVIDING_LINE"
+			return 1
+		fi
+	fi
 }
 
 ################################################################################
@@ -734,11 +728,11 @@ case "$1" in
 		METAPACKAGES="kdegames kdeutils node platform-tools"
 
 		if [ "$1" = "-ia" ] || [ "$1" = "install-appimage" ]; then
-			_install_appimage
+			install_appimage="true"
 		fi
 		if [ "$1" = "-ias" ]; then
 			FLAGS=$(printf "%b\n--sandbox\n" "$FLAGS")
-			_install_appimage
+			install_appimage_and_sandbox="true"
 		fi
 
 		for arg in $entries; do
