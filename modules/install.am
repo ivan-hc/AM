@@ -661,12 +661,8 @@ _did_you_mean() {
 		DID_YOU_MEAN_FLAG="$match_flag"
 	fi
 
-	if [ -n "$install_appimage" ] || [ -n "$install_appimage_and_sandbox" ]; then
-		_sync_appimages_list
-		if ! grep -q "^◆ $match : " "$AMDATADIR/$ARCH-appimages"; then
-			printf $"%b\n ERROR: \"%b\" is NOT an AppImage\n%b\n" "$DIVIDING_LINE" "$match" "$DIVIDING_LINE"
-			return 1
-		fi
+	if [ -n "$install_appimage" ] && ! grep -q "^◆ $match : " "$AMDATADIR/$ARCH-appimages"; then
+		printf $"%b\n ERROR: \"%b\" is NOT an AppImage\n%b\n" "$DIVIDING_LINE" "$match" "$DIVIDING_LINE"
 	fi
 }
 
@@ -727,14 +723,14 @@ case "$1" in
 		FLAGS=$(echo "$@" | tr ' ' '\n' | grep -- "--" | tr '\n ' ' ')
 		METAPACKAGES="kdegames kdeutils node platform-tools"
 
-		if [ "$1" = "-ia" ] || [ "$1" = "install-appimage" ]; then
+		case "$1" in
+		'-ia'|'-ias'|'install-appimage')
+			_sync_appimages_list
 			install_appimage="true"
-		fi
-		if [ "$1" = "-ias" ]; then
-			FLAGS=$(printf "%b\n--sandbox\n" "$FLAGS")
-			install_appimage_and_sandbox="true"
-		fi
-
+			;;
+		esac
+		[ "$1" = "-ias" ] && FLAGS=$(printf "%b\n--sandbox\n" "$FLAGS")
+		
 		for arg in $entries; do
 			echo ""
 			cd "$REALDIR" || return 1
@@ -802,8 +798,6 @@ case "$1" in
 							"$AMCLIPATH_ORIGIN" --sandbox "$LASTDIR"
 						fi
 					fi
-				else
-					printf $"%b\n ERROR: \"%b\" is NOT an AppImage\n%b\n" "$DIVIDING_LINE" "$LASTDIR" "$DIVIDING_LINE"
 				fi
 			fi
 			echo "____________________________________________________________________________"
