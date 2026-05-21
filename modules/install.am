@@ -404,20 +404,6 @@ _install_arg() {
 #			INSTALLATION CASES
 ################################################################################
 
-_install_appimage() {
-	# This function is ment to select and install only AppImages
-	rm -f "$AMCACHEDIR"/install-args
-	_sync_appimages_list
-	for arg in $entries; do
-		if grep -q "^◆ $arg : " "$AMDATADIR/$ARCH-appimages"; then
-			echo "$arg" >> "$AMCACHEDIR"/install-args
-		else
-			printf $"%b\n ERROR: \"%b\" is NOT an AppImage\n%b\n" "$DIVIDING_LINE" "$arg" "$DIVIDING_LINE"
-		fi
-	done
-	entries=$(cat "$AMCACHEDIR"/install-args 2>/dev/null)
-}
-
 _install_local_script() {
 	# This function is for local installation scripts
 	path2arg="$arg"
@@ -450,10 +436,6 @@ _remove_extensions_from_appname() {
 	for e in $third_party_lists; do
 		pure_arg=$(echo "$pure_arg" | sed "s/\.$e$//g")
 	done
-}
-
-_3rd_party_check() {
-	echo "$@" | grep -q -- "$tp_flags" || echo "$arg" | grep -q "$tp_extensions"
 }
 
 _3rd_party_detect_online_item() {
@@ -676,6 +658,20 @@ _did_you_mean() {
 	fi
 }
 
+_not_an_appimage_message() {
+	if [ -n "$install_appimage" ] && ! grep -q "^◆ $arg : " "$AMDATADIR/$ARCH-appimages"; then
+		printf $" ✖ ERROR: \"%b\" is NOT an AppImage\n" "$arg" && printf "\n"
+		read -r -p $" Do you wish to continue? (N/y): " yn
+		if ! echo "$yn" | grep -qi "^y"; then
+			printf $"\n INSTALLATION ABORTED! \n"
+			echo "____________________________________________________________________________"
+			return 1
+		fi
+		printf "\n"
+	fi
+	return 0
+}
+
 ################################################################################
 #				USAGE
 ################################################################################
@@ -733,14 +729,14 @@ case "$1" in
 		FLAGS=$(echo "$@" | tr ' ' '\n' | grep -- "--" | tr '\n ' ' ')
 		METAPACKAGES="kdegames kdeutils node platform-tools"
 
-		if [ "$1" = "-ia" ] || [ "$1" = "install-appimage" ]; then
-			_install_appimage
-		fi
-		if [ "$1" = "-ias" ]; then
-			FLAGS=$(printf "%b\n--sandbox\n" "$FLAGS")
-			_install_appimage
-		fi
-
+		case "$1" in
+		'-ia'|'-ias'|'install-appimage')
+			_sync_appimages_list
+			install_appimage="true"
+			;;
+		esac
+		[ "$1" = "-ias" ] && FLAGS=$(printf "%b\n--sandbox\n" "$FLAGS")
+	
 		for arg in $entries; do
 			echo ""
 			cd "$REALDIR" || return 1
@@ -765,9 +761,10 @@ case "$1" in
 				else
 					echo $" 💀 ERROR: the file \"$arg\" does NOT exist"
 				fi
-			elif _3rd_party_check "$@"; then
+			elif echo "$@" | grep -q -- "$tp_flags" || echo "$arg" | grep -q "$tp_extensions"; then
 				_install_3rd_party_app
 			elif echo "$arg_script" | grep -q "^#"; then
+				_not_an_appimage_message || continue
 				_install_normally
 			else
 				echo $"💀 ERROR: \"$arg\" does NOT exist in the \"AM\" database, $(printf "please check the list, run the \"%b$AMCLIPATH_ORIGIN -l\033[0m\" command.\n\n" "${Gold}")" | fold -sw 72 | sed 's/^/ /g'
@@ -781,6 +778,7 @@ case "$1" in
 					echo ""
 					if ! echo "$yn" | grep -i '^n' >/dev/null 2>&1; then
 						arg="$DID_YOU_MEAN"
+						_not_an_appimage_message || continue
 						if [ -n "$DID_YOU_MEAN_FLAG" ]; then
 							FLAGS="$FLAGS --$DID_YOU_MEAN_FLAG"
 							_prepare_arg
@@ -796,20 +794,19 @@ case "$1" in
 			[ -f "$AMDATADIR"/disable-notifications ] && [ -f "$APPSPATH/$LASTDIR/AM-updater" ] && sed -e '/notify-send/ s/^#*/#/' -i "$APPSPATH/$LASTDIR/AM-updater" 2>/dev/null
 			# Sandbox argument
 			if echo "$FLAGS" | grep -q -- "--sandbox"; then
-				if [ "$LASTDIR" != aisap ] && [ "$LASTDIR" != sas ]; then
-					if [ -f "$APPSPATH/$LASTDIR/$LASTDIR" ]; then
-						if ! command -v aisap >/dev/null 2>&1 || ! command -v aisap >/dev/null 2>&1; then
+				if [ -f "$APPSPATH/$LASTDIR/$LASTDIR" ] && head -c10 "$APPSPATH/$LASTDIR/$LASTDIR" 2>/dev/null | grep -qa '^.ELF....AI$'; then
+					FILE=$(command -v "$LASTDIR" 2>/dev/null)
+					if ! head -c1000 "$FILE" 2>/dev/null | grep -q "SANDBOXCMD"; then
+						MODULE="sandboxes.am"
+						if ! command -v aisap >/dev/null 2>&1 || ! command -v sas >/dev/null 2>&1; then
 							mv "$AMCACHEDIR"/installed "$CACHEDIR"/installed.backup.am 2>/dev/null
-							"$AMCLIPATH_ORIGIN" --sandbox "$LASTDIR"
+							_use_module --sandbox "$LASTDIR"
 							sort "$AMCACHEDIR"/installed >> "$CACHEDIR"/installed.backup.am 2>/dev/null
 							mv "$CACHEDIR"/installed.backup.am "$AMCACHEDIR"/installed 2>/dev/null
 						else
-							echo ""
-							"$AMCLIPATH_ORIGIN" --sandbox "$LASTDIR"
+							printf "\n" && _use_module --sandbox "$LASTDIR"
 						fi
 					fi
-				else
-					printf $"%b\n ERROR: \"%b\" is NOT an AppImage\n%b\n" "$DIVIDING_LINE" "$LASTDIR" "$DIVIDING_LINE"
 				fi
 			fi
 			echo "____________________________________________________________________________"
