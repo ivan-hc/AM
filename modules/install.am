@@ -438,10 +438,6 @@ _remove_extensions_from_appname() {
 	done
 }
 
-_3rd_party_check() {
-	echo "$@" | grep -q -- "$tp_flags" || echo "$arg" | grep -q "$tp_extensions"
-}
-
 _3rd_party_detect_online_item() {
 	for tp_list in $third_party_lists; do
 		[ -f "$AMDATADIR"/"$ARCH"-"$tp_list" ] && tp_lists="$tp_lists\n$(sort -u "$AMDATADIR"/"$ARCH"-"$tp_list")"
@@ -660,10 +656,20 @@ _did_you_mean() {
 		DID_YOU_MEAN="$match"
 		DID_YOU_MEAN_FLAG="$match_flag"
 	fi
+}
 
-	if [ -n "$install_appimage" ] && ! grep -q "^◆ $match : " "$AMDATADIR/$ARCH-appimages"; then
-		printf $"%b\n ERROR: \"%b\" is NOT an AppImage\n%b\n" "$DIVIDING_LINE" "$match" "$DIVIDING_LINE"
+_not_an_appimage_message() {
+	if [ -n "$install_appimage" ] && ! grep -q "^◆ $arg : " "$AMDATADIR/$ARCH-appimages"; then
+		printf $" ✖ ERROR: \"%b\" is NOT an AppImage\n" "$arg" && printf "\n"
+		read -r -p $" Do you wish to continue? (N/y): " yn
+		if ! echo "$yn" | grep -qi "^y"; then
+			printf $"\n INSTALLATION ABORTED! \n"
+			echo "____________________________________________________________________________"
+			return 1
+		fi
+		printf "\n"
 	fi
+	return 0
 }
 
 ################################################################################
@@ -730,7 +736,7 @@ case "$1" in
 			;;
 		esac
 		[ "$1" = "-ias" ] && FLAGS=$(printf "%b\n--sandbox\n" "$FLAGS")
-		
+	
 		for arg in $entries; do
 			echo ""
 			cd "$REALDIR" || return 1
@@ -755,9 +761,10 @@ case "$1" in
 				else
 					echo $" 💀 ERROR: the file \"$arg\" does NOT exist"
 				fi
-			elif _3rd_party_check "$@"; then
+			elif echo "$@" | grep -q -- "$tp_flags" || echo "$arg" | grep -q "$tp_extensions"; then
 				_install_3rd_party_app
 			elif echo "$arg_script" | grep -q "^#"; then
+				_not_an_appimage_message || continue
 				_install_normally
 			else
 				echo $"💀 ERROR: \"$arg\" does NOT exist in the \"AM\" database, $(printf "please check the list, run the \"%b$AMCLIPATH_ORIGIN -l\033[0m\" command.\n\n" "${Gold}")" | fold -sw 72 | sed 's/^/ /g'
@@ -771,6 +778,7 @@ case "$1" in
 					echo ""
 					if ! echo "$yn" | grep -i '^n' >/dev/null 2>&1; then
 						arg="$DID_YOU_MEAN"
+						_not_an_appimage_message || continue
 						if [ -n "$DID_YOU_MEAN_FLAG" ]; then
 							FLAGS="$FLAGS --$DID_YOU_MEAN_FLAG"
 							_prepare_arg
