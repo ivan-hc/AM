@@ -221,6 +221,17 @@ _post_installation_processes() {
 			sed -i "s#Exec=/opt/#Exec=$BINDIR/#g" "$a" 2>/dev/null
 		done
 	fi
+	# Snapshot the final .desktop file so it can be restored later with
+	# "$AMCLI --restore-desktop $arg" if the user (or the launcher itself)
+	# modifies the live copy. Taken after the patch block above so the
+	# snapshot matches what AM actually installed, not the raw upstream
+	# .desktop from inside the AppImage.
+	if [ -f "${LASTDIRPATH}"/remove ] && [ -d "${LASTDIRPATH}"/.am-installer ]; then
+		desktop_src=$(grep -Eo "/[^[:space:]\"']*AM\.desktop" "${LASTDIRPATH}"/remove 2>/dev/null | head -1)
+		if [ -n "$desktop_src" ] && [ -f "$desktop_src" ]; then
+			cp "$desktop_src" "${LASTDIRPATH}"/.am-installer/"$arg"-AM.desktop.orig 2>/dev/null
+		fi
+	fi
 	# Export all icons for hicolor theme usage
 	if echo "$FLAGS" | grep -q -- '--icons'; then
 		_icon_theme_export_to_datadir 2>/dev/null

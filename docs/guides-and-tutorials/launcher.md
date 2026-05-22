@@ -81,6 +81,24 @@ Again, **these updates only work if the AppImage supports binary deltas**!
 
 If you want to be sure to update all AppImages, rely on the [`-ia`](./install-appimage.md) and [`-e`](./extra.md) options instead.
 
+---------------------------
+### Restore a modified .desktop file
+The `--restore-desktop` (alias `restore-desktop`) option resets an installed app's `.desktop` launcher to the snapshot that was captured at install time. Use it if you (or the app itself) modified the live `.desktop` file — for example by adding `Name=Emacs (appman)` to distinguish two installs — and you want to roll the change back without reinstalling.
+```
+am --restore-desktop $APPNAME
+```
+or
+```
+appman --restore-desktop $APPNAME
+```
+You can pass several apps at once:
+```
+am --restore-desktop firefox brave thunderbird
+```
+The snapshot is created by the `-i` install option and stored at `$APPDIR/.am-installer/$APPNAME-AM.desktop.orig`, alongside the cached install script. It captures the `.desktop` *after* any post-install patches the install script applies (e.g. the `StartupWMClass` line added by `google-chrome`), so restoring brings back the state AM originally installed — not the raw upstream copy from inside the AppImage.
+
+If no snapshot exists yet (apps installed before this feature was added), the option will print an error pointing you at `-i` to recreate one by reinstalling.
+
 ------------------------------------------------------------------------
 
 | [Back to "Guides and tutorials"](../../README.md#guides-and-tutorials) | [Back to "Main Index"](../../README.md#main-index) | ["Portable Linux Apps"](https://portable-linux-apps.github.io/) | [ "AppMan" ](https://github.com/ivan-hc/AppMan) |

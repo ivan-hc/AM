@@ -389,6 +389,46 @@ _launcher(){
 }
 
 ################################################################################################################################################################
+#				RESTORE-DESKTOP
+################################################################################################################################################################
+
+# Restore an app's .desktop file from the snapshot saved at install time.
+# The snapshot is created by _post_installation_processes in install.am and
+# lives at $argpath/.am-installer/$arg-AM.desktop.orig. The live .desktop
+# path is read from the app's `remove` script (it always contains an
+# absolute path matching "*AM.desktop").
+_restore_desktop() {
+	backup="$argpath/.am-installer/$arg-AM.desktop.orig"
+	if [ ! -f "$argpath"/remove ]; then
+		printf $" 💀 ERROR: \"%s\" is not a managed install (no remove script).\n" "$arg"
+		return 1
+	fi
+	if [ ! -f "$backup" ]; then
+		printf $" 💀 ERROR: no .desktop snapshot for \"%s\".\n" "$arg"
+		printf $"    Snapshots are taken at install time; reinstall with \"%s -i %s\" to create one.\n" "$AMCLI" "$arg"
+		return 1
+	fi
+	desktop_path=$(grep -Eo "/[^[:space:]\"']*AM\.desktop" "$argpath"/remove 2>/dev/null | head -1)
+	if [ -z "$desktop_path" ]; then
+		printf $" 💀 ERROR: could not determine the .desktop path for \"%s\".\n" "$arg"
+		return 1
+	fi
+	# System paths (/usr/local/share/applications) need root; user paths
+	# (~/.local/share/applications) do not. Try unprivileged first.
+	if cp "$backup" "$desktop_path" 2>/dev/null \
+		|| $SUDOCMD cp "$backup" "$desktop_path" 2>/dev/null; then
+		printf $" ✔ Restored \"%s\" -> %s\n" "$arg" "$desktop_path"
+		if command -v update-desktop-database >/dev/null 2>&1; then
+			update-desktop-database "$(dirname "$desktop_path")" >/dev/null 2>&1 \
+				|| $SUDOCMD update-desktop-database "$(dirname "$desktop_path")" >/dev/null 2>&1
+		fi
+	else
+		printf $" 💀 ERROR: failed to write %s\n" "$desktop_path"
+		return 1
+	fi
+}
+
+################################################################################################################################################################
 #				LOCK/UNLOCK
 ################################################################################################################################################################
 
@@ -602,6 +642,19 @@ case "$1" in
 		for arg in $entries; do
 			echo "$DIVIDING_LINE"
 			_launcher "${@}"
+		done
+		echo "$DIVIDING_LINE"
+		;;
+
+	'restore-desktop'|'--restore-desktop')
+		# Restore the .desktop file from the snapshot saved at install time
+		_determine_args
+		entries="$(echo "$@" | cut -f2- -d ' ')"
+		for arg in $entries; do
+			echo "$DIVIDING_LINE"
+			_determine_argpath
+			[ -n "$argpath" ] && _restore_desktop "${@}"
+			shift
 		done
 		echo "$DIVIDING_LINE"
 		;;
