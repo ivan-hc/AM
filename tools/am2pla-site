@@ -57,6 +57,12 @@ _update_json
 # COMMON FUNCTIONS NEEDED TO COMPILE OTHER PAGES
 ################################################
 
+# Frontmatter so each generated page uses the `category` Jekyll layout,
+# which injects the search box at the top and the shared footer at the bottom.
+function _frontmatter() {
+	printf -- '---\nlayout: category\n---\n'
+}
+
 function _home_button {
 	echo ""
 	echo "| [Home](index.md) |"
@@ -99,13 +105,6 @@ function _categories_buttons() {
 	echo ""
 }
 
-function _categories_buttons_on_footer() {
-	echo ""
-	echo "| [Back to Home](index.md) | [Back to Applications](apps.md)"
-	echo "| --- | --- |"
-	echo ""
-}
-
 function _back_to_apps_button() {
 	echo ""
 	echo "| [Back to Applications](apps.md) |"
@@ -113,61 +112,22 @@ function _back_to_apps_button() {
 	echo ""
 }
 
-function _footer_up() {
-	echo ""
-	echo ""
-	echo "---"
-	echo ""
-	echo "You can improve these pages via a [pull request](https://github.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/pulls) \
-	to this site's [GitHub repository](https://github.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io),  \
-	or report any problems related to the installation scripts in the '[issue](https://github.com/ivan-hc/AM/issues)' \
-	section of the main database, at [https://github.com/ivan-hc/AM](https://github.com/ivan-hc/AM)."
-	echo ""
-	echo "***PORTABLE-LINUX-APPS.github.io is my gift to the Linux community and was made with love for GNU/Linux and the Open Source philosophy.***"
-	echo ""
-	echo "---"
-}
-
-function _footer_down() {
-	echo "--------"
-	echo ""
-	echo "# Contacts"
-	echo "- **Ivan-HC** *on* [**GitHub**](https://github.com/ivan-hc)"
-	echo "- **AM-Ivan** *on* [**Reddit**](https://www.reddit.com/u/am-ivan)"
-	echo ""
-	echo "###### *You can support me and my work on [**ko-fi.com**](https://ko-fi.com/IvanAlexHC) and \
-	[**PayPal.me**](https://paypal.me/IvanAlexHC). Thank you!*"
-	echo ""
-	echo "--------"
-	echo ""
-	echo "*© 2020-present Ivan Alessandro Sala aka '"'Ivan-HC'"'* - I'm here just for fun!"
-	echo ""
-	echo ""
-}
-
-function _footer_apps() {
-	_footer_up
-	_home_button
-	_footer_down
-}
-
-function _footer_categories() {
-	_footer_up
-	_categories_buttons_on_footer
-	_footer_down
-}
+# The page footer (improve / gift / back-links / contacts / support / copyright)
+# is rendered by the `category` Jekyll layout in _layouts/category.html, so the
+# script no longer emits it inline.
 
 ###############################
 # COMPILE THE APPLICATIONS LIST
 ###############################
 
 function _applications_list_header {
-	echo "# APPLICATIONS" > apps.md
+	_frontmatter > apps.md
+	echo "# APPLICATIONS" >> apps.md
 	_home_button >> apps.md
 	echo "#### Here are listed all **$APPS_NUMBER** unique applications, AppImage packages and command line utilities managed by [AM](https://github.com/ivan-hc/AM) \
 	and [AppMan](https://github.com/ivan-hc/AppMan) for the x86_64 architecture, plus **$ITEMS_NUMBER** more entries and items to help you install apps more easily." >> apps.md
 	echo "" >> apps.md
-	echo "*Use your browser's built-in search tool to easily navigate to this page or use the tags below.*" >> apps.md
+	echo "*Use the search box at the top of the page to filter applications, or jump to a category using the tags below.*" >> apps.md
 	echo "" >> apps.md
 	_categories_buttons >> apps.md
 	_table_head >> apps.md
@@ -184,7 +144,6 @@ function _applications_list_body() {
 
 _applications_list_header
 _applications_list_body
-_footer_apps >> apps.md
 
 ########################
 # COMPILE APPIMAGES PAGE
@@ -205,12 +164,13 @@ function _appimages_listing() {
 }
 
 function _appimages_list_header {
-	echo "# APPIMAGES" > appimages.md
+	_frontmatter > appimages.md
+	echo "# APPIMAGES" >> appimages.md
 	_home_button >> appimages.md
 	echo "#### Here are listed the **$APPIMAGES_NUMBER** unique Appimages managed by [AM](https://github.com/ivan-hc/AM) \
 	and [AppMan](https://github.com/ivan-hc/AppMan) for the x86_64 architecture." >> appimages.md
 	echo "" >> appimages.md
-	echo "*Use your browser's built-in search tool to easily navigate to this page or use the tags below.*" >> appimages.md
+	echo "*Use the search box at the top of the page to filter Appimages, or jump to a category using the tags below.*" >> appimages.md
 	echo "" >> appimages.md
 	_back_to_apps_button >> appimages.md
 	_categories_buttons >> appimages.md
@@ -226,7 +186,6 @@ function _appimages_list_body() {
 _appimages_listing
 _appimages_list_header
 _appimages_list_body
-_footer_categories >> appimages.md
 
 ######################################
 # COMPILE THE MAIN PAGE OF THE WEBSITE
@@ -234,16 +193,21 @@ _footer_categories >> appimages.md
 
 ST_APPS_NUMBER=$(($APPS_NUMBER-$APPIMAGES_NUMBER))
 function _compile_the_homepage() {
-	if [ -f ./index.md ]; then
-		cat ./index.md > index.old
-	else
-		curl -Ls https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/main/index.md > index.old
+	# Only two lines on the home page are auto-generated: the stats line
+	# ("This site lists N unique apps…") and the categories nav list.
+	# Replace each in place wherever it appears, so hand-edited additions
+	# elsewhere on the page (e.g. the home search box) are not disturbed.
+	if [ ! -f ./index.md ]; then
+		curl -Ls https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/main/index.md > ./index.md
 	fi
-	sed -n '1,10p' ./index.old > ./index.md
-	echo "#### *This site lists **$APPS_NUMBER** unique apps (**$APPIMAGES_NUMBER** Appimage packages and **$ST_APPS_NUMBER** standalone/portable programs), plus **$ITEMS_NUMBER** items.*" >> ./index.md
-	sed -n '12,19p' ./index.old >> ./index.md
-	_categories_buttons >> ./index.md
-	sed -n '25,20000p' ./index.old >> ./index.md
+	local stats_line="#### *This site lists **$APPS_NUMBER** unique apps (**$APPIMAGES_NUMBER** Appimage packages and **$ST_APPS_NUMBER** standalone/portable programs), plus **$ITEMS_NUMBER** items.*"
+	local cats_line
+	cats_line=$(_categories_buttons | grep -E '^\*\*\*\[AppImages\]')
+	awk -v stats="$stats_line" -v cats="$cats_line" '
+		/^#### \*This site lists \*\*[0-9]+\*\* unique apps/ { print stats; next }
+		/^\*\*\*\[AppImages\]\(appimages\.md\)\*\*\*/        { print cats;  next }
+		{ print }
+	' ./index.md > ./index.new && mv ./index.new ./index.md
 }
 
 _compile_the_homepage
@@ -253,12 +217,13 @@ _compile_the_homepage
 ##################
 
 function _category_list_header {
-	echo "# $(echo "$category" | tr a-z A-Z)" > "$category".md
+	_frontmatter > "$category".md
+	echo "# $(echo "$category" | tr a-z A-Z)" >> "$category".md
 	_home_button >> "$category".md
 	echo "#### Here are listed **$APPS_NUMBER** programs and **$ITEMS_NUMBER** items for this category and managed by [AM](https://github.com/ivan-hc/AM) \
 	and [AppMan](https://github.com/ivan-hc/AppMan) for the x86_64 architecture." >> "$category".md
 	echo "" >> "$category".md
-	echo "*Use your browser's built-in search tool to easily navigate to this page or use the tags below.*" >> "$category".md
+	echo "*Use the search box at the top of the page to filter this category, or jump to another category using the tags below.*" >> "$category".md
 	echo "" >> "$category".md
 	_back_to_apps_button >> "$category".md
 	_categories_buttons >> "$category".md
@@ -319,11 +284,10 @@ for category in $CATEGORIES; do
 	ITEMS_NUMBER=$(grep "ffwa-\|\"kdegames\"\|\"kdeutils\"\|\"node\"\|\"platform-tools\"" "$arch-$category" | grep -e "$" -c)
 	_category_list_header
 	_category_list_body
-	_footer_categories >> "$category".md
 	rm -f ./"$arch-$category"
 done
 
 ######################
 # END OF ALL PROCESSES
 ######################
-rm ./args ./index.old ./"$arch"-apps ./body.txt
+rm ./args ./"$arch"-apps ./body.txt
