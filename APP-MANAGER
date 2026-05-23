@@ -1046,8 +1046,8 @@ _check_version_filters() {
 			exit
 		}
 
-		# 1. Full semantic version (X.Y.Z or similar)
-		if (match($0, /v?[0-9]+\.[0-9]+(\.[0-9]+)*(-[0-9]+(-g[0-9a-f]+)?)?/)) {
+		# 1. Full semantic version (X.Y.Z or similar, with optional prerelease)
+		if (match($0, /v?[0-9]+\.[0-9]+[a-z0-9.]*(-[0-9]+(-g[0-9a-f]+)?)?/)) {
 			print substr($0, RSTART, RLENGTH)
 			exit
 		}
@@ -1062,6 +1062,11 @@ _check_version_filters() {
 			short = substr($0, RSTART, RLENGTH)
 		}
 
+		# 3b. Alphanumeric version (e.g., "2603a")
+		if (!alphaver && match($0, /[0-9]+[a-z0-9]*/)) {
+			alphaver = substr($0, RSTART, RLENGTH)
+		}
+
 		# 4. Generic hash
 		if (!hash && match($0, /[0-9a-f]{7,40}/)) {
 			hash = substr($0, RSTART, RLENGTH)
@@ -1070,6 +1075,7 @@ _check_version_filters() {
 	END {
 		if (pathhash) print pathhash
 		else if (short) print short
+		else if (alphaver) print alphaver
 		else if (hash) print hash
 	}' | sed 's/^v//'
 }
