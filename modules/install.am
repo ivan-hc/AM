@@ -871,7 +871,7 @@ case "$1" in
 	'reinstall')
 		_completion_lists
 		case $2 in
-		'--all')
+		'--all') # Reinstall all applications
 			echo "$DIVIDING_LINE"
 			read -r -p $" Do you wish reinstall everything? (N/y): " yn
 			if ! echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
@@ -903,7 +903,55 @@ case "$1" in
 				done
 			fi
 			;;
-		*)
+		'--launcher') # Reinstall only .desktop files if they have been changed
+			_determine_args
+			ARGS=$(echo "$ARGS" | tr ' ' '\n' | sort -u | xargs)
+			for arg in $ARGS; do
+				argpath_items=$(echo "$ARGPATHS" | grep "/$arg$" | xargs)
+				for argpath in $argpath_items; do
+					if echo "$argpath" | grep -q "^/opt\|^/var/opt"; then
+						LAUNCHERS_PATH="/usr/local/share/$LAUNCHERS_DIR"
+					else
+						LAUNCHERS_PATH="$DATADIR/$LAUNCHERS_DIR"
+					fi
+					if [ -f "$argpath"/"$arg" ] && grep -Eaoq -m 1 "appimage-extract" "$argpath"/"$arg" || file "$argpath"/"$arg" | grep -q 'static'; then
+ 						mkdir -p "$SCRIPTDIR"/AMLAUNCHER_DIR
+						exec 3< <("$argpath"/"$arg" --appimage-mount)
+						read -r MOUNT_POINT <&3
+						APP_PID=$!
+						export MOUNT_POINT
+						launcher_name="$arg-AM.desktop"
+						cp "$MOUNT_POINT"/*.desktop "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name"
+						COUNT=0
+						while [ "$COUNT" -lt 10 ]; do # Tries to get the actual icon/desktop if it is a symlink to another symlink
+							if [ -L "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name" ]; then
+								LINKPATH="$(readlink "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name" | sed 's|^\./||' 2>/dev/null)"
+								cp "$MOUNT_POINT"/"$LINKPATH" "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name"
+							fi
+							[ ! -L "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name" ] && break
+							COUNT=$((COUNT + 1))
+						done
+						if [ -f "$LAUNCHERS_PATH"/"$launcher_name" ] && [ -f "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name" ]; then
+							sed -i "s#Exec=[^ ]*#Exec=$arg#g; s#Icon=.*#Icon=$argpath/icons/$arg#g" "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name"
+							if [ "$(sort "$LAUNCHERS_PATH"/"$launcher_name")" != "$(sort "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name")" ]; then
+								printf -- $"- Found differences in %b, it probably needs to be updated." "$launcher_name" | _fit
+								read -r -p $" Do you wish to continue? (N/y): " yn
+								if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
+									if echo "$argpath" | grep -q "^/opt\|^/var/opt"; then
+										$SUDOCMD mv "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name" "$LAUNCHERS_PATH"/"$launcher_name"
+									else
+										mv "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name" "$LAUNCHERS_PATH"/"$launcher_name"
+									fi
+								fi
+							fi
+						fi
+						kill "$APP_PID" 2>/dev/null
+					fi
+				done
+			done
+			echo "$DIVIDING_LINE"
+			;;		
+		*) # Reinstall applications with updated installation scripts
 			printf $"%b\n Checking for changes of the installation scripts in the online database...\n%b\n" "$DIVIDING_LINE" "$DIVIDING_LINE"
 			_determine_args
 			for arg in $ARGS; do
