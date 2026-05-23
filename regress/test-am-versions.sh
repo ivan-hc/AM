@@ -18,7 +18,7 @@ for awk_cmd in awk gawk mawk original-awk goawk; do
 	alias awk='$awk_cmd'
 	if command -v "$awk_cmd" >/dev/null 2>&1; then
 		# Print which tool is used
-		printf "\nRegex testing with %s (%s):\n" "$awk_cmd" "$($awk_cmd --version | head -n 1)"
+		printf "\nRegex testing with %s (%s):\n" "$awk_cmd" "$($awk_cmd --version 2>/dev/null | head -n 1)"
 
 		# Test function against known app version examples (add as much as needed)
 		echo "https://github.com/zk-org/zk/releases/download/v0.15.4/zk-v0.15.4-linux-amd64.tar.gz" | _check_version_filters | tee "$test_results"
