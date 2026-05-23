@@ -13,10 +13,11 @@ _log "Running app version regex checks: $0"
 awk '/^_check_version_filters\(\) \{/,/^}/' /opt/am/APP-MANAGER | sed "s/awk/\$awk_cmd/g" > check_version_filters.sh
 . "$(dirname "$0")/check_version_filters.sh"
 
-# Test all awk versions (mawk/gawk/original-awk)
-for awk_cmd in awk gawk mawk original-awk goawk; do
+# Test all available awk versions installed
+for awk_cmd in awk gawk mawk original-awk goawk nawk busybox; do
 	if command -v "$awk_cmd" >/dev/null 2>&1; then
 		# Print which tool is used
+		[ $awk_cmd = busybox ] && awk_cmd="busybox awk" # Busybox awk version is a subcommand
 		printf "\nRegex testing with %s (%s):\n" "$awk_cmd" "$($awk_cmd --version 2>/dev/null | head -n 1)"
 
 		# Test function against known app version examples (add as much as needed)
