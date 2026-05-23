@@ -9,13 +9,12 @@ test_results=".results.tmp"
 # Setup
 _log "Running app version regex checks: $0"
 
-# Extract and source _check_version_filters function from APP-MANAGER for regex testing
-awk '/^_check_version_filters\(\) \{/,/^}/' /opt/am/APP-MANAGER > check_version_filters.sh
+# Extract and source _check_version_filters function from APP-MANAGER for regex testing (replace awk with $awk_cmd)
+awk '/^_check_version_filters\(\) \{/,/^}/' /opt/am/APP-MANAGER | sed "s/awk/\$awk_cmd/g" > check_version_filters.sh
 . "$(dirname "$0")/check_version_filters.sh"
 
 # Test all awk versions (mawk/gawk/original-awk)
 for awk_cmd in awk gawk mawk original-awk goawk; do
-	alias awk='$awk_cmd'
 	if command -v "$awk_cmd" >/dev/null 2>&1; then
 		# Print which tool is used
 		printf "\nRegex testing with %s (%s):\n" "$awk_cmd" "$($awk_cmd --version 2>/dev/null | head -n 1)"
