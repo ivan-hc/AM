@@ -42,10 +42,11 @@ for awk_cmd in awk gawk mawk original-awk goawk; do
 		echo "https://github.com/pkgforge-dev/AppImageUpdate-deprecated/releases/download/a76b0ca08/appimageupdatetool%2Bvalidate-x86_64.AppImage" | _check_version_filters | tee "$test_results"
 		_check_count "a76b0ca08" 1 "$test_results"
 
-		echo "https://github.com/mean00/avidemux2/releases/download/2.8.1/avidemux_2.8.1.appImage" | _check_version_filters | tee "$test_results"
+		echo "avidemux_2.8.1-22.appImage" | _check_version_filters | tee "$test_results"
+		_check_count "2.8.1-22" 1 "$test_results"
+		echo "https://github.com/mean00/avidemux2/releases/download/2.8.1/avidemux_2.8.1-22.appImage" | _check_version_filters | tee "$test_results"
 		_check_count "2.8.1" 1 "$test_results"
-
-		echo "https://github.com/mean00/avidemux2/releases/download/2.8.1-1002%2026-04-11/release/avidemux_2.8.1-1002.appImage" | _check_version_filters | tee "$test_results"
+		echo "https://github.com/mean00/avidemux2/releases/download/2.8.1-1002%2026-04-11/release/avidemux_2.8.1-991.appImage" | _check_version_filters | tee "$test_results"
 		_check_count "2.8.1-1002" 1 "$test_results"
 
 		echo "https://github.com/Faster3ck/Converseen/releases/download/v0.15.2.4/Converseen-0.15.2.4-1-anylinux-x86_64.AppImage" | _check_version_filters | tee "$test_results"
@@ -54,6 +55,8 @@ for awk_cmd in awk gawk mawk original-awk goawk; do
 		echo "https://github.com/ivan-hc/Hypnotix-appimage/releases/download/continuous/Hypnotix_5.6-2-archimage5.0-x86_64.AppImage" | _check_version_filters | tee "$test_results"
 		_check_count "5.6-2" 1 "$test_results"
 
+		echo "kdenlive-26.04.1-x86_64.AppImage" | _check_version_filters | tee "$test_results"
+		_check_count "26.04.1" 1 "$test_results"
 		echo "https://download.kde.org/stable/kdenlive/26.04/linux/kdenlive-26.04.1-x86_64.AppImage" | _check_version_filters | tee "$test_results"
 		_check_count "26.04" 1 "$test_results"
 
