@@ -45,6 +45,9 @@ for awk_cmd in awk gawk mawk original-awk goawk; do
 		echo "https://github.com/mean00/avidemux2/releases/download/2.8.1/avidemux_2.8.1.appImage" | _check_version_filters | tee "$test_results"
 		_check_count "2.8.1" 1 "$test_results"
 
+		echo "https://github.com/mean00/avidemux2/releases/download/2.8.1-1002%2026-04-11/release/avidemux_2.8.1-1002.appImage" | _check_version_filters | tee "$test_results"
+		_check_count "2.8.1-1002" 1 "$test_results"
+
 		echo "https://github.com/Faster3ck/Converseen/releases/download/v0.15.2.4/Converseen-0.15.2.4-1-anylinux-x86_64.AppImage" | _check_version_filters | tee "$test_results"
 		_check_count "0.15.2.4" 1 "$test_results"
 
@@ -73,7 +76,7 @@ for awk_cmd in awk gawk mawk original-awk goawk; do
 		_check_count "3.17" 1 "$test_results"
 
 		echo "https://codeberg.org/OpenRGB/OpenRGB/releases/download/release_candidate_1.0rc2/OpenRGB_1.0rc2_x86_64_0fca93e.AppImage" | _check_version_filters | tee "$test_results"
-		_check_count "1.0rc" 1 "$test_results"
+		_check_count "1.0rc2" 1 "$test_results"
 
 		echo "https://stable.eden-emu.dev/v0.2.0/Eden-Linux-v0.2.0-amd64-clang-pgo.AppImage" | _check_version_filters | tee "$test_results"
 		_check_count "0.2.0" 1 "$test_results"
