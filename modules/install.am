@@ -915,37 +915,40 @@ case "$1" in
 						LAUNCHERS_PATH="$DATADIR/$LAUNCHERS_DIR"
 					fi
 					if [ -f "$argpath"/"$arg" ] && grep -Eaoq -m 1 "appimage-extract" "$argpath"/"$arg" || file "$argpath"/"$arg" | grep -q 'static'; then
- 						mkdir -p "$SCRIPTDIR"/AMLAUNCHER_DIR
-						exec 3< <("$argpath"/"$arg" --appimage-mount)
-						read -r MOUNT_POINT <&3
-						APP_PID=$!
-						export MOUNT_POINT
 						launcher_name="$arg-AM.desktop"
-						cp "$MOUNT_POINT"/*.desktop "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name"
-						COUNT=0
-						while [ "$COUNT" -lt 10 ]; do # Tries to get the actual icon/desktop if it is a symlink to another symlink
-							if [ -L "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name" ]; then
-								LINKPATH="$(readlink "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name" | sed 's|^\./||' 2>/dev/null)"
-								cp "$MOUNT_POINT"/"$LINKPATH" "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name"
-							fi
-							[ ! -L "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name" ] && break
-							COUNT=$((COUNT + 1))
-						done
-						if [ -f "$LAUNCHERS_PATH"/"$launcher_name" ] && [ -f "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name" ]; then
-							sed -i "s#Exec=[^ ]*#Exec=$arg#g; s#Icon=.*#Icon=$argpath/icons/$arg#g" "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name"
-							if [ "$(sort "$LAUNCHERS_PATH"/"$launcher_name")" != "$(sort "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name")" ]; then
-								printf -- $"- Found differences in %b, it probably needs to be updated.\n" "$launcher_name" | _fit
-								read -r -p $" Do you wish to continue? (N/y): " yn
-								if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
-									if echo "$argpath" | grep -q "^/opt\|^/var/opt"; then
-										$SUDOCMD mv "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name" "$LAUNCHERS_PATH"/"$launcher_name"
-									else
-										mv "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name" "$LAUNCHERS_PATH"/"$launcher_name"
+						if [ -f "$LAUNCHERS_PATH"/"$launcher_name" ]; then
+							mkdir -p "$SCRIPTDIR"/AMLAUNCHER_DIR
+							exec 3< <("$argpath"/"$arg" --appimage-mount)
+							read -r MOUNT_POINT <&3
+							APP_PID=$!
+							export MOUNT_POINT
+							launcher_name="$arg-AM.desktop"
+							cp "$MOUNT_POINT"/*.desktop "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name"
+							COUNT=0
+							while [ "$COUNT" -lt 10 ]; do # Tries to get the actual icon/desktop if it is a symlink to another symlink
+								if [ -L "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name" ]; then
+									LINKPATH="$(readlink "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name" | sed 's|^\./||' 2>/dev/null)"
+									cp "$MOUNT_POINT"/"$LINKPATH" "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name"
+								fi
+								[ ! -L "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name" ] && break
+								COUNT=$((COUNT + 1))
+							done
+							if [ -f "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name" ]; then
+								sed -i "s#Exec=[^ ]*#Exec=$arg#g; s#Icon=.*#Icon=$argpath/icons/$arg#g" "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name"
+								if [ "$(sort "$LAUNCHERS_PATH"/"$launcher_name")" != "$(sort "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name")" ]; then
+									printf -- $"- Found differences in %b, it probably needs to be updated.\n" "$launcher_name" | _fit
+									read -r -p $" Do you wish to continue? (N/y): " yn
+									if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
+										if echo "$argpath" | grep -q "^/opt\|^/var/opt"; then
+											$SUDOCMD mv "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name" "$LAUNCHERS_PATH"/"$launcher_name"
+										else
+											mv "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name" "$LAUNCHERS_PATH"/"$launcher_name"
+										fi
 									fi
 								fi
 							fi
+							kill "$APP_PID" 2>/dev/null
 						fi
-						kill "$APP_PID" 2>/dev/null
 					fi
 				done
 			done
