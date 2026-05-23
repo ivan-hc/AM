@@ -42,8 +42,16 @@ CATEGORIES="am-utils android audio \
 ##########################################################
 
 function _update_json() {
+	# Exclude "items" (webapps and metapackages) from apps.json so the home
+	# search shows the same "X apps in the database" count that the stats
+	# line at the top of index.md reports (APPS_NUMBER, not APPS_NUMBER +
+	# ITEMS_NUMBER). The exclusion pattern mirrors the one used when
+	# computing APPS_NUMBER itself.
 	echo "[" > apps.json
 	for arg in $ARGS; do
+		case "$arg" in
+			ffwa-*|kdegames|kdeutils|node|platform-tools) continue;;
+		esac
 		description=$(grep "◆ $arg :" "$arch"-apps | sed 's/"/\\"/g; s/^.*: //')
 		printf "  {\n    \"packageName\": \"%b\",\n    \"description\": \"%b..\",\n    \"icon\": \"https://portable-linux-apps.github.io/icons/%b.png\"\n  },\n" "$arg" "$description" "$arg" >> apps.json
 	done
@@ -162,7 +170,7 @@ function _footer_categories() {
 ###############################
 
 ADD_SEARCH_BAR() {
-cat >> ./apps << EOF
+cat >> "$1" << EOF
 
 <div id="app-search-box" style="margin: 1em 0;">
   <label for="app-search-input" style="font-weight: bold;">Search applications:</label>
@@ -180,7 +188,7 @@ function _applications_list_header {
 	and [AppMan](https://github.com/ivan-hc/AppMan) for the x86_64 architecture, plus **$ITEMS_NUMBER** more entries and items to help you install apps more easily." >> apps.md
 	echo "" >> apps.md
 	echo "*Use your browser's built-in search tool to easily navigate to this page or use the tags below.*" >> apps.md
-	ADD_SEARCH_BAR
+	ADD_SEARCH_BAR apps.md
 	_categories_buttons >> apps.md
 	_table_head >> apps.md
 }
@@ -223,7 +231,7 @@ function _appimages_list_header {
 	and [AppMan](https://github.com/ivan-hc/AppMan) for the x86_64 architecture." >> appimages.md
 	echo "" >> appimages.md
 	echo "*Use your browser's built-in search tool to easily navigate to this page or use the tags below.*" >> appimages.md
-	echo "" >> appimages.md
+	ADD_SEARCH_BAR appimages.md
 	_back_to_apps_button >> appimages.md
 	_categories_buttons >> appimages.md
 	_table_head >> appimages.md
@@ -644,7 +652,7 @@ function _category_list_header {
 	and [AppMan](https://github.com/ivan-hc/AppMan) for the x86_64 architecture." >> "$category".md
 	echo "" >> "$category".md
 	echo "*Use your browser's built-in search tool to easily navigate to this page or use the tags below.*" >> "$category".md
-	echo "" >> "$category".md
+	ADD_SEARCH_BAR "$category".md
 	_back_to_apps_button >> "$category".md
 	_categories_buttons >> "$category".md
 	_table_head >> "$category".md
