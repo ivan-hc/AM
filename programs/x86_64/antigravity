@@ -12,13 +12,13 @@ printf '\n%s' "rm -f /usr/local/share/applications/$APP-AM.desktop /usr/local/sh
 chmod a+x ../remove || exit 1
 
 # DOWNLOAD AND PREPARE THE APP, $version is also used for updates
-version=$(curl -Ls https://raw.githubusercontent.com/BOTOOM/google-antigravity-bin-arch/main/package/PKGBUILD | grep -oP 'https://[^"]+\.deb' | head -1)
+version=$(curl -Ls https://raw.githubusercontent.com/BOTOOM/google-antigravity-bin-arch/main/package/PKGBUILD | grep -Eoi "http.*tar.gz" | head -1)
 download="$version"
 wget "$download" || exit 1
 # Add custom AppRun here
-# Add custom launcher here
-# Add custom icon here
-curl -Ls "https://raw.githubusercontent.com/ivan-hc/portable2appimage/refs/heads/main/portable2appimage" | sh -s -- ./* "$APP" || exit 1
+curl -s -Lo ../"$APP".desktop "https://raw.githubusercontent.com/archlinux/aur/refs/heads/antigravity-ide/antigravity-ide.desktop" || exit 1
+curl -s -Lo ../"$APP".png https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/main/icons/antigravity.png || exit 1
+curl -Ls "https://raw.githubusercontent.com/ivan-hc/portable2appimage/refs/heads/main/portable2appimage" | sh -s -- ./* "$APP-ide" || exit 1
 cd .. && mv ./tmp/*mage ./"$APP" && rm -R -f ./tmp || exit 1; rm -f AppRun *.desktop *.png *.svg *.xpm
 echo "$version" > ./version
 chmod a+x ./"$APP" || exit 1
@@ -33,7 +33,7 @@ set -u
 APP=antigravity
 SITE="https://antigravity.google"
 version0=$(cat "/opt/$APP/version")
-version=$(curl -Ls https://raw.githubusercontent.com/BOTOOM/google-antigravity-bin-arch/main/package/PKGBUILD | grep -oP 'https://[^"]+\.deb' | head -1)
+version=$(curl -Ls https://raw.githubusercontent.com/BOTOOM/google-antigravity-bin-arch/main/package/PKGBUILD | grep -Eoi "http.*tar.gz" | head -1)
 [ -n "$version" ] || { echo "Error getting link"; exit 1; }
 if command -v appimageupdatetool >/dev/null 2>&1; then
 	cd "/opt/$APP" || exit 1
@@ -45,9 +45,9 @@ if [ "$version" != "$version0" ]; then
 	download="$version"
 	wget "$download" || exit 1
 	# Add custom AppRun here
-	# Add custom launcher here
-	# Add custom icon here
-	curl -Ls "https://raw.githubusercontent.com/ivan-hc/portable2appimage/refs/heads/main/portable2appimage" | sh -s -- ./* "$APP" || exit 1
+	curl -s -Lo ../"$APP".desktop "https://raw.githubusercontent.com/archlinux/aur/refs/heads/antigravity-ide/antigravity-ide.desktop" || exit 1
+	curl -s -Lo ../"$APP".png https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/main/icons/antigravity.png || exit 1
+	curl -Ls "https://raw.githubusercontent.com/ivan-hc/portable2appimage/refs/heads/main/portable2appimage" | sh -s -- ./* "$APP-ide" || exit 1
 	cd .. && mv --backup=t ./tmp/*mage ./"$APP" && chmod a+x ./"$APP" || exit 1; rm -f AppRun *.desktop *.png *.svg *.xpm
 	echo "$version" > ./version
 	rm -R -f ./*zs-old ./*.part ./tmp ./*~
@@ -59,26 +59,21 @@ EOF
 chmod a+x ./AM-updater || exit 1
 
 # LAUNCHER & ICON
-./"$APP" --appimage-extract usr/share/applications/*.desktop 1>/dev/null
+./"$APP" --appimage-extract *.desktop 1>/dev/null && mv ./squashfs-root/*.desktop ./"$APP".desktop
 ./"$APP" --appimage-extract .DirIcon 1>/dev/null && mv ./squashfs-root/.DirIcon ./DirIcon
 COUNT=0
 while [ "$COUNT" -lt 10 ]; do # Tries to get the actual icon/desktop if it is a symlink to another symlink
+	if [ -L ./"$APP".desktop ]; then
+		LINKPATH="$(readlink ./"$APP".desktop | sed 's|^\./||' 2>/dev/null)"
+		./"$APP" --appimage-extract "$LINKPATH" 1>/dev/null && mv ./squashfs-root/"$LINKPATH" ./"$APP".desktop
+	fi
 	if [ -L ./DirIcon ]; then
 		LINKPATH="$(readlink ./DirIcon | sed 's|^\./||' 2>/dev/null)"
 		./"$APP" --appimage-extract "$LINKPATH" 1>/dev/null && mv ./squashfs-root/"$LINKPATH" ./DirIcon
 	fi
-	[ ! -L ./DirIcon ] && break
+	[ ! -L ./"$APP".desktop ] && [ ! -L ./DirIcon ] && break
 	COUNT=$((COUNT + 1))
 done
-desktop_main=$(find ./squashfs-root -name "$APP.desktop" | head -1)
-desktop_url=$(grep -rl "NoDisplay=true" ./squashfs-root --include="*.desktop" | head -1)
-if [ -n "$desktop_main" ]; then
-	sed -i "s#Exec=[^ ]*#Exec=$APP#g; s#Icon=.*#Icon=/opt/$APP/icons/$APP#g; s# --no-sandbox##g" "$desktop_main"
-	cp "$desktop_main" /usr/local/share/applications/"$APP"-AM.desktop
-fi
-if [ -n "$desktop_url" ]; then
-	sed -i "s#Exec=[^ ]*#Exec=$APP#g; s#Icon=.*#Icon=/opt/$APP/icons/$APP#g; s# --no-sandbox##g" "$desktop_url"
-	cp "$desktop_url" /usr/local/share/applications/"$APP"-url-handler-AM.desktop
-fi
-mv ./DirIcon ./icons/"$APP" 1>/dev/null
+sed -i "s#Exec=[^ ]*#Exec=$APP#g; s#Icon=.*#Icon=/opt/$APP/icons/$APP#g; s# --no-sandbox##g" ./"$APP".desktop
+mv ./"$APP".desktop /usr/local/share/applications/"$APP"-AM.desktop && mv ./DirIcon ./icons/"$APP" 1>/dev/null
 rm -R -f ./squashfs-root

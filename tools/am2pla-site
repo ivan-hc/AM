@@ -42,8 +42,16 @@ CATEGORIES="am-utils android audio \
 ##########################################################
 
 function _update_json() {
+	# Exclude "items" (webapps and metapackages) from apps.json so the home
+	# search shows the same "X apps in the database" count that the stats
+	# line at the top of index.md reports (APPS_NUMBER, not APPS_NUMBER +
+	# ITEMS_NUMBER). The exclusion pattern mirrors the one used when
+	# computing APPS_NUMBER itself.
 	echo "[" > apps.json
 	for arg in $ARGS; do
+		case "$arg" in
+			ffwa-*|kdegames|kdeutils|node|platform-tools) continue;;
+		esac
 		description=$(grep "◆ $arg :" "$arch"-apps | sed 's/"/\\"/g; s/^.*: //')
 		printf "  {\n    \"packageName\": \"%b\",\n    \"description\": \"%b..\",\n    \"icon\": \"https://portable-linux-apps.github.io/icons/%b.png\"\n  },\n" "$arg" "$description" "$arg" >> apps.json
 	done
@@ -67,21 +75,7 @@ function _home_button {
 function _table_head() {
 	echo "-----------------"
 	echo ""
-	echo "*NOTE, the installer scripts in the \"INSTALLER\" column are intended for use via \"AM\", and are therefore dedicated to a system-wide \
-	installation of applications (in /opt), and all that \"AppMan\" does is convert those scripts for local installation, changing the paths. \
-	**They are listed here for reading purposes only**!*"
-	echo ""
-	echo "*Should you decide to run them manually, the only way to remove the application is to run \
-	the command \"\`sudo /opt/appname/remove\`\", where \"appname\" is the name of the application directory containing the \"remove\" script. \
-	Likewise, you can also update applications by running the \"AM-updater\" script in the same directory.*"
-	echo ""
-	echo "*The \"AM\" project allow the autonomy of installed apps, regardless of the presence of \"AM\" itself in the system. However, it is strongly \
-	recommended to use \"AM\" and \"AppMan\" to take full advantage of all the benefits you could get from an application installed in this way.*"
-	echo ""
-	echo "*If you are here just to download apps manually, click on the program name and check the URL(s) on the application page. This site does not \
-	provide direct links, for security reasons, but it does provide the exact sources and references where you can find them!*"
-	echo ""
-	echo "*Transparency and credibility are the focus of this catalog. Happy exploring!*"
+	echo "*NOTE, Installer scripts (blob/raw) are provided for reading only: do not run them manually! Use \"AM\" or \"AppMan\" instead.*"
 	echo ""
 	echo "-----------------"
 	echo ""
@@ -90,26 +84,13 @@ function _table_head() {
 }
 
 function _categories_buttons() {
-	echo ""
-	echo "#### *Categories*"
-	echo ""
-	#- ***[SAMPLE](https://portable-linux-apps.github.io/SAMPLE.html)*** \
-	echo "***[AppImages](appimages.md)*** \
-		$(for c in $CATEGORIES; do printf " - ***[$c]($c.md)***"; done)"
-	echo ""
+	printf "\n#### *Categories:* ***[AppImages](appimages.md)***%b\n\n" "$(for c in $CATEGORIES; do printf " - ***[$c]($c.md)***"; done)"
 }
 
-function _categories_buttons_on_footer() {
+function _back_to_home_or_apps_buttons() {
 	echo ""
 	echo "| [Back to Home](index.md) | [Back to Applications](apps.md)"
 	echo "| --- | --- |"
-	echo ""
-}
-
-function _back_to_apps_button() {
-	echo ""
-	echo "| [Back to Applications](apps.md) |"
-	echo "| --- |"
 	echo ""
 }
 
@@ -153,7 +134,7 @@ function _footer_apps() {
 
 function _footer_categories() {
 	_footer_up
-	_categories_buttons_on_footer
+	_back_to_home_or_apps_buttons
 	_footer_down
 }
 
@@ -161,14 +142,25 @@ function _footer_categories() {
 # COMPILE THE APPLICATIONS LIST
 ###############################
 
+ADD_SEARCH_BAR() {
+cat >> "$1" << EOF
+
+<div id="app-search-box" style="margin: 1em 0;">
+  <label for="app-search-input" style="font-weight: bold;">Search applications:</label>
+  <input type="search" id="app-search-input" placeholder="Type a name or keyword..." autocomplete="off"
+    style="width: 100%; max-width: 480px; padding: 0.5em 0.75em; margin-top: 0.25em; font-size: 1em; border: 1px solid #999; border-radius: 4px; box-sizing: border-box;">
+  <span id="app-search-count" style="margin-left: 0.5em; font-style: italic; color: #666;"></span>
+</div>
+EOF
+}
+
 function _applications_list_header {
 	echo "# APPLICATIONS" > apps.md
 	_home_button >> apps.md
 	echo "#### Here are listed all **$APPS_NUMBER** unique applications, AppImage packages and command line utilities managed by [AM](https://github.com/ivan-hc/AM) \
 	and [AppMan](https://github.com/ivan-hc/AppMan) for the x86_64 architecture, plus **$ITEMS_NUMBER** more entries and items to help you install apps more easily." >> apps.md
 	echo "" >> apps.md
-	echo "*Use your browser's built-in search tool to easily navigate to this page or use the tags below.*" >> apps.md
-	echo "" >> apps.md
+	ADD_SEARCH_BAR apps.md
 	_categories_buttons >> apps.md
 	_table_head >> apps.md
 }
@@ -206,13 +198,11 @@ function _appimages_listing() {
 
 function _appimages_list_header {
 	echo "# APPIMAGES" > appimages.md
-	_home_button >> appimages.md
+	_back_to_home_or_apps_buttons >> appimages.md
 	echo "#### Here are listed the **$APPIMAGES_NUMBER** unique Appimages managed by [AM](https://github.com/ivan-hc/AM) \
 	and [AppMan](https://github.com/ivan-hc/AppMan) for the x86_64 architecture." >> appimages.md
 	echo "" >> appimages.md
-	echo "*Use your browser's built-in search tool to easily navigate to this page or use the tags below.*" >> appimages.md
-	echo "" >> appimages.md
-	_back_to_apps_button >> appimages.md
+	ADD_SEARCH_BAR appimages.md
 	_categories_buttons >> appimages.md
 	_table_head >> appimages.md
 }
@@ -228,39 +218,410 @@ _appimages_list_header
 _appimages_list_body
 _footer_categories >> appimages.md
 
-######################################
+##########################################################################################################################################################
 # COMPILE THE MAIN PAGE OF THE WEBSITE
-######################################
+##########################################################################################################################################################
+
+INDEX_HEAD() {
+cat >> ./index.md << EOF
+<div align="center">
+
+###### *Welcome to the most complete database of all AppImage packages and portable applications for GNU/Linux.*
+
+# PORTABLE LINUX APPS
+
+### *the first AUR-inspired AppImage Software Center!*
+
+--------
+
+EOF
+}
+
+INDEX_HEAD_TWO() {
+cat >> ./index.md << EOF
+
+*From here you can download them, install them, update them (for real), get more information about the sources and their developers... and if you want, you can contribute yourself by adding the missing information, because this site is **open source**!*
+
+--------
+
+| *[Go to the applications list](https://portable-linux-apps.github.io/apps.html)* | *[Install "AM", the package manager](https://github.com/ivan-hc/AM)* |
+| - | - |
+| [<img loading="lazy" src="https://github.com/user-attachments/assets/1ca475a3-5ccd-47c0-80b7-bab757f3f58c" width="512" height="256">](https://portable-linux-apps.github.io/apps.html) | [<img loading="lazy" src="https://raw.githubusercontent.com/ivan-hc/AM/main/sample/sample.png" width="512" height="256">](https://github.com/ivan-hc/AM) |
+
+<div id="home-search" style="margin: 1.5em auto; max-width: 640px; text-align: left;">
+  <label for="home-search-input" style="font-weight: bold; display: block; margin-bottom: 0.25em; text-align: center;">Search applications</label>
+  <input type="search" id="home-search-input" placeholder="Start typing an app name or keyword..." autocomplete="off"
+    style="width: 100%; padding: 0.6em 0.85em; font-size: 1em; border: 1px solid #999; border-radius: 4px; box-sizing: border-box;">
+  <div id="home-search-status" style="margin-top: 0.5em; font-style: italic; color: #666; text-align: center;">Loading app database&hellip;</div>
+  <ul id="home-search-results" style="list-style: none; padding: 0; margin: 0.5em 0 0;"></ul>
+  <div id="home-search-more" style="margin-top: 0.5em; text-align: center;"></div>
+</div>
+
+EOF
+}
+
+INDEX_BODY_FULL() {
+cat >> ./index.md << 'EOF'
+--------
+
+</div>
+
+------------------------------------------------------------------------
+### Main Index
+------------------------------------------------------------------------
+
+- [What are the portable linux apps?](#what-are-the-portable-linux-apps)
+- [How is this site different from other sites that list AppImage packages?](#how-is-this-site-different-from-other-sites-that-list-appimage-packages)
+- [How can I improve the pages on this site?](#how-can-i-improve-the-pages-on-this-site)
+- [Is there a centralized repository for AppImage packages?](#is-there-a-centralized-repository-for-appimage-packages)
+- [How to install "AM"](#how-to-install-am)
+  - [What is "AppMan"?](#what-is-appman)
+  - [AM installation structure](#am-installation-structure)
+  - [How are apps installed](#how-are-apps-installed)
+  - [What programs can be installed](#what-programs-can-be-installed)
+  - [How to update all programs, for real](#how-to-update-all-programs-for-real)
+- [External links index (tutorials, troubleshooting, sandboxing... more)](#external-links-index)
+- [Related projects](#related-projects)
+
+--------
+
+### What are the portable linux apps?
+*Portable Linux Apps are standalone applications for GNU/Linux that can (theoretically) run everywhere, also on a USB stick. These applications can be AppImage packages (see [appimage.org](https://appimage.org/)) or standalone archives (for example Firefox, Thunderbird...).*
+
+--------
+
+### How is this site different from other sites that list AppImage packages?
+*This catalog aims to survey and list all the AppImages and autonomous programs, and aims to provide a centralized point where you can document yourself on individual apps and where you can easily reach the URLs to the sources, both through the pages dedicated to each app and by reading the "installation scripts".*
+
+*Yeah, each app has its own installation script, PKGBUILD style, but with an alternative package manager named "**[AM](https://github.com/ivan-hc/AM)**", which works like the more classic APT, PacMan/YAY, DNF... and which can therefore place them in specific paths of the filesystem , like any program, and allows updates via a system of scripts called "AM-updater". If an app can't update itself, the dedicated "AM-updater" script will use an application-specific method to always update your favorite apps to the latest version. FOR REAL!*
+
+*This catalog is open source. You can edit its pages, update them and see the sources clearly, as a "wiki".*
+
+#### About other catalogs
+*While I recognize the role they have had so far in supporting the diffusion of AppImage as a packaging format, through the years, as a former user, I would like to underline what led me to open an alternative catalogue:*
+- *"**[appimage.github.io](https://appimage.github.io/)**" serves more than anything else to catalog the AppImages based on validation processes based on Github Actions (i.e. that the package is compatible with old versions of Ubuntu LTS). From the developer's point of view it's fine, but **from the point of view of the user who searches for AppImage packages without going into the depths of the internet, it's totally useless**. As a catalog it is limited to showing only that an app exists or has existed in the past, without worrying about **obsolete packages that no longer exist, but still listed only "to make up the numbers"**. Many pages have no buttons to the sources and all pages have no additional information on individual apps, **each page is simply a copy/paste message** that says that the app "is available as an AppImage which means one app = one file..." etcetera etcetera.*
+- *"**[appimagehub.com](https://www.appimagehub.com/)**" hosts applications not always provided by the original developer, just check the profile of whoever uploaded the application and how many "products" they uploaded. Some admit that they are not the developers, despite having a donation button available, effectively **leading them to earning on work of others**, and are often greedy enough to not include the real source! These profiles use random hosting services for these applications, and Pling's APIs does not allow you to clearly verify the origin of any package that is downloaded. There is no control over this, and the only validity check of a "product" is the feedback of the users who use it, and which in any case is **not sufficient either to guarantee the safety of an app, nor to do justice to the real owner of that package, who was in fact "robbed" of its work**.*
+
+*Furthermore, **none of them track updates consistently**.*
+
+*From the aforementioned defects I understood what a catalog of portable applications should NOT do to be reliable.*
+
+--------
+
+## How can I improve the pages on this site?
+*All pages are simple Markdown files. If you have a [Github](https://github.com) profile, just click on "**Improve this page**" at the bottom of the page you are interested in:*
+- *for each app you can add additional URLs (also for donations), information, screenshots, tables and annotations related to bugs, always respecting the layout (note that the same pages are what you see in the terminal using "AM"/"AppMan" through the `-a` option);*
+- *icons must be 128x128 PNG files (they could be used by "AM"/"AppMan" during installation, in case an icon is not found);*
+- *the application lists instead are automatically generated by the developer of this site through [this script](https://github.com/ivan-hc/AM/blob/main/tools/am2pla-site). Any changes to the lists and descriptions must be made to [this file](https://github.com/ivan-hc/AM/blob/main/programs/x86_64-apps), which is the general list of apps managed by "AM"/"AppMan". The script will create the [Applications](apps.md) page first and then it will create and update the categories.*
+
+*For any suggestions, open an [issue](https://github.com/ivan-hc/AM/issues) at https://github.com/ivan-hc/AM or a [pull request](https://github.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/pulls) at https://github.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io*
+
+--------
+
+## Is there a centralized repository for AppImage packages?
+*Depends on what you mean by "**centralized package repository**", if you mean a repository that stores them all like Debian-based distributions do with DEB packages, no, there are thousands of packages, and they are usually distributed to remote sites and difficult to find.*
+
+*If instead you mean an AUR-style repo with scripts that easily find all AppImages, **you're in the right place!***
+
+*This catalog and its CLI, "[**AM**](https://github.com/ivan-hc/AM)", make it easy for you to find, install, integrate and update all AppImage packages!*
+
+<div align="center">
+
+## *[https://github.com/ivan-hc/AM](https://github.com/ivan-hc/AM)*
+
+| [<img loading="lazy" src="https://raw.githubusercontent.com/ivan-hc/AM/main/sample/sandbox.gif">](https://github.com/ivan-hc/AM) | [<img loading="lazy" src="https://raw.githubusercontent.com/ivan-hc/AM/main/sample/list.gif">](https://github.com/ivan-hc/AM) | [<img loading="lazy" src="https://raw.githubusercontent.com/ivan-hc/AM/main/sample/about.gif">](https://github.com/ivan-hc/AM) |
+| - | - | - |
+| *sandbox AppImages* | *list available apps* | *info about the apps* |
+| [<img loading="lazy" src="https://raw.githubusercontent.com/ivan-hc/AM/main/sample/install.gif">](https://github.com/ivan-hc/AM) | [<img loading="lazy" src="https://raw.githubusercontent.com/ivan-hc/AM/main/sample/query.gif">](https://github.com/ivan-hc/AM) | [<img loading="lazy" src="https://raw.githubusercontent.com/ivan-hc/AM/main/sample/files.gif">](https://github.com/ivan-hc/AM) |
+| *install applications* | *query lists using keywords* | *show the installed apps* |
+| [<img loading="lazy" src="https://raw.githubusercontent.com/ivan-hc/AM/main/sample/backup-overwrite.gif">](https://github.com/ivan-hc/AM) | [<img loading="lazy" src="https://raw.githubusercontent.com/ivan-hc/AM/main/sample/update.gif">](https://github.com/ivan-hc/AM) | [<img loading="lazy" src="https://raw.githubusercontent.com/ivan-hc/AM/main/sample/nolibfuse.gif">](https://github.com/ivan-hc/AM) |
+| *create and restore snapshots* | *update everything* | *get rid of libfuse2* |
+
+</div>
+
+*This catalog is just the frontend for an ever growing database that aims to extend not only to x86_64 architecture apps listed here, but also to all others, from the modern ARM64/aarch64 to oldest i686, as an universal solution for all AppImages and portable programs for GNU/Linux!*
+
+*All the installation scripts are stored in the repository of the "**AM**" package manager.*
+
+------------------------------------------------------------------------
+
+# How to install AM
+
+*To install "AM" you must first install the "core" dependencies from your package manager:*
+
+| command | motivation | pre-installed? |
+| - | - | - |
+| `coreutils` | it's a suite of core commands | YES, on almost all distributions |
+| `curl` | network utility needed to read online text like lists, URLs and versions | not in all distibutions |
+| `grep` | a string search utility | YES, on many distributions |
+| `sed` | stream editor for filtering and transforming text | YES, in almost all distributions |
+
+*NOTE, if you install "AM" (system) and not "AppMan" (local), **you need `sudo` or `doas` for root privileges**.*
+
+*Other "optional" programs (needed by the apps themselves) may be notified if they are missing while you are using AM or AppMan, but their absence would not prevent you from using AM/AppMan itself.*
+
+### Quick installation
+
+*Copy/paste the following one line command to download and run the "[AM-INSTALLER](https://github.com/ivan-hc/AM/blob/main/AM-INSTALLER)" script*
+
+*Using `wget`*
+```
+wget -q https://raw.githubusercontent.com/ivan-hc/AM/main/AM-INSTALLER && chmod a+x ./AM-INSTALLER && ./AM-INSTALLER
+```
+*or using `curl`*
+```
+curl -s -Lo ./AM-INSTALLER https://raw.githubusercontent.com/ivan-hc/AM/main/AM-INSTALLER && chmod a+x ./AM-INSTALLER && ./AM-INSTALLER && rm ./AM-INSTALLER
+```
+
+*...below, the screenshot of what will appear.*
+
+| <img width="747" height="600" alt="installer" src="https://github.com/user-attachments/assets/f8a153e8-d410-4a7e-9e5c-b48e686547ee" /> |
+| - |
+
+*Type "1" to install "AM", "2" to install "[AppMan](#what-is-appman)". Any other key will abort the installation.*
+
+**Installation is complete!**
+
+*Run `am -h` or jump to "**[Usage](#usage)**" to see all the available options.*
+
+------------------------------------------------------------------------
+
+### What is AppMan?
+
+*AppMan is a portable version of "AM", limited to installing and managing apps only locally and without root privileges.*
+
+*The command name changes, from `am` to `appman`, but the script is the same.*
+
+*"AM" on the contrary, provides a "fixed" installation, but can install and manage apps both locally and at the system level.*
+
+*I recommend "AM" to privileged users who want to install and manage apps at multiple levels, and "AppMan" to non-privileged users who do not have large needs.*
+
+------------------------------------------------------------------------
+
+### AM installation structure
+
+*The classic "AM" installation has the following structure:*
+```
+/opt/am/APP-MANAGER ==> /usr/local/bin/am
+/opt/am/modules
+/opt/am/remove
+```
+*Where the command `/usr/local/bin/am` is just a symbolic link to `/opt/am/APP-MANAGER`. The directory `/opt/am/modules` contains the modules "not vital" for "AM" but necessary for managing the apps. The script `/opt/am/remove` is instead necessary for removing "AM".*
+
+------------------------------------------------------------------------
+
+### How are apps installed
+
+*The system-wide AppImage integration has the following structure:*
+```
+/opt/$PROGRAM/
+/opt/$PROGRAM/$PROGRAM
+/opt/$PROGRAM/AM-updater
+/opt/$PROGRAM/remove
+/opt/$PROGRAM/icons/$ICON-NAME
+/usr/local/bin/$PROGRAM
+/usr/local/share/applications/$PROGRAM-AM.desktop
+```
+*Locally installed apps can have a directory of your choice, depending on what you decided when you first started `am -i --user {PROGRAM}` or when you started `appman` (if you chose [AppMan](#what-is-appman)) or by using the `am --user` command.*
+
+*In fact, the `--user` command can be used as a "flag" for application installation options, allowing you to integrate them locally and without root permissions, as AppMan does.*
+
+*For example, let's say you want to create and use the `/home/USER/Applications` directory, here is the structure of a locally embedded AppImage:*
+```
+~/Applicazioni/$PROGRAM/
+~/Applicazioni/$PROGRAM/$PROGRAM
+~/Applicazioni/$PROGRAM/AM-updater
+~/Applicazioni/$PROGRAM/remove
+~/Applicazioni/$PROGRAM/icons/$ICON-NAME
+~/.local/bin/$PROGRAM
+~/.local/share/applications/$PROGRAM-AM.desktop
+```
+
+------------------------------------------------------------------------
+
+| [Install "AM"/"AppMan"](#installation) | [Back to "Main Index"](#main-index) |
+| - | - |
+
+------------------------------------------------------------------------
+
+# What programs can be installed
+
+*"AM" installs, removes, updates and manages only standalone programs, ie those programs that can be run from a single directory in which they are contained.*
+
+*1. **PORTABLE PROGRAMS** from official sources (see Firefox, Thunderbird, NodeJS, Platform Tools...), extracted from official .deb/tar/zip packages.*
+
+*2. **APPIMAGES**, from both official and unofficial sources (I also create unofficial AppImages), or compiled on-the-fly with [pkg2appimage](https://github.com/AppImage/pkg2appimage) and [appimagetool](https://github.com/AppImage/AppImageKit), like an AUR helper, from official archives.*
+
+*3. **FIREFOX PROFILES** to run as webapps, the ones with suffix "ffwa-" in the apps list.*
+
+*4. **THIRD-PARTY LIBRARIES** if they are missing in your repositories.*
+
+*The database aims to be a reference point where you can download all the AppImage packages scattered around the web, otherwise unobtainable, as you would expect from any package manager, through specific installation scripts for each application, as happens with the AUR PKGBUILDs, on Arch Linux. You can see all of them [here](https://github.com/ivan-hc/AM/tree/main/programs), divided by architecture.*
+
+*You can view basic information, site links and sources using the related command `am -a {PROGRAM}`, or visit [**portable-linux-apps.github.io/apps**](https://portable-linux-apps.github.io/apps).*
+
+------------------------------------------------------------------------
+
+| [Back to "Main Index"](#main-index) |
+| - |
+
+------------------------------------------------------------------------
+
+# How to update all programs, for real
+
+*Most of the apps managed by "AM" have a script called `AM-updater`. It tells how updates are checked when running the `am -u` command.*
+
+*In most cases, the "version comparison" is used between the installed one (file `version`) and an online source (official or not, depending on how hard or easy it is to find a download URL or just a number, using the terminal). In other cases, AppImages can rely on "`appimageupdatetool`" if they support "delta updates" (install it with the command `am -i appimageupdatetool`). However, there are some programs that update themselves (and among these the most famous is certainly Firefox, all official development builds).*
+
+### How to update all installed apps
+
+*Option `-u` or `update` updates all the installed apps and keeps "AM"/"AppMan" in sync with the latest version and all latest bug fixes.*
+
+*1. To update only the programs, use `am -u --apps` / `appman -u --apps`*
+
+*2. To update just one program, use `am -u $PROGRAM` / `appman -u $PROGRAM`*
+
+*3. To update all the programs and "AM"/"AppMan" itself, just run the command`am -u` / `appman -u`*
+
+*4. To update only "AM"/"AppMan" and the modules use the option `-s` instead, `am -s` / `appman -s`*
+
+### How to update everything using Topgrade
+
+*Keeping your system up to date usually involves invoking multiple package managers. This results in big, non-portable shell one-liners saved in your shell. To remedy this, Topgrade detects which tools you use and runs the appropriate commands to update them.*
+
+*Install the "`topgrade`" package using the command*
+```
+am -i topgrade
+```
+*or*
+```
+am -i --user topgrade
+```
+*Visit [github.com/topgrade-rs/topgrade](https://github.com/topgrade-rs/topgrade) to learn more.*
+
+------------------------------------------------------------------------
+
+| [Back to "Main Index"](#main-index) |
+| - |
+
+------------------------------------------------------------------------
+### External links index
+------------------------------------------------------------------------
+*All the guides listed here are available at [***github.com/ivan-hc/AM***](https://github.com/ivan-hc/AM)*
+
+- [Install applications](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/install.md)
+- [Install only AppImages](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/install-appimage.md)
+  - [Install and sandbox AppImages in one go](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/install-appimage.md#install-and-sandbox-appimages-in-one-go)
+- [Install AppImages not listed in this database but available in other github repos](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/extra.md)
+- [List the installed applications](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/files.md)
+- [List and query all the applications available on the database](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/list-and-query.md)
+- [Update all](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/update.md)
+- [Backup and restore installed apps using snapshots](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/backup-and-overwrite.md)
+- [Remove one or more applications](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/remove.md)
+- [Clone a set of programs installed from other AM and AppMan configurations](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/clone.md)
+- [Change the destination path of installed programs](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/relocate.md)
+- [Convert Type2 AppImages requiring libfuse2 to New Generation AppImages](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/nolibfuse.md)
+- [Integrate local AppImages into the menu by dragging and dropping them](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/launcher.md)
+  - [How to create a launcher for a local AppImage](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/launcher.md#how-to-create-a-launcher-for-a-local-appimage)
+  - [How to remove the orphan launchers](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/launcher.md#how-to-remove-the-orphan-launchers)
+  - [AppImages from external media](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/launcher.md#appimages-from-external-media)
+  - [Update scattered AppImages](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/launcher.md#update-scattered-appimages)
+- [Sandbox an AppImage](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/sandbox.md)
+  - [How to enable a sandbox](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/sandbox.md#how-to-enable-a-sandbox)
+  - [How to disable a sandbox](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/sandbox.md#how-to-disable-a-sandbox)
+  - [Sandboxing example](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/sandbox.md#sandboxing-example)
+  - [About Aisap sandboxing](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/sandbox.md#about-aisap-sandboxing)
+- [How to update or remove apps manually](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/remove.md#how-to-update-or-remove-apps-manually)
+- [Downgrade an installed app to a previous version](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/downgrade.md)
+- [How to use multiple versions of the same application](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/backup-and-overwrite.md#how-to-use-multiple-versions-of-the-same-application)
+- [Create and test your own installation script](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/template.md)
+  - [Option Zero: "AppImages"](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/template.md#option-zero-appimages)
+  - [Option One: "build AppImages on-the-fly"](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/template.md#option-one-build-appimages-on-the-fly)
+  - [Option Two: "Archives and other programs"](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/template.md#option-two-archives-and-other-programs)
+  - [Option Three: "Firefox profiles"](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/template.md#option-three-firefox-profiles)
+  - [How an installation script works](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/template.md#how-an-installation-script-works)
+  - [How to test an installation script](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/template.md#how-to-test-an-installation-script)
+  - [How to submit a Pull Request](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/template.md#how-to-submit-a-pull-request)
+- [Third-party databases for applications (NeoDB)](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/newrepo.md)
+- [BSD, freeBSD and derivative systems: configuration and troubleshooting](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/bsd.md)
+
+[Instructions for Linux Distro Maintainers](https://github.com/ivan-hc/AM#instructions-for-linux-distro-maintainers)
+
+[Troubleshooting](https://github.com/ivan-hc/AM#troubleshooting)
+- [An application does not work, is old and unsupported](https://github.com/ivan-hc/AM/blob/main/docs/troubleshooting.md#an-application-does-not-work-is-old-and-unsupported)
+- [Cannot download or update an application](https://github.com/ivan-hc/AM/blob/main/docs/troubleshooting.md#cannot-download-or-update-an-application)
+- [Cannot mount and run AppImages](https://github.com/ivan-hc/AM/blob/main/docs/troubleshooting.md#cannot-mount-and-run-appimages)
+- [Checksum does not match or missing verified status](https://github.com/ivan-hc/AM/blob/main/docs/troubleshooting.md#checksum-does-not-match-or-missing-verified-status)
+- [Failed to open squashfs image](https://github.com/ivan-hc/AM/blob/main/docs/troubleshooting.md#failed-to-open-squashfs-image)
+- [Spyware, malware and dangerous software](https://github.com/ivan-hc/AM/blob/main/docs/troubleshooting.md#spyware-malware-and-dangerous-software)
+- [Stop AppImage prompt to create its own launcher, desktop integration and doubled launchers](https://github.com/ivan-hc/AM/blob/main/docs/troubleshooting.md#stop-appimage-prompt-to-create-its-own-launcher-desktop-integration-and-doubled-launchers)
+- [The script points to "releases" instead of downloading the latest stable](https://github.com/ivan-hc/AM/blob/main/docs/troubleshooting.md#the-script-points-to-releases-instead-of-downloading-the-latest-stable)
+- [Ubuntu mess](https://github.com/ivan-hc/AM/blob/main/docs/troubleshooting.md#ubuntu-mess)
+- [Wrong download link](https://github.com/ivan-hc/AM/blob/main/docs/troubleshooting.md#wrong-download-link)
+
+------------------------------------------------------------------------
+
+| [Back to "Main Index"](#main-index) |
+| - |
+
+------------------------------------------------------------------------
+# Related projects
+#### Side Projects
+- *[amcheck](https://github.com/ivan-hc/amcheck), checks the validity of scripts in this database and monitors the availability of AppImages*
+- *[am-extras](https://github.com/ivan-hc/am-extras), lists applications from third-party databases*
+- *[am-gui](https://github.com/Shikakiben/AM-GUI), a graphical Front for AM, by @Shikakiben*
+- *[vappman](https://github.com/joedefen/vappman), a visual (curses) TUI interface to AppMan, by @joedefen*
+
+#### My other projects
+- *[AppImaGen](https://github.com/ivan-hc/AppImaGen), easily create AppImages from Ubuntu PPAs or Debian using pkg2appimage and appimagetool*
+- *[ArchImage](https://github.com/ivan-hc/ArchImage), create AppImages for all distributions using Arch Linux packages. Powered by JuNest*
+- *[Firefox for Linux scripts](https://github.com/ivan-hc/Firefox-for-Linux-scripts), easily install the official releases of Firefox for Linux*
+- *[My AppImage packages](https://github.com/ivan-hc#my-appimage-packages) the complete list of packages managed by me and available in this database*
+- *[portable2appimage](https://github.com/ivan-hc/portable2appimage), convert standalone, self-contained portable apps into AppImage packages*
+- *[Snap2AppImage](https://github.com/ivan-hc/Snap2AppImage), try to convert Snap packages to AppImages*
+
+------------------------------------------------------------------------
+
+###### *You can support me and my work on [**ko-fi.com**](https://ko-fi.com/IvanAlexHC) and [**PayPal.me**](https://paypal.me/IvanAlexHC). Thank you!*
+
+--------
+
+*© 2020-present Ivan Alessandro Sala aka 'Ivan-HC'* - I'm here just for fun! 
+
+------------------------------------------------------------------------
+
+| [**ko-fi.com**](https://ko-fi.com/IvanAlexHC) | [**PayPal.me**](https://paypal.me/IvanAlexHC) | [Install "AM"/"AppMan"](#installation) | ["Main Index"](#main-index) |
+| - | - | - | - |
+
+------------------------------------------------------------------------
+
+
+EOF
+}
 
 ST_APPS_NUMBER=$(($APPS_NUMBER-$APPIMAGES_NUMBER))
 function _compile_the_homepage() {
-	if [ -f ./index.md ]; then
-		cat ./index.md > index.old
-	else
-		curl -Ls https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/main/index.md > index.old
-	fi
-	sed -n '1,10p' ./index.old > ./index.md
+	rm -f ./index.md
+	INDEX_HEAD
 	echo "#### *This site lists **$APPS_NUMBER** unique apps (**$APPIMAGES_NUMBER** Appimage packages and **$ST_APPS_NUMBER** standalone/portable programs), plus **$ITEMS_NUMBER** items.*" >> ./index.md
-	sed -n '12,19p' ./index.old >> ./index.md
+	INDEX_HEAD_TWO
 	_categories_buttons >> ./index.md
-	sed -n '25,20000p' ./index.old >> ./index.md
+	INDEX_BODY_FULL
 }
 
 _compile_the_homepage
 
-##################
+##########################################################################################################################################################
 # OTHER CATEGORIES
-##################
+##########################################################################################################################################################
 
 function _category_list_header {
 	echo "# $(echo "$category" | tr a-z A-Z)" > "$category".md
-	_home_button >> "$category".md
+	_back_to_home_or_apps_buttons >> "$category".md
 	echo "#### Here are listed **$APPS_NUMBER** programs and **$ITEMS_NUMBER** items for this category and managed by [AM](https://github.com/ivan-hc/AM) \
 	and [AppMan](https://github.com/ivan-hc/AppMan) for the x86_64 architecture." >> "$category".md
 	echo "" >> "$category".md
-	echo "*Use your browser's built-in search tool to easily navigate to this page or use the tags below.*" >> "$category".md
-	echo "" >> "$category".md
-	_back_to_apps_button >> "$category".md
+	ADD_SEARCH_BAR "$category".md
 	_categories_buttons >> "$category".md
 	_table_head >> "$category".md
 }
@@ -326,4 +687,4 @@ done
 ######################
 # END OF ALL PROCESSES
 ######################
-rm ./args ./index.old ./"$arch"-apps ./body.txt
+rm ./args ./"$arch"-apps ./body.txt

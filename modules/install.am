@@ -404,27 +404,6 @@ _install_arg() {
 #			INSTALLATION CASES
 ################################################################################
 
-_install_appimage() {
-	# This function is ment to select and install only AppImages
-	rm -f "$AMCACHEDIR"/install-args
-	_sync_appimages_list
-	for arg in $entries; do
-		if grep -q "^◆ $arg : " "$AMDATADIR/$ARCH-appimages"; then
-			echo "$arg" >> "$AMCACHEDIR"/install-args
-		else
-			arg="$arg-appimage"
-			if ! grep -q "^◆ $arg : " "$AMDATADIR/$ARCH-appimages"; then
-				echo "$DIVIDING_LINE"
-				echo $" ✖ \"$(echo "$arg" | sed 's/-appimage//g')\" is not an Appimage"
-				echo "$DIVIDING_LINE"
-			else
-				echo "$arg" >> "$AMCACHEDIR"/install-args
-			fi
-		fi
-	done
-	entries=$(cat "$AMCACHEDIR"/install-args 2>/dev/null)
-}
-
 _install_local_script() {
 	# This function is for local installation scripts
 	path2arg="$arg"
@@ -457,10 +436,6 @@ _remove_extensions_from_appname() {
 	for e in $third_party_lists; do
 		pure_arg=$(echo "$pure_arg" | sed "s/\.$e$//g")
 	done
-}
-
-_3rd_party_check() {
-	echo "$@" | grep -q -- "$tp_flags" || echo "$arg" | grep -q "$tp_extensions"
 }
 
 _3rd_party_detect_online_item() {
@@ -533,7 +508,7 @@ _3rd_party_apps_handler() {
 	else
 		tp_site_ref=$(echo "$third_party_readme_content" | grep -i "^| $arg | .* | http.* | http.* | .* |$" | tr '|' '\n' | cut -c 2- | grep . | awk -F: "NR==$awk_site" | sed 's/ //g')
 		url_content=$(echo "$third_party_readme_content" | grep -i "^| $arg | .* | http.* | http.* | .* |$" | tr '|' '\n' | cut -c 2- | grep . | awk -F: "NR==$awk_dl" | sed 's/ //g')
-		if ! "$url_content" && [ "$tp_extension" != soarpkg ]; then
+		if ! [ -n "$url_content" ] && [ "$tp_extension" != soarpkg ]; then
 			printf "%b" "$tp_missing_file_msg" | _fit
 			return 1
 		fi
@@ -571,7 +546,130 @@ _install_3rd_party_app() {
 	else
 		echo $" 💀 ERROR, \"$arg\" does NOT exist in 3rd-party databases"
 		printf $"\n Try again but WITHOUT the third-party flag\n"
+		local active_tp=""
+		for tp_list in $third_party_lists; do
+			echo "$FLAGS" | grep -q -- "$tp_list" && active_tp="$tp_list" && break
+		done
+		_did_you_mean "$arg" "$active_tp"
+		if [ -n "$DID_YOU_MEAN" ]; then
+			if [ -n "$DID_YOU_MEAN_FLAG" ]; then
+				read -r -p $" Install \"$DID_YOU_MEAN\" with --$DID_YOU_MEAN_FLAG flag? (Y/n) " yn
+			else
+				read -r -p $" Install \"$DID_YOU_MEAN\" instead? (Y/n) " yn
+			fi
+			echo ""
+			if ! echo "$yn" | grep -i '^n' >/dev/null 2>&1; then
+				arg="$DID_YOU_MEAN"
+				FLAGS="$FLAGS --$DID_YOU_MEAN_FLAG"
+				_install_3rd_party_app
+			fi
+		fi
 	fi
+}
+
+################################################################################
+#			INSTALL HELPER
+################################################################################
+
+_prepare_arg() {
+	arg_origin="$arg"
+	pure_arg=$(echo "$arg" | sed 's:.*/::')
+	_remove_extensions_from_appname
+}
+
+_check_and_install() {
+	[ -n "$BINDIR" ] && find "$BINDIR" -xtype l -name "$pure_arg" -delete 2>/dev/null
+	if test -f "$APPSPATH"/"$pure_arg"/remove || test -f "$APPSPATH"/"$pure_arg"/remove.old; then
+		echo $" ◆ \"$pure_arg\" is already installed!" | tr '[:lower:]' '[:upper:]'
+	else
+		arg_script=$(_use_online_reading_tool "$APPSDB/$arg" 2>/dev/null)
+		echo "$arg_script" | grep -q "^#" && _install_normally
+	fi
+}
+
+################################################################################
+#			DID YOU MEAN (FUZZY SUGGEST)
+################################################################################
+
+_levenshtein() {
+	local s="$1" t="$2"
+	local sl=${#s} tl=${#t}
+	local i j sc min del ins sub
+	local -a d
+	for ((i=0; i<=sl; i++)); do d[i*(tl+1)]=$i; done
+	for ((j=0; j<=tl; j++)); do d[j]=$j; done
+	for ((i=1; i<=sl; i++)); do
+		for ((j=1; j<=tl; j++)); do
+			sc=0; [ "${s:i-1:1}" != "${t:j-1:1}" ] && sc=1
+			del=$(( d[(i-1)*(tl+1)+j] + 1 ))
+			ins=$(( d[i*(tl+1)+j-1] + 1 ))
+			sub=$(( d[(i-1)*(tl+1)+j-1] + sc ))
+			min=$del; [ $ins -lt $min ] && min=$ins; [ $sub -lt $min ] && min=$sub
+			d[i*(tl+1)+j]=$min
+		done
+	done
+	echo "${d[sl*(tl+1)+tl]}"
+}
+
+_did_you_mean() {
+	local input="$1" only_flag="$2"
+	local names match="" match_flag="" input_len=${#input} first_char="${input:0:1}" best_dist=3 diff dist
+	DID_YOU_MEAN=""
+	DID_YOU_MEAN_FLAG=""
+
+	_did_you_mean_search() {
+		local list="$1"
+		[ ! -f "$list" ] && return
+		[ "$best_dist" -eq 0 ] && return
+		names=$(grep "^◆ " "$list" | sed 's/^◆ //;s/ :.*$//')
+		while IFS= read -r name; do
+			[ -z "$name" ] && continue
+			[ "$name" = "$input" ] && [ -n "$2" ] && best_dist=0 && match=$name && match_flag="$2" && return
+			diff=$(( ${#name} - input_len ))
+			[ $diff -lt 0 ] && diff=$(( -diff ))
+			[ $diff -gt 2 ] && continue
+			[ "${name:0:1}" != "$first_char" ] && continue
+			dist=$(_levenshtein "$input" "$name")
+			if [ "$dist" -lt "$best_dist" ]; then
+				best_dist=$dist
+				match=$name
+				match_flag="$2"
+			fi
+		done <<< "$names"
+	}
+
+	if [ -n "$only_flag" ]; then
+		_did_you_mean_search "$AMDATADIR/$ARCH-$only_flag" "$only_flag"
+	else
+		_did_you_mean_search "$AMDATADIR/$ARCH-apps" ""
+		for tp_list in $third_party_lists; do
+			_did_you_mean_search "$AMDATADIR/$ARCH-$tp_list" "$tp_list"
+		done
+	fi
+
+	if [ -n "$match" ]; then
+		if [ "$best_dist" -eq 0 ] && [ -n "$match_flag" ]; then
+			printf $"\n \"%b%b\033[0m\" is not in the main database, but found in --%b%b\033[0m.\n" "${LightBlue}" "$match" "${LightBlue}" "$match_flag"
+		else
+			printf $"\n Did you mean \"%b%b\033[0m\"?\n" "${LightBlue}" "$match"
+		fi
+		DID_YOU_MEAN="$match"
+		DID_YOU_MEAN_FLAG="$match_flag"
+	fi
+}
+
+_not_an_appimage_message() {
+	if [ -n "$install_appimage" ] && ! grep -q "^◆ $arg : " "$AMDATADIR/$ARCH-appimages"; then
+		printf $" ✖ ERROR: \"%b\" is NOT an AppImage\n" "$arg" && printf "\n"
+		read -r -p $" Do you wish to continue? (N/y): " yn
+		if ! echo "$yn" | grep -qi "^y"; then
+			printf $"\n INSTALLATION ABORTED! \n"
+			echo "____________________________________________________________________________"
+			return 1
+		fi
+		printf "\n"
+	fi
+	return 0
 }
 
 ################################################################################
@@ -631,14 +729,14 @@ case "$1" in
 		FLAGS=$(echo "$@" | tr ' ' '\n' | grep -- "--" | tr '\n ' ' ')
 		METAPACKAGES="kdegames kdeutils node platform-tools"
 
-		if [ "$1" = "-ia" ] || [ "$1" = "install-appimage" ]; then
-			_install_appimage
-		fi
-		if [ "$1" = "-ias" ]; then
-			FLAGS=$(printf "%b\n--sandbox\n" "$FLAGS")
-			_install_appimage
-		fi
-
+		case "$1" in
+		'-ia'|'-ias'|'install-appimage')
+			_sync_appimages_list
+			install_appimage="true"
+			;;
+		esac
+		[ "$1" = "-ias" ] && FLAGS=$(printf "%b\n--sandbox\n" "$FLAGS")
+	
 		for arg in $entries; do
 			echo ""
 			cd "$REALDIR" || return 1
@@ -646,11 +744,7 @@ case "$1" in
 			[ -d "$APPSPATH"/"$arg"/tmp ] && $SUDOCMD "$APPSPATH"/"$arg"/remove 2> /dev/null
 
 			# Check if the app wil be installed with the same name as the argument
-			arg_origin="$arg"
-			pure_arg=$(echo "$arg" | sed 's/\-appimage$//g' | sed 's:.*/::')
-			_remove_extensions_from_appname
-			echo "$arg" | grep -q -- "-appimage$" && _use_online_reading_tool "$APPSDB"/"$arg" | grep -q "APP=.*-appimage$" && pure_arg="$arg"
-
+			_prepare_arg
 			arg_script=$(_use_online_reading_tool "$APPSDB/$arg" 2>/dev/null)
 
 			# Test if a symlink is broken
@@ -667,31 +761,52 @@ case "$1" in
 				else
 					echo $" 💀 ERROR: the file \"$arg\" does NOT exist"
 				fi
-			elif _3rd_party_check "$@"; then
+			elif echo "$@" | grep -q -- "$tp_flags" || echo "$arg" | grep -q "$tp_extensions"; then
 				_install_3rd_party_app
 			elif echo "$arg_script" | grep -q "^#"; then
+				_not_an_appimage_message || continue
 				_install_normally
 			else
 				echo $"💀 ERROR: \"$arg\" does NOT exist in the \"AM\" database, $(printf "please check the list, run the \"%b$AMCLIPATH_ORIGIN -l\033[0m\" command.\n\n" "${Gold}")" | fold -sw 72 | sed 's/^/ /g'
+				_did_you_mean "$arg"
+				if [ -n "$DID_YOU_MEAN" ]; then
+					if [ -n "$DID_YOU_MEAN_FLAG" ]; then
+						read -r -p $" Install \"$DID_YOU_MEAN\" with --$DID_YOU_MEAN_FLAG flag? (Y/n) " yn
+					else
+						read -r -p $" Install \"$DID_YOU_MEAN\" instead? (Y/n) " yn
+					fi
+					echo ""
+					if ! echo "$yn" | grep -i '^n' >/dev/null 2>&1; then
+						arg="$DID_YOU_MEAN"
+						_not_an_appimage_message || continue
+						if [ -n "$DID_YOU_MEAN_FLAG" ]; then
+							FLAGS="$FLAGS --$DID_YOU_MEAN_FLAG"
+							_prepare_arg
+							_install_3rd_party_app
+						else
+							_prepare_arg
+							_check_and_install
+						fi
+					fi
+				fi
 			fi
 			# Disable notifications if needed
 			[ -f "$AMDATADIR"/disable-notifications ] && [ -f "$APPSPATH/$LASTDIR/AM-updater" ] && sed -e '/notify-send/ s/^#*/#/' -i "$APPSPATH/$LASTDIR/AM-updater" 2>/dev/null
 			# Sandbox argument
 			if echo "$FLAGS" | grep -q -- "--sandbox"; then
-				if [ "$LASTDIR" != aisap ] && [ "$LASTDIR" != sas ]; then
-					if [ -f "$APPSPATH/$LASTDIR/$LASTDIR" ]; then
-						if ! command -v aisap >/dev/null 2>&1 || ! command -v aisap >/dev/null 2>&1; then
+				if [ -f "$APPSPATH/$LASTDIR/$LASTDIR" ] && head -c10 "$APPSPATH/$LASTDIR/$LASTDIR" 2>/dev/null | grep -qa '^.ELF....AI$'; then
+					FILE=$(command -v "$LASTDIR" 2>/dev/null)
+					if ! head -c1000 "$FILE" 2>/dev/null | grep -q "SANDBOXCMD"; then
+						MODULE="sandboxes.am"
+						if ! command -v aisap >/dev/null 2>&1 || ! command -v sas >/dev/null 2>&1; then
 							mv "$AMCACHEDIR"/installed "$CACHEDIR"/installed.backup.am 2>/dev/null
-							"$AMCLIPATH_ORIGIN" --sandbox "$LASTDIR"
+							_use_module --sandbox "$LASTDIR"
 							sort "$AMCACHEDIR"/installed >> "$CACHEDIR"/installed.backup.am 2>/dev/null
 							mv "$CACHEDIR"/installed.backup.am "$AMCACHEDIR"/installed 2>/dev/null
 						else
-							echo ""
-							"$AMCLIPATH_ORIGIN" --sandbox "$LASTDIR"
+							printf "\n" && _use_module --sandbox "$LASTDIR"
 						fi
 					fi
-				else
-					printf $"\n ERROR: \"%b\" is NOT an AppImage\n" "$LASTDIR"
 				fi
 			fi
 			echo "____________________________________________________________________________"
