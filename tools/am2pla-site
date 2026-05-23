@@ -193,20 +193,77 @@ _appimages_list_body
 
 ST_APPS_NUMBER=$(($APPS_NUMBER-$APPIMAGES_NUMBER))
 function _compile_the_homepage() {
-	# Only two lines on the home page are auto-generated: the stats line
-	# ("This site lists N unique apps…") and the categories nav list.
-	# Replace each in place wherever it appears, so hand-edited additions
-	# elsewhere on the page (e.g. the home search box) are not disturbed.
+	# Auto-generated parts of the home page:
+	#   - the stats line ("This site lists N unique apps…")
+	#   - the AppImages categories list (***[AppImages](appimages.md)*** …)
+	#   - the home search box (<div id="home-search">…</div>)
+	# Everything else on the page is hand-edited and passes through.
+	# The awk pass also strips a known broken state (orphan home-search
+	# children + a duplicate "#### *Categories*" block) left behind by an
+	# earlier line-range-sed version of this script.
 	if [ ! -f ./index.md ]; then
 		curl -Ls https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/main/index.md > ./index.md
 	fi
 	local stats_line="#### *This site lists **$APPS_NUMBER** unique apps (**$APPIMAGES_NUMBER** Appimage packages and **$ST_APPS_NUMBER** standalone/portable programs), plus **$ITEMS_NUMBER** items.*"
 	local cats_line
 	cats_line=$(_categories_buttons | grep -E '^\*\*\*\[AppImages\]')
-	awk -v stats="$stats_line" -v cats="$cats_line" '
-		/^#### \*This site lists \*\*[0-9]+\*\* unique apps/ { print stats; next }
-		/^\*\*\*\[AppImages\]\(appimages\.md\)\*\*\*/        { print cats;  next }
-		{ print }
+	local home_search_block
+	home_search_block=$(cat <<'EOF'
+<div id="home-search" style="margin: 1.5em auto; max-width: 640px; text-align: left;">
+  <label for="home-search-input" style="font-weight: bold; display: block; margin-bottom: 0.25em; text-align: center;">Search applications</label>
+  <input type="search" id="home-search-input" placeholder="Start typing an app name or keyword..." autocomplete="off"
+    style="width: 100%; padding: 0.6em 0.85em; font-size: 1em; border: 1px solid #999; border-radius: 4px; box-sizing: border-box;">
+  <div id="home-search-status" style="margin-top: 0.5em; font-style: italic; color: #666; text-align: center;">Loading app database&hellip;</div>
+  <ul id="home-search-results" style="list-style: none; padding: 0; margin: 0.5em 0 0;"></ul>
+  <div id="home-search-more" style="margin-top: 0.5em; text-align: center;"></div>
+</div>
+EOF
+)
+	awk -v stats="$stats_line" -v cats="$cats_line" -v search="$home_search_block" '
+		# Skip the canonical home-search wrapper if present (we re-emit it
+		# before the first Categories heading below). Also drop blank
+		# lines immediately following so output is idempotent across runs.
+		/^<div id="home-search"[ >]/ { in_search = 1; next }
+		in_search {
+			if (/^<\/div>$/) { in_search = 0; skip_blanks = 1 }
+			next
+		}
+
+		# Skip the orphan-children form left by the old script: starts at
+		# "  <div id=\"home-search-status\"" and runs until the next
+		# "</div>" (the original wrapper close that was stranded).
+		/^  <div id="home-search-status"/ { in_orphan = 1 }
+		in_orphan {
+			if (/^<\/div>$/) { in_orphan = 0; skip_blanks = 1 }
+			next
+		}
+
+		# Drop blank lines that trail a stripped block, so idempotent runs
+		# don'\''t accumulate extra spacing each time.
+		skip_blanks && /^$/ { next }
+
+		# Insert the home-search block before the first Categories heading;
+		# drop any duplicate Categories heading the broken state may have.
+		/^#### \*Categories\*$/ {
+			skip_blanks = 0
+			if (emitted_cats) next
+			emitted_cats = 1
+			if (!emitted_search) { print search; print ""; emitted_search = 1 }
+			print; next
+		}
+
+		# Auto-generated single lines.
+		/^#### \*This site lists \*\*[0-9]+\*\* unique apps/ {
+			skip_blanks = 0; print stats; next
+		}
+		/^\*\*\*\[AppImages\]\(appimages\.md\)\*\*\*/ {
+			skip_blanks = 0
+			if (emitted_apps) next
+			emitted_apps = 1
+			print cats; next
+		}
+
+		{ skip_blanks = 0; print }
 	' ./index.md > ./index.new && mv ./index.new ./index.md
 }
 
