@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="10.2-3"
+AMVERSION="10.2-4"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -1046,8 +1046,8 @@ _check_version_filters() {
 			exit
 		}
 
-		# 1. Full semantic version (X.Y.Z or similar)
-		if (match($0, /v?[0-9]+\.[0-9]+(\.[0-9]+)*(-[0-9]+(-g[0-9a-f]+)?)?/)) {
+		# 1. Full semantic version (X.Y.Z or similar, with optional prerelease)
+		if (match($0, /v?[0-9]+(\.[0-9]+)+(rc|alpha|beta|pre|patch|rev|final|release)?[0-9]*([._-](rc|alpha|beta|pre|patch|rev|final|release)?[0-9]+)?/)) {
 			print substr($0, RSTART, RLENGTH)
 			exit
 		}
@@ -1062,6 +1062,11 @@ _check_version_filters() {
 			short = substr($0, RSTART, RLENGTH)
 		}
 
+		# 3b. Alphanumeric version (e.g., "2603a")
+		if (!alphaver && match($0, /[0-9]+[a-z0-9]*/)) {
+			alphaver = substr($0, RSTART, RLENGTH)
+		}
+
 		# 4. Generic hash
 		if (!hash && match($0, /[0-9a-f]{7,40}/)) {
 			hash = substr($0, RSTART, RLENGTH)
@@ -1070,6 +1075,7 @@ _check_version_filters() {
 	END {
 		if (pathhash) print pathhash
 		else if (short) print short
+		else if (alphaver) print alphaver
 		else if (hash) print hash
 	}' | sed 's/^v//'
 }
@@ -1091,10 +1097,13 @@ _check_version_if_any_version_reference_is_somewhere() {
 }
 
 _check_version_if_version_file_exists() {
-	APPVERSION=$(sort "$argpath"/version | head -1 | sed 's:.*/::' | _check_version_filters)
-	if [ -z "$APPVERSION" ]; then
-		APPVERSION=$(sort "$argpath"/version | tr '/' '\n' | _check_version_filters)
-	fi
+	# Run _check_version_filters() on filename and on the full URL string
+	appversion_url=$(sort "$argpath"/version | head -1 | _check_version_filters)
+	appversion_file=$(sort "$argpath"/version | head -1 | sed 's:.*/::' | _check_version_filters)
+	# Compare lengths and select the version string that is longer
+	[ $(expr length "$appversion_file") -gt $(expr length "$appversion_url") ] && APPVERSION="$appversion_file" || APPVERSION="$appversion_url"
+	unset appversion_url appversion_file
+	# If failed (empty string returned), then strip down the version string and use failsafe methods
 	if [ -z "$APPVERSION" ]; then
 		APPVERSION=$(sort "$argpath"/version | tr '/-' '\n' | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+' | tail -1)
 	fi
@@ -1104,6 +1113,7 @@ _check_version_if_version_file_exists() {
 	if [ -z "$APPVERSION" ]; then
 		APPVERSION=$(sort "$argpath"/version | grep -oP '(?<=/download/)[^/]+|[a-zA-Z]+\d+(?=_)' | head -1)
 	fi
+	# Converts to lowercase and remove all occurrences of the app name
 	APPVERSION=$(echo "$APPVERSION" | tr '[:upper:]' '[:lower:]' | sed "s/$arg//g")
 }
 

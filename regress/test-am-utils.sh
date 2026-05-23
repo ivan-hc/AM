@@ -35,6 +35,7 @@ _check_count "Missing command(s)" 0 "$test_results"
 _log "Installing all apps in system mode..."
 am -i "$all_apps" > "$test_results"
 _check_count "checksum.*verified" 4 "$test_results"
+_check_count "downloaded.*am-utils" 0 "$test_results"
 _test_apps "$all_apps"
 
 # Install in User Mode
@@ -44,6 +45,7 @@ printf "Y\n" |\
 am --user
 am -i "$all_apps" > "$test_results"
 _check_count "checksum.*verified" 4 "$test_results"
+_check_count "downloaded.*am-utils" 0 "$test_results"
 _test_apps "$all_apps"
 
 # Restore binaries

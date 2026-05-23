@@ -13,6 +13,7 @@ am clean
 _log "Done.\n"
 
 # Run all regression tests
+./test-am-versions.sh
 ./test-am-hide.sh
 ./test-am-install.sh
 ./test-am-checksum.sh

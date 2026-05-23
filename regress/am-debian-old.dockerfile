@@ -9,7 +9,7 @@ FROM debian:jessie
 RUN echo 'deb http://archive.debian.org/debian jessie main contrib non-free' > /etc/apt/sources.list
 RUN echo 'deb http://archive.debian.org/debian-security jessie/updates main contrib non-free' >> /etc/apt/sources.list
 RUN echo 'Apt::Get::AllowUnauthenticated "true";' > /etc/apt/apt.conf.d/99verify-apt-https
-RUN apt update && apt full-upgrade -y && apt install -y sudo wget curl git fuse bsdmainutils file locales unzip xz-utils libterm-readline-gnu-perl libnotify-bin p7zip-full binutils
+RUN apt update && apt full-upgrade -y && apt install -y sudo wget curl gawk git fuse bsdmainutils file locales unzip xz-utils libterm-readline-gnu-perl libnotify-bin p7zip-full binutils
 RUN cd && wget https://raw.githubusercontent.com/ivan-hc/AM/main/INSTALL && chmod a+x ./INSTALL && sudo ./INSTALL && rm ./INSTALL
 
 # Copy regression folder
