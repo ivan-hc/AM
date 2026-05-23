@@ -13,12 +13,13 @@ _log "Running app version regex checks: $0"
 awk '/^_check_version_filters\(\) \{/,/^}/' /opt/am/APP-MANAGER > check_version_filters.sh
 . "$(dirname "$0")/check_version_filters.sh"
 
-# Test all awk versions (mawk/gawk/original-awlk)
-for awk_cmd in gawk mawk awk; do
+# Test all awk versions (mawk/gawk/original-awk)
+for awk_cmd in awk gawk mawk original-awk; do
 	alias awk='$awk_cmd'
 	if command -v "$awk_cmd" >/dev/null 2>&1; then
 		# Print which tool is used
 		printf "\nRegex testing with %s:\n" "$awk_cmd"
+		timeout 1 $awk_cmd -W version | head -n 1
 
 		# Test function against known app version examples (add as much as needed)
 		echo "https://github.com/zk-org/zk/releases/download/v0.15.4/zk-v0.15.4-linux-amd64.tar.gz" | _check_version_filters | tee "$test_results"
@@ -33,7 +34,7 @@ for awk_cmd in gawk mawk awk; do
 		echo "https://github.com/neovim/neovim/releases/download/v0.11.7/nvim-linux-x86_64.appimage" | _check_version_filters | tee "$test_results"
 		_check_count "0.11.7" 1 "$test_results"
 
-		echo https://github.com/pkgforge-dev/Dolphin-emu-AppImage/releases/download/2603a%402026-05-01_1777638978/Dolphin-2603a-anylinux-x86_64.AppImage | _check_version_filters | tee "$test_results"
+		echo "https://github.com/pkgforge-dev/Dolphin-emu-AppImage/releases/download/2603a%402026-05-01_1777638978/Dolphin-2603a-anylinux-x86_64.AppImage" | _check_version_filters | tee "$test_results"
 		_check_count "2603a" 1 "$test_results"
 
 		echo "https://github.com/AppImage/appimagetool/releases/download/1.9.1/appimagetool-x86_64.AppImage" | _check_version_filters | tee "$test_results"
