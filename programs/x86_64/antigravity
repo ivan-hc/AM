@@ -16,8 +16,6 @@ version=$(curl -Ls https://raw.githubusercontent.com/BOTOOM/google-antigravity-b
 download="$version"
 wget "$download" || exit 1
 # Add custom AppRun here
-curl -s -Lo ../"$APP".desktop "https://raw.githubusercontent.com/archlinux/aur/refs/heads/antigravity-ide/antigravity-ide.desktop" || exit 1
-curl -s -Lo ../"$APP".png https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/main/icons/antigravity.png || exit 1
 curl -Ls "https://raw.githubusercontent.com/ivan-hc/portable2appimage/refs/heads/main/portable2appimage" | sh -s -- ./* "$APP-ide" || exit 1
 cd .. && mv ./tmp/*mage ./"$APP" && rm -R -f ./tmp || exit 1; rm -f AppRun *.desktop *.png *.svg *.xpm
 echo "$version" > ./version
@@ -45,10 +43,13 @@ if [ "$version" != "$version0" ]; then
 	download="$version"
 	wget "$download" || exit 1
 	# Add custom AppRun here
-	curl -s -Lo ../"$APP".desktop "https://raw.githubusercontent.com/archlinux/aur/refs/heads/antigravity-ide/antigravity-ide.desktop" || exit 1
-	curl -s -Lo ../"$APP".png https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/main/icons/antigravity.png || exit 1
+	curl -s -Lo ../"$APP".png "https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/main/icons/antigravity.png" || exit 1
 	curl -Ls "https://raw.githubusercontent.com/ivan-hc/portable2appimage/refs/heads/main/portable2appimage" | sh -s -- ./* "$APP-ide" || exit 1
 	cd .. && mv --backup=t ./tmp/*mage ./"$APP" && chmod a+x ./"$APP" || exit 1; rm -f AppRun *.desktop *.png *.svg *.xpm
+	curl -s -Lo /usr/local/share/applications/"$APP"-AM.desktop "https://raw.githubusercontent.com/archlinux/aur/refs/heads/antigravity-ide/antigravity-ide.desktop" || exit 1
+	sed -i "s#Exec=[^ ]*#Exec=$APP#g; s#Icon=.*#Icon=/opt/$APP/icons/$APP#g; s# --no-sandbox##g" /usr/local/share/applications/"$APP"-AM.desktop
+	curl -s -Lo /usr/local/share/applications/"$APP"-url-handler-AM.desktop "https://raw.githubusercontent.com/archlinux/aur/refs/heads/antigravity-ide/antigravity-ide-url-handler.desktop" || exit 1
+	sed -i "s#Exec=[^ ]*#Exec=$APP#g; s#Icon=.*#Icon=/opt/$APP/icons/$APP#g" /usr/local/share/applications/"$APP"-url-handler-AM.desktop
 	echo "$version" > ./version
 	rm -R -f ./*zs-old ./*.part ./tmp ./*~
 	notify-send "$APP is updated!"
@@ -59,21 +60,8 @@ EOF
 chmod a+x ./AM-updater || exit 1
 
 # LAUNCHER & ICON
-./"$APP" --appimage-extract *.desktop 1>/dev/null && mv ./squashfs-root/*.desktop ./"$APP".desktop
-./"$APP" --appimage-extract .DirIcon 1>/dev/null && mv ./squashfs-root/.DirIcon ./DirIcon
-COUNT=0
-while [ "$COUNT" -lt 10 ]; do # Tries to get the actual icon/desktop if it is a symlink to another symlink
-	if [ -L ./"$APP".desktop ]; then
-		LINKPATH="$(readlink ./"$APP".desktop | sed 's|^\./||' 2>/dev/null)"
-		./"$APP" --appimage-extract "$LINKPATH" 1>/dev/null && mv ./squashfs-root/"$LINKPATH" ./"$APP".desktop
-	fi
-	if [ -L ./DirIcon ]; then
-		LINKPATH="$(readlink ./DirIcon | sed 's|^\./||' 2>/dev/null)"
-		./"$APP" --appimage-extract "$LINKPATH" 1>/dev/null && mv ./squashfs-root/"$LINKPATH" ./DirIcon
-	fi
-	[ ! -L ./"$APP".desktop ] && [ ! -L ./DirIcon ] && break
-	COUNT=$((COUNT + 1))
-done
-sed -i "s#Exec=[^ ]*#Exec=$APP#g; s#Icon=.*#Icon=/opt/$APP/icons/$APP#g; s# --no-sandbox##g" ./"$APP".desktop
-mv ./"$APP".desktop /usr/local/share/applications/"$APP"-AM.desktop && mv ./DirIcon ./icons/"$APP" 1>/dev/null
-rm -R -f ./squashfs-root
+curl -s -Lo ./icons/"$APP" "https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/main/icons/antigravity.png" || exit 1
+curl -s -Lo /usr/local/share/applications/"$APP"-AM.desktop "https://raw.githubusercontent.com/archlinux/aur/refs/heads/antigravity-ide/antigravity-ide.desktop" || exit 1
+sed -i "s#Exec=[^ ]*#Exec=$APP#g; s#Icon=.*#Icon=/opt/$APP/icons/$APP#g; s# --no-sandbox##g" /usr/local/share/applications/"$APP"-AM.desktop
+curl -s -Lo /usr/local/share/applications/"$APP"-url-handler-AM.desktop "https://raw.githubusercontent.com/archlinux/aur/refs/heads/antigravity-ide/antigravity-ide-url-handler.desktop" || exit 1
+sed -i "s#Exec=[^ ]*#Exec=$APP#g; s#Icon=.*#Icon=/opt/$APP/icons/$APP#g" /usr/local/share/applications/"$APP"-url-handler-AM.desktop
