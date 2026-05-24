@@ -159,7 +159,7 @@ Type "1" to install "AM", "2" to install "[AppMan](#what-is-appman)". Any other 
 
 | AM (system-wide installation) | AppMan (local installation)
 | - | - |
-| <img width="747" height="798" alt="AM" src="https://github.com/user-attachments/assets/51e45525-d858-42a0-9e33-ff2a087968fd" /> | <img width="747" height="798" alt="AppMan" src="https://github.com/user-attachments/assets/99296420-f6da-4d6f-8080-e6ad03aaf0d2" /> |
+| <img width="747" height="798" alt="AM" src="https://raw.githubusercontent.com/ivan-hc/AM/refs/heads/main/sample/am-installer-am.png" /> | <img width="747" height="798" alt="AppMan" src="https://raw.githubusercontent.com/ivan-hc/AM/refs/heads/main/sample/am-installer-appman.png" /> |
 
 ------------------------------------------------------------------------
 
