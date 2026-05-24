@@ -762,12 +762,15 @@ Search for keywords in the list of available applications, add the "`--appimages
 
  		am reinstall
  		am reinstall --all
+		am reinstall --launcher
 
 **Description**:
 
 Reinstall only programs whose installation script has been modified in AM's online database. Use the "`--all`" flag to reinstall everything instead.
 
 NOTE, this only works with the "AM" database. Apps installed with the "`-e`" option and custom scripts created with the "`-t`" option are not supported.
+
+Use the "`--launcher`" flag to reinstall .desktop files if they are updated or modified by the user. The files will be extracted from their respective AppImages and stored in the $SCRIPTDIR/AMLAUNCHER_DIR directory, just in case.
 
 ------------------------------------------------------------------------
 ### `relocate`, `--relocate`
