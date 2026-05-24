@@ -21,6 +21,8 @@ for awk_cmd in awk gawk mawk original-awk goawk nawk busybox; do
 		printf "\nRegex testing with %s (%s):\n" "$awk_cmd" "$($awk_cmd --version 2>/dev/null | head -n 1)"
 
 		# Test strings checked against expected version numbers
+		echo "https://github.com/ip7z/7zip/releases/download/26.01/7z2601-linux-x64.tar.xz" | _check_version_filters | tee "$test_results"
+		_check_count "26.01" 1 "$test_results"
 		echo "https://github.com/zk-org/zk/releases/download/v0.15.4/zk-v0.15.4-linux-amd64.tar.gz" | _check_version_filters | tee "$test_results"
 		_check_count "0.15.4" 1 "$test_results"
 		echo "https://github.com/cemu-project/Cemu/releases/download/v2.6/Cemu-2.6-x86_64.AppImage" | _check_version_filters | tee "$test_results"
