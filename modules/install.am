@@ -923,7 +923,13 @@ case "$1" in
 							APP_PID=$!
 							export MOUNT_POINT
 							launcher_name="$arg-AM.desktop"
-							cp "$MOUNT_POINT"/*.desktop "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name"
+							if test -f "$argpath"/.am-installer/"$arg"* && grep -q -- "--appimage-extract" "$argpath"/.am-installer/"$arg"* && ! grep -q -- './"$APP" --appimage-extract \*.desktop 1>/dev/null && mv ./squashfs-root/\*.desktop ./"$APP".desktop' "$argpath"/.am-installer/"$arg"*; then
+								# Detect launchers with non-standard installation scripts
+								desktop_pattern=$(grep -- "--appimage-extract .*.desktop" "$argpath"/.am-installer/"$arg"* | head -1 | tr ' /' '\n' | grep -- "[a-zA-Z].*.desktop$" | tr '*' '\n' | head -1)
+								cp "$MOUNT_POINT"/"$desktop_pattern"*.desktop "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name"
+							else
+								cp "$MOUNT_POINT"/*.desktop "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name"
+							fi
 							COUNT=0
 							while [ "$COUNT" -lt 10 ]; do # Tries to get the actual icon/desktop if it is a symlink to another symlink
 								if [ -L "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name" ]; then
@@ -934,7 +940,22 @@ case "$1" in
 								COUNT=$((COUNT + 1))
 							done
 							if [ -f "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name" ]; then
-								sed -i "s#Exec=[^ ]*#Exec=$arg#g; s#Icon=.*#Icon=$argpath/icons/$arg#g" "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name"
+								# Standard patches
+								if echo "$argpath" | grep -q "^/opt\|^/var/opt"; then
+									sed -i "s#Exec=[^ ]*#Exec=$arg#g; s#Icon=.*#Icon=$argpath/icons/$arg#g" "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name"
+								else
+									sed -i "s#Exec=[^ ]*#Exec=$BINDIR/$arg#g; s#Icon=.*#Icon=$argpath/icons/$arg#g" "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name"
+								fi
+								# Determine if StartupWMClass patch is needed
+								if test -f "$argpath"/.am-installer/"$arg"* && grep -q 'grep -q "StartupWMClass"' "$argpath"/.am-installer/"$arg"* && grep -q "^StartupWMClass" "$LAUNCHERS_PATH"/"$launcher_name"; then
+									wm_class=$(grep "^StartupWMClass=" "$LAUNCHERS_PATH"/"$launcher_name" | head -1 | tr '=' '\n' | tail -1)
+									if ! grep -q "^StartupWMClass" "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name"; then
+										sed -i "/^\[Desktop Entry\]/a\StartupWMClass=$wm_class" "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name"
+									else
+										sed -i "s|^StartupWMClass=.*|StartupWMClass=$wm_class|" "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name"
+									fi
+								fi
+								# Compare the installed launcher and the extracted one
 								if [ "$(sort "$LAUNCHERS_PATH"/"$launcher_name")" != "$(sort "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name")" ]; then
 									printf -- $"- Found differences in %b, it probably needs to be updated.\n" "$launcher_name" | _fit
 									read -r -p $" Do you wish to continue? (N/y): " yn
