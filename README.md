@@ -149,7 +149,7 @@ curl -s -Lo ./AM-INSTALLER https://raw.githubusercontent.com/ivan-hc/AM/main/AM-
 
 ------------------------------------------------------------------------
 
-<img width="747" height="600" alt="installer" src="https://github.com/user-attachments/assets/f8a153e8-d410-4a7e-9e5c-b48e686547ee" />
+<img width="747" height="600" alt="installer" src="https://raw.githubusercontent.com/ivan-hc/AM/refs/heads/main/sample/am-installer.png" />
 
 ------------------------------------------------------------------------
 
