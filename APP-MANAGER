@@ -1032,51 +1032,80 @@ fi
 # VERSION OF THE INSTALLED APPS
 # Filters
 _check_version_filters() {
+	# Remove architecture numbers before going into awk
+	sed "s/x86_64\|amd64\|aarch64\|i686\|i386/XXXX/g" |
+	# Run AWK version regex program
 	awk '
 	{
-		# 0. r1234.hash-1 style
-		if (match($0, /r[0-9]+\.[0-9a-f]+-[0-9]+/)) {
-			print substr($0, RSTART, RLENGTH)
-			exit
+		# Calculate '/' positions to obtain filename directly
+		count = 0
+		pos5 = 0
+		posL = 0
+		for (i = 1; i <= length($0); i++) {
+			if (substr($0, i, 1) == "/") {
+				posL = i+1
+				count++
+				# Remove usernames/project from github-like URLs (around 5 '/')
+				if ((match($0, /github.com|codeberg.org|gitlab.com/)) && (count == 5)) {
+					pos5 = i
+				}
+			}
 		}
 
-		# 0b. 123-hash style
-		if (match($0, /[0-9]+-[0-9a-f]{7,}/)) {
-			print substr($0, RSTART, RLENGTH)
-			exit
-		}
+		# Run string matching for both full URL and just filename
+		for (i = 0; i <= 1; i++) {
+			# Iteration 0 is for URL string
+			if (i == 0) vstr = substr($0, pos5, length($0))
+			# Iteration 1 is for filename string
+			if (i == 1) vstr = substr($0, posL, length($0))
 
-		# 1. Full semantic version (X.Y.Z or similar, with optional prerelease)
-		if (match($0, /v?[0-9]+(\.[0-9]+)+(rc|alpha|beta|pre|patch|rev|final|release)?[0-9]*([._-](rc|alpha|beta|pre|patch|rev|final|release)?[0-9]+)?/)) {
-			print substr($0, RSTART, RLENGTH)
-			exit
-		}
+			# 0. r1234.hash-1 style
+			if (match(vstr, /r[0-9]+\.[0-9a-f]+-[0-9]+/)) {
+				version[i] = substr(vstr, RSTART, RLENGTH)
+				type[i] = 0
+			}
 
-		# 2. Hash in /.../
-		if (!pathhash && match($0, /\/[0-9a-f]{7,40}\//)) {
-			pathhash = substr($0, RSTART+1, RLENGTH-2)
-		}
+			# 1. Full semantic version (X.Y.Z or similar, with optional prerelease)
+			else if (match(vstr, /v?[0-9]+(\.[0-9]+)+(rc|r|alpha|beta|pre|patch|rev|final|release)?[0-9]*([._-](rc|r|alpha|beta|pre|patch|rev|final|release)?[0-9]+)?/)) {
+				version[i] = substr(vstr, RSTART, RLENGTH)
+				type[i] = 1
+			}
 
-		# 3. Short version
-		if (!short && match($0, /v?[0-9]+\.[0-9]+/)) {
-			short = substr($0, RSTART, RLENGTH)
-		}
+			# 2. 123-hash style
+			else if (match(vstr, /[0-9]+-[0-9a-f]{7,}/)) {
+				version[i] = substr(vstr, RSTART, RLENGTH)
+				type[i] = 2
+			}
 
-		# 3b. Alphanumeric version (e.g., "2603a")
-		if (!alphaver && match($0, /[0-9]+[a-z0-9]*/)) {
-			alphaver = substr($0, RSTART, RLENGTH)
-		}
+			# 3. Alphanumeric version (e.g., "2603a")
+			else if (match(vstr, /[0-9]+[a-z0-9]*/)) {
+				if ((RLENGTH > 3) && (RLENGTH < 8)) {
+					version[i] = substr(vstr, RSTART, RLENGTH)
+					type[i] = 3
+				}
+				# 4. Generic hash
+				else if (match(vstr, /[\/_%\-][0-9a-f]{7,40}/)) {
+					version[i] = substr(vstr, RSTART+1, RLENGTH-1)
+					type[i] = 4
+				}
+			}
 
-		# 4. Generic hash
-		if (!hash && match($0, /[0-9a-f]{7,40}/)) {
-			hash = substr($0, RSTART, RLENGTH)
+			# 5. Match nothing (default)
+			if (type[i] == "") {
+				version[i] = "-"
+				type[i] = 5
+			}
 		}
-	}
-	END {
-		if (pathhash) print pathhash
-		else if (short) print short
-		else if (alphaver) print alphaver
-		else if (hash) print hash
+		
+		# If same type, then choose the one with the longer length
+		if (type[0] == type[1]) {
+			if (length(version[0]) > length(version[1])) print version[0]
+			else print version[1]
+		}
+		# Else, pick the lower types, avoid type 4+ if possible
+		else if (type[0] < 4) print version[0]
+		else if (type[1] < 4) print version[1]
+		else print version[0]
 	}' | sed 's/^v//'
 }
 
@@ -1098,21 +1127,7 @@ _check_version_if_any_version_reference_is_somewhere() {
 
 _check_version_if_version_file_exists() {
 	# Run _check_version_filters() on filename and on the full URL string
-	appversion_url=$(sort "$argpath"/version | head -1 | _check_version_filters)
-	appversion_file=$(sort "$argpath"/version | head -1 | sed 's:.*/::' | _check_version_filters)
-	# Compare lengths and select the version string that is longer
-	[ $(expr length "$appversion_file") -gt $(expr length "$appversion_url") ] && APPVERSION="$appversion_file" || APPVERSION="$appversion_url"
-	unset appversion_url appversion_file
-	# If failed (empty string returned), then strip down the version string and use failsafe methods
-	if [ -z "$APPVERSION" ]; then
-		APPVERSION=$(sort "$argpath"/version | tr '/-' '\n' | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+' | tail -1)
-	fi
-	if [ -z "$APPVERSION" ]; then
-		APPVERSION=$(sort "$argpath"/version | tr '/-' '\n' | grep -o '[a-zA-Z]*\?\.[0-9]\+\(\.[0-9]\+\)*' | tail -1)
-	fi
-	if [ -z "$APPVERSION" ]; then
-		APPVERSION=$(sort "$argpath"/version | grep -oP '(?<=/download/)[^/]+|[a-zA-Z]+\d+(?=_)' | head -1)
-	fi
+	APPVERSION=$(sort "$argpath"/version | head -1 | _check_version_filters)
 	# Converts to lowercase and remove all occurrences of the app name
 	APPVERSION=$(echo "$APPVERSION" | tr '[:upper:]' '[:lower:]' | sed "s/$arg//g")
 }

@@ -117,7 +117,7 @@ for awk_cmd in awk gawk mawk original-awk goawk nawk busybox; do
 		_check_count "-" 1 "$test_results"
 		echo "https://github.com/burger/nothing-burger/releases/download/rolling-i686/fancy-nothing-burger-amd64-i386.AppImage" | _check_version_filters | tee "$test_results"
 		_check_count "-" 1 "$test_results"
-    fi
+	fi
 done
 
 # Pass the test
