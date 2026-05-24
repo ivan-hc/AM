@@ -2,15 +2,19 @@
 
 #############################################################################
 # THIS MODULE IS USED TO INSTALL APPS FROM THE DATABASE OR FROM LOCAL SCRIPTS
+# AND ALL ACTIONS INTENDED TO SANDBOX APPIMAGES WITH BUBBLEWRAP
+# OPTIONS: DOWNLOAD, EXTRA, INSTALL, REINSTALL, SANDBOX/DISABLE-SANDBOX
 #############################################################################
+
+[ "$CLI" = am ] && [ -f "$APPMANCONFIG"/appman-mode ] && [ -z "$IMMUTABLE_ON" ] && printf "%b\n" "$APPMAN_MSG"
 
 AMCLIPATH_ORIGIN="$AMCLIPATH"
 BINDIR="${XDG_BIN_HOME:-$HOME/.local/bin}"
 AMCATALOGUEICONS="${AMCATALOGUEICONS:-https://portable-linux-apps.github.io/icons}"
 
-################################################################################
+################################################################################################################################################################
 #				DOWNLOAD
-################################################################################
+################################################################################################################################################################
 
 _convert_to_appman_compatible_script() {
 	_detect_appman_apps
@@ -49,9 +53,9 @@ _download() {
 	fi
 }
 
-################################################################################
+################################################################################################################################################################
 #				INSTALL
-################################################################################
+################################################################################################################################################################
 
 _check_argument() {
 	printf $"NOTE:\n\n" | _fit
@@ -386,7 +390,8 @@ _install_arg() {
 	# Determine if the app is hosted on github
 	if grep -q "api.github.com" ./"$arg"; then
 		GH_API_ALLOWED=$(_use_online_reading_tool "https://api.github.com/rate_limit" | tr '{,' '\n' | grep -i remaining | tail -1 | grep -Eo "[0-9]*")
-		if [ "$GH_API_ALLOWED" -le 10 ]; then
+		wait
+		if [ -n "$GH_API_ALLOWED" ] && [ "$GH_API_ALLOWED" -le 10 ]; then
 			sed -i "s#https://api.github.com#$ALT_GH#g" ./"$arg"
 		fi
 	fi
@@ -672,12 +677,301 @@ _not_an_appimage_message() {
 	return 0
 }
 
-################################################################################
+################################################################################################################################################################
+#				SANDBOX
+################################################################################################################################################################
+
+_sandbox_get_xdg_variables_for_configure_dirs_access() {
+	for DIR in DESKTOP DOCUMENTS DOWNLOAD GAMES MUSIC PICTURES VIDEOS; do
+		eval XDG_DIR="$(xdg-user-dir $DIR 2>/dev/null)"
+		[ "$(readlink -f "$XDG_DIR")" = "$HOME" ] && XDG_DIR=""
+		eval $DIR="$XDG_DIR"
+	done
+	DESKTOP="$(echo "${DESKTOP:-~/Desktop}" | sed "s|$HOME|~|g")"
+	DOCUMENTS="$(echo "${DOCUMENTS:-~/Documents}" | sed "s|$HOME|~|g")"
+	DOWNLOAD="$(echo "${DOWNLOAD:-~/Downloads}" | sed "s|$HOME|~|g")"
+	GAMES="$(echo "${GAMES:-~/Games}" | sed "s|$HOME|~|g")"
+	MUSIC="$(echo "${MUSIC:-~/Music}" | sed "s|$HOME|~|g")"
+	PICTURES="$(echo "${PICTURES:-~/Pictures}" | sed "s|$HOME|~|g")"
+	VIDEOS="$(echo "${VIDEOS:-~/Videos}" | sed "s|$HOME|~|g")"
+}
+
+_sandbox_check_appimage() {
+	_determine_args
+	arg="$1"
+	_determine_argpath
+	if ! echo "$argpath" | grep -q "^/opt\|^/var/opt"; then
+		TARGET="$(command -v "$BINDIR/$1" 2>/dev/null)"
+	else
+		TARGET="$(command -v "/usr/local/bin/$1" 2>/dev/null)"
+	fi
+	APPIMAGE="$(readlink "$TARGET" 2>/dev/null)"
+	APPIMAGEDIR="$argpath"
+	if grep "aisap-am" "$TARGET" >/dev/null 2>&1; then
+		printf $"%b\n \"%b\" is already sandboxed!\n%b\n" "$DIVIDING_LINE" "$1" "$DIVIDING_LINE"
+		return 1
+	elif [ ! -e "$APPIMAGE" ]; then
+		echo "$DIVIDING_LINE"
+		printf $" ✖ ERROR: \"%b\" is not installed\n" "$1"
+		echo "$DIVIDING_LINE"
+		return 1
+	elif ! head -c10 "$APPIMAGE" 2>/dev/null | grep -qa '^.ELF....AI$'; then
+		echo "$DIVIDING_LINE"
+		printf $" ✖ ERROR: \"%b\" is NOT an AppImage\n" "$1"
+		echo "$DIVIDING_LINE"
+		return 1
+	fi
+}
+
+_sandbox_check_aisap() {
+	if [ "$1" = "aisap" ] || [ "$1" = "sas" ]; then
+		echo $" Error: You can't sandbox $1"
+		return 1
+	elif ! command -v aisap 1>/dev/null && ! command -v sas 1>/dev/null; then
+		printf $'\n%s\n' $" ERROR: You need aisap or sas for this script to work"
+		printf $'\n%s\n\n' $" NOTE: Only sas can sandbox DWARFS AppImages"
+		read -r -p $" ◆ DO YOU WISH TO INSTALL SAS? Install size <5 MiB? (Y/n) " yn
+		case "$yn" in
+			n*|N*) echo $" OPERATION ABORTED!"; return 1;;
+		esac
+		if [ "$CLI" = am ] && [ -f "$APPMANCONFIG"/appman-config ]; then
+			read -r -p $" ◆ DO YOU WISH TO INSTALL SAS LOCALLY? (Y/n) " yn
+			case "$yn" in
+				n*|N*) "$AMCLIPATH_ORIGIN" -i sas >/dev/null 2>&1;;
+				''|*)  "$AMCLIPATH_ORIGIN" -i --user sas >/dev/null 2>&1;;
+			esac
+		else
+			"$AMCLIPATH_ORIGIN" -i sas >/dev/null 2>&1
+		fi
+		command -v sas 1>/dev/null || return 1
+		echo $" sas installed successfully!"
+	fi
+}
+
+_sandbox_generate_sandbox_script() {
+	echo "$DIVIDING_LINE"
+	printf '\n%s\n' " Making aisap sandbox script for \"$1\"..."
+	tmpscript="$(cat <<-'HEREDOC'
+	#!/bin/sh
+	# aisap-am sandboxing script, aisap: https://github.com/mgord9518/aisap
+	# Thanks a lot to mgord9518 for making aisap!
+	# Run this script with --disable-sandbox to do what the flag name implies
+	# The default location for the sandboxed home is in $HOME/.local/am-sandboxes
+	# But that location can be changed by setting the $SANDBOXDIR env variable
+
+	# Set common XDG variables
+	BINDIR="${XDG_BIN_HOME:-$HOME/.local/bin}"
+	DATADIR="${XDG_DATA_HOME:-$HOME/.local/share}"
+	CONFIGDIR="${XDG_CONFIG_HOME:-$HOME/.config}"
+	CACHEDIR="${XDG_CACHE_HOME:-$HOME/.cache}"
+
+	# Dependency check
+	if command -v sas 1>/dev/null; then
+	  SANDBOXCMD="sas"
+	elif command -v aisap 1>/dev/null; then
+	  SANDBOXCMD="aisap"
+	elif [ -f "$BINDIR/sas" ]; then
+	  SANDBOXCMD="$BINDIR/sas"
+	elif [ -f "$BINDIR/aisap" ]; then
+	  SANDBOXCMD="$BINDIR/aisap"
+	else
+	  echo "You need aisap or sas for this to work"
+	  notify-send -u critical "Sandbox error: Missing aisap/sas dependency!"
+	  exit 1
+	fi
+
+	# Set variables and create sandboxed dir
+	APPEXEC=DUMMY
+	chmod a-x "$APPEXEC" # Prevents accidental launch of app outside the sandbox
+	APPNAME="$(echo "$APPEXEC" | awk -F "/" '{print $NF}')"
+	SANDBOXDIR="${SANDBOXDIR:-$HOME/.local/am-sandboxes}"
+	DBUS="$(ls /tmp/dbus* 2>/dev/null | head -1)"
+
+	# get xdg user dirs, unset if var = $HOME
+	for DIR in DESKTOP DOCUMENTS DOWNLOAD GAMES MUSIC PICTURES VIDEOS; do
+	  eval XDG_DIR="$(xdg-user-dir $DIR 2>/dev/null)"
+	  [ "$(readlink -f "$XDG_DIR")" = "$HOME" ] && XDG_DIR=""
+	  eval $DIR="$XDG_DIR"
+	done
+	# Use default location if var is not set
+	DESKTOP="${DESKTOP:-$HOME/Desktop}"
+	DOCUMENTS="${DOCUMENTS:-$HOME/Documents}"
+	DOWNLOAD="${DOWNLOAD:-$HOME/Downloads}"
+	GAMES="${GAMES:-$HOME/Games}"
+	MUSIC="${MUSIC:-$HOME/Music}"
+	PICTURES="${PICTURES:-$HOME/Pictures}"
+	VIDEOS="${VIDEOS:-$HOME/Videos}"
+	# Try find the right name of the app conf/data dir
+	APPDATA=$( ls "$DATADIR" | grep -i "$APPNAME" | head -1 )
+	APPCONF=$( ls "$CONFIGDIR" | grep -i "$APPNAME" | head -1 )
+	# Disable sandbox
+	if [ "$1" = "--disable-sandbox" ]; then
+	  APPIMAGEDIR="${APPEXEC%/*}"
+	  echo ""
+	  echo "✔ Giving exec permissions back to $APPEXEC..." | fold -sw 77 | sed 's/^/   /g; s/   ✔/ ✔/g'
+	  chmod a+x "$APPEXEC" || exit 1
+	  if [ -f "$APPIMAGEDIR/AM-updater" ]; then
+	    UPDATER_SCRIPT="$APPIMAGEDIR/AM-updater"
+	  elif [ -f "$APPIMAGEDIR/AM-LOCK" ]; then
+	    UPDATER_SCRIPT="$APPIMAGEDIR/AM-LOCK"
+	  fi
+	  echo "✔ Patching $UPDATER_SCRIPT to give permissions back..." | fold -sw 77 | sed 's/^/   /g; s/   ✔/ ✔/g'
+	  tmpsedEEE="$(sed 's|chmod a-x|chmod a+x|g' "$UPDATER_SCRIPT" 2>/dev/null)"
+	  [ -n "$tmpsedEEE" ] && echo "$tmpsedEEE" > "$UPDATER_SCRIPT" || return 1
+	  unset tmpsedEEE
+	  THISFILE="$(readlink -f "$0")"
+	  echo "✔ Replacing $THISFILE with a link to the AppImage..." | fold -sw 77 | sed 's/^/   /g; s/   ✔/ ✔/g'
+	  SUDO ln -sf "$APPEXEC" "$THISFILE" || exit 1
+	  printf '\033[32m\n%s\n\033[0m\n' "✔ $APPEXEC successfully unsandboxed!" | fold -sw 77 | sed 's/^/   /g; s/   ✔/ ✔/g'
+	  exit 0
+	fi
+	mkdir -p "$SANDBOXDIR/$APPNAME"
+	[ -z "$APPNAME" ] && exit 1
+	# Start at sandboxed home
+	# Edit below this to add or remove access to parts of the system
+	exec "$SANDBOXCMD" --trust-once --level 1 \
+	--data-dir "$SANDBOXDIR/$APPNAME" \
+	--add-file "$DATADIR/${APPDATA:-$APPNAME}":rw \
+	--add-file "$DATADIR"/themes \
+	--add-file "$DATADIR"/icons \
+	--add-file "$DATADIR"/fonts \
+	--add-file "$CONFIGDIR/${APPCONF:-$APPNAME}":rw \
+	--add-file "$CONFIGDIR"/dconf \
+	--add-file "$CONFIGDIR"/gtk3.0 \
+	--add-file "$CONFIGDIR"/gtk4.0 \
+	--add-file "$CONFIGDIR"/kdeglobals \
+	--add-file "$CONFIGDIR"/qt5ct \
+	--add-file "$CONFIGDIR"/qt6ct \
+	--add-file "$CONFIGDIR"/Kvantum \
+	--add-file "$HOME"/.local/lib \
+	--rm-file /NOPATH \
+	--rm-file "$DESKTOP" \
+	--rm-file "$DOCUMENTS" \
+	--rm-file "$DOWNLOAD" \
+	--rm-file "$GAMES" \
+	--rm-file "$MUSIC" \
+	--rm-file "$PICTURES" \
+	--rm-file "$VIDEOS" \
+	--add-file /var/lib/dbus \
+	--add-file "${DBUS:-/tmp/dbus}" \
+	--add-socket pulseaudio \
+	--add-socket dbus \
+	--add-socket network \
+	--add-socket x11 \
+	--add-socket wayland \
+	--add-device dri -- \
+	"$APPEXEC" "$@"
+	HEREDOC
+	)"
+}
+
+_sandbox_configure_dirs_access() {
+	printf '\033[33m\n'
+	read -r -p $" Do you want configure access to directories? (Y/n): " yn
+	if echo "$yn" | grep -i '^n' >/dev/null 2>&1; then
+		return 0
+	fi
+	printf '\033[36m'
+	for DIR in DESKTOP DOCUMENTS DOWNLOAD GAMES MUSIC PICTURES VIDEOS; do
+		eval XDG_DIR=\$$DIR
+		read -r -p $" Allow $1 access to \"$XDG_DIR\"? (y/N) " yn
+		if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
+			tmpscript=$(echo "$tmpscript" | sed "s#--rm-file \"\$$DIR\"#--add-file \"\$$DIR\":rw#g" )
+		fi
+	done
+	sleep 0.5
+	printf '\033[31m'
+	read -r -p $" Allow $1 access to a specific directory? (y/N) " yn
+	if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
+		echo $"  WARNING: Giving access to all of $HOME or / and similar is not safe"
+		echo $"  Also aisap might not let $1 start when such paths are given"
+		printf $'\033[33m%s\n' $"  Type the path to the directory"
+		read -r -p $"  Example: /media/external-drive or ~/Backups: " NEWDIR
+		NEWDIR="$(readlink -f "$NEWDIR")"
+		case "$NEWDIR" in
+			"/"|"/home"|"$HOME"|"$DATADIR"|"$CONFIGDIR"|"$BINDIR")
+				notify-send -u critical "DO YOU WANT THE FBI TO GET YA?"
+				printf '\033[31m\n'
+				read -r -p $"  SPOOKY LOCATION! ARE YOU SURE? IF SO TYPE \"YES\": " YES
+				[ "$YES" != "YES" ] && echo $" That's not \"YES\", aborting" && return 1
+				;;
+			'')
+				printf $'\033[31m\n%s\n\n' $" No path given, aborting"
+				return 1
+				;;
+		esac
+		echo $"  Giving access to \"$NEWDIR\"..."
+		tmpscript=$(echo "$tmpscript" | sed "s#--rm-file /NOPATH#--add-file \"$NEWDIR\":rw#g")
+	fi
+	printf $'\n\033[32m%s\n' $" User directories access configured successfully!"
+}
+
+_sandbox_install_sandbox_script() {
+	if echo "$argpath" | grep -q "^/opt\|^/var/opt"; then
+		tmpscript=$(echo "$tmpscript" | sed "s#DUMMY#$APPIMAGE#g; s#SUDO#$SUDOCMD#g")
+	else
+		tmpscript=$(echo "$tmpscript" | sed "s#DUMMY#$APPIMAGE#g; s#SUDO##g")
+	fi
+	# Remove exec permission from AppImage and its updater for better safety™
+	chmod a-x "$APPIMAGE" || return 1
+	if [ -f "$APPIMAGEDIR/AM-updater" ]; then
+		UPDATER_SCRIPT="$APPIMAGEDIR/AM-updater"
+	elif [ -f "$APPIMAGEDIR/AM-LOCK" ]; then
+		UPDATER_SCRIPT="$APPIMAGEDIR/AM-LOCK"
+	fi
+	tmpsedEEE="$(sed 's|chmod a+x|chmod a-x|g' "$UPDATER_SCRIPT" 2>/dev/null)"
+	[ -n "$tmpsedEEE" ] && echo "$tmpsedEEE" > "$UPDATER_SCRIPT" || return 1
+	unset tmpsedEEE
+	# Install the script
+	if echo "$argpath" | grep -q "^/opt\|^/var/opt"; then
+		$SUDOCMD rm -f "$TARGET" || return 1
+		echo "$tmpscript" | $SUDOCMD tee "$TARGET" >/dev/null 2>&1 || return 1
+		$SUDOCMD chmod a+x "$TARGET"
+	else
+		rm -f "$TARGET" || return 1
+		echo "$tmpscript" | tee "$TARGET" >/dev/null 2>&1 || return 1
+		chmod a+x "$TARGET"
+	fi
+	SANDBOXDIR="${SANDBOXDIR:-$HOME/.local/am-sandboxes}"
+	printf $'\033[32m\n%s\n\033[0m' " \"$1\" successfully sandboxed!"
+	printf $'\n%s\n' " $1 will be sandboxed in \"$SANDBOXDIR\""
+	printf $'%s\n\n' " once launched"
+	printf $'%s\n' " Set the \$SANDBOXDIR env variable to move the location"
+	printf $'\n%s' ' Use '
+	printf '\033[33m%s' '--disable-sandbox'
+	printf $'\033[0m%s\033[33m\n' " to revert the changes, in this case that is:"
+	printf '\033[33m%s\033[0m' " $1 --disable-sandbox"
+	printf $'%s\033[33m%s\n\033[0m\n' " or " "$AMCLI --disable-sandbox $1"
+}
+
+_use_sandbox() {
+	_sandbox_get_xdg_variables_for_configure_dirs_access && _sandbox_check_appimage "${@}" && _sandbox_check_aisap "${@}" && _sandbox_generate_sandbox_script "${@}" && _sandbox_configure_dirs_access "${@}" && _sandbox_install_sandbox_script "${@}"
+}
+
+_use_disable_sandbox() {
+	echo "$DIVIDING_LINE"
+	_determine_args
+	arg="$1"
+	_determine_argpath
+	if ! echo "$argpath" | grep -q "^/opt\|^/var/opt"; then
+		TARGET="$(command -v "$BINDIR/$1" 2>/dev/null)"
+	else
+		TARGET="$(command -v "/usr/local/bin/$1" 2>/dev/null)"
+	fi
+	if ! grep "aisap-am sandboxing script" "$TARGET" >/dev/null 2>&1; then
+		echo $" ERROR: Not a sandboxed AppImage, aborting"
+		return 1
+	fi
+	"$TARGET" --disable-sandbox
+}
+
+################################################################################################################################################################
 #				USAGE
-################################################################################
+################################################################################################################################################################
 
 case "$1" in
 	'-d'|'download')
+		_online_check
 		case $2 in
 		'--convert')
 			[ -z "$3" ] && echo $" USAGE: $AMCLI $1 $2 [ARGUMENT]" && exit 1
@@ -702,8 +996,8 @@ case "$1" in
 		fi
 		;;
 
-	'install'|'-i'|'-ias'|\
-	'install-appimage'|'-ia')
+	'install'|'-i'|'-ias'|'install-appimage'|'-ia')
+		_online_check
 		[ "$AMCLI" = "am" ] && echo "$@" | grep -q -- "--user" && _appman
 
 		case $2 in
@@ -797,14 +1091,13 @@ case "$1" in
 				if [ -f "$APPSPATH/$LASTDIR/$LASTDIR" ] && head -c10 "$APPSPATH/$LASTDIR/$LASTDIR" 2>/dev/null | grep -qa '^.ELF....AI$'; then
 					FILE=$(command -v "$LASTDIR" 2>/dev/null)
 					if ! head -c1000 "$FILE" 2>/dev/null | grep -q "SANDBOXCMD"; then
-						MODULE="sandboxes.am"
 						if ! command -v aisap >/dev/null 2>&1 || ! command -v sas >/dev/null 2>&1; then
 							mv "$AMCACHEDIR"/installed "$CACHEDIR"/installed.backup.am 2>/dev/null
-							_use_module --sandbox "$LASTDIR"
+							_use_sandbox "$LASTDIR"
 							sort "$AMCACHEDIR"/installed >> "$CACHEDIR"/installed.backup.am 2>/dev/null
 							mv "$CACHEDIR"/installed.backup.am "$AMCACHEDIR"/installed 2>/dev/null
 						else
-							printf "\n" && _use_module --sandbox "$LASTDIR"
+							printf "\n" && _use_sandbox "$LASTDIR"
 						fi
 					fi
 				fi
@@ -820,6 +1113,7 @@ case "$1" in
 		;;
 
 	'-e'|'extra')
+		_online_check
 		if [ -z "$2" ] || [ -z "$3" ]; then
 			echo $" USAGE: $AMCLI $1 user/project [ARGUMENT]"
 			echo $" USAGE: $AMCLI $1 user/project [ARGUMENT] [KEYWORD]"
@@ -869,9 +1163,10 @@ case "$1" in
 		;;
 
 	'reinstall')
+		_online_check
 		_completion_lists
-		case $2 in
-		'--all') # Reinstall all applications
+		if [ "$2" = "--all" ]; then
+			# Reinstall all applications
 			echo "$DIVIDING_LINE"
 			read -r -p $" Do you wish reinstall everything? (N/y): " yn
 			if ! echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
@@ -902,8 +1197,8 @@ case "$1" in
 					done
 				done
 			fi
-			;;
-		'--launcher') # Reinstall only .desktop files if they have been changed
+		elif [ "$2" = "--launcher" ]; then
+			# Reinstall only .desktop files if they have been changed
 			_determine_args
 			ARGS=$(echo "$ARGS" | tr ' ' '\n' | sort -u | xargs)
 			for arg in $ARGS; do
@@ -918,94 +1213,111 @@ case "$1" in
 						launcher_name="$arg-AM.desktop"
 						if [ -f "$LAUNCHERS_PATH"/"$launcher_name" ]; then
 							mkdir -p "$SCRIPTDIR"/AMLAUNCHER_DIR
-							exec 3< <("$argpath"/"$arg" --appimage-mount)
-							read -r MOUNT_POINT <&3
-							APP_PID=$!
-							export MOUNT_POINT
-							launcher_name="$arg-AM.desktop"
-							if test -f "$argpath"/.am-installer/"$arg"* && grep -q -- "--appimage-extract" "$argpath"/.am-installer/"$arg"* && ! grep -q -- './"$APP" --appimage-extract \*.desktop 1>/dev/null && mv ./squashfs-root/\*.desktop ./"$APP".desktop' "$argpath"/.am-installer/"$arg"*; then
-								# Detect launchers with non-standard installation scripts
-								desktop_pattern=$(grep -- "--appimage-extract .*.desktop" "$argpath"/.am-installer/"$arg"* | head -1 | tr ' /' '\n' | grep -- "[a-zA-Z].*.desktop$" | tr '*' '\n' | head -1)
-								cp "$MOUNT_POINT"/"$desktop_pattern"*.desktop "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name"
-							else
-								cp "$MOUNT_POINT"/*.desktop "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name"
-							fi
-							COUNT=0
-							while [ "$COUNT" -lt 10 ]; do # Tries to get the actual icon/desktop if it is a symlink to another symlink
-								if [ -L "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name" ]; then
-									LINKPATH="$(readlink "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name" | sed 's|^\./||' 2>/dev/null)"
-									cp "$MOUNT_POINT"/"$LINKPATH" "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name"
-								fi
-								[ ! -L "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name" ] && break
-								COUNT=$((COUNT + 1))
-							done
-							if [ -f "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name" ]; then
-								# Standard patches
-								if echo "$argpath" | grep -q "^/opt\|^/var/opt"; then
-									sed -i "s#Exec=[^ ]*#Exec=$arg#g; s#Icon=.*#Icon=$argpath/icons/$arg#g" "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name"
+							if [ -x "$argpath"/"$arg" ]; then
+								exec 3< <("$argpath"/"$arg" --appimage-mount)
+								read -r MOUNT_POINT <&3
+								APP_PID=$!
+								export MOUNT_POINT
+								launcher_name="$arg-AM.desktop"
+								if test -f "$argpath"/.am-installer/"$arg"* && grep -q -- "--appimage-extract" "$argpath"/.am-installer/"$arg"* && ! grep -q -- './"$APP" --appimage-extract \*.desktop 1>/dev/null && mv ./squashfs-root/\*.desktop ./"$APP".desktop' "$argpath"/.am-installer/"$arg"*; then
+									# Detect launchers with non-standard installation scripts
+									desktop_pattern=$(grep -- "--appimage-extract .*.desktop" "$argpath"/.am-installer/"$arg"* | head -1 | tr ' /' '\n' | grep -- "[a-zA-Z].*.desktop$" | tr '*' '\n' | head -1)
+									cp "$MOUNT_POINT"/"$desktop_pattern"*.desktop "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name"
 								else
-									sed -i "s#Exec=[^ ]*#Exec=$BINDIR/$arg#g; s#Icon=.*#Icon=$argpath/icons/$arg#g" "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name"
+									cp "$MOUNT_POINT"/*.desktop "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name"
 								fi
-								# Determine if StartupWMClass patch is needed
-								if test -f "$argpath"/.am-installer/"$arg"* && grep -q 'grep -q "StartupWMClass"' "$argpath"/.am-installer/"$arg"* && grep -q "^StartupWMClass" "$LAUNCHERS_PATH"/"$launcher_name"; then
-									wm_class=$(grep "^StartupWMClass=" "$LAUNCHERS_PATH"/"$launcher_name" | head -1 | tr '=' '\n' | tail -1)
-									if ! grep -q "^StartupWMClass" "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name"; then
-										sed -i "/^\[Desktop Entry\]/a\StartupWMClass=$wm_class" "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name"
-									else
-										sed -i "s|^StartupWMClass=.*|StartupWMClass=$wm_class|" "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name"
+								COUNT=0
+								while [ "$COUNT" -lt 10 ]; do # Tries to get the actual icon/desktop if it is a symlink to another symlink
+									if [ -L "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name" ]; then
+										LINKPATH="$(readlink "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name" | sed 's|^\./||' 2>/dev/null)"
+										cp "$MOUNT_POINT"/"$LINKPATH" "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name"
 									fi
-								fi
-								# Compare the installed launcher and the extracted one
-								if [ "$(sort "$LAUNCHERS_PATH"/"$launcher_name")" != "$(sort "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name")" ]; then
-									printf -- $"- Found differences in %b, it probably needs to be updated.\n" "$launcher_name" | _fit
-									read -r -p $" Do you wish to continue? (N/y): " yn
-									if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
-										if echo "$argpath" | grep -q "^/opt\|^/var/opt"; then
-											$SUDOCMD mv "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name" "$LAUNCHERS_PATH"/"$launcher_name"
+									[ ! -L "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name" ] && break
+									COUNT=$((COUNT + 1))
+								done
+								if [ -f "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name" ]; then
+									# Standard patches
+									if echo "$argpath" | grep -q "^/opt\|^/var/opt"; then
+										sed -i "s#Exec=[^ ]*#Exec=$arg#g; s#Icon=.*#Icon=$argpath/icons/$arg#g" "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name"
+									else
+										sed -i "s#Exec=[^ ]*#Exec=$BINDIR/$arg#g; s#Icon=.*#Icon=$argpath/icons/$arg#g" "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name"
+									fi
+									# Determine if StartupWMClass patch is needed
+									if test -f "$argpath"/.am-installer/"$arg"* && grep -q 'grep -q "StartupWMClass"' "$argpath"/.am-installer/"$arg"* && grep -q "^StartupWMClass" "$LAUNCHERS_PATH"/"$launcher_name"; then
+										wm_class=$(grep "^StartupWMClass=" "$LAUNCHERS_PATH"/"$launcher_name" | head -1 | tr '=' '\n' | tail -1)
+										if ! grep -q "^StartupWMClass" "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name"; then
+											sed -i "/^\[Desktop Entry\]/a\StartupWMClass=$wm_class" "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name"
 										else
-											mv "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name" "$LAUNCHERS_PATH"/"$launcher_name"
+											sed -i "s|^StartupWMClass=.*|StartupWMClass=$wm_class|" "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name"
+										fi
+									fi
+									# Compare the installed launcher and the extracted one
+									if [ "$(sort "$LAUNCHERS_PATH"/"$launcher_name")" != "$(sort "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name")" ]; then
+										printf -- $"- Found differences in %b, it probably needs to be updated.\n" "$launcher_name" | _fit
+										read -r -p $" Do you wish to continue? (N/y): " yn
+										if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
+											if echo "$argpath" | grep -q "^/opt\|^/var/opt"; then
+												$SUDOCMD mv "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name" "$LAUNCHERS_PATH"/"$launcher_name"
+											else
+												mv "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name" "$LAUNCHERS_PATH"/"$launcher_name"
+											fi
 										fi
 									fi
 								fi
+								kill "$APP_PID" 2>/dev/null
 							fi
-							kill "$APP_PID" 2>/dev/null
 						fi
 					fi
 				done
 			done
 			echo "$DIVIDING_LINE"
-			;;		
-		*) # Reinstall applications with updated installation scripts
+		else		
+			# Reinstall applications with updated installation scripts
 			printf $"%b\n Checking for changes of the installation scripts in the online database...\n%b\n" "$DIVIDING_LINE" "$DIVIDING_LINE"
 			_determine_args
 			for arg in $ARGS; do
 				argpath_items=$(echo "$ARGPATHS" | grep "/$arg$" | xargs)
 				for argpath in $argpath_items; do
-						if [ -f "$argpath"/AM-updater ]; then
-							mkdir -p "$argpath"/.am-installer
-							scriptname=$(ls "$argpath/.am-installer/" | head -1)
-							if [ -n "$scriptname" ] && grep -q "^◆ $scriptname :" "$AMDATADIR/$ARCH-apps"; then
-								CURRENT=$(cat "$argpath"/.am-installer/"$scriptname")
-								SOURCE=$(_use_online_reading_tool "$APPSDB"/"$scriptname")
-								if echo "$SOURCE" | grep -q "APP=$arg"; then
-									if [ "$CURRENT" != "$SOURCE" ]; then
-										reinstall_true=1
-										"$AMCLIPATH_ORIGIN" -R "$arg"
-										if [ "$AMCLI" = "am" ] && ! echo "$argpath" | grep -q "^/opt"; then
-											"$AMCLIPATH_ORIGIN" -i --user "$scriptname"
-										else
-											"$AMCLIPATH_ORIGIN" -i "$scriptname"
-										fi
+					if [ -f "$argpath"/AM-updater ]; then
+						mkdir -p "$argpath"/.am-installer
+						scriptname=$(ls "$argpath/.am-installer/" | head -1)
+						if [ -n "$scriptname" ] && grep -q "^◆ $scriptname :" "$AMDATADIR/$ARCH-apps"; then
+							CURRENT=$(cat "$argpath"/.am-installer/"$scriptname")
+							SOURCE=$(_use_online_reading_tool "$APPSDB"/"$scriptname")
+							if echo "$SOURCE" | grep -q "APP=$arg"; then
+								if [ "$CURRENT" != "$SOURCE" ]; then
+									reinstall_true=1
+									"$AMCLIPATH_ORIGIN" -R "$arg"
+									if [ "$AMCLI" = "am" ] && ! echo "$argpath" | grep -q "^/opt"; then
+										"$AMCLIPATH_ORIGIN" -i --user "$scriptname"
+									else
+										"$AMCLIPATH_ORIGIN" -i "$scriptname"
 									fi
 								fi
-								SOURCE=""
 							fi
-							scriptname=""
+							SOURCE=""
 						fi
-					done
+						scriptname=""
+					fi
 				done
-			;;
-		esac
+			done
+		fi
 		[ -n "$reinstall_true" ] && printf $" App removal and reinstallation complete! \n%b\n" "$DIVIDING_LINE" || printf $" Nothing to do here! \n%b\n" "$DIVIDING_LINE"
+		;;
+
+	'--sandbox'|'sandbox')
+		shift
+		while [ "$#" -gt 0 ]; do
+			_use_sandbox "${@}"
+			shift
+		done
+		;;
+
+	'--disable-sandbox')
+		shift
+		while [ "$#" -gt 0 ]; do
+			_use_disable_sandbox "${@}"
+			shift
+		done
 		;;
 esac
