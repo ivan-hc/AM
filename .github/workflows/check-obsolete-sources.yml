@@ -40,7 +40,9 @@ jobs:
              (
              if grep -q "^version=.*api.github.com" "$arg" && grep -q "^SITE=" "$arg"; then
                 user_repo=$(grep "^SITE=" "$arg" | head -1 | awk -F'"' '/^SITE=/{print $2}')
-                if curl -s "https://api.gh.pkgforge.dev/repos/$user_repo" | grep -q '"archived".* true,'; then
+                user_repo_root=$(curl -s "https://api.gh.pkgforge.dev/repos/$user_repo")
+                wait
+                if [ -n "$user_repo_root" ] && echo "$user_repo_root" | grep -q '"archived".* true,'; then
                    appname=$(echo "$arg" | sed "s:.*/::")
                    echo "$appname" >> archived-list.tmp
                    echo " - $appname repository is Archived"
@@ -60,7 +62,9 @@ jobs:
               (
               if grep -q "^version=.*api.github.com.*/releases" "$arg" && grep -q "^SITE=" "$arg"; then
                  user_repo=$(grep "^SITE=" "$arg" | head -1 | awk -F'"' '/^SITE=/{print $2}')
-                 date=$(curl -s "https://api.gh.pkgforge.dev/repos/$user_repo/releases" | grep -oP '"updated_at": "\K\d{4}' | sort -n | tail -1)
+                 user_repo_releases=$(curl -s "https://api.gh.pkgforge.dev/repos/$user_repo/releases")
+                 wait
+                 date=$(echo "$user_repo_releases" | grep -oP '"updated_at": "\K\d{4}' | sort -n | tail -1)
                  if [ -n "$date" ] && echo "$date" | grep -qE '^[0-9]{4}$' && [ "$date" -lt "$obsolescence_threshold" ]; then
                     appname=$(echo "$arg" | sed "s:.*/::")
                     echo "$appname $date" >> obsolete-list.tmp
