@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
-##############################################################################################
-# THIS MODULE INCLUDES ALL THE ACTIONS INTENDED TO MANAGE THE APPS INSTALLED FROM THE DATABASE
-# AND ONE OPTION IS FOR LOCAL APPIMAGES INSTEAD
-# OPTIONS: BACKUP/RESTORE, CONFIG/HOME, DOWNGRADE, LAUNCHER, LOCK/UNLOCK, NOLIBFUSE, REMOVE
-##############################################################################################
+########################################################################################################
+# THIS MODULE INCLUDES ALL THE ACTIONS INTENDED TO MANAGE THE APPS INSTALLED FROM THE DATABASE AND ONE
+# OPTION IS FOR LOCAL APPIMAGES INSTEAD
+# OPTIONS: BACKUP/RESTORE, CONFIG/HOME, DOWNGRADE, HIDE/UNHIDE, LAUNCHER, LOCK/UNLOCK, NOLIBFUSE, REMOVE
+########################################################################################################
 
 ################################################################################################################################################################
 #				BACKUP
@@ -239,6 +239,46 @@ _downgrade() {
 	echo "$d" > ./version
 	echo $"ROLLBACK SUCCESSFUL!"
 	_use_verify
+}
+
+################################################################################################################################################################
+#				HIDE/UNHIDE
+################################################################################################################################################################
+
+_use_hide() {
+	_determine_argpath
+	if [ -f "$argpath/remove" ]; then
+		mv "$argpath/remove" "$argpath/remove.old" && echo $"✔ $argpath has been hidden" | _fit
+	else
+		echo $"✖ Can't hide \"$arg\", app already hidden or non-existent" | _fit
+	fi
+}
+
+_use_unhide() {
+	argpath=""
+	if [ -n "$APPMAN_APPSPATH" ] && [ "$APPSPATH" != "$APPMAN_APPSPATH" ]; then
+		if [ -f "$APPSPATH/$arg/remove.old" ] && [ -f "$APPMAN_APPSPATH/$arg/remove.old" ]; then
+			printf " Detected multiple paths, please choose one:\n\n"
+			echo "1. $APPSPATH/$arg		2. $APPMAN_APPSPATH/$arg" | _fit
+			printf "\n"
+			read -r -p " Type a number and press ENTER: " response
+			if [ "$response" = 1 ]; then
+				argpath="$APPSPATH/$arg"
+			elif [ "$response" = 2 ]; then
+				argpath="$APPMAN_APPSPATH/$arg"
+			fi
+		elif [ -f "$APPSPATH/$arg/remove.old" ]; then
+			argpath="$APPSPATH/$arg"
+		elif [ -f "$APPMAN_APPSPATH/$arg/remove.old" ]; then
+			argpath="$APPMAN_APPSPATH/$arg"
+		fi
+	elif [ -f "$APPSPATH/$arg/remove.old" ]; then
+		argpath="$APPSPATH/$arg"
+	fi
+	if [ -n "$argpath" ]; then
+		mv "$argpath/remove.old" "$argpath/remove"
+		echo $"✔ $argpath can be managed again" | _fit
+	fi
 }
 
 ################################################################################################################################################################
@@ -565,6 +605,26 @@ case "$1" in
 			_downgrade "${@}"
 			_clean_amcachedir
 			_update_list_updatable_apps
+			shift
+		done
+		;;
+
+	'hide')
+		# Hide installed apps and prevent AM from manage it
+		_determine_args
+		entries="$(echo "$@" | cut -f2- -d ' ')"
+		for arg in $entries; do
+			_use_hide "$@"
+			shift
+		done
+		;;
+
+	'unhide')
+		# Unhide hidden applications
+		_determine_args
+		entries="$(echo "$@" | cut -f2- -d ' ')"
+		for arg in $entries; do
+			_use_unhide "$@"
 			shift
 		done
 		;;
