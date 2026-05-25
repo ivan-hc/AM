@@ -13,169 +13,73 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  generate-files:
-    name: "${{ matrix.check_type }}"
+  sync-files:
+    name: "Run sync"
     runs-on: ubuntu-latest
-
-    strategy:
-      fail-fast: false
-      matrix:
-        check_type:
-          - archived
-          - obsolete
-
+    outputs:
+      message: ${{ steps.commit_message.outputs.message }}
     steps:
       - name: "Checkout source repository"
         uses: actions/checkout@v6
 
-      - name: "Generate ${{ matrix.check_type }} list"
-        shell: bash
+      - name: "Get commit message"
+        id: commit_message
         run: |
-          set -euo pipefail
+          COMMIT_MESSAGE="Update list of archived and obsolete sources"
+          echo "message=$COMMIT_MESSAGE" >> $GITHUB_OUTPUT
 
+      - name: "Run test"
+        run: |
           cd programs
 
-          obsolescence_threshold=$(date -u -d "1 year ago" +"%Y")
-          tmp_file=$(mktemp)
+          obsolescence_threshold=$(date -u -d "1 years ago" +"%Y")
 
-          github_api() {
-            local url="$1"
-            local retries=5
-            local delay=3
-            local attempt=1
+          # Determine archived repositories
+          echo "Determine archived repositories"
+          for arg in x86_64/*; do
+             (
+             if grep -q "^version=.*api.github.com" "$arg" && grep -q "^SITE=" "$arg"; then
+                user_repo=$(grep "^SITE=" "$arg" | head -1 | awk -F'"' '/^SITE=/{print $2}')
+          if curl -s "https://api.gh.pkgforge.dev/repos/$user_repo" | grep -q '"archived".* true,'; then
+             echo "$arg" | sed "s:.*/::" >> archived-list.tmp
+          fi
+             fi
+             ) &
+           done
+           wait
 
-            while (( attempt <= retries )); do
-              response=$(curl -fsSL \
-                --connect-timeout 15 \
-                --max-time 60 \
-                "$url" 2>/dev/null) && {
-                  echo "$response"
-                  return 0
-                }
+           echo "# ARCHIVED SOURCES" > archived-apps
+           sort -u archived-list.tmp >> archived-apps
+           rm -f archived-list.tmp
 
-              echo "Attempt ${attempt}/${retries} failed for: $url"
+           # Determine repositories no more updated in the last years
+           echo "Determine repositories no more updated in the last years"
+           for arg in x86_64/*; do
+              (
+              if grep -q "^version=.*api.github.com.*/releases" "$arg" && grep -q "^SITE=" "$arg"; then
+                 user_repo=$(grep "^SITE=" "$arg" | head -1 | awk -F'"' '/^SITE=/{print $2}')
+                 date=$(curl -s "https://api.gh.pkgforge.dev/repos/$user_repo/releases" | grep -oP '"updated_at": "\K\d{4}' | sort -n | tail -1)
+                 if [ -n "$date" ] && echo "$date" | grep -qE '^[0-9]{4}$' && [ "$date" -lt "$obsolescence_threshold" ]; then
+                    echo "$arg $date" | sed s:.*/:: >> obsolete-list.tmp
+                 fi
+                 date=""
+              fi
+              ) &
+           done
+           wait
 
-              sleep "$delay"
-              ((attempt++))
-            done
+           echo "# OBSOLETE SOURCES" > obsolete-apps
+           sort -u obsolete-list.tmp >> obsolete-apps
+           rm -f obsolete-list.tmp
 
-            echo "Failed after ${retries} attempts: $url"
-            return 1
-          }
-
-          case "${{ matrix.check_type }}" in
-            archived)
-              echo "Determine archived repositories"
-
-              for arg in x86_64/*; do
-                if grep -q "^version=.*api.github.com" "$arg" && grep -q "^SITE=" "$arg"; then
-                  (
-                    user_repo=$(grep "^SITE=" "$arg" | head -1 | awk -F'"' '/^SITE=/{print $2}')
-
-                    repo_data=$(github_api "https://api.gh.pkgforge.dev/repos/$user_repo") || exit 0
-
-                    if echo "$repo_data" | grep -q '"archived".*true,'; then
-                      basename "$arg" >> "$tmp_file"
-                    fi
-                  ) &
-                fi
-              done
-
-              wait
-
-              {
-                echo "# ARCHIVED SOURCES"
-                sort -u "$tmp_file"
-              } > archived-apps
-              ;;
-
-            obsolete)
-              echo "Determine obsolete repositories"
-
-              for arg in x86_64/*; do
-                if grep -q "^version=.*api.github.com.*/releases" "$arg" && grep -q "^SITE=" "$arg"; then
-                  (
-                    user_repo=$(grep "^SITE=" "$arg" | head -1 | awk -F'"' '/^SITE=/{print $2}')
-
-                    release_data=$(github_api "https://api.gh.pkgforge.dev/repos/$user_repo/releases") || exit 0
-
-                    release_year=$(
-                      echo "$release_data" \
-                        | grep -oP '"updated_at": "\K\d{4}' \
-                        | sort -n \
-                        | tail -1
-                    )
-
-                    if [[ -n "${release_year:-}" ]] \
-                      && [[ "$release_year" =~ ^[0-9]{4}$ ]] \
-                      && (( release_year < obsolescence_threshold )); then
-                      echo "$(basename "$arg") $release_year" >> "$tmp_file"
-                    fi
-                  ) &
-                fi
-              done
-
-              wait
-
-              {
-                echo "# OBSOLETE SOURCES"
-                sort -u "$tmp_file"
-              } > obsolete-apps
-              ;;
-          esac
-
-          rm -f "$tmp_file"
-
-      - name: "Upload generated file"
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.check_type }}-apps
-          path: programs/${{ matrix.check_type }}-apps
-
-  push-results:
-    name: "Push results"
-    runs-on: ubuntu-latest
-    needs: generate-files
-
-    steps:
-      - name: "Checkout source repository"
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - name: "Download generated artifacts"
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-
-      - name: "Restore generated files"
-        shell: bash
+      - name: "Push to Source"
         run: |
-          set -euo pipefail
-
-          cp artifacts/archived-apps/archived-apps programs/
-          cp artifacts/obsolete-apps/obsolete-apps programs/
-
-      - name: "Commit and push changes"
-        shell: bash
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
+          git config --global user.name "web-flow"
+          git config --global user.email "noreply@github.com"
           git add programs/archived-apps programs/obsolete-apps
-
           if git diff-index --quiet HEAD; then
-            echo "No changes to commit." >> "$GITHUB_STEP_SUMMARY"
+            echo "No changes to commit." >> $GITHUB_STEP_SUMMARY
           else
-            git commit -m "Update list of archived and obsolete sources"
-
-            git push \
-              "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
-              HEAD:${GITHUB_REF_NAME}
-
-            echo "Sync to Source succeeded" >> "$GITHUB_STEP_SUMMARY"
+            git commit -a -m "${{ steps.commit_message.outputs.message }}"
+            git push && echo "Sync to Source succeeded" >> $GITHUB_STEP_SUMMARY
           fi
