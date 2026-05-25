@@ -38,6 +38,31 @@ jobs:
           obsolescence_threshold=$(date -u -d "1 year ago" +"%Y")
           tmp_file=$(mktemp)
 
+          github_api() {
+            local url="$1"
+            local retries=5
+            local delay=3
+            local attempt=1
+
+            while (( attempt <= retries )); do
+              response=$(curl -fsSL \
+                --connect-timeout 15 \
+                --max-time 60 \
+                "$url" 2>/dev/null) && {
+                  echo "$response"
+                  return 0
+                }
+
+              echo "Attempt ${attempt}/${retries} failed for: $url"
+
+              sleep "$delay"
+              ((attempt++))
+            done
+
+            echo "Failed after ${retries} attempts: $url"
+            return 1
+          }
+
           case "${{ matrix.check_type }}" in
             archived)
               echo "Determine archived repositories"
@@ -47,8 +72,9 @@ jobs:
                   (
                     user_repo=$(grep "^SITE=" "$arg" | head -1 | awk -F'"' '/^SITE=/{print $2}')
 
-                    if curl -fsS "https://api.gh.pkgforge.dev/repos/$user_repo" \
-                      | grep -q '"archived".*true,'; then
+                    repo_data=$(github_api "https://api.gh.pkgforge.dev/repos/$user_repo") || exit 0
+
+                    if echo "$repo_data" | grep -q '"archived".*true,'; then
                       basename "$arg" >> "$tmp_file"
                     fi
                   ) &
@@ -71,8 +97,10 @@ jobs:
                   (
                     user_repo=$(grep "^SITE=" "$arg" | head -1 | awk -F'"' '/^SITE=/{print $2}')
 
+                    release_data=$(github_api "https://api.gh.pkgforge.dev/repos/$user_repo/releases") || exit 0
+
                     release_year=$(
-                      curl -fsS "https://api.gh.pkgforge.dev/repos/$user_repo/releases" \
+                      echo "$release_data" \
                         | grep -oP '"updated_at": "\K\d{4}' \
                         | sort -n \
                         | tail -1
