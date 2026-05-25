@@ -13,8 +13,10 @@ jobs:
   sync-files:
     name: "Run sync"
     runs-on: ubuntu-latest
+
     outputs:
       message: ${{ steps.commit_message.outputs.message }}
+
     steps:
       - name: "Checkout source repository"
         uses: actions/checkout@v6
@@ -23,22 +25,87 @@ jobs:
         id: commit_message
         run: |
           COMMIT_MESSAGE="Update list of archived and obsolete sources"
-          echo "message=$COMMIT_MESSAGE" >> $GITHUB_OUTPUT
+          echo "message=$COMMIT_MESSAGE" >> "$GITHUB_OUTPUT"
 
-      - name: "Run test"
+      - name: "Check archived and obsolete sources"
+        shell: bash
         run: |
+          set -euo pipefail
+
           cd programs
-          chmod a+x ./check-obsolete-sources.sh
-          ./check-obsolete-sources.sh
+
+          obsolescence_threshold=$(date -u -d "1 year ago" +"%Y")
+
+          archived_tmp=$(mktemp)
+          obsolete_tmp=$(mktemp)
+
+          echo "Determine archived repositories"
+
+          for arg in x86_64/*; do
+            if grep -q "^version=.*api.github.com" "$arg" && grep -q "^SITE=" "$arg"; then
+              (
+                user_repo=$(grep "^SITE=" "$arg" | head -1 | awk -F'"' '/^SITE=/{print $2}')
+
+                if curl -fsS "https://api.gh.pkgforge.dev/repos/$user_repo" \
+                  | grep -q '"archived".*true,'; then
+                  basename "$arg" >> "$archived_tmp"
+                fi
+              ) &
+            fi
+          done
+
+          wait
+
+          {
+            echo "# ARCHIVED SOURCES"
+            sort -u "$archived_tmp"
+          } > archived-apps
+
+          rm -f "$archived_tmp"
+
+          echo "Determine repositories no more updated in the last years"
+
+          for arg in x86_64/*; do
+            if grep -q "^version=.*api.github.com.*/releases" "$arg" && grep -q "^SITE=" "$arg"; then
+              (
+                user_repo=$(grep "^SITE=" "$arg" | head -1 | awk -F'"' '/^SITE=/{print $2}')
+
+                release_year=$(
+                  curl -fsS "https://api.gh.pkgforge.dev/repos/$user_repo/releases" \
+                    | grep -oP '"updated_at": "\K\d{4}' \
+                    | sort -n \
+                    | tail -1
+                )
+
+                if [[ -n "${release_year:-}" ]] \
+                  && [[ "$release_year" =~ ^[0-9]{4}$ ]] \
+                  && (( release_year < obsolescence_threshold )); then
+                  echo "$(basename "$arg") $release_year" >> "$obsolete_tmp"
+                fi
+              ) &
+            fi
+          done
+
+          wait
+
+          {
+            echo "# OBSOLETE SOURCES"
+            sort -u "$obsolete_tmp"
+          } > obsolete-apps
+
+          rm -f "$obsolete_tmp"
 
       - name: "Push to Source"
         run: |
           git config --global user.name "web-flow"
           git config --global user.email "noreply@github.com"
+
           git add programs/archived-apps programs/obsolete-apps
+
           if git diff-index --quiet HEAD; then
-            echo "No changes to commit." >> $GITHUB_STEP_SUMMARY
+            echo "No changes to commit." >> "$GITHUB_STEP_SUMMARY"
           else
-            git commit -a -m "${{ steps.commit_message.outputs.message }}"
-            git push && echo "Sync to Source succeeded" >> $GITHUB_STEP_SUMMARY
+            git commit -m "${{ steps.commit_message.outputs.message }}"
+            git push
+            echo "Sync to Source succeeded" >> "$GITHUB_STEP_SUMMARY"
           fi
