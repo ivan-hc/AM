@@ -35,14 +35,15 @@ jobs:
           obsolescence_threshold=$(date -u -d "1 years ago" +"%Y")
 
           # Determine archived repositories
-          echo "Determine archived repositories"
+          printf "Determine archived repositories\n\n"
           for arg in x86_64/*; do
              (
              if grep -q "^version=.*api.github.com" "$arg" && grep -q "^SITE=" "$arg"; then
                 user_repo=$(grep "^SITE=" "$arg" | head -1 | awk -F'"' '/^SITE=/{print $2}')
-          if curl -s "https://api.gh.pkgforge.dev/repos/$user_repo" | grep -q '"archived".* true,'; then
-             echo "$arg" | sed "s:.*/::" >> archived-list.tmp
-          fi
+                if curl -s "https://api.gh.pkgforge.dev/repos/$user_repo" | grep -q '"archived".* true,'; then
+                   echo "$arg" | sed "s:.*/::" >> archived-list.tmp
+                   echo " - $arg repository is Archived"
+                fi
              fi
              ) &
            done
@@ -53,14 +54,15 @@ jobs:
            rm -f archived-list.tmp
 
            # Determine repositories no more updated in the last years
-           echo "Determine repositories no more updated in the last years"
+           printf "Determine repositories no more updated in the last years\n\n"
            for arg in x86_64/*; do
               (
               if grep -q "^version=.*api.github.com.*/releases" "$arg" && grep -q "^SITE=" "$arg"; then
                  user_repo=$(grep "^SITE=" "$arg" | head -1 | awk -F'"' '/^SITE=/{print $2}')
                  date=$(curl -s "https://api.gh.pkgforge.dev/repos/$user_repo/releases" | grep -oP '"updated_at": "\K\d{4}' | sort -n | tail -1)
                  if [ -n "$date" ] && echo "$date" | grep -qE '^[0-9]{4}$' && [ "$date" -lt "$obsolescence_threshold" ]; then
-                    echo "$arg $date" | sed s:.*/:: >> obsolete-list.tmp
+                    echo "$arg $date" | sed "s:.*/::" >> obsolete-list.tmp
+                    echo " - $arg, of $date"
                  fi
                  date=""
               fi
