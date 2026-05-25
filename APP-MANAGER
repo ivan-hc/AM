@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="10.2.1-2"
+AMVERSION="10.2.1-3"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -1216,8 +1216,8 @@ fi
 #				APIKEY
 ################################################################################################################################################################
 
-ghapikey_file="$AMDATADIR/ghapikey.txt"
 # Set header authorization if GitHub API key file exists
+ghapikey_file="$AMDATADIR/ghapikey.txt"
 [ -f "$ghapikey_file" ] && HeaderAuthWithGITPAT=" --header \"Authorization: token $(sort "$ghapikey_file")\" "
 
 # Function to validate GitHub API tokens
@@ -1545,53 +1545,6 @@ _use_clone() {
 			fi
 		fi
 	fi
-}
-
-################################################################################################################################################################
-#				HIDE/UNHIDE
-################################################################################################################################################################
-
-_use_hide_unhide() {
-	_determine_args
-	entries="$(echo "$@" | cut -f2- -d ' ')"
-	if [ "$1" = hide ]; then
-		for arg in $entries; do
-			_determine_argpath
-			if [ -f "$argpath/remove" ]; then
-				mv "$argpath/remove" "$argpath/remove.old" && echo $"✔ $argpath has been hidden"
-			else
-				echo $"✖ Can't hide \"$arg\", app already hidden or non-existent" | _fit
-			fi
-		done
-	else
-		for arg in $entries; do
-			argpath=""
-			if [ -n "$APPMAN_APPSPATH" ] && [ "$APPSPATH" != "$APPMAN_APPSPATH" ]; then
-				if [ -f "$APPSPATH/$arg/remove.old" ] && [ -f "$APPMAN_APPSPATH/$arg/remove.old" ]; then
-					printf " Detected multiple paths, please choose one:\n\n"
-					echo "1. $APPSPATH/$arg		2. $APPMAN_APPSPATH/$arg" | _fit
-					printf "\n"
-					read -r -p " Type a number and press ENTER: " response
-					if [ "$response" = 1 ]; then
-						argpath="$APPSPATH/$arg"
-					elif [ "$response" = 2 ]; then
-						argpath="$APPMAN_APPSPATH/$arg"
-					fi
-				elif [ -f "$APPSPATH/$arg/remove.old" ]; then
-					argpath="$APPSPATH/$arg"
-				elif [ -f "$APPMAN_APPSPATH/$arg/remove.old" ]; then
-					argpath="$APPMAN_APPSPATH/$arg"
-				fi
-			elif [ -f "$APPSPATH/$arg/remove.old" ]; then
-				argpath="$APPSPATH/$arg"
-			fi
-			if [ -n "$argpath" ]; then
-				mv "$argpath/remove.old" "$argpath/remove"
-				echo $"✔ $argpath can be managed again" | _fit
-			fi
-		done
-	fi
-	_clean_amcachedir
 }
 
 ################################################################################################################################################################
@@ -2214,6 +2167,7 @@ case "$1" in
 	'backup'|'-b'|\
 	'config'|'-C'|'--config'|'home'|'-H'|'--home'|'-HC'|'-CH'|'HC'|'CH'|\
 	'downgrade'|'--rollback'|\
+	'hide'|'unhide'|\
 	'icons'|'--icons'|\
 	'launcher'|'--launcher'|'integrate'|\
 	'lock'|'unlock'|\
@@ -2272,9 +2226,6 @@ case "$1" in
 		;;
 	'force-latest'|'--force-latest')
 		_use_force_latest "$@"
-		;;
-	'hide'|'unhide')
-		_use_hide_unhide "$@"
 		;;
 	'newrepo'|'neodb')
 		_use_newrepo "$@"
