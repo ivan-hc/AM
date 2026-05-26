@@ -33,6 +33,7 @@ jobs:
           cd programs
 
           obsolescence_threshold=$(date -u -d "1 years ago" +"%Y")
+          this_year=$(date +"%Y")
 
           printf -- "----------------------------------------------------------------------------\n"
 
@@ -73,10 +74,12 @@ jobs:
               appname=$(echo "$arg" | sed "s:.*/::")
               if grep -q "^version=.*api.github.com.*/releases" "$arg" && grep -q "^SITE=" "$arg"; then
                  user_repo=$(grep "^SITE=" "$arg" | head -1 | awk -F'"' '/^SITE=/{print $2}')
-                 if [ -f obsolete-checked ] && grep -q -- "^$user_repo " obsolete-checked && ! grep -q -- "^$user_repo $obsolescence_threshold" obsolete-checked; then
-                    date=$(grep "^$user_repo " obsolete-checked | tr ' ' '\n' | tail -1)
-                    echo "$appname $date" >> obsolete-list.tmp
-                    echo " - $appname, of $date"
+                 if [ -f obsolete-checked ] && grep -q -- "^$user_repo " obsolete-checked; then
+                    if ! grep -q -- "^$user_repo $obsolescence_threshold\|^$user_repo $this_year" obsolete-checked; then
+                       date=$(grep "^$user_repo " obsolete-checked | tr ' ' '\n' | tail -1)
+                       echo "$appname $date" >> obsolete-list.tmp
+                       echo " - $appname, of $date"
+                    fi
                  else
                     user_repo_releases=$(curl -Ls --retry 5 --retry-max-time 120 "https://api.gh.pkgforge.dev/repos/$user_repo/releases")
                     wait
