@@ -74,26 +74,28 @@ jobs:
               appname=$(echo "$arg" | sed "s:.*/::")
               if grep -q "^version=.*api.github.com.*/releases" "$arg" && grep -q "^SITE=" "$arg"; then
                  user_repo=$(grep "^SITE=" "$arg" | head -1 | awk -F'"' '/^SITE=/{print $2}')
-                 if [ -f obsolete-checked ] && grep -q -- "^$user_repo " obsolete-checked; then
-                    if ! grep -q -- "^$user_repo $obsolescence_threshold\|^$user_repo $this_year" obsolete-checked; then
-                       date=$(grep "^$user_repo " obsolete-checked | tr ' ' '\n' | tail -1)
-                       echo "$appname $date" >> obsolete-list.tmp
-                       echo " - $appname, of $date"
-                    fi
-                 else
-                    user_repo_releases=$(curl -Ls --retry 5 --retry-max-time 120 "https://api.gh.pkgforge.dev/repos/$user_repo/releases")
-                    wait
-                    date=$(echo "$user_repo_releases" | grep -oP '"updated_at": "\K\d{4}' | sort -n | tail -1)
-                    if [ -n "$date" ] && echo "$date" | grep -qE '^[0-9]{4}$' && [ "$date" -lt "$obsolescence_threshold" ]; then
-                       echo "$appname $date" >> obsolete-list.tmp
-                       echo " - $appname, of $date"
-                       echo "$user_repo $date" >> obsolete-checked
+                 if [ -f ok-checked ] && ! grep -q "^$user_repo$" ok-checked; then
+                    if [ -f obsolete-checked ] && grep -q -- "^$user_repo " obsolete-checked; then
+                       if ! grep -q -- "^$user_repo $obsolescence_threshold\|^$user_repo $this_year" obsolete-checked; then
+                          date=$(grep "^$user_repo " obsolete-checked | tr ' ' '\n' | tail -1)
+                          echo "$appname $date" >> obsolete-list.tmp
+                          echo " - $appname, of $date"
+                       fi
                     else
-                       echo "$user_repo $date" >> obsolete-checked
-                    fi
-                fi
-                date=""
-              fi
+                       user_repo_releases=$(curl -Ls --retry 5 --retry-max-time 120 "https://api.gh.pkgforge.dev/repos/$user_repo/releases")
+                       wait
+                       date=$(echo "$user_repo_releases" | grep -oP '"updated_at": "\K\d{4}' | sort -n | tail -1)
+                       if [ -n "$date" ] && echo "$date" | grep -qE '^[0-9]{4}$' && [ "$date" -lt "$obsolescence_threshold" ]; then
+                          echo "$appname $date" >> obsolete-list.tmp
+                          echo " - $appname, of $date"
+                          echo "$user_repo $date" >> obsolete-checked
+                       else
+                          echo "$user_repo" >> ok-checked
+                       fi
+                   fi
+                   date=""
+                 fi
+            fi
               ) &
            done
            wait
