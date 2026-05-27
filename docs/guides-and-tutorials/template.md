@@ -42,7 +42,9 @@ Each option corresponds to a different type of application or helper to target w
 1. To **create an AppImage on the fly** using [appimagetool](https://github.com/AppImage/AppImageKit) and [pkg2appimage](https://github.com/AppImage/pkg2appimage), [press "1" (one)](#option-one-build-appimages-on-the-fly)
 2. For a **portable program** (archive, binary, script...), [press "2" (two)](#option-two-archives-and-other-programs)
 
-**The next four paragraphs will explain in detail how to use the options [0](#option-zero-appimages), [1](#option-one-build-appimages-on-the-fly) and [2](#option-two-archives-and-other-programs).**
+*NOTE: In the past, the `-t` option included many more template choices, **including creating profiles for Firefox, with the "ffwa" suffix**. These have been deprecated over time, partly due to lack of interest, incompatibility with other shell functions (oriented towards actual apps), Firefox forks or its variants, and changes to Firefox itself. You'll likely see references to them in upcoming videos, but as of May 2026, only the three options listed above are available.*
+
+**The next paragraphs will explain in detail how to use the options [0](#option-zero-appimages), [1](#option-one-build-appimages-on-the-fly) and [2](#option-two-archives-and-other-programs).**
 
 ------------------------------------------------------------------------
 
