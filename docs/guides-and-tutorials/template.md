@@ -10,7 +10,7 @@ This is a step-by-step guide on how to create, understand and test installation 
 - [Option Zero: "**AppImages**"](#option-zero-appimages)
   - [If the AppImage is hosted on github or codeberg](#if-the-appimage-is-hosted-on-github-or-codeberg)
   - [If the AppImage is hosted sourceforge](#if-the-appimage-is-hosted-sourceforge)
-  - [If the AppImage is hosted on other sistes](#if-the-appimage-is-hosted-on-other-sistes)
+  - [If the AppImage is hosted on other sites](#if-the-appimage-is-hosted-on-other-sites)
 - [Option One: "**build AppImages on-the-fly**"](#option-one-build-appimages-on-the-fly)
 - [Option Two: "**Archives and other programs**"](#option-two-archives-and-other-programs)
 
@@ -99,7 +99,7 @@ https://github.com/user-attachments/assets/c1c08c93-3a57-45b9-9515-551555eca3c4
 
 NOTE, if the URL does not always appear. In that case, you need to resort to more "drastic" methods. See below.
 
-### If the AppImage is hosted on other sistes
+### If the AppImage is hosted on other sites
 For AppImages published elsewhere, you will need more advanced knowledge of how to find the latest download URL using `curl` and `wget` (preferably the former), as well as knowledge of how to use `sed`, `grep`, and `tr`. Again, you may choose to use repology.org to determine the version if it is not present in the download URL.
 
 When downloading an installation script using the command `am -d $program` you will notice in most cases a variable "`$version`", which represents the URL for downloading the application.
