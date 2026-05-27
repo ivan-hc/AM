@@ -23,7 +23,7 @@ for arch in $DIRS; do
 			elif ! echo "$metapkg_page" | head -1 | grep -qi "^# $m"; then
 				exit 1
 			else
-				echo "$metapkg_page" | grep -- " - .* : .*.$" | sed -- "s/^ - / ◆ /g; s/$/ This is part of \"$m\"./g" >> "$arch-tmplist"
+				echo "$metapkg_page" | grep -- " - .* : .*.$" | sed -- "s/^ - /◆ /g; s/$/ This is part of \"$m\"./g" >> "$arch-tmplist"
 			fi
 		done
 	fi
