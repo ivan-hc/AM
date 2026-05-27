@@ -17,13 +17,16 @@ for arch in $DIRS; do
 	if [ "$arch" = x86_64 ]; then
 		METAPACKAGES="kdegames kdeutils node platform-tools"
 		for m in $METAPACKAGES; do
+			mpkgs_args=$(grep -Eo "METAPKG=.*" "./$arch/$m" | head -1 | tr '"' '\n' | grep "[a-z]")
 			metapkg_page=$(curl -Ls --retry 5 --retry-max-time 120 "https://portable-linux-apps.github.io/apps/$m.md" 2>/dev/null)
 			if [ -z "$metapkg_page" ]; then
 				exit 1
 			elif ! echo "$metapkg_page" | head -1 | grep -qi "^# $m"; then
 				exit 1
 			else
-				echo "$metapkg_page" | grep -- " - .* : .*.$" | sed -- "s/^ - /◆ /g; s/$/ This is part of \"$m\"./g" >> "$arch-tmplist"
+				for a in $mpkgs_args; do
+					echo "$metapkg_page" | grep -- " - $a : .*.$" | sed -- "s/^ - /◆ /g; s/$/ This is part of \"$m\"./g" >> "$arch-tmplist"
+				done
 			fi
 		done
 	fi
