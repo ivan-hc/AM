@@ -12,7 +12,7 @@ for arch in $DIRS; do
 					grep "◆ $arg :" "$arch-apps" | head -1 >> "$arch-appimages"
 				fi
 			else
-				if ! grep "◆ $arg :" "$arch-apps" | grep -ie "\"node\"\|\"platform-tools\"\|^◆ ffwa-" 1>/dev/null; then
+				if ! grep "◆ $arg :" "$arch-apps" | grep -ie "\"node\"\|\"platform-tools\"" 1>/dev/null; then
 					grep "◆ $arg :" "$arch-apps" | head -1 >> "$arch-portable"
 				fi
 			fi
