@@ -13,7 +13,6 @@ This is a step-by-step guide on how to create, understand and test installation 
   - [If the AppImage is hosted on other sistes](#if-the-appimage-is-hosted-on-other-sistes)
 - [Option One: "**build AppImages on-the-fly**"](#option-one-build-appimages-on-the-fly)
 - [Option Two: "**Archives and other programs**"](#option-two-archives-and-other-programs)
-- [Option Three: "**Firefox profiles**"](#option-three-firefox-profiles)
 
 [How an installation script works](#how-an-installation-script-works)
 
@@ -35,16 +34,15 @@ appman -t $PROGRAM
 ```
 and this is the screen that will appear:
 
-![Istantanea_2024-06-17_21-35-26 png](https://github.com/ivan-hc/AM/assets/88724353/6e11aeff-9a70-44f7-bd73-1324b545704e)
+![Istantanea_2024-06-17_21-35-26 png](https://github.com/user-attachments/assets/81fe12aa-d90c-4707-bb48-bcd0a661c287)
 
 Each option corresponds to a different type of application or helper to target with an installation script:
 
 0. For **AppImages**, [press "0" (zero)](#option-zero-appimages)
 1. To **create an AppImage on the fly** using [appimagetool](https://github.com/AppImage/AppImageKit) and [pkg2appimage](https://github.com/AppImage/pkg2appimage), [press "1" (one)](#option-one-build-appimages-on-the-fly)
 2. For a **portable program** (archive, binary, script...), [press "2" (two)](#option-two-archives-and-other-programs)
-3. For a **custom Firefox profile**, [press "3" (three)](#option-three-firefox-profiles)
 
-**The next four paragraphs will explain in detail how to use the options [0](#option-zero-appimages), [1](#option-one-build-appimages-on-the-fly), [2](#option-two-archives-and-other-programs) and [3](#option-three-firefox-profiles).**
+**The next four paragraphs will explain in detail how to use the options [0](#option-zero-appimages), [1](#option-one-build-appimages-on-the-fly) and [2](#option-two-archives-and-other-programs).**
 
 ------------------------------------------------------------------------
 
@@ -253,29 +251,6 @@ Note that the download rules are the same as for AppImages in the "Zero" option.
 In the case of archives, the sites github.com and codeberg.org are pre-set. Other sites must be set manually. So have the basic knowledge of SHELL described at [If the AppImage is hosted on other sistes](#if-the-appimage-is-hosted-on-other-sistes).
 
 If in doubt, download the pre-existing installation scripts and analyze their contents to get an idea of ​​how they work.
-
-------------------------------------------------------------------------
-
-| [Back to "Templates index"](#templates-index) |
-| - |
-
-------------------------------------------------------------------------
-## Option Three: "Firefox profiles"
-Option 3 creates a launcher that opens Firefox in a custom profile and on a specific page, such as in a WebApp. I created this option to counterbalance the amount of Electron/Chrome-based applications (and because I'm a firm Firefox's supporter).
-
-It is enough to give an AppName, a URL to the icon (a correct one, not like the one suggested in the video, down below) and a category.
-
-Here is an example for "ProtonMail"
-
-https://github.com/user-attachments/assets/120012de-777f-4cd0-8324-f761d8d4947a
-
-In practice, all we need to do is create a custom Firefox profile that can be launched from a .desktop file, which is all we are really creating in this process.
-
-**These "objects" are not even classified as applications**, and **therefore are not included in the application count when you run `am -l`**.
-
-As suggested in the video, it is preferable to have these custom profiles for yourself.
-
-Their advantage is to keep the data of the reference site well separated from the system profile used in Firefox.
 
 ------------------------------------------------------------------------
 
