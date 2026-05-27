@@ -55,9 +55,6 @@ for arch in $DIRS; do
 		elif grep -q "version=.*kde.org" "$a"; then
 			mkdir -p "$SOURCES_DIR"/kde.org
 			cp -r "$a" "$SOURCES_DIR"/kde.org/
-		# Applications are Firefox WebApps
-		elif echo "$a" | grep -q -- "ffwa-"; then
-			continue
 		# Applications are Mozilla products or derivatives of the latter
 		elif echo "$a" | grep -q "firefox\|thunderbird\|tor-browser\|zotero"; then
 			mkdir -p "$SOURCES_DIR"/custom/mozilla
