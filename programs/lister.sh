@@ -14,16 +14,18 @@ for arch in $DIRS; do
 			fi
 		fi
 	done
-	METAPACKAGES="kdegames kdeutils node platform-tools"
-	for m in $METAPACKAGES; do
-		metapkg_page=$(curl -Ls --retry 5 --retry-max-time 120 "https://portable-linux-apps.github.io/apps/$m.md" 2>/dev/null)
-		if [ -z "$metapkg_page" ]; then
-			exit 1
-		elif ! echo "$metapkg_page" | head -1 | grep -qi "^# $m"; then
-			exit 1
-		else
-			echo "$metapkg_page" | grep -- " - .* : .*.$" | sed -- "s/^ - / ◆ /g; s/$/ This is part of \"$m\"./g" >> "$arch-tmplist"
-		fi
-	done
-	[ -f "$arch-tmplist" ] && sort -u "$arch-tmplist" > "$arch-apps"
+	if [ "$arch" = x86_64 ]; then
+		METAPACKAGES="kdegames kdeutils node platform-tools"
+		for m in $METAPACKAGES; do
+			metapkg_page=$(curl -Ls --retry 5 --retry-max-time 120 "https://portable-linux-apps.github.io/apps/$m.md" 2>/dev/null)
+			if [ -z "$metapkg_page" ]; then
+				exit 1
+			elif ! echo "$metapkg_page" | head -1 | grep -qi "^# $m"; then
+				exit 1
+			else
+				echo "$metapkg_page" | grep -- " - .* : .*.$" | sed -- "s/^ - / ◆ /g; s/$/ This is part of \"$m\"./g" >> "$arch-tmplist"
+			fi
+		done
+	fi
+	[ -f "$arch-tmplist" ] && sort "$arch-tmplist" > "$arch-apps"
 done
