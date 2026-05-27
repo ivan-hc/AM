@@ -325,8 +325,7 @@ To change locations, remove local apps, and reinstall in the new location, see t
 
 1. **PORTABLE PROGRAMS** from official sources (see Firefox, Thunderbird, NodeJS, Platform Tools...), extracted from official .deb/tar/zip packages.
 2. **APPIMAGES**, from both official and unofficial sources (I also create unofficial AppImages), or compiled on-the-fly with [pkg2appimage](https://github.com/AppImage/pkg2appimage) and [appimagetool](https://github.com/AppImage/AppImageKit), like an AUR helper, from official archives.
-3. **FIREFOX PROFILES** to run as webapps, the ones with suffix "ffwa-" in the apps list.
-4. **THIRD-PARTY LIBRARIES** if they are missing in your repositories.
+3. **THIRD-PARTY LIBRARIES** if they are missing in your repositories.
 
 The database aims to be a reference point where you can download all the AppImage packages scattered around the web, otherwise unobtainable, as you would expect from any package manager, through specific installation scripts for each application, as happens with the AUR PKGBUILDs, on Arch Linux. You can see all of them [here](https://github.com/ivan-hc/AM/tree/main/programs), divided by architecture.
 
@@ -1052,7 +1051,6 @@ Below you can access the documentation pages related to the use of "AM", complet
   - [Option Zero: "AppImages"](docs/guides-and-tutorials/template.md#option-zero-appimages)
   - [Option One: "build AppImages on-the-fly"](docs/guides-and-tutorials/template.md#option-one-build-appimages-on-the-fly)
   - [Option Two: "Archives and other programs"](docs/guides-and-tutorials/template.md#option-two-archives-and-other-programs)
-  - [Option Three: "Firefox profiles"](docs/guides-and-tutorials/template.md#option-three-firefox-profiles)
   - [How an installation script works](docs/guides-and-tutorials/template.md#how-an-installation-script-works)
   - [How to test an installation script](docs/guides-and-tutorials/template.md#how-to-test-an-installation-script)
   - [How to submit a Pull Request](docs/guides-and-tutorials/template.md#how-to-submit-a-pull-request)
