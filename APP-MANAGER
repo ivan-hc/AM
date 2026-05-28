@@ -1035,8 +1035,8 @@ fi
 # VERSION OF THE INSTALLED APPS
 # Filters
 _check_version_filters() {
-	# Remove architecture numbers before going into awk
-	sed "s/x86_64\|x64\.\|amd64\|aarch64\|i686\|i386/XXXX/g" |
+	# Replace architecture numbers with non-matching chars before going into awk
+	sed "s/x86_64\|x64\.\|amd64\|aarch64\|i686\|i386/XXXX/gi" |
 	# Run AWK version regex program
 	awk '
 	{
@@ -1046,7 +1046,7 @@ _check_version_filters() {
 		posL = 0
 		for (i = 1; i <= length($0); i++) {
 			if (substr($0, i, 1) == "/") {
-				posL = i+1
+				posL = i
 				count++
 				# Remove usernames/project from github-like URLs (around 5 '/')
 				if ((match($0, /github.com|codeberg.org|gitlab.com/)) && (count == 5)) {
@@ -1080,20 +1080,21 @@ _check_version_filters() {
 				type[i] = 2
 			}
 
-			# 3. Alphanumeric version (e.g., "2603a")
+			# 3. Alphanumeric version (e.g. "2603a", but sometimes wrongly taken from hash numbers)
 			else if (match(vstr, /[0-9]+[a-z0-9]*/)) {
-				if ((RLENGTH > 3) && (RLENGTH < 8)) {
+				if ((RLENGTH > 1) && (RLENGTH < 8)) {
 					version[i] = substr(vstr, RSTART, RLENGTH)
 					type[i] = 3
 				}
-				# 4. Generic hash
-				else if (match(vstr, /[\/_%\-][0-9a-f]{7,40}/)) {
-					version[i] = substr(vstr, RSTART+1, RLENGTH-1)
-					type[i] = 4
-				}
 			}
 
-			# 5. Match nothing (default)
+			# 4. Generic hash (lowest priority, also to correct mistaken type 3)
+			if (((type[i] == "") || (type[i] == 3)) && match(vstr, /[\/_%\-][0-9a-f]{7,40}/)) {
+				version[i] = substr(vstr, RSTART+1, RLENGTH-1)
+				type[i] = 4
+			}
+
+			# 5. Match nothing (worst case)
 			if (type[i] == "") {
 				version[i] = "-"
 				type[i] = 5
@@ -1108,7 +1109,9 @@ _check_version_filters() {
 		# Else, pick the lower types, avoid type 4+ if possible
 		else if (type[0] < 4) print version[0]
 		else if (type[1] < 4) print version[1]
-		else print version[0]
+		# Else, at least check which is lower to avoid type 5
+		else if (type[0] < type[1]) print version[0]
+		else print version[1]
 	}' | sed 's/^v//'
 }
 
