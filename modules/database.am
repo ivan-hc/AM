@@ -50,19 +50,6 @@ _about_status() {
 			fi
 		done
 	fi
-	# Determine if the referenced app is a metapackage or part of it
-	METAPACKAGES="kdegames kdeutils node platform-tools"
-	for m in $METAPACKAGES; do
-		metaargpath=$(echo "$ARGPATHS" | grep "/$m$")
-		if grep -q "◆ $arg : .*\"$m\"" "$AMDATADIR/$ARCH-apps"; then
-			if test -f "$metaargpath/remove"; then
-				app_status="installed\033[0m, as part of ${Green}$m\033[0m\n\n NOTE, run ${RED}$AMCLI -a $m\033[0m instead"
-				appname="$m"
-			fi
-		elif [ "$arg" = "$m" ] && [ -d "$metaargpath" ]; then
-			app_status="installed\033[0m" || app_status="not installed\n"
-		fi
-	done
 	if echo "$app_status" | grep -q "^installed"; then
 		printf $" STATUS: %b\n" "${LightBlue}$app_status"
 	else
@@ -142,6 +129,14 @@ _about_description() {
 
 _about() {
 	if echo "$SCRIPTNAMES" | grep -q "^$arg$" || grep -q "^$arg$" "$AMDATADIR/list" || echo "$ARGPATHS" | grep -q "/$arg$"; then
+		[ ! -f "$AMDATADIR/$ARCH-apps" ] && _completion_lists
+		# Determine if the program is part of a metapackage
+		for m in $METAPACKAGES; do
+			if sort "$AMDATADIR/$ARCH-apps" | grep -q "◆ $arg : .*\"$m\""; then
+				printf " %b ==> %b\n\n" "$arg" "$m" | tr '[:lower:]' '[:upper:]'
+				arg="$m"
+			fi
+		done
 		printf " PACKAGE: %b%b\033[0m\n" "${Green}" "$arg"
 		_about_status
 		if echo "$app_status" | grep -q "^installed"; then
@@ -742,7 +737,13 @@ _list() {
 	fi
 	APPSNUMBER=$((ITEMSNUMBER - LIBNUMBER))
 	# Determine the number of available apps from the list
-	AVAILABLE_APPS_NUMBER=$(grep -v "\"kdegames\"\|\"kdeutils\"\|\"node\"\|\"platform-tools\"" "$AMDATADIR/$ARCH-apps" | grep -e "^◆.*$" -c)
+	[ ! -f "$AMDATADIR/$ARCH-apps" ] && _completion_lists
+	AVAILABLE_APPS_NUMBER=$(grep -e "^◆.*$" -c "$AMDATADIR/$ARCH-apps")
+	# Do not include metapackages in the count
+	for m in $METAPACKAGES; do
+		METAPKGS_NUMBER=$(grep -e "^◆ .*\"$m\".*$" -c "$AMDATADIR/$ARCH-apps")
+		AVAILABLE_APPS_NUMBER=$((AVAILABLE_APPS_NUMBER - METAPKGS_NUMBER))
+	done
 	if ! test -f "$AMDATADIR/$ARCH-appimages"; then
 		_online_check
 		_sync_appimages_list
