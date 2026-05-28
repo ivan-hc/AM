@@ -25,7 +25,9 @@ for arch in $DIRS; do
 				exit 1
 			else
 				for a in $mpkgs_args; do
-					echo "$metapkg_page" | grep -- " - $a : .*.$" | sed -- "s/^ - /◆ /g; s/$/ This is part of \"$m\"./g" >> "$arch-tmplist"
+					if ! grep -q "◆ $a :" "$arch-apps"; then
+						echo "$metapkg_page" | grep -- " - $a : .*.$" | sed -- "s/^ - /◆ /g; s/$/ This is part of \"$m\"./g" >> "$arch-tmplist"
+					fi
 				done
 			fi
 		done
