@@ -21,6 +21,7 @@ fi
 
 # GET THE EXACT NUMBER OF AVAILABLE APPS
 ARGS=$(sort -u ./args)
+METAPACKAGES="kdegames kdeutils node platform-tools"
 APPS_NUMBER=$(grep -v "\"kdegames\"\|\"kdeutils\"\|\"node\"\|\"platform-tools\"" "$arch"-apps | grep -e "$" -c)
 ITEMS_NUMBER=$(grep "\"kdegames\"\|\"kdeutils\"\|\"node\"\|\"platform-tools\"" "$arch"-apps | grep -e "$" -c)
 CATEGORIES="am-utils android audio \
@@ -184,10 +185,20 @@ function _applications_list_header {
 	_table_head >> apps.md
 }
 
+function _run_applications_lister_body() {
+	description=$(grep "◆ $arg :" "$arch"-apps | sed 's/^.*: //; s/ *$//')
+	for m in $METAPACKAGES; do
+		if sort "$arch"-apps | grep -q "◆ $arg : .*\"$m\""; then
+			echo "| <img loading=\"lazy\" src=\"icons/$arg.png\" width=\"48\" height=\"48\"> | [***$arg***](apps/$m.md) | *$description*..[ *read more* ](apps/$m.md)*!* | [*blob*](https://github.com/ivan-hc/AM/blob/main/programs/$arch/$m) **/** [*raw*](https://raw.githubusercontent.com/ivan-hc/AM/main/programs/$arch/$m) |" >> body.txt
+		else
+			echo "| <img loading=\"lazy\" src=\"icons/$arg.png\" width=\"48\" height=\"48\"> | [***$arg***](apps/$arg.md) | *$description*..[ *read more* ](apps/$arg.md)*!* | [*blob*](https://github.com/ivan-hc/AM/blob/main/programs/$arch/$arg) **/** [*raw*](https://raw.githubusercontent.com/ivan-hc/AM/main/programs/$arch/$arg) |" >> body.txt
+		fi
+	done
+}
+
 function _applications_list_body() {
 	for arg in $ARGS; do
-		description=$(grep "◆ $arg :" "$arch"-apps | sed 's/^.*: //; s/ *$//')
-		echo "| <img loading=\"lazy\" src=\"icons/$arg.png\" width=\"48\" height=\"48\"> | [***$arg***](apps/$arg.md) | *$description*..[ *read more* ](apps/$arg.md)*!* | [*blob*](https://github.com/ivan-hc/AM/blob/main/programs/$arch/$arg) **/** [*raw*](https://raw.githubusercontent.com/ivan-hc/AM/main/programs/$arch/$arg) |" >> body.txt &
+		_run_applications_lister_body &
 	done
 	wait
 	sort -u ./body.txt >> apps.md
@@ -203,9 +214,9 @@ _footer_apps >> apps.md
 
 function _appimages_listing() {
 	if [ -f "$HOME"/.local/share/AM/"$arch"-appimages ]; then
-		APPIMAGES_LIST_AM=$(sort -u "$HOME"/.local/share/AM/"$arch"-appimages | awk -v FS="(◆ | : )" '{print $2}')
+		APPIMAGES_LIST_AM=$(sort -u "$HOME"/.local/share/AM/"$arch"-appimages)
 	elif [ -f ./"$arch"-appimages ]; then
-		APPIMAGES_LIST_AM=$(sort -u ./"$arch"-appimages | awk -v FS="(◆ | : )" '{print $2}')
+		APPIMAGES_LIST_AM=$(sort -u ./"$arch"-appimages)
 	else
 		APPIMAGES_LIST_AM=$(curl -Ls https://raw.githubusercontent.com/ivan-hc/AM/main/programs/x86_64-appimages)
 	fi
