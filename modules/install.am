@@ -80,37 +80,6 @@ _check_if_optional_dependences_are_needed() {
 	fi
 }
 
-_check_if_script_installs_a_metapackage() {
-	# Check if the installation script is a metapackage (example one of the 40+ kdegames scripts)
-	[ ! -f "$AMDATADIR/$ARCH-apps" ] && _completion_lists
-	for metapackage in $METAPACKAGES; do
-		if grep "◆ $arg : " "$AMDATADIR/$ARCH-apps" | grep -q "\"$metapackage\""; then
-			if [ -d "$APPSPATH"/"$metapackage"/tmp ]; then
-				$SUDOCMD "$APPSPATH"/"$metapackage"/remove 2> /dev/null
-			fi
-			if [ -d "$APPSPATH"/"$metapackage" ] || command -v "$metapackage" >/dev/null 2>&1; then
-				LASTDIR=$(echo "$metapackage" | tr '[:lower:]' '[:upper:]')
-				echo $" ◆ $APPNAME IS PART OF \"$LASTDIR\", ALREADY INSTALLED"
-				return 1
-			fi
-		fi
-	done
-	metapkg_error_msg=" 💀 ERROR: \"$pure_arg\" also provides \"SCMD\", already in \$PATH"
-	if [ "$pure_arg" = node ] && command -v npm >/dev/null 2>&1; then
-		echo "$metapkg_error_msg" | tr '[:lower:]' '[:upper:]' | sed 's/SCMD/npm/g'
-		return 1
-	elif [ "$pure_arg" = platform-tools ] || [ "$pure_arg" = adb ] || [ "$pure_arg" = fastboot ]; then
-		if command -v adb >/dev/null 2>&1; then
-			echo "$metapkg_error_msg" | tr '[:lower:]' '[:upper:]' | sed 's/SCMD/adb/g'
-			return 1
-		elif command -v fastboot >/dev/null 2>&1; then
-			echo "$metapkg_error_msg" | tr '[:lower:]' '[:upper:]' | sed 's/SCMD/fastboot/g'
-			return 1
-		fi
-	fi
-	
-}
-
 _check_if_spooky_flag_exists() {
 	# Determine if an installation script is flagged as "spooky"
 	if grep -i spooky ./"$arg" >/dev/null 2>&1; then
@@ -141,86 +110,6 @@ _check_kind_of_installation_script() {
 	fi
 }
 
-_apply_patches() {
-	# Patch "$WGETCMD" (version 1.x) to have a progress bar and fix errors when applying patches
-	if [ -n "$WGETV" ]; then
-		! echo "$FLAGS" | grep -q -- "--debug" && sed -i "s#$WGETCMD #$WGETPROGRESS #g" ./"$arg"
-	else
-		sed -i "s#$WGETCMD #$CURLPROGRES #g; s/--trust-server-names//g; s/ -O [^|]*\|\|//g" ./"$arg"
-	fi
-	# Install the app so that it can rely on an icon theme (if available)
-	if echo "$FLAGS" | grep -q -- '--icons'; then
-		sed -i "s#Icon=/opt/\$APP/icons/#Icon=#g" ./"$arg"
-	fi
-	# If you use the --latest option, add the "latest" flag to scripts that point to a very common "release"
-	if echo "$FLAGS" | grep -q -- '--force-latest'; then
-		sed -i 's#/releases #/releases/latest #g' ./"$arg"
-	fi
-	# Patches /usr/local for $HOME equivalent for AppMan
-	if [ "$AMCLI" = "appman" ]; then
-		sed -i "s#/usr/local/bin#$BINDIR#g" ./"$arg"
-		sed -i "s#/usr/local/share/applications#$DATADIR/$LAUNCHERS_DIR#g" ./"$arg"
-		sed -i "s#/usr/local/share#$DATADIR#g" ./"$arg"
-		sed -i "s#/opt/#$APPSPATH/#g" ./"$arg"
-	else
-		"$SUDOCMD" mkdir -p /usr/local/share/"$LAUNCHERS_DIR" /usr/local/bin
-	fi
-	# Patch to apply to installation scripts
-	sed -i "s# https://api.github.com#$HeaderAuthWithGITPAT https://api.github.com#g" ./"$arg"
-	sed -i "s#DirIcon\$#DirIcon  2>/dev/null#g" ./"$arg"
-	sed -i "s#DirIcon ./icons/\"\$APP\" 1#DirIcon ./icons/\"\$APP\" 2#g" ./"$arg"
-	echo ""
-	# Use GNU implementation of "sed"
-	if [ "$NO_SED_I" = true ]; then
-		if command -v gsed >/dev/null 2>&1; then
-			sed -i "s/sed -i/gsed -i/g" ./"$arg"
-		else
-			sed -i "s/sed -i/sed -i'' -e/g" ./"$arg"
-		fi
-	fi
-}
-
-_post_installation_processes() {
-	LASTDIR=$(ls -td "$APPSPATH"/* | head -1 | sed 's:.*/::')
-	LASTDIRPATH="${APPSPATH}/${LASTDIR}"
-	# Put permission check in remove script and change ownership of directory
-	if [ "$AMCLI" = am ]; then
-		$SUDOCMD sed -i '1 a [ "$(id -u)" -ne 0 ] && echo "Permission denied" && exit 1' \
-			"${LASTDIRPATH}"/remove 2>/dev/null
-		$SUDOCMD chown -R "$USER" "${LASTDIRPATH}" 2>/dev/null
-	fi
-	[ -z "$WGETV" ] && printf "\n\n" || printf "\n"
-	# Add checksum file
-	argpath="$LASTDIRPATH"
-	checksum_status="$(_use_verify)"
-	[ -n "$checksum_status" ] && printf "%s\n\n" "$checksum_status"
-	# Check for AM-updater script sothat CLI can manage updates
-	if [ -f "${LASTDIRPATH}"/AM-updater ]; then
-		mkdir "${LASTDIRPATH}"/.am-installer 2>/dev/null
-		if [ -z "$EXTRA_TRUE" ]; then
-			echo "$arg_script" > "${LASTDIRPATH}"/.am-installer/"$arg"
-		else
-			touch "${LASTDIRPATH}"/.am-installer/"$arg".extra
-		fi
-	fi
-	find "${LASTDIRPATH}"/icons/* -xtype l -delete 2>/dev/null # Removes broken links
-	# If you have a broken or missing icon in your "icons" directory, download one from the catalog
-	[ -z "$(ls -A "${LASTDIRPATH}"/icons 2>/dev/null)" ] \
-		&& _use_online_downloader "$AMCATALOGUEICONS"/"$arg".png "${LASTDIRPATH}"/icons/"$arg"
-	# Patch .desktop to change paths if the app is installed locally
-	if [ "$AMCLI" = "appman" ]; then
-		for a in $DATADIR/$LAUNCHERS_DIR/*-AM.desktop; do
-			sed -i "s#Exec=$pure_arg#Exec=$BINDIR/$pure_arg#g" "$a" 2>/dev/null
-			sed -i "s#Exec=/usr/bin/#Exec=$BINDIR/#g" "$a" 2>/dev/null
-			sed -i "s#Exec=/opt/#Exec=$BINDIR/#g" "$a" 2>/dev/null
-		done
-	fi
-	# Export all icons for hicolor theme usage
-	if echo "$FLAGS" | grep -q -- '--icons'; then
-		_icon_theme_export_to_datadir 2>/dev/null
-	fi
-}
-
 _installation_cleanup() {
 	# Cleanup incomplete installation when interrupted by a signal (Ctrl+C, kill, etc.)
 	trap - INT TERM HUP QUIT
@@ -240,32 +129,6 @@ _installation_cleanup() {
 	printf $"\n                  %bEND OF ALL INSTALLATION PROCESSES\n\033[0m" "${LightBlue}"
 	printf "\n============================================================================\n"
 	exit 1
-}
-
-_ending_the_installation() {
-	LASTDIR=$(ls -td "$APPSPATH"/* | head -1 | sed 's:.*/::')
-	[ -f "${LASTDIRPATH}"/AM-updater ] && sed -i "s#$ALT_GH#https://api.github.com#g" "${LASTDIRPATH}"/AM-updater 2>/dev/null
-	if [ -f "${LASTDIRPATH}"/remove ]; then
-		[ -d "${LASTDIRPATH}"/AppDir ] && rmdir "${LASTDIRPATH}"/AppDir 2>/dev/null
-		if test -d "${LASTDIRPATH}"/tmp; then
-			echo $" 💀 ERROR DURING INSTALLATION, REMOVED $APPNAME!"
-			$SUDOCMD "$APPSPATH/$LASTDIR/remove" 1>/dev/null
-		elif test -f "$APPSPATH/$LASTDIR/version" && [ -z "$(cat "$APPSPATH/$LASTDIR/version")" ] && [ -z "$localscript_on" ]; then
-			echo $" 💀 ERROR DURING INSTALLATION, REMOVED $APPNAME!"
-			$SUDOCMD "$APPSPATH/$LASTDIR/remove" 1> /dev/null
-		else
-			APPSIZE=$(du -sm "${LASTDIRPATH}" | awk '{print $1}' )
-			LASTDIRNAME=$(echo "\"$LASTDIR\"" | tr '[:lower:]' '[:upper:]')
-			printf "%b%b%s\n" " ${Green}" "$LASTDIRNAME INSTALLED\033[0m" " ($APPSIZE MB OF DISK SPACE)"
-			$SUDOCMD rm "$AMCACHEDIR"/"$arg"
-			_check_version
-			app_version=$(grep -w " ◆ $LASTDIR	|" 0<"$AMCACHEDIR"/version-args | sed 's:.*|	::')
-			echo " ◆ $LASTDIR $app_version" >> "$AMCACHEDIR"/installed
-		fi
-		localscript_on=""
-	else
-		echo $" INSTALLATION ABORTED!"
-	fi
 }
 
 # Collect checksum for binaries in custom PATH
@@ -373,10 +236,47 @@ _install_arg() {
 	APPNAME=$(echo "\"$pure_arg\"" | tr '[:lower:]' '[:upper:]')
 	chmod a+x ./"$arg"
 	_check_if_optional_dependences_are_needed || return 1
-	_check_if_script_installs_a_metapackage || return 1
 	_check_if_spooky_flag_exists || return 1
 	_check_kind_of_installation_script || return 1
-	_apply_patches
+
+	# APPLY PATCHES
+
+	# Patch "$WGETCMD" (version 1.x) to have a progress bar and fix errors when applying patches
+	if [ -n "$WGETV" ]; then
+		! echo "$FLAGS" | grep -q -- "--debug" && sed -i "s#$WGETCMD #$WGETPROGRESS #g" ./"$arg"
+	else
+		sed -i "s#$WGETCMD #$CURLPROGRES #g; s/--trust-server-names//g; s/ -O [^|]*\|\|//g" ./"$arg"
+	fi
+	# Install the app so that it can rely on an icon theme (if available)
+	if echo "$FLAGS" | grep -q -- '--icons'; then
+		sed -i "s#Icon=/opt/\$APP/icons/#Icon=#g" ./"$arg"
+	fi
+	# If you use the --latest option, add the "latest" flag to scripts that point to a very common "release"
+	if echo "$FLAGS" | grep -q -- '--force-latest'; then
+		sed -i 's#/releases #/releases/latest #g' ./"$arg"
+	fi
+	# Patches /usr/local for $HOME equivalent for AppMan
+	if [ "$AMCLI" = "appman" ]; then
+		sed -i "s#/usr/local/bin#$BINDIR#g" ./"$arg"
+		sed -i "s#/usr/local/share/applications#$DATADIR/$LAUNCHERS_DIR#g" ./"$arg"
+		sed -i "s#/usr/local/share#$DATADIR#g" ./"$arg"
+		sed -i "s#/opt/#$APPSPATH/#g" ./"$arg"
+	else
+		"$SUDOCMD" mkdir -p /usr/local/share/"$LAUNCHERS_DIR" /usr/local/bin
+	fi
+	# Patch to apply to installation scripts
+	sed -i "s# https://api.github.com#$HeaderAuthWithGITPAT https://api.github.com#g" ./"$arg"
+	sed -i "s#DirIcon\$#DirIcon  2>/dev/null#g" ./"$arg"
+	sed -i "s#DirIcon ./icons/\"\$APP\" 1#DirIcon ./icons/\"\$APP\" 2#g" ./"$arg"
+	echo ""
+	# Use GNU implementation of "sed"
+	if [ "$NO_SED_I" = true ]; then
+		if command -v gsed >/dev/null 2>&1; then
+			sed -i "s/sed -i/gsed -i/g" ./"$arg"
+		else
+			sed -i "s/sed -i/sed -i'' -e/g" ./"$arg"
+		fi
+	fi
 	# Determine if the app is hosted on github
 	if grep -q "api.github.com" ./"$arg"; then
 		GH_API_ALLOWED=$(_use_online_reading_tool "https://api.github.com/rate_limit" | tr '{,' '\n' | grep -i remaining | tail -1 | grep -Eo "[0-9]*")
@@ -385,12 +285,76 @@ _install_arg() {
 			sed -i "s#https://api.github.com#$ALT_GH#g" ./"$arg"
 		fi
 	fi
+
 	# Set trap to cleanup on interruption (Ctrl+C, kill, hangup, quit)
 	trap _installation_cleanup INT TERM HUP QUIT
-	# Install script
+
+	# INSTALL SCRIPT
 	_install_exec_installation_script || _install_script_retry
-	_post_installation_processes
-	_ending_the_installation
+
+	# Post installation processes
+	LASTDIR=$(ls -td "$APPSPATH"/* | head -1 | sed 's:.*/::')
+	LASTDIRPATH="${APPSPATH}/${LASTDIR}"
+	# Put permission check in remove script and change ownership of directory
+	if [ "$AMCLI" = am ]; then
+		$SUDOCMD sed -i '1 a [ "$(id -u)" -ne 0 ] && echo "Permission denied" && exit 1' "${LASTDIRPATH}"/remove 2>/dev/null
+		$SUDOCMD chown -R "$USER" "${LASTDIRPATH}" 2>/dev/null
+	fi
+	[ -z "$WGETV" ] && printf "\n\n" || printf "\n"
+	# Add checksum file
+	argpath="$LASTDIRPATH"
+	checksum_status="$(_use_verify)"
+	[ -n "$checksum_status" ] && printf "%s\n\n" "$checksum_status"
+	# Check for AM-updater script sothat CLI can manage updates
+	if [ -f "${LASTDIRPATH}"/AM-updater ]; then
+		mkdir "${LASTDIRPATH}"/.am-installer 2>/dev/null
+		if [ -z "$EXTRA_TRUE" ]; then
+			echo "$arg_script" > "${LASTDIRPATH}"/.am-installer/"$arg"
+		else
+			touch "${LASTDIRPATH}"/.am-installer/"$arg".extra
+		fi
+	fi
+	find "${LASTDIRPATH}"/icons/* -xtype l -delete 2>/dev/null # Removes broken links
+	# If you have a broken or missing icon in your "icons" directory, download one from the catalog
+	[ -z "$(ls -A "${LASTDIRPATH}"/icons 2>/dev/null)" ] && _use_online_downloader "$AMCATALOGUEICONS"/"$arg".png "${LASTDIRPATH}"/icons/"$arg"
+	# Patch .desktop to change paths if the app is installed locally
+	if [ "$AMCLI" = "appman" ]; then
+		for a in $DATADIR/$LAUNCHERS_DIR/*-AM.desktop; do
+			sed -i "s#Exec=$pure_arg#Exec=$BINDIR/$pure_arg#g" "$a" 2>/dev/null
+			sed -i "s#Exec=/usr/bin/#Exec=$BINDIR/#g" "$a" 2>/dev/null
+			sed -i "s#Exec=/opt/#Exec=$BINDIR/#g" "$a" 2>/dev/null
+		done
+	fi
+	# Export all icons for hicolor theme usage
+	if echo "$FLAGS" | grep -q -- '--icons'; then
+		_icon_theme_export_to_datadir 2>/dev/null
+	fi
+
+	# ENDING THE INSTALLATION
+	LASTDIR=$(ls -td "$APPSPATH"/* | head -1 | sed 's:.*/::')
+	[ -f "${LASTDIRPATH}"/AM-updater ] && sed -i "s#$ALT_GH#https://api.github.com#g" "${LASTDIRPATH}"/AM-updater 2>/dev/null
+	if [ -f "${LASTDIRPATH}"/remove ]; then
+		[ -d "${LASTDIRPATH}"/AppDir ] && rmdir "${LASTDIRPATH}"/AppDir 2>/dev/null
+		if test -d "${LASTDIRPATH}"/tmp; then
+			echo $" 💀 ERROR DURING INSTALLATION, REMOVED $APPNAME!"
+			$SUDOCMD "$APPSPATH/$LASTDIR/remove" 1>/dev/null
+		elif test -f "$APPSPATH/$LASTDIR/version" && [ -z "$(cat "$APPSPATH/$LASTDIR/version")" ] && [ -z "$localscript_on" ]; then
+			echo $" 💀 ERROR DURING INSTALLATION, REMOVED $APPNAME!"
+			$SUDOCMD "$APPSPATH/$LASTDIR/remove" 1> /dev/null
+		else
+			APPSIZE=$(du -sm "${LASTDIRPATH}" | awk '{print $1}' )
+			LASTDIRNAME=$(echo "\"$LASTDIR\"" | tr '[:lower:]' '[:upper:]')
+			printf "%b%b%s\n" " ${Green}" "$LASTDIRNAME INSTALLED\033[0m" " ($APPSIZE MB OF DISK SPACE)"
+			$SUDOCMD rm "$AMCACHEDIR"/"$arg"
+			_check_version
+			app_version=$(grep -w " ◆ $LASTDIR	|" 0<"$AMCACHEDIR"/version-args | sed 's:.*|	::')
+			echo " ◆ $LASTDIR $app_version" >> "$AMCACHEDIR"/installed
+		fi
+		localscript_on=""
+	else
+		echo $" INSTALLATION ABORTED!"
+	fi
+
 	# Clear the trap after successful installation
 	trap - INT TERM HUP QUIT
 }
@@ -427,37 +391,11 @@ for tp_list in $third_party_lists; do
 	[ -n "$tp_extensions" ] && tp_extensions="$tp_extensions\|\.$tp_list$" || tp_extensions="\.$tp_list$"
 done
 
-_remove_extensions_from_appname() {
-	for e in $third_party_lists; do
-		pure_arg=$(echo "$pure_arg" | sed "s/\.$e$//g")
-	done
-}
-
 _3rd_party_detect_online_item() {
 	for tp_list in $third_party_lists; do
 		[ -f "$AMDATADIR"/"$ARCH"-"$tp_list" ] && tp_lists="$tp_lists\n$(sort -u "$AMDATADIR"/"$ARCH"-"$tp_list")"
 	done
 	printf "\n%b\n" "$tp_lists" | grep -q "^◆ $arg : "
-}
-
-_3rd_party_template_manager() {
-	TEMPLATE_CONTENT=$(_use_online_reading_tool "$AMREPO/templates/$TEMPLATE_NAME" 2>/dev/null)
-	if echo "$TEMPLATE_CONTENT" | grep -q "^#"; then
-		# Commom patches
-		echo "$TEMPLATE_CONTENT" | sed "s#APP=SAMPLE#APP=$arg#g; \
-			s#REPLACETHIS#$tp_site_ref#g; \
-			s#FUNCTION#$awk_version#g; \
-			s#$WGETCMD \"\$version\"#$WGETCMD \$($third_party_url)#g; \
-			s/\*mage/\*/g" > "$CACHEDIR/extra/$arg.$tp_extension"
-		# Patch if local installation
-		[ "$AMCLI" = appman ] && sed -i "s#Exec=\$APP#Exec=$BINDIR/\$APP#g" "$CACHEDIR/extra/$arg.$tp_extension"
-		# Disable references on archive extractors
-		sed -e '/\[ -e/ s/^#*/#/' -i "$CACHEDIR/extra/$arg.$tp_extension" 2>/dev/null
-		# Detect items for ghrc-based scripts
-		if echo "$TEMPLATE_CONTENT" | grep -q "GHRC_REF"; then
-			sed -i "s#ITEM#\$($third_party_url)#g" "$CACHEDIR/extra/$arg.$tp_extension"
-		fi
-	fi
 }
 
 _3rd_party_apps_handler() {
@@ -521,7 +459,24 @@ _3rd_party_apps_handler() {
 		TEMPLATE_NAME="AM-SAMPLE-Archive"
 	fi
 
-	_3rd_party_template_manager
+	# Template manager
+	TEMPLATE_CONTENT=$(_use_online_reading_tool "$AMREPO/templates/$TEMPLATE_NAME" 2>/dev/null)
+	if echo "$TEMPLATE_CONTENT" | grep -q "^#"; then
+		# Commom patches
+		echo "$TEMPLATE_CONTENT" | sed "s#APP=SAMPLE#APP=$arg#g; \
+			s#REPLACETHIS#$tp_site_ref#g; \
+			s#FUNCTION#$awk_version#g; \
+			s#$WGETCMD \"\$version\"#$WGETCMD \$($third_party_url)#g; \
+			s/\*mage/\*/g" > "$CACHEDIR/extra/$arg.$tp_extension"
+		# Patch if local installation
+		[ "$AMCLI" = appman ] && sed -i "s#Exec=\$APP#Exec=$BINDIR/\$APP#g" "$CACHEDIR/extra/$arg.$tp_extension"
+		# Disable references on archive extractors
+		sed -e '/\[ -e/ s/^#*/#/' -i "$CACHEDIR/extra/$arg.$tp_extension" 2>/dev/null
+		# Detect items for ghrc-based scripts
+		if echo "$TEMPLATE_CONTENT" | grep -q "GHRC_REF"; then
+			sed -i "s#ITEM#\$($third_party_url)#g" "$CACHEDIR/extra/$arg.$tp_extension"
+		fi
+	fi
 
 	if [ -f "$CACHEDIR/extra/$arg.$tp_extension" ] && grep -q "^#" "$CACHEDIR/extra/$arg.$tp_extension"; then
 		chmod a+x "$CACHEDIR/extra/$arg.$tp_extension"
@@ -569,7 +524,9 @@ _install_3rd_party_app() {
 _prepare_arg() {
 	arg_origin="$arg"
 	pure_arg=$(echo "$arg" | sed 's:.*/::')
-	_remove_extensions_from_appname
+	for e in $third_party_lists; do
+		pure_arg=$(echo "$pure_arg" | sed "s/\.$e$//g")
+	done
 }
 
 _check_and_install() {
@@ -1011,7 +968,6 @@ case "$1" in
 
 		entries="$(echo "$@" | cut -f2- -d ' ' | tr ' ' '\n' | grep -v -- "--")"
 		FLAGS=$(echo "$@" | tr ' ' '\n' | grep -- "--" | tr '\n ' ' ')
-		METAPACKAGES="kdegames kdeutils node platform-tools"
 
 		case "$1" in
 		'-ia'|'-ias'|'install-appimage')
@@ -1024,12 +980,21 @@ case "$1" in
 		for arg in $entries; do
 			echo ""
 			cd "$REALDIR" || return 1
-			# If the "tmp" directory is not removed, the installation failed, so remove the app
-			[ -d "$APPSPATH"/"$arg"/tmp ] && $SUDOCMD "$APPSPATH"/"$arg"/remove 2> /dev/null
 
 			# Check if the app wil be installed with the same name as the argument
+			METAPACKAGES="kdegames kdeutils node platform-tools"
+			[ ! -f "$AMDATADIR/$ARCH-apps" ] && _completion_lists
+			for m in $METAPACKAGES; do
+				if sort "$AMDATADIR/$ARCH-apps" | grep -q "◆ $arg : .*\"$m\""; then
+					printf " %b ==> %b\n\n" "$arg" "$m" | tr '[:lower:]' '[:upper:]'
+					arg="$m"
+				fi
+			done
 			_prepare_arg
 			arg_script=$(_use_online_reading_tool "$APPSDB/$arg" 2>/dev/null)
+
+			# If the "tmp" directory is not removed, the installation failed, so remove the app
+			[ -d "$APPSPATH"/"$arg"/tmp ] && $SUDOCMD "$APPSPATH"/"$arg"/remove 2> /dev/null
 
 			# Test if a symlink is broken
 			[ -n "$BINDIR" ] && find "$BINDIR" -xtype l -name "$pure_arg" -delete 2>/dev/null
@@ -1096,8 +1061,10 @@ case "$1" in
 		done
 		echo "============================================================================"
 		printf $"\n                  %bEND OF ALL INSTALLATION PROCESSES\n\033[0m" "${LightBlue}"
-		[ -f "$AMCACHEDIR"/installed ] && printf $"\n             The following new programs have been installed:\n\n" \
-		&& sort "$AMCACHEDIR"/installed | grep -w -v "◆ am"
+		if [ -f "$AMCACHEDIR"/installed ]; then
+			printf $"\n             The following new programs have been installed:\n\n"
+			sort "$AMCACHEDIR"/installed | grep -w -v "◆ am"
+		fi
 		printf "\n============================================================================\n"
 		exit 0
 		;;
@@ -1146,8 +1113,7 @@ case "$1" in
 			sed -i "s#FUNCTION)#$FUNCTION)#g" "$CACHEDIR/extra/$EXTERNAL_APP_NAME"
 			[ -n "$APP_KEYWORD" ] && sed -i "s# head -1# grep -i \"$APP_KEYWORD\" | head -1#g" "$CACHEDIR/extra/$EXTERNAL_APP_NAME"
 			chmod a+x "$CACHEDIR/extra/$EXTERNAL_APP_NAME"
-			[ "$AMCLI" = "am" ] && [ "$2" = "--user" ] && EXTRA_TRUE=1 "$AMCLIPATH_ORIGIN" -i --user "$CACHEDIR/extra/$EXTERNAL_APP_NAME" \
-			|| EXTRA_TRUE=1 "$AMCLIPATH_ORIGIN" -i "$CACHEDIR/extra/$EXTERNAL_APP_NAME"
+			[ "$AMCLI" = "am" ] && [ "$2" = "--user" ] && EXTRA_TRUE=1 "$AMCLIPATH_ORIGIN" -i --user "$CACHEDIR/extra/$EXTERNAL_APP_NAME" || EXTRA_TRUE=1 "$AMCLIPATH_ORIGIN" -i "$CACHEDIR/extra/$EXTERNAL_APP_NAME"
 		fi
 		exit 1
 		;;
