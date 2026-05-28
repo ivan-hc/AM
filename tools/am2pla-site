@@ -32,8 +32,10 @@ CATEGORIES="am-utils android audio \
 	game gnome graphic \
 	internet \
 	kde \
+	metapackages \
 	office \
 	password \
+	portable \
 	steam system-monitor \
 	video \
 	web-app web-browser wine"
@@ -94,17 +96,27 @@ function _categories_buttons() {
 	{
 		printf '\n#### *Categories*\n\n'
 		printf '<div class="cat-grid">\n'
-		if [ "$category_page" = appimages ]; then
-			printf '  <a class="cat-pill cat-pill--all" href="appimages.html">AppImages</a>\n'
-		else
-			printf '  <a class="cat-pill" href="appimages.html">AppImages</a>\n'
-		fi
-		for c in $CATEGORIES; do
+		CATEGORIES_ALL=$(echo "$CATEGORIES appimages" | tr ' ' '\n' | sort -u | xargs)
+		for c in $CATEGORIES_ALL; do
 			printf '  <span class="cat-sep" aria-hidden="true">\xe2\x80\xa2</span>\n'
-			if [ "$category_page" = "$c" ]; then
-				printf '  <a class="cat-pill cat-pill--all" href="%s.html">%s</a>\n' "$c" "$c"
+			if [ "$c" = appimages ]; then
+				if [ "$category_page" = appimages ]; then
+					printf '  <a class="cat-pill cat-pill--all" href="appimages.html">AppImages</a>\n'
+				else
+					printf '  <a class="cat-pill" href="appimages.html">AppImages</a>\n'
+				fi
+			elif [ "$c" = portable ]; then
+				if [ "$category_page" = portable ]; then
+					printf '  <a class="cat-pill cat-pill--all" href="portable.html">Portable</a>\n'
+				else
+					printf '  <a class="cat-pill" href="portable.html">Portable</a>\n'
+				fi
 			else
-				printf '  <a class="cat-pill" href="%s.html">%s</a>\n' "$c" "$c"
+				if [ "$category_page" = "$c" ]; then
+					printf '  <a class="cat-pill cat-pill--all" href="%s.html">%s</a>\n' "$c" "$c"
+				else
+					printf '  <a class="cat-pill" href="%s.html">%s</a>\n' "$c" "$c"
+				fi
 			fi
 		done
 		printf '</div>\n\n'
@@ -690,10 +702,19 @@ for category in $CATEGORIES; do
 		grep -i "$category\|picture\|screensh\|gimp\|photo\|svg\|png\|autocad\|blender\|modeling\|paint\|pixel\|wallpaper" ./"$arch"-apps >> "$arch-$category"
 	elif [ "$category" = internet ]; then
 		grep -i "$category\|web browser\|browser web\|firefox\|chrome\|youtube\|torrent\|p2p\|chat\|whatsapp\|mastodon\|telegram\|skype\|email" ./"$arch"-apps >> "$arch-$category"
+	elif [ "$category" = metapackages ]; then
+		grep -i "\"kdegames\"\|\"kdeutils\"\|\"node\"\|\"platform-tools\"" ./"$arch"-apps >> "$arch-$category"
 	elif [ "$category" = office ]; then
 		grep -i "$category\|document\|book\|pdf\|docx\|reader\|spreadsheet\| word \| excel " ./"$arch"-apps >> "$arch-$category"
 	elif [ "$category" = password ]; then
 		grep -i "$category" ./"$arch"-apps >> "$arch-$category"
+	elif [ "$category" = portable ]; then
+		APPNAMES=$(sort ./"$arch"-apps | awk '{print $2}' | xargs)
+		for a in $APPNAMES; do
+			if ! grep -q "\*\*\*$a\*\*\*" appimages.md && ! sort ./"$arch"-apps | grep -q "^◆ $a :.*\"kdegames\"\|^◆ $a :.*\"kdeutils\"\|^◆ $a :.*\"node\"\|^◆ $a :.*\"platform-tools\""; then
+				grep -i "^◆ $a :" ./"$arch"-apps >> "$arch-$category"
+			fi
+		done
 	elif [ "$category" = system-monitor ]; then
 		grep -i "$category\|system monitor\|task manager\|system resource" ./"$arch"-apps >> "$arch-$category"
 	elif [ "$category" = video ]; then
