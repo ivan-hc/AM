@@ -1,5 +1,27 @@
 #!/bin/sh
 
+rm -f "stats-portable"
+
+_stats_portable2appimage() {
+	if [ "$arch" = x86_64 ]; then
+		if grep -q "main/portable2appimage" "./$arch/$arg"; then
+			grep "◆ $arg :" "$arch-apps" | head -1 | sed 's/$/ #itsappimageonthefly/' >> "stats-portable"
+		fi
+	fi
+}
+
+_stats_portable() {
+	if [ "$arch" = x86_64 ]; then
+		if grep -q "\[Desktop Entry\]" "./$arch/$arg"; then
+			grep "◆ $arg :" "$arch-apps" | head -1 | sed 's/$/ #itsdesktopapp/' >> "stats-portable"
+		elif ! grep -q "#printf.*AM.desktop" "./$arch/$arg" && grep -q "AM.desktop" "./$arch/$arg"; then
+			grep "◆ $arg :" "$arch-apps" | head -1 | sed 's/$/ #itsdesktopapp/' >> "stats-portable"
+		else
+			grep "◆ $arg :" "$arch-apps" | head -1 | sed 's/$/ #itscliapp/' >> "stats-portable"
+		fi
+	fi
+}
+
 DIRS=$(find . -type d | grep "/" | sed 's:.*/::')
 for arch in $DIRS; do
 	rm -f "$arch-appimages" "$arch-portable"
@@ -9,8 +31,10 @@ for arch in $DIRS; do
 			grep "^◆ $arg :" "$arch-apps" | head -1 >> "$arch-tmplist"
 			if grep -qe "appimageupdatetool" "./$arch/$arg" 1>/dev/null; then
 				grep "◆ $arg :" "$arch-apps" | head -1 >> "$arch-appimages"
+				_stats_portable2appimage
 			else
 				grep "◆ $arg :" "$arch-apps" | head -1 >> "$arch-portable"
+				_stats_portable
 			fi
 		fi
 	done
@@ -33,4 +57,5 @@ for arch in $DIRS; do
 		done
 	fi
 	[ -f "$arch-tmplist" ] && sort "$arch-tmplist" > "$arch-apps"
+	rm -f "$arch-tmplist"
 done
