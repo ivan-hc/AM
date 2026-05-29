@@ -11,20 +11,27 @@ arch="x86_64"
 cd "$(xdg-user-dir DESKTOP)" || exit 1
 
 # GET THE NAMES OF ALL APPLICATION
-if [ -f "$HOME"/.local/share/AM/"$arch"-apps ]; then
-	cp "$HOME"/.local/share/AM/"$arch"-apps "$arch"-apps && echo -e "$(sort -u ./"$arch"-apps | awk -v FS="(◆ | : )" '{print $2}')" >> args
-elif [ -f ./"$arch"-apps ]; then
-	echo -e "$(sort -u ./"$arch"-apps | awk -v FS="(◆ | : )" '{print $2}')" >> args
-else
-	curl -Ls "$AMREPO"/programs/"$arch"-apps > "$arch"-apps && echo -e "$(sort -u ./"$arch"-apps | awk -v FS="(◆ | : )" '{print $2}')" >> args
-fi
+curl -Ls "$AMREPO"/programs/"$arch"-apps > "$arch"-apps || exit 1
+curl -Ls "$AMREPO"/programs/"$arch"-appimages > "$arch"-appimages || exit 1
+curl -Ls "$AMREPO"/programs/stats-portable > stats-portable || exit 1
+
+if ! grep -q "^◆ " "$arch"-apps; then exit 0; fi
+if ! grep -q "^◆ " stats-portable; then exit 0; fi
+if ! grep -q "^◆ " "$arch"-appimages; then exit 0; fi
+
+ARGS=$(sort -u "$arch"-apps | awk -v FS="(◆ | : )" '{print $2}')
+APPIMAGES=$(sort -u "$arch"-appimages | awk -v FS="(◆ | : )" '{print $2}')
+PORTABLE=$(sort -u stats-portable | grep -v "#itsappimageonthefly" | awk -v FS="(◆ | : )" '{print $2}')
 
 # GET THE EXACT NUMBER OF AVAILABLE APPS
-ARGS=$(sort -u ./args)
 METAPACKAGES="kdegames kdeutils node platform-tools"
 APPS_NUMBER=$(grep -v "\"kdegames\"\|\"kdeutils\"\|\"node\"\|\"platform-tools\"" "$arch"-apps | grep -e "$" -c)
 ITEMS_NUMBER=$(grep "\"kdegames\"\|\"kdeutils\"\|\"node\"\|\"platform-tools\"" "$arch"-apps | grep -e "$" -c)
-CATEGORIES="ai am-utils android audio \
+
+APPS_NUMBER_ORIGIN="$APPS_NUMBER"
+ITEMS_NUMBER_ORIGIN="$ITEMS_NUMBER"
+
+CATEGORIES="ai am-utils appimage-on-the-fly android audio \
 	comic command-line communication \
 	disk \
 	education \
@@ -35,7 +42,7 @@ CATEGORIES="ai am-utils android audio \
 	metapackages \
 	office \
 	password \
-	portable \
+	portable portable-cli portable-desktop \
 	steam system-monitor \
 	video \
 	web-app web-browser wine"
@@ -44,38 +51,32 @@ CATEGORIES="ai am-utils android audio \
 # UPDATE THE JSON FILE FOR FURTER ELECTRON-BASED FRONTENDS
 ##########################################################
 
-function _update_json() {
-	# Exclude "items" (webapps and metapackages) from apps.json so the home
-	# search shows the same "X apps in the database" count that the stats
-	# line at the top of index.md reports (APPS_NUMBER, not APPS_NUMBER +
-	# ITEMS_NUMBER). The exclusion pattern mirrors the one used when
-	# computing APPS_NUMBER itself.
-	echo "[" > apps.json
-	for arg in $ARGS; do
-		case "$arg" in
-			kdegames|kdeutils|node|platform-tools) continue;;
-		esac
-		description=$(grep "◆ $arg :" "$arch"-apps | sed 's/"/\\"/g; s/^.*: //')
-		printf "  {\n    \"packageName\": \"%b\",\n    \"description\": \"%b..\",\n    \"icon\": \"https://portable-linux-apps.github.io/icons/%b.png\"\n  },\n" "$arg" "$description" "$arg" >> apps.json
-	done
-	sed -i '$s/,$//' apps.json
-	echo "]" >> apps.json
-}
+# Exclude "items" (webapps and metapackages) from apps.json so the home search shows the same "X apps in the database" count that the stats line at the 
+# top of index.md reports (APPS_NUMBER, not APPS_NUMBER + ITEMS_NUMBER). The exclusion pattern mirrors the one used when computing APPS_NUMBER itself.
 
-_update_json
+echo "[" > apps.json
+for arg in $ARGS; do
+	case "$arg" in
+		kdegames|kdeutils|node|platform-tools) continue;;
+	esac
+	description=$(grep "◆ $arg :" "$arch"-apps | sed 's/"/\\"/g; s/^.*: //')
+	printf "  {\n    \"packageName\": \"%b\",\n    \"description\": \"%b..\",\n    \"icon\": \"https://portable-linux-apps.github.io/icons/%b.png\"\n  },\n" "$arg" "$description" "$arg" >> apps.json
+done
+sed -i '$s/,$//' apps.json
+echo "]" >> apps.json
 
 ################################################
 # COMMON FUNCTIONS NEEDED TO COMPILE OTHER PAGES
 ################################################
 
-function _home_button {
+_home_button() {
 	echo ""
 	echo "| [Home](index.md) |"
 	echo "| --- |"
 	echo ""
 }
 
-function _table_head() {
+_table_head() {
 	echo "-----------------"
 	echo ""
 	echo "***NOTE, Installer scripts (blob/raw) are provided for reading only: do not run them manually! Use \"[AM](https://github.com/ivan-hc/AM)\" or \"[AppMan](https://github.com/ivan-hc/AppMan)\" instead.***"
@@ -86,13 +87,10 @@ function _table_head() {
 	echo "| --- | --- | --- | --- |"
 }
 
-function _categories_buttons() {
-	# Raw HTML grid; styles live in assets/css/style.scss on the website
-	# repo (.cat-grid / .cat-pill / .cat-pill--all / .cat-sep). AppImages
-	# is the first cell with a "stand-out" modifier; the rest follow the
-	# CATEGORIES list (already alphabetical). A .cat-sep bullet is emitted
-	# between pills so the CSS can use a flex container with a small gap
-	# and still get a clear visual separator between links.
+_categories_buttons() {
+	# Raw HTML grid; styles live in assets/css/style.scss on the website repo (.cat-grid / .cat-pill / .cat-pill--all / .cat-sep). AppImages
+	# is the first cell with a "stand-out" modifier; the rest follow the CATEGORIES list (already alphabetical). A .cat-sep bullet is emitted
+	# between pills so the CSS can use a flex container with a small gap and still get a clear visual separator between links.
 	{
 		printf '\n#### *Categories*\n\n'
 		printf '<div class="cat-grid">\n'
@@ -122,14 +120,14 @@ function _categories_buttons() {
 	}
 }
 
-function _back_to_home_or_apps_buttons() {
+_back_to_home_or_apps_buttons() {
 	echo ""
 	echo "| [Back to Home](index.md) | [Back to Applications](apps.md)"
 	echo "| --- | --- |"
 	echo ""
 }
 
-function _footer_up() {
+_footer_up() {
 	echo ""
 	echo ""
 	echo "---"
@@ -141,7 +139,7 @@ function _footer_up() {
 	echo "---"
 }
 
-function _footer_down() {
+_footer_down() {
 	echo "--------"
 	echo ""
 	echo "# Contacts"
@@ -157,13 +155,13 @@ function _footer_down() {
 	echo ""
 }
 
-function _footer_apps() {
+_footer_apps() {
 	_footer_up
 	_home_button
 	_footer_down
 }
 
-function _footer_categories() {
+_footer_categories() {
 	_footer_up
 	_back_to_home_or_apps_buttons
 	_footer_down
@@ -185,10 +183,10 @@ cat >> "$1" << EOF
 EOF
 }
 
-function _applications_list_header {
+_applications_list_header() {
 	echo "# APPLICATIONS" > apps.md
 	_home_button >> apps.md
-	echo "#### Here are listed all **$APPS_NUMBER** unique applications, AppImage packages and command line utilities managed by [AM](https://github.com/ivan-hc/AM) and [AppMan](https://github.com/ivan-hc/AppMan) for the x86_64 architecture, plus **$ITEMS_NUMBER** more entries and items to help you install apps more easily." >> apps.md
+	echo "#### Here are listed all **$APPS_NUMBER_ORIGIN** unique applications, AppImage packages and command line utilities managed by [AM](https://github.com/ivan-hc/AM) and [AppMan](https://github.com/ivan-hc/AppMan) for the x86_64 architecture, plus **$ITEMS_NUMBER** more entries and items to help you install apps more easily." >> apps.md
 	echo "" >> apps.md
 	ADD_SEARCH_BAR apps.md
 	category_page=""
@@ -196,7 +194,7 @@ function _applications_list_header {
 	_table_head >> apps.md
 }
 
-function _run_applications_lister_body() {
+_run_applications_lister_body() {
 	description=$(grep "◆ $arg :" "$arch"-apps | sed 's/^.*: //; s/ *$//')
 	if echo "$description" | grep -q "\"kdegames\"\|\"kdeutils\"\|\"node\"\|\"platform-tools\""; then
 		for m in $METAPACKAGES; do
@@ -209,7 +207,7 @@ function _run_applications_lister_body() {
 	fi
 }
 
-function _applications_list_body() {
+_applications_list_body() {
 	for arg in $ARGS; do
 		_run_applications_lister_body &
 	done
@@ -226,41 +224,112 @@ _footer_apps >> apps.md
 # COMPILE APPIMAGES PAGE
 ########################
 
-function _appimages_listing() {
-	if [ -f "$HOME"/.local/share/AM/"$arch"-appimages ]; then
-		APPIMAGES_LIST_AM=$(sort -u "$HOME"/.local/share/AM/"$arch"-appimages)
-	elif [ -f ./"$arch"-appimages ]; then
-		APPIMAGES_LIST_AM=$(sort -u ./"$arch"-appimages)
-	else
-		APPIMAGES_LIST_AM=$(curl -Ls https://raw.githubusercontent.com/ivan-hc/AM/main/programs/x86_64-appimages)
-	fi
-	[ -z "$APPIMAGES_LIST_AM" ] && exit 1
-	echo "$APPIMAGES_LIST_AM" | awk -v FS="(◆ | : )" '{print $2}' > args
-	ARGS=$(sort -u ./args)
-	APPIMAGES_NUMBER=$(sort -u ./args | wc -l)
-}
+ARGS="$APPIMAGES"
+APPIMAGES_NUMBER=$(sort -u "$arch"-appimages | wc -l)
 
-function _appimages_list_header {
-	echo "# APPIMAGES" > appimages.md
-	_back_to_home_or_apps_buttons >> appimages.md
-	echo "#### Here are listed the **$APPIMAGES_NUMBER** unique Appimages managed by [AM](https://github.com/ivan-hc/AM) and [AppMan](https://github.com/ivan-hc/AppMan) for the x86_64 architecture." >> appimages.md
-	echo "" >> appimages.md
-	ADD_SEARCH_BAR appimages.md
-	category_page="appimages"
-	_categories_buttons >> appimages.md
-	_table_head >> appimages.md
-}
+echo "# APPIMAGES" > appimages.md
+_back_to_home_or_apps_buttons >> appimages.md
+echo "#### Here are listed the **$APPIMAGES_NUMBER** unique Appimages managed by [AM](https://github.com/ivan-hc/AM) and [AppMan](https://github.com/ivan-hc/AppMan) for the x86_64 architecture." >> appimages.md
+echo "" >> appimages.md
+ADD_SEARCH_BAR appimages.md
+category_page="appimages"
+_categories_buttons >> appimages.md
+_table_head >> appimages.md
 
-function _appimages_list_body() {
-	for arg in $ARGS; do
-		grep "\*\*\*$arg\*\*\*" ./body.txt >> appimages.md
-	done
-}
+for arg in $ARGS; do
+	grep "\*\*\*$arg\*\*\*" ./body.txt >> appimages.md
+done
 
-_appimages_listing
-_appimages_list_header
-_appimages_list_body
 _footer_categories >> appimages.md
+
+
+##########################################################################################################################################################
+# OTHER CATEGORIES
+##########################################################################################################################################################
+
+for category in $CATEGORIES; do
+	# Portable apps (not AppImages or pure ones)
+	if [ "$category" = portable ]; then
+		for a in $PORTABLE; do
+			grep -i "^◆ $a :" ./"$arch"-apps >> "$arch-$category"
+		done
+	elif [ "$category" = appimage-on-the-fly ]; then
+		grep -i "#itsappimageonthefly" ./stats-portable >> "$arch-$category"
+	elif [ "$category" = portable-cli ]; then
+		grep -i "#itscliapp" ./stats-portable >> "$arch-$category"
+	elif [ "$category" = portable-desktop ]; then
+		grep -i "#itsdesktopapp" ./stats-portable >> "$arch-$category"
+	# All applications
+	elif [ "$category" = ai ]; then
+		grep "AI" ./"$arch"-apps >> "$arch-$category"
+		grep -i "chatgpt\|openai\|gemini\|claude\|copilot\|perplexity\| meta \|grok\|anthropic\|huggingface\|mistral\|cohere\|together\|replicate\|cursor\|codeium\|tabnine\|replit\|windsurf\|midjourney\|firefly\|canva\|runway\|leonardo\|synthesia\|elevenlabs\|heygen\|zapier\|z.ai\|clickup\|grammarly\|ollama\|lmstudio\|openwebui\|salesforce\|watsonx" ./"$arch"-apps >> "$arch-$category"
+	elif [ "$category" = am-utils ]; then
+		grep -i "\"$category\"" ./"$arch"-apps >> "$arch-$category"
+	elif [ "$category" = android ]; then
+		grep -i "$category\| adb \|fastboot\|phone\|platform-tools" ./"$arch"-apps >> "$arch-$category"
+	elif [ "$category" = audio ]; then
+		grep -i "$category\|music\|midi\|mp3\|sound" ./"$arch"-apps >> "$arch-$category"
+	elif [ "$category" = comic ]; then
+		grep -i "$category\|manga\|epub\|anime" ./"$arch"-apps >> "$arch-$category"
+	elif [ "$category" = command-line ]; then
+		grep -i "$category\|command line\| cli \|terminal\|fastboot\| npm \| bash \| shell \| dash \| zsh \|\"am-utils\"" ./"$arch"-apps >> "$arch-$category"
+	elif [ "$category" = communication ]; then
+		grep -i "$category\|voip\|facebook\|messenger\|whatsapp\|mastodon\|skype\|chat\|social network\|zoom\|conferenc\|discord\|email" ./"$arch"-apps >> "$arch-$category"
+	elif [ "$category" = disk ]; then
+		grep -i "$category\|partition\|usb" ./"$arch"-apps >> "$arch-$category"
+	elif [ "$category" = education ]; then
+		grep -i "$category\| edu\|science\|learn\|study\|teach\|translat\|geo\|child\| book\|ebook\|space simulator\|planet\|astronom" ./"$arch"-apps | grep -vi "game\|manga\|anime" >> "$arch-$category"
+	elif [ "$category" = file-manager ]; then
+		grep -i "$category\|file manager\|file browse\|browse.*file\|file explore" ./"$arch"-apps >> "$arch-$category"
+	elif [ "$category" = finance ]; then
+		grep -i "$category\|wallet\|money\|economy\|economic" ./"$arch"-apps >> "$arch-$category"
+	elif [ "$category" = game ]; then
+		grep -i "$category\|arcade\|steam\|wine\|strateg\|solitaire\|poker\|chess\|puzzle\|pinball\|adventure\|playstation\|xbox\|nintendo\|minecraft\|doom" ./"$arch"-apps >> "$arch-$category"
+	elif [ "$category" = graphic ]; then
+		grep -i "$category\|picture\|screensh\|gimp\|photo\|svg\|png\|autocad\|blender\|modeling\|paint\|pixel\|wallpaper" ./"$arch"-apps >> "$arch-$category"
+	elif [ "$category" = internet ]; then
+		grep -i "$category\|web browser\|browser web\|firefox\|chrome\|youtube\|torrent\|p2p\|chat\|whatsapp\|mastodon\|telegram\|skype\|email" ./"$arch"-apps >> "$arch-$category"
+	elif [ "$category" = metapackages ]; then
+		grep -i "◆ kdegames \|◆ kdeutils \|◆ node \|◆ platform-tools " ./"$arch"-apps >> "$arch-$category"
+		grep -i "\"kdegames\"\|\"kdeutils\"\|\"node\"\|\"platform-tools\"" ./"$arch"-apps >> "$arch-$category"
+	elif [ "$category" = office ]; then
+		grep -i "$category\|document\|book\|pdf\|docx\|reader\|spreadsheet\| word \| excel " ./"$arch"-apps >> "$arch-$category"
+	elif [ "$category" = password ]; then
+		grep -i "$category" ./"$arch"-apps >> "$arch-$category"
+	elif [ "$category" = system-monitor ]; then
+		grep -i "$category\|system monitor\|task manager\|system resource" ./"$arch"-apps >> "$arch-$category"
+	elif [ "$category" = video ]; then
+		grep -i "$category\|stream\|media player\|film\|movie\|netflix\|youtube\|iptv" ./"$arch"-apps >> "$arch-$category"
+	elif [ "$category" = web-app ]; then
+		grep -i "$category\|webapp\|web app" ./"$arch"-apps >> "$arch-$category"
+	elif [ "$category" = web-browser ]; then
+		grep -i "$category\|web.*browser\|browser.*web\|google-chrome\|firefox.*browser\|firefox.*fork\|fork.*firefox\|safari\|microsoft-edge\|opera.*browser\|brave.*browser\|vivaldi.*browser\|arc.*browser\|tor.*browser\|chromium\|duckduckgo.*browser\|orion.*browser\|waterfox\|librewolf\|palemoon\|seamonkey\|maxthon\|yandex.*browser\|uc.*browser\|qq.*browser\|baidu.*browser\|kiwi\|puffin\|dolphin.*browser\|epic.*browser\|avast.*browser\|avg.*browser\|midori\|falkon\|konqueror\|gnome.*web.*browser\|floorp\|zen.*browser\|slimjet\|srware.*iron\|comodo.*dragon\|sleipnir\|lunascape\|otter.*browser\|basilisk\|icecat\|kmeleon\|k-melon\|netscape\|mosaic.*browser" ./"$arch"-apps | grep -vi "embedded web browser video player"  >> "$arch-$category"
+	else
+		grep -i "$category" ./"$arch"-apps  >> "$arch-$category"
+	fi
+	ARGS=$(sort -u ./"$arch-$category" | awk -v FS="(◆ | : )" '{print $2}')
+	APPS_NUMBER=$(grep -v "\"kdegames\"\|\"kdeutils\"\|\"node\"\|\"platform-tools\"" "$arch-$category" | grep -e "$" -c)
+	ITEMS_NUMBER=$(grep "\"kdegames\"\|\"kdeutils\"\|\"node\"\|\"platform-tools\"" "$arch-$category" | grep -e "$" -c)
+
+	# Category list header
+	echo "# $(echo "$category"| tr '[:lower:]' '[:upper:]')" > "$category".md
+	_back_to_home_or_apps_buttons >> "$category".md
+	echo "#### Here are listed **$APPS_NUMBER** programs and **$ITEMS_NUMBER** items for this category and managed by [AM](https://github.com/ivan-hc/AM) and [AppMan](https://github.com/ivan-hc/AppMan) for the x86_64 architecture." >> "$category".md
+	echo "" >> "$category".md
+	ADD_SEARCH_BAR "$category".md
+	category_page="$category"
+	_categories_buttons >> "$category".md
+	_table_head >> "$category".md
+
+	# Category list body
+	for arg in $ARGS; do
+		grep "\*\*\*$arg\*\*\*" ./body.txt >> "$category".md
+	done
+
+	_footer_categories >> "$category".md
+	rm -f ./"$arch-$category"
+done
+
 
 ##########################################################################################################################################################
 # COMPILE THE MAIN PAGE OF THE WEBSITE
@@ -640,106 +709,13 @@ am -i --user topgrade
 EOF
 }
 
-ST_APPS_NUMBER=$(($APPS_NUMBER-$APPIMAGES_NUMBER))
-function _compile_the_homepage() {
-	rm -f ./index.md
-	INDEX_HEAD
-	echo "#### *This site lists **$APPS_NUMBER** unique apps (**$APPIMAGES_NUMBER** Appimage packages and **$ST_APPS_NUMBER** standalone/portable programs), plus **$ITEMS_NUMBER** items.*" >> ./index.md
-	INDEX_HEAD_TWO
-	category_page=""
-	_categories_buttons >> ./index.md
-	INDEX_BODY_FULL
-}
+ST_APPS_NUMBER=$((APPS_NUMBER_ORIGIN - APPIMAGES_NUMBER))
+rm -f ./index.md
+INDEX_HEAD
+echo "#### *This site lists **$APPS_NUMBER_ORIGIN** unique apps (**$APPIMAGES_NUMBER** Appimage packages and **$ST_APPS_NUMBER** standalone/portable programs), plus **$ITEMS_NUMBER_ORIGIN** items.*" >> ./index.md
+INDEX_HEAD_TWO
+category_page=""
+_categories_buttons >> ./index.md
+INDEX_BODY_FULL
 
-_compile_the_homepage
-
-##########################################################################################################################################################
-# OTHER CATEGORIES
-##########################################################################################################################################################
-
-function _category_list_header {
-	echo "# $(echo "$category" | tr a-z A-Z)" > "$category".md
-	_back_to_home_or_apps_buttons >> "$category".md
-	echo "#### Here are listed **$APPS_NUMBER** programs and **$ITEMS_NUMBER** items for this category and managed by [AM](https://github.com/ivan-hc/AM) and [AppMan](https://github.com/ivan-hc/AppMan) for the x86_64 architecture." >> "$category".md
-	echo "" >> "$category".md
-	ADD_SEARCH_BAR "$category".md
-	category_page="$category"
-	_categories_buttons >> "$category".md
-	_table_head >> "$category".md
-}
-
-function _category_list_body() {
-	for arg in $ARGS; do
-		grep "\*\*\*$arg\*\*\*" ./body.txt >> $category.md
-	done
-}
-
-for category in $CATEGORIES; do
-	if [ "$category" = ai ]; then
-		grep "AI" ./"$arch"-apps >> "$arch-$category"
-		grep -i "chatgpt\|openai\|gemini\|claude\|copilot\|perplexity\| meta \|grok\|anthropic\|huggingface\|mistral\|cohere\|together\|replicate\|cursor\|codeium\|tabnine\|replit\|windsurf\|midjourney\|firefly\|canva\|runway\|leonardo\|synthesia\|elevenlabs\|heygen\|zapier\|z.ai\|clickup\|grammarly\|ollama\|lmstudio\|openwebui\|salesforce\|watsonx" ./"$arch"-apps >> "$arch-$category"
-	elif [ "$category" = am-utils ]; then
-		grep -i "\"$category\"" ./"$arch"-apps >> "$arch-$category"
-	elif [ "$category" = android ]; then
-		grep -i "$category\| adb \|fastboot\|phone\|platform-tools" ./"$arch"-apps >> "$arch-$category"
-	elif [ "$category" = audio ]; then
-		grep -i "$category\|music\|midi\|mp3\|sound" ./"$arch"-apps >> "$arch-$category"
-	elif [ "$category" = comic ]; then
-		grep -i "$category\|manga\|epub\|anime" ./"$arch"-apps >> "$arch-$category"
-	elif [ "$category" = command-line ]; then
-		grep -i "$category\|command line\| cli \|terminal\|fastboot\| npm \| bash \| shell \| dash \| zsh \|\"am-utils\"" ./"$arch"-apps >> "$arch-$category"
-	elif [ "$category" = communication ]; then
-		grep -i "$category\|voip\|facebook\|messenger\|whatsapp\|mastodon\|skype\|chat\|social network\|zoom\|conferenc\|discord\|email" ./"$arch"-apps >> "$arch-$category"
-	elif [ "$category" = disk ]; then
-		grep -i "$category\|partition\|usb" ./"$arch"-apps >> "$arch-$category"
-	elif [ "$category" = education ]; then
-		grep -i "$category\| edu\|science\|learn\|study\|teach\|translat\|geo\|child\| book\|ebook\|space simulator\|planet\|astronom" ./"$arch"-apps | grep -vi "game\|manga\|anime" >> "$arch-$category"
-	elif [ "$category" = file-manager ]; then
-		grep -i "$category\|file manager\|file browse\|browse.*file\|file explore" ./"$arch"-apps >> "$arch-$category"
-	elif [ "$category" = finance ]; then
-		grep -i "$category\|wallet\|money\|economy\|economic" ./"$arch"-apps >> "$arch-$category"
-	elif [ "$category" = game ]; then
-		grep -i "$category\|arcade\|steam\|wine\|strateg\|solitaire\|poker\|chess\|puzzle\|pinball\|adventure\|playstation\|xbox\|nintendo\|minecraft\|doom" ./"$arch"-apps >> "$arch-$category"
-	elif [ "$category" = graphic ]; then
-		grep -i "$category\|picture\|screensh\|gimp\|photo\|svg\|png\|autocad\|blender\|modeling\|paint\|pixel\|wallpaper" ./"$arch"-apps >> "$arch-$category"
-	elif [ "$category" = internet ]; then
-		grep -i "$category\|web browser\|browser web\|firefox\|chrome\|youtube\|torrent\|p2p\|chat\|whatsapp\|mastodon\|telegram\|skype\|email" ./"$arch"-apps >> "$arch-$category"
-	elif [ "$category" = metapackages ]; then
-		grep -i "◆ kdegames \|◆ kdeutils \|◆ node \|◆ platform-tools " ./"$arch"-apps >> "$arch-$category"
-		grep -i "\"kdegames\"\|\"kdeutils\"\|\"node\"\|\"platform-tools\"" ./"$arch"-apps >> "$arch-$category"
-	elif [ "$category" = office ]; then
-		grep -i "$category\|document\|book\|pdf\|docx\|reader\|spreadsheet\| word \| excel " ./"$arch"-apps >> "$arch-$category"
-	elif [ "$category" = password ]; then
-		grep -i "$category" ./"$arch"-apps >> "$arch-$category"
-	elif [ "$category" = portable ]; then
-		APPNAMES=$(sort ./"$arch"-apps | awk '{print $2}' | xargs)
-		for a in $APPNAMES; do
-			if ! grep -q "\*\*\*$a\*\*\*" appimages.md && ! sort ./"$arch"-apps | grep -q "^◆ $a :.*\"kdegames\"\|^◆ $a :.*\"kdeutils\"\|^◆ $a :.*\"node\"\|^◆ $a :.*\"platform-tools\""; then
-				grep -i "^◆ $a :" ./"$arch"-apps >> "$arch-$category"
-			fi
-		done
-	elif [ "$category" = system-monitor ]; then
-		grep -i "$category\|system monitor\|task manager\|system resource" ./"$arch"-apps >> "$arch-$category"
-	elif [ "$category" = video ]; then
-		grep -i "$category\|stream\|media player\|film\|movie\|netflix\|youtube\|iptv" ./"$arch"-apps >> "$arch-$category"
-	elif [ "$category" = web-app ]; then
-		grep -i "$category\|webapp\|web app" ./"$arch"-apps >> "$arch-$category"
-	elif [ "$category" = web-browser ]; then
-		grep -i "$category\|web.*browser\|browser.*web\|google-chrome\|firefox.*browser\|firefox.*fork\|fork.*firefox\|safari\|microsoft-edge\|opera.*browser\|brave.*browser\|vivaldi.*browser\|arc.*browser\|tor.*browser\|chromium\|duckduckgo.*browser\|orion.*browser\|waterfox\|librewolf\|palemoon\|seamonkey\|maxthon\|yandex.*browser\|uc.*browser\|qq.*browser\|baidu.*browser\|kiwi\|puffin\|dolphin.*browser\|epic.*browser\|avast.*browser\|avg.*browser\|midori\|falkon\|konqueror\|gnome.*web.*browser\|floorp\|zen.*browser\|slimjet\|srware.*iron\|comodo.*dragon\|sleipnir\|lunascape\|otter.*browser\|basilisk\|icecat\|kmeleon\|k-melon\|netscape\|mosaic.*browser" ./"$arch"-apps | grep -vi "embedded web browser video player"  >> "$arch-$category"
-	else
-		grep -i "$category" ./"$arch"-apps  >> "$arch-$category"
-	fi
-	echo -e "$(sort -u ./"$arch-$category" | awk -v FS="(◆ | : )" '{print $2}')" > args
-	ARGS=$(sort -u ./args)
-	APPS_NUMBER=$(grep -v "\"kdegames\"\|\"kdeutils\"\|\"node\"\|\"platform-tools\"" "$arch-$category" | grep -e "$" -c)
-	ITEMS_NUMBER=$(grep "\"kdegames\"\|\"kdeutils\"\|\"node\"\|\"platform-tools\"" "$arch-$category" | grep -e "$" -c)
-	_category_list_header
-	_category_list_body
-	_footer_categories >> "$category".md
-	rm -f ./"$arch-$category"
-done
-
-######################
-# END OF ALL PROCESSES
-######################
-rm ./args ./"$arch"-apps ./body.txt*
+rm ./"$arch"-apps ./"$arch"-appimages ./stats-portable ./body.txt*
