@@ -4,7 +4,7 @@ rm -f "stats-portable"
 
 _stats_portable2appimage() {
 	if [ "$arch" = x86_64 ]; then
-		if grep -q "main/portable2appimage" "./$arch/$arg"; then
+		if grep -qi "^curl.*.sh.*chmod.*&&\|^curl.*main/portable2appimage" "./$arch/$arg"; then
 			grep "◆ $arg :" "$arch-apps" | head -1 | sed 's/$/ #itsappimageonthefly/' >> "stats-portable"
 		fi
 	fi
