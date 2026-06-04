@@ -1,6 +1,16 @@
 #!/bin/sh
 
-rm -f "stats-portable"
+rm -f "stats-appimages" "stats-portable"
+
+_stats_appimages() {
+	if [ "$arch" = x86_64 ]; then
+		if grep -q "appimage-extract .*.desktop\|appimage-extract .*share/applications\|^mv .*usr/local/share/applications\|HEREDOC.*usr/local/share/applications" "./$arch/$arg"; then
+			grep "◆ $arg :" "$arch-apps" | head -1 | sed 's/$/ #itsdesktopapp/' >> "stats-appimages"
+		else
+			grep "◆ $arg :" "$arch-apps" | head -1 | sed 's/$/ #itscliapp/' >> "stats-appimages"
+		fi
+	fi
+}
 
 _stats_portable2appimage() {
 	if [ "$arch" = x86_64 ]; then
@@ -31,6 +41,7 @@ for arch in $DIRS; do
 			grep "^◆ $arg :" "$arch-apps" | head -1 >> "$arch-tmplist"
 			if grep -qe "appimageupdatetool" "./$arch/$arg" 1>/dev/null; then
 				grep "◆ $arg :" "$arch-apps" | head -1 >> "$arch-appimages"
+				_stats_appimages
 				_stats_portable2appimage
 			else
 				grep "◆ $arg :" "$arch-apps" | head -1 >> "$arch-portable"
