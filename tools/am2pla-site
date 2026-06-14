@@ -15,6 +15,12 @@ curl -Ls "$AMREPO"/programs/"$arch"-apps > "$arch"-apps || exit 1
 curl -Ls "$AMREPO"/programs/stats-appimages > stats-appimages || exit 1
 curl -Ls "$AMREPO"/programs/stats-portable > stats-portable || exit 1
 
+# Lists for the other architectures, used only to tag each app with the
+# architectures it is available on (for the site's architecture filter). A
+# failed/empty fetch is non-fatal: the app is then treated as x86_64-only.
+curl -Ls "$AMREPO"/programs/aarch64-apps > aarch64-apps || :
+curl -Ls "$AMREPO"/programs/i686-apps > i686-apps || :
+
 if ! grep -q "^◆ " "$arch"-apps; then exit 0; fi
 if ! grep -q "^◆ " stats-appimages; then exit 0; fi
 if ! grep -q "^◆ " stats-portable; then exit 0; fi
@@ -22,6 +28,20 @@ if ! grep -q "^◆ " stats-portable; then exit 0; fi
 ARGS=$(sort -u "$arch"-apps | awk -v FS="(◆ | : )" '{print $2}')
 APPIMAGES=$(sort -u stats-appimages | awk -v FS="(◆ | : )" '{print $2}')
 PORTABLE=$(sort -u stats-portable | grep -v "#itsappimageonthefly" | awk -v FS="(◆ | : )" '{print $2}')
+
+# Architecture membership. Every listed app is x86_64 (the catalog is built from
+# the x86_64 list); these sets mark the subset that is also available on aarch64
+# and i686. Names are space-padded so a whole-word "case" match can be used.
+AARCH64_NAMES=" $(awk -v FS="(◆ | : )" '/^◆ /{print $2}' aarch64-apps 2>/dev/null | sort -u | xargs) "
+I686_NAMES=" $(awk -v FS="(◆ | : )" '/^◆ /{print $2}' i686-apps 2>/dev/null | sort -u | xargs) "
+
+# _arch_list <packagename> -> space-separated arch list, always starting x86_64.
+_arch_list() {
+	out="x86_64"
+	case "$AARCH64_NAMES" in *" $1 "*) out="$out aarch64" ;; esac
+	case "$I686_NAMES" in *" $1 "*) out="$out i686" ;; esac
+	printf '%s' "$out"
+}
 
 # GET THE EXACT NUMBER OF AVAILABLE APPS
 METAPACKAGES="kdegames kdeutils node platform-tools"
@@ -63,7 +83,8 @@ for arg in $ARGS; do
 		kdegames|kdeutils|node|platform-tools) continue;;
 	esac
 	description=$(grep "◆ $arg :" "$arch"-apps | sed 's/"/\\"/g; s/^.*: //')
-	printf "  {\n    \"packageName\": \"%b\",\n    \"description\": \"%b..\",\n    \"icon\": \"https://portable-linux-apps.github.io/icons/%b.png\"\n  },\n" "$arg" "$description" "$arg" >> apps.json
+	arch_json=$(printf '"%s",' $(_arch_list "$arg")); arch_json="[${arch_json%,}]"
+	printf "  {\n    \"packageName\": \"%b\",\n    \"description\": \"%b..\",\n    \"icon\": \"https://portable-linux-apps.github.io/icons/%b.png\",\n    \"arch\": %s\n  },\n" "$arg" "$description" "$arg" "$arch_json" >> apps.json
 done
 sed -i '$s/,$//' apps.json
 echo "]" >> apps.json
@@ -181,6 +202,13 @@ cat >> "$1" << EOF
   <label for="app-search-input" style="font-weight: bold;">Search applications:</label>
   <input type="search" id="app-search-input" placeholder="Type a name or keyword..." autocomplete="off"
     style="width: 100%; max-width: 480px; padding: 0.5em 0.75em; margin-top: 0.25em; font-size: 1em; border: 1px solid #999; border-radius: 4px; box-sizing: border-box;">
+  <select id="app-search-arch" aria-label="Filter by architecture"
+    style="margin-top: 0.25em; padding: 0.5em; font-size: 1em; border: 1px solid #999; border-radius: 4px;">
+    <option value="">Any architecture</option>
+    <option value="x86_64">x86_64</option>
+    <option value="aarch64">aarch64</option>
+    <option value="i686">i686</option>
+  </select>
   <span id="app-search-count" style="margin-left: 0.5em; font-style: italic; color: #666;"></span>
 </div>
 EOF
@@ -199,14 +227,17 @@ _applications_list_header() {
 
 _run_applications_lister_body() {
 	description=$(grep "◆ $arg :" "$arch"-apps | sed 's/^.*: //; s/ *$//')
+	# Hidden per-row marker so the site's architecture filter (search.js) can
+	# match rows; invisible in the rendered table.
+	arch_cell="<span class=\"arch-data\" data-arch=\"$(_arch_list "$arg")\" hidden></span>"
 	if echo "$description" | grep -q "\"kdegames\"\|\"kdeutils\"\|\"node\"\|\"platform-tools\""; then
 		for m in $METAPACKAGES; do
 			if echo "$description" | grep -q "\"$m\""; then
-				echo "| <img loading=\"lazy\" src=\"icons/$arg.png\" width=\"48\" height=\"48\"> | [***$arg***](apps/$m.md) | *$description*..[ *read more* ](apps/$m.md)*!* | [*blob*](https://github.com/ivan-hc/AM/blob/main/programs/$arch/$m) **/** [*raw*](https://raw.githubusercontent.com/ivan-hc/AM/main/programs/$arch/$m) |" >> body.txt.tmp
+				echo "| <img loading=\"lazy\" src=\"icons/$arg.png\" width=\"48\" height=\"48\">$arch_cell | [***$arg***](apps/$m.md) | *$description*..[ *read more* ](apps/$m.md)*!* | [*blob*](https://github.com/ivan-hc/AM/blob/main/programs/$arch/$m) **/** [*raw*](https://raw.githubusercontent.com/ivan-hc/AM/main/programs/$arch/$m) |" >> body.txt.tmp
 			fi
 		done
 	else
-		echo "| <img loading=\"lazy\" src=\"icons/$arg.png\" width=\"48\" height=\"48\"> | [***$arg***](apps/$arg.md) | *$description*..[ *read more* ](apps/$arg.md)*!* | [*blob*](https://github.com/ivan-hc/AM/blob/main/programs/$arch/$arg) **/** [*raw*](https://raw.githubusercontent.com/ivan-hc/AM/main/programs/$arch/$arg) |" >> body.txt.tmp
+		echo "| <img loading=\"lazy\" src=\"icons/$arg.png\" width=\"48\" height=\"48\">$arch_cell | [***$arg***](apps/$arg.md) | *$description*..[ *read more* ](apps/$arg.md)*!* | [*blob*](https://github.com/ivan-hc/AM/blob/main/programs/$arch/$arg) **/** [*raw*](https://raw.githubusercontent.com/ivan-hc/AM/main/programs/$arch/$arg) |" >> body.txt.tmp
 	fi
 }
 
@@ -468,6 +499,13 @@ cat >> ./index.md << EOF
   <label for="home-search-input" style="font-weight: bold; display: block; margin-bottom: 0.25em; text-align: center;">Search applications</label>
   <input type="search" id="home-search-input" placeholder="Start typing an app name or keyword..." autocomplete="off"
     style="width: 100%; padding: 0.6em 0.85em; font-size: 1em; border: 1px solid #999; border-radius: 4px; box-sizing: border-box;">
+  <select id="home-search-arch" aria-label="Filter by architecture"
+    style="margin-top: 0.5em; padding: 0.5em; font-size: 1em; border: 1px solid #999; border-radius: 4px;">
+    <option value="">Any architecture</option>
+    <option value="x86_64">x86_64</option>
+    <option value="aarch64">aarch64</option>
+    <option value="i686">i686</option>
+  </select>
   <div id="home-search-status" style="margin-top: 0.5em; font-style: italic; color: #666; text-align: center;">Loading app database&hellip;</div>
   <ul id="home-search-results" style="list-style: none; padding: 0; margin: 0.5em 0 0;"></ul>
   <div id="home-search-more" style="margin-top: 0.5em; text-align: center;"></div>
@@ -822,3 +860,4 @@ _categories_buttons >> ./index.md
 INDEX_BODY_FULL
 
 rm ./"$arch"-apps ./stats-appimages ./stats-portable ./body.txt*
+rm -f ./aarch64-apps ./i686-apps
