@@ -4,7 +4,7 @@
 TEST_LOG="test-summary.log"
 
 # List of test apps with zsync files (REQUIREMENTS: Under 20MB, has .zsync, simple install script)
-TEST_APP_LIST_ZSYNC="zsync2 xeyes rofi sas aisap clagrange"
+TEST_APP_LIST_ZSYNC="zsync2 xeyes rofi sas aisap clagrange st+"
 
 # List of test apps with only digest files (REQUIREMENTS: Under 20MB, a digest file, simple install script)
 TEST_APP_LIST_DIG="conky" #Too big: joplin dinox
