@@ -12,14 +12,14 @@ printf '\n%s' "rm -f /usr/local/share/applications/$APP-AM.desktop" >> ../remove
 chmod a+x ../remove || exit 1
 
 # DOWNLOAD AND PREPARE THE APP, $version is also used for updates
-version=$(curl -Ls https://codeberg.org/ProfP303/youplaytx/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*download.*" | grep -vi "i386\|i686\|armhf\|aarch64\|arm64\|armv7l" | head -1)
-download="$version"
-wget "$download" || exit 1
-# Add custom AppRun here
-# Add custom launcher here
-# Add custom icon here
-curl -Ls "https://raw.githubusercontent.com/ivan-hc/portable2appimage/main/portable2appimage" | sh -s -- ./* "$APP" && ls ./*AppImage >/dev/null 2>&1 || exit 1
-cd .. && mv ./tmp/*mage ./"$APP" && rm -R -f ./tmp || exit 1; rm -f AppRun *.desktop *.png *.svg *.xpm
+version=$(curl -Ls https://codeberg.org/ProfP303/youplaytx/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*download.*mage$" | grep -vi "i386\|i686\|armhf\|aarch64\|arm64\|armv7l" | head -1)
+wget "$version" || exit 1
+# Keep this space in sync with other installation scripts
+# Use tar fx ./*tar* here for example in this line in case a compressed file is downloaded.
+cd ..
+mv ./tmp/*mage ./"$APP"
+# Keep this space in sync with other installation scripts
+rm -R -f ./tmp || exit 1
 echo "$version" > ./version
 chmod a+x ./"$APP" || exit 1
 
@@ -33,7 +33,7 @@ set -u
 APP=youplaytx
 SITE="ProfP303/youplaytx"
 version0=$(cat "/opt/$APP/version")
-version=$(curl -Ls https://codeberg.org/ProfP303/youplaytx/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*download.*" | grep -vi "i386\|i686\|armhf\|aarch64\|arm64\|armv7l" | head -1)
+version=$(curl -Ls https://codeberg.org/ProfP303/youplaytx/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*download.*mage$" | grep -vi "i386\|i686\|armhf\|aarch64\|arm64\|armv7l" | head -1)
 [ -n "$version" ] || { echo "Error getting link"; exit 1; }
 if command -v appimageupdatetool >/dev/null 2>&1; then
 	cd "/opt/$APP" || exit 1
@@ -42,13 +42,11 @@ fi
 if [ "$version" != "$version0" ]; then
 	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
 	notify-send "A new version of $APP is available, please wait"
-	download="$version"
-	wget "$download" || exit 1
-	# Add custom AppRun here
-	# Add custom launcher here
-	# Add custom icon here
-	curl -Ls "https://raw.githubusercontent.com/ivan-hc/portable2appimage/main/portable2appimage" | sh -s -- ./* "$APP" && ls ./*AppImage >/dev/null 2>&1 || exit 1
-	cd .. && mv --backup=t ./tmp/*mage ./"$APP" && chmod a+x ./"$APP" || exit 1; rm -f AppRun *.desktop *.png *.svg *.xpm
+	wget "$version" || exit 1
+	# Use tar fx ./*tar* here for example in this line in case a compressed file is downloaded.
+	cd ..
+	mv --backup=t ./tmp/*mage ./"$APP"
+	chmod a+x ./"$APP" || exit 1
 	echo "$version" > ./version
 	rm -R -f ./*zs-old ./*.part ./tmp ./*~
 	notify-send "$APP is updated!"
@@ -59,8 +57,8 @@ EOF
 chmod a+x ./AM-updater || exit 1
 
 # LAUNCHER & ICON
-./"$APP" --appimage-extract *.desktop 1>/dev/null || exit 1; mv ./squashfs-root/*.desktop ./"$APP".desktop || exit 1
-./"$APP" --appimage-extract .DirIcon 1>/dev/null || exit 1; mv ./squashfs-root/.DirIcon ./DirIcon || exit 1
+./"$APP" --appimage-extract y*.desktop 1>/dev/null && mv ./squashfs-root/*.desktop ./"$APP".desktop
+./"$APP" --appimage-extract .DirIcon 1>/dev/null && mv ./squashfs-root/.DirIcon ./DirIcon
 COUNT=0
 while [ "$COUNT" -lt 10 ]; do # Tries to get the actual icon/desktop if it is a symlink to another symlink
 	if [ -L ./"$APP".desktop ]; then
