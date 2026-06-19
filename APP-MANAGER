@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="10.2.1-4"
+AMVERSION="10.2.1-5"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -190,20 +190,24 @@ _set_locale() {
 		mkdir -p "$DATADIR/locale/$iso_code/LC_MESSAGES" && rm -f "$DATADIR"/locale/"$iso_code"/LC_MESSAGES/am.mo "$DATADIR"/locale/"$iso_code"/LC_MESSAGES/appman.mo
 		_use_online_downloader "https://github.com/ivan-hc/AM/raw/$AMBRANCH/translations/usr/share/locale/$iso_code/LC_MESSAGES/am.mo" "$DATADIR/locale/$iso_code/LC_MESSAGES/am.mo"
 		ln -sf "$DATADIR/locale/$iso_code/LC_MESSAGES/am.mo" "$DATADIR/locale/$iso_code/LC_MESSAGES/appman.mo"
-		mkdir -p "$DATADIR/AM" && echo "$iso_code" > "$DATADIR/AM/locale"
 	else
 		printf "%b\n No locale available for you, consider adding one\n Visit https://github.com/ivan-hc/AM/tree/$AMBRANCH/translations\n" "$DIVIDING_LINE"
 		printf " For now, we set the locale to \"en\" (default) to further avoid this message\n Run \"$CLI translate\" to set an alternative language\n%b\n" "$DIVIDING_LINE"
 		iso_code="en"
-		mkdir -p "$DATADIR/AM" && echo "en" > "$DATADIR/AM/locale"
 	fi
 }
 
-[ -f "$DATADIR/AM/locale" ] && iso_code="$(cat "$DATADIR/AM/locale" | head -1)"
+[ -f "$DATADIR/AM/locale" ] && saved_locale="$(cat "$DATADIR/AM/locale" | head -1)" || saved_locale=""
+if [ "$saved_locale" = "auto" ] || [ -z "$saved_locale" ]; then
+	_check_valid_iso_codes
+	[ -z "$iso_code" ] && iso_code="en"
+	[ "$saved_locale" != "auto" ] && mkdir -p "$DATADIR/AM" && echo "auto" > "$DATADIR/AM/locale"
+else
+	iso_code="$saved_locale"
+fi
 [ -n "$iso_code" ] && export LANGUAGE="$iso_code"
-if ! echo "$LANG" | grep -q "^en.\|^C" && [ "$iso_code" != "en" ]; then
+if [ "$iso_code" != "en" ]; then
 	if [ -n "$LANG" ]; then
-		[ -z "$iso_code" ] && _check_valid_iso_codes
 		if [ ! -f "$DATADIR/locale/$iso_code/LC_MESSAGES/am.mo" ]; then
 			_set_locale
 		fi
@@ -215,27 +219,39 @@ fi
 _use_translate() {
 	echo "$DIVIDING_LINE"
 	if [ -z "$2" ]; then
-		[ -f "$DATADIR/AM/locale" ] && rm -f "$DATADIR/AM/locale"
 		printf $"Add a suitable locale code, for example \"it\" for Italian\n\n" | _fit | grep .
 		read -r -ep $" Leave blank to use \"$CLI\" in English: " amlocale
 		if [ -z "$amlocale" ] || [ "$amlocale" = "en" ]; then
 			iso_code="en"
+			mkdir -p "$DATADIR/AM" && echo "en" > "$DATADIR/AM/locale"
+		elif [ "$amlocale" = "auto" ]; then
+			LANGUAGE="" _check_valid_iso_codes
+			[ -z "$iso_code" ] && iso_code="en"
+			_set_locale
+			mkdir -p "$DATADIR/AM" && echo "auto" > "$DATADIR/AM/locale"
 		elif ! echo "$ISO_CODES" | tr ' ' '\n' | grep -q "^$amlocale$"; then
 			printf "ERROR, \"%b\" is not a valid locale code\n\nList of valid locale codes:\n\n%b\n\n" "$amlocale" "$ISO_CODES"| _fit
 		else
 			iso_code="$amlocale"
 			_set_locale
+			mkdir -p "$DATADIR/AM" && echo "$iso_code" > "$DATADIR/AM/locale"
 		fi
 		printf "\n"
 	elif [ "$2" = "en" ]; then
 		iso_code="en"
+		mkdir -p "$DATADIR/AM" && echo "en" > "$DATADIR/AM/locale"
+	elif [ "$2" = "auto" ]; then
+		LANGUAGE="" _check_valid_iso_codes
+		[ -z "$iso_code" ] && iso_code="en"
+		_set_locale
+		mkdir -p "$DATADIR/AM" && echo "auto" > "$DATADIR/AM/locale"
 	elif ! echo "$ISO_CODES" | tr ' ' '\n' | grep -q "^$2$"; then
 		printf "ERROR, \"%b\" is not a valid locale code\n\nList of valid locale codes:\n\n%b\n\n" "$2" "$ISO_CODES" | _fit
 	else
 		iso_code="$2"
 		_set_locale
+		mkdir -p "$DATADIR/AM" && echo "$iso_code" > "$DATADIR/AM/locale"
 	fi
-	mkdir -p "$DATADIR/AM" && echo "$iso_code" > "$DATADIR/AM/locale"
 	printf $"Setting locale to \"%b\"\n" "$iso_code" | _fit
 	echo "$DIVIDING_LINE"
 }
