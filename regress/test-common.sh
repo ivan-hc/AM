@@ -9,6 +9,9 @@ TEST_APP_LIST_ZSYNC="zsync2 xeyes rofi sas aisap clagrange st+"
 # List of test apps with only digest files (REQUIREMENTS: Under 20MB, a digest file, simple install script)
 TEST_APP_LIST_DIG="conky" #Too big: joplin dinox
 
+# List of test apps with desktop files (REQUIREMENTS: Under 10MB, has .desktop launcher, simple install script)
+TEST_APP_LIST_DESK="helio nvim st+ xeyes"
+
 # List of test apps that are zipped (REQUIREMENTS: Under 10MB, no .zsync, simple install script)
 TEST_APP_LIST_ZIP="clifm gotimer dra nyan navi lsd hyperfine fcp"
 

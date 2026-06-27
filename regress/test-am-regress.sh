@@ -19,6 +19,7 @@ _log "Done.\n"
 ./test-am-install.sh
 ./test-am-checksum.sh
 ./test-am-repair.sh
+./test-am-launcher.sh
 ./test-am-sandbox.sh
 ./test-am-nolibfuse.sh
 ./test-am-rollback.sh
