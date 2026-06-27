@@ -284,10 +284,10 @@ _install_arg() {
 			sed -i "s/sed -i/sed -i'' -e/g" ./"$arg"
 		fi
 	fi
-	# Determine if this is a Musl distro
-	if grep -q "appimage-extract" ./"$arg"; then
+	# Check safely if executable file is an AppImage and then alternate --appimage-extract with 7z if the first fails
+	if grep -q "appimage-extract" ./"$arg" && grep -q "# LAUNCHER & ICON" ./"$arg"; then
 		sed -i -- 's#./"$APP" --appimage-extract #_appimage_extract #g' ./"$arg"
-		sed -i '/# LAUNCHER & ICON/a\_appimage_extract() { if ! ./"$APP" --appimage-extract "$@"; then command -v 7z >/dev/null 2>&1 && 7z x ./"$APP" -o./squashfs-root "$@"; fi }' ./"$arg"
+		sed -i '/# LAUNCHER & ICON/a\_appimage_extract() { if head -c10 ./"$APP" 2>/dev/null | grep -qa "^.ELF....AI$"; then if ! ./"$APP" --appimage-extract "$@"; then command -v 7z >/dev/null 2>&1 && 7z x ./"$APP" -o./squashfs-root "$@"; fi; fi }' ./"$arg"
 	fi
 	# Determine if the app is hosted on github
 	if grep -q "api.github.com" ./"$arg"; then
