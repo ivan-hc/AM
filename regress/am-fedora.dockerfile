@@ -13,10 +13,10 @@ RUN cd && wget https://raw.githubusercontent.com/ivan-hc/AM/main/INSTALL && chmo
 RUN cd && git clone --depth 1 https://github.com/ivan-hc/AM && mv AM/regress . && rm -rf AM
 
 # Setup AM with safe defaults
-RUN printf "Y\n\n" | am --user && am --system && am --disable-notifications
+RUN printf "Y\n\n" | am --user && am --system && am --disable-notifications && am --devmode-enable
 
 # Setup env
 RUN echo "export PATH=$PATH:/root/.local/bin" >> ~/.bashrc
-RUN echo "echo \"AM-Fedora testing container started\"" >> ~/.bashrc
+RUN echo "echo \"AM-Fedora testing container started\" && . test-common.sh && _update" >> ~/.bashrc
 WORKDIR /root/regress
 CMD ["/bin/bash"]

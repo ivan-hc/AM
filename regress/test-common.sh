@@ -203,3 +203,11 @@ _test_apps() {
 	done
 }
 
+# Function to update AM and regression folder in container
+_update() {
+	am -s
+	git clone -q --depth 1 https://github.com/ivan-hc/AM /opt/AM.git
+	cp -rf /opt/AM.git/regress ~/.
+	rm -rf /opt/AM.git
+}
+
