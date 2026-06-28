@@ -21,10 +21,10 @@ RUN locale-gen && update-locale LANG=en_US.UTF-8
 ENV LC_ALL en_US.UTF-8
 
 # Setup AM with safe defaults
-RUN printf "Y\n\n" | am --user && am --system && am --disable-notifications
+RUN printf "Y\n\n" | am --user && am --system && am --disable-notifications && am --devmode-enable
 
 # Setup env
 RUN echo "export PATH=$PATH:/root/.local/bin" >> ~/.bashrc
-RUN echo "echo \"AM-Debian Jessie (old) testing container started\"" >> ~/.bashrc
+RUN echo "echo \"AM-Debian Jessie (old) testing container started\" && . test-common.sh && _update" >> ~/.bashrc
 WORKDIR /root/regress
 CMD ["/bin/bash"]

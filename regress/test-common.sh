@@ -9,6 +9,9 @@ TEST_APP_LIST_ZSYNC="zsync2 xeyes rofi sas aisap clagrange st+"
 # List of test apps with only digest files (REQUIREMENTS: Under 20MB, a digest file, simple install script)
 TEST_APP_LIST_DIG="conky" #Too big: joplin dinox
 
+# List of test apps with desktop files (REQUIREMENTS: Under 10MB, has .desktop launcher, simple install script)
+TEST_APP_LIST_DESK="helio nvim st+ xeyes"
+
 # List of test apps that are zipped (REQUIREMENTS: Under 10MB, no .zsync, simple install script)
 TEST_APP_LIST_ZIP="clifm gotimer dra nyan navi lsd hyperfine fcp"
 
@@ -198,5 +201,13 @@ _test_apps() {
 			_fail "Error: $prog was not installed correctly."
 		fi
 	done
+}
+
+# Function to update AM and regression folder in container
+_update() {
+	am -s
+	git clone -q --depth 1 https://github.com/ivan-hc/AM /opt/AM.git
+	cp -rf /opt/AM.git/regress ~/.
+	rm -rf /opt/AM.git
 }
 
