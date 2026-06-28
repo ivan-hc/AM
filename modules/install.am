@@ -241,19 +241,25 @@ _install_script_retry() {
 _patch_installation_script_with_function_to_extract_appimages() {
 	sed -i '/# LAUNCHER & ICON/a\
 	\
+	_sevenzip_appimage_extract() {\
+		if command -v 7z >/dev/null 2>&1; then\
+			7z x ./"$APP" -o./squashfs-root "$@"\
+		elif command -v 7zz >/dev/null 2>&1; then\
+			7zz x ./"$APP" -o./squashfs-root "$@"\
+		else\
+			exit 0\
+		fi\
+	}\
+	\
 	_appimage_extract() {\
 		if head -c10 ./"$APP" 2>/dev/null | grep -qa "^.ELF....AI$"; then\
-			if ! ./"$APP" --appimage-extract "$@" 2>/dev/null; then\
-				if command -v 7z >/dev/null 2>&1; then\
-					7z x ./"$APP" -o./squashfs-root "$@"\
-				elif command -v 7zz >/dev/null 2>&1; then\
-					7zz x ./"$APP" -o./squashfs-root "$@"\
-				else\
-					exit 1\
+			if grep -Eaoq -m 1 "appimage-extract" ./"$APP"; then\
+				if ! ./"$APP" --appimage-extract "$@" 2>/dev/null; then\
+					_sevenzip_appimage_extract "$@"\
 				fi\
 			fi\
 		else\
-			exit 1\
+			exit 0\
 		fi\
 	}\
 	' ./"$arg"
