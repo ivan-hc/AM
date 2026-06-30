@@ -1,0 +1,118 @@
+name: "Check archived and obsolete sources"
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * 1'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sync-files:
+    name: "Run sync"
+    runs-on: ubuntu-latest
+    outputs:
+      message: ${{ steps.commit_message.outputs.message }}
+    steps:
+      - name: "Checkout source repository"
+        uses: actions/checkout@v6
+
+      - name: "Get commit message"
+        id: commit_message
+        run: |
+          COMMIT_MESSAGE="Update list of archived and obsolete sources"
+          echo "message=$COMMIT_MESSAGE" >> $GITHUB_OUTPUT
+
+      - name: "Run test"
+        run: |
+          cd programs || exit 1
+
+          obsolescence_threshold=$(date -u -d "1 years ago" +"%Y")
+          this_year=$(date +"%Y")
+
+          printf -- "----------------------------------------------------------------------------\n"
+
+          # Determine archived repositories
+          printf "Determine archived repositories\n\n"
+          for arg in x86_64/*; do
+             (
+             appname=$(echo "$arg" | sed "s:.*/::")
+             if grep -q "^version=.*api.github.com" "$arg" && grep -q "^SITE=" "$arg"; then
+                user_repo=$(grep "^SITE=" "$arg" | head -1 | awk -F'"' '/^SITE=/{print $2}')
+                if [ -f archived-checked ] && grep -q -- "^$user_repo$" archived-checked; then
+                   echo "$appname" >> archived-list.tmp
+                   echo " - $appname repository is Archived"
+                else
+                   user_repo_root=$(curl -Ls --retry 5 --retry-max-time 120 "https://api.gh.pkgforge.dev/repos/$user_repo")
+                   wait
+                   if [ -n "$user_repo_root" ] && echo "$user_repo_root" | grep -q '"archived".* true,'; then
+                      echo "$appname" >> archived-list.tmp
+                      echo " - $appname repository is Archived"
+                      echo "$user_repo" >> archived-checked
+                   fi
+                fi
+             fi
+             ) &
+           done
+           wait
+
+           echo "# ARCHIVED SOURCES" > archived-apps
+           sort -u archived-list.tmp >> archived-apps
+           rm -f archived-list.tmp
+
+           printf -- "\n----------------------------------------------------------------------------\n\n"
+
+           # Determine repositories no more updated in the last years
+           printf "Determine repositories no more updated in the last years\n\n"
+           for arg in x86_64/*; do
+              (
+              appname=$(echo "$arg" | sed "s:.*/::")
+              if grep -q "^version=.*api.github.com.*/releases" "$arg" && grep -q "^SITE=" "$arg"; then
+                 user_repo=$(grep "^SITE=" "$arg" | head -1 | awk -F'"' '/^SITE=/{print $2}')
+                 if ! grep -q "^$user_repo$" validated-site 2>/dev/null; then
+                    if [ -f obsolete-checked ] && grep -q -- "^$user_repo " obsolete-checked; then
+                       if ! grep -q -- "^$user_repo $obsolescence_threshold\|^$user_repo $this_year" obsolete-checked; then
+                          date=$(grep "^$user_repo " obsolete-checked | tr ' ' '\n' | tail -1)
+                          echo "$appname $date" >> obsolete-list.tmp
+                          echo " - $appname, of $date"
+                       fi
+                    else
+                       user_repo_releases=$(curl -Ls --retry 5 --retry-max-time 120 "https://api.gh.pkgforge.dev/repos/$user_repo/releases")
+                       wait
+                       date=$(echo "$user_repo_releases" | grep -oP '"updated_at": "\K\d{4}' | sort -n | tail -1)
+                       if [ -n "$date" ] && echo "$date" | grep -qE '^[0-9]{4}$' && [ "$date" -lt "$obsolescence_threshold" ]; then
+                          echo "$appname $date" >> obsolete-list.tmp
+                          echo " - $appname, of $date"
+                          echo "$user_repo $date" >> obsolete-checked
+                       else
+                          echo "$user_repo" >> validated-site
+                       fi
+                    fi
+                    date=""
+                 fi
+              fi
+              ) &
+           done
+           wait
+
+           echo "# OBSOLETE SOURCES" > obsolete-apps
+           sort -u obsolete-list.tmp >> obsolete-apps
+           rm -f obsolete-list.tmp
+           printf -- "\n----------------------------------------------------------------------------\n"
+
+      - name: "Push to Source"
+        run: |
+          git config --global user.name "web-flow"
+          git config --global user.email "noreply@github.com"
+          git add programs/archived-apps programs/obsolete-apps
+          if git diff-index --quiet HEAD; then
+            echo "No changes to commit." >> $GITHUB_STEP_SUMMARY
+          else
+            git commit -a -m "${{ steps.commit_message.outputs.message }}"
+            git push && echo "Sync to Source succeeded" >> $GITHUB_STEP_SUMMARY
+          fi

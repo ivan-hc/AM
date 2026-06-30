@@ -1,0 +1,161 @@
+#!/bin/sh
+
+set -e
+
+# Colors
+RED='\033[0;31m'; LightBlue='\033[1;34m'; Green='\033[0;32m'
+
+# For developers
+AM_BRANCH="main"
+
+if command -v tput >/dev/null 2>&1; then
+	TERMINAL_WIDTH=$(($(tput cols)-3))
+else
+	TERMINAL_WIDTH=${COLUMNS:-80}
+fi
+DIVIDING_LINE=$(printf '%*s' "$TERMINAL_WIDTH" '' | tr ' ' '-')
+
+_fit() {
+	if command -v tput >/dev/null 2>&1; then
+		fold -sw "$TERMINAL_WIDTH" | sed 's/^/ /g'
+	else
+		fold -sw 77 | sed 's/^/ /g'
+	fi
+}
+
+# Function to check online connections (uses github.com by default, as the database and CLI itself are stored/hosted there)
+_online_check_tool() {
+	if command -v wget >/dev/null 2>&1; then
+		wget -q --tries=10 --timeout=20 --spider https://github.com
+	elif command -v curl >/dev/null 2>&1; then
+		curl --output /dev/null --silent --head --fail https://github.com 1> /dev/null
+	else
+		printf "\n %b💀 ERROR! MISSING ESSENTIAL COMMANDS\033[0m: %s\n\n Install the above and try again! \n\n" "${RED}" "curl, wget"
+		exit 0
+	fi
+}
+
+_online_check() {
+	if ! _online_check_tool; then
+		printf "\n Installer wouldn't work offline\n\n Please check your internet connection and try again\n\n"
+		exit 0
+	fi
+}
+
+_online_check
+
+# Check dependencies for this script
+_check_dependency() {
+	AMDEPENDENCES="chmod chown grep"
+	for dependency in $AMDEPENDENCES; do
+		if ! command -v "$dependency" >/dev/null 2>&1; then
+			printf "\n %b💀 ERROR! MISSING ESSENTIAL COMMAND \033[0m: %b\n\n Install the above and try again! \n\n" "${RED}" "$dependency"
+			exit 1
+		fi
+	done
+}
+
+_check_dependency
+
+_script_downloader() {
+	if command -v wget >/dev/null 2>&1; then
+		wget -q "$URL" -O "$SCRIPT"
+	elif command -v curl >/dev/null 2>&1; then
+		curl -Lo "$SCRIPT" "$URL" 2>/dev/null
+	fi
+}
+
+# INSTALL "AM" SYSTEM-WIDE
+_install_am() {
+	CACHEDIR="${XDG_CACHE_HOME:-$HOME/.cache}"
+	URL="https://raw.githubusercontent.com/ivan-hc/AM/$AM_BRANCH/INSTALL"
+	SCRIPT="$CACHEDIR/INSTALL-AM.sh"
+	mkdir -p "$CACHEDIR" || true
+	rm -f "$CACHEDIR"/INSTALL-AM.sh || true
+	_script_downloader && chmod a+x "$CACHEDIR"/INSTALL-AM.sh
+	#cp ./INSTALL "$CACHEDIR"/INSTALL-AM.sh && chmod a+x "$CACHEDIR"/INSTALL-AM.sh # for developers
+	if command -v sudo >/dev/null 2>&1; then
+		SUDOCMD="sudo"
+	elif command -v doas >/dev/null 2>&1; then
+		SUDOCMD="doas"
+	else
+		echo "ERROR: No sudo or doas found"
+		exit 1
+	fi
+	$SUDOCMD "$CACHEDIR"/INSTALL-AM.sh && rm -f "$CACHEDIR"/INSTALL-AM.sh
+}
+
+# INSTALL "AM" LOCALLY, AS "APPMAN"
+_install_appman() {
+	ZSHRC="${ZDOTDIR:-$HOME}/.zshrc"
+	BINDIR="${XDG_BIN_HOME:-$HOME/.local/bin}"
+	mkdir -p "$BINDIR"
+	if ! echo "$PATH" | grep "$BINDIR" >/dev/null 2>&1; then 
+		echo '--------------------------------------------------------------------------'
+		echo " Adding $BINDIR to PATH, you might need to"
+		echo " close and reopen the terminal for this to take effect."
+		if [ -e ~/.bashrc ] && ! grep 'PATH="$PATH:$BINDIR"' ~/.bashrc >/dev/null 2>&1; then
+			printf '\n%s\n' 'BINDIR="${XDG_BIN_HOME:-$HOME/.local/bin}"' >> ~/.bashrc
+			printf '\n%s\n' 'if ! echo $PATH | grep "$BINDIR" >/dev/null 2>&1; then' >> ~/.bashrc
+			printf '	export PATH="$PATH:$BINDIR"\nfi\n' >> ~/.bashrc
+		fi
+		if [ -e "$ZSHRC" ] && ! grep 'PATH="$PATH:$BINDIR"' "$ZSHRC" >/dev/null 2>&1; then
+			printf '\n%s\n' 'BINDIR="${XDG_BIN_HOME:-$HOME/.local/bin}"' >> "$ZSHRC"
+			printf '\n%s\n' 'if ! echo $PATH | grep "$BINDIR" >/dev/null 2>&1; then' >> "$ZSHRC"
+			printf '	export PATH="$PATH:$BINDIR"\nfi\n' >> "$ZSHRC"
+		fi
+	fi
+	URL="https://raw.githubusercontent.com/ivan-hc/AM/$AM_BRANCH/APP-MANAGER"
+	SCRIPT="$BINDIR/appman"
+	echo '--------------------------------------------------------------------------'
+	printf " %bInstalling \"AppMan\" in %b\033[0m\n" "${Green}" "$BINDIR"
+	_script_downloader && chmod a+x "$BINDIR"/appman
+	echo '--------------------------------------------------------------------------'
+	printf " %bThe following modules will be installed gradually, as you use AppMan\033[0m\n" "${Green}"
+	MODULES=$(sort "$SCRIPT" | tr '"' '\n' | grep "[a-z]\.am$")
+	for module_name in $MODULES; do
+		echo " ◆ https://raw.githubusercontent.com/ivan-hc/AM/$AM_BRANCH/modules/$module_name"
+	done
+	echo '--------------------------------------------------------------------------'
+	printf " %b\"AppMan\" has been successfully installed! \033[0m\n" "${Green}"
+	printf " Please, run \"%bappman -h\033[0m\" to see the list of the options.\n" "${LightBlue}"
+	echo '--------------------------------------------------------------------------'
+}
+
+# CHOOSE BETWEEN "AM" AND "APPMAN"
+echo "$DIVIDING_LINE"
+printf "
+Choose how to install \"AM\" and its managed applications:
+
+1. System Installation, as \"%bAM\033[0m\"
+
+- Command   : %bam\033[0m
+- Path      : symlink /usr/local/bin/am → /opt/am/APP-MANAGER
+- Programs  : installed in /opt or locally
+- Root      : YES, only for installations and removals
+- Ownership : only you have read-write permissions
+- Target    : power users
+- Others    : can only use programs and AppMan mode
+
+2. Local Installation, as \"%bAppMan\033[0m\"
+
+- Command   : %bappman\033[0m
+- Path      : %b/.local/bin/appman
+- Programs  : can be installed anywhere
+- Root      : NO
+- Ownership : anyone with read-write access in %b
+- Target    : anyone
+- Others    : can have separate configs or replicate yours
+\n" "${RED}" "${Green}" "${LightBlue}" "${Green}" "$HOME" "$HOME" | _fit
+
+read -r -p " Choose between \"AM\" (type 1) and \"AppMan\" (2), or leave blank to exit: " response
+case "$response" in
+	1)	_install_am || exit 1
+		;;
+	2)	_install_appman || exit 1
+		;;
+	''|*)
+		echo "$DIVIDING_LINE"
+		echo "Installation aborted, exiting." && echo "$DIVIDING_LINE" && exit 1
+		;;
+esac

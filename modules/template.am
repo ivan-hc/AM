@@ -1,0 +1,535 @@
+#!/usr/bin/env bash
+
+##########################################################################
+# THIS MODULE IS USED TO CREATE INSTALLATION SCRIPS TO ADD TO THE DATABASE
+##########################################################################
+
+_online_check
+
+if [  -f "$AMDATADIR"/betatester ]; then
+	AMREPO_MAIN="https://raw.githubusercontent.com/ivan-hc/AM/main"
+else
+	AMREPO_MAIN="$AMREPO"
+fi
+
+# Installation scripts are mainly for the x86_64 architecture: if there is not one for x86_64, there is no alternative architecture counterpart
+
+MAIN_ARCH="x86_64"
+
+list_header="#########################################################################################################
+
+Please, check and edit the lines starting with \"◆\" down below:
+
+If all is OK, move them to the file/files named \"\$ARCH-apps\" (for example \"x86_64-apps\")
+
+No matters the order, Github Actions will take care to sort it for you.
+
+NOTE: The catalog at https://portable-linux-apps.github.io bases its pages on app descriptions.
+
+Depending on the keywords it finds, it will place the app to a category.
+
+See the list of keywords at:
+https://github.com/ivan-hc/AM/blob/23d1eb26cff2ad48cbe986ff882a1665e48be638/tools/am2pla-site#L274-L313
+
+#########################################################################################################"
+
+# ------------------------------------------------------------------------
+# COMMON FUNCTIONS FOR OPTIONS 0 (APPIMAGES) AND 2 (ARCHIVES/FILES)
+# ------------------------------------------------------------------------
+
+_template_create_dirs_and_ask_for_source() {
+	# Create base directories
+	mkdir -p ./am-scripts ./am-scripts/"$MAIN_ARCH"
+	if [ ! -f ./am-scripts/"$MAIN_ARCH"-apps ]; then
+		_use_online_downloader "$AMREPO_MAIN/programs/$MAIN_ARCH-apps" am-scripts/"$MAIN_ARCH"-apps \
+		|| printf "%b\nERROR: Cannot download \n$AMREPO_MAIN/programs/$MAIN_ARCH-apps\nPlease download it manually! \n%b\n" "$DIVIDING_LINE" "$DIVIDING_LINE" | _fit
+	fi
+	# Create readme "list" file
+	if [ ! -f ./am-scripts/list ]; then
+		echo "$list_header" > ./am-scripts/list
+		sed -i 's/^/# /g; s/# #/##/g' ./am-scripts/list
+		printf "\n\n" >> ./am-scripts/list
+	fi
+	# Download the template and convert the argument into a command
+	if [ "$templatetype" = 0 ] || [ -z "$templatetype" ]; then
+		_use_online_downloader "$AMREPO"/templates/AM-SAMPLE-AppImage ./am-scripts/"$MAIN_ARCH"/"$arg"
+	elif [ "$templatetype" = 1 ]; then
+		_use_online_downloader "$AMREPO"/templates/AM-SAMPLE-portable2appimage ./am-scripts/"$MAIN_ARCH"/"$arg"
+	elif [ "$templatetype" = 2 ]; then
+		_use_online_downloader "$AMREPO"/templates/AM-SAMPLE-Archive ./am-scripts/"$MAIN_ARCH"/"$arg"
+	fi
+	sed -i "s/SAMPLE/$arg/g" ./am-scripts/"$MAIN_ARCH"/"$arg"
+	echo "$DIVIDING_LINE"
+}
+
+_template_create_new_line_for_application_list() {
+	# Fix $COMMENT syntax
+	COMMENT=$(echo "$COMMENT"  | sed -- "s/\[.*\]//g; s/[[:space:]]*$//; s/^[[:space:]]*//g" | xargs)
+	if ! echo "$COMMENT" | grep -q "\.$"; then COMMENT=$(echo "$COMMENT."); fi
+	if echo "$COMMENT" | grep -qi "^description:"; then _template_description_if_hosted_elsewhere; fi
+
+	# Remove duplicated lines
+	if grep -q "^◆ $arg " ./am-scripts/list; then
+		sed -i "s/^◆ $arg .*/◆ $arg : ${COMMENT^}/g" ./am-scripts/list
+	else
+		echo "◆ $arg : ${COMMENT^}" >> ./am-scripts/list
+	fi
+}
+
+_template_description_if_hosted_elsewhere() {
+	sed -i "s#REPLACETHIS#$RESPONSE#g" ./am-scripts/"$MAIN_ARCH"/"$arg"
+	# ADD A DESCRIPTION FOR THIS APPLICATION
+	read -r -ep $" ◆ ADD A BRIEF DESCRIPTION FOR THIS APPLICATION $(echo -e '\n : ')" COMMENT
+	case "$COMMENT" in
+	*)
+		_template_create_new_line_for_application_list
+		;;
+	esac
+	echo "$DIVIDING_LINE"
+}
+
+_edit_script_head() {
+	mv ./am-scripts/"$MAIN_ARCH"/"$arg" ./am-scripts/"$MAIN_ARCH"/"$arg".old
+	sed -n '1,14p' ./am-scripts/"$MAIN_ARCH"/"$arg".old >> ./am-scripts/"$MAIN_ARCH"/"$arg"
+}
+
+_edit_script_middle() {
+	sed -n '16,35p' ./am-scripts/"$MAIN_ARCH"/"$arg".old >> ./am-scripts/"$MAIN_ARCH"/"$arg"
+}
+
+_edit_script_ending() {
+	sed -n '37,132p' ./am-scripts/"$MAIN_ARCH"/"$arg".old >> ./am-scripts/"$MAIN_ARCH"/"$arg"
+	rm -f ./am-scripts/"$MAIN_ARCH"/"$arg".old
+}
+
+# ------------------------------------------------------------------------
+# FUNCTIONS TO HANDLE DOWNLOADS AND VERSIONS FROM ALTERNATIVE SOURCES
+# ------------------------------------------------------------------------
+
+_template_custom_download_url_as_version_variable() {
+	# IF YOU CAN, USE A ONE-LINE COMMAND TO DOWNLOAD THE PROGRAM
+	read -r -ep "$(printf $" USE A ONE-LINE COMMAND TO CHECK THE URL TO THE PROGRAM OR THE VERSION\n\n if the URL is fixed, simply add the \"echo\" command at the beginning\n\n :") " DOWNLOADURL
+	case "$DOWNLOADURL" in
+	*)
+		_edit_script_head
+		echo "version=\$($DOWNLOADURL)" >> ./am-scripts/"$MAIN_ARCH"/"$arg"
+		_edit_script_middle
+		echo "version=\$($DOWNLOADURL)" >> ./am-scripts/"$MAIN_ARCH"/"$arg"
+		_edit_script_ending
+		echo "$DIVIDING_LINE"
+		;;
+	esac
+}
+
+# ------------------------------------------------------------------------
+# CUSTOM LAUNCHERS GENERATOR
+# ------------------------------------------------------------------------
+
+# Function to add a generic .desktop file and an icon to the installation script (option 2)
+_template_generate_desktop_file() {
+	sed -i "s/#printf/printf/g" ./am-scripts/"$MAIN_ARCH"/"$arg"
+	cat <<-'HEREDOC' >> ./am-scripts/"$MAIN_ARCH"/"$arg"
+
+	# ICON
+	mkdir -p icons
+	curl -s -Lo ./icons/"$APP" ICONURL
+
+	# LAUNCHER
+	echo "[Desktop Entry]
+	Name=APPNAME
+	Exec=$APP
+	Icon=/opt/$APP/icons/$APP
+	Type=Application
+	Terminal=false
+	Categories=YOURCATEGORY;" > /usr/local/share/applications/"$APP"-AM.desktop
+	HEREDOC
+}
+
+# Function to add a category to our custom .desktop file (options 2 and 3)
+_template_desktop_file_select_category() {
+	echo -e $" LIST OF CATEGORIES:\n 0) AudioVideo\n 1) Audio\n 2) Video\n 3) Development\n 4) Education\n 5) Game\n 6) Graphics\n 7) Network\n 8) Office\n 9) Science\n 10) Settings\n 11) System\n 12) Utility (default)\n "
+	read -r -p $" CHOOSE A CATEGORY : " response
+	case "$response" in
+		0)	sed -i "s/YOURCATEGORY/AudioVideo/g" ./am-scripts/"$MAIN_ARCH"/"$arg";;
+		1)	sed -i "s/YOURCATEGORY/Audio/g" ./am-scripts/"$MAIN_ARCH"/"$arg";;
+		2)	sed -i "s/YOURCATEGORY/Video/g" ./am-scripts/"$MAIN_ARCH"/"$arg";;
+		3)	sed -i "s/YOURCATEGORY/Development/g" ./am-scripts/"$MAIN_ARCH"/"$arg";;
+		4)	sed -i "s/YOURCATEGORY/Education/g" ./am-scripts/"$MAIN_ARCH"/"$arg";;
+		5)	sed -i "s/YOURCATEGORY/Game/g" ./am-scripts/"$MAIN_ARCH"/"$arg";;
+		6)	sed -i "s/YOURCATEGORY/Graphics/g" ./am-scripts/"$MAIN_ARCH"/"$arg";;
+		7)	sed -i "s/YOURCATEGORY/Network/g" ./am-scripts/"$MAIN_ARCH"/"$arg";;
+		8)	sed -i "s/YOURCATEGORY/Office/g" ./am-scripts/"$MAIN_ARCH"/"$arg";;
+		9)	sed -i "s/YOURCATEGORY/Science/g" ./am-scripts/"$MAIN_ARCH"/"$arg";;
+		10)	sed -i "s/YOURCATEGORY/Settings/g" ./am-scripts/"$MAIN_ARCH"/"$arg";;
+		11)	sed -i "s/YOURCATEGORY/System/g" ./am-scripts/"$MAIN_ARCH"/"$arg";;
+		12|*)	sed -i "s/YOURCATEGORY/Utility/g" ./am-scripts/"$MAIN_ARCH"/"$arg";;
+	esac
+	echo "$DIVIDING_LINE"
+}
+
+# ------------------------------------------------------------------------
+# COMMON FUNCTIONS TO DOWNLOAD APPS FROM GIT REPOSITORIES
+# ------------------------------------------------------------------------
+
+_template_if_github() {
+	SITE="https://github.com"
+	RESPONSE=$(echo "$RESPONSE" | sed 's#https://github.com/##g' | cut -f1,2 -d'/')
+	COMMENT=$(_use_online_reading_tool $HeaderAuthWithGITPAT https://api.github.com/repos/"$RESPONSE" 2>/dev/null | grep description | sed 's/"description": "//' | sed 's/",//' | cut -c 3-)
+	[ -z "$COMMENT" ] && [ -z "$HeaderAuthWithGITPAT" ] && COMMENT=$(_use_online_reading_tool "$ALT_GH"/repos/"$RESPONSE" 2>/dev/null | grep description | sed 's/"description": "//' | sed 's/",//' | cut -c 3-)
+	CURL_COMMAND_REF="$CURLLS https://api.github.com/repos"
+	CURL_COMMAND_REF_PREVIEW="$CURLLS $HeaderAuthWithGITPAT https://api.github.com/repos"
+	GH_API_ALLOWED=$(_use_online_reading_tool "https://api.github.com/rate_limit" | tr '{,' '\n' | grep -i remaining | tail -1 | grep -Eo "[0-9]*")
+	if [ "$GH_API_ALLOWED" -le 10 ]; then
+		CURL_COMMAND_REF_PREVIEW="$CURLLS $ALT_GH/repos"
+	fi
+}
+
+_template_if_codeberg() {
+	SITE="https://codeberg.org"
+	RESPONSE=$(echo "$RESPONSE" | sed 's#https://codeberg.org/##g' | cut -f1,2 -d'/')
+	COMMENT=$(_use_online_reading_tool https://codeberg.org/"$RESPONSE" 2>/dev/null | grep "description.*content" | tail -1 | sed 's/content="/\n/; s/">//g' | tail -1)
+	CURL_COMMAND_REF="$CURLLS https://codeberg.org"
+	CURL_COMMAND_REF_PREVIEW="$CURL_COMMAND_REF"
+}
+
+_template_if_git_repo() {
+	# Determine the git repo
+	if echo "$RESPONSE" | grep -q "https://github.com"; then
+		_template_if_github
+	elif echo "$RESPONSE" | grep -q "https://codeberg.org"; then
+		_template_if_codeberg
+	fi
+	# Determine the function to download the program based on the type (appimage or other)
+	q="'"
+	if [ "$templatetype" = 0 ] || [ -z "$templatetype" ]; then
+		AIA=""
+		FUNCTION=''"$CURL_COMMAND_REF"'/'"$RESPONSE"'/releases | sed '"$q"'s/[()",{} ]/\\n/g'"$q"' | grep -oi "https.*download.*mage$" | grep -vi "i386\\|i686\\|armhf\\|aarch64\\|arm64\\|armv7l" | head -1'
+		if ! eval "$CURL_COMMAND_REF/$RESPONSE/releases" | sed 's/[()",{} ]/\n/g' | grep -q "https.*download.*mage$"; then
+			AIA="1"
+			_use_online_downloader "$AMREPO"/templates/AM-SAMPLE-AppImage-in-archive ./am-scripts/"$MAIN_ARCH"/"$arg"
+			sed -i "s/SAMPLE/$arg/g" ./am-scripts/"$MAIN_ARCH"/"$arg"
+		fi
+		[ -n "$AIA" ] && FUNCTION=$(echo "$FUNCTION" | sed 's/mage\$//g')
+	elif [ "$templatetype" = 1 ] || [ "$templatetype" = 2 ]; then
+		FUNCTION=''"$CURL_COMMAND_REF"'/'"$RESPONSE"'/releases | sed '"$q"'s/[()",{} ]/\\n/g'"$q"' | grep -oi "https.*download.*" | grep -vi "i386\\|i686\\|armhf\\|aarch64\\|arm64\\|armv7l" | head -1'
+	fi
+	# Add the above function and reference repository in the installation script
+	sed -i "s#REPLACETHIS#$RESPONSE#g" ./am-scripts/"$MAIN_ARCH"/"$arg"
+	sed -i "s#FUNCTION)#$FUNCTION)#g" ./am-scripts/"$MAIN_ARCH"/"$arg"
+	_template_create_new_line_for_application_list
+	echo "$DIVIDING_LINE"
+}
+
+_template_test_github_url() {
+	echo ""
+	[ -n "$AIA" ] && GHURLPREVIEW_COMMAND=$(echo "$GHURLPREVIEW_COMMAND" | sed 's/mage\$//g')
+	GHURLPREVIEW=$(eval "$GHURLPREVIEW_COMMAND")
+	echo "$GHURLPREVIEW"
+}
+
+_template_test_github_alt_architectures_url() {
+	if grep -q "^version=.*api.github.com" ./am-scripts/"$MAIN_ARCH"/"$arg"; then
+		# Determine if arm64/aarch64 releases are available
+		GHURLPREVIEW_COMMAND_ARM64=$(echo "$GHURLPREVIEW_COMMAND" | sed -- "s#grep -vi .*armv7l\"# grep -i \"aarch64\\\|arm64\"#g")
+		GHURLPREVIEW_ARM64=$(eval "$GHURLPREVIEW_COMMAND_ARM64")
+		if [ -n "$GHURLPREVIEW_ARM64" ]; then
+			if [ ! -f ./am-scripts/aarch64-apps ]; then
+				_use_online_downloader "$AMREPO_MAIN/programs/aarch64-apps" am-scripts/aarch64-apps \
+				|| printf "%b\nERROR: Cannot download \n$AMREPO_MAIN/programs/aarch64-apps\nPlease download it manually! \n%b\n" "$DIVIDING_LINE" "$DIVIDING_LINE" | _fit
+			fi
+			mkdir -p ./am-scripts/aarch64
+			cp -r ./am-scripts/"$MAIN_ARCH"/"$arg" ./am-scripts/aarch64/"$arg"
+			sed -i -- "s#grep -vi .*armv7l\"# grep -i \"aarch64\\\|arm64\"#g" ./am-scripts/aarch64/"$arg"
+		fi
+	fi
+}
+
+_template_then_git_repo() {
+	_template_if_git_repo
+	# Set the release as "latest" or keep it generic
+	read -r -p $" Latest release (y) or a generic one (N or leave blank)?" yn
+	if echo "$yn" | grep -qi "^y"; then
+		warn_about_latest_releases_choice="ARE YOU SURE??? The original project might omit Linux builds from the \"latest\" release section in the future! You might not be able to get any builds at all! Think carefully! Consider using keywords for \"grep\" in the next steps."
+		printf "\n%b%b\033[0m\n\n" "${RED}" "$warn_about_latest_releases_choice" | _fit
+		read -r -p $" Latest release (y) or a generic one (N or leave blank)?" yn
+		if echo "$yn" | grep -qi "^y"; then
+			setlatest="/latest"
+			sed -i 's#/releases #/releases/latest #g' ./am-scripts/"$MAIN_ARCH"/"$arg"
+		else
+			setlatest=""
+		fi
+	else
+		setlatest=""
+	fi
+	echo "$DIVIDING_LINE"
+	# Check if the URL is correct
+	read -r -p $" Do you wish to check the link (Y,n)?" yn
+	if ! echo "$yn" | grep -qi "^n"; then
+		if [ "$templatetype" = 0 ] || [ -z "$templatetype" ]; then
+			GHURLPREVIEW_COMMAND="$CURL_COMMAND_REF_PREVIEW/$RESPONSE/releases$setlatest | sed 's/[()\",{} ]/\n/g' | grep -oi \"https.*download.*mage$\" | grep -vi \"i386\|i686\|armhf\|aarch64\|arm64\|armv7l\" | head -1"
+			_template_test_github_url
+		elif [ "$templatetype" = 1 ] || [ "$templatetype" = 2 ]; then
+			GHURLPREVIEW_COMMAND="$CURL_COMMAND_REF_PREVIEW/$RESPONSE/releases$setlatest | sed 's/[()\",{} ]/\n/g' | grep -oi \"https.*download.*\" | grep -vi \"i386\|i686\|armhf\|aarch64\|arm64\|armv7l\" | head -1"
+			_template_test_github_url
+		fi
+		echo -e $"\n The URL above is an example of what both\n the install and update scripts will point to.\n" | _fit
+	fi
+	echo "$DIVIDING_LINE"
+	# Add/remove keywords or leave blank to skip
+	read -r -p $" If correct, press \"ENTER\", 1 to add keywords and 2 to remove keywords: " response
+	case "$response" in
+	1)
+		read -r -ep $" URL must contain (\"x64\", \"x86_64\"... or leave blank): " response
+		if [ -n "$response" ]; then
+			sed -i "s# head -1# grep -i \"$response\" | head -1#g" ./am-scripts/"$MAIN_ARCH"/"$arg"
+			read -r -p $" Do you wish to check the link for the last time (Y,n)?" yn
+			if ! echo "$yn" | grep -qi "^n"; then
+				if [ "$templatetype" = 0 ] || [ -z "$templatetype" ]; then
+					GHURLPREVIEW_COMMAND="$CURL_COMMAND_REF_PREVIEW/$RESPONSE/releases$setlatest | sed 's/[()\",{} ]/\n/g' | grep -oi \"https.*download.*mage$\" | grep -vi \"i386\|i686\|armhf\|aarch64\|arm64\|armv7l\" | grep -i \"$response\" | head -1"
+					_template_test_github_url
+				elif [ "$templatetype" = 1 ] || [ "$templatetype" = 2 ]; then
+					GHURLPREVIEW_COMMAND="$CURL_COMMAND_REF_PREVIEW/$RESPONSE/releases$setlatest | sed 's/[()\",{} ]/\n/g' | grep -oi \"https.*download.*\" | grep -vi \"i386\|i686\|armhf\|aarch64\|arm64\|armv7l\" | grep -i \"$response\" | head -1"
+					_template_test_github_url
+				fi
+				echo -e $"\n The URL above is an example of what both\n the install and update scripts will point to.\n" | _fit
+			fi
+		fi
+		;;
+	2)
+		read -r -ep $" URL must NOT contain (\"txt\", \"ARM\"... or leave blank): " response
+		if [ -n "$response" ]; then
+			sed -i "s# head -1# grep -v \"$response\" | head -1#g" ./am-scripts/"$MAIN_ARCH"/"$arg"
+			read -r -p $" Do you wish to check the link for the last time (Y,n)?" yn
+			if ! echo "$yn" | grep -qi "^n"; then
+				if [ "$templatetype" = 0 ] || [ -z "$templatetype" ]; then
+					GHURLPREVIEW_COMMAND="$CURL_COMMAND_REF_PREVIEW/$RESPONSE/releases$setlatest | sed 's/[()\",{} ]/\n/g' | grep -oi \"https.*download.*mage$\" | grep -vi \"i386\|i686\|armhf\|aarch64\|arm64\|armv7l\" | grep -v \"$response\" | head -1"
+					_template_test_github_url
+				elif [ "$templatetype" = 1 ] || [ "$templatetype" = 2 ]; then
+					GHURLPREVIEW_COMMAND="$CURL_COMMAND_REF_PREVIEW/$RESPONSE/releases$setlatest | sed 's/[()\",{} ]/\n/g' | grep -oi \"https.*download.*\" | grep -vi \"i386\|i686\|armhf\|aarch64\|arm64\|armv7l\" | grep -v \"$response\" | head -1"
+					_template_test_github_url
+				fi
+				echo -e $"\n The URL above is an example of what both\n the install and update scripts will point to.\n" | _fit
+			fi
+		fi
+		;;
+	esac
+}
+
+# ------------------------------------------------------------------------
+# FUNCTIONS SPECIFIC PER WEBSITE
+# ------------------------------------------------------------------------
+
+_template_if_sourceforge() {
+	# ADD PROJECTNAME
+	read -r -ep $" ◆ ADD THE NAME OF THE PROJECT OR LEAVE BLANK IF ITS THE SAME $(echo -e '\n : ')" projectname
+	case "$projectname" in
+	'')	projectname="$arg";;
+	*)	projectname="$projectname";;
+	esac
+	SOURCEFORGE="https://sourceforge.net/p/$projectname/activity/feed?limit=100000"
+	sed -i "s#REPLACETHIS#https://sourceforge.net/p/$projectname#g" ./am-scripts/"$MAIN_ARCH"/"$arg"
+	echo "$DIVIDING_LINE"
+	# FILE TYPE
+	if [ "$templatetype" = 0 ] || [ -z "$templatetype" ]; then
+		filetype="appimage"
+	elif [ "$templatetype" = 1 ] || [ "$templatetype" = 2 ]; then
+		read -r -ep $" ◆ ADD an univoque keyword for the file (for example \"tar.gz\", \"linux\"):" filekeyword
+		case "$filekeyword" in
+		*) filetype="$filekeyword";;
+		esac
+	fi
+	# ADD A DESCRIPTION FOR THIS APPLICATION
+	read -r -ep $" ◆ ADD A BRIEF DESCRIPTION FOR THIS APPLICATION $(echo -e '\n : ')" COMMENT
+	case "$COMMENT" in
+	*)
+		_template_create_new_line_for_application_list
+		;;
+	esac
+	echo "$DIVIDING_LINE"
+	sourceforge_url_test=$(_use_online_reading_tool "$SOURCEFORGE" | tr '">< ' '\n' | grep -i "^https://sourceforge.net/projects/.*download" | grep -i "$filetype" | grep -vi "i386\|i686\|armhf\|aarch64\|arm64\|armv7l" | head -1)
+	if _use_online_check_tool "$sourceforge_url_test" 1> /dev/null; then
+		_edit_script_head
+		echo "version=\$($CURLLS $SOURCEFORGE | tr '\">< ' '\n' | grep -i \"^https://sourceforge.net/projects/.*download\" | grep -i \"$filetype\" | grep -vi \"i386\\|i686\\|armhf\\|aarch64\\|arm64\\|armv7l\" | head -1)" >> ./am-scripts/"$MAIN_ARCH"/"$arg"
+		_edit_script_middle
+		echo "version=\$($CURLLS $SOURCEFORGE | tr '\">< ' '\n' | grep -i \"^https://sourceforge.net/projects/.*download\" | grep -i \"$filetype\" | grep -vi \"i386\\|i686\\|armhf\\|aarch64\\|arm64\\|armv7l\" | head -1)" >> ./am-scripts/"$MAIN_ARCH"/"$arg"
+		_edit_script_ending
+		_use_online_reading_tool "$SOURCEFORGE" | tr '">< ' '\n' | grep -i "^https://sourceforge.net/projects/.*download" | grep -i "$filetype" | grep -vi "i386\|i686\|armhf\|aarch64\|arm64\|armv7l" | head -1
+		echo -e $"\n The URL above is an example of what both\n the install and update scripts will point to.\n" | _fit
+	else
+		_template_custom_download_url_as_version_variable
+	fi
+	sed -i 's/*mage/*/g' ./am-scripts/"$MAIN_ARCH"/"$arg"
+}
+
+_template_if_download_kde_org() {
+	# TEST AVAILABLE ARTIFACTS
+	RESPONSE=$(echo "$RESPONSE" | awk -F/ '{print $1"//"$3"/"$4"/"$5}')
+	tag=$(_use_online_reading_tool "$RESPONSE" | tr '">< ' '\n' | grep "^[0-9].*/$" | tail -1)
+	download_kde_org_url_test="$RESPONSE/$tag$(_use_online_reading_tool "$RESPONSE/$tag" | tr '">< ' '\n' | grep -i "x86.64.*appimage$" | head -1)"
+	if _use_online_check_tool "$download_kde_org_url_test" 1> /dev/null; then
+		# REPLACE SCRIPT
+		_use_online_downloader "$AMREPO"/templates/AM-SAMPLE-AppImage-download_kde_org ./am-scripts/"$MAIN_ARCH"/"$arg"
+		sed -i "s/SAMPLE/$arg/g" ./am-scripts/"$MAIN_ARCH"/"$arg"
+		printf "\n $download_kde_org_url_test\n"
+		echo -e $"\n The URL above is an example of what both\n the install and update scripts will point to.\n" | _fit
+	else
+		_template_custom_download_url_as_version_variable
+	fi
+	sed -i "s#REPLACETHIS#$RESPONSE#g" ./am-scripts/"$MAIN_ARCH"/"$arg"
+	echo "$DIVIDING_LINE"
+	# ADD A DESCRIPTION FOR THIS APPLICATION
+	read -r -ep $" ◆ ADD A BRIEF DESCRIPTION FOR THIS APPLICATION $(echo -e '\n : ')" COMMENT
+	case "$COMMENT" in
+	*)
+		_template_create_new_line_for_application_list
+		;;
+	esac
+}
+
+#####################################
+# LET CREATE OUR INSTALLATION SCRIPTS
+#####################################
+
+case $2 in
+'')
+	echo $" USAGE: $AMCLI $1 [ARGUMENT]"; exit
+	;;
+esac
+
+[ -f "$AMDATADIR"/"$ARCH"-apps ] || _completion_lists
+
+ARGS="$(echo "$@" | cut -f2- -d ' ')"
+for arg in $ARGS; do
+	arg=$(echo "$arg" | tr '[:upper:]' '[:lower:]')
+
+	# If the argument is a github url, then extract the appname from the URL
+	if echo "$arg" | grep -q "^https://github.com/.*"; then
+		arg_github_repo=$(echo "$arg" | sed -- 's#/releases*$##g')
+		arg=$(echo "$arg" | sed -- 's#/releases*$##g; s/-appimage$//g; s:.*/::')
+	fi
+	# Check if the appname already exists in the database
+	if [ ! -f "$AMDATADIR"/betatester ] && grep -q "^◆ $arg :" "$AMDATADIR"/"$ARCH"-apps; then
+		read -r -p " This appname already exists, want to procede anyway? (y,N): " yn
+		if ! echo "$yn" | grep -qi "^y"; then
+			continue
+		fi
+	fi
+
+	case $arg in
+	*)
+		cd "$SCRIPTDIR" || return
+		echo "##############################################################"
+		echo ""
+		echo $" Create a template for \"$arg\"" | tr '[:lower:]' '[:upper:]'
+		echo ""
+		echo "$DIVIDING_LINE"
+		echo ""
+		echo $" EACH MODEL IS BASED ON A DIFFERENT METHOD OF BUILDING/UPDATING THE PROGRAM." | _fit | sed 's/  / /g'
+		echo ""
+		echo $" PLEASE, SELECT A TEMPLATE FOR \"$(echo "$arg" | tr '[:lower:]' '[:upper:]')\":"
+		echo ""
+		echo $"  0) APPIMAGE, FROM ANY WEBSITE (BETTER IF FROM GITHUB.COM)"
+		echo $"  1) APPIMAGE ON-THE-FLY, USING A DEDICATED SCRIPT"
+		echo $"  2) ANY ARCHIVE/BINARY/SCRIPT FROM ANY WEBSITE"
+		echo ""
+		read -r -p $" WHAT KIND OF PROGRAM DO YOU WANT TO WRITE A SCRIPT FOR? : " templatetype
+		case "$templatetype" in
+
+		'0'|''|'1') # APPIMAGE (ANY)
+
+			_template_create_dirs_and_ask_for_source
+
+			# ADD THE NAME OF THE SOURCE
+			if [ -n "$arg_github_repo" ]; then
+				RESPONSE="$arg_github_repo"
+				arg_github_repo=""
+				_template_then_git_repo
+			else
+				read -r -ep $" ◆ ADD THE URL OF THE SITE (BETTER IF IT COME FROM GITHUB), FOR EXAMPLE: $(echo -e $'\n\n - if from github.com, use "https://github.com/USER/PROJECT"\n\n - if from other sources, use "https://www.SITENAME.com" or something\n\n URL: ')" RESPONSE
+				case "$RESPONSE" in
+				*)
+					if echo "$RESPONSE" | grep -qi "^https.*github.com\|codeberg.org"; then
+						_template_then_git_repo
+					elif echo "$RESPONSE" | grep -q "sourceforge"; then
+						_template_if_sourceforge
+					elif echo "$RESPONSE" | grep -qi "^https://download.kde.org/.*stable/" &&  [ "$templatetype" != 1 ]; then
+						_template_if_download_kde_org
+					else
+						_template_description_if_hosted_elsewhere
+						_template_custom_download_url_as_version_variable
+					fi
+				esac
+			fi
+			if [ "$templatetype" != 1 ]; then
+				_template_test_github_alt_architectures_url
+			fi
+			# Set binary name for AppImages built on-the-fly
+			if [ "$templatetype" = 1 ]; then
+				echo "$DIVIDING_LINE"
+				read -r -p " Set a binary name or leave blank if it is \"$arg\": " binaryname
+				if [ -n "$binaryname" ]; then
+					 sed -i "s/\* \"\$APP\" /\* $binaryname /g" ./am-scripts/"$MAIN_ARCH"/"$arg"
+				fi
+			fi
+			# END OF THIS FUNCTION
+			echo "$DIVIDING_LINE"
+			echo -e $"\n All files are saved in $SCRIPTDIR/am-scripts\n"
+			;;
+
+		'2') # DOWNLOAD ANY ARCHIVE
+
+			_template_create_dirs_and_ask_for_source
+
+			# ADD THE NAME OF THE SOURCE
+			read -r -ep $" ◆ ADD THE URL OF THE SITE (BETTER IF IT COME FROM GITHUB), FOR EXAMPLE: $(echo -e $'\n\n - if from github.com, use "https://github.com/USER/PROJECT"\n\n - if from other sources, use "https://www.SITENAME.com" or something\n\n URL: ')" RESPONSE
+			case "$RESPONSE" in
+			*)
+				if echo "$RESPONSE" | grep -q "https://github.com\|https://codeberg.org"; then
+					_template_then_git_repo
+				elif echo "$RESPONSE" | grep -q "sourceforge"; then
+					_template_if_sourceforge
+				else
+					_template_description_if_hosted_elsewhere
+					_template_custom_download_url_as_version_variable
+				fi
+			esac
+			# LAUNCHER AND ICON (OPTIONAL)
+			read -r -p $" ◆ Do you wish to add a launcher and a icon (y,N)? " yn
+			if echo "$yn" | grep -qi "^y"; then
+				# ADD LAUNCHER AND ICON REFERENCES TO THE INSTALLATION SCRIPT
+				_template_generate_desktop_file
+
+				# ENTER THE URL OF THE ICON THAT WILL APPEAR IN THE MENU
+				read -r -ep $" ◆ COPY/PASTE THE URL OF THE ICON HERE $(echo -e '\n URL: ')" ICONURL
+				case "$ICONURL" in
+				'')	sed -i "s#ICONURL#https://portable-linux-apps.github.io/icons/$arg.png#g" ./am-scripts/"$MAIN_ARCH"/"$arg"
+					;;
+				*)	sed -i "s#ICONURL#$ICONURL#g" ./am-scripts/"$MAIN_ARCH"/"$arg"
+					;;
+				esac
+				echo "$DIVIDING_LINE"
+				# APPNAME
+				read -r -ep $" ◆ NAME OF THE APP (for the \"Name\" entry of the .desktop file): " APPNAME
+				case "$APPNAME" in
+				*)
+					sed -i "s#APPNAME#$APPNAME#g" ./am-scripts/"$MAIN_ARCH"/"$arg"
+					;;
+				esac
+				echo "$DIVIDING_LINE"
+				# PUT THE APP INTO A CATEGORY, THIS IS NEEDED FOR OUR CUSTOM DESKTOP FILE
+				_template_desktop_file_select_category
+			else
+				echo "$DIVIDING_LINE"
+			fi
+			_template_test_github_alt_architectures_url
+			# END OF THIS FUNCTION
+			echo -e $"\n All files are saved in $SCRIPTDIR/am-scripts\n"
+			;;
+
+		# NOTHING SELECTED
+		*)
+			echo -e $"\n No valid argument was chosen: process aborted! \n" | tr '[:lower:]' '[:upper:]'; break
+			;;
+		esac
+	esac
+done
