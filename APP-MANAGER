@@ -25,12 +25,12 @@ basename() {
 	if [ "$1" = "--" ]; then
 		dir=${2%"${2##*[!/ ]}"}
 		dir=${dir##*/}
-		dir=${dir%"${3:-}"} 
+		dir=${dir%"${3:-}"}
 		printf '%s\n' "${dir:-/}"
 	else
 		dir=${1%"${1##*[!/ ]}"}
 		dir=${dir##*/}
-		dir=${dir%"${2:-}"} 
+		dir=${dir%"${2:-}"}
 		printf '%s\n' "${dir:-/}"
 	fi
 }
@@ -348,6 +348,17 @@ _appman_check() {
 		read -r -ep $" Write the path or just press enter to use default:$(printf "\n\n ")" location
 		location="$(echo "$location" | sed 's/[ \t]/-/g; s|^\./||' 2>/dev/null)"
 		[ -z "$location" ] && location="$HOME/Applications"
+		if printf '%s' "$location" | grep -q '`\|\$(\|"\|\\'; then
+			echo "$DIVIDING_LINE"
+			echo $" 💀 ERROR: unsupported characters in path, please use a plain path"
+			echo "$DIVIDING_LINE"
+			exit 1
+		fi
+		case "$location" in
+			"~")   location="$HOME" ;;
+			"~/"*) location="$HOME/${location#\~/}" ;;
+		esac
+		location=$(eval "printf '%s' \"$location\"")
 		if ! echo "$location" | grep "^/" >/dev/null 2>&1; then
 			location="$HOME/$location"
 		fi
@@ -1116,7 +1127,7 @@ _check_version_filters() {
 				type[i] = 5
 			}
 		}
-		
+
 		# If same type, then choose the one with the longer length
 		if (type[0] == type[1]) {
 			if (length(version[0]) > length(version[1])) print version[0]
@@ -1598,7 +1609,7 @@ _use_relocate() {
 			APPMAN_APPS_NEW=$(sort -u "$SCRIPTDIR"/am-clone.source.appman | sed 's:.*/::' | xargs)
 			"$AMCLIPATH_ORIGIN" -i --user "$APPMAN_APPS_NEW"
 		fi
-		
+
 	fi
 }
 
