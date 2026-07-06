@@ -3,7 +3,7 @@
 ## 2. podman run -it --platform linux/x86-64 --name am-jessie-test --device /dev/fuse --cap-add SYS_ADMIN --security-opt unmask=ALL --tmpfs /opt --tmpfs /root/.local/share/applications am-debian-old:latest
 
 # Use the official Debian Jessie image as a parent image
-FROM debian:jessie
+FROM debian:jessie-20210326
 
 # Install dependencies and AM (GPG warnings are normal as repos are archieved)
 RUN echo 'deb http://archive.debian.org/debian jessie main contrib non-free' > /etc/apt/sources.list
