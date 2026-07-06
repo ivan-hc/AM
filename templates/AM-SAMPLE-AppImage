@@ -62,20 +62,16 @@ chmod a+x ./AM-updater || exit 1
 COUNT=0
 while [ "$COUNT" -lt 10 ]; do # Tries to get the actual icon/desktop if it is a symlink to another symlink
 	for f in squashfs-root/*.desktop; do
+		FILE="$f"
 		if [ -L "$f" ]; then
 			LINKPATH="$(readlink "$f" | sed 's|^\./||' 2>/dev/null)"
 			./"$APP" --appimage-extract "$LINKPATH" 1>/dev/null
-			if grep -qi '^NoDisplay=true$' ./squashfs-root/"$LINKPATH" 2>/dev/null; then
-				mv ./squashfs-root/"$LINKPATH" ./"$APP"-handler-AM.desktop && printf '\n%s' "rm -f /usr/local/share/applications/$APP-handler-AM.desktop" >> ./remove
-			else
-				[ ! -f ./"$APP"-AM.desktop ] && mv ./squashfs-root/"$LINKPATH" ./"$APP"-AM.desktop || mv ./squashfs-root/"$LINKPATH" ./"$APP"-"$COUNT"-AM.desktop && printf '\n%s' "rm -f /usr/local/share/applications/$APP-$COUNT-AM.desktop" >> ./remove
-			fi
+			FILE="./squashfs-root/$LINKPATH"
+		fi
+		if grep -qi '^NoDisplay=true$' "$FILE" 2>/dev/null; then
+			mv "$FILE" ./"$APP"-handler-AM.desktop && printf '\n%s' "rm -f /usr/local/share/applications/$APP-handler-AM.desktop" >> ./remove
 		else
-			if grep -qi '^NoDisplay=true$' "$f"; then
-				mv "$f" ./"$APP"-handler-AM.desktop && printf '\n%s' "rm -f /usr/local/share/applications/$APP-handler-AM.desktop" >> ./remove
-			else
-				[ ! -f ./"$APP"-AM.desktop ] && mv "$f" ./"$APP"-AM.desktop || mv "$f" ./"$APP"-"$COUNT"-AM.desktop && printf '\n%s' "rm -f /usr/local/share/applications/$APP-$COUNT-AM.desktop" >> ./remove
-			fi
+			[ ! -f ./"$APP"-AM.desktop ] && mv "$FILE" ./"$APP"-AM.desktop || mv "$FILE" ./"$APP"-"$COUNT"-AM.desktop && printf '\n%s' "rm -f /usr/local/share/applications/$APP-$COUNT-AM.desktop" >> ./remove
 		fi
 	done
 	if [ -L ./DirIcon ]; then
