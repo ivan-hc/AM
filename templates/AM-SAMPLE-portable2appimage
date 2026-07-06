@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# AM INSTALL SCRIPT VERSION 3.5
+# AM INSTALL SCRIPT VERSION 3.6
 set -u
 APP=SAMPLE
 SITE="REPLACETHIS"
@@ -59,14 +59,21 @@ EOF
 chmod a+x ./AM-updater || exit 1
 
 # LAUNCHER & ICON
-./"$APP" --appimage-extract *.desktop 1>/dev/null || exit 1; mv ./squashfs-root/*.desktop ./"$APP".desktop || exit 1
-./"$APP" --appimage-extract .DirIcon 1>/dev/null || exit 1; mv ./squashfs-root/.DirIcon ./DirIcon || exit 1
+./"$APP" --appimage-extract *.desktop 1>/dev/null
+./"$APP" --appimage-extract .DirIcon 1>/dev/null && mv ./squashfs-root/.DirIcon ./DirIcon
 COUNT=0
 while [ "$COUNT" -lt 10 ]; do # Tries to get the actual icon/desktop if it is a symlink to another symlink
-	if [ -L ./"$APP".desktop ]; then
-		LINKPATH="$(readlink ./"$APP".desktop | sed 's|^\./||' 2>/dev/null)"
-		./"$APP" --appimage-extract "$LINKPATH" 1>/dev/null && mv ./squashfs-root/"$LINKPATH" ./"$APP".desktop
-	fi
+	for f in squashfs-root/*.desktop; do
+		FILE="$f"
+		if [ -L "$f" ]; then
+			LINKPATH="$(readlink "$f" | sed 's|^\./||' 2>/dev/null)"
+			./"$APP" --appimage-extract "$LINKPATH" 1>/dev/null
+			FILE="./squashfs-root/$LINKPATH"
+		fi
+		if grep -qi '^NoDisplay=true$' "$FILE" 2>/dev/null; then mv "$FILE" ./"$APP"-handler-AM.desktop && printf '\n%s' "rm -f /usr/local/share/applications/$APP-handler-AM.desktop" >> ./remove
+		else [ ! -f ./"$APP"-AM.desktop ] && mv "$FILE" ./"$APP"-AM.desktop || mv "$FILE" ./"$APP"-"$COUNT"-AM.desktop && printf '\n%s' "rm -f /usr/local/share/applications/$APP-$COUNT-AM.desktop" >> ./remove
+		fi
+	done
 	if [ -L ./DirIcon ]; then
 		LINKPATH="$(readlink ./DirIcon | sed 's|^\./||' 2>/dev/null)"
 		./"$APP" --appimage-extract "$LINKPATH" 1>/dev/null && mv ./squashfs-root/"$LINKPATH" ./DirIcon
@@ -74,6 +81,6 @@ while [ "$COUNT" -lt 10 ]; do # Tries to get the actual icon/desktop if it is a 
 	[ ! -L ./"$APP".desktop ] && [ ! -L ./DirIcon ] && break
 	COUNT=$((COUNT + 1))
 done
-sed -i "s#Exec=[^ ]*#Exec=$APP#g; s#Icon=.*#Icon=/opt/$APP/icons/$APP#g; s# --no-sandbox##g" ./"$APP".desktop
-mv ./"$APP".desktop /usr/local/share/applications/"$APP"-AM.desktop && mv ./DirIcon ./icons/"$APP" 1>/dev/null
+sed -i "s#Exec=[^ ]*#Exec=$APP#g; s#Icon=.*#Icon=/opt/$APP/icons/$APP#g; s# --no-sandbox##g" ./*-AM.desktop
+mv ./*-AM.desktop /usr/local/share/applications/ && mv ./DirIcon ./icons/"$APP" 1>/dev/null
 rm -R -f ./squashfs-root
