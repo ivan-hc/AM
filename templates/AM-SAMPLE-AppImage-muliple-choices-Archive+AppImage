@@ -88,12 +88,16 @@ if [ "$RELEASE" = APPIMAGE ]; then
 	./"$APP" --appimage-extract .DirIcon 1>/dev/null && mv ./squashfs-root/.DirIcon ./DirIcon
 	COUNT=0
 	while [ "$COUNT" -lt 10 ]; do # Tries to get the actual icon/desktop if it is a symlink to another symlink
+		DESKTOP_SYMLINKS=0
 		for f in squashfs-root/*.desktop; do
+			[ -e "$f" ] || continue
 			FILE="$f"
 			if [ -L "$f" ]; then
+				DESKTOP_SYMLINKS=1
 				LINKPATH="$(readlink "$f" | sed 's|^\./||' 2>/dev/null)"
 				./"$APP" --appimage-extract "$LINKPATH" 1>/dev/null
 				FILE="./squashfs-root/$LINKPATH"
+				rm -f "$f"
 			fi
 			if grep -qi '^NoDisplay=true$' "$FILE" 2>/dev/null; then mv "$FILE" ./"$APP"-handler-AM.desktop && printf '\n%s' "rm -f /usr/local/share/applications/$APP-handler-AM.desktop" >> ./remove
 			else [ ! -f ./"$APP"-AM.desktop ] && mv "$FILE" ./"$APP"-AM.desktop || mv "$FILE" ./"$APP"-"$COUNT"-AM.desktop && printf '\n%s' "rm -f /usr/local/share/applications/$APP-$COUNT-AM.desktop" >> ./remove
@@ -103,7 +107,7 @@ if [ "$RELEASE" = APPIMAGE ]; then
 			LINKPATH="$(readlink ./DirIcon | sed 's|^\./||' 2>/dev/null)"
 			./"$APP" --appimage-extract "$LINKPATH" 1>/dev/null && mv ./squashfs-root/"$LINKPATH" ./DirIcon
 		fi
-		[ ! -L ./"$APP".desktop ] && [ ! -L ./DirIcon ] && break
+		[ "$DESKTOP_SYMLINKS" -eq 0 ] && [ ! -L ./DirIcon ] && break
 		COUNT=$((COUNT + 1))
 	done
 	sed -i "s#Exec=[^ ]*#Exec=$APP#g; s#Icon=.*#Icon=/opt/$APP/icons/$APP#g; s# --no-sandbox##g" ./*-AM.desktop
