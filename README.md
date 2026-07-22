@@ -168,6 +168,18 @@ Type "1" to install "AM", "2" to install "[AppMan](#what-is-appman)". Any other 
 Run `am -h` or jump to "**[Usage](#usage)**" to see all the available options.
 
 ------------------------------------------------------------------------
+
+NOTE, the AM-INSTALLER supports non-interactive installation via flag `-i`, `install` or `--install`. For example
+```
+./AM-INSTALLER -i am
+```
+or
+```
+./AM-INSTALLER -i appman
+```
+This will help to install AM or AppMan in an automated way.
+
+------------------------------------------------------------------------
 ## Using "GIT" (only system-wide installation)
 Copy/paste the following commands
 ```
