@@ -16,6 +16,8 @@ assignees: ''
 
 The malfunction of the installation scripts will then be taken into account. On the contrary, any malfunction related to individual applications is the responsibility of the related developer or packager. Refer to the option "-a" to know the sources of each program listed here, so you can contact them to report the bug.
 
+We encourage contributors to follow the [GNU Kind Communications Guidelines (GNU KCG)](https://gnu.support/philosophy/GNU-Kind-Communications-Guidelines.html)
+
 --------------------------------------------------
 
 ## Please, describe the bug

@@ -13,3 +13,5 @@ To help us make adding AppImages quicker and easier, please follow the syntax be
 2. main site, repository or reference web page (URL, DO NOT use direct download link)
 3. download page
 4. description of the application
+
+We encourage contributors to follow the [GNU Kind Communications Guidelines (GNU KCG)](https://gnu.support/philosophy/GNU-Kind-Communications-Guidelines.html)
