@@ -5,12 +5,13 @@
 # Source common test functions
 . "$(dirname "$0")/test-common.sh"
 
-TEST_LOG="${TEST_LOG:-test-summary.log}"
+# Test variables
+test_results=".results.tmp"
 PASS=0
 FAIL=0
 
 # Load the actual functions from the module
-_module="$(dirname "$0")/../modules/install.am"
+_module="/opt/am/modules/install.am"
 eval "$(awk '/^_levenshtein\(\)/,/^}$/' "$_module")"
 eval "$(awk '/^_did_you_mean\(\)/,/^}$/' "$_module")"
 
@@ -26,7 +27,7 @@ third_party_lists="${third_party_lists:-}"
 
 _ok() {
 	printf "  \033[0;32m✔\033[0m  %s\n" "$1"
-	printf "PASS: %s\n" "$1" >> "$TEST_LOG"
+	printf "PASS: %s\n" "$1" >> "$test_results"
 	PASS=$(( PASS + 1 ))
 }
 
@@ -34,7 +35,7 @@ _ko() {
 	printf "  \033[0;31m✘\033[0m  %s\n" "$1"
 	printf "      got:      '%s'\n" "$2"
 	printf "      expected: '%s'\n" "$3"
-	printf "FAIL: %s | got='%s' expected='%s'\n" "$1" "$2" "$3" >> "$TEST_LOG"
+	printf "FAIL: %s | got='%s' expected='%s'\n" "$1" "$2" "$3" >> "$test_results"
 	FAIL=$(( FAIL + 1 ))
 }
 
@@ -114,7 +115,7 @@ _test_did_you_mean() {
 	local applist="${AMDATADIR:-$HOME/.local/share/AM}/${ARCH:-$(uname -m)}-apps"
 	if [ ! -f "$applist" ]; then
 		printf "\n=== _did_you_mean tests SKIPPED (no cached app list at %s) ===\n" "$applist"
-		printf "SKIP: _did_you_mean tests — no app list cached\n" >> "$TEST_LOG"
+		printf "SKIP: _did_you_mean tests — no app list cached\n" >> "$test_results"
 		return
 	fi
 
@@ -330,7 +331,7 @@ _test_did_you_mean
 _test_did_you_mean_tp
 
 printf "\n=== Results: \033[0;32m%d passed\033[0m, \033[0;31m%d failed\033[0m ===\n\n" "$PASS" "$FAIL"
-printf "Results: %d passed, %d failed\n" "$PASS" "$FAIL" >> "$TEST_LOG"
+printf "Results: %d passed, %d failed\n" "$PASS" "$FAIL" >> "$test_results"
 
 [ "$FAIL" -gt 0 ] && _fail "$FAIL test(s) failed."
 _pass

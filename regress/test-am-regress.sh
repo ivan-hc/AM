@@ -14,10 +14,12 @@ _log "Done.\n"
 
 # Run all regression tests
 ./test-am-versions.sh
+./test-am-fuzzy-suggest.sh
 ./test-am-hide.sh
 ./test-am-install.sh
 ./test-am-checksum.sh
 ./test-am-repair.sh
+./test-am-launcher.sh
 ./test-am-sandbox.sh
 ./test-am-nolibfuse.sh
 ./test-am-rollback.sh

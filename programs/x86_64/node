@@ -3,12 +3,11 @@
 # AM INSTALL SCRIPT VERSION 3.5
 set -u
 APP=node
-SITE="https://nodejs.org"
+SITE="https://nodejs.org"; METAPKG="npm npx"
 
 # CREATE DIRECTORIES AND ADD REMOVER
 [ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
 printf "#!/bin/sh\nset -e\nrm -f /usr/local/bin/$APP\nrm -R -f /opt/$APP" > ../remove
-printf '\n%s' "rm -f /usr/local/share/applications/$APP-AM.desktop" >> ../remove
 printf '\n%s' "cd /usr/local/bin && find . -xtype l -exec rm {} \;" >> ../remove
 chmod a+x ../remove || exit 1
 
@@ -25,10 +24,9 @@ echo "$version" > ./version
 chmod a+x ./bin/"$APP" || exit 1
 
 # LINK TO PATH
-ln -s /opt/"$APP"/bin/"$APP" /usr/local/bin/"$APP"
-ln -s /opt/"$APP"/bin/npm /usr/local/bin/npm
-ln -s /opt/"$APP"/bin/npx /usr/local/bin/npx
-ln -s /opt/"$APP"/bin/corepack /usr/local/bin/corepak
+for m in $APP $METAPKG; do
+	ln -s /opt/"$APP"/bin/"$m" /usr/local/bin/"$m" 2>/dev/null
+done
 
 # SCRIPT TO UPDATE THE PROGRAM
 cat >> ./AM-updater << 'EOF'
@@ -57,16 +55,3 @@ else
 fi
 EOF
 chmod a+x ./AM-updater || exit 1
-
-# ICON
-mkdir -p icons
-curl -s -Lo ./icons/"$APP" https://portable-linux-apps.github.io/icons/node.png
-
-# LAUNCHER
-echo "[Desktop Entry]
-Name=NodeJS (Terminal)
-Comment=A JavaScript runtime built on Chrome's V8 JavaScript engine.
-Exec=exo-open --working-directory /opt/$APP/bin --launch TerminalEmulator
-Icon=/opt/$APP/icons/$APP
-Type=Application
-Categories=Development;" > /usr/local/share/applications/"$APP"-AM.desktop

@@ -15,3 +15,5 @@ To help us make adding applications quicker and easier, please follow the syntax
 4. description of the application
 5. URL to the application icon
 6. the .desktop* file (choose whether to add a URL, to paste the content of the file, to drag a text file into your comment or to provide only the following 3 desktop entries, `Name=`, `Exec=` and `Categories=`
+
+We encourage contributors to follow the [GNU Kind Communications Guidelines (GNU KCG)](https://gnu.support/philosophy/GNU-Kind-Communications-Guidelines.html)

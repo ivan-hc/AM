@@ -6,6 +6,9 @@
 # Test variables
 test_results=".results.tmp"
 
+# **** NOTE: Comment this out to help with debug!!! This was added to reduce regression testing noise
+alias tee='tee > /dev/null'
+
 # Setup
 _log "Running app version regex checks: $0"
 
@@ -18,7 +21,7 @@ for awk_cmd in awk gawk mawk original-awk goawk nawk busybox; do
 	if command -v "$awk_cmd" >/dev/null 2>&1; then
 		# Print which tool is used
 		[ $awk_cmd = busybox ] && awk_cmd="busybox awk" # Busybox awk version is a subcommand
-		printf "\nRegex testing with %s (%s):\n" "$awk_cmd" "$($awk_cmd --version 2>/dev/null | head -n 1)"
+		printf "Regex testing with %s (%s) ...\n" "$awk_cmd" "$($awk_cmd --version 2>/dev/null | head -n 1)"
 
 		# Test strings checked against expected version numbers
 		echo "https://github.com/ip7z/7zip/releases/download/26.01/7z2601-linux-x64.tar.xz" | _check_version_filters | tee "$test_results"
@@ -111,14 +114,34 @@ for awk_cmd in awk gawk mawk original-awk goawk nawk busybox; do
 		_check_count "3.0.0" 1 "$test_results"
 		echo "https://github.com/pkgforge-dev/qarma-AppImage/releases/download/r1.d3730ad-1%402026-05-22_1779458497/qarma-r1.d3730ad-1-anylinux-x86_64.AppImage" | _check_version_filters | tee "$test_results"
 		_check_count "r1.d3730ad-1" 1 "$test_results"
+		echo "https://github.com/dev90/qarma1212/releases/download/ver2b/qarma-anylinux-x86_64.AppImage" | _check_version_filters | tee "$test_results"
+		_check_count "2b" 1 "$test_results"
+		echo "https://github.com/dev90/qarma1212/releases/download/rolling-version/qarma-anylinuxv2b-x86_64.AppImage" | _check_version_filters | tee "$test_results"
+		_check_count "2b" 1 "$test_results"
+		echo "https://github.com/dev90/qarma1212/releases/download/ver-2026r61/qarma-2026r5-anylinux-x86_64.AppImage" | _check_version_filters | tee "$test_results"
+		_check_count "2026r61" 1 "$test_results"
+		echo "https://github.com/dev90/qarma1212/releases/download/hash-2026bef61/qarma-2026b5-anylinux-x86_64.AppImage" | _check_version_filters | tee "$test_results"
+		_check_count "2026b5" 1 "$test_results"
+
+		# Type 4+ bad style corner cases
+		echo "https://github.com/dev90/qarma1212/releases/download/deadbeef9129a-version-rolling/qarma-anylinux-x86_64.AppImage" | _check_version_filters | tee "$test_results"
+		_check_count "deadbeef9129a" 1 "$test_results"
+		echo "https://github.com/dev90/qarma1212/releases/download/no-version-rolling/deadbeef9129a-qarma-anylinux-x86_64.AppImage" | _check_version_filters | tee "$test_results"
+		_check_count "deadbeef9129a" 1 "$test_results"
+		echo "https://github.com/dev90/qarma1212/releases/download/no-version-aed33d39/qarma-aed33d3910-anylinux-x86_64.AppImage" | _check_version_filters | tee "$test_results"
+		_check_count "aed33d3910" 1 "$test_results"
+		echo "https://github.com/dev90/qarma1212/releases/download/no-version-aed33d39/qarma-anylinux-x86_64.AppImage" | _check_version_filters | tee "$test_results"
+		_check_count "aed33d39" 1 "$test_results"
 
 		# Test strings checked against nothing versions
-		echo "https://github.com/pragtical1231/pragtical9223/releases/download/rolling/Pragtical-rolling-x86_64.AppImage" | _check_version_filters | tee "$test_results"
+		echo "https://github.com/pragtical1231/pragtical9223/releases/download/rolling/Pragtical-rolling-X86_64.AppImage" | _check_version_filters | tee "$test_results"
 		_check_count "-" 1 "$test_results"
 		echo "https://github.com/Lateralus138/colorstatic-bash/releases/download/Continuous/colorstatic-aarch64.AppImage" | _check_version_filters | tee "$test_results"
 		_check_count "-" 1 "$test_results"
 		echo "https://github.com/burger/nothing-burger/releases/download/rolling-i686/fancy-nothing-burger-amd64-i386.AppImage" | _check_version_filters | tee "$test_results"
 		_check_count "-" 1 "$test_results"
+	else
+		printf "Skipped regex testing with %s (not installed)\n" "$awk_cmd"
 	fi
 done
 

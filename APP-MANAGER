@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="10.2.1-3"
+AMVERSION="10.3"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -25,12 +25,12 @@ basename() {
 	if [ "$1" = "--" ]; then
 		dir=${2%"${2##*[!/ ]}"}
 		dir=${dir##*/}
-		dir=${dir%"${3:-}"} 
+		dir=${dir%"${3:-}"}
 		printf '%s\n' "${dir:-/}"
 	else
 		dir=${1%"${1##*[!/ ]}"}
 		dir=${dir##*/}
-		dir=${dir%"${2:-}"} 
+		dir=${dir%"${2:-}"}
 		printf '%s\n' "${dir:-/}"
 	fi
 }
@@ -190,20 +190,24 @@ _set_locale() {
 		mkdir -p "$DATADIR/locale/$iso_code/LC_MESSAGES" && rm -f "$DATADIR"/locale/"$iso_code"/LC_MESSAGES/am.mo "$DATADIR"/locale/"$iso_code"/LC_MESSAGES/appman.mo
 		_use_online_downloader "https://github.com/ivan-hc/AM/raw/$AMBRANCH/translations/usr/share/locale/$iso_code/LC_MESSAGES/am.mo" "$DATADIR/locale/$iso_code/LC_MESSAGES/am.mo"
 		ln -sf "$DATADIR/locale/$iso_code/LC_MESSAGES/am.mo" "$DATADIR/locale/$iso_code/LC_MESSAGES/appman.mo"
-		mkdir -p "$DATADIR/AM" && echo "$iso_code" > "$DATADIR/AM/locale"
 	else
 		printf "%b\n No locale available for you, consider adding one\n Visit https://github.com/ivan-hc/AM/tree/$AMBRANCH/translations\n" "$DIVIDING_LINE"
 		printf " For now, we set the locale to \"en\" (default) to further avoid this message\n Run \"$CLI translate\" to set an alternative language\n%b\n" "$DIVIDING_LINE"
 		iso_code="en"
-		mkdir -p "$DATADIR/AM" && echo "en" > "$DATADIR/AM/locale"
 	fi
 }
 
-[ -f "$DATADIR/AM/locale" ] && iso_code="$(cat "$DATADIR/AM/locale" | head -1)"
+[ -f "$DATADIR/AM/locale" ] && saved_locale="$(cat "$DATADIR/AM/locale" | head -1)" || saved_locale=""
+if [ "$saved_locale" = "auto" ] || [ -z "$saved_locale" ]; then
+	_check_valid_iso_codes
+	[ -z "$iso_code" ] && iso_code="en"
+	[ "$saved_locale" != "auto" ] && mkdir -p "$DATADIR/AM" && echo "auto" > "$DATADIR/AM/locale"
+else
+	iso_code="$saved_locale"
+fi
 [ -n "$iso_code" ] && export LANGUAGE="$iso_code"
-if ! echo "$LANG" | grep -q "^en.\|^C" && [ "$iso_code" != "en" ]; then
+if [ "$iso_code" != "en" ]; then
 	if [ -n "$LANG" ]; then
-		[ -z "$iso_code" ] && _check_valid_iso_codes
 		if [ ! -f "$DATADIR/locale/$iso_code/LC_MESSAGES/am.mo" ]; then
 			_set_locale
 		fi
@@ -215,27 +219,39 @@ fi
 _use_translate() {
 	echo "$DIVIDING_LINE"
 	if [ -z "$2" ]; then
-		[ -f "$DATADIR/AM/locale" ] && rm -f "$DATADIR/AM/locale"
-		printf $"Add a suitable locale code, for example \"it\" for Italian\n\n" | _fit | grep .
+		printf $"Add a suitable locale code, for example \"it\" for Italian, or use the system language - \"auto\"\n\n" | _fit | grep .
 		read -r -ep $" Leave blank to use \"$CLI\" in English: " amlocale
 		if [ -z "$amlocale" ] || [ "$amlocale" = "en" ]; then
 			iso_code="en"
+			mkdir -p "$DATADIR/AM" && echo "en" > "$DATADIR/AM/locale"
+		elif [ "$amlocale" = "auto" ]; then
+			LANGUAGE="" _check_valid_iso_codes
+			[ -z "$iso_code" ] && iso_code="en"
+			_set_locale
+			mkdir -p "$DATADIR/AM" && echo "auto" > "$DATADIR/AM/locale"
 		elif ! echo "$ISO_CODES" | tr ' ' '\n' | grep -q "^$amlocale$"; then
 			printf "ERROR, \"%b\" is not a valid locale code\n\nList of valid locale codes:\n\n%b\n\n" "$amlocale" "$ISO_CODES"| _fit
 		else
 			iso_code="$amlocale"
 			_set_locale
+			mkdir -p "$DATADIR/AM" && echo "$iso_code" > "$DATADIR/AM/locale"
 		fi
 		printf "\n"
 	elif [ "$2" = "en" ]; then
 		iso_code="en"
+		mkdir -p "$DATADIR/AM" && echo "en" > "$DATADIR/AM/locale"
+	elif [ "$2" = "auto" ]; then
+		LANGUAGE="" _check_valid_iso_codes
+		[ -z "$iso_code" ] && iso_code="en"
+		_set_locale
+		mkdir -p "$DATADIR/AM" && echo "auto" > "$DATADIR/AM/locale"
 	elif ! echo "$ISO_CODES" | tr ' ' '\n' | grep -q "^$2$"; then
 		printf "ERROR, \"%b\" is not a valid locale code\n\nList of valid locale codes:\n\n%b\n\n" "$2" "$ISO_CODES" | _fit
 	else
 		iso_code="$2"
 		_set_locale
+		mkdir -p "$DATADIR/AM" && echo "$iso_code" > "$DATADIR/AM/locale"
 	fi
-	mkdir -p "$DATADIR/AM" && echo "$iso_code" > "$DATADIR/AM/locale"
 	printf $"Setting locale to \"%b\"\n" "$iso_code" | _fit
 	echo "$DIVIDING_LINE"
 }
@@ -332,6 +348,17 @@ _appman_check() {
 		read -r -ep $" Write the path or just press enter to use default:$(printf "\n\n ")" location
 		location="$(echo "$location" | sed 's/[ \t]/-/g; s|^\./||' 2>/dev/null)"
 		[ -z "$location" ] && location="$HOME/Applications"
+		if printf '%s' "$location" | grep -q '`\|\$(\|"\|\\'; then
+			echo "$DIVIDING_LINE"
+			echo $" 💀 ERROR: unsupported characters in path, please use a plain path"
+			echo "$DIVIDING_LINE"
+			exit 1
+		fi
+		case "$location" in
+			"~")   location="$HOME" ;;
+			"~/"*) location="$HOME/${location#\~/}" ;;
+		esac
+		location=$(eval "printf '%s' \"$location\"")
 		if ! echo "$location" | grep "^/" >/dev/null 2>&1; then
 			location="$HOME/$location"
 		fi
@@ -974,6 +1001,9 @@ _completion_lists() {
 	done
 }
 
+# List of metapackages
+export METAPACKAGES="kdegames kdeutils node platform-tools"
+
 # List of apps from archived repositories or not updated for more than a year
 archived_apps_source="$AMREPO/programs/archived-apps"
 obsolete_apps_source="$AMREPO/programs/obsolete-apps"
@@ -1032,8 +1062,8 @@ fi
 # VERSION OF THE INSTALLED APPS
 # Filters
 _check_version_filters() {
-	# Remove architecture numbers before going into awk
-	sed "s/x86_64\|x64\.\|amd64\|aarch64\|i686\|i386/XXXX/g" |
+	# Replace architecture numbers with non-matching chars before going into awk
+	sed "s/x86_64\|x64\.\|amd64\|aarch64\|i686\|i386/XXXX/gi" |
 	# Run AWK version regex program
 	awk '
 	{
@@ -1043,7 +1073,7 @@ _check_version_filters() {
 		posL = 0
 		for (i = 1; i <= length($0); i++) {
 			if (substr($0, i, 1) == "/") {
-				posL = i+1
+				posL = i
 				count++
 				# Remove usernames/project from github-like URLs (around 5 '/')
 				if ((match($0, /github.com|codeberg.org|gitlab.com/)) && (count == 5)) {
@@ -1077,26 +1107,27 @@ _check_version_filters() {
 				type[i] = 2
 			}
 
-			# 3. Alphanumeric version (e.g., "2603a")
+			# 3. Alphanumeric version (e.g. "2603a", but sometimes wrongly taken from hash numbers)
 			else if (match(vstr, /[0-9]+[a-z0-9]*/)) {
-				if ((RLENGTH > 3) && (RLENGTH < 8)) {
+				if ((RLENGTH > 1) && (RLENGTH < 8)) {
 					version[i] = substr(vstr, RSTART, RLENGTH)
 					type[i] = 3
 				}
-				# 4. Generic hash
-				else if (match(vstr, /[\/_%\-][0-9a-f]{7,40}/)) {
-					version[i] = substr(vstr, RSTART+1, RLENGTH-1)
-					type[i] = 4
-				}
 			}
 
-			# 5. Match nothing (default)
+			# 4. Generic hash (lowest priority, also to correct mistaken type 3)
+			if (((type[i] == "") || (type[i] == 3)) && match(vstr, /[\/_%\-][0-9a-f]{7,40}/)) {
+				version[i] = substr(vstr, RSTART+1, RLENGTH-1)
+				type[i] = 4
+			}
+
+			# 5. Match nothing (worst case)
 			if (type[i] == "") {
 				version[i] = "-"
 				type[i] = 5
 			}
 		}
-		
+
 		# If same type, then choose the one with the longer length
 		if (type[0] == type[1]) {
 			if (length(version[0]) > length(version[1])) print version[0]
@@ -1105,7 +1136,9 @@ _check_version_filters() {
 		# Else, pick the lower types, avoid type 4+ if possible
 		else if (type[0] < 4) print version[0]
 		else if (type[1] < 4) print version[1]
-		else print version[0]
+		# Else, at least check which is lower to avoid type 5
+		else if (type[0] < type[1]) print version[0]
+		else print version[1]
 	}' | sed 's/^v//'
 }
 
@@ -1153,8 +1186,6 @@ _check_version() {
 					_check_version_if_version_file_exists
 				elif [ "$arg" = "$AMCLI" ]; then
 					APPVERSION="$AMVERSION"
-				elif echo "$arg" | grep -q "ffwa-"; then
-					APPVERSION="WebApp"
 				elif grep -q "usr/local/lib" "$argpath"/remove 2>/dev/null; then
 					_check_version_if_library
 				elif [ -f "$argpath"/updater ] || grep -qi "version=" "$argpath"/*; then
@@ -1578,7 +1609,7 @@ _use_relocate() {
 			APPMAN_APPS_NEW=$(sort -u "$SCRIPTDIR"/am-clone.source.appman | sed 's:.*/::' | xargs)
 			"$AMCLIPATH_ORIGIN" -i --user "$APPMAN_APPS_NEW"
 		fi
-		
+
 	fi
 }
 
@@ -1752,7 +1783,7 @@ _use_verify() {
 			digest=$(curl -Lsf "$download_url.zsync" | grep -a "SHA\|MD5" | tr -d '\0')
 			if [ -z "$digest" ]; then
 				# Search other sources if no zsync file
-				for ext in digest DIGEST sha512 sha256 sha1 md5; do
+				for ext in digest DIGEST sha512 sha512sum sha256 sha256sum sha1 sha1sum md5 md5sum; do
 					digest=$(curl -Lsf "$download_url.$ext")
 					# Skip empty responses (some CDNs return HTTP 404 with empty body)
 					[ -z "$digest" ] && continue
@@ -2307,7 +2338,7 @@ case "$1" in
 			NOTE, \"--sandbox\" can be used as a flag in \"-i\" and \"-ia\" or can be replaced using the option \"-ias\" (aka Install AppImage & Sandbox).")
 		description_sync=$(echo $"Description: Updates this script to the latest version hosted.")
 		description_template=$(echo $"Description: Generate a custom installation script. To test the scripts, use the \"$AMCLI -i '/path/to/script'\" command or enter the directory of the script and run the \"$AMCLI -i ./script\" command, even using dedicated flags, if necessary (see \"-i\").")
-		description_translate=$(echo $"Description: Download and set one or more language packs (if available), set \"$AMCLI\" to English (default), your language or other languages.\n\nVisit https://github.com/ivan-hc/AM/tree/$AMBRANCH/translations to get source files needed to submit new translations or to improve the existing ones.")
+		description_translate=$(echo $"Description: Let \"$AMCLI\" automatically use the language based on your system language; if \"$AMCLI\" does not have that system language, it fallbacks to English - auto (default), or manually set \"$AMCLI\" to use English or other languages - isocode.\n\nVisit https://github.com/ivan-hc/AM/tree/$AMBRANCH/translations to get source files needed to submit new translations or to improve the existing ones.")
 		description_unhide=$(echo $"Description: Allow a hidden app to be shown and managed again (nulls \"hide\").")
 		description_unlock=$(echo $"Description: Unlock updates for the selected program (nulls \"lock\").")
 		description_update=$(echo $"Description: Update everything. Add \"--apps\" to update only the apps or write only the apps you want to update by adding their names. Add the \"--debug\" flag to view the output of AM-updater scripts. Add the \"--launcher\" flag to try to update only local AppImages integrated with the \"--launcher\" option (see \"--launcher\").")
@@ -2562,7 +2593,8 @@ case "$1" in
 			${Gold}translate, --translate\033[0m
 
 					${LightBlue}$AMCLI --translate\033[0m
-					${LightBlue}$AMCLI --translate {CODE}\033[0m
+					${LightBlue}$AMCLI --translate auto\033[0m
+					${LightBlue}$AMCLI --translate {ISOCODE}\033[0m
 
 			$description_translate
 
