@@ -965,7 +965,7 @@ NOTE that "`--launcher`" can be used as a flag in "`-u`" to try to update the in
 
 **Description**:
 
-Set local directory for AppMan's applications.
+Sets the local directory for AppMan applications if it doesn't exist.
 
 ------------------------------------------------------------------------
 ### `--system`
