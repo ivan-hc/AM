@@ -959,6 +959,15 @@ Drag/drop one or more AppImages in the terminal and embed them in the apps menu 
 NOTE that "`--launcher`" can be used as a flag in "`-u`" to try to update the integrated AppImages (see "`-u`"). This works only if "appimageupdatetool" is installed and delta updates are supported. This flag does not work miracles, I strongly suggest to use options "`-ia`" and "`-e`" instead.
 
 ------------------------------------------------------------------------
+### `--location`
+
+		am --location /path/to/applications
+
+**Description**:
+
+Set local directory for AppMan's applications.
+
+------------------------------------------------------------------------
 ### `--system`
 
 		am --system
