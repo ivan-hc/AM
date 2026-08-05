@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="10.3-1"
+AMVERSION="10.3-2"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -338,61 +338,57 @@ NOTE: If no input is given then \"~/Applications\" will be used as default
 
 if you wish to later change the location, first remove all the programs and then edit the \"$APPMANCONFIG/appman-config\" file.")
 
-_appman_create_path() {
-	location="$(echo "$location" | sed 's/[ \t]/-/g; s|^\./||' 2>/dev/null)"
-	[ -z "$location" ] && location="$HOME/Applications"
-	if printf '%s' "$location" | grep -q '`\|\$(\|"\|\\'; then
-		echo "$DIVIDING_LINE"
-		echo $" 💀 ERROR: unsupported characters in path, please use a plain path"
-		echo "$DIVIDING_LINE"
-		exit 1
-	fi
-	case "$location" in
-		"~")   location="$HOME" ;;
-		"~/"*) location="$HOME/${location#\~/}" ;;
-	esac
-	location=$(eval "printf '%s' \"$location\"")
-	if ! echo "$location" | grep "^/" >/dev/null 2>&1; then
-		location="$HOME/$location"
-	fi
-	if echo "$location" | grep "$BINDIR" >/dev/null 2>&1; then
-		echo "$DIVIDING_LINE"
-		echo $" 💀 ERROR, you can't install applications in \"$BINDIR\""
-		echo $" $BINDIR is normally used for executables, Please choose a different path and retry!"
-		echo "$DIVIDING_LINE"
-		exit  1
-	elif ! mkdir -p "$location" 2>/dev/null || [ ! -w "$location" ]; then
-		echo $" 💀 ERROR: You don't have write access to $location or it is invalid"
-		exit 1
-	fi
-	mkdir -p "$APPMANCONFIG" || exit 1
-	echo "${location%/}" > "$APPMANCONFIG"/appman-config || exit 1
-	echo "$DIVIDING_LINE"
-	echo $" You are ready! Start installing your favorite apps locally!"
-	echo $" All apps will be installed in $location"
-	echo $" In case of problems, use the option \"-h\"."
-	echo "$DIVIDING_LINE"
-}
+# Set AppMan configuration file in a non interactive way
+if [ ! -f "$APPMANCONFIG"/appman-config ] && echo "$@" | grep -q -- "^--location "; then
+	set_appman_configuration_file=$(echo "$@" | cut -f2- -d ' ' | tr ' ' '\n' | grep -v -- "^-\|^$1$")
+fi
 
 _appman_check() {
 	if [ ! -f "$APPMANCONFIG"/appman-config ]; then
 		echo "$DIVIDING_LINE"
 		[ "$AMCLI" = am ] && echo $">>> Configure AppMan" || echo $">>> Thank you for choosing AppMan!"
-		echo "$DIVIDING_LINE"
-		echo "$APPMAN_SETUP_MSG" | _fit
-		echo "$DIVIDING_LINE"
-		read -r -ep $" Write the path or just press enter to use default:$(printf "\n\n ")" location
-		_appman_create_path
-	fi
-}
 
-_use_location() {
-	if [ ! -f "$APPMANCONFIG"/appman-config ]; then
-		location="$(echo "$@" | cut -f2- -d ' ' | tr ' ' '\n' | grep -v -- "^-\|^$1$")"
-		_appman_create_path
-	else
+		if [ -z "$set_appman_configuration_file" ]; then
+			echo "$DIVIDING_LINE"
+			echo "$APPMAN_SETUP_MSG" | _fit
+			echo "$DIVIDING_LINE"
+			read -r -ep $" Write the path or just press enter to use default:$(printf "\n\n ")" location
+		else
+			location="$set_appman_configuration_file"
+		fi
+
+		location="$(echo "$location" | sed 's/[ \t]/-/g; s|^\./||' 2>/dev/null)"
+		[ -z "$location" ] && location="$HOME/Applications"
+		if printf '%s' "$location" | grep -q '`\|\$(\|"\|\\'; then
+			echo "$DIVIDING_LINE"
+			echo $" 💀 ERROR: unsupported characters in path, please use a plain path"
+			echo "$DIVIDING_LINE"
+			exit 1
+		fi
+		case "$location" in
+			"~")   location="$HOME" ;;
+			"~/"*) location="$HOME/${location#\~/}" ;;
+		esac
+		location=$(eval "printf '%s' \"$location\"")
+		if ! echo "$location" | grep "^/" >/dev/null 2>&1; then
+			location="$HOME/$location"
+		fi
+		if echo "$location" | grep "$BINDIR" >/dev/null 2>&1; then
+			echo "$DIVIDING_LINE"
+			echo $" 💀 ERROR, you can't install applications in \"$BINDIR\""
+			echo $" $BINDIR is normally used for executables, Please choose a different path and retry!"
+			echo "$DIVIDING_LINE"
+			exit  1
+		elif ! mkdir -p "$location" 2>/dev/null || [ ! -w "$location" ]; then
+			echo $" 💀 ERROR: You don't have write access to $location or it is invalid"
+			exit 1
+		fi
+		mkdir -p "$APPMANCONFIG" || exit 1
+		echo "${location%/}" > "$APPMANCONFIG"/appman-config || exit 1
 		echo "$DIVIDING_LINE"
-		echo "💀 ERROR, $APPMANCONFIG/appman-config already exists!" | _fit
+		echo $" You are ready! Start installing your favorite apps locally!"
+		echo $" All apps will be installed in $location"
+		echo $" In case of problems, use the option \"-h\"."
 		echo "$DIVIDING_LINE"
 	fi
 }
@@ -2274,7 +2270,13 @@ case "$1" in
 		_use_force_latest "$@"
 		;;
 	'--location')
-		_use_location "$@"
+		if [ -z "$set_appman_configuration_file" ] && [ -f "$APPMANCONFIG"/appman-config ]; then
+			echo "$DIVIDING_LINE"
+			echo "💀 ERROR, $APPMANCONFIG/appman-config already exists!" | _fit
+			echo "$DIVIDING_LINE"
+		else
+			_appman_check
+		fi
 		;;
 	'newrepo'|'neodb')
 		_use_newrepo "$@"
@@ -2370,7 +2372,7 @@ case "$1" in
 		description_launcher=$(echo $"Description: Drag/drop one or more AppImages in the terminal and embed them in the apps menu and customize a command to use from the CLI.
 
 			NOTE that \"--launcher\" can be used as a flag in \"-u\" to try to update the integrated AppImages (see \"-u\"). This works only if \"appimageupdatetool\" is installed and delta updates are supported. This flag does not work miracles, I strongly suggest to use options \"-ia\" and \"-e\" instead.")
-		description_location="Description: Set local directory for AppMan's applications."
+		description_location="Description: Sets the local directory for AppMan applications if it doesn't exist."
 		description_system=$(echo $"Description: Switch \"AM\" back to \"AM\" from \"AppMan Mode\" (see \"--user\").")
 		description_user=$(echo $"Description: Made \"AM\" run in \"AppMan Mode\", locally, useful for unprivileged users. This option only works with \"AM\".
 
