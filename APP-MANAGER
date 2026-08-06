@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="10.3-2"
+AMVERSION="10.3-3"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -338,25 +338,19 @@ NOTE: If no input is given then \"~/Applications\" will be used as default
 
 if you wish to later change the location, first remove all the programs and then edit the \"$APPMANCONFIG/appman-config\" file.")
 
-# Set AppMan configuration file in a non interactive way
-if [ ! -f "$APPMANCONFIG"/appman-config ] && echo "$@" | grep -q -- "^--location "; then
-	set_appman_configuration_file=$(echo "$@" | cut -f2- -d ' ' | tr ' ' '\n' | grep -v -- "^-\|^$1$")
-fi
-
 _appman_check() {
 	if [ ! -f "$APPMANCONFIG"/appman-config ]; then
 		echo "$DIVIDING_LINE"
 		[ "$AMCLI" = am ] && echo $">>> Configure AppMan" || echo $">>> Thank you for choosing AppMan!"
-
-		if [ -z "$set_appman_configuration_file" ]; then
+		# Set $appman_location to create the AppMan configuration file in a non interactive way
+		if [ -z "$appman_location" ]; then
 			echo "$DIVIDING_LINE"
 			echo "$APPMAN_SETUP_MSG" | _fit
 			echo "$DIVIDING_LINE"
 			read -r -ep $" Write the path or just press enter to use default:$(printf "\n\n ")" location
 		else
-			location="$set_appman_configuration_file"
+			location="$appman_location"
 		fi
-
 		location="$(echo "$location" | sed 's/[ \t]/-/g; s|^\./||' 2>/dev/null)"
 		[ -z "$location" ] && location="$HOME/Applications"
 		if printf '%s' "$location" | grep -q '`\|\$(\|"\|\\'; then
@@ -991,7 +985,7 @@ available_options="about add apikey backup clean clone config disable downgrade 
 	install install-appimage integrate launcher list lock neodb newrepo nolibfuse off on overwrite purge query reinstall relocate remove sandbox \
 	search select sync template test translate unhide unlock update upgrade --all --appimages --apps --byname --clone --config --convert --debug \
 	--devmode-disable --devmode-enable --disable-notifications --enable-notifications --force-latest --help --home --icons \
-	-ias --launcher --less --location --pkg --portable --rollback --disable-sandbox --relocate --sandbox --system --translate --user $third_party_flags"
+	-ias --launcher --less --pkg --portable --rollback --disable-sandbox --relocate --sandbox --system --translate --user $third_party_flags"
 
 _completion_lists() {
 	# Remove existing lists and download new ones
@@ -2269,15 +2263,6 @@ case "$1" in
 	'force-latest'|'--force-latest')
 		_use_force_latest "$@"
 		;;
-	'--location')
-		if [ -z "$set_appman_configuration_file" ] && [ -f "$APPMANCONFIG"/appman-config ]; then
-			echo "$DIVIDING_LINE"
-			echo "💀 ERROR, $APPMANCONFIG/appman-config already exists!" | _fit
-			echo "$DIVIDING_LINE"
-		else
-			_appman_check
-		fi
-		;;
 	'newrepo'|'neodb')
 		_use_newrepo "$@"
 		;;
@@ -2372,7 +2357,6 @@ case "$1" in
 		description_launcher=$(echo $"Description: Drag/drop one or more AppImages in the terminal and embed them in the apps menu and customize a command to use from the CLI.
 
 			NOTE that \"--launcher\" can be used as a flag in \"-u\" to try to update the integrated AppImages (see \"-u\"). This works only if \"appimageupdatetool\" is installed and delta updates are supported. This flag does not work miracles, I strongly suggest to use options \"-ia\" and \"-e\" instead.")
-		description_location="Description: Sets the local directory for AppMan applications if it doesn't exist."
 		description_system=$(echo $"Description: Switch \"AM\" back to \"AM\" from \"AppMan Mode\" (see \"--user\").")
 		description_user=$(echo $"Description: Made \"AM\" run in \"AppMan Mode\", locally, useful for unprivileged users. This option only works with \"AM\".
 
@@ -2690,12 +2674,6 @@ case "$1" in
 					${LightBlue}$AMCLI --launcher /path/to/\${APPIMAGE}\033[0m
 
 			$description_launcher
-
-			${Gold}--location\033[0m
-
-					${LightBlue}$AMCLI --location /path/to/applications\033[0m
-
-			$description_location
 
 			${Gold}--system\033[0m
 
