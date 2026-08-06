@@ -16,6 +16,24 @@ ARCH="$(uname -m)"
 [ "$ARCH" = "amd64" ] && ARCH=x86_64
 export ARCH
 
+# Subtitute read function (with auto-yes)
+_read() {
+	local prompt="$1"
+	local var_name="$2"
+	local results=""
+
+	if [[ "$default_yes" == true ]]; then
+		# If variable name is 'yn', default to 'y'
+		if [[ "$var_name" == "yn" ]]; then
+			results="y"
+		fi
+	else
+		read -r -ep "$prompt" results
+	fi
+
+	eval "$var_name='$results'"
+}
+
 # Substitute host dependencies for native shell built-ins
 basename() {
 	[ -n "$1" ] || return 1
@@ -220,7 +238,7 @@ _use_translate() {
 	echo "$DIVIDING_LINE"
 	if [ -z "$2" ]; then
 		printf $"Add a suitable locale code, for example \"it\" for Italian, or use the system language - \"auto\"\n\n" | _fit | grep .
-		read -r -ep $" Leave blank to use \"$CLI\" in English: " amlocale
+		_read $" Leave blank to use \"$CLI\" in English: " amlocale
 		if [ -z "$amlocale" ] || [ "$amlocale" = "en" ]; then
 			iso_code="en"
 			mkdir -p "$DATADIR/AM" && echo "en" > "$DATADIR/AM/locale"
@@ -345,7 +363,7 @@ _appman_check() {
 		echo "$DIVIDING_LINE"
 		echo "$APPMAN_SETUP_MSG" | _fit
 		echo "$DIVIDING_LINE"
-		read -r -ep $" Write the path or just press enter to use default:$(printf "\n\n ")" location
+		_read $" Write the path or just press enter to use default:$(printf "\n\n ")" location
 		location="$(echo "$location" | sed 's/[ \t]/-/g; s|^\./||' 2>/dev/null)"
 		[ -z "$location" ] && location="$HOME/Applications"
 		if printf '%s' "$location" | grep -q '`\|\$(\|"\|\\'; then
@@ -641,7 +659,7 @@ if [ "$ARCH" = aarch64 ] || [ "$ARCH" = x86_64 ]; then
 		done
 		if [ -n "$fallback_binaries_needed" ]; then
 			printf "%b\n%b:\n %b\n%b\n\033[0m\n%b\n\n" "$DIVIDING_LINE" "$missing_cmd_msg_header" "${Green}" "$fallback_binaries_needed" "$missing_cmd_msg_footer" | _fit
-			read -r -p $" Do you wish to continue? (N/y): " yn
+			_read $" Do you wish to continue? (N/y): " yn
 			if echo "$yn" | grep -qi "^y"; then
 				printf "\n"
 				_online_check
@@ -1037,8 +1055,8 @@ if [ "$CLI_PATH" != "/usr/bin/am" ]; then
 		if [ -f "${ZDOTDIR:-$HOME}"/.zshrc ] && echo "$SHELL" | grep -q "zsh"; then
 			if ! grep -q "$completion_file" "${ZDOTDIR:-$HOME}"/.zshrc && [ ! -f "$AMDATADIR"/zsh-completion-off ]; then
 				printf $"Zsh completion requires editing the main configuration file, but it may cause problems.\nSee https://github.com/ivan-hc/AM/issues/1843\n" | _fit
-				read -r -p $"Want to proceed anyway? (y,N)" response
-				if echo "$response" | grep -qi "^y"; then
+				_read $"Want to proceed anyway? (y,N)" yn
+				if echo "$yn" | grep -qi "^y"; then
 					cat <<-HEREDOC >> "${ZDOTDIR:-$HOME}"/.zshrc
 					autoload bashcompinit
 					bashcompinit
@@ -1354,7 +1372,7 @@ _use_appman() {
 	_online_check
 	[ "$CLI" = appman ] && echo $" This function only works for AM" && exit 0
 	printf "%b\n" "$APPMAN_MSG_THINK" | _fit
-	read -r -p $" Do you wish to enter \"AppMan Mode\" (y,N)?" yn
+	_read $" Do you wish to enter \"AppMan Mode\" (y,N)?" yn
 	if ! echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
 		echo "$DIVIDING_LINE"
 	else
@@ -1370,7 +1388,7 @@ if [ "$AMCLI" = am ]; then
 		_appman
 		AMCLIPATH="$CLI_PATH"
 	elif [ ! -w "$AMPATH" ]; then
-		read -r -p $" \"AM\" is read-only, want to use it in \"AppMan Mode\" (Y,n)? " yn
+		_read $" \"AM\" is read-only, want to use it in \"AppMan Mode\" (Y,n)? " yn
 		if echo "$yn" | grep -i '^n' >/dev/null 2>&1; then
 			exit 0
 		else
@@ -1568,7 +1586,7 @@ _use_clone() {
 		_clone_show_items_msg "$@"
 
 		if echo "$@" | grep -oq -- "install\|-i"; then
-			read -r -p $" Do you want to install the set of programs listed above (y,N)?" yn
+			_read $" Do you want to install the set of programs listed above (y,N)?" yn
 			if ! echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
 				echo "$DIVIDING_LINE"
 			else
@@ -1590,7 +1608,7 @@ _use_relocate() {
 	else
 		APPMAN_APPSPATH=$(sort "$APPMANCONFIG/appman-config")
 		printf $"The local path currently in use for programs is as follows:\n\n%b\n\n" "$APPMAN_APPSPATH" | _fit
-		read -r -p $" Do you want to remove and re-install everything to a new location (y,N)?" yn
+		_read $" Do you want to remove and re-install everything to a new location (y,N)?" yn
 		if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
 			AMCLIPATH_ORIGIN="$AMCLIPATH"
 			rm -f "$SCRIPTDIR"/am-clone.source
@@ -2168,6 +2186,13 @@ _use_module() {
 	fi
 }
 
+# Parse for global switches and remove them
+if [[ "$1" == -*y* ]]; then
+	set -- "${1//y/}" "${@:2}"
+	default_yes=true
+fi
+
+# Parse main command
 case "$1" in
 	'')
 		echo "$DIVIDING_LINE"
