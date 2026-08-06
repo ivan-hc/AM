@@ -29,9 +29,17 @@ RELEASE=""
 
 if echo "$response" | grep -q "^1"; then
 	RELEASE="PORTABLE"
-	LANGUAGE=$(curl -Ls https://raw.githubusercontent.com/linuxmint/mdm/master/config/locale.alias | grep -i "$LANG" | grep -o '^\S*')
-	CODE=$(curl -Ls https://releases.mozilla.org/pub/firefox/releases/latest/README.txt | cut -d ':' -f2 | grep -i "$LANGUAGE" | cut -d '=' -f2)
-	wget "https://download.mozilla.org/?product=$APP-latest&os=linux64&lang=$CODE" --trust-server-names || exit 1
+	LANGUAGE=$(echo "${LANG%%.*}" | sed -- 's/_/-/g')
+	CODES=$(curl -Ls https://releases.mozilla.org/pub/firefox/releases/latest/README.txt | tr ' ' '\n' | grep "^lang=")
+	if echo "$CODES" | grep -q "^lang=$LANGUAGE"; then
+		CODE="$LANGUAGE"
+	elif echo "$CODES" | grep -q "^lang=$(echo "$LANGUAGE" | tr '-' '\n' | head -1)"; then
+		CODE="$(echo "$LANGUAGE" | tr '-' '\n' | head -1)"
+	else
+		CODE=""
+	fi
+	download=$(curl -I "https://download.mozilla.org/?product=$APP-latest&os=linux64&lang=$CODE" 2>/dev/null | grep -Eoi "http.*xz" | head -1)
+	wget "$download" || exit 1
 	[ -e ./*tar.* ] && tar fx ./*tar.* && rm -f ./*tar.*
 	cd ..
 	mv ./tmp/firefox/* ./

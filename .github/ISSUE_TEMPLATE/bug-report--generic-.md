@@ -15,6 +15,8 @@ By opening this issue, I certify:
 - that I have searched for an option or flag in `-h` that covers my use case
 - that I have searched for an issue that covers my use case https://github.com/ivan-hc/AM/issues
 
+We encourage contributors to follow the [GNU Kind Communications Guidelines (GNU KCG)](https://gnu.support/philosophy/GNU-Kind-Communications-Guidelines.html)
+
 --------------------------------------------------
 
 ## Are you using "AM" or "AppMan"?
