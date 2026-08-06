@@ -331,6 +331,24 @@ NOTE: by modifying the contents of `~/.config/appman`, you will only change the 
 
 To change locations, remove local apps, and reinstall in the new location, see the `--relocate` or `relocate` option, [here](docs/guides-and-tutorials/relocate.md).
 
+### Set AppMan configuration file in a non interactive way
+
+If you haven't yet set up the configuration file and want to set the application directory non-interactively, simply add the path to the "$appman_location" variable, like this:
+```
+appman_location=/path/to/directory am -i --user {PROGRAM}
+
+```
+or
+```
+appman_location=/path/to/directory am --user
+
+```
+or
+```
+appman_location=/path/to/directory appman
+```
+NOTE: This only works if the configuration file doesn't exist.
+
 ------------------------------------------------------------------------
 ### What programs can be installed
 "AM" installs, removes, updates and manages only standalone programs, ie those programs that can be run from a single directory in which they are contained.
