@@ -168,6 +168,18 @@ Type "1" to install "AM", "2" to install "[AppMan](#what-is-appman)". Any other 
 Run `am -h` or jump to "**[Usage](#usage)**" to see all the available options.
 
 ------------------------------------------------------------------------
+
+NOTE, the AM-INSTALLER supports non-interactive installation via flag `-i`, `install` or `--install`. For example
+```
+./AM-INSTALLER -i am
+```
+or
+```
+./AM-INSTALLER -i appman
+```
+This will help to install AM or AppMan in an automated way.
+
+------------------------------------------------------------------------
 ## Using "GIT" (only system-wide installation)
 Copy/paste the following commands
 ```
@@ -318,6 +330,24 @@ When you first launch it, you will be asked to specify a path to the application
 NOTE: by modifying the contents of `~/.config/appman`, you will only change the paths for any subsequent operation, while apps and modules stored in the old path will not be manageable. It is recommended to remove the apps first.
 
 To change locations, remove local apps, and reinstall in the new location, see the `--relocate` or `relocate` option, [here](docs/guides-and-tutorials/relocate.md).
+
+### Set AppMan configuration file in a non interactive way
+
+If you haven't yet set up the configuration file and want to set the application directory non-interactively, simply add the path to the "$appman_location" variable, like this:
+```
+appman_location=/path/to/directory am -i --user {PROGRAM}
+
+```
+or
+```
+appman_location=/path/to/directory am --user
+
+```
+or
+```
+appman_location=/path/to/directory appman
+```
+NOTE: This only works if the configuration file doesn't exist.
 
 ------------------------------------------------------------------------
 ### What programs can be installed
