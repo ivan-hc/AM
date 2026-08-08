@@ -347,6 +347,12 @@ or
 ```
 appman_location=/path/to/directory appman
 ```
+
+or if you want to set the default location
+```
+echo "" | appman
+```
+
 NOTE: This only works if the configuration file doesn't exist.
 
 ------------------------------------------------------------------------
