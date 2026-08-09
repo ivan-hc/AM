@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="10.3-3"
+AMVERSION="10.3-4"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -645,18 +645,29 @@ if [ "$ARCH" = aarch64 ] || [ "$ARCH" = x86_64 ]; then
 			fi
 		done
 		if [ -n "$fallback_binaries_needed" ]; then
-			printf "%b\n%b:\n %b\n%b\n\033[0m\n%b\n\n" "$DIVIDING_LINE" "$missing_cmd_msg_header" "${Green}" "$fallback_binaries_needed" "$missing_cmd_msg_footer" | _fit
-			read -r -p $" Do you wish to continue? (N/y): " yn
-			if echo "$yn" | grep -qi "^y"; then
+			# Set amdeps_on=true to download fallback dependencies not interactively
+			if [ "$amdeps_on" = true ]; then
 				printf "\n"
 				_online_check
 				for name in $fallback_binaries_needed; do
 					_deps_dl && chmod a+x "$CACHEDIR"/AMCACHEPATH/"$name" && printf $" - %b, downloaded from https://github.com/ivan-hc/am-utils\n" "$name" &
 				done
 				wait
-				printf "\n%b\n" "$DIVIDING_LINE"
+				printf "\n"
 			else
-				[ ! -f "$AMDATADIR"/disable-dependencies-prompt ] && touch "$AMDATADIR"/disable-dependencies-prompt
+				printf "%b\n%b:\n %b\n%b\n\033[0m\n%b\n\n" "$DIVIDING_LINE" "$missing_cmd_msg_header" "${Green}" "$fallback_binaries_needed" "$missing_cmd_msg_footer" | _fit
+				read -r -p $" Do you wish to continue? (N/y): " yn
+				if echo "$yn" | grep -qi "^y"; then
+					printf "\n"
+					_online_check
+					for name in $fallback_binaries_needed; do
+						_deps_dl && chmod a+x "$CACHEDIR"/AMCACHEPATH/"$name" && printf $" - %b, downloaded from https://github.com/ivan-hc/am-utils\n" "$name" &
+					done
+					wait
+					printf "\n%b\n" "$DIVIDING_LINE"
+				else
+					[ ! -f "$AMDATADIR"/disable-dependencies-prompt ] && touch "$AMDATADIR"/disable-dependencies-prompt
+				fi
 			fi
 		fi
 	elif [ -z "$fallback_binaries_needed" ] && [ -f "$AMDATADIR"/disable-dependencies-prompt ]; then
