@@ -4,7 +4,7 @@
 . "$(dirname "$0")/test-common.sh"
 
 # Setup
-rm -f $TEST_LOG
+rm -f "$TEST_LOG"
 _log "Regression testing setup:"
 _restore_binaries "$AM_OPT_DEPS"
 _remove_all_apps
@@ -15,6 +15,7 @@ _log "Done.\n"
 # Run all regression tests
 ./test-am-versions.sh
 ./test-am-fuzzy-suggest.sh
+./test-am-defaults.sh
 ./test-am-hide.sh
 ./test-am-install.sh
 ./test-am-checksum.sh
