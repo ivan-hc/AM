@@ -11,7 +11,9 @@ PASS=0
 FAIL=0
 
 # Load the actual functions from the module
+_appman="/opt/am/APP-MANAGER"
 _module="/opt/am/modules/install.am"
+eval "$(awk '/^_read\(\)/,/^}$/' "$_appman")"
 eval "$(awk '/^_levenshtein\(\)/,/^}$/' "$_module")"
 eval "$(awk '/^_did_you_mean\(\)/,/^}$/' "$_module")"
 eval "$(awk '/^_select_did_you_mean_candidate\(\)/,/^}$/' "$_module")"
@@ -41,12 +43,12 @@ _ko() {
 }
 
 _assert_eq() {
-	local label="$1" got="$2" expected="$3"
+	label="$1" got="$2" expected="$3"
 	[ "$got" = "$expected" ] && _ok "$label" || _ko "$label" "$got" "$expected"
 }
 
 _assert_contains() {
-	local label="$1" haystack="$2" needle="$3"
+	label="$1" haystack="$2" needle="$3"
 	if echo "$haystack" | grep -q "$needle"; then
 		_ok "$label"
 	else
@@ -55,7 +57,7 @@ _assert_contains() {
 }
 
 _assert_empty() {
-	local label="$1" value="$2"
+	label="$1" value="$2"
 	[ -z "$value" ] && _ok "$label" || _ko "$label" "$value" "(empty)"
 }
 
@@ -113,7 +115,7 @@ _test_levenshtein() {
 ################################################################################
 
 _test_did_you_mean() {
-	local applist="${AMDATADIR:-$HOME/.local/share/AM}/${ARCH:-$(uname -m)}-apps"
+	applist="${AMDATADIR:-$HOME/.local/share/AM}/${ARCH:-$(uname -m)}-apps"
 	if [ ! -f "$applist" ]; then
 		printf "\n=== _did_you_mean tests SKIPPED (no cached app list at %s) ===\n" "$applist"
 		printf "SKIP: _did_you_mean tests — no app list cached\n" >> "$test_results"
@@ -121,7 +123,6 @@ _test_did_you_mean() {
 	fi
 
 	printf "\n=== _did_you_mean unit tests ===\n"
-	local out
 
 	# Extra char at end
 	out=$(_did_you_mean "zen-browser2")
@@ -233,7 +234,6 @@ _test_did_you_mean() {
 ################################################################################
 
 _test_did_you_mean_tp() {
-	local tmpdir
 	tmpdir=$(mktemp -d)
 	trap 'rm -rf "$tmpdir"' RETURN
 
@@ -255,13 +255,12 @@ EOF
 ◆ xfce4-terminal : Terminal emulator. To install it use the --appbundle flag or the .appbundle extension.
 EOF
 
-	local saved_amdatadir="$AMDATADIR"
-	local saved_tp="$third_party_lists"
+	saved_amdatadir="$AMDATADIR"
+	saved_tp="$third_party_lists"
 	AMDATADIR="$tmpdir"
 	third_party_lists="busybox appbundle"
 
 	printf "\n=== _did_you_mean third-party tests ===\n"
-	local out
 
 	# Exact match in tp list → special message, flag set
 	out=$(_did_you_mean "xfce4-multicall")
@@ -327,7 +326,6 @@ EOF
 ################################################################################
 
 _test_did_you_mean_substring() {
-	local tmpdir
 	tmpdir=$(mktemp -d)
 	trap 'rm -rf "$tmpdir"' RETURN
 
@@ -336,13 +334,12 @@ _test_did_you_mean_substring() {
 ◆ hermit : Lightweight Chromium-based site-specific browser
 EOF
 
-	local saved_amdatadir="$AMDATADIR"
-	local saved_tp="$third_party_lists"
+	saved_amdatadir="$AMDATADIR"
+	saved_tp="$third_party_lists"
 	AMDATADIR="$tmpdir"
 	third_party_lists=""
 
 	printf "\n=== _did_you_mean substring-match tests ===\n"
-	local out
 
 	# Single substring match: "heroic" vs "heroic-games-launcher" is way
 	# outside the len-diff/first-char/edit-distance heuristics, so this only
