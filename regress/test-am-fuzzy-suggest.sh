@@ -11,9 +11,12 @@ PASS=0
 FAIL=0
 
 # Load the actual functions from the module
+_appman="/opt/am/APP-MANAGER"
 _module="/opt/am/modules/install.am"
+eval "$(awk '/^_read\(\)/,/^}$/' "$_appman")"
 eval "$(awk '/^_levenshtein\(\)/,/^}$/' "$_module")"
 eval "$(awk '/^_did_you_mean\(\)/,/^}$/' "$_module")"
+eval "$(awk '/^_select_did_you_mean_candidate\(\)/,/^}$/' "$_module")"
 
 # Variables required by _did_you_mean
 AMDATADIR="${AMDATADIR:-$HOME/.local/share/AM}"
@@ -40,12 +43,12 @@ _ko() {
 }
 
 _assert_eq() {
-	local label="$1" got="$2" expected="$3"
+	label="$1" got="$2" expected="$3"
 	[ "$got" = "$expected" ] && _ok "$label" || _ko "$label" "$got" "$expected"
 }
 
 _assert_contains() {
-	local label="$1" haystack="$2" needle="$3"
+	label="$1" haystack="$2" needle="$3"
 	if echo "$haystack" | grep -q "$needle"; then
 		_ok "$label"
 	else
@@ -54,7 +57,7 @@ _assert_contains() {
 }
 
 _assert_empty() {
-	local label="$1" value="$2"
+	label="$1" value="$2"
 	[ -z "$value" ] && _ok "$label" || _ko "$label" "$value" "(empty)"
 }
 
@@ -112,7 +115,7 @@ _test_levenshtein() {
 ################################################################################
 
 _test_did_you_mean() {
-	local applist="${AMDATADIR:-$HOME/.local/share/AM}/${ARCH:-$(uname -m)}-apps"
+	applist="${AMDATADIR:-$HOME/.local/share/AM}/${ARCH:-$(uname -m)}-apps"
 	if [ ! -f "$applist" ]; then
 		printf "\n=== _did_you_mean tests SKIPPED (no cached app list at %s) ===\n" "$applist"
 		printf "SKIP: _did_you_mean tests — no app list cached\n" >> "$test_results"
@@ -120,7 +123,6 @@ _test_did_you_mean() {
 	fi
 
 	printf "\n=== _did_you_mean unit tests ===\n"
-	local out
 
 	# Extra char at end
 	out=$(_did_you_mean "zen-browser2")
@@ -232,7 +234,6 @@ _test_did_you_mean() {
 ################################################################################
 
 _test_did_you_mean_tp() {
-	local tmpdir
 	tmpdir=$(mktemp -d)
 	trap 'rm -rf "$tmpdir"' RETURN
 
@@ -254,13 +255,12 @@ EOF
 ◆ xfce4-terminal : Terminal emulator. To install it use the --appbundle flag or the .appbundle extension.
 EOF
 
-	local saved_amdatadir="$AMDATADIR"
-	local saved_tp="$third_party_lists"
+	saved_amdatadir="$AMDATADIR"
+	saved_tp="$third_party_lists"
 	AMDATADIR="$tmpdir"
 	third_party_lists="busybox appbundle"
 
 	printf "\n=== _did_you_mean third-party tests ===\n"
-	local out
 
 	# Exact match in tp list → special message, flag set
 	out=$(_did_you_mean "xfce4-multicall")
@@ -321,6 +321,131 @@ EOF
 }
 
 ################################################################################
+# _did_you_mean substring-match tests (names far outside the length-diff /
+# same-first-char heuristics that gate the Levenshtein pass)
+################################################################################
+
+_test_did_you_mean_substring() {
+	tmpdir=$(mktemp -d)
+	trap 'rm -rf "$tmpdir"' RETURN
+
+	cat > "$tmpdir/${ARCH}-apps" <<'EOF'
+◆ heroic-games-launcher : Native GOG, Epic and Amazon Games client
+◆ hermit : Lightweight Chromium-based site-specific browser
+EOF
+
+	saved_amdatadir="$AMDATADIR"
+	saved_tp="$third_party_lists"
+	AMDATADIR="$tmpdir"
+	third_party_lists=""
+
+	printf "\n=== _did_you_mean substring-match tests ===\n"
+
+	# Single substring match: "heroic" vs "heroic-games-launcher" is way
+	# outside the len-diff/first-char/edit-distance heuristics, so this only
+	# works via the substring pass.
+	out=$(_did_you_mean "heroic")
+	_assert_contains "heroic → suggests heroic-games-launcher" "$out" "heroic-games-launcher"
+	_assert_contains "heroic → output contains 'Did you mean'" "$out" "Did you mean"
+
+	DID_YOU_MEAN="" DID_YOU_MEAN_CANDIDATES=()
+	_did_you_mean "heroic" > /dev/null
+	_assert_eq "heroic → DID_YOU_MEAN=heroic-games-launcher" "$DID_YOU_MEAN" "heroic-games-launcher"
+	_assert_eq "heroic → no candidate list (single match)" "${#DID_YOU_MEAN_CANDIDATES[@]}" "0"
+
+	# Second substring match added → candidate list instead of a single guess
+	cat >> "$tmpdir/${ARCH}-apps" <<'EOF'
+◆ heroic-games-launcher-cli : CLI variant
+EOF
+	out=$(_did_you_mean "heroic")
+	_assert_contains "heroic (2 matches) → lists heroic-games-launcher" "$out" "heroic-games-launcher"
+	_assert_contains "heroic (2 matches) → lists heroic-games-launcher-cli" "$out" "heroic-games-launcher-cli"
+	_assert_contains "heroic (2 matches) → 'Multiple matches' header" "$out" "Multiple matches"
+
+	DID_YOU_MEAN="" DID_YOU_MEAN_CANDIDATES=()
+	_did_you_mean "heroic" > /dev/null
+	_assert_empty "heroic (2 matches) → DID_YOU_MEAN stays empty" "$DID_YOU_MEAN"
+	_assert_eq "heroic (2 matches) → 2 candidates" "${#DID_YOU_MEAN_CANDIDATES[@]}" "2"
+	_assert_eq "heroic (2 matches) → candidate[0]=heroic-games-launcher" "${DID_YOU_MEAN_CANDIDATES[0]}" "heroic-games-launcher"
+	_assert_eq "heroic (2 matches) → candidate[1]=heroic-games-launcher-cli" "${DID_YOU_MEAN_CANDIDATES[1]}" "heroic-games-launcher-cli"
+
+	# Short input (< 4 chars) must skip the substring pass entirely, or a
+	# single letter would substring-match almost the whole database.
+	DID_YOU_MEAN="" DID_YOU_MEAN_CANDIDATES=()
+	out=$(_did_you_mean "her")
+	if echo "$out" | grep -q "Multiple matches"; then
+		_ko "her (3 chars) → substring pass skipped, no flood" "(flooded)" "(skipped)"
+	else
+		_ok "her (3 chars) → substring pass skipped, no flood"
+	fi
+	_did_you_mean "her" > /dev/null
+	_assert_eq "her (3 chars) → no candidate list" "${#DID_YOU_MEAN_CANDIDATES[@]}" "0"
+
+	# Too many substring matches (> 15) is not a useful suggestion — bail to
+	# no suggestion instead of dumping a huge list.
+	rm -f "$tmpdir/${ARCH}-apps"
+	{
+		echo "◆ heroic-games-launcher : Native GOG, Epic and Amazon Games client"
+		for i in $(seq 1 16); do
+			echo "◆ zzflood$i-heroic-app : filler entry $i"
+		done
+	} > "$tmpdir/${ARCH}-apps"
+	DID_YOU_MEAN="" DID_YOU_MEAN_CANDIDATES=()
+	out=$(_did_you_mean "heroic")
+	_assert_empty "heroic (>15 substring matches) → no suggestion output" "$out"
+	_did_you_mean "heroic" > /dev/null
+	_assert_empty "heroic (>15 substring matches) → DID_YOU_MEAN empty" "$DID_YOU_MEAN"
+	_assert_eq "heroic (>15 substring matches) → no candidate list" "${#DID_YOU_MEAN_CANDIDATES[@]}" "0"
+
+	AMDATADIR="$saved_amdatadir"
+	third_party_lists="$saved_tp"
+}
+
+################################################################################
+# _select_did_you_mean_candidate unit tests
+################################################################################
+
+_test_select_did_you_mean_candidate() {
+	printf "\n=== _select_did_you_mean_candidate tests ===\n"
+
+	DID_YOU_MEAN_CANDIDATES=("foo-one" "foo-two" "foo-three")
+	DID_YOU_MEAN_CANDIDATE_FLAGS=("" "busybox" "")
+
+	DID_YOU_MEAN="" DID_YOU_MEAN_FLAG=""
+	if _select_did_you_mean_candidate <<< "2"; then
+		_ok "select 2 → returns success"
+	else
+		_ko "select 2 → returns success" "failure" "success"
+	fi
+	_assert_eq "select 2 → DID_YOU_MEAN=foo-two"      "$DID_YOU_MEAN" "foo-two"
+	_assert_eq "select 2 → DID_YOU_MEAN_FLAG=busybox" "$DID_YOU_MEAN_FLAG" "busybox"
+
+	DID_YOU_MEAN="" DID_YOU_MEAN_FLAG=""
+	if _select_did_you_mean_candidate <<< "0"; then
+		_ko "select 0 → cancels" "success" "failure"
+	else
+		_ok "select 0 → cancels"
+	fi
+	_assert_empty "select 0 → DID_YOU_MEAN stays empty" "$DID_YOU_MEAN"
+
+	DID_YOU_MEAN="" DID_YOU_MEAN_FLAG=""
+	if _select_did_you_mean_candidate <<< "99"; then
+		_ko "select out-of-range → rejected" "success" "failure"
+	else
+		_ok "select out-of-range → rejected"
+	fi
+	_assert_empty "select out-of-range → DID_YOU_MEAN stays empty" "$DID_YOU_MEAN"
+
+	DID_YOU_MEAN="" DID_YOU_MEAN_FLAG=""
+	if _select_did_you_mean_candidate <<< "abc"; then
+		_ko "select non-numeric → rejected" "success" "failure"
+	else
+		_ok "select non-numeric → rejected"
+	fi
+	_assert_empty "select non-numeric → DID_YOU_MEAN stays empty" "$DID_YOU_MEAN"
+}
+
+################################################################################
 # Main
 ################################################################################
 
@@ -329,6 +454,8 @@ _log "Running fuzzy-suggest tests: $0"
 _test_levenshtein
 _test_did_you_mean
 _test_did_you_mean_tp
+_test_did_you_mean_substring
+_test_select_did_you_mean_candidate
 
 printf "\n=== Results: \033[0;32m%d passed\033[0m, \033[0;31m%d failed\033[0m ===\n\n" "$PASS" "$FAIL"
 printf "Results: %d passed, %d failed\n" "$PASS" "$FAIL" >> "$test_results"

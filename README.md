@@ -347,7 +347,10 @@ or
 ```
 appman_location=/path/to/directory appman
 ```
+
 NOTE: This only works if the configuration file doesn't exist.
+
+The value of `$appman_location` can be a full path or the name of a directory (with any subdirectories). For example, to set the "Applications" directory to $HOME, simply type "Applications." The path will be automatically populated in the configuration file `~/.config/appman/appman-config`.
 
 ------------------------------------------------------------------------
 ### What programs can be installed

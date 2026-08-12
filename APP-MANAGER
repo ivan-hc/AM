@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="10.3-3"
+AMVERSION="10.3-5"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -509,7 +509,7 @@ _determine_argpath() {
 			i=$((i + 1))
 		done)" | _fit
 		printf "\n"
-		read -r -p " Type a number and press ENTER: " response
+		read -r -p $" Type a number and press ENTER: " response
 		response=$(echo "$argpath_items" | awk '{print $'"$response"'}')
 		argpath="$response"
 		[ ! -d "$argpath" ] && printf "\n 💀 ERROR, invalid selection! \n\n" && argpath=""
@@ -645,18 +645,29 @@ if [ "$ARCH" = aarch64 ] || [ "$ARCH" = x86_64 ]; then
 			fi
 		done
 		if [ -n "$fallback_binaries_needed" ]; then
-			printf "%b\n%b:\n %b\n%b\n\033[0m\n%b\n\n" "$DIVIDING_LINE" "$missing_cmd_msg_header" "${Green}" "$fallback_binaries_needed" "$missing_cmd_msg_footer" | _fit
-			read -r -p $" Do you wish to continue? (N/y): " yn
-			if echo "$yn" | grep -qi "^y"; then
+			# Set amdeps_on=true to download fallback dependencies not interactively
+			if [ "$amdeps_on" = true ]; then
 				printf "\n"
 				_online_check
 				for name in $fallback_binaries_needed; do
 					_deps_dl && chmod a+x "$CACHEDIR"/AMCACHEPATH/"$name" && printf $" - %b, downloaded from https://github.com/ivan-hc/am-utils\n" "$name" &
 				done
 				wait
-				printf "\n%b\n" "$DIVIDING_LINE"
+				printf "\n"
 			else
-				[ ! -f "$AMDATADIR"/disable-dependencies-prompt ] && touch "$AMDATADIR"/disable-dependencies-prompt
+				printf "%b\n%b:\n %b\n%b\n\033[0m\n%b\n\n" "$DIVIDING_LINE" "$missing_cmd_msg_header" "${Green}" "$fallback_binaries_needed" "$missing_cmd_msg_footer" | _fit
+				read -r -p $" Do you wish to continue? (N/y): " yn
+				if echo "$yn" | grep -qi "^y"; then
+					printf "\n"
+					_online_check
+					for name in $fallback_binaries_needed; do
+						_deps_dl && chmod a+x "$CACHEDIR"/AMCACHEPATH/"$name" && printf $" - %b, downloaded from https://github.com/ivan-hc/am-utils\n" "$name" &
+					done
+					wait
+					printf "\n%b\n" "$DIVIDING_LINE"
+				else
+					[ ! -f "$AMDATADIR"/disable-dependencies-prompt ] && touch "$AMDATADIR"/disable-dependencies-prompt
+				fi
 			fi
 		fi
 	elif [ -z "$fallback_binaries_needed" ] && [ -f "$AMDATADIR"/disable-dependencies-prompt ]; then
@@ -1606,6 +1617,8 @@ _use_relocate() {
 			if [ -n "$APPMAN_APPS_OLD" ]; then
 				for arg in $APPMAN_APPS_OLD; do
 					appname=$(echo "$arg" | sed 's:.*/::')
+					[ -d "$arg"/"$appname.home" ] && mkdir -p "$SCRIPTDIR"/relocate-backups && cp -r "$arg"/"$appname.home" "$SCRIPTDIR"/relocate-backups/"$appname.home"
+					[ -d "$arg"/"$appname.config" ] && mkdir -p "$SCRIPTDIR"/relocate-backups && cp -r "$arg"/"$appname.config" "$SCRIPTDIR"/relocate-backups/"$appname.config"
 					"$AMCLIPATH_ORIGIN" -R "$appname"
 				done
 			fi
@@ -1613,6 +1626,10 @@ _use_relocate() {
 			_appman
 			APPMAN_APPS_NEW=$(sort -u "$SCRIPTDIR"/am-clone.source.appman | sed 's:.*/::' | xargs)
 			"$AMCLIPATH_ORIGIN" -i --user "$APPMAN_APPS_NEW"
+			for appname in $APPMAN_APPS_NEW; do
+				[ -d "$SCRIPTDIR"/relocate-backups/"$appname.home" ] && cp -r "$SCRIPTDIR"/relocate-backups/"$appname.home" "$APPSPATH"/"$appname"/"$appname.home"
+				[ -d "$SCRIPTDIR"/relocate-backups/"$appname.config" ] && cp -r "$SCRIPTDIR"/relocate-backups/"$appname.config" "$APPSPATH"/"$appname"/"$appname.config"
+			done
 		fi
 
 	fi
