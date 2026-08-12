@@ -917,26 +917,30 @@ _sandbox_configure_dirs_access() {
 	sleep 0.5
 	printf '\033[31m'
 	_read $" Allow $1 access to a specific directory? (y/N) " yn
-	if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
-		echo $"  WARNING: Giving access to all of $HOME or / and similar is not safe"
-		echo $"  Also aisap might not let $1 start when such paths are given"
-		printf $'\033[33m%s\n' $"  Type the path to the directory"
-		read -r -p $"  Example: /media/external-drive or ~/Backups: " NEWDIR
+	if echo "$yn" | grep -i '^y' >/dev/null 2>&1 && [ -z "$default_yes" ]; then
+		echo $"  WARNING: Giving access to all of $HOME or / and similar is not safe" | sed 's/^  //g' | _fit
+		echo $"  Also aisap might not let $1 start when such paths are given" | sed 's/^  //g' | _fit
+		printf $'\033[33m%s\n' $"  Type the path to the directory" | sed 's/  //g' | _fit
+		printf $"  Example: /media/external-drive or ~/Backups: " | sed 's/^  //g' | _fit
+		_read "" NEWDIR
 		NEWDIR="$(readlink -f "$NEWDIR")"
 		case "$NEWDIR" in
 			"/"|"/home"|"$HOME"|"$DATADIR"|"$CONFIGDIR"|"$BINDIR")
 				notify-send -u critical "DO YOU WANT THE FBI TO GET YA?"
 				printf '\033[31m\n'
-				read -r -p $"  SPOOKY LOCATION! ARE YOU SURE? IF SO TYPE \"YES\": " YES
-				[ "$YES" != "YES" ] && echo $" That's not \"YES\", aborting" && return 1
+				_read $" Do you wish to continue? (N/y): " yn
+				if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
+					echo $"  Giving access to \"$NEWDIR\"..." | sed 's/^  //g' | _fit
+				else
+					unset NEWDIR
+				fi
 				;;
-			'')
-				printf $'\033[31m\n%s\n\n' $" No path given, aborting"
-				return 1
+			*)
+				[ -n "$NEWDIR" ] && echo $"  Giving access to \"$NEWDIR\"..." | sed 's/^  //g' | _fit
 				;;
 		esac
-		echo $"  Giving access to \"$NEWDIR\"..."
-		tmpscript=$(echo "$tmpscript" | sed "s#--rm-file /NOPATH#--add-file \"$NEWDIR\":rw#g")
+		[ -n "$NEWDIR" ] && tmpscript=$(echo "$tmpscript" | sed "s#--rm-file /NOPATH#--add-file \"$NEWDIR\":rw#g")
+		unset NEWDIR
 	fi
 	printf $'\n\033[32m%s\n' $" User directories access configured successfully!"
 }
