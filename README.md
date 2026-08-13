@@ -915,6 +915,16 @@ Update everything. Add "`--apps`" to update only the apps or write only the apps
 Shows the version.
 
 ------------------------------------------------------------------------
+### `--assume-yes`, `-y`
+
+		am -y {OPTION}
+		am -y {OPTION} {PROGRAM}
+
+**Description**:
+
+Add this option before other options. If a command requires manual confirmation from the user, it will be executed non-interactively, where allowed.
+
+------------------------------------------------------------------------
 ### `--devmode-disable`
 
 		am --devmode-disable
