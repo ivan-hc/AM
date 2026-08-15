@@ -22,7 +22,7 @@ _test_apps "$app_name1"
 
 # Test rollback
 _log "Test rollback $app_name1..."
-printf "Y\n2\n" |\
+printf "N\n2\n" |\
 am downgrade "$app_name1"
 app_ver_old="$(_get_app_info "$app_name1" 2)"
 [ "$app_ver_old" = "$app_ver_latest" ] && _fail "Error: \"$app_name1\" version rollback failed"
