@@ -713,6 +713,30 @@ _not_an_appimage_message() {
 }
 
 ################################################################################################################################################################
+#				REINSTALL
+################################################################################################################################################################
+
+_reinstall_save_backups() {
+	appname="$arg"
+	appnamepath="$argpath"
+	portable_dirs="cache config home share"
+	for d in $portable_dirs; do
+		if [ -d "$appnamepath"/"$appname.$d" ]; then
+			mkdir -p "$SCRIPTDIR"/reinstall-backups && cp -r "$appnamepath"/"$appname.$d" "$SCRIPTDIR"/reinstall-backups/"$appname.$d"
+		fi
+	done
+}
+
+_reinstall_restore_backups() {
+	portable_dirs="cache config home share"
+	for d in $portable_dirs; do
+		if [ -d "$SCRIPTDIR"/reinstall-backups/"$appname.$d" ]; then
+			cp -r "$SCRIPTDIR"/reinstall-backups/"$appname.$d" "$appnamepath"/"$appname.$d"
+		fi
+	done
+}
+
+################################################################################################################################################################
 #				SANDBOX
 ################################################################################################################################################################
 
@@ -1242,6 +1266,7 @@ case "$1" in
 						[ -z "$scriptname" ] && scriptname="$arg"
 						if [ "$arg" != am ] && grep -q "^◆ $scriptname :" "$AMDATADIR/$ARCH-apps"; then
 							reinstall_true=1
+							_reinstall_save_backups
 							if echo "$argpath" | grep -q "^/opt\|^/var/opt"; then
 								$SUDOCMD "$argpath"/remove 2>/dev/null
 							else
@@ -1252,6 +1277,7 @@ case "$1" in
 							else
 								"$AMCLIPATH_ORIGIN" -i "$scriptname"
 							fi
+							_reinstall_restore_backups
 						fi
 						scriptname=""
 					done
@@ -1349,12 +1375,14 @@ case "$1" in
 							if echo "$SOURCE" | grep -q "APP=$arg"; then
 								if [ "$CURRENT" != "$SOURCE" ]; then
 									reinstall_true=1
+									_reinstall_save_backups
 									"$AMCLIPATH_ORIGIN" -R "$arg"
 									if [ "$AMCLI" = "am" ] && ! echo "$argpath" | grep -q "^/opt\|^/var/opt"; then
 										"$AMCLIPATH_ORIGIN" -i --user "$scriptname"
 									else
 										"$AMCLIPATH_ORIGIN" -i "$scriptname"
 									fi
+									_reinstall_restore_backups
 								fi
 							fi
 							SOURCE=""
