@@ -360,7 +360,7 @@ EOF
 	out=$(_did_you_mean "heroic")
 	_assert_contains "heroic (2 matches) → lists heroic-games-launcher" "$out" "heroic-games-launcher"
 	_assert_contains "heroic (2 matches) → lists heroic-games-launcher-cli" "$out" "heroic-games-launcher-cli"
-	_assert_contains "heroic (2 matches) → 'Multiple matches' header" "$out" "Multiple matches"
+	_assert_contains "heroic (2 matches) → 'multiple variants' header" "$out" "multiple variants"
 
 	DID_YOU_MEAN="" DID_YOU_MEAN_CANDIDATES=()
 	_did_you_mean "heroic" > /dev/null
@@ -373,7 +373,7 @@ EOF
 	# single letter would substring-match almost the whole database.
 	DID_YOU_MEAN="" DID_YOU_MEAN_CANDIDATES=()
 	out=$(_did_you_mean "her")
-	if echo "$out" | grep -q "Multiple matches"; then
+	if echo "$out" | grep -q "multiple variants"; then
 		_ko "her (3 chars) → substring pass skipped, no flood" "(flooded)" "(skipped)"
 	else
 		_ok "her (3 chars) → substring pass skipped, no flood"
