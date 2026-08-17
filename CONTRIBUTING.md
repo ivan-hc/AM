@@ -34,7 +34,7 @@ among the other stuff in the "am-scripts" directory created with the option `-t`
 ## Want to Submit Code?
 You can submit code by:
 1. fork this repository
-2. install "AM" and "AppMan" using the guide at https://github.com/ivan-hc/AM#how-to-install-am
+2. install "AM" and "AppMan" using the guide at https://github.com/ivan-hc/AM#installation
 3. submit a [pull request](https://github.com/ivan-hc/AM/pulls)
 
 ### About AI coding assistants
