@@ -115,12 +115,18 @@ _about_description_for_third_party() {
 }
 
 _about_description() {
-	AMCATALOGUEMARKDOWNS="${AMCATALOGUEMARKDOWNS:-https://portable-linux-apps.github.io/apps}"
-	markdown_url="$AMCATALOGUEMARKDOWNS/$arg.md"
+	AMCATALOGUEMARKDOWNS="${AMCATALOGUEMARKDOWNS:-https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/refs/heads/main/apps}"
+	markdown_url="$AMCATALOGUEMARKDOWNS/$arg"
 	markdown_page=$(_use_online_reading_tool "$markdown_url")
-	if echo "$markdown_page" | grep -q "^#"; then
-		markdown_page=$(echo "$markdown_page" | grep -v -- "^#\|^.*| \[Applications\|^.*| -\|^.*!\[")
-		echo "$markdown_page" | _about_description_fit
+	if echo "$markdown_page" | grep -q "^==="; then
+		about_description=$(echo "$markdown_page" | awk '/^===$/{f=!f; next} f')
+		about_screenshot=$(echo "$markdown_page" | grep "^# SCREENSHOTS:" | sed 's/^# SCREENSHOTS: *//' | tr ' ' '\n' | grep . | grep -v "contribute_ss.webp")
+		about_site=$(echo "$markdown_page" | grep "^# SITES:" | sed 's/^# SITES: *//' | tr ' ' '\n' | grep .)
+		about_source=$(echo "$markdown_page" | grep "^# SOURCES:" | sed 's/^# SOURCES: *//' | tr ' ' '\n' | grep .)
+		echo "$about_description" | _about_description_fit
+		[ -n "$about_screenshot" ] && printf "\nSCREENSHOTS:\n%b\n" "$about_screenshot" | _about_description_fit
+		[ -n "$about_site" ] && printf "\nSITES:\n%b\n" "$about_site" | _about_description_fit
+		[ -n "$about_source" ] && printf "\nSOURCES:\n%b\n" "$about_source" | _about_description_fit
 	else
 		markdown_page=""
 		_about_description_for_third_party | _about_description_fit
