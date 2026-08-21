@@ -2,10 +2,8 @@
 
 # AM INSTALL SCRIPT VERSION 3.6
 set -u
-APP=nomacs
-SITE1="nomacs/nomacs" SITE2="pkgforge-dev/Nomacs-AppImage"
-#VARIANT1="short label like: JuNest, Anylinux, " VARIANT2="Legacy/GTK3, Enhanced, etc."
-# NOTE: this should be commented like this ^
+APP=bedrockonlinux
+SITE="Wyze3306/BedrockOnLinux"
 
 # CREATE DIRECTORIES AND ADD REMOVER
 [ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
@@ -14,34 +12,10 @@ printf '\n%s' "rm -f /usr/local/share/applications/$APP-AM.desktop" >> ../remove
 chmod a+x ../remove || exit 1
 
 # DOWNLOAD AND PREPARE THE APP, $version is also used for updates
-read -r -p "
- Choose which version of $APP AppImage to use:
-
- 1. Official AppImage
-
-    Source: https://github.com/$SITE1
-
- 2. Unofficial AppImage able to work on any linux system, even musl ones
-
-    Source: https://github.com/$SITE2
-
- TEST1 (type 1), TEST2 (2), TEST3 (3), TEST4 (4) or any (5)
-
- Which version you choose (type a number and press ENTER)?" response
-RELEASE=""
-if echo "$response" | grep -q "^1"; then
-	RELEASE="$SITE1"
-elif echo "$response" | grep -q "^2"; then
-	RELEASE="$SITE2"
-fi
-[ -z "$RELEASE" ] && exit 0
-
-version=$(curl -Ls https://api.github.com/repos/"$RELEASE"/releases/latest | sed 's/[()",{} ]/\n/g' | grep -io 'https.*x86_64.*mage$' | head -1)
-if [ -z "$version" ]; then
-	printf "\n 💀 ERROR: it seems that upstream removed %b, please retry\n" "$RELEASE" && exit 1
-else
-	wget "$version" || exit 1
-fi
+version=$(curl -Ls https://api.github.com/repos/Wyze3306/BedrockOnLinux/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*download.*mage$" | grep -vi "i386\|i686\|armhf\|aarch64\|arm64\|armv7l" | head -1)
+wget "$version" || exit 1
+# Keep this space in sync with other installation scripts
+# Use tar fx ./*tar* here for example in this line in case a compressed file is downloaded.
 cd ..
 mv ./tmp/*mage ./"$APP"
 # Keep this space in sync with other installation scripts
@@ -56,10 +30,10 @@ ln -s "/opt/$APP/$APP" "/usr/local/bin/$APP"
 cat >> ./AM-updater << 'EOF'
 #!/bin/sh
 set -u
-APP=nomacs
-SITE="REPLACETHIS"
+APP=bedrockonlinux
+SITE="Wyze3306/BedrockOnLinux"
 version0=$(cat "/opt/$APP/version")
-version=$(curl -Ls https://api.github.com/repos/REPLACETHIS/releases/latest | sed 's/[()",{} ]/\n/g' | grep -io 'https.*x86_64.*mage$' | head -1)
+version=$(curl -Ls https://api.github.com/repos/Wyze3306/BedrockOnLinux/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*download.*mage$" | grep -vi "i386\|i686\|armhf\|aarch64\|arm64\|armv7l" | head -1)
 [ -n "$version" ] || { echo "Error getting link"; exit 1; }
 if command -v appimageupdatetool >/dev/null 2>&1; then
 	cd "/opt/$APP" || exit 1
@@ -81,7 +55,6 @@ else
 fi
 EOF
 chmod a+x ./AM-updater || exit 1
-sed -i "s#REPLACETHIS#$RELEASE#g" /opt/"$APP"/AM-updater
 
 # LAUNCHER & ICON
 ./"$APP" --appimage-extract *.desktop 1>/dev/null

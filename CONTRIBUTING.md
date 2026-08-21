@@ -34,8 +34,19 @@ among the other stuff in the "am-scripts" directory created with the option `-t`
 ## Want to Submit Code?
 You can submit code by:
 1. fork this repository
-2. install "AM" and "AppMan" using the guide at https://github.com/ivan-hc/AM#how-to-install-am
+2. install "AM" and "AppMan" using the guide at https://github.com/ivan-hc/AM#installation
 3. submit a [pull request](https://github.com/ivan-hc/AM/pulls)
+
+### About AI coding assistants
+Authors are responsible for 100% of the code they submit. Do not send a patch you cannot explain, and do not send one you have not built and tested yourself.
+
+Write your own commit messages and Merge Request descriptions. Those explain why you are making the change, which is the part a tool cannot know.
+
+Respond to review comments yourself. If you cannot discuss your own patch with a reviewer, it will not be merged.
+
+Everything in the Legal section applies unchanged. You are the one certifying that the contribution can be released under GPL-3.0 or later. A tool cannot certify that for you.
+
+Large machine-generated Merge Requests that no human has reviewed line by line will be closed.
 
 -----------------------------------------------
 
@@ -54,4 +65,5 @@ am --devmode-disable
 
 ### Credits
 - [@nazdridoy](https://github.com/nazdridoy)
+- [@shuvashish76](https://github.com/shuvashish76)
 - [@zen0bit](https://github.com/zen0bit)

@@ -614,7 +614,7 @@ Set a dedicated `$XDG_CONFIG_HOME` for one or more AppImages.
 
 **Description**:
 
-Download an older or specific app version.
+Download a previous or specific version of an already installed app.
 
 ------------------------------------------------------------------------
 ### `download`, `-d`
