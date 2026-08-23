@@ -59,9 +59,9 @@ _check_dependency
 
 _script_downloader() {
 	if command -v wget >/dev/null 2>&1; then
-		wget -q "$URL" -O "$SCRIPT"
+		wget -q "$URL" -O "$DL_FILE"
 	elif command -v curl >/dev/null 2>&1; then
-		curl -Lo "$SCRIPT" "$URL" 2>/dev/null
+		curl -Lo "$DL_FILE" "$URL" 2>/dev/null
 	fi
 }
 
@@ -69,7 +69,7 @@ _script_downloader() {
 _install_am() {
 	CACHEDIR="${XDG_CACHE_HOME:-$HOME/.cache}"
 	URL="https://raw.githubusercontent.com/ivan-hc/AM/$AM_BRANCH/INSTALL"
-	SCRIPT="$CACHEDIR/INSTALL-AM.sh"
+	DL_FILE="$CACHEDIR/INSTALL-AM.sh"
 	mkdir -p "$CACHEDIR" || true
 	rm -f "$CACHEDIR"/INSTALL-AM.sh || true
 	_script_downloader && chmod a+x "$CACHEDIR"/INSTALL-AM.sh
@@ -83,6 +83,20 @@ _install_am() {
 		exit 1
 	fi
 	$SUDOCMD "$CACHEDIR"/INSTALL-AM.sh && rm -f "$CACHEDIR"/INSTALL-AM.sh
+	# Install the "pla-install://" scheme handlers system-wide
+	for desktop in am-sys-install.desktop am-user-install.desktop; do
+		URL="https://raw.githubusercontent.com/ivan-hc/AM/$AM_BRANCH/$desktop"
+		DL_FILE="$CACHEDIR/$desktop"
+		rm -f "$DL_FILE" || true
+		_script_downloader
+		$SUDOCMD install -Dm644 "$DL_FILE" /usr/local/share/applications/"$desktop" || true
+	done
+	$SUDOCMD update-desktop-database /usr/local/share/applications 2>/dev/null || true
+	URL="https://raw.githubusercontent.com/ivan-hc/AM/$AM_BRANCH/io.github.ivan-hc.AM.png"
+	DL_FILE="$CACHEDIR/io.github.ivan-hc.AM.png"
+	rm -f "$DL_FILE" || true
+	_script_downloader
+	$SUDOCMD install -Dm644 "$DL_FILE" /usr/local/share/icons/hicolor/256x256/apps/io.github.ivan-hc.AM.png || true
 }
 
 # INSTALL "AM" LOCALLY, AS "APPMAN"
@@ -106,16 +120,31 @@ _install_appman() {
 		fi
 	fi
 	URL="https://raw.githubusercontent.com/ivan-hc/AM/$AM_BRANCH/APP-MANAGER"
-	SCRIPT="$BINDIR/appman"
+	DL_FILE="$BINDIR/appman"
 	echo '--------------------------------------------------------------------------'
 	printf " %bInstalling \"AppMan\" in %b\033[0m\n" "${Green}" "$BINDIR"
 	_script_downloader && chmod a+x "$BINDIR"/appman
 	echo '--------------------------------------------------------------------------'
 	printf " %bThe following modules will be installed gradually, as you use AppMan\033[0m\n" "${Green}"
-	MODULES=$(sort "$SCRIPT" | tr '"' '\n' | grep "[a-z]\.am$")
+	MODULES=$(sort "$DL_FILE" | tr '"' '\n' | grep "[a-z]\.am$")
 	for module_name in $MODULES; do
 		echo " ◆ https://raw.githubusercontent.com/ivan-hc/AM/$AM_BRANCH/modules/$module_name"
 	done
+	# Install the "pla-install://" scheme handler for the current user
+	APPDIR="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
+	mkdir -p "$APPDIR"
+	URL="https://raw.githubusercontent.com/ivan-hc/AM/$AM_BRANCH/appman-install.desktop"
+	DL_FILE="$APPDIR/appman-install.desktop"
+	rm -f "$DL_FILE" || true
+	_script_downloader
+	install -Dm644 "$DL_FILE" "$APPDIR/appman-install.desktop"
+	update-desktop-database "$APPDIR" 2>/dev/null || true
+	ICONDIR="${XDG_DATA_HOME:-$HOME/.local/share}/icons/hicolor/256x256/apps/"
+	mkdir -p $ICONDIR
+	URL="https://raw.githubusercontent.com/ivan-hc/AM/$AM_BRANCH/io.github.ivan-hc.AM.png"
+	DL_FILE="$APPDIR/io.github.ivan-hc.AM.png"
+	rm -f "$DL_FILE" || true
+	_script_downloader
 	echo '--------------------------------------------------------------------------'
 	printf " %b\"AppMan\" has been successfully installed! \033[0m\n\n" "${Green}"
 	printf " To use 'appman' in your current terminal, please run\n" "${LightBlue}"
