@@ -53,7 +53,7 @@ for arch in $DIRS; do
 		METAPACKAGES="kdegames kdeutils node platform-tools"
 		for m in $METAPACKAGES; do
 			mpkgs_args=$(grep -Eo "METAPKG=.*" "./$arch/$m" | head -1 | tr '"' '\n' | grep "[a-z]")
-			metapkg_page=$(curl -Ls --retry 5 --retry-max-time 120 "https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/refs/heads/main/apps/$m.md" 2>/dev/null)
+			metapkg_page=$(curl -Ls --retry 5 --retry-max-time 120 "https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/refs/heads/main/apps/$m" 2>/dev/null)
 			if [ -z "$metapkg_page" ]; then
 				exit 1
 			elif ! echo "$metapkg_page" | head -1 | grep -qi "^# $m"; then
