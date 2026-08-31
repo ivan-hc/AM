@@ -540,6 +540,18 @@ _nolibfuse() {
 #				REMOVE
 ################################################################################################################################################################
 
+_update_mime_database_after_removal() {
+	if command -v update-mime-database >/dev/null 2>&1 && command -v update-desktop-database >/dev/null 2>&1 && [ ! -f /var/lib/mime/mime.cache ] && [ ! -f /var/cache/desktop/desktop.cache ]; then
+		if echo "$ARGPATHS" | grep -q "^/opt\|^/var/opt" && ! echo "$argpath" | grep -q "^/opt\|^/var/opt"; then
+			mkdir -p "$DATADIR"/mime/packages && update-mime-database "$DATADIR"/mime
+			mkdir -p "$DATADIR"/applications && update-desktop-database "$DATADIR"/applications
+		else
+			$SUDOCMD mkdir -p /usr/local/share/mime/packages && $SUDOCMD update-mime-database /usr/local/share/mime
+			$SUDOCMD mkdir -p /usr/local/share/applications && $SUDOCMD update-desktop-database /usr/local/share/applications
+		fi
+	fi
+}
+
 _remove() {
 	[ ! -f "$argpath"/remove ] && echo -e $" \"${RED}$arg\033[0m\" is not a valid \"APPNAME\", see \"$AMCLI -f\" for more." && return 1
 	_read $" ◆ Do you wish to remove \"$arg\"? (Y/n) " yn
@@ -551,6 +563,7 @@ _remove() {
 		else
 			$SUDOCMD "$argpath"/remove 2>/dev/null || return 1
 		fi
+		_update_mime_database_after_removal
 		_clean_amcachedir
 		sleep 0.1
 		echo -e $" \"${Green}$arg\033[0m\" has been removed!"
@@ -565,6 +578,7 @@ _hard_remove() {
 	else
 		$SUDOCMD "$argpath"/remove 2>/dev/null || return 1
 	fi
+	_update_mime_database_after_removal
 	_clean_amcachedir
 	sleep 0.1
 	echo -e $" \"${Green}$arg\033[0m\" has been removed!"
