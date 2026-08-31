@@ -85,75 +85,11 @@ Type=Application
 Name=AM PLA-Install Handler
 NoDisplay=true
 Icon=io.github.ivan-hc.AM
-Exec=pla_install_handler_am %u
+Exec=sh -c 'A="${1#pla-install://}"; [ -n "$A" ] || exit 1; if ! command -v am >/dev/null 2>&1 && ! command -v appman >/dev/null 2>&1; then echo "Error: Neither appman nor am is installed."; read -p "Press [ENTER] to exit..."; exit 1; fi; if command -v yad >/dev/null 2>&1; then yad --title="PLA Install" --text="Install <b>$A</b>?" --button="System-Wide:0" --button="User:1"; R=$?; elif command -v zenity >/dev/null 2>&1; then zenity --question --title="PLA Install" --text="Install <b>$A</b>?" --ok-label="System-Wide" --cancel-label="User"; R=$?; else R=1; fi; case "$R" in 0) S=system ;; 1) S=user ;; *) exit 1 ;; esac; if [ "$S" = system ]; then if command -v am >/dev/null 2>&1; then C=am; O=; else echo "Error: System-wide install requires am, which is not installed."; read -p "Press [ENTER] to exit..."; exit 1; fi; elif command -v appman >/dev/null 2>&1; then C=appman; O=; else C=am; O="--user"; fi; echo "Running: $C -i $O $A"; $C -i $O "$A"; echo; echo "Process finished."; read -p "Press [ENTER] to close this window..."' sh %u
 Terminal=true
 MimeType=x-scheme-handler/pla-install;
 Categories=Utility;
 EOF
-
-	# Write handler script
-	local HANDLER_FILE="$TMPDIR/pla_install_handler_am"
-	cat > "$HANDLER_FILE" << 'SCRIPTEOF'
-#!/bin/sh
-APP="${1#pla-install://}"
-[ -z "$APP" ] && exit 1
-
-HAVE_AM=0
-HAVE_APPMAN=0
-command -v am >/dev/null 2>&1 && HAVE_AM=1
-command -v appman >/dev/null 2>&1 && HAVE_APPMAN=1
-
-if [ "$HAVE_AM" -eq 0 ] && [ "$HAVE_APPMAN" -eq 0 ]; then
-	echo "Error: Neither appman nor am is installed."
-	read -p "Press [ENTER] to exit..."
-	exit 1
-fi
-
-# Ask install scope
-if command -v yad >/dev/null 2>&1; then
-	yad --title="PLA Install" --text="Install <b>$APP</b>?" --button="System-Wide:0" --button="User:1"
-	RET=$?
-elif command -v zenity >/dev/null 2>&1; then
-	zenity --question --title="PLA Install" --text="Install <b>$APP</b>?" --ok-label="System-Wide" --cancel-label="User"
-	RET=$?
-else
-	RET=1
-fi
-
-if [ "$RET" -eq 0 ]; then
-	SCOPE="system"
-elif [ "$RET" -eq 1 ]; then
-	SCOPE="user"
-else
-	exit 1
-fi
-
-# Pick CMD based on the requested scope
-if [ "$SCOPE" = "system" ]; then
-	if [ "$HAVE_AM" -eq 0 ]; then
-		echo "Error: System-wide install requires 'am', which isn't installed."
-		read -p "Press [ENTER] to exit..."
-		exit 1
-	fi
-	CMD=am
-	OPT=""
-else
-	if [ "$HAVE_APPMAN" -eq 1 ]; then
-		CMD=appman
-		OPT=""
-	else
-		CMD=am
-		OPT="--user"
-	fi
-fi
-
-echo "Running: $CMD -i $OPT \"$APP\""
-$CMD -i $OPT "$APP"
-echo ""
-echo "Process finished."
-read -p "Press [ENTER] to close this window..."
-SCRIPTEOF
-	chmod a+x "$HANDLER_FILE"
 
 	# Install desktop file
 	if [ "$USE_SUDO" = "true" ]; then
@@ -162,13 +98,6 @@ SCRIPTEOF
 	else
 		install -Dm644 "$DESKTOP_FILE" "$APPDIR/am-install.desktop" || true
 		update-desktop-database "$APPDIR" 2>/dev/null || true
-	fi
-
-	# Install handler script
-	if [ "$USE_SUDO" = "true" ]; then
-		$SUDOCMD install -Dm755 "$HANDLER_FILE" "$BINDIR/pla_install_handler_am" || true
-	else
-		install -Dm755 "$HANDLER_FILE" "$BINDIR/pla_install_handler_am" || true
 	fi
 
 	# Cleanup temp files
