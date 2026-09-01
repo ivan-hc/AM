@@ -59,56 +59,17 @@ _check_dependency
 
 _script_downloader() {
 	if command -v wget >/dev/null 2>&1; then
-		wget -q "$URL" -O "$DL_FILE"
+		wget -q "$URL" -O "$SCRIPT"
 	elif command -v curl >/dev/null 2>&1; then
-		curl -Lo "$DL_FILE" "$URL" 2>/dev/null
+		curl -Lo "$SCRIPT" "$URL" 2>/dev/null
 	fi
-}
-
-# Install PLA install handler (desktop file + handler script)
-_install_pla_handler() {
-	local APPDIR="$1"
-	local BINDIR="$2"
-	local SUDOCMD="$3"
-	local USE_SUDO="$4"
-
-	# Create temp directory for staging
-	local TMPDIR="${XDG_CACHE_HOME:-$HOME/.cache}"
-	mkdir -p "$TMPDIR" || true
-
-	# Write desktop file
-	local DESKTOP_FILE="$TMPDIR/am-install.desktop"
-	cat > "$DESKTOP_FILE" << 'EOF'
-[Desktop Entry]
-Version=1.1
-Type=Application
-Name=AM PLA-Install Handler
-NoDisplay=true
-Icon=io.github.ivan-hc.AM
-Exec=sh -c 'A="${1#pla-install://}"; [ -n "$A" ] || exit 1; if ! command -v am >/dev/null 2>&1 && ! command -v appman >/dev/null 2>&1; then echo "Error: Neither appman nor am is installed."; read -p "Press [ENTER] to exit..."; exit 1; fi; if command -v yad >/dev/null 2>&1; then yad --title="PLA Install" --text="Install <b>$A</b>?" --button="System-Wide:0" --button="User:1"; R=$?; elif command -v zenity >/dev/null 2>&1; then zenity --question --title="PLA Install" --text="Install <b>$A</b>?" --ok-label="System-Wide" --cancel-label="User"; R=$?; else R=1; fi; case "$R" in 0) S=system ;; 1) S=user ;; *) exit 1 ;; esac; if [ "$S" = system ]; then if command -v am >/dev/null 2>&1; then C=am; O=; else echo "Error: System-wide install requires am, which is not installed."; read -p "Press [ENTER] to exit..."; exit 1; fi; elif command -v appman >/dev/null 2>&1; then C=appman; O=; else C=am; O="--user"; fi; echo "Running: $C -i $O $A"; $C -i $O "$A"; echo; echo "Process finished."; read -p "Press [ENTER] to close this window..."' sh %u
-Terminal=true
-MimeType=x-scheme-handler/pla-install;
-Categories=Utility;
-EOF
-
-	# Install desktop file
-	if [ "$USE_SUDO" = "true" ]; then
-		$SUDOCMD install -Dm644 "$DESKTOP_FILE" "$APPDIR/am-install.desktop" || true
-		$SUDOCMD update-desktop-database "$APPDIR" 2>/dev/null || true
-	else
-		install -Dm644 "$DESKTOP_FILE" "$APPDIR/am-install.desktop" || true
-		update-desktop-database "$APPDIR" 2>/dev/null || true
-	fi
-
-	# Cleanup temp files
-	rm -f "$DESKTOP_FILE" "$HANDLER_FILE"
 }
 
 # INSTALL "AM" SYSTEM-WIDE
 _install_am() {
 	CACHEDIR="${XDG_CACHE_HOME:-$HOME/.cache}"
 	URL="https://raw.githubusercontent.com/ivan-hc/AM/$AM_BRANCH/INSTALL"
-	DL_FILE="$CACHEDIR/INSTALL-AM.sh"
+	SCRIPT="$CACHEDIR/INSTALL-AM.sh"
 	mkdir -p "$CACHEDIR" || true
 	rm -f "$CACHEDIR"/INSTALL-AM.sh || true
 	_script_downloader && chmod a+x "$CACHEDIR"/INSTALL-AM.sh
@@ -122,15 +83,6 @@ _install_am() {
 		exit 1
 	fi
 	$SUDOCMD "$CACHEDIR"/INSTALL-AM.sh && rm -f "$CACHEDIR"/INSTALL-AM.sh
-	# Install the "pla-install://" scheme handlers system-wide
-	$SUDOCMD mkdir -p /usr/local/share/applications
-	$SUDOCMD mkdir -p /usr/local/bin
-	_install_pla_handler "/usr/local/share/applications" "/usr/local/bin" "$SUDOCMD" "true"
-	URL="https://raw.githubusercontent.com/ivan-hc/AM/$AM_BRANCH/io.github.ivan-hc.AM.png"
-	DL_FILE="$CACHEDIR/io.github.ivan-hc.AM.png"
-	rm -f "$DL_FILE" || true
-	_script_downloader
-	$SUDOCMD install -Dm644 "$DL_FILE" /usr/local/share/icons/hicolor/256x256/apps/io.github.ivan-hc.AM.png || true
 }
 
 # INSTALL "AM" LOCALLY, AS "APPMAN"
@@ -154,26 +106,16 @@ _install_appman() {
 		fi
 	fi
 	URL="https://raw.githubusercontent.com/ivan-hc/AM/$AM_BRANCH/APP-MANAGER"
-	DL_FILE="$BINDIR/appman"
+	SCRIPT="$BINDIR/appman"
 	echo '--------------------------------------------------------------------------'
 	printf " %bInstalling \"AppMan\" in %b\033[0m\n" "${Green}" "$BINDIR"
 	_script_downloader && chmod a+x "$BINDIR"/appman
 	echo '--------------------------------------------------------------------------'
 	printf " %bThe following modules will be installed gradually, as you use AppMan\033[0m\n" "${Green}"
-	MODULES=$(sort "$DL_FILE" | tr '"' '\n' | grep "[a-z]\.am$")
+	MODULES=$(sort "$SCRIPT" | tr '"' '\n' | grep "[a-z]\.am$")
 	for module_name in $MODULES; do
 		echo " ◆ https://raw.githubusercontent.com/ivan-hc/AM/$AM_BRANCH/modules/$module_name"
 	done
-	# Install the "pla-install://" scheme handler for the current user
-	APPDIR="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
-	mkdir -p "$APPDIR"
-	_install_pla_handler "$APPDIR" "$BINDIR" "" "false"
-	ICONDIR="${XDG_DATA_HOME:-$HOME/.local/share}/icons/hicolor/256x256/apps/"
-	mkdir -p $ICONDIR
-	URL="https://raw.githubusercontent.com/ivan-hc/AM/$AM_BRANCH/io.github.ivan-hc.AM.png"
-	DL_FILE="$APPDIR/io.github.ivan-hc.AM.png"
-	rm -f "$DL_FILE" || true
-	_script_downloader
 	echo '--------------------------------------------------------------------------'
 	printf " %b\"AppMan\" has been successfully installed! \033[0m\n\n" "${Green}"
 	printf " To use 'appman' in your current terminal, please run\n" "${LightBlue}"

@@ -1100,6 +1100,27 @@ if [ "$CLI_PATH" != "/usr/bin/am" ]; then
 	fi
 fi
 
+# PLA-INSTALL HANDLER
+
+if [ ! -f "$DATADIR"/applications/am-install.desktop ]; then
+    cat <<-'HEREDOC' >> "$DATADIR"/applications/am-install.desktop
+    [Desktop Entry]
+    Version=1.1
+    Type=Application
+    Name=AM PLA-Install Handler
+    NoDisplay=true
+    Icon=io.github.ivan-hc.AM
+    Exec=sh -c 'A="${1#pla-install://}"; [ -n "$A" ] || exit 1; if ! command -v am >/dev/null 2>&1 && ! command -v appman >/dev/null 2>&1; then echo "Error: Neither appman nor am is installed."; read -p "Press [ENTER] to exit..."; exit 1; fi; if command -v yad >/dev/null 2>&1; then yad --title="PLA Install" --text="Install <b>$A</b>?" --button="System-Wide:0" --button="User:1"; R=$?; elif command -v zenity >/dev/null 2>&1; then zenity --question --title="PLA Install" --text="Install <b>$A</b>?" --ok-label="System-Wide" --cancel-label="User"; R=$?; else R=1; fi; case "$R" in 0) S=system ;; 1) S=user ;; *) exit 1 ;; esac; if [ "$S" = system ]; then if command -v am >/dev/null 2>&1; then C=am; O=; else echo "Error: System-wide install requires am, which is not installed."; read -p "Press [ENTER] to exit..."; exit 1; fi; elif command -v appman >/dev/null 2>&1; then C=appman; O=; else C=am; O="--user"; fi; echo "Running: $C -i $O $A"; $C -i $O "$A"; echo; echo "Process finished."; read -p "Press [ENTER] to close this window..."' sh %u
+    Terminal=true
+    MimeType=x-scheme-handler/pla-install;
+    Categories=Utility;
+    HEREDOC
+    if command -v update-mime-database >/dev/null 2>&1 && command -v update-desktop-database >/dev/null 2>&1 && [ ! -f /var/lib/mime/mime.cache ] && [ ! -f /var/cache/desktop/desktop.cache ]; then
+        mkdir -p "$DATADIR"/mime/packages && update-mime-database "$DATADIR"/mime
+        mkdir -p "$DATADIR"/applications && update-desktop-database "$DATADIR"/applications
+    fi
+fi
+
 # VERSION OF THE INSTALLED APPS
 # Filters
 _check_version_filters() {
