@@ -795,6 +795,8 @@ Search for keywords in the list of available applications, add the "`--appimages
  		am reinstall
  		am reinstall --all
 		am reinstall --launcher
+		am reinstall {PROGRAM}
+		am reinstall {PROGRAM1} {PROGRAM2}
 
 **Description**:
 
