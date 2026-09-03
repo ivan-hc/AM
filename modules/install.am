@@ -1370,9 +1370,29 @@ case "$1" in
 				done
 			done
 			echo "$DIVIDING_LINE"
-		else		
+		else
 			# Reinstall applications with updated installation scripts
-			printf $"%b\n Checking for changes of the installation scripts in the online database...\n%b\n" "$DIVIDING_LINE" "$DIVIDING_LINE"
+			if [ -z "$2" ]; then
+				printf $"%b\n Checking for changes of the installation scripts in the online database...\n%b\n" "$DIVIDING_LINE" "$DIVIDING_LINE"
+			else
+				echo "$DIVIDING_LINE"
+				entries="$(echo "$@" | cut -f2- -d ' ' | tr ' ' '\n' | grep -v -- "--")"
+				_determine_args
+				for arg in $entries; do
+					if echo "$ARGPATHS" | grep -q "/$arg$"; then
+						argpath_items=$(echo "$ARGPATHS" | grep "/$arg$" | xargs)
+						for argpath in $argpath_items; do
+							if [ -f "$argpath"/AM-updater ]; then
+								mkdir -p "$argpath"/.am-installer
+								scriptname=$(ls "$argpath/.am-installer/" | head -1)
+								if [ -n "$scriptname" ] && grep -q "^◆ $scriptname :" "$AMDATADIR/$ARCH-apps"; then
+									printf "\nchange-me" >> "$argpath/.am-installer/$scriptname"
+								fi
+							fi
+						done
+					fi
+				done
+			fi
 			_determine_args
 			for arg in $ARGS; do
 				argpath_items=$(echo "$ARGPATHS" | grep "/$arg$" | xargs)
