@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="10.4.1-1"
+AMVERSION="10.4.1-2"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -1129,12 +1129,37 @@ fi
 
 _use_pla_install_handler() {
 	# Ask install scope
+	APPNAME="$PLA_APP"
+	PLA_HEADER_MSG=$(echo $" ◆ $APPNAME: starting installation script" | sed 's/ ◆ //g')
+	PLA_BODY_QUESTION=$(echo "$APPMAN_SETUP_MSG" | head -1)
 	if command -v yad >/dev/null 2>&1; then
-		yad --title="PLA Install" --text="Install <b>$PLA_APP</b>?" --button="System-Wide:0" --button="User:1"
+		yad \
+		--title="PLA Install" \
+		--window-icon="system-software-install" \
+		--text="<big><b>$PLA_HEADER_MSG</b></big>\n\n$PLA_BODY_QUESTION" \
+		--center \
+		--width=600 \
+		--button="System-Wide:0" \
+		--button="User:1"
 		RET=$?
 	elif command -v zenity >/dev/null 2>&1; then
-		zenity --question --title="PLA Install" --text="Install <b>$PLA_APP</b>?" --ok-label="System-Wide" --cancel-label="User"
+		zenity \
+		--question \
+		--title="PLA Install" \
+		--window-icon="system-software-install" \
+		--text="<big><b>$PLA_HEADER_MSG</b></big>\n\n$PLA_BODY_QUESTION" \
+		--width=600 \
+		--ok-label="System-Wide" \
+		--cancel-label="User"
+	elif command -v kdialog >/dev/null 2>&1; then
 		RET=$?
+		kdialog \
+		--title "PLA Install" \
+		--icon "system-software-install" \
+		--menu \
+		"<html><b><font size='+1'>$PLA_HEADER_MSG</font></b><br><br>$PLA_BODY_QUESTION</html>" \
+		"system" "System-Wide" \
+		"user" "User"
 	else
 		RET=1
 	fi
@@ -1150,8 +1175,9 @@ _use_pla_install_handler() {
 	# Pick CMD based on the requested scope
 	if [ "$SCOPE" = "system" ]; then
 		if ! command -v am >/dev/null 2>&1; then
-			echo "Error: System-wide install requires 'am', which isn't installed."
-			read -p "Press [ENTER] to exit..."
+			echo "Error: System-wide install requires 'am', which isn't installed." | _fit
+			printf "\n"
+			read -p "Press [ENTER] to exit."
 			exit 1
 		else
 			am -i "$PLA_APP"
@@ -1164,8 +1190,7 @@ _use_pla_install_handler() {
 		fi
 	fi
 	printf "\n"
-	echo "Process finished."
-	read -p "Press [ENTER] to close this window..."
+	read -p "Press [ENTER] to close this window."
 }
 
 # VERSION OF THE INSTALLED APPS
