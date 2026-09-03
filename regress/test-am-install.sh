@@ -17,12 +17,24 @@ _log "Installing $app_name in system mode..."
 am -i "$app_name"
 _test_apps "$app_name"
 
+# Reinstall in System Mode
+_log "Reinstalling $app_name in system mode..."
+am reinstall "$app_name" > "$test_results"
+_test_apps "$app_name"
+_check_count "reinstallation complete" 1 "$test_results"
+
 # Install in User Mode
 _log "Installing $app_name in user mode..."
 printf "Y\n" |\
 am --user
 am -i "$app_name"
 _test_apps "$app_name"
+
+# Reinstall in User Mode
+_log "Reinstalling $app_name in user mode..."
+am reinstall "$app_name" > "$test_results"
+_test_apps "$app_name"
+_check_count "reinstallation complete" 1 "$test_results"
 
 # Check Listing
 _log "Checking if $app_name is installed in both user/system modes..."
