@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="10.4.1"
+AMVERSION="10.5"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -1099,6 +1099,105 @@ if [ "$CLI_PATH" != "/usr/bin/am" ]; then
 		command -v fish 1>/dev/null && [ ! -f "$CONFIGDIR"/fish/completions/am.fish ] && mkdir -p "$CONFIGDIR"/fish/completions && echo "complete -c am -f -a \"(cat $DATADIR/AM/list 2>/dev/null)\"" > "$CONFIGDIR"/fish/completions/am.fish
 	fi
 fi
+
+# PLA-INSTALL HANDLER
+
+_create_pla_handler_desktop_file() {
+	mkdir -p "$DATADIR"/applications
+	cat <<-'HEREDOC' >> "$DATADIR"/applications/am-install.desktop
+	[Desktop Entry]
+	Version=1.1
+	Type=Application
+	Name=AM PLA-Install Handler
+	NoDisplay=true
+	Icon=io.github.ivan-hc.AM
+	Exec=sh -c 'PLA_APP="${1#pla-install://}"; [ -n "$PLA_APP" ] && export PLA_APP || exit 1; command -v appman >/dev/null 2>&1 && appman pla-install-handler || command -v am >/dev/null 2>&1 && am pla-install-handler' sh %u
+	Terminal=true
+	MimeType=x-scheme-handler/pla-install;
+	Categories=Utility;
+	HEREDOC
+}
+
+if [ ! -f "$DATADIR"/applications/am-install.desktop ]; then
+	_create_pla_handler_desktop_file
+	if command -v update-mime-database >/dev/null 2>&1 && command -v update-desktop-database >/dev/null 2>&1 && [ ! -f /var/lib/mime/mime.cache ] && [ ! -f /var/cache/desktop/desktop.cache ]; then
+		mkdir -p "$DATADIR"/mime/packages && update-mime-database "$DATADIR"/mime
+		mkdir -p "$DATADIR"/applications && update-desktop-database "$DATADIR"/applications
+	fi
+fi
+[ -f "$DATADIR"/applications/am-install.desktop ] && rm -f "$DATADIR"/applications/am-install.desktop && _create_pla_handler_desktop_file
+
+_use_pla_install_handler() {
+	# Ask install scope
+	APPNAME="$PLA_APP"
+	PLA_HEADER_MSG=$(echo $" ◆ $APPNAME: starting installation script" | sed 's/ ◆ //g')
+	PLA_BODY_QUESTION=$(echo "$APPMAN_SETUP_MSG" | head -1)
+	if command -v yad >/dev/null 2>&1; then
+		yad \
+		--title="PLA Install" \
+		--window-icon="system-software-install" \
+		--text="<big><b>$PLA_HEADER_MSG</b></big>\n\n$PLA_BODY_QUESTION" \
+		--center \
+		--width=600 \
+		--button="System-Wide:0" \
+		--button="User:1"
+		RET=$?
+	elif command -v zenity >/dev/null 2>&1; then
+		if [ "$(zenity --version | cut -d. -f1)" -ge 4 ]; then
+			_zenity_icon_flag="--icon"
+		else
+			_zenity_icon_flag="--icon-name"
+		fi
+		zenity \
+		--question \
+		--title="PLA Install" \
+		$_zenity_icon_flag="system-software-install" \
+		--text="<big><b>$PLA_HEADER_MSG</b></big>\n\n$PLA_BODY_QUESTION" \
+		--width=600 \
+		--ok-label="System-Wide" \
+		--cancel-label="User"
+		RET=$?
+	elif command -v kdialog >/dev/null 2>&1; then
+		kdialog \
+		--title "PLA Install" \
+		--icon "system-software-install" \
+		--menu \
+		"<html><b><font size='+1'>$PLA_HEADER_MSG</font></b><br><br>$PLA_BODY_QUESTION</html>" \
+		"system" "System-Wide" \
+		"user" "User"
+		RET=$?
+	else
+		RET=1
+	fi
+
+	if [ "$RET" -eq 0 ]; then
+		SCOPE="system"
+	elif [ "$RET" -eq 1 ]; then
+		SCOPE="user"
+	else
+		exit 1
+	fi
+
+	# Pick CMD based on the requested scope
+	if [ "$SCOPE" = "system" ]; then
+		if ! command -v am >/dev/null 2>&1; then
+			echo "Error: System-wide install requires 'am', which isn't installed." | _fit
+			printf "\n"
+			read -p "Press [ENTER] to exit."
+			exit 1
+		else
+			am -i "$PLA_APP"
+		fi
+	elif [ "$SCOPE" = "user" ]; then
+		if command -v am >/dev/null 2>&1; then
+			am -i --user "$PLA_APP"
+		else
+			appman -i "$PLA_APP"
+		fi
+	fi
+	printf "\n"
+	read -p "Press [ENTER] to close this window."
+}
 
 # VERSION OF THE INSTALLED APPS
 # Filters
@@ -2318,6 +2417,9 @@ case "$1" in
 		;;
 	'newrepo'|'neodb')
 		_use_newrepo "$@"
+		;;
+	'pla-install-handler')
+		_use_pla_install_handler "$@"
 		;;
 	'relocate'|'--relocate')
 		_use_relocate "$@"
