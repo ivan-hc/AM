@@ -402,6 +402,56 @@ EOF
 }
 
 ################################################################################
+# _did_you_mean case-insensitivity tests
+################################################################################
+
+_test_did_you_mean_case_insensitive() {
+	local tmpdir
+	tmpdir=$(mktemp -d)
+	trap 'rm -rf "$tmpdir"' RETURN
+
+	cat > "$tmpdir/${ARCH}-apps" <<'EOF'
+◆ sayonara : music player
+◆ heroic-games-launcher : Native GOG, Epic and Amazon Games client
+EOF
+
+	local saved_amdatadir="$AMDATADIR"
+	local saved_tp="$third_party_lists"
+	AMDATADIR="$tmpdir"
+	third_party_lists=""
+
+	printf "\n=== _did_you_mean case-insensitivity tests ===\n"
+	local out
+
+	# Exact match, differing only by case → dist 0, no candidate list.
+	DID_YOU_MEAN="" DID_YOU_MEAN_CANDIDATES=()
+	out=$(_did_you_mean "Sayonara")
+	_assert_contains "Sayonara → suggests sayonara" "$out" "sayonara"
+	DID_YOU_MEAN="" DID_YOU_MEAN_CANDIDATES=()
+	_did_you_mean "Sayonara" > /dev/null
+	_assert_eq "Sayonara → DID_YOU_MEAN=sayonara" "$DID_YOU_MEAN" "sayonara"
+	_assert_eq "Sayonara → no candidate list" "${#DID_YOU_MEAN_CANDIDATES[@]}" "0"
+
+	# All-uppercase input, same exact-match behavior.
+	DID_YOU_MEAN="" DID_YOU_MEAN_CANDIDATES=()
+	_did_you_mean "SAYONARA" > /dev/null
+	_assert_eq "SAYONARA → DID_YOU_MEAN=sayonara" "$DID_YOU_MEAN" "sayonara"
+
+	# Substring match, differing only by case (input len >= 4).
+	DID_YOU_MEAN="" DID_YOU_MEAN_CANDIDATES=()
+	_did_you_mean "HEROIC" > /dev/null
+	_assert_eq "HEROIC → DID_YOU_MEAN=heroic-games-launcher" "$DID_YOU_MEAN" "heroic-games-launcher"
+
+	# Mixed-case substring, match found via the substring pass.
+	DID_YOU_MEAN="" DID_YOU_MEAN_CANDIDATES=()
+	_did_you_mean "HeRoIc" > /dev/null
+	_assert_eq "HeRoIc → DID_YOU_MEAN=heroic-games-launcher" "$DID_YOU_MEAN" "heroic-games-launcher"
+
+	AMDATADIR="$saved_amdatadir"
+	third_party_lists="$saved_tp"
+}
+
+################################################################################
 # _select_did_you_mean_candidate unit tests
 ################################################################################
 
@@ -455,6 +505,7 @@ _test_levenshtein
 _test_did_you_mean
 _test_did_you_mean_tp
 _test_did_you_mean_substring
+_test_did_you_mean_case_insensitive
 _test_select_did_you_mean_candidate
 
 printf "\n=== Results: \033[0;32m%d passed\033[0m, \033[0;31m%d failed\033[0m ===\n\n" "$PASS" "$FAIL"

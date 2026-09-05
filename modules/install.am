@@ -612,7 +612,7 @@ _levenshtein() {
 }
 
 _did_you_mean() {
-	local input="$1" only_flag="$2"
+	local input="${1,,}" only_flag="$2"
 	local names match="" match_flag="" input_len=${#input} first_char="${input:0:1}" best_dist=3 diff dist
 	local -a sub_names=() sub_flags=()
 	DID_YOU_MEAN=""
@@ -621,17 +621,18 @@ _did_you_mean() {
 	DID_YOU_MEAN_CANDIDATE_FLAGS=()
 
 	_did_you_mean_search() {
-		local list="$1"
+		local list="$1" name_orig
 		[ ! -f "$list" ] && return
 		[ "$best_dist" -eq 0 ] && return
 		names=$(grep "^◆ " "$list" | sed 's/^◆ //;s/ :.*$//')
-		while IFS= read -r name; do
-			[ -z "$name" ] && continue
-			[ "$name" = "$input" ] && [ -n "$2" ] && best_dist=0 && match=$name && match_flag="$2" && return
+		while IFS= read -r name_orig; do
+			[ -z "$name_orig" ] && continue
+			local name="${name_orig,,}"
+			[ "$name" = "$input" ] && [ -n "$2" ] && best_dist=0 && match=$name_orig && match_flag="$2" && return
 			if [ "$input_len" -ge 4 ]; then
 				case "$name" in
 					*"$input"*)
-						sub_names+=("$name")
+						sub_names+=("$name_orig")
 						sub_flags+=("$2")
 						continue
 						;;
@@ -644,7 +645,7 @@ _did_you_mean() {
 			dist=$(_levenshtein "$input" "$name")
 			if [ "$dist" -lt "$best_dist" ]; then
 				best_dist=$dist
-				match=$name
+				match=$name_orig
 				match_flag="$2"
 			fi
 		done <<< "$names"
