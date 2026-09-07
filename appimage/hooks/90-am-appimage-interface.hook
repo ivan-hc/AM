@@ -1,0 +1,45 @@
+#!/bin/sh
+# Runs AFTER 10-self-updater.hook (the update check has already started).
+# Provides the GUI entry points of this terminal application:
+#   * double-click (no arguments, no terminal) -> open a terminal with the
+#     help screen, otherwise nothing would be visible
+#   * `setup` / `--install`                    -> run the embedded upstream
+#     installer to install AM (system-wide) or AppMan (local)
+# Every other invocation returns to the default AppRun behaviour: run the
+# bundled 'appman' with the given arguments.
+
+APP="$APPDIR/bin/appman"
+
+# Double-clicked from a file manager: no arguments and no terminal.
+if [ -z "$1" ] && [ ! -t 1 ]; then
+	TERM_BIN=""
+	for t in ${TERMINAL:-} x-terminal-emulator kgx konsole gnome-terminal \
+		xfce4-terminal mate-terminal lxterminal terminator kitty alacritty \
+		wezterm urxvt xterm; do
+		[ -n "$t" ] || continue
+		if command -v "$t" >/dev/null 2>&1; then
+			TERM_BIN="$t"
+			break
+		fi
+	done
+	if [ -n "$TERM_BIN" ]; then
+		case "$TERM_BIN" in
+			gnome-terminal|kgx)
+				exec "$TERM_BIN" -- "$APP" -h
+				;;
+			*)
+				exec "$TERM_BIN" -e "$APP" -h
+				;;
+		esac
+	fi
+	>&2 echo "AM is a terminal program, please run it from a terminal."
+	exit 1
+fi
+
+# One-click installer: install AM (system-wide) or AppMan (local) using the
+# embedded upstream installer script.
+case "$1" in
+	setup|--install|install-am)
+		exec "$APPDIR/AM-INSTALLER"
+		;;
+esac
