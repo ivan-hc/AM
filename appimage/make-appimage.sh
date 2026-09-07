@@ -60,9 +60,6 @@ export ADD_HOOKS="self-updater.hook"
 export UPINFO="gh-releases-zsync|${GITHUB_REPOSITORY%/*}|${GITHUB_REPOSITORY#*/}|latest|*$ARCH.AppImage.zsync"
 export ICON="$PWD/logo.png"
 export DESKTOP="$PWD/appimage/APP-MANAGER.desktop"
-# "AM" is a shell script: there are no dlopened libraries to discover and
-# running it in the build container would only print its usage screen.
-export STRACE_MODE=0
 
 # Deploy the 'appman' script together with the tools that AM may call but
 # that are missing from some distros (curl, wget, 7z, tar, unzip, xz, ...).
