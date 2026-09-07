@@ -60,6 +60,11 @@ export ADD_HOOKS="self-updater.hook"
 export UPINFO="gh-releases-zsync|${GITHUB_REPOSITORY%/*}|${GITHUB_REPOSITORY#*/}|latest|*$ARCH.AppImage.zsync"
 export ICON="$PWD/logo.png"
 export DESKTOP="$PWD/appimage/APP-MANAGER.desktop"
+# TEMPORARY: quick-sharun still defaults to sharun 2.3.0, which does not
+# ship builds for riscv64/loongarch64/ppc64/ppc64le - those were added in
+# sharun 3.0.0. This override can be removed once quick-sharun bumps its
+# default SHARUN_LINK.
+export SHARUN_LINK="${SHARUN_LINK:-https://github.com/pkgforge-dev/sharun/releases/download/3.0.0/sharun-$APPIMAGE_ARCH}"
 
 # Deploy the 'appman' script together with the tools that AM may call but
 # that are missing from some distros (curl, wget, 7z, tar, unzip, xz, ...).
