@@ -75,23 +75,27 @@ _find_terminal() {
 }
 
 # Launch a command in the found terminal, using the right flag per terminal.
+# The whole command is wrapped in `sh -c` so that flags like `-h` are NOT
+# parsed by the terminal itself (e.g. `ptyxis -x app -h` would make ptyxis
+# print its own help and exit without showing anything). The window is kept
+# open until ENTER is pressed so the output stays visible.
 _run_in_terminal() {
+	_script="'$APP' -h; printf '\\n\\n'; echo 'Press ENTER to close this window...'; read _"
 	TERM_NAME=${TERM_BIN%% *}
 	case "$TERM_NAME" in
 		xdg-terminal-exec)
-			exec xdg-terminal-exec "$@"
+			exec xdg-terminal-exec sh -c "$_script"
 			;;
 		gnome-terminal|kgx)
 			# shellcheck disable=SC2086
-			exec $TERM_BIN -- "$@"
+			exec $TERM_BIN -- sh -c "$_script"
 			;;
 		ptyxis)
-			# shellcheck disable=SC2086
-			exec $TERM_BIN -x "$@"
+			exec $TERM_BIN -x "sh -c \"$_script\""
 			;;
 		*)
 			# shellcheck disable=SC2086
-			exec $TERM_BIN -e "$@"
+			exec $TERM_BIN -e sh -c "$_script"
 			;;
 	esac
 }
