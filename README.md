@@ -1133,7 +1133,8 @@ The build files live in the `appimage/` directory:
 It is built for the following architectures, each inside its own Arch Linux container image ([pkgforge-dev/docker-archlinux](https://github.com/pkgforge-dev/docker-archlinux)):
 
 - `x86_64` and `aarch64` run on native GitHub Actions runners
-- `riscv64`, `loongarch64`, `ppc64le` and `powerpc64` are built inside their respective Arch Linux ports, emulated with QEMU on an x86_64 runner
+
+`riscv64`, `loongarch64` and `ppc64le` are also supported by the build (their Arch Linux ports are emulated with QEMU on an x86_64 runner), but they are **disabled** for now because AM's database does not ship installation scripts for those architectures yet (see the `programs/` directory). Uncomment the entries in [.github/workflows/appimage.yml](.github/workflows/appimage.yml) to enable them once app repos for those architectures are introduced.
 
 > NOTE: AM's database currently ships installation scripts for `x86_64`, `aarch64`, `i686` and `armv7l` only (see the `programs/` directory). On the other architectures the AppImage still fully works for the core options (`-h`, `-s`, `-u`, managing AppImages installed locally with `-ia`/`-e`, third-party databases, ...), but the main database has no entries for those architectures yet.
 
