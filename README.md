@@ -1130,6 +1130,13 @@ The build files live in the `appimage/` directory:
 - [appimage/hooks/](appimage/hooks/) - AppImage runtime hooks
 - [appimage/APP-MANAGER.desktop](appimage/APP-MANAGER.desktop) - the desktop entry used by the AppImage
 
+It is built for the following architectures, each inside its own Arch Linux container image ([pkgforge-dev/docker-archlinux](https://github.com/pkgforge-dev/docker-archlinux)):
+
+- `x86_64` and `aarch64` run on native GitHub Actions runners
+- `riscv64`, `loongarch64`, `ppc64le` and `powerpc64` are built inside their respective Arch Linux ports, emulated with QEMU on an x86_64 runner
+
+> NOTE: AM's database currently ships installation scripts for `x86_64`, `aarch64`, `i686` and `armv7l` only (see the `programs/` directory). On the other architectures the AppImage still fully works for the core options (`-h`, `-s`, `-u`, managing AppImages installed locally with `-ia`/`-e`, third-party databases, ...), but the main database has no entries for those architectures yet.
+
 To build it locally (requires a GNU/Linux system with `bash`, `wget`/`curl` and `git`):
 
 ```

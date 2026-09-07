@@ -13,27 +13,53 @@ on:
 
 jobs:
   build:
-    name: "${{ matrix.name }} (${{ matrix.arch }})"
+    name: "Build AppImage (${{ matrix.arch }})"
     runs-on: ${{ matrix.runs-on }}
+    if: ${{ !matrix.qemu || github.event_name != 'pull_request' }}
     strategy:
+      fail-fast: false
       matrix:
         include:
-          - runs-on: ubuntu-latest
-            name: Build AppImage
-            arch: x86_64
-          # comment out these 3 lines if aarch64 is not wanted
-          - runs-on: ubuntu-24.04-arm
-            name: Build AppImage
-            arch: aarch64
-    container: ghcr.io/pkgforge-dev/archlinux:latest
+          - arch: x86_64
+            runs-on: ubuntu-latest
+            image: ghcr.io/pkgforge-dev/archlinux:x86_64
+            qemu: false
+          - arch: aarch64
+            runs-on: ubuntu-24.04-arm
+            image: ghcr.io/pkgforge-dev/archlinux:aarch64
+            qemu: false
+          # The build tools (appimagetool, sharun, mkdwarfs) are
+          # architecture-specific and must run on the target architecture,
+          # so the remaining arches are built inside their Arch Linux
+          # container images, emulated with QEMU on an x86_64 runner.
+          - arch: riscv64
+            runs-on: ubuntu-latest
+            image: ghcr.io/pkgforge-dev/archlinux:riscv64
+            qemu: true
+          - arch: loongarch64
+            runs-on: ubuntu-latest
+            image: ghcr.io/pkgforge-dev/archlinux:loongarch64
+            qemu: true
+          - arch: ppc64le
+            runs-on: ubuntu-latest
+            image: ghcr.io/pkgforge-dev/archlinux:ppc64le
+            qemu: true
+          - arch: powerpc64
+            runs-on: ubuntu-latest
+            image: ghcr.io/pkgforge-dev/archlinux:powerpc64
+            qemu: true
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Preparing Container
-        uses: pkgforge-dev/anylinux-setup-action@0964f2258d6c93d1391359978dde081fd8b3c6af # v2
-      - name: Install Dependencies
-        run: /bin/sh ./appimage/get-dependencies.sh
-      - name: Make AppImage
-        run: /bin/sh ./appimage/make-appimage.sh
+      - name: Register QEMU binfmt
+        if: matrix.qemu
+        uses: docker/setup-qemu-action@1f40c72289eff860ee54a304f1438e3cff362e0a # v4.3.0
+      - name: Build AppImage
+        run: |
+          docker run --rm \
+            -v "$PWD:/build" -w /build \
+            -e GITHUB_REPOSITORY="${{ github.repository }}" \
+            ${{ matrix.image }} \
+            /bin/sh -c "sh appimage/get-dependencies.sh && sh appimage/make-appimage.sh"
       - name: Upload artifact
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:

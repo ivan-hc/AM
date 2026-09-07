@@ -4,39 +4,42 @@ set -eu
 
 ARCH=$(uname -m)
 
+echo "Initializing the build container..."
+echo "---------------------------------------------------------------"
+pacman-key --init
+pacman -Syy --noconfirm archlinux-keyring
+pacman -Syu --noconfirm
+
 echo "Installing package dependencies..."
 echo "---------------------------------------------------------------"
 # "AM" is a shell script, so no GUI/mesa/etc libraries need to be bundled
 # into the AppImage. We install the tools that AM may call (and that are
 # missing on some distros) so that quick-sharun can bundle them - together
-# with their libraries and glibc - into the AppImage. This makes the
-# resulting AppImage fully self-contained.
+# with their libraries and glibc - into the AppImage.
+#
+# The required set is present on every architecture (Arch Linux ports).
 pacman -S --noconfirm --needed \
 	base-devel \
 	ca-certificates \
 	curl \
-	file \
 	git \
 	jq \
+	patchelf \
 	tar \
 	unzip \
 	wget \
-	xz \
-	7zip
+	xz
 
-# If you ever need to bundle extra libraries from the (debloated) Arch
-# packages, uncomment the line below. It is NOT needed for this app.
-#get-debloated-pkgs --add-common --prefer-nano
+# Optional packages may not exist on every architecture port. If they are
+# missing here, quick-sharun (see make-appimage.sh) warns and skips them,
+# and AM falls back to its built-in mechanism for those commands.
+pacman -S --noconfirm --needed 7zip file \
+	|| echo "  WARNING: some optional packages are not available on $ARCH"
 
-# Comment this out if you need an AUR package
-#make-aur-package PACKAGENAME
+echo "Installing quick-sharun..."
+echo "---------------------------------------------------------------"
+wget -q -O /usr/local/bin/quick-sharun \
+	https://raw.githubusercontent.com/pkgforge-dev/Anylinux-AppImages/refs/heads/main/useful-tools/quick-sharun.sh
+chmod a+x /usr/local/bin/quick-sharun
 
-# If the application needs to be manually built that has to be done down here
-
-# if you also have to make nightly releases check for DEVEL_RELEASE = 1
-#
-# if [ "${DEVEL_RELEASE-}" = 1 ]; then
-# 	nightly build steps
-# else
-# 	regular build steps
-# fi
+echo "CONTAINER IS READY!"
