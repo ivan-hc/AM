@@ -15,7 +15,6 @@ jobs:
   build:
     name: "Build AppImage (${{ matrix.arch }})"
     runs-on: ${{ matrix.runs-on }}
-    if: ${{ !matrix.qemu || github.event_name != 'pull_request' }}
     strategy:
       fail-fast: false
       matrix:
@@ -32,6 +31,7 @@ jobs:
           # architecture-specific and must run on the target architecture,
           # so the remaining arches are built inside their Arch Linux
           # container images, emulated with QEMU on an x86_64 runner.
+          # The QEMU builds are skipped on pull requests to keep PR CI fast.
           - arch: riscv64
             runs-on: ubuntu-latest
             image: ghcr.io/pkgforge-dev/archlinux:riscv64
@@ -51,9 +51,10 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Register QEMU binfmt
-        if: matrix.qemu
+        if: ${{ matrix.qemu && github.event_name != 'pull_request' }}
         uses: docker/setup-qemu-action@1f40c72289eff860ee54a304f1438e3cff362e0a # v4.3.0
       - name: Build AppImage
+        if: ${{ !matrix.qemu || github.event_name != 'pull_request' }}
         run: |
           docker run --rm \
             -v "$PWD:/build" -w /build \
@@ -61,6 +62,7 @@ jobs:
             ${{ matrix.image }} \
             /bin/sh -c "sh appimage/get-dependencies.sh && sh appimage/make-appimage.sh"
       - name: Upload artifact
+        if: ${{ !matrix.qemu || github.event_name != 'pull_request' }}
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: AppImage-${{ matrix.arch }}
