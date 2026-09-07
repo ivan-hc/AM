@@ -10,27 +10,96 @@
 
 APP="$APPDIR/bin/appman"
 
-# Double-clicked from a file manager: no arguments and no terminal.
-if [ -z "$1" ] && [ ! -t 1 ]; then
-	TERM_BIN=""
-	for t in ${TERMINAL:-} x-terminal-emulator kgx konsole gnome-terminal \
-		xfce4-terminal mate-terminal lxterminal terminator kitty alacritty \
-		wezterm urxvt xterm; do
-		[ -n "$t" ] || continue
-		if command -v "$t" >/dev/null 2>&1; then
-			TERM_BIN="$t"
-			break
+# Find the user's terminal, in order of preference:
+#   $TERMINAL  ->  x-terminal-emulator (Debian alternatives)
+#   ->  xdg-terminal-exec (freedesktop draft spec)
+#   ->  the desktop environment's configured default (GNOME/MATE/Cinnamon,
+#       KDE, XFCE)  ->  a fallback list of common terminals.
+# Sets TERM_BIN (may contain arguments, see $TERMINAL) or returns 1.
+_find_terminal() {
+	# 1. explicit user preference
+	if [ -n "$TERMINAL" ]; then
+		if command -v "${TERMINAL%% *}" >/dev/null 2>&1; then
+			TERM_BIN="$TERMINAL"
+			return 0
+		fi
+	fi
+	# 2. Debian alternatives system
+	if command -v x-terminal-emulator >/dev/null 2>&1; then
+		TERM_BIN="x-terminal-emulator"
+		return 0
+	fi
+	# 3. freedesktop xdg-terminal-exec (draft spec)
+	if command -v xdg-terminal-exec >/dev/null 2>&1; then
+		TERM_BIN="xdg-terminal-exec"
+		return 0
+	fi
+	# 4. desktop environment configured default terminal.
+	#    NOTE: GNOME 48+ returns the spec name "xdg-terminal-exec" here,
+	#    which is not a binary - skip it and keep looking.
+	if command -v gsettings >/dev/null 2>&1; then
+		TERM_NAME=$(gsettings get org.gnome.desktop.default-applications.terminal exec 2>/dev/null)
+		TERM_NAME=${TERM_NAME#\'}; TERM_NAME=${TERM_NAME%\'}
+		if [ -n "$TERM_NAME" ] && [ "$TERM_NAME" != "xdg-terminal-exec" ] \
+			&& command -v "$TERM_NAME" >/dev/null 2>&1; then
+			TERM_BIN="$TERM_NAME"
+			return 0
+		fi
+	fi
+	for kc in kreadconfig6 kreadconfig5 kreadconfig; do
+		if command -v "$kc" >/dev/null 2>&1; then
+			TERM_NAME=$("$kc" --file kdeglobals --group General --key TerminalApplication 2>/dev/null)
+			if [ -n "$TERM_NAME" ] && command -v "$TERM_NAME" >/dev/null 2>&1; then
+				TERM_BIN="$TERM_NAME"
+				return 0
+			fi
 		fi
 	done
-	if [ -n "$TERM_BIN" ]; then
-		case "$TERM_BIN" in
-			gnome-terminal|kgx)
-				exec "$TERM_BIN" -- "$APP" -h
-				;;
-			*)
-				exec "$TERM_BIN" -e "$APP" -h
-				;;
-		esac
+	if command -v xfconf-query >/dev/null 2>&1; then
+		TERM_NAME=$(xfconf-query -c xfce4-session -p /general/TerminalEmulator 2>/dev/null)
+		if [ -n "$TERM_NAME" ] && command -v "$TERM_NAME" >/dev/null 2>&1; then
+			TERM_BIN="$TERM_NAME"
+			return 0
+		fi
+	fi
+	# 5. fallback: scan common terminals
+	for t in ptyxis kgx konsole gnome-terminal xfce4-terminal mate-terminal \
+		lxterminal terminator kitty alacritty wezterm foot tilix qterminal \
+		sakura urxvt xterm; do
+		if command -v "$t" >/dev/null 2>&1; then
+			TERM_BIN="$t"
+			return 0
+		fi
+	done
+	return 1
+}
+
+# Launch a command in the found terminal, using the right flag per terminal.
+_run_in_terminal() {
+	TERM_NAME=${TERM_BIN%% *}
+	case "$TERM_NAME" in
+		xdg-terminal-exec)
+			exec xdg-terminal-exec "$@"
+			;;
+		gnome-terminal|kgx)
+			# shellcheck disable=SC2086
+			exec $TERM_BIN -- "$@"
+			;;
+		ptyxis)
+			# shellcheck disable=SC2086
+			exec $TERM_BIN -x "$@"
+			;;
+		*)
+			# shellcheck disable=SC2086
+			exec $TERM_BIN -e "$@"
+			;;
+	esac
+}
+
+# Double-clicked from a file manager: no arguments and no terminal.
+if [ -z "$1" ] && [ ! -t 1 ]; then
+	if _find_terminal; then
+		_run_in_terminal "$APP" -h
 	fi
 	>&2 echo "AM is a terminal program, please run it from a terminal."
 	exit 1
