@@ -9,11 +9,22 @@ AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
 export REALDIR="$PWD"
 
 # Detect the AppImage runtime: when running from inside an AppImage the
-# environment exports $APPIMAGE (the AppImage file) and $APPDIR. Use that to
-# decide whether this copy acts as "am" or "appman": the CLI name follows the
-# name of the AppImage file itself (see INSTALL and AM-INSTALLER, which
-# install the AppImage as "APP-MANAGER" for "am", or as "appman" for AppMan).
-IS_APPIMAGE=$([[ -n "$APPIMAGE" && -f "$APPIMAGE" ]] && [[ -n "$APPDIR" && -d "$APPDIR" && -f "$APPDIR/AppRun" ]] && echo 1) || unset IS_APPIMAGE
+# environment exports $APPIMAGE (the AppImage file) and $APPDIR. Both are
+# also exported by *other* AppImages that may run this script from inside
+# them (e.g. an "am-gui" AppImage calling "appman"), so additionally check
+# that this very script is the "appman" bundled inside its own AppImage
+# ($APPDIR/bin/appman). Use that to decide whether this copy acts as "am"
+# or "appman": the CLI name follows the name of the AppImage file itself
+# (see INSTALL and AM-INSTALLER, which install the AppImage as "APP-MANAGER"
+# for "am", or as "appman" for AppMan).
+IS_APPIMAGE=
+if [ -n "$APPIMAGE" ] && [ -f "$APPIMAGE" ] \
+	&& [ -n "$APPDIR" ] && [ -d "$APPDIR" ] \
+	&& [ "$(readlink -f "$0")" = "$APPDIR/bin/appman" ]; then
+	IS_APPIMAGE=1
+else
+	unset IS_APPIMAGE
+fi
 
 if [ -n "$IS_APPIMAGE" ]; then
 	DIR="$(cd "${APPIMAGE%/*}" && echo "$PWD")"
@@ -1871,7 +1882,7 @@ _sync_modules() {
 }
 
 _sync_amcli() {
-	if [ -n "$APPIMAGE" ]; then
+	if [ -n "$IS_APPIMAGE" ]; then
 		echo "$DIVIDING_LINE"
 		printf "\n %b is running as an AppImage, its script is part of a read-only squashfs\n and cannot be replaced in place.\n\n" "$AMCLIUPPER"
 		PATH="$PATH:$BINDIR"
@@ -2420,7 +2431,7 @@ case "$1" in
 	'devmode-disable'|'devmode-enable'|'--devmode-disable'|'--devmode-enable')
 		if [ "$CLI_PATH" = "/usr/bin/am" ]; then
 			echo $"This feature is disabled by your organization" | _fit
-		elif [ -n "$APPIMAGE" ]; then
+		elif [ -n "$IS_APPIMAGE" ]; then
 			echo $"This feature is not available for the AppImage build of \"$AMCLIUPPER\"" | _fit
 		else
 			if [ "$1" = "--devmode-disable" ]; then
