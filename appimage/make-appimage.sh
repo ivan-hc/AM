@@ -45,9 +45,32 @@ cp "$PWD/logo.png" "$APPDIR/logo.png"
 cp "$UPSTREAM_DIR/APP-MANAGER" "$APPDIR/bin/appman"
 chmod a+x "$APPDIR/bin/appman"
 
-# Upstream installer, reachable via `AM-*.AppImage setup`
-cp "$UPSTREAM_DIR/INSTALL" "$UPSTREAM_DIR/AM-INSTALLER" "$APPDIR/"
-chmod a+x "$APPDIR/INSTALL" "$APPDIR/AM-INSTALLER"
+# Upstream installer, reachable via `AM-*.AppImage setup`. INSTALL is renamed
+# "INSTALL-AM-APPIMAGE.sh" so that INSTALL itself detects the AppImage flow
+# (see the top of INSTALL) and installs this very AppImage as "am".
+cp "$UPSTREAM_DIR/INSTALL" "$APPDIR/INSTALL-AM-APPIMAGE.sh"
+cp "$UPSTREAM_DIR/AM-INSTALLER" "$APPDIR/AM-INSTALLER"
+chmod a+x "$APPDIR/INSTALL-AM-APPIMAGE.sh" "$APPDIR/AM-INSTALLER"
+
+# Bundle the static appimageupdatetool binary (pkgforge-dev/AppImageUpdate),
+# so that the AppImage can update itself in place (see "_sync_amcli" in
+# APP-MANAGER). It is a self-contained static binary, so it only needs to be
+# placed in $APPDIR/bin - no libraries to bundle with it.
+echo "---------------------------------------------------------------"
+echo "Bundling appimageupdatetool..."
+echo "---------------------------------------------------------------"
+APPIMAGEUPDATETOOL_LINK="${APPIMAGEUPDATETOOL_LINK:-https://github.com/pkgforge-dev/AppImageUpdate/releases/latest/download/appimageupdate-$APPIMAGE_ARCH-linux}"
+if command -v wget >/dev/null 2>&1; then
+	wget -q -O "$APPDIR/bin/appimageupdatetool" "$APPIMAGEUPDATETOOL_LINK" \
+		&& chmod a+x "$APPDIR/bin/appimageupdatetool" \
+		|| echo "  WARNING: could not download appimageupdatetool, skipping"
+elif command -v curl >/dev/null 2>&1; then
+	curl -sL -o "$APPDIR/bin/appimageupdatetool" "$APPIMAGEUPDATETOOL_LINK" \
+		&& chmod a+x "$APPDIR/bin/appimageupdatetool" \
+		|| echo "  WARNING: could not download appimageupdatetool, skipping"
+else
+	echo "  WARNING: neither wget nor curl available, not bundling appimageupdatetool"
+fi
 
 # Our hooks (run before/after the bundled self-updater hook)
 cp "$PWD"/appimage/hooks/*.hook "$APPDIR/bin/"

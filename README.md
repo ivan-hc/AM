@@ -1119,9 +1119,10 @@ The AppImage is built with [quick-sharun](https://github.com/pkgforge-dev/Anylin
 
 - it runs the "[APP-MANAGER](APP-MANAGER)" script directly in "AppMan"/portable mode, so no installation is required: `./AM-*.AppImage -h`
 - the tools that AM may call but that are missing on some distros (`curl`, `wget`, `7z`, `tar`, `unzip`, `xz`, `file`, checksums, ...) are bundled together with their libraries and glibc, making the AppImage fully self-contained
+- [appimageupdatetool](https://github.com/pkgforge-dev/AppImageUpdate) (static binary) is bundled too, so the AppImage can update itself in place
 - it does not require FUSE (thanks to the [uruntime](https://github.com/VHSgunzo/uruntime))
 - it is self-updating: the AppImage updates itself in place from the GitHub releases, and running `appman -s` from inside it triggers that update too
-- double-clicking it opens a terminal with the help screen; `AM-*.AppImage setup` runs the installer to install AM system-wide or AppMan locally
+- double-clicking it (when "am" or "appman" is not installed yet) opens a terminal with the embedded installer, so you can install this very AppImage as "am" system-wide or as "appman" locally; if already installed it opens a terminal with its help screen instead. `AM-*.AppImage setup` always runs that installer.
 
 The build files live in the `appimage/` directory:
 
@@ -1150,7 +1151,7 @@ install -m755 quick-sharun.sh /usr/local/bin/quick-sharun
 
 The resulting `AM-*.AppImage` and its `.zsync` file are written to the `dist/` directory.
 
-> NOTE: The GitHub Actions workflow ([.github/workflows/appimage.yml](.github/workflows/appimage.yml)) rebuilds the AppImage every 3 days and publishes it as a GitHub release, so users can always get an up-to-date single file.
+> NOTE: The GitHub Actions workflow ([.github/workflows/appimage.yml](.github/workflows/appimage.yml)) is triggered when a new version-tagged GitHub release is published, and attaches the freshly built `AM-*.AppImage` files to that very release. This way the AppImage always ships all the bugfixes of the corresponding version of the script.
 
 -----------------------------------------------------------------------
 # Instructions for Linux Distro Maintainers

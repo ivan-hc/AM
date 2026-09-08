@@ -1,14 +1,16 @@
 #!/bin/sh
 # Runs AFTER 10-self-updater.hook (the update check has already started).
 # Provides the GUI entry points of this terminal application:
-#   * double-click (no arguments, no terminal) -> open a terminal with the
-#     help screen, otherwise nothing would be visible
+#   * double-click (no arguments, no terminal):
+#       - if "am" or "appman" is already installed -> open a terminal with its
+#         help screen
+#       - otherwise -> open a terminal with the embedded installer, so the user
+#         can install this very AppImage as "am" (system-wide) or "appman"
+#         (local)
 #   * `setup` / `--install`                    -> run the embedded upstream
 #     installer to install AM (system-wide) or AppMan (local)
 # Every other invocation returns to the default AppRun behaviour: run the
 # bundled 'appman' with the given arguments.
-
-APP="$APPDIR/bin/appman"
 
 # Find the user's terminal, in order of preference:
 #   $TERMINAL  ->  x-terminal-emulator (Debian alternatives)
@@ -80,7 +82,8 @@ _find_terminal() {
 # print its own help and exit without showing anything). The window is kept
 # open until ENTER is pressed so the output stays visible.
 _run_in_terminal() {
-	_script="'$APP' -h; printf '\\n\\n'; echo 'Press ENTER to close this window...'; read _"
+	_cmd="$1"
+	_script="$_cmd; printf '\\n\\n'; echo 'Press ENTER to close this window...'; read _"
 	TERM_NAME=${TERM_BIN%% *}
 	case "$TERM_NAME" in
 		xdg-terminal-exec)
@@ -100,10 +103,21 @@ _run_in_terminal() {
 	esac
 }
 
-# Double-clicked from a file manager: no arguments and no terminal.
+# Double-clicked from a file manager: no arguments and no terminal. If "am" or
+# "appman" is already installed on the system, open a terminal with its help
+# screen; otherwise open the embedded installer so the user can install this
+# AppImage as "am" or "appman" (see INSTALL and AM-INSTALLER).
 if [ -z "$1" ] && [ ! -t 1 ]; then
+	BINDIR="${XDG_BIN_HOME:-$HOME/.local/bin}"
+	if command -v am >/dev/null 2>&1 && [ -e /opt/am/APP-MANAGER ]; then
+		_cmd="am -h"
+	elif [ -x "$BINDIR/appman" ]; then
+		_cmd="$BINDIR/appman -h"
+	else
+		_cmd="$APPDIR/AM-INSTALLER"
+	fi
 	if _find_terminal; then
-		_run_in_terminal "$APP" -h
+		_run_in_terminal "$_cmd"
 	fi
 	>&2 echo "AM is a terminal program, please run it from a terminal."
 	exit 1

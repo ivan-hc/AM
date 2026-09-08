@@ -7,9 +7,23 @@ AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
 
 # Determine the name of this script and its working directory
 export REALDIR="$PWD"
-DIR="$(cd "${0%/*}" && echo "$PWD")"
-CLI="${0##*/}"
-CLI_PATH="$(readlink -f "$0")"
+
+# Detect the AppImage runtime: when running from inside an AppImage the
+# environment exports $APPIMAGE (the AppImage file) and $APPDIR. Use that to
+# decide whether this copy acts as "am" or "appman": the CLI name follows the
+# name of the AppImage file itself (see INSTALL and AM-INSTALLER, which
+# install the AppImage as "APP-MANAGER" for "am", or as "appman" for AppMan).
+IS_APPIMAGE=$([[ -n "$APPIMAGE" && -f "$APPIMAGE" ]] && [[ -n "$APPDIR" && -d "$APPDIR" && -f "$APPDIR/AppRun" ]] && echo 1) || unset IS_APPIMAGE
+
+if [ -n "$IS_APPIMAGE" ]; then
+	DIR="$(cd "${APPIMAGE%/*}" && echo "$PWD")"
+	CLI_PATH="$(readlink -f "$APPIMAGE")"
+	CLI=$([ "${CLI_PATH##*/}" = "APP-MANAGER" ] && echo "am" || echo "appman")
+else
+	DIR="$(cd "${0%/*}" && echo "$PWD")"
+	CLI="${0##*/}"
+	CLI_PATH="$(readlink -f "$0")"
+fi
 
 # Determine system architecture and current user
 ARCH="$(uname -m)"
