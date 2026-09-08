@@ -3,22 +3,15 @@
 set -eu
 
 ARCH=$(uname -m)
-
-# Defensive: this script can be run from inside an AppImage environment
-# (e.g. a FUSE-mounted shell/editor) which exports APPDIR/APPIMAGE and
-# friends pointing at the outer AppImage. Ignore any inherited values.
-unset APPDIR APPIMAGE APPIMAGE_ARCH APPIMAGE_TARGET_DIR APPIMAGE_EXTRACT_AND_RUN \
-	ARG0 ARGV0 SHARUN_DIR SHARUN_LIB_DIR HOST_PATH 2>/dev/null || :
-
-export ARCH APPIMAGE_ARCH="$ARCH"
+export ARCH
 
 # This script is meant to be run from the repository root (the CI checks it
 # out), so the checkout itself is the source for the AppImage. This way a
 # pull request that changes APP-MANAGER produces an AppImage of that same
 # code, and the resulting AppImage can be tested before merging.
 UPSTREAM_DIR="$PWD"
-APPDIR="$PWD/AppDir"
-export APPDIR
+APP_DIR="$PWD/AppDir"
+export APP_DIR
 
 echo "---------------------------------------------------------------"
 echo "Building the \"AM\" AppImage..."
@@ -32,48 +25,48 @@ echo "Version: $VERSION"
 echo "---------------------------------------------------------------"
 echo "Preparing AppDir..."
 echo "---------------------------------------------------------------"
-rm -rf "$APPDIR"
-mkdir -p "$APPDIR/bin"
+rm -rf "$APP_DIR"
+mkdir -p "$APP_DIR/bin"
 
 # Desktop entry + icon
-cp "$PWD/appimage/APP-MANAGER.desktop" "$APPDIR/APP-MANAGER.desktop"
-cp "$PWD/logo.png" "$APPDIR/logo.png"
+cp "$PWD/appimage/APP-MANAGER.desktop" "$APP_DIR/APP-MANAGER.desktop"
+cp "$PWD/logo.png" "$APP_DIR/logo.png"
 
 # Main executable: the APP-MANAGER, named 'appman' so it runs in
 # portable/AppMan mode. AppDir/bin is prepended to PATH by the generated
 # AppRun, so all bundled tools below are found by AM automatically.
-cp "$UPSTREAM_DIR/APP-MANAGER" "$APPDIR/bin/appman"
-chmod a+x "$APPDIR/bin/appman"
+cp "$UPSTREAM_DIR/APP-MANAGER" "$APP_DIR/bin/appman"
+chmod a+x "$APP_DIR/bin/appman"
 
 # Upstream installer, reachable via `AM-*.AppImage setup`. INSTALL is renamed
 # "INSTALL-AM-APPIMAGE.sh" so that INSTALL itself detects the AppImage flow
 # (see the top of INSTALL) and installs this very AppImage as "am".
-cp "$UPSTREAM_DIR/INSTALL" "$APPDIR/INSTALL-AM-APPIMAGE.sh"
-cp "$UPSTREAM_DIR/AM-INSTALLER" "$APPDIR/AM-INSTALLER"
-chmod a+x "$APPDIR/INSTALL-AM-APPIMAGE.sh" "$APPDIR/AM-INSTALLER"
+cp "$UPSTREAM_DIR/INSTALL" "$APP_DIR/INSTALL-AM-APPIMAGE.sh"
+cp "$UPSTREAM_DIR/AM-INSTALLER" "$APP_DIR/AM-INSTALLER"
+chmod a+x "$APP_DIR/INSTALL-AM-APPIMAGE.sh" "$APP_DIR/AM-INSTALLER"
 
 # Bundle the static appimageupdatetool binary (pkgforge-dev/AppImageUpdate),
 # so that the AppImage can update itself in place (see "_sync_amcli" in
 # APP-MANAGER). It is a self-contained static binary, so it only needs to be
-# placed in $APPDIR/bin - no libraries to bundle with it.
+# placed in $APP_DIR/bin - no libraries to bundle with it.
 echo "---------------------------------------------------------------"
 echo "Bundling appimageupdatetool..."
 echo "---------------------------------------------------------------"
-APPIMAGEUPDATETOOL_LINK="${APPIMAGEUPDATETOOL_LINK:-https://github.com/pkgforge-dev/AppImageUpdate/releases/latest/download/appimageupdate-$APPIMAGE_ARCH-linux}"
+APPIMAGEUPDATETOOL_LINK="${APPIMAGEUPDATETOOL_LINK:-https://github.com/pkgforge-dev/AppImageUpdate/releases/latest/download/appimageupdate-$ARCH-linux}"
 if command -v wget >/dev/null 2>&1; then
-	wget -q -O "$APPDIR/bin/appimageupdatetool" "$APPIMAGEUPDATETOOL_LINK" \
-		&& chmod a+x "$APPDIR/bin/appimageupdatetool" \
+	wget -q -O "$APP_DIR/bin/appimageupdatetool" "$APPIMAGEUPDATETOOL_LINK" \
+		&& chmod a+x "$APP_DIR/bin/appimageupdatetool" \
 		|| echo "  WARNING: could not download appimageupdatetool, skipping"
 elif command -v curl >/dev/null 2>&1; then
-	curl -sL -o "$APPDIR/bin/appimageupdatetool" "$APPIMAGEUPDATETOOL_LINK" \
-		&& chmod a+x "$APPDIR/bin/appimageupdatetool" \
+	curl -sL -o "$APP_DIR/bin/appimageupdatetool" "$APPIMAGEUPDATETOOL_LINK" \
+		&& chmod a+x "$APP_DIR/bin/appimageupdatetool" \
 		|| echo "  WARNING: could not download appimageupdatetool, skipping"
 else
 	echo "  WARNING: neither wget nor curl available, not bundling appimageupdatetool"
 fi
 
 # Our hooks (run before/after the bundled self-updater hook)
-cp "$PWD"/appimage/hooks/*.hook "$APPDIR/bin/"
+cp "$PWD"/appimage/hooks/*.hook "$APP_DIR/bin/"
 
 echo "---------------------------------------------------------------"
 echo "Deploying with quick-sharun..."
@@ -83,11 +76,6 @@ export ADD_HOOKS="self-updater.hook"
 export UPINFO="gh-releases-zsync|${GITHUB_REPOSITORY%/*}|${GITHUB_REPOSITORY#*/}|latest|*$ARCH.AppImage.zsync"
 export ICON="$PWD/logo.png"
 export DESKTOP="$PWD/appimage/APP-MANAGER.desktop"
-# TEMPORARY: quick-sharun still defaults to sharun 2.3.0, which does not
-# ship builds for riscv64/loongarch64/ppc64/ppc64le - those were added in
-# sharun 3.0.0. This override can be removed once quick-sharun bumps its
-# default SHARUN_LINK.
-export SHARUN_LINK="${SHARUN_LINK:-https://github.com/pkgforge-dev/sharun/releases/download/3.0.0/sharun-$APPIMAGE_ARCH}"
 
 # Deploy the 'appman' script together with the tools that AM may call but
 # that are missing from some distros (curl, wget, 7z, tar, unzip, xz, ...).
@@ -120,9 +108,9 @@ if [ "${DEPLOY_AM_DEPS:-1}" = 1 ]; then
 		/usr/bin/grep
 		/usr/bin/sed
 	"
-	set -- "$APPDIR/bin/appman" $DEP_DEPS
+	set -- "$APP_DIR/bin/appman" $DEP_DEPS
 else
-	set -- "$APPDIR/bin/appman"
+	set -- "$APP_DIR/bin/appman"
 fi
 # Warn (but keep going) if a bundled dependency is not present on the
 # build system - quick-sharun would silently skip missing files.
