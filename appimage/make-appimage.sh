@@ -5,8 +5,8 @@ set -eu
 ARCH=$1
 VERSION=$2
 export ARCH VERSION
-export OUTPATH=./dist
-export ADD_HOOKS="self-updater.hook"
+export OUTPATH=dist
+#export ADD_HOOKS="self-updater.hook"
 export GITHUB_REPOSITORY="https://github.com/ivan-hc/AM"
 export UPINFO="gh-releases-zsync|${GITHUB_REPOSITORY%/*}|${GITHUB_REPOSITORY#*/}|latest|*$ARCH.AppImage.zsync"
 export ICON=logo.svg
@@ -34,11 +34,11 @@ cp /bin/chown "$APPDIR"/bin/chown
 chmod a+x "$APPDIR"/bin/*
 
 # Deploy dependencies
-appimage/quick-sharun.sh "$APPDIR"
+quick-sharun "$APPDIR"
 
 # Turn AppDir into AppImage
-appimage/quick-sharun.sh --make-appimage
+quick-sharun --make-appimage
 
 # Test the app for 12 seconds
-appimage/quick-sharun.sh --simple-test ./dist/*.AppImage
+quick-sharun --simple-test dist/*.AppImage
 
