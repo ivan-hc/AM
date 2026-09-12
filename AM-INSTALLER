@@ -71,9 +71,7 @@ _install_am() {
 	URL="https://raw.githubusercontent.com/ivan-hc/AM/$AM_BRANCH/INSTALL"
 	SCRIPT="$CACHEDIR/INSTALL-AM.sh"
 	mkdir -p "$CACHEDIR" || true
-	rm -f "$CACHEDIR"/INSTALL-AM.sh || true
-	_script_downloader && chmod a+x "$CACHEDIR"/INSTALL-AM.sh
-	#cp ./INSTALL "$CACHEDIR"/INSTALL-AM.sh && chmod a+x "$CACHEDIR"/INSTALL-AM.sh # for developers
+	rm -f "$CACHEDIR"/INSTALL-AM.sh "$CACHEDIR"/INSTALL-AM-APPIMAGE.sh || true
 	if command -v sudo >/dev/null 2>&1; then
 		SUDOCMD="sudo"
 	elif command -v doas >/dev/null 2>&1; then
@@ -82,7 +80,13 @@ _install_am() {
 		echo "ERROR: No sudo or doas found"
 		exit 1
 	fi
-	$SUDOCMD "$CACHEDIR"/INSTALL-AM.sh && rm -f "$CACHEDIR"/INSTALL-AM.sh
+	if [ -n "$APPIMAGE" ]; then
+		cp -f "$APPDIR"/INSTALL-AM-APPIMAGE.sh "$CACHEDIR"/INSTALL-AM-APPIMAGE.sh && chmod a+x "$CACHEDIR"/INSTALL-AM-APPIMAGE.sh
+		$SUDOCMD "$CACHEDIR"/INSTALL-AM-APPIMAGE.sh "$APPIMAGE" && rm -f "$CACHEDIR"/INSTALL-AM-APPIMAGE.sh
+	else
+		_script_downloader && chmod a+x "$CACHEDIR"/INSTALL-AM.sh
+		$SUDOCMD "$CACHEDIR"/INSTALL-AM.sh && rm -f "$CACHEDIR"/INSTALL-AM.sh
+	fi
 }
 
 # INSTALL "AM" LOCALLY, AS "APPMAN"
@@ -109,13 +113,17 @@ _install_appman() {
 	SCRIPT="$BINDIR/appman"
 	echo '--------------------------------------------------------------------------'
 	printf " %bInstalling \"AppMan\" in %b\033[0m\n" "${Green}" "$BINDIR"
-	_script_downloader && chmod a+x "$BINDIR"/appman
-	echo '--------------------------------------------------------------------------'
-	printf " %bThe following modules will be installed gradually, as you use AppMan\033[0m\n" "${Green}"
-	MODULES=$(sort "$SCRIPT" | tr '"' '\n' | grep "[a-z]\.am$")
-	for module_name in $MODULES; do
-		echo " ◆ https://raw.githubusercontent.com/ivan-hc/AM/$AM_BRANCH/modules/$module_name"
-	done
+	if [ -n "$APPIMAGE" ]; then
+		\mv -f "$APPIMAGE" "$SCRIPT"
+	else
+		_script_downloader && chmod a+x "$BINDIR"/appman
+		echo '--------------------------------------------------------------------------'
+		printf " %bThe following modules will be installed gradually, as you use AppMan\033[0m\n" "${Green}"
+		MODULES=$(sort "$SCRIPT" | tr '"' '\n' | grep "[a-z]\.am$")
+		for module_name in $MODULES; do
+			echo " ◆ https://raw.githubusercontent.com/ivan-hc/AM/$AM_BRANCH/modules/$module_name"
+		done
+	fi
 	echo '--------------------------------------------------------------------------'
 	printf " %b\"AppMan\" has been successfully installed! \033[0m\n\n" "${Green}"
 	printf " To use 'appman' in your current terminal, please run\n" "${LightBlue}"

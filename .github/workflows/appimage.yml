@@ -1,0 +1,98 @@
+name: AppImage
+concurrency:
+  group: appimage-${{ github.ref }}
+  cancel-in-progress: true
+on:
+  release:
+    types: [published]
+  workflow_dispatch: {}
+  pull_request:
+    paths:
+      - "APP-MANAGER"
+      - "appimage/**"
+
+jobs:
+  build:
+    name: "Build AppImage (${{ matrix.arch }})"
+    runs-on: ${{ matrix.runs-on }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            runs-on: ubuntu-latest
+            image: ghcr.io/pkgforge-dev/archlinux:x86_64
+            platform: linux/amd64
+            qemu: false
+          - arch: aarch64
+            runs-on: ubuntu-24.04-arm
+            image: ghcr.io/pkgforge-dev/archlinux:aarch64
+            platform: linux/arm64
+            qemu: false
+          # The remaining arches are built inside their Arch Linux container
+          # images, emulated with QEMU on an x86_64 runner (the build tools -
+          # appimagetool, sharun, mkdwarfs - must run on the target arch).
+          #
+          # DISABLED for now: AM's database does not ship installation
+          # scripts for these architectures yet (see the `programs/`
+          # directory). Uncomment the entries below to enable them again
+          # once app repos for those architectures are introduced.
+          # - arch: riscv64
+          #   runs-on: ubuntu-latest
+          #   image: ghcr.io/pkgforge-dev/archlinux:riscv64
+          #   platform: linux/riscv64
+          #   qemu: true
+          # - arch: loongarch64
+          #   runs-on: ubuntu-latest
+          #   image: ghcr.io/pkgforge-dev/archlinux:loongarch64
+          #   platform: linux/loong64
+          #   qemu: true
+          # - arch: ppc64le
+          #   runs-on: ubuntu-latest
+          #   image: ghcr.io/pkgforge-dev/archlinux:ppc64le
+          #   platform: linux/ppc64le
+          #   qemu: true
+          # NOTE: big-endian `powerpc64` is not supported - tonistiigi/binfmt
+          # does not register a qemu-ppc64 handler, so it cannot be emulated.
+          # QEMU builds are skipped on pull requests to keep PR CI fast.
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Register QEMU binfmt
+        if: ${{ matrix.qemu && github.event_name != 'pull_request' }}
+        uses: docker/setup-qemu-action@1f40c72289eff860ee54a304f1438e3cff362e0a # v4.3.0
+      - name: Build AppImage
+        if: ${{ !matrix.qemu || github.event_name != 'pull_request' }}
+        run: |
+          docker run --rm \
+            --platform ${{ matrix.platform }} \
+            -v "$PWD:/build" -w /build \
+            -e GITHUB_REPOSITORY="${{ github.repository }}" \
+            ${{ matrix.image }} \
+            /bin/sh -c "sh appimage/get-dependencies.sh && sh appimage/make-appimage.sh"
+      - name: Upload artifact
+        if: ${{ !matrix.qemu || github.event_name != 'pull_request' }}
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: AppImage-${{ matrix.arch }}
+          path: dist
+
+  release:
+    # Triggered by a manually published GitHub release (ivan-hc pushes a new
+    # version, writing the release notes himself): build from that tag and
+    # attach the AppImages to that very release.
+    if: ${{ github.event_name == 'release' }}
+    needs: [build]
+    permissions: write-all
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          pattern: AppImage-*
+          merge-multiple: true
+      - name: Attach AppImages to the release
+        uses: softprops/action-gh-release@5be0e66d93ac7ed76da52eca8bb058f665c3a5fe # v2.4.2
+        with:
+          tag_name: ${{ github.event.release.tag_name }}
+          files: |
+            *.AppImage
+            *.AppImage.zsync

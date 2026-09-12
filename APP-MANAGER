@@ -7,9 +7,34 @@ AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
 
 # Determine the name of this script and its working directory
 export REALDIR="$PWD"
-DIR="$(cd "${0%/*}" && echo "$PWD")"
-CLI="${0##*/}"
-CLI_PATH="$(readlink -f "$0")"
+
+# Detect the AppImage runtime: when running from inside an AppImage the
+# environment exports $APPIMAGE (the AppImage file) and $APPDIR. Both are
+# also exported by *other* AppImages that may run this script from inside
+# them (e.g. an "am-gui" AppImage calling "appman"), so additionally check
+# that this very script is the "appman" bundled inside its own AppImage
+# ($APPDIR/bin/appman). Use that to decide whether this copy acts as "am"
+# or "appman": the CLI name follows the name of the AppImage file itself
+# (see INSTALL and AM-INSTALLER, which install the AppImage as "APP-MANAGER"
+# for "am", or as "appman" for AppMan).
+IS_APPIMAGE=
+if [ -n "$APPIMAGE" ] && [ -f "$APPIMAGE" ] \
+	&& [ -n "$APPDIR" ] && [ -d "$APPDIR" ] \
+	&& [ "$(readlink -f "$0")" = "$APPDIR/bin/appman" ]; then
+	IS_APPIMAGE=1
+else
+	unset IS_APPIMAGE
+fi
+
+if [ -n "$IS_APPIMAGE" ]; then
+	DIR="$(cd "${APPIMAGE%/*}" && echo "$PWD")"
+	CLI_PATH="$(readlink -f "$APPIMAGE")"
+	CLI=$([ "${CLI_PATH##*/}" = "APP-MANAGER" ] && echo "am" || echo "appman")
+else
+	DIR="$(cd "${0%/*}" && echo "$PWD")"
+	CLI="${0##*/}"
+	CLI_PATH="$(readlink -f "$0")"
+fi
 
 # Determine system architecture and current user
 ARCH="$(uname -m)"
@@ -1857,6 +1882,23 @@ _sync_modules() {
 }
 
 _sync_amcli() {
+	if [ -n "$IS_APPIMAGE" ]; then
+		echo "$DIVIDING_LINE"
+		printf "\n %b is running as an AppImage, its script is part of a read-only squashfs\n and cannot be replaced in place.\n\n" "$AMCLIUPPER"
+		PATH="$PATH:$BINDIR"
+		if command -v appimageupdatetool >/dev/null 2>&1 && [ -w "$APPIMAGE" ]; then
+			printf " Checking for a new AppImage release...\n\n"
+			if appimageupdatetool -Or "$APPIMAGE" >/dev/null 2>&1; then
+				printf " %b has been updated, restart it to use the new version.\n\n" "${APPIMAGE##*/}"
+			else
+				printf " No update available (or update failed), %b is already up to date.\n\n" "${APPIMAGE##*/}"
+			fi
+		else
+			printf " Install 'appimageupdatetool' to update this AppImage from the terminal,\n or download the latest release from the GitHub repository.\n\n"
+		fi
+		echo "$DIVIDING_LINE"
+		return 0
+	fi
 	echo "$DIVIDING_LINE"
 	CURRENT_AM_VERSION="$AMVERSION"
 	echo -ne $"\n ◆ SYNCHRONIZING \"$AMCLIUPPER\" VERSION \"$CURRENT_AM_VERSION\"...\r" && sleep 0.25
@@ -2389,6 +2431,8 @@ case "$1" in
 	'devmode-disable'|'devmode-enable'|'--devmode-disable'|'--devmode-enable')
 		if [ "$CLI_PATH" = "/usr/bin/am" ]; then
 			echo $"This feature is disabled by your organization" | _fit
+		elif [ -n "$IS_APPIMAGE" ]; then
+			echo $"This feature is not available for the AppImage build of \"$AMCLIUPPER\"" | _fit
 		else
 			if [ "$1" = "--devmode-disable" ]; then
 				rm -f "$AMDATADIR"/betatester

@@ -74,6 +74,8 @@ You can use the command `am -a {PROGRAM}` to view the description and get the so
 
 [Regression Testing (for developers)](regress)
 
+[Build "AM" as an AppImage (for developers)](#build-am-as-an-appimage-for-developers)
+
 [Instructions for Linux Distro Maintainers](#instructions-for-linux-distro-maintainers)
 
 [Troubleshooting](#troubleshooting)
@@ -1107,7 +1109,51 @@ Below you can access the documentation pages related to the use of "AM", complet
 | [Back to "Main Index"](#main-index) |
 | - |
 
-------------------------------------------------------------------------
+-----------------------------------------------------------------------
+
+# Build "AM" as an AppImage (for developers)
+
+Since version 10.x, a GitHub Actions workflow in this repository builds a portable, self-contained **AppImage** of "AM" that runs as a local-user `appman` (no root needed), in addition to the classic script-based installations described above.
+
+The AppImage is built with [quick-sharun](https://github.com/pkgforge-dev/Anylinux-AppImages/blob/main/useful-tools/quick-sharun.sh) on an Arch Linux container:
+
+- it runs the "[APP-MANAGER](APP-MANAGER)" script directly in "AppMan"/portable mode, so no installation is required: `./AM-*.AppImage -h`
+- the tools that AM may call but that are missing on some distros (`curl`, `wget`, `7z`, `tar`, `unzip`, `xz`, `file`, checksums, ...) are bundled together with their libraries and glibc, making the AppImage fully self-contained
+- [appimageupdatetool](https://github.com/pkgforge-dev/AppImageUpdate) (static binary) is bundled too, so the AppImage can update itself in place
+- it does not require FUSE (thanks to the [uruntime](https://github.com/VHSgunzo/uruntime))
+- it is self-updating: the AppImage updates itself in place from the GitHub releases, and running `appman -s` from inside it triggers that update too
+- double-clicking it (when "am" or "appman" is not installed yet) opens a terminal with the embedded installer, so you can install this very AppImage as "am" system-wide or as "appman" locally; if already installed it opens a terminal with its help screen instead. `AM-*.AppImage setup` always runs that installer.
+
+The build files live in the `appimage/` directory:
+
+- [appimage/make-appimage.sh](appimage/make-appimage.sh) - the build script (fetch deps, bundle, package and test)
+- [appimage/get-dependencies.sh](appimage/get-dependencies.sh) - installs the container build dependencies
+- [appimage/hooks/](appimage/hooks/) - AppImage runtime hooks
+- [appimage/APP-MANAGER.desktop](appimage/APP-MANAGER.desktop) - the desktop entry used by the AppImage
+
+It is built for the following architectures, each inside its own Arch Linux container image ([pkgforge-dev/docker-archlinux](https://github.com/pkgforge-dev/docker-archlinux)):
+
+- `x86_64` and `aarch64` run on native GitHub Actions runners
+
+`riscv64`, `loongarch64` and `ppc64le` are also supported by the build (their Arch Linux ports are emulated with QEMU on an x86_64 runner), but they are **disabled** for now because AM's database does not ship installation scripts for those architectures yet (see the `programs/` directory). Uncomment the entries in [.github/workflows/appimage.yml](.github/workflows/appimage.yml) to enable them once app repos for those architectures are introduced.
+
+> NOTE: AM's database currently ships installation scripts for `x86_64`, `aarch64`, `i686` and `armv7l` only (see the `programs/` directory). On the other architectures the AppImage still fully works for the core options (`-h`, `-s`, `-u`, managing AppImages installed locally with `-ia`/`-e`, third-party databases, ...), but the main database has no entries for those architectures yet.
+
+To build it locally (requires a GNU/Linux system with `bash`, `wget`/`curl` and `git`):
+
+```
+# 1. install quick-sharun
+wget -q https://raw.githubusercontent.com/pkgforge-dev/Anylinux-AppImages/refs/heads/main/useful-tools/quick-sharun.sh
+install -m755 quick-sharun.sh /usr/local/bin/quick-sharun
+# 2. run the build from the repository root
+./appimage/make-appimage.sh
+```
+
+The resulting `AM-*.AppImage` and its `.zsync` file are written to the `dist/` directory.
+
+> NOTE: The GitHub Actions workflow ([.github/workflows/appimage.yml](.github/workflows/appimage.yml)) is triggered when a new version-tagged GitHub release is published, and attaches the freshly built `AM-*.AppImage` files to that very release. This way the AppImage always ships all the bugfixes of the corresponding version of the script.
+
+-----------------------------------------------------------------------
 # Instructions for Linux Distro Maintainers
 **Glossary**:
 - System `am` (`/usr/bin/am`)
