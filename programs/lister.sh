@@ -38,7 +38,11 @@ for arch in $DIRS; do
 	ARGS=$(awk -v FS="(◆ | : )" '{print $2}' <"$arch-apps" | sort -u)
 	for arg in $ARGS; do
 		if [ -f "./$arch/$arg" ]; then
-			grep "^◆ $arg :" "$arch-apps" | head -1 >> "$arch-tmplist"
+			if [ "$arch" = aarch64 ] && grep -q "^◆ $arg :" "x86_64-apps"; then
+				grep "^◆ $arg :" "x86_64-apps" | head -1 >> "$arch-tmplist"
+			else
+				grep "^◆ $arg :" "$arch-apps" | head -1 >> "$arch-tmplist"
+			fi
 			if grep -qe "appimageupdatetool" "./$arch/$arg" 1>/dev/null; then
 				grep "◆ $arg :" "$arch-apps" | head -1 >> "$arch-appimages"
 				_stats_appimages
