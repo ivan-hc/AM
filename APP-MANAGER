@@ -5,11 +5,20 @@ AMVERSION="10.5"
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
 
+# Determine if AM is an AppImage
+IS_APPIMAGE=$([[ -n "$APPIMAGE" && -f "$APPIMAGE" ]] && [[ -n "$APPDIR" && -d "$APPDIR" && -f "$APPDIR/AppRun" ]] && echo 1) || unset IS_APPIMAGE
+
 # Determine the name of this script and its working directory
 export REALDIR="$PWD"
-DIR="$(cd "${0%/*}" && echo "$PWD")"
-CLI="${0##*/}"
-CLI_PATH="$(readlink -f "$0")"
+if [ -n "$IS_APPIMAGE" ]; then
+	DIR="$(cd "${APPIMAGE%/*}" && echo "$PWD")"
+	CLI=$([ "${APPIMAGE##*/}" == "APP-MANAGER" ] && echo "am" || echo "appman")
+	CLI_PATH="$(readlink -f "$APPIMAGE")"
+else
+	DIR="$(cd "${0%/*}" && echo "$PWD")"
+	CLI="${0##*/}"
+	CLI_PATH="$(readlink -f "$0")"
+fi
 
 # Determine system architecture and current user
 ARCH="$(uname -m)"
@@ -130,6 +139,7 @@ _fit() {
 
 # DEVELOPER MODE
 [ -f "$DATADIR/AM/betatester" ] && AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/dev"
+[ -n "$IS_APPIMAGE" ] && rm -f "$AMDATADIR"/betatester
 
 # Branch and modues source
 AMBRANCH=$(basename "$AMREPO")
@@ -435,7 +445,9 @@ _appman() {
 		printf $"%b ⚠️ WARNING\033[0m: \"%b%b\033[0m\" is not in PATH, local apps may not run.\n" "${RED}" "${LightBlue}" "$BINDIR"
 	fi
 	MODULES_PATH="$AMPATH/modules"
-	if [ "$CLI" = am ] && [ -f "$APPMANCONFIG"/appman-mode ] && [ -d /usr/lib/am/modules ]; then
+	if [ -n "$IS_APPIMAGE" ]; then
+		MODULES_PATH="$APPDIR"/share/modules
+	elif [ "$CLI" = am ] && [ -f "$APPMANCONFIG"/appman-mode ] && [ -d /usr/lib/am/modules ]; then
 		MODULES_PATH="/usr/lib/am/modules"
 	elif [ "$CLI" = am ] && [ -f "$APPMANCONFIG"/appman-mode ] && [ -d "$(readlink -f /opt)/am/modules" ]; then
 		MODULES_PATH="$(readlink -f /opt)/am/modules"
@@ -459,7 +471,11 @@ _am() {
 	APPSPATH="$(readlink -f /opt)"
 	AMPATH="$APPSPATH/$AMCLI"
 	_create_cache_dir
-	MODULES_PATH="$AMPATH/modules"
+	if [ -n "$IS_APPIMAGE" ]; then
+		MODULES_PATH="$APPDIR"/share/modules
+	else
+		MODULES_PATH="$AMPATH/modules"
+	fi
 }
 
 # DETERMINE WHEN TO USE "AM" OR "APPMAN"
@@ -892,7 +908,11 @@ _am_newrepo_check() {
 		AMBRANCH=$(basename "$AMREPO")
 		export APPSDB="$AMREPO/programs/$ARCH"
 		export APPSLISTDB="$AMREPO/programs/$ARCH-apps"
-		export MODULES_PATH="$AMPATH/modules"
+		if [ -n "$IS_APPIMAGE" ]; then
+			export MODULES_PATH="$APPDIR/share/modules"
+		else
+			export MODULES_PATH="$AMPATH/modules"
+		fi
 		if [ "$1" != "newrepo" ] && [ "$1" != "neodb" ]; then
 			echo "$DIVIDING_LINE"; echo $" Source: $AMREPO"; echo "$DIVIDING_LINE"
 		fi
@@ -1834,6 +1854,7 @@ _sync_locale() {
 }
 
 _sync_modules() {
+	[ -n "$IS_APPIMAGE" ] && return 0; # Skip module update for AppImages
 	printf $"%b\n Check for updates in modules...\n" "$DIVIDING_LINE"
 	MODULES=$(echo "$AMCLI_ONLINE_CONTENT" | tr '"' '\n' | grep "[a-z]\.am$")
 	for module_name in $MODULES; do
@@ -1862,9 +1883,27 @@ _sync_amcli() {
 	echo -ne $"\n ◆ SYNCHRONIZING \"$AMCLIUPPER\" VERSION \"$CURRENT_AM_VERSION\"...\r" && sleep 0.25
 	_clean_amcachedir 1>/dev/null
 	cd "$AMCACHEDIR" || return 1
-	echo "$AMCLI_ONLINE_CONTENT" > ./APP-MANAGER && chmod a+x ./APP-MANAGER
-	echo y | mv ./APP-MANAGER "$CLI_PATH"
 	NEW_AM_VERSION=$(echo "$AMCLI_ONLINE_CONTENT" | grep "^AMVERSION=" | tr '"' '\n' | grep "^[0-9]")
+	if [ -z "$IS_APPIMAGE" ]; then
+		echo "$AMCLI_ONLINE_CONTENT" > ./APP-MANAGER && chmod a+x ./APP-MANAGER
+		echo y | mv ./APP-MANAGER "$CLI_PATH"
+	else
+		checksum_sha1=$(sha1sum "$CLI_PATH" | awk '{print $1}')
+		download_url="https://github.com/ivan-hc/AM/releases/download/$NEW_AM_VERSION/APP-MANAGER-$ARCH.AppImage"
+		digest=$(curl -Lsf "$download_url.zsync" | grep -a "SHA\|MD5" | tr -d '\0')
+		results=$(echo "$digest" | grep -a "$checksum_sha1")
+		if [ -z "$results" ]; then
+			_use_online_downloader "$download_url" APP-MANAGER && chmod a+x ./APP-MANAGER
+			checksum_sha1=$(sha1sum APP-MANAGER | awk '{print $1}')
+			results_new=$(echo "$digest" | grep -a "$checksum_sha1")
+			if [ -z "$results_new" ]; then
+				printf $" ◆ Update failed, please try again later.\n\n" && return 0
+			else
+				\mv -f "$CLI_PATH" APP-MANAGER.old
+				\mv -f APP-MANAGER "$CLI_PATH"
+			fi
+		fi
+	fi
 	if [ ! "$CURRENT_AM_VERSION" = "$NEW_AM_VERSION" ]; then
 		echo -ne $" A new release of \"$AMCLIUPPER\" is available, please wait...\r"
 		echo $" ◆ \"$AMCLIUPPER\" IS NOW UPDATED TO THE BRAND NEW \"$NEW_AM_VERSION\" VERSION!"
@@ -1887,7 +1926,7 @@ _use_sync() {
 		AMCLI_ONLINE_CONTENT=$(_use_online_reading_tool "$AMREPO"/APP-MANAGER)
 		if echo "$AMCLI_ONLINE_CONTENT" | grep -q AMCLI; then
 			if [ "$CLI" = am ]; then
-				if [ -f "$APPMANCONFIG"/appman-mode ]; then
+				if [ -f "$APPMANCONFIG"/appman-mode ] && [ -z "$IS_APPIMAGE" ]; then
 					if [ -d "$(readlink -f /opt)/am/modules" ]; then
 						MODULES_PATH="$(readlink -f /opt)/am/modules"
 						if [ -w "$(readlink -f /opt)/am" ]; then
@@ -2389,6 +2428,8 @@ case "$1" in
 	'devmode-disable'|'devmode-enable'|'--devmode-disable'|'--devmode-enable')
 		if [ "$CLI_PATH" = "/usr/bin/am" ]; then
 			echo $"This feature is disabled by your organization" | _fit
+		elif [ -n "$IS_APPIMAGE" ]; then
+			echo $"This feature is not available for AM in AppImage mode" | _fit
 		else
 			if [ "$1" = "--devmode-disable" ]; then
 				rm -f "$AMDATADIR"/betatester
