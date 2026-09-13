@@ -24,13 +24,26 @@ cp AM-INSTALLER "$APPDIR"/bin/.
 cp INSTALL "$APPDIR"/bin/INSTALL-AM-APPIMAGE.sh
 cp -rf modules "$APPDIR"/share/.
 # Copy coreutils
-#wget -q https://github.com/ivan-hc/am-utils/releases/download/continuous-"$ARCH"/chown-"$ARCH"-static -O "$APPDIR"/bin/chown
-cp /bin/curl  "$APPDIR"/bin/curl
-cp /bin/grep  "$APPDIR"/bin/grep
-cp /bin/sed   "$APPDIR"/bin/sed
-cp /bin/cat   "$APPDIR"/bin/cat
-cp /bin/chmod "$APPDIR"/bin/chmod
-cp /bin/chown "$APPDIR"/bin/chown
+cp /bin/curl "$APPDIR"/bin/.
+cp /bin/wget "$APPDIR"/bin/.
+cp /bin/grep "$APPDIR"/bin/.
+cp /bin/sed "$APPDIR"/bin/.
+cp /bin/cat "$APPDIR"/bin/.
+cp /bin/chmod "$APPDIR"/bin/.
+cp /bin/chown "$APPDIR"/bin/.
+cp /bin/7z "$APPDIR"/bin/.
+cp /bin/ar "$APPDIR"/bin/.
+cp /bin/column "$APPDIR"/bin/.
+cp /bin/du "$APPDIR"/bin/.
+cp /bin/sha1sum "$APPDIR"/bin/.
+cp /bin/sha512sum "$APPDIR"/bin/.
+cp /bin/sha256sum "$APPDIR"/bin/.
+cp /bin/md5sum "$APPDIR"/bin/.
+cp /bin/tar "$APPDIR"/bin/.
+cp /bin/unxz "$APPDIR"/bin/.
+cp /bin/unzip "$APPDIR"/bin/.
+cp /bin/xz "$APPDIR"/bin/.
+cp /bin/xzcat "$APPDIR"/bin/.
 chmod a+x "$APPDIR"/bin/*
 
 # Deploy dependencies
