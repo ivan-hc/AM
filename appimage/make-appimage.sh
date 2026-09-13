@@ -39,6 +39,10 @@ quick-sharun "$APPDIR"
 # Turn AppDir into AppImage
 quick-sharun --make-appimage
 
+# Rename files
+mv -f dist/*-$ARCH.AppImage dist/APP-MANAGER-$ARCH.AppImage
+mv -f dist/*-$ARCH.AppImage.zsync dist/APP-MANAGER-$ARCH.AppImage.zsync
+
 # Test the app for 12 seconds
 quick-sharun --simple-test dist/*.AppImage
 

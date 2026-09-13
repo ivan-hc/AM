@@ -139,6 +139,7 @@ _fit() {
 
 # DEVELOPER MODE
 [ -f "$DATADIR/AM/betatester" ] && AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/dev"
+[ -n "$IS_APPIMAGE" ] && rm -f "$AMDATADIR"/betatester
 
 # Branch and modues source
 AMBRANCH=$(basename "$AMREPO")
@@ -1882,13 +1883,27 @@ _sync_amcli() {
 	echo -ne $"\n ◆ SYNCHRONIZING \"$AMCLIUPPER\" VERSION \"$CURRENT_AM_VERSION\"...\r" && sleep 0.25
 	_clean_amcachedir 1>/dev/null
 	cd "$AMCACHEDIR" || return 1
+	NEW_AM_VERSION=$(echo "$AMCLI_ONLINE_CONTENT" | grep "^AMVERSION=" | tr '"' '\n' | grep "^[0-9]")
 	if [ -z "$IS_APPIMAGE" ]; then
 		echo "$AMCLI_ONLINE_CONTENT" > ./APP-MANAGER && chmod a+x ./APP-MANAGER
 		echo y | mv ./APP-MANAGER "$CLI_PATH"
 	else
-		printf " ◆ TODO: Fetch latest prebuilt AppImage and install into $CLI_PATH\n\n"
+		checksum_sha1=$(sha1sum "$CLI_PATH" | awk '{print $1}')
+		download_url="https://github.com/ivan-hc/AM/releases/download/$NEW_AM_VERSION/APP-MANAGER-$ARCH.AppImage"
+		digest=$(curl -Lsf "$download_url.zsync" | grep -a "SHA\|MD5" | tr -d '\0')
+		results=$(echo "$digest" | grep -a "$checksum_sha1")
+		if [ -z "$results" ]; then
+			_use_online_downloader "$download_url" APP-MANAGER && chmod a+x ./APP-MANAGER
+			checksum_sha1=$(sha1sum APP-MANAGER | awk '{print $1}')
+			results_new=$(echo "$digest" | grep -a "$checksum_sha1")
+			if [ -z "$results_new" ]; then
+				printf $" ◆ Update failed, please try again later.\n\n" && return 0
+			else
+				\mv -f "$CLI_PATH" APP-MANAGER.old
+				\mv -f APP-MANAGER "$CLI_PATH"
+			fi
+		fi
 	fi
-	NEW_AM_VERSION=$(echo "$AMCLI_ONLINE_CONTENT" | grep "^AMVERSION=" | tr '"' '\n' | grep "^[0-9]")
 	if [ ! "$CURRENT_AM_VERSION" = "$NEW_AM_VERSION" ]; then
 		echo -ne $" A new release of \"$AMCLIUPPER\" is available, please wait...\r"
 		echo $" ◆ \"$AMCLIUPPER\" IS NOW UPDATED TO THE BRAND NEW \"$NEW_AM_VERSION\" VERSION!"
