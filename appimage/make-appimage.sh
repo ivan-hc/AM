@@ -24,26 +24,27 @@ cp AM-INSTALLER "$APPDIR"/bin/.
 cp INSTALL "$APPDIR"/bin/INSTALL-AM-APPIMAGE.sh
 cp -rf modules "$APPDIR"/share/.
 # Copy coreutils
-cp /bin/curl "$APPDIR"/bin/.
-cp /bin/wget "$APPDIR"/bin/.
-cp /bin/grep "$APPDIR"/bin/.
-cp /bin/sed "$APPDIR"/bin/.
-cp /bin/cat "$APPDIR"/bin/.
-cp /bin/chmod "$APPDIR"/bin/.
-cp /bin/chown "$APPDIR"/bin/.
-cp /bin/7z "$APPDIR"/bin/.
-cp /bin/ar "$APPDIR"/bin/.
-cp /bin/column "$APPDIR"/bin/.
-cp /bin/du "$APPDIR"/bin/.
-cp /bin/sha1sum "$APPDIR"/bin/.
-cp /bin/sha512sum "$APPDIR"/bin/.
-cp /bin/sha256sum "$APPDIR"/bin/.
-cp /bin/md5sum "$APPDIR"/bin/.
-cp /bin/tar "$APPDIR"/bin/.
-cp /bin/unxz "$APPDIR"/bin/.
-cp /bin/unzip "$APPDIR"/bin/.
-cp /bin/xz "$APPDIR"/bin/.
-cp /bin/xzcat "$APPDIR"/bin/.
+cp -Lf /bin/7z "$APPDIR"/bin/.
+cp -Lf /bin/ar "$APPDIR"/bin/.
+cp -Lf /bin/cat "$APPDIR"/bin/.
+cp -Lf /bin/chmod "$APPDIR"/bin/.
+cp -Lf /bin/chown "$APPDIR"/bin/.
+cp -Lf /bin/column "$APPDIR"/bin/.
+cp -Lf /bin/curl "$APPDIR"/bin/.
+cp -Lf /bin/du "$APPDIR"/bin/.
+cp -Lf /bin/file "$APPDIR"/bin/.
+cp -Lf /bin/grep "$APPDIR"/bin/.
+cp -Lf /bin/md5sum "$APPDIR"/bin/.
+cp -Lf /bin/sed "$APPDIR"/bin/.
+cp -Lf /bin/sha1sum "$APPDIR"/bin/.
+cp -Lf /bin/sha256sum "$APPDIR"/bin/.
+cp -Lf /bin/sha512sum "$APPDIR"/bin/.
+cp -Lf /bin/tar "$APPDIR"/bin/.
+cp -Lf /bin/unxz "$APPDIR"/bin/.
+cp -Lf /bin/unzip "$APPDIR"/bin/.
+cp -Lf /bin/wget "$APPDIR"/bin/.
+cp -Lf /bin/xz "$APPDIR"/bin/.
+cp -Lf /bin/xzcat "$APPDIR"/bin/.
 chmod a+x "$APPDIR"/bin/*
 
 # Deploy dependencies
