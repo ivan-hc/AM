@@ -51,12 +51,15 @@ chmod a+x "$APPDIR"/bin/*
 # Deploy dependencies
 quick-sharun "$APPDIR"
 
+# Insert env variables, 3rd line onwards
+sed -i '3i\USE_HOST_XDG_CACHE_HOME=1' "$APPDIR"/AppRun.lib
+
 # Turn AppDir into AppImage
 quick-sharun --make-appimage
 
 # Rename files
-mv -f dist/*-$ARCH.AppImage dist/APP-MANAGER-$ARCH.AppImage
-mv -f dist/*-$ARCH.AppImage.zsync dist/APP-MANAGER-$ARCH.AppImage.zsync
+mv -f dist/*-"$ARCH".AppImage dist/APP-MANAGER-"$ARCH".AppImage
+mv -f dist/*-"$ARCH".AppImage.zsync dist/APP-MANAGER-"$ARCH".AppImage.zsync
 
 # Test the app for 12 seconds
 quick-sharun --simple-test dist/*.AppImage
