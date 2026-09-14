@@ -9,15 +9,16 @@ export OUTPATH=dist
 #export ADD_HOOKS="self-updater.hook"
 export GITHUB_REPOSITORY="https://github.com/ivan-hc/AM"
 export UPINFO="gh-releases-zsync|${GITHUB_REPOSITORY%/*}|${GITHUB_REPOSITORY#*/}|latest|*$ARCH.AppImage.zsync"
-export ICON=logo.svg
+export ICON=APP-MANAGER.svg
 export DESKTOP=appimage/APP-MANAGER.desktop
 export MAIN_BIN=AppRun
-export APPDIR="AppDir-$VERSION-$ARCH"
+export APPDIR="AppDir"
 
 # Prepare files
-rm -Rf "$APPDIR"/*
+rm -rf "$APPDIR"
 mkdir -p "$APPDIR"/bin "$APPDIR"/share
 # Copy AM files
+cp logo.svg APP-MANAGER.svg
 cp appimage/AppRun "$APPDIR"/.
 cp APP-MANAGER "$APPDIR"/bin/.
 cp AM-INSTALLER "$APPDIR"/bin/.

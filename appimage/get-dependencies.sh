@@ -43,6 +43,7 @@ echo "Installing quick-sharun..."
 echo "---------------------------------------------------------------"
 wget -q -O /usr/local/bin/quick-sharun \
 	https://raw.githubusercontent.com/pkgforge-dev/Anylinux-AppImages/refs/heads/main/useful-tools/quick-sharun.sh
+	#https://raw.githubusercontent.com/pkgforge-dev/Anylinux-AppImages/f6627df7a7aa48c9c614999fa46fb5707ca9b611/useful-tools/quick-sharun.sh
 chmod a+x /usr/local/bin/quick-sharun
 
 echo "CONTAINER IS READY!"
