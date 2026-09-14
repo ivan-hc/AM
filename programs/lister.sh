@@ -32,8 +32,10 @@ _stats_portable() {
 	fi
 }
 
-DIRS=$(find . -type d | grep "/" | sed 's:.*/::')
+DIRS=$(find . -type d | grep "/" | sed 's:.*/::' | grep -v x86_64 | xargs)
+DIRS="x86_64 $DIRS"
 for arch in $DIRS; do
+	echo "Update $arch lists..."
 	rm -f "$arch-appimages" "$arch-portable"
 	ARGS=$(awk -v FS="(◆ | : )" '{print $2}' <"$arch-apps" | sort -u)
 	for arg in $ARGS; do
@@ -74,3 +76,4 @@ for arch in $DIRS; do
 	[ -f "$arch-tmplist" ] && sort "$arch-tmplist" > "$arch-apps"
 	rm -f "$arch-tmplist"
 done
+echo "Done!"
