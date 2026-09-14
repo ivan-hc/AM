@@ -11,6 +11,9 @@ RED='\033[0;31m'; LightBlue='\033[1;34m'; Green='\033[0;32m'
 # For developers
 [ -z "$AM_BRANCH" ] && AM_BRANCH="main"
 
+# Determine if it is AppImage installation flow, get $APPIMAGE from parent script via $1
+[ "${0##*/}" = "INSTALL-AM-APPIMAGE.sh" ] && APPIMAGE=$1 || unset APPIMAGE
+
 # Function to check online connections (uses github.com by default, as the database and CLI itself are stored/hosted there)
 _online_check_tool() {
 	if command -v wget >/dev/null 2>&1; then
@@ -61,7 +64,7 @@ fi
 # INSTALL "AM"
 _prepare_am_directory() {
 	# CREATE AND ENTER THE MAIN DIRECTORY FOR "AM"
-	mkdir -p /opt/am/modules /usr/local/bin && cd /opt/am || exit 1
+	mkdir -p /opt/am /usr/local/bin && cd /opt/am || exit 1
 
 	# CREATE THE SCRIPT NEEDED TO UNINSTALL "AM"
 	printf '#!/bin/sh\n\nset -e\n' > /opt/am/remove
@@ -70,10 +73,12 @@ _prepare_am_directory() {
 	printf '%s\n' 'rm -R -f /opt/am' >> /opt/am/remove
 	chmod a+x /opt/am/remove || exit 1
 
-	# DOWNLOAD THE MAIN SCRIPT
+	# DOWNLOAD THE MAIN SCRIPT OR MOVE APPIMAGE INTO /OPT/AM
 	URL="https://raw.githubusercontent.com/ivan-hc/AM/$AM_BRANCH/APP-MANAGER"
 	SCRIPT="APP-MANAGER"
-	if ! _script_downloader; then
+	if [ -n "$APPIMAGE" ]; then
+		\mv -f "$APPIMAGE" "$SCRIPT"
+	elif ! _script_downloader; then
 		echo "💀 ERROR: Cannot download am"
 		exit 1
 	fi
@@ -90,7 +95,7 @@ _prepare_am_directory() {
 
 _download_am_modules() {
 	# DOWNLOAD MODULES
-	cd /opt/am/modules || exit
+	mkdir -p /opt/am/modules && cd /opt/am/modules || exit
 	if [ -z "$MODULES" ]; then
 		echo "💀 ERROR: Cannot download am modules"
 		exit 1
@@ -104,17 +109,19 @@ _download_am_modules() {
 		fi
 	done
 	cd ..
-
-	# ENABLE NON-ROOT PERMISSIONS TO THE MAIN DIRECTORY FOR THE CURRENT USER
-	chown -R "${SUDO_USER:-$DOAS_USER}" /opt/am
 }
 
 echo '--------------------------------------------------------------------------'
 printf " %bInstalling \"AM\" in /opt/am\033[0m\n" "${Green}"
 _prepare_am_directory
-echo '--------------------------------------------------------------------------'
-printf " %bInstalling modules\033[0m\n" "${Green}"
-_download_am_modules
+# ONLY DOWNLOAD MODULES FOR NON-APPIMAGE INSTALL
+if [ -z "$APPIMAGE" ]; then
+	echo '--------------------------------------------------------------------------'
+	printf " %bInstalling modules\033[0m\n" "${Green}"
+	_download_am_modules
+fi
+# ENABLE NON-ROOT PERMISSIONS TO THE MAIN DIRECTORY FOR THE CURRENT USER
+chown -R "${SUDO_USER:-$DOAS_USER}" /opt/am
 echo '--------------------------------------------------------------------------'
 printf " %b\"AM\" has been successfully installed! \033[0m\n\n" "${Green}"
 printf " Please, run \"%bam -h\033[0m\" to see the list of the options.\n" "${LightBlue}"
