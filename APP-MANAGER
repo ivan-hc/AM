@@ -292,7 +292,7 @@ if ! sed --version 2>/dev/null | grep -qi "gnu"; then
 fi
 
 _create_cache_dir() {
-	AMCACHEDIR="$CACHEDIR/$AMCLI"
+	[ -n "$PLA_APP" ] && AMCACHEDIR="$CACHEDIR/PLA_$(date +%F-%X | sed 's/://g' | sed 's/-//g')" || AMCACHEDIR="$CACHEDIR/$AMCLI"
 	mkdir -p "$AMCACHEDIR"
 }
 
@@ -1128,14 +1128,6 @@ else
 	rm -f "$DATADIR"/applications/am-install.desktop && _create_pla_handler_desktop_file
 fi
 
-_use_pla_installer_check() {
-	mkdir -p "$CACHEDIR"/"$AMCMD_PLA" 2>/dev/null
-	while find "$CACHEDIR"/"$AMCMD_PLA" -type f -exec grep -Iq '^#!.*\bsh\b' {} \; -print -quit | grep -q .; do
-		echo "Resource is busy, retrying in 5 seconds..."
-		sleep 5
-	done
-}
-
 _use_pla_install_handler() {
 	# Ask install scope
 	APPNAME="$PLA_APP"
@@ -1189,8 +1181,6 @@ _use_pla_install_handler() {
 
 	# Pick CMD based on the requested scope
 	if [ "$SCOPE" = "system" ]; then
-		AMCMD_PLA="am"
-		_use_pla_installer_check
 		if ! command -v am >/dev/null 2>&1; then
 			echo "Error: System-wide install requires 'am', which isn't installed." | _fit
 			printf "\n"
@@ -1200,8 +1190,6 @@ _use_pla_install_handler() {
 			am -i "$PLA_APP"
 		fi
 	elif [ "$SCOPE" = "user" ]; then
-		AMCMD_PLA="appman"
-		_use_pla_installer_check
 		if command -v am >/dev/null 2>&1; then
 			am -i --user "$PLA_APP"
 		else
