@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="10.5-2"
+AMVERSION="10.5-3"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -292,17 +292,16 @@ if ! sed --version 2>/dev/null | grep -qi "gnu"; then
 fi
 
 _create_cache_dir() {
-	[ -z "$PLACACHEDIR" ] && export PLACACHEDIR="$CACHEDIR/PLA_$(date +%F-%X | sed 's/://g' | sed 's/-//g')"
-	[ -n "$PLA_APP" ] && AMCACHEDIR="$PLACACHEDIR" || AMCACHEDIR="$CACHEDIR/$AMCLI"
+	AMCACHEDIR="$CACHEDIR/$AMCLI"
 	mkdir -p "$AMCACHEDIR"
 }
 
 _clean_amcachedir() {
-	if [ "$AMCLI" = am ] && [ -d "$CACHEDIR"/am ]; then
+	if [ -z "$pending_args" ] && [ "$AMCLI" = am ] && [ -d "$CACHEDIR"/am ]; then
 		rm -f "$CACHEDIR"/am/* rm -f "$CACHEDIR"/am/*/* 2>/dev/null
 		rmdir "$CACHEDIR"/am/* 2>/dev/null
 	fi
-	if [ -d "$CACHEDIR"/appman ]; then
+	if [ -z "$pending_args" ] && [ -d "$CACHEDIR"/appman ]; then
 		rm -f "$CACHEDIR"/appman/* "$CACHEDIR"/appman/*/* 2>/dev/null
 		rmdir "$CACHEDIR"/appman/* 2>/dev/null
 	fi
@@ -502,31 +501,29 @@ _determine_args() {
 		fi
 	fi
 	# Detect directories with less than 4 elements
-	pla_cachedirs=$(find "$CACHEDIR" -type d -name PLA_* 2>/dev/null)
-	if [ -z "$pla_cachedirs" ]; then
-		for a in $ARGPATHS; do
-			if ! echo "$a" | grep -q "/am$" && [ "$(ls "$a" | wc -l)" -lt 4 ]; then
-				# Find and hide directories with less than 3 executables
-				if [ "$(find "$a" -type f  -executable 2>/dev/null | wc -l)" -lt 3 ]; then
-					# Determine if the directory is related to a library
-					if ! sort "$a"/remove | grep -q "usr/local/lib"; then
-						items_2_del=$(sort "$a"/remove | tr ' ' '\n' | grep "^/" 2>/dev/null | xargs)
-						for i in $items_2_del; do
-							if ! echo "$i" | grep -q "local/share/applications/.*AM.desktop\|$BINDIR\|$a"; then
-								sed -i "\|$i|s|^|#|" "$a"/remove 2>/dev/null
-							fi
-						done
-						if [ -z  "$PLA_APP" ] || [ -d "$CACHEDIR"/am ] && [ ! -f "$CACHEDIR"/am/"$(echo "$a" | sed 's:.*/::')" ] || [ -d "$CACHEDIR"/appman ] && [ ! -f "$CACHEDIR"/appman/"$(echo "$a" | sed 's:.*/::')" ]; then
-							"$a"/remove 1>/dev/null && printf "\n Removed %b\n" "$a"
-						else
-							[ -z "$pending_args" ] && export pending_args="$(echo "$a" | sed 's:.*/::')" || pending_args="$pending_args $(echo "$a" | sed 's:.*/::')"
+	for a in $ARGPATHS; do
+		if ! echo "$a" | grep -q "/am$" && [ "$(ls "$a" | wc -l)" -lt 4 ]; then
+			# Determine pending args
+			argname=$(echo "$a" | sed 's:.*/::')
+			if [ -d "$CACHEDIR"/am ] && [ -f "$CACHEDIR"/am/"$argname" ] || [ -d "$CACHEDIR"/appman ] && [ -f "$CACHEDIR"/appman/"$argname" ]; then
+				[ -z "$pending_args" ] && pending_args="$argname" || pending_args="$pending_args $argname"
+			fi
+			# Find and hide directories with less than 3 executables
+			if ! echo "$pending_args" | tr ' ' '\n' | grep -q "^$argname$" && [ "$(find "$a" -type f  -executable 2>/dev/null | wc -l)" -lt 3 ]; then
+				# Determine if the directory is related to a library
+				if ! sort "$a"/remove | grep -q "usr/local/lib"; then
+					items_2_del=$(sort "$a"/remove | tr ' ' '\n' | grep "^/" 2>/dev/null | xargs)
+					for i in $items_2_del; do
+						if ! echo "$i" | grep -q "local/share/applications/.*AM.desktop\|$BINDIR\|$a"; then
+							sed -i "\|$i|s|^|#|" "$a"/remove 2>/dev/null
 						fi
-						ARGPATHS=$(echo "$ARGPATHS" | grep -v "$a")
-					fi
+					done
+					"$a"/remove 1>/dev/null && printf "\n Removed %b\n" "$a"
+					ARGPATHS=$(echo "$ARGPATHS" | grep -v "$a")
 				fi
 			fi
-		done
-	fi
+		fi
+	done
 	ARGS=$(echo "$ARGPATHS" | xargs -n 1 basename 2>/dev/null)
 	# use "argpath=$(echo "$ARGPATHS" | grep "/$arg$")" to determine the full path of "arg"
 }
@@ -1188,14 +1185,6 @@ _use_pla_install_handler() {
 	fi
 
 	# Pick CMD based on the requested scope
-
-	pla_cleanup() {
-    		if [ -d "$PLACACHEDIR" ]; then
-    			[ -n "$( ls -A "$PLACACHEDIR" )" ] && rm -f "$PLACACHEDIR"/*
-    			rmdir "$PLACACHEDIR"
-    		fi
-	}
-
 	if [ "$SCOPE" = "system" ]; then
 		if ! command -v am >/dev/null 2>&1; then
 			echo "Error: System-wide install requires 'am', which isn't installed." | _fit
@@ -1203,13 +1192,13 @@ _use_pla_install_handler() {
 			read -p "Press [ENTER] to exit."
 			exit 1
 		else
-			am -i "$PLA_APP" && pla_cleanup || pla_cleanup
+			am -i "$PLA_APP"
 		fi
 	elif [ "$SCOPE" = "user" ]; then
 		if command -v am >/dev/null 2>&1; then
-			am -i --user "$PLA_APP" && pla_cleanup || pla_cleanup
+			am -i --user "$PLA_APP"
 		else
-			appman -i "$PLA_APP" && pla_cleanup || pla_cleanup
+			appman -i "$PLA_APP"
 		fi
 	fi
 	printf "\n"
@@ -1339,7 +1328,7 @@ _check_version() {
 		argpath_items=$(echo "$ARGPATHS" | tr ' ' '\n' | grep "/$arg$" | xargs)
 		for argpath in $argpath_items; do
 			if [ -f "$argpath"/remove ]; then
-				if [ -n "$pla_cachedirs" ] && [ -d "$argpath"/tmp ] && [ "$(find "$argpath" -type f  -executable 2>/dev/null | wc -l)" -lt 3 ]; then
+				if [ -n "$pending_args" ] && [ -d "$argpath"/tmp ] && [ "$(find "$argpath" -type f  -executable 2>/dev/null | wc -l)" -lt 3 ]; then
 					APPVERSION="pending"
 				elif [ -f "$argpath"/version ]; then
 					_check_version_if_version_file_exists
@@ -1549,18 +1538,6 @@ _clean_amcachedir_message() {
 	[ -d "$CACHEDIR"/appman ] && echo $" ✔ Clear the contents of $CACHEDIR/appman"
 }
 
-_clean_pla_cachedirs() {
-	pla_cachedirs=$(find "$CACHEDIR" -type d -name PLA_* 2>/dev/null)
-	if [ -n "$pla_cachedirs" ]; then
-		for arg in $pla_cachedirs; do
-			if [ -d "$arg" ]; then
-    				[ -n "$( ls -A "$arg" )" ] && rm -f "$arg"/* 2>/dev/null
-    				rmdir "$arg" 2>/dev/null && echo $" ✔ Removed $arg/tmp" | sed 's#/tmp##g'
-    			fi
-    		done
-	fi
-}
-
 _clean_all_home_cache_directories_of_appimages() {
 	for arg in $ARGPATHS; do
 		if test -d "$arg"/*.home/.cache; then
@@ -1654,7 +1631,6 @@ _use_clean() {
 	_detect_appman_apps
 	_determine_args
 	_clean_amcachedir_message
-	_clean_pla_cachedirs
 	_clean_all_home_cache_directories_of_appimages
 	_clean_all_tmp_directories_from_appspath
 	_clean_launchers 2>/dev/null
