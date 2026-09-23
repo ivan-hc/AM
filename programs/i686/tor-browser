@@ -1,32 +1,58 @@
 #!/bin/sh
 
+# AM INSTALL SCRIPT VERSION 3.5
+set -u
 APP=tor-browser
+SITE="https://www.torproject.org"
 
-# CREATE THE DIRECTORY
-mkdir -p /opt/"$APP"
-cd /opt/"$APP"
+# CREATE DIRECTORIES AND ADD REMOVER
+[ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
+printf "#!/bin/sh\nset -e\nrm -f /usr/local/bin/$APP\nrm -R -f /opt/$APP" > ../remove
+printf '\n%s' "rm -f /usr/local/share/applications/$APP-AM.desktop" >> ../remove
+chmod a+x ../remove || exit 1
 
-# ADD THE REMOVER
-echo '#!/bin/sh' >> /opt/"$APP"/remove
-echo "rm -R -f /usr/local/share/applications/$APP-AM.desktop /opt/$APP /usr/local/bin/$APP" >> /opt/"$APP"/remove
-chmod a+x /opt/"$APP"/remove
-
-# DOWNLOAD THE ARCHIVE
-mkdir -p tmp
-cd ./tmp
-
-wget "$(curl -Ls https://www.torproject.org/download/languages/ | tr '><" ' '\n' | grep "linux.*i686.*tar.xz$" | head -1)"
+# DOWNLOAD AND PREPARE THE APP, $version is also used for updates
+VERSION="$(curl -Ls https://dist.torproject.org/torbrowser/ | tr '"' '\n' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+/$' | tr -d '/' | sort -V | tail -1)"
+[ -n "$VERSION" ] || exit 1
+version="https://dist.torproject.org/torbrowser/$VERSION/tor-browser-linux-i686-$VERSION.tar.xz"
+wget "$version" || exit 1
 [ -e ./*tar.* ] && tar fx ./*tar.* && rm -f ./*tar.*
 cd ..
-mv ./tmp/*/Browser/* ./
-rm -R ./tmp
+mv ./tmp/*/Browser/* ./ || exit 1
+rm -R -f ./tmp || exit 1
+echo "$version" > ./version
 
-# LINK / SCRIPT IN $PATH
-ln -s /opt/"$APP"/firefox.real /usr/local/bin/"$APP"
+# LINK TO PATH
+ln -s "/opt/$APP/firefox.real" "/usr/local/bin/$APP"
 
-# LAUNCHER
-echo "
-[Desktop Entry]
+# SCRIPT TO UPDATE THE PROGRAM
+cat >> ./AM-updater << 'EOF'
+#!/bin/sh
+set -u
+APP=tor-browser
+SITE="https://www.torproject.org"
+version0=$(cat "/opt/$APP/version")
+VERSION="$(curl -Ls https://dist.torproject.org/torbrowser/ | tr '"' '\n' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+/$' | tr -d '/' | sort -V | tail -1)"
+[ -n "$VERSION" ] || { echo "Error getting link"; exit 1; }
+version="https://dist.torproject.org/torbrowser/$VERSION/tor-browser-linux-i686-$VERSION.tar.xz"
+if [ "$version" != "$version0" ]; then
+	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
+	notify-send "A new version of $APP is available, please wait"
+	wget "$version" || exit 1
+	[ -e ./*tar.* ] && tar fx ./*tar.* && rm -f ./*tar.*
+	cd ..
+	mv ./tmp/*/Browser/* ./ || exit 1
+	rm -R -f ./*zs-old ./*.part ./tmp ./*~
+	echo "$version" > ./version
+	notify-send "$APP is updated!"
+else
+	echo "Update not needed!"
+fi
+EOF
+chmod a+x ./AM-updater || exit 1
+
+# LAUNCHER & ICON
+echo "[Desktop Entry]
 Type=Application
 Name=Tor Browser
 GenericName=Web Browser
