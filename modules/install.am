@@ -121,14 +121,14 @@ _installation_cleanup() {
 	# Cleanup incomplete installation when interrupted by a signal (Ctrl+C, kill, etc.)
 	trap - INT TERM HUP QUIT
 	printf "\n\n"
-	LASTDIR=$(ls -td "$APPSPATH"/* 2>/dev/null | head -1 | sed 's:.*/::')
-	if [ -n "$LASTDIR" ] && [ -f "$APPSPATH/$LASTDIR/remove" ]; then
+	if [ -n "$pure_arg" ] && [ -f "$APPSPATH/$pure_arg/remove" ]; then
 		echo $" 💀 ERROR DURING INSTALLATION, REMOVED $APPNAME!"
-		$SUDOCMD "$APPSPATH/$LASTDIR/remove" 1>/dev/null 2>&1
-	elif [ -n "$LASTDIR" ] && [ -d "$APPSPATH/$LASTDIR" ]; then
+		$SUDOCMD "$APPSPATH/$pure_arg/remove" 1>/dev/null 2>&1
+	elif [ -n "$pure_arg" ] && [ -d "$APPSPATH/$pure_arg" ]; then
 		echo $" 💀 ERROR DURING INSTALLATION, REMOVED $APPNAME!"
-		$SUDOCMD rm -R -f "$APPSPATH/$LASTDIR" 2>/dev/null
+		$SUDOCMD rm -R -f "$APPSPATH/$pure_arg" 2>/dev/null
 	fi
+	$SUDOCMD rm -f "$AMCACHEDIR"/"$arg"
 	# Clean up the cached installation script
 	_clean_amcachedir 2>/dev/null
 	echo "____________________________________________________________________________"
@@ -323,9 +323,10 @@ _install_arg() {
 	# INSTALL SCRIPT
 	_install_exec_installation_script || _install_script_retry
 
+	$SUDOCMD rm -f "$AMCACHEDIR"/"$arg"
+
 	# Post installation processes
-	LASTDIR=$(ls -td "$APPSPATH"/* 2>/dev/null | head -1 | sed 's:.*/::')
-	LASTDIRPATH="${APPSPATH}/${LASTDIR}"
+	LASTDIRPATH="${APPSPATH}/${pure_arg}"
 	# Put permission check in remove script and change ownership of directory
 	if [ "$AMCLI" = am ]; then
 		$SUDOCMD sed -i '1 a [ "$(id -u)" -ne 0 ] && echo "Permission denied" && exit 1' "${LASTDIRPATH}"/remove 2>/dev/null
@@ -373,24 +374,22 @@ _install_arg() {
 	fi
 
 	# ENDING THE INSTALLATION
-	LASTDIR=$(ls -td "$APPSPATH"/* 2>/dev/null | head -1 | sed 's:.*/::')
 	[ -f "${LASTDIRPATH}"/AM-updater ] && sed -i "s#$ALT_GH#https://api.github.com#g" "${LASTDIRPATH}"/AM-updater 2>/dev/null
 	if [ -f "${LASTDIRPATH}"/remove ]; then
 		[ -d "${LASTDIRPATH}"/AppDir ] && rmdir "${LASTDIRPATH}"/AppDir 2>/dev/null
 		if test -d "${LASTDIRPATH}"/tmp; then
 			echo $" 💀 ERROR DURING INSTALLATION, REMOVED $APPNAME!"
-			$SUDOCMD "$APPSPATH/$LASTDIR/remove" 1>/dev/null
-		elif test -f "$APPSPATH/$LASTDIR/version" && [ -z "$(cat "$APPSPATH/$LASTDIR/version")" ] && [ -z "$localscript_on" ]; then
+			$SUDOCMD "$APPSPATH/$pure_arg/remove" 1>/dev/null
+		elif test -f "$APPSPATH/$pure_arg/version" && [ -z "$(cat "$APPSPATH/$pure_arg/version")" ] && [ -z "$localscript_on" ]; then
 			echo $" 💀 ERROR DURING INSTALLATION, REMOVED $APPNAME!"
-			$SUDOCMD "$APPSPATH/$LASTDIR/remove" 1> /dev/null
+			$SUDOCMD "$APPSPATH/$pure_arg/remove" 1> /dev/null
 		else
 			APPSIZE=$(du -sm "${LASTDIRPATH}" | awk '{print $1}' )
-			LASTDIRNAME=$(echo "\"$LASTDIR\"" | tr '[:lower:]' '[:upper:]')
+			LASTDIRNAME=$(echo "\"$pure_arg\"" | tr '[:lower:]' '[:upper:]')
 			printf "%b%b%s\n" " ${Green}" "$LASTDIRNAME INSTALLED\033[0m" " ($APPSIZE MB OF DISK SPACE)"
-			$SUDOCMD rm "$AMCACHEDIR"/"$arg"
 			_check_version
-			app_version=$(grep -w " ◆ $LASTDIR	|" 0<"$AMCACHEDIR"/version-args | sed 's:.*|	::')
-			echo " ◆ $LASTDIR $app_version" >> "$AMCACHEDIR"/installed
+			app_version=$(grep -w " ◆ $pure_arg	|" 0<"$AMCACHEDIR"/version-args | sed 's:.*|	::')
+			echo " ◆ $pure_arg $app_version" >> "$AMCACHEDIR"/installed
 		fi
 		localscript_on=""
 	else
@@ -1181,19 +1180,19 @@ case "$1" in
 				fi
 			fi
 			# Disable notifications if needed
-			[ -f "$AMDATADIR"/disable-notifications ] && [ -f "$APPSPATH/$LASTDIR/AM-updater" ] && sed -e '/notify-send/ s/^#*/#/' -i "$APPSPATH/$LASTDIR/AM-updater" 2>/dev/null
+			[ -f "$AMDATADIR"/disable-notifications ] && [ -f "$APPSPATH/$pure_arg/AM-updater" ] && sed -e '/notify-send/ s/^#*/#/' -i "$APPSPATH/$pure_arg/AM-updater" 2>/dev/null
 			# Sandbox argument
 			if echo "$FLAGS" | grep -q -- "--sandbox"; then
-				if [ -f "$APPSPATH/$LASTDIR/$LASTDIR" ] && head -c10 "$APPSPATH/$LASTDIR/$LASTDIR" 2>/dev/null | grep -qa '^.ELF....AI$'; then
-					FILE=$(command -v "$LASTDIR" 2>/dev/null)
+				if [ -f "$APPSPATH/$pure_arg/$pure_arg" ] && head -c10 "$APPSPATH/$pure_arg/$pure_arg" 2>/dev/null | grep -qa '^.ELF....AI$'; then
+					FILE=$(command -v "$pure_arg" 2>/dev/null)
 					if ! head -c1000 "$FILE" 2>/dev/null | grep -q "SANDBOXCMD"; then
 						if ! command -v aisap >/dev/null 2>&1 || ! command -v sas >/dev/null 2>&1; then
 							mv "$AMCACHEDIR"/installed "$CACHEDIR"/installed.backup.am 2>/dev/null
-							_use_sandbox "$LASTDIR"
+							_use_sandbox "$pure_arg"
 							sort "$AMCACHEDIR"/installed >> "$CACHEDIR"/installed.backup.am 2>/dev/null
 							mv "$CACHEDIR"/installed.backup.am "$AMCACHEDIR"/installed 2>/dev/null
 						else
-							printf "\n" && _use_sandbox "$LASTDIR"
+							printf "\n" && _use_sandbox "$pure_arg"
 						fi
 					fi
 				fi
