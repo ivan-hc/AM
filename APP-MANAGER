@@ -566,6 +566,47 @@ AMCLIUPPER=$(echo "$AMCLI" | tr '[:lower:]' '[:upper:]')
 AMDATADIR="$DATADIR/AM"
 mkdir -p "$AMDATADIR"
 
+# Lock file, avoids two or more "AM"/"AppMan" tasks running at the same time and corrupt shared dirs
+AMLOCK="$AMDATADIR/.lock"
+AM_LOCK_TIMEOUT="${AM_LOCK_TIMEOUT:-900}"
+
+_lock_release() {
+	# Release the lock only if we own it
+	[ "$(cat "$AMLOCK" 2>/dev/null)" = "$$" ] && rm -f "$AMLOCK"
+	return 0
+}
+
+_lock_acquire() {
+	local waited=0
+	local owner=""
+	# "set -C" (noclobber) creates the file in a subshell to not affect the main script
+	while ! ( set -C; echo "$$" > "$AMLOCK" ) 2>/dev/null; do
+		if [ ! -e "$AMLOCK" ]; then
+			# Unable to create the lock file, continue anyway
+			return 0
+		fi
+		owner="$(cat "$AMLOCK" 2>/dev/null)"
+		if [ -n "$owner" ] && kill -0 "$owner" 2>/dev/null; then
+			[ "$waited" = 0 ] && printf $"\n ⚠️ Another \"%s\" task is running (pid %s), waiting for it to finish...\n" "$AMCLIUPPER" "$owner"
+			waited=$((waited + 1))
+			if [ "$AM_LOCK_TIMEOUT" != 0 ] && [ "$waited" -ge "$AM_LOCK_TIMEOUT" ]; then
+				printf $"\n 💀 ERROR: Operation timed out.\n" | _fit
+				exit 1
+			fi
+		else
+			# The task which created the lock is gone, reuse the lock file
+			rm -f "$AMLOCK"
+		fi
+		sleep 1
+	done
+	# Release lock when script exits/interrupted/killed
+	trap '_lock_release' EXIT
+	trap '_lock_release; exit 1' INT TERM HUP
+}
+
+# Skip the lock with "AM_NO_LOCK=1 (maybe for some commands, eg am -h)
+[ -z "$AM_NO_LOCK" ] && _lock_acquire
+
 _betatester_message_on() {
 	if [ -f "$AMDATADIR"/betatester ]; then
 		echo "$DIVIDING_LINE"; echo $"\"$AMCLIUPPER\" $AMVERSION: DEVELOPER MODE"; echo "$DIVIDING_LINE"
