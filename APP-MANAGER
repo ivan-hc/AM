@@ -577,12 +577,13 @@ _lock_release() {
 }
 
 _lock_acquire() {
-	local waited=0
-	local owner=""
-	# "set -C" (noclobber) creates the file in a subshell to not affect the main script
+	# Some commands run in child processes (eg. reinstall/relocate, these nested calls inherit the lock of their parent process
+	[ -n "$AM_LOCK_HELD" ] && return 0
+	local waited=0 owner=""
+	# "set -C" (noclobber) creates the file atomically, in a subshell to not affect the script
 	while ! ( set -C; echo "$$" > "$AMLOCK" ) 2>/dev/null; do
 		if [ ! -e "$AMLOCK" ]; then
-			# Unable to create the lock file, continue anyway
+			# Unable to create the lock file (read-only $AMDATADIR?), but continue anyway
 			return 0
 		fi
 		owner="$(cat "$AMLOCK" 2>/dev/null)"
@@ -599,7 +600,9 @@ _lock_acquire() {
 		fi
 		sleep 1
 	done
-	# Release lock when script exits/interrupted/killed
+	# Mark the lock as held, so the child processes started by this task inherit it
+	export AM_LOCK_HELD="$$"
+	# Release the lock when the script exits, is interrupted or is killed
 	trap '_lock_release' EXIT
 	trap '_lock_release; exit 1' INT TERM HUP
 }
