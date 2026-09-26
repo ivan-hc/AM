@@ -568,16 +568,16 @@ mkdir -p "$AMDATADIR"
 
 # Lock file, avoids two or more "AM"/"AppMan" tasks running at the same time and corrupt shared dirs
 AMLOCK="$AMDATADIR/.lock"
-AM_LOCK_TIMEOUT="${AM_LOCK_TIMEOUT:-900}"
 
+# Release the lock only if we own it
 _lock_release() {
-	# Release the lock only if we own it
 	[ "$(cat "$AMLOCK" 2>/dev/null)" = "$$" ] && rm -f "$AMLOCK"
 	return 0
 }
 
+# Acquire the lock if no existing AM process running, else wait for it to be released
 _lock_acquire() {
-	# Some commands run in child processes (eg. reinstall/relocate, these nested calls inherit the lock of their parent process
+	# Some commands run in child processes (eg. reinstall/relocate, these nested calls inherit the lock of their parent process)
 	[ -n "$AM_LOCK_HELD" ] && return 0
 	local waited=0 owner=""
 	# "set -C" (noclobber) creates the file atomically, in a subshell to not affect the script
@@ -590,7 +590,7 @@ _lock_acquire() {
 		if [ -n "$owner" ] && kill -0 "$owner" 2>/dev/null; then
 			[ "$waited" = 0 ] && printf $"\n ⚠️ Another \"%s\" task is running (pid %s), waiting for it to finish...\n" "$AMCLIUPPER" "$owner"
 			waited=$((waited + 1))
-			if [ "$AM_LOCK_TIMEOUT" != 0 ] && [ "$waited" -ge "$AM_LOCK_TIMEOUT" ]; then
+			if [ "$waited" -ge 600 ]; then # Wait for 600s (10m) before timeout
 				printf $"\n 💀 ERROR: Operation timed out.\n" | _fit
 				exit 1
 			fi
