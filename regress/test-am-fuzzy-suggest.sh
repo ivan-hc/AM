@@ -19,6 +19,7 @@ eval "$(awk '/^_print_did_you_mean_candidates\(\)/,/^}$/' "$_module")"
 eval "$(awk '/^_did_you_mean\(\)/,/^}$/' "$_module")"
 eval "$(awk '/^_select_did_you_mean_candidate\(\)/,/^}$/' "$_module")"
 eval "$(awk '/^_check_arg_variants\(\)/,/^}$/' "$_module")"
+eval "$(awk '/^_print_arg_variants_notice\(\)/,/^}$/' "$_module")"
 
 # Variables required by _did_you_mean
 AMDATADIR="${AMDATADIR:-$HOME/.local/share/AM}"
@@ -561,6 +562,40 @@ EOF
 }
 
 ################################################################################
+# _print_arg_variants_notice tests (non-blocking heads-up on exact match)
+################################################################################
+
+_test_print_arg_variants_notice() {
+	printf "\n=== _print_arg_variants_notice tests ===\n"
+
+	LightBlue=""
+
+	# Other apps share the name → prints a notice listing them, not the arg itself
+	COLLISION_CANDIDATES=(photon photon-studio photoname)
+	out=$(_print_arg_variants_notice "photon")
+	_assert_contains "photon → notice mentions photon-studio" "$out" "photon-studio"
+	_assert_contains "photon → notice mentions photoname" "$out" "photoname"
+	if echo "$out" | grep -qE "matches: photon,|matches: photon$"; then
+		_ko "photon → notice excludes itself from the list" "(found)" "(absent)"
+	else
+		_ok "photon → notice excludes itself from the list"
+	fi
+
+	# Only the exact match itself in COLLISION_CANDIDATES → no notice
+	COLLISION_CANDIDATES=(photon-studio)
+	out=$(_print_arg_variants_notice "photon-studio")
+	_assert_empty "photon-studio (no other matches) → no notice" "$out"
+
+	# Never blocks: no _read/prompt involved, just prints and returns
+	COLLISION_CANDIDATES=(photon photon-studio)
+	if _print_arg_variants_notice "photon" < /dev/null; then
+		_ok "notice runs fine with closed stdin (non-interactive safe)"
+	else
+		_ko "notice runs fine with closed stdin (non-interactive safe)" "failure" "success"
+	fi
+}
+
+################################################################################
 # Main
 ################################################################################
 
@@ -573,6 +608,7 @@ _test_did_you_mean_substring
 _test_did_you_mean_case_insensitive
 _test_select_did_you_mean_candidate
 _test_check_arg_variants
+_test_print_arg_variants_notice
 
 printf "\n=== Results: \033[0;32m%d passed\033[0m, \033[0;31m%d failed\033[0m ===\n\n" "$PASS" "$FAIL"
 printf "Results: %d passed, %d failed\n" "$PASS" "$FAIL" >> "$test_results"

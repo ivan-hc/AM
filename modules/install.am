@@ -754,6 +754,24 @@ _check_arg_variants() {
 	[ "${#COLLISION_CANDIDATES[@]}" -gt 1 ] && [ "${#COLLISION_CANDIDATES[@]}" -le 15 ]
 }
 
+# Non-blocking heads-up: lists the other apps from COLLISION_CANDIDATES
+# (set by _check_arg_variants), excluding $1 itself. Never prompts, so it's
+# safe for batch installs (am -i a b c) and non-interactive/CI runs.
+_print_arg_variants_notice() {
+	local exact="${1,,}" name_orig name joined=""
+	local -a others=()
+	for name_orig in "${COLLISION_CANDIDATES[@]}"; do
+		name="${name_orig,,}"
+		[ "$name" != "$exact" ] && others+=("$name_orig")
+	done
+	[ "${#others[@]}" -eq 0 ] && return
+	for name_orig in "${others[@]}"; do
+		[ -n "$joined" ] && joined="$joined, "
+		joined="$joined$name_orig"
+	done
+	printf $" Note: \"%b%s\033[0m\" also matches: %b%s\033[0m\n\n" "${LightBlue}" "$1" "${LightBlue}" "$joined"
+}
+
 _not_an_appimage_message() {
 	if [ -n "$install_appimage" ] && ! grep -q "^◆ $arg : " "$AMDATADIR/$ARCH-appimages"; then
 		printf $" ✖ ERROR: \"%b\" is NOT an AppImage\n" "$arg" && printf "\n"
@@ -1186,17 +1204,8 @@ case "$1" in
 				_install_3rd_party_app
 			elif echo "$arg_script" | grep -q "^#"; then
 				_not_an_appimage_message || continue
-				if _check_arg_variants "$arg"; then
-					DID_YOU_MEAN_CANDIDATES=("${COLLISION_CANDIDATES[@]}")
-					DID_YOU_MEAN_CANDIDATE_FLAGS=()
-					for match in "${COLLISION_CANDIDATES[@]}"; do DID_YOU_MEAN_CANDIDATE_FLAGS+=(""); done
-					_print_did_you_mean_candidates
-					if _select_did_you_mean_candidate; then
-						_resolve_did_you_mean_selection || continue
-					fi
-				else
-					_install_normally
-				fi
+				_check_arg_variants "$arg" && _print_arg_variants_notice "$arg"
+				_install_normally
 			else
 				echo $"💀 ERROR: \"$arg\" does NOT exist in the \"AM\" database, $(printf "please check the list, run the \"%b$AMCLIPATH_ORIGIN -l\033[0m\" command.\n\n" "${Gold}")" | fold -sw 72 | sed 's/^/ /g'
 				_did_you_mean "$arg"
