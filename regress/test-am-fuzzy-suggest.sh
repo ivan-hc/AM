@@ -14,6 +14,7 @@ FAIL=0
 _appman="/opt/am/APP-MANAGER"
 _module="/opt/am/modules/install.am"
 eval "$(awk '/^_read\(\)/,/^}$/' "$_appman")"
+eval "$(awk '/^_fit\(\)/,/^}$/' "$_appman")"
 eval "$(awk '/^_levenshtein\(\)/,/^}$/' "$_module")"
 eval "$(awk '/^_print_did_you_mean_candidates\(\)/,/^}$/' "$_module")"
 eval "$(awk '/^_did_you_mean\(\)/,/^}$/' "$_module")"
@@ -21,10 +22,11 @@ eval "$(awk '/^_select_did_you_mean_candidate\(\)/,/^}$/' "$_module")"
 eval "$(awk '/^_check_arg_variants\(\)/,/^}$/' "$_module")"
 eval "$(awk '/^_print_arg_variants_notice\(\)/,/^}$/' "$_module")"
 
-# Variables required by _did_you_mean
+# Variables required by _did_you_mean and _fit
 AMDATADIR="${AMDATADIR:-$HOME/.local/share/AM}"
 ARCH="${ARCH:-$(uname -m)}"
 LightBlue="${LightBlue:-}"
+command -v tput >/dev/null 2>&1 && TERMINAL_WIDTH=$(($(tput cols)-3)) || TERMINAL_WIDTH=${COLUMNS:-80}
 third_party_lists="${third_party_lists:-}"
 
 ################################################################################
