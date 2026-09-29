@@ -64,9 +64,11 @@ _template_create_dirs_and_ask_for_source() {
 
 _template_create_new_line_for_application_list() {
 	# Fix $COMMENT syntax
-	COMMENT=$(echo "$COMMENT"  | sed -- "s/\[.*\]//g; s/[[:space:]]*$//; s/^[[:space:]]*//g" | xargs)
+	COMMENT=$(echo "$COMMENT"  | sed -- "s/\[.*\]//g; s/[[:space:]]*$//; s/^[[:space:]]*//g" | xargs -0 echo)
 	if ! echo "$COMMENT" | grep -q "\.$"; then COMMENT=$(echo "$COMMENT."); fi
 	if echo "$COMMENT" | grep -qi "^description:"; then _template_description_if_hosted_elsewhere; fi
+
+	[ -n "$COMMENT" ] && printf "\nDescription:\n%b\n\n" "$COMMENT" | _fit
 
 	# Remove duplicated lines
 	if grep -q "^◆ $arg " ./am-scripts/list; then
@@ -279,6 +281,7 @@ _template_then_git_repo() {
 	read -r -p $" If correct, press \"ENTER\", 1 to add keywords and 2 to remove keywords: " response
 	case "$response" in
 	1)
+		#response="appimage$" # comment the line below to use this by default
 		read -r -ep $" URL must contain (\"x64\", \"x86_64\"... or leave blank): " response
 		if [ -n "$response" ]; then
 			sed -i "s# head -1# grep -i \"$response\" | head -1#g" ./am-scripts/"$MAIN_ARCH"/"$arg"
@@ -405,7 +408,7 @@ for arg in $ARGS; do
 	# If the argument is a github url, then extract the appname from the URL
 	if echo "$arg" | grep -q "^https://github.com/.*"; then
 		arg_github_repo=$(echo "$arg" | sed -- 's#/releases*$##g')
-		arg=$(echo "$arg" | sed -- 's#/releases*$##g; s/-appimage$//g; s:.*/::')
+		arg=$(echo "$arg" | sed -- 's#/releases*$##g; s/-appimage$//g; s:.*/::; s/_/-/g')
 	fi
 	# Check if the appname already exists in the database
 	if [ ! -f "$AMDATADIR"/betatester ] && grep -q "^◆ $arg :" "$AMDATADIR"/"$ARCH"-apps; then
