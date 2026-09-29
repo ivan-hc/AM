@@ -548,18 +548,10 @@ _install_3rd_party_app() {
 				FLAGS="$FLAGS --$DID_YOU_MEAN_FLAG"
 				_install_3rd_party_app
 			fi
-		elif [ -n "$DID_YOU_MEAN" ]; then
-			if [ -n "$DID_YOU_MEAN_FLAG" ]; then
-				_read $" Install \"$DID_YOU_MEAN\" with --$DID_YOU_MEAN_FLAG flag? (Y/n) " yn_abort
-			else
-				_read $" Install \"$DID_YOU_MEAN\" instead? (Y/n) " yn_abort
-			fi
-			echo ""
-			if ! echo "$yn_abort" | grep -i '^n' >/dev/null 2>&1; then
-				arg="$DID_YOU_MEAN"
-				FLAGS="$FLAGS --$DID_YOU_MEAN_FLAG"
-				_install_3rd_party_app
-			fi
+		elif [ -n "$DID_YOU_MEAN" ] && _confirm_did_you_mean; then
+			arg="$DID_YOU_MEAN"
+			FLAGS="$FLAGS --$DID_YOU_MEAN_FLAG"
+			_install_3rd_party_app
 		fi
 	fi
 }
@@ -608,6 +600,24 @@ _levenshtein() {
 		done
 	done
 	echo "${d[sl*(tl+1)+tl]}"
+}
+
+# Prints the numbered picker for DID_YOU_MEAN_CANDIDATES. Shared by
+# _did_you_mean and _check_arg_variants.
+_print_did_you_mean_candidates() {
+	printf "\n"
+	printf $" Detected multiple variants, choose one or press ZERO to abort:\n\n"
+	local i=1 flag match
+	for match in "${DID_YOU_MEAN_CANDIDATES[@]}"; do
+		flag="${DID_YOU_MEAN_CANDIDATE_FLAGS[$((i-1))]}"
+		if [ -n "$flag" ]; then
+			printf "  %2d) %b%s\033[0m (--%s)\n" "$i" "${LightBlue}" "$match" "$flag"
+		else
+			printf "  %2d) %b%s\033[0m\n" "$i" "${LightBlue}" "$match"
+		fi
+		i=$((i+1))
+	done
+	printf "\n"
 }
 
 _did_you_mean() {
@@ -671,19 +681,7 @@ _did_you_mean() {
 	fi
 
 	if [ "${#DID_YOU_MEAN_CANDIDATES[@]}" -gt 0 ]; then
-		printf "\n"
-		printf $" Detected multiple variants, choose one or press ZERO to abort:\n\n"
-		local i=1 flag
-		for match in "${DID_YOU_MEAN_CANDIDATES[@]}"; do
-			flag="${DID_YOU_MEAN_CANDIDATE_FLAGS[$((i-1))]}"
-			if [ -n "$flag" ]; then
-				printf "  %2d) %b%s\033[0m (--%s)\n" "$i" "${LightBlue}" "$match" "$flag"
-			else
-				printf "  %2d) %b%s\033[0m\n" "$i" "${LightBlue}" "$match"
-			fi
-			i=$((i+1))
-		done
-		printf "\n"
+		_print_did_you_mean_candidates
 	elif [ -n "$match" ]; then
 		if [ "$best_dist" -eq 0 ] && [ -n "$match_flag" ]; then
 			printf $"\n \"%b%b\033[0m\" is not in the main database, but found in --%b%b\033[0m.\n" "${LightBlue}" "$match" "${LightBlue}" "$match_flag"
@@ -707,6 +705,72 @@ _select_did_you_mean_candidate() {
 	DID_YOU_MEAN="${DID_YOU_MEAN_CANDIDATES[$((choice_abort-1))]}"
 	DID_YOU_MEAN_FLAG="${DID_YOU_MEAN_CANDIDATE_FLAGS[$((choice_abort-1))]}"
 	return 0
+}
+
+# Asks "Install X (with --flag)? (Y/n)" for a single DID_YOU_MEAN guess.
+_confirm_did_you_mean() {
+	local yn_abort
+	if [ -n "$DID_YOU_MEAN_FLAG" ]; then
+		_read $" Install \"$DID_YOU_MEAN\" with --$DID_YOU_MEAN_FLAG flag? (Y/n) " yn_abort
+	else
+		_read $" Install \"$DID_YOU_MEAN\" instead? (Y/n) " yn_abort
+	fi
+	echo ""
+	! echo "$yn_abort" | grep -i '^n' >/dev/null 2>&1
+}
+
+# Installs whatever DID_YOU_MEAN/DID_YOU_MEAN_FLAG currently point to.
+_resolve_did_you_mean_selection() {
+	arg="$DID_YOU_MEAN"
+	_not_an_appimage_message || return 1
+	_prepare_arg
+	if [ -n "$DID_YOU_MEAN_FLAG" ]; then
+		FLAGS="$FLAGS --$DID_YOU_MEAN_FLAG"
+		_install_3rd_party_app
+	else
+		_check_and_install
+	fi
+}
+
+################################################################################
+#			EXACT MATCH NAME COLLISION (PREFIX/SUBSTRING WARNING)
+################################################################################
+
+# Finds other apps sharing $arg as a substring (e.g. "photon-studio" for
+# "photon"). Populates COLLISION_CANDIDATES; succeeds only if there's more
+# than one match and the list is short enough to show.
+_check_arg_variants() {
+	local input="${1,,}" input_len=${#1} name_orig name names
+	COLLISION_CANDIDATES=()
+	[ "$input_len" -lt 4 ] && return 1
+	names=$(grep "^◆ " "$AMDATADIR/$ARCH-apps" | sed 's/^◆ //;s/ :.*$//')
+	while IFS= read -r name_orig; do
+		[ -z "$name_orig" ] && continue
+		name="${name_orig,,}"
+		case "$name" in
+			*"$input"*) COLLISION_CANDIDATES+=("$name_orig") ;;
+		esac
+	done <<< "$names"
+	[ "${#COLLISION_CANDIDATES[@]}" -gt 1 ] && [ "${#COLLISION_CANDIDATES[@]}" -le 15 ]
+}
+
+# Non-blocking heads-up: lists the other apps from COLLISION_CANDIDATES
+# (set by _check_arg_variants), excluding $1 itself. Never prompts, so it's
+# safe for batch installs (am -i a b c) and non-interactive/CI runs.
+_print_arg_variants_notice() {
+	local exact="${1,,}" name_orig name joined=""
+	local -a others=()
+	for name_orig in "${COLLISION_CANDIDATES[@]}"; do
+		name="${name_orig,,}"
+		[ "$name" != "$exact" ] && others+=("$name_orig")
+	done
+	[ "${#others[@]}" -eq 0 ] && return
+	for name_orig in "${others[@]}"; do
+		[ -n "$joined" ] && joined="$joined, "
+		joined="$joined$name_orig"
+	done
+	printf $" Note, this keyword also matches:\n" | _fit
+	printf " %b%s\033[0m\n\n" "${LightBlue}" "$joined" | _fit
 }
 
 _not_an_appimage_message() {
@@ -1141,41 +1205,18 @@ case "$1" in
 				_install_3rd_party_app
 			elif echo "$arg_script" | grep -q "^#"; then
 				_not_an_appimage_message || continue
+				_check_arg_variants "$arg" && _print_arg_variants_notice "$arg"
 				_install_normally
 			else
 				echo $"💀 ERROR: \"$arg\" does NOT exist in the \"AM\" database, $(printf "please check the list, run the \"%b$AMCLIPATH_ORIGIN -l\033[0m\" command.\n\n" "${Gold}")" | fold -sw 72 | sed 's/^/ /g'
 				_did_you_mean "$arg"
 				if [ "${#DID_YOU_MEAN_CANDIDATES[@]}" -gt 0 ]; then
 					if _select_did_you_mean_candidate; then
-						arg="$DID_YOU_MEAN"
-						_not_an_appimage_message || continue
-						if [ -n "$DID_YOU_MEAN_FLAG" ]; then
-							FLAGS="$FLAGS --$DID_YOU_MEAN_FLAG"
-							_prepare_arg
-							_install_3rd_party_app
-						else
-							_prepare_arg
-							_check_and_install
-						fi
+						_resolve_did_you_mean_selection || continue
 					fi
 				elif [ -n "$DID_YOU_MEAN" ]; then
-					if [ -n "$DID_YOU_MEAN_FLAG" ]; then
-						_read $" Install \"$DID_YOU_MEAN\" with --$DID_YOU_MEAN_FLAG flag? (Y/n) " yn_abort
-					else
-						_read $" Install \"$DID_YOU_MEAN\" instead? (Y/n) " yn_abort
-					fi
-					echo ""
-					if ! echo "$yn_abort" | grep -i '^n' >/dev/null 2>&1; then
-						arg="$DID_YOU_MEAN"
-						_not_an_appimage_message || continue
-						if [ -n "$DID_YOU_MEAN_FLAG" ]; then
-							FLAGS="$FLAGS --$DID_YOU_MEAN_FLAG"
-							_prepare_arg
-							_install_3rd_party_app
-						else
-							_prepare_arg
-							_check_and_install
-						fi
+					if _confirm_did_you_mean; then
+						_resolve_did_you_mean_selection || continue
 					fi
 				fi
 			fi

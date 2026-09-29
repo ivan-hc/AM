@@ -14,14 +14,19 @@ FAIL=0
 _appman="/opt/am/APP-MANAGER"
 _module="/opt/am/modules/install.am"
 eval "$(awk '/^_read\(\)/,/^}$/' "$_appman")"
+eval "$(awk '/^_fit\(\)/,/^}$/' "$_appman")"
 eval "$(awk '/^_levenshtein\(\)/,/^}$/' "$_module")"
+eval "$(awk '/^_print_did_you_mean_candidates\(\)/,/^}$/' "$_module")"
 eval "$(awk '/^_did_you_mean\(\)/,/^}$/' "$_module")"
 eval "$(awk '/^_select_did_you_mean_candidate\(\)/,/^}$/' "$_module")"
+eval "$(awk '/^_check_arg_variants\(\)/,/^}$/' "$_module")"
+eval "$(awk '/^_print_arg_variants_notice\(\)/,/^}$/' "$_module")"
 
-# Variables required by _did_you_mean
+# Variables required by _did_you_mean and _fit
 AMDATADIR="${AMDATADIR:-$HOME/.local/share/AM}"
 ARCH="${ARCH:-$(uname -m)}"
 LightBlue="${LightBlue:-}"
+command -v tput >/dev/null 2>&1 && TERMINAL_WIDTH=$(($(tput cols)-3)) || TERMINAL_WIDTH=${COLUMNS:-80}
 third_party_lists="${third_party_lists:-}"
 
 ################################################################################
@@ -496,6 +501,103 @@ _test_select_did_you_mean_candidate() {
 }
 
 ################################################################################
+# _check_arg_variants tests (exact-match name collision warning)
+################################################################################
+
+_test_check_arg_variants() {
+	local tmpdir
+	tmpdir=$(mktemp -d)
+	trap 'rm -rf "$tmpdir"' RETURN
+
+	cat > "$tmpdir/${ARCH}-apps" <<'EOF'
+◆ photon : Cross-platform file-transfer application built using flutter.
+◆ photon-studio : Free, offline photo editor.
+◆ photoname : Rename photo image files based on EXIF shoot date.
+◆ inkscape : Vector graphics editor
+◆ gh : GitHub CLI
+EOF
+
+	local saved_amdatadir="$AMDATADIR"
+	AMDATADIR="$tmpdir"
+
+	printf "\n=== _check_arg_variants tests ===\n"
+
+	# Exact match that is also a prefix/substring of other apps → collision
+	if _check_arg_variants "photon"; then
+		_ok "photon → collision detected"
+	else
+		_ko "photon → collision detected" "no collision" "collision"
+	fi
+	_assert_eq "photon → 3 candidates" "${#COLLISION_CANDIDATES[@]}" "3"
+	_assert_contains "photon → candidates include photon-studio" "${COLLISION_CANDIDATES[*]}" "photon-studio"
+	_assert_contains "photon → candidates include photoname" "${COLLISION_CANDIDATES[*]}" "photoname"
+
+	# Exact match with no other app sharing the name → no collision
+	if _check_arg_variants "inkscape"; then
+		_ko "inkscape → no collision (unique app)" "collision" "no collision"
+	else
+		_ok "inkscape → no collision (unique app)"
+	fi
+
+	# Short input (< 4 chars) must skip the check entirely, same floor as the
+	# substring pass in _did_you_mean, to avoid flooding on short exact names.
+	if _check_arg_variants "gh"; then
+		_ko "gh (2 chars) → check skipped" "collision" "no collision"
+	else
+		_ok "gh (2 chars) → check skipped"
+	fi
+
+	# Too many matches (> 15) is not a useful list either
+	{
+		cat "$tmpdir/${ARCH}-apps"
+		for i in $(seq 1 16); do
+			echo "◆ photon-flood$i : filler entry $i"
+		done
+	} > "$tmpdir/${ARCH}-apps.tmp" && mv "$tmpdir/${ARCH}-apps.tmp" "$tmpdir/${ARCH}-apps"
+	if _check_arg_variants "photon"; then
+		_ko "photon (>15 matches) → no collision list" "collision" "no collision"
+	else
+		_ok "photon (>15 matches) → no collision list"
+	fi
+
+	AMDATADIR="$saved_amdatadir"
+}
+
+################################################################################
+# _print_arg_variants_notice tests (non-blocking heads-up on exact match)
+################################################################################
+
+_test_print_arg_variants_notice() {
+	printf "\n=== _print_arg_variants_notice tests ===\n"
+
+	LightBlue=""
+
+	# Other apps share the name → prints a notice listing them, not the arg itself
+	COLLISION_CANDIDATES=(photon photon-studio photoname)
+	out=$(_print_arg_variants_notice "photon")
+	_assert_contains "photon → notice mentions photon-studio" "$out" "photon-studio"
+	_assert_contains "photon → notice mentions photoname" "$out" "photoname"
+	if echo "$out" | grep -qE "matches: photon,|matches: photon$"; then
+		_ko "photon → notice excludes itself from the list" "(found)" "(absent)"
+	else
+		_ok "photon → notice excludes itself from the list"
+	fi
+
+	# Only the exact match itself in COLLISION_CANDIDATES → no notice
+	COLLISION_CANDIDATES=(photon-studio)
+	out=$(_print_arg_variants_notice "photon-studio")
+	_assert_empty "photon-studio (no other matches) → no notice" "$out"
+
+	# Never blocks: no _read/prompt involved, just prints and returns
+	COLLISION_CANDIDATES=(photon photon-studio)
+	if _print_arg_variants_notice "photon" < /dev/null; then
+		_ok "notice runs fine with closed stdin (non-interactive safe)"
+	else
+		_ko "notice runs fine with closed stdin (non-interactive safe)" "failure" "success"
+	fi
+}
+
+################################################################################
 # Main
 ################################################################################
 
@@ -507,6 +609,8 @@ _test_did_you_mean_tp
 _test_did_you_mean_substring
 _test_did_you_mean_case_insensitive
 _test_select_did_you_mean_candidate
+_test_check_arg_variants
+_test_print_arg_variants_notice
 
 printf "\n=== Results: \033[0;32m%d passed\033[0m, \033[0;31m%d failed\033[0m ===\n\n" "$PASS" "$FAIL"
 printf "Results: %d passed, %d failed\n" "$PASS" "$FAIL" >> "$test_results"
