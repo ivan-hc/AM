@@ -89,11 +89,15 @@ _template_create_new_line_for_application_list() {
 	# Fix $COMMENT syntax
 	COMMENT=$(echo "$COMMENT"  | sed -- "s/\[.*\]//g; s/[[:space:]]*$//; s/^[[:space:]]*//g" | xargs -0 echo)
 	if ! echo "$COMMENT" | grep -q "\.$"; then COMMENT=$(echo "$COMMENT."); fi
-	if echo "$COMMENT" | grep -qi "description.* null," || echo "$COMMENT" | grep -qP '[\p{Han}\p{Hiragana}\p{Katakana}\p{Hangul}\p{Arabic}]'; then
-		COMMENT=""
-		[ -n "$github_origin" ] && printf "\n%b\n\n" "$github_origin" | _fit
-		_template_description_if_hosted_elsewhere
+	echo "$COMMENT" | grep -qi "description.* null," && COMMENT=""
+	if [ -n "$COMMENT" ] && echo "$COMMENT" | grep -qP '[\p{Han}\p{Hiragana}\p{Katakana}\p{Hangul}\p{Arabic}]'; then
+		if command -v trans 1>/dev/null && command -v gawk 1>/dev/null; then
+			COMMENT=$(echo "$COMMENT." | trans -b -t en)
+		else
+			COMMENT=""
+		fi
 	fi
+	[ -z "$COMMENT" ] && [ -n "$github_origin" ] && printf "\n%b\n\n" "$github_origin" | _fit && _template_description_if_hosted_elsewhere
 	[ -n "$COMMENT" ] && printf "\nDescription:\n%b\n\n" "$COMMENT" | _fit
 	_template_remove_duplicated_lines
 }
