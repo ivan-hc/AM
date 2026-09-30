@@ -62,14 +62,7 @@ _template_create_dirs_and_ask_for_source() {
 	echo "$DIVIDING_LINE"
 }
 
-_template_create_new_line_for_application_list() {
-	# Fix $COMMENT syntax
-	COMMENT=$(echo "$COMMENT"  | sed -- "s/\[.*\]//g; s/[[:space:]]*$//; s/^[[:space:]]*//g" | xargs -0 echo)
-	if ! echo "$COMMENT" | grep -q "\.$"; then COMMENT=$(echo "$COMMENT."); fi
-	if echo "$COMMENT" | grep -qi "^description:"; then _template_description_if_hosted_elsewhere; fi
-
-	[ -n "$COMMENT" ] && printf "\nDescription:\n%b\n\n" "$COMMENT" | _fit
-
+_template_remove_duplicated_lines() {
 	# Remove duplicated lines
 	if grep -q "^◆ $arg " ./am-scripts/list; then
 		sed -i "s/^◆ $arg .*/◆ $arg : ${COMMENT^}/g" ./am-scripts/list
@@ -84,10 +77,23 @@ _template_description_if_hosted_elsewhere() {
 	read -r -ep $" ◆ ADD A BRIEF DESCRIPTION FOR THIS APPLICATION $(echo -e '\n : ')" COMMENT
 	case "$COMMENT" in
 	*)
-		_template_create_new_line_for_application_list
+		COMMENT=$(echo "$COMMENT"  | sed -- "s/\[.*\]//g; s/[[:space:]]*$//; s/^[[:space:]]*//g; s# / #, #g" | xargs -0 echo)
+		_template_remove_duplicated_lines
 		;;
 	esac
 	echo "$DIVIDING_LINE"
+}
+
+_template_create_new_line_for_application_list() {
+	# Fix $COMMENT syntax
+	COMMENT=$(echo "$COMMENT"  | sed -- "s/\[.*\]//g; s/[[:space:]]*$//; s/^[[:space:]]*//g" | xargs -0 echo)
+	if ! echo "$COMMENT" | grep -q "\.$"; then COMMENT=$(echo "$COMMENT."); fi
+	if echo "$COMMENT" | grep -qi "description.* null," || echo "$COMMENT" | grep -qP '[\p{Han}\p{Hiragana}\p{Katakana}\p{Hangul}\p{Arabic}]'; then
+		[ -n "$github_origin" ] && printf "\n%b\n\n" "$github_origin" | _fit
+		_template_description_if_hosted_elsewhere
+	fi
+	[ -n "$COMMENT" ] && printf "\nDescription:\n%b\n\n" "$COMMENT" | _fit
+	_template_remove_duplicated_lines
 }
 
 _edit_script_head() {
@@ -406,9 +412,11 @@ for arg in $ARGS; do
 	arg=$(echo "$arg" | tr '[:upper:]' '[:lower:]')
 
 	# If the argument is a github url, then extract the appname from the URL
+	github_origin=""
 	if echo "$arg" | grep -q "^https://github.com/.*"; then
+		github_origin="$arg"
 		arg_github_repo=$(echo "$arg" | sed -- 's#/releases*$##g')
-		arg=$(echo "$arg" | sed -- 's#/releases*$##g; s/-appimage$//g; s:.*/::; s/_/-/g')
+		arg=$(echo "$arg" | sed -- 's#/releases*$##g; s/-appimage$//g; s:.*/::; s/_/-/g; s/\.github\.io$//g; s/\./-/g; s/-releases$//g; s/-release$//g; s/-builder$//g')
 	fi
 	# Check if the appname already exists in the database
 	if [ ! -f "$AMDATADIR"/betatester ] && grep -q "^◆ $arg :" "$AMDATADIR"/"$ARCH"-apps; then
