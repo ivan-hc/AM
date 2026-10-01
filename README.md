@@ -305,13 +305,13 @@ Locally installed apps can have a directory of your choice, depending on what yo
 
 In fact, the `--user` command can be used as a "flag" for application installation options, allowing you to integrate them locally and without root permissions, as AppMan does.
 
-For example, let's say you want to create and use the `/home/USER/Applicazioni` directory, here is the structure of a locally embedded AppImage:
+For example, let's say you want to create and use the `/home/USER/Applications` directory, here is the structure of a locally embedded AppImage:
 ```
-~/Applicazioni/$PROGRAM/
-~/Applicazioni/$PROGRAM/$PROGRAM
-~/Applicazioni/$PROGRAM/AM-updater
-~/Applicazioni/$PROGRAM/remove
-~/Applicazioni/$PROGRAM/icons/$ICON-NAME
+~/Applications/$PROGRAM/
+~/Applications/$PROGRAM/$PROGRAM
+~/Applications/$PROGRAM/AM-updater
+~/Applications/$PROGRAM/remove
+~/Applications/$PROGRAM/icons/$ICON-NAME
 ~/.local/bin/$PROGRAM
 ~/.local/share/applications/$PROGRAM-AM.desktop
 ```
