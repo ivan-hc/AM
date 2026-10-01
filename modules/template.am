@@ -94,7 +94,7 @@ _use_trans() {
 		_use_online_downloader "$AM_UTILS_SOURCE/gawk-$ARCH-static" "$CACHEDIR"/AMCACHEPATH/gawk && chmod a+x "$CACHEDIR"/AMCACHEPATH/gawk
 		export PATH="$CACHEDIR"/AMCACHEPATH/:"${PATH}"
 	fi
-	trans "$@"
+	command -v trans 1>/dev/null && command -v gawk 1>/dev/null && trans "$@"
 }
 
 _template_create_new_line_for_application_list() {
@@ -102,8 +102,13 @@ _template_create_new_line_for_application_list() {
 	COMMENT=$(echo "$COMMENT"  | sed -- "s/\[.*\]//g; s/[[:space:]]*$//; s/^[[:space:]]*//g" | xargs -0 echo)
 	if ! echo "$COMMENT" | grep -q "\.$"; then COMMENT=$(echo "$COMMENT."); fi
 	echo "$COMMENT" | grep -qi "description.* null," && COMMENT=""
+	if [ -z "$COMMENT" ] && [ -n "$github_origin" ]; then
+		COMMENT=$(_use_online_reading_tool "https://raw.githubusercontent.com/$(echo "$github_origin" | sed 's#https://github.com/##g')/refs/heads/main/README.md" | grep -v "^#\|^|" | sed -- "s/\[.*\]//g; s/[[:space:]]*$//; s/^[[:space:]]*//g; s/\*//g" | head -2 | xargs -0 echo)
+		wait
+		echo "$COMMENT" | grep -qi "404: Not Found" && COMMENT=""
+	fi
 	if [ -n "$COMMENT" ] && echo "$COMMENT" | grep -qP '[\p{Han}\p{Hiragana}\p{Katakana}\p{Hangul}\p{Arabic}]'; then
-		command -v trans 1>/dev/null && command -v gawk 1>/dev/null && COMMENT=$(echo "$COMMENT." | _use_trans -b -t en) || COMMENT=""
+		COMMENT=$(echo "$COMMENT." | _use_trans -b -t en) || COMMENT=""
 	fi
 	[ -z "$COMMENT" ] && [ -n "$github_origin" ] && printf "\n%b\n\n" "$github_origin" | _fit && _template_description_if_hosted_elsewhere
 	[ -n "$COMMENT" ] && printf "\nDescription:\n%b\n\n" "$COMMENT" | _fit
