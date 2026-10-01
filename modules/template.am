@@ -85,17 +85,25 @@ _template_description_if_hosted_elsewhere() {
 	echo "$DIVIDING_LINE"
 }
 
+_use_trans() {
+	if ! command -v trans 1>/dev/null; then
+		_use_online_downloader "https://www.soimort.org/translate-shell/trans" "$CACHEDIR"/AMCACHEPATH/trans && chmod a+x "$CACHEDIR"/AMCACHEPATH/trans
+		export PATH="$CACHEDIR"/AMCACHEPATH/:"${PATH}"
+	fi
+	if ! command -v gawk 1>/dev/null; then
+		_use_online_downloader "$AM_UTILS_SOURCE/gawk-$ARCH-static" "$CACHEDIR"/AMCACHEPATH/gawk && chmod a+x "$CACHEDIR"/AMCACHEPATH/gawk
+		export PATH="$CACHEDIR"/AMCACHEPATH/:"${PATH}"
+	fi
+	trans "$@"
+}
+
 _template_create_new_line_for_application_list() {
 	# Fix $COMMENT syntax
 	COMMENT=$(echo "$COMMENT"  | sed -- "s/\[.*\]//g; s/[[:space:]]*$//; s/^[[:space:]]*//g" | xargs -0 echo)
 	if ! echo "$COMMENT" | grep -q "\.$"; then COMMENT=$(echo "$COMMENT."); fi
 	echo "$COMMENT" | grep -qi "description.* null," && COMMENT=""
 	if [ -n "$COMMENT" ] && echo "$COMMENT" | grep -qP '[\p{Han}\p{Hiragana}\p{Katakana}\p{Hangul}\p{Arabic}]'; then
-		if command -v trans 1>/dev/null && command -v gawk 1>/dev/null; then
-			COMMENT=$(echo "$COMMENT." | trans -b -t en)
-		else
-			COMMENT=""
-		fi
+		command -v trans 1>/dev/null && command -v gawk 1>/dev/null && COMMENT=$(echo "$COMMENT." | _use_trans -b -t en) || COMMENT=""
 	fi
 	[ -z "$COMMENT" ] && [ -n "$github_origin" ] && printf "\n%b\n\n" "$github_origin" | _fit && _template_description_if_hosted_elsewhere
 	[ -n "$COMMENT" ] && printf "\nDescription:\n%b\n\n" "$COMMENT" | _fit
@@ -293,8 +301,8 @@ _template_then_git_repo() {
 	read -r -p $" If correct, press \"ENTER\", 1 to add keywords and 2 to remove keywords: " response
 	case "$response" in
 	1)
-		#response="appimage$" # comment the line below to use this by default
-		read -r -ep $" URL must contain (\"x64\", \"x86_64\"... or leave blank): " response
+		response="appimage$" # comment the line below to use this by default
+		#read -r -ep $" URL must contain (\"x64\", \"x86_64\"... or leave blank): " response
 		if [ -n "$response" ]; then
 			sed -i "s# head -1# grep -i \"$response\" | head -1#g" ./am-scripts/"$MAIN_ARCH"/"$arg"
 			read -r -p $" Do you wish to check the link for the last time (Y,n)?" yn
