@@ -37,6 +37,11 @@ https://github.com/ivan-hc/AM/blob/23d1eb26cff2ad48cbe986ff882a1665e48be638/tool
 # COMMON FUNCTIONS FOR OPTIONS 0 (APPIMAGES) AND 2 (ARCHIVES/FILES)
 # ------------------------------------------------------------------------
 
+_template_creator() {
+	[ ! -f "$AMCACHEDIR"/"$templatename" ] && _use_online_downloader "$AMREPO"/templates/"$templatename" "$AMCACHEDIR"/"$templatename"
+	cat "$AMCACHEDIR"/"$templatename" > ./am-scripts/"$MAIN_ARCH"/"$arg"
+}
+
 _template_create_dirs_and_ask_for_source() {
 	# Create base directories
 	mkdir -p ./am-scripts ./am-scripts/"$MAIN_ARCH"
@@ -52,11 +57,14 @@ _template_create_dirs_and_ask_for_source() {
 	fi
 	# Download the template and convert the argument into a command
 	if [ "$templatetype" = 0 ] || [ -z "$templatetype" ]; then
-		_use_online_downloader "$AMREPO"/templates/AM-SAMPLE-AppImage ./am-scripts/"$MAIN_ARCH"/"$arg"
+		templatename="AM-SAMPLE-AppImage"
+		_template_creator
 	elif [ "$templatetype" = 1 ]; then
-		_use_online_downloader "$AMREPO"/templates/AM-SAMPLE-portable2appimage ./am-scripts/"$MAIN_ARCH"/"$arg"
+		templatename="AM-SAMPLE-portable2appimage"
+		_template_creator
 	elif [ "$templatetype" = 2 ]; then
-		_use_online_downloader "$AMREPO"/templates/AM-SAMPLE-Archive ./am-scripts/"$MAIN_ARCH"/"$arg"
+		templatename="AM-SAMPLE-Archive"
+		_template_creator
 	fi
 	sed -i "s/SAMPLE/$arg/g" ./am-scripts/"$MAIN_ARCH"/"$arg"
 	echo "$DIVIDING_LINE"
@@ -97,13 +105,17 @@ _use_trans() {
 	command -v trans 1>/dev/null && command -v gawk 1>/dev/null && trans "$@"
 }
 
+_template_comment_fixer() {
+	sed -- "s/\[.*\]//g; s/[[:space:]]*$//; s/^[[:space:]]*//g; s/\\\\\"/\"/g; s/ | /, /g; s/\*\*//g; s/\*//g; s/\`//g" "$@"
+}
+
 _template_create_new_line_for_application_list() {
 	# Fix $COMMENT syntax
-	COMMENT=$(echo "$COMMENT"  | sed -- "s/\[.*\]//g; s/[[:space:]]*$//; s/^[[:space:]]*//g" | xargs -0 echo)
+	COMMENT=$(echo "$COMMENT"  | _template_comment_fixer | xargs -0 echo)
 	if ! echo "$COMMENT" | grep -q "\.$"; then COMMENT=$(echo "$COMMENT."); fi
 	echo "$COMMENT" | grep -qi "description.* null," && COMMENT=""
 	if [ -z "$COMMENT" ] && [ -n "$github_origin" ]; then
-		COMMENT=$(_use_online_reading_tool "https://raw.githubusercontent.com/$(echo "$github_origin" | sed 's#https://github.com/##g')/refs/heads/main/README.md" | grep -v "^#\|^|\|<\|>\|\!\[" | grep . | sed -- "s/\[.*\]//g; s/[[:space:]]*$//; s/^[[:space:]]*//g; s/\*//g" | head -1 | xargs -0 echo)
+		COMMENT=$(_use_online_reading_tool "https://raw.githubusercontent.com/$(echo "$github_origin" | sed 's#https://github.com/##g')/refs/heads/main/README.md" | grep -v -- "^#\|^|\|<\|>\|\!\[\|(http\|--" | grep . | _template_comment_fixer | head -1 | xargs -0 echo)
 		wait
 		echo "$COMMENT" | grep -qi "404: Not Found" && COMMENT=""
 	fi
@@ -111,7 +123,7 @@ _template_create_new_line_for_application_list() {
 		COMMENT=$(echo "$COMMENT." | _use_trans -b -t en) || COMMENT=""
 	fi
 	[ -z "$COMMENT" ] && [ -n "$github_origin" ] && printf "\n%b\n\n" "$github_origin" | _fit && _template_description_if_hosted_elsewhere
-	[ -n "$COMMENT" ] && printf "\nDescription:\n%b\n\n" "$COMMENT" | _fit
+	[ -n "$COMMENT" ] && printf "\nDescription:\n%b%b\033[0m\n\n" "${Green}" "$COMMENT" | _fit
 	_template_remove_duplicated_lines
 }
 
@@ -233,7 +245,8 @@ _template_if_git_repo() {
 		FUNCTION=''"$CURL_COMMAND_REF"'/'"$RESPONSE"'/releases | sed '"$q"'s/[()",{} ]/\\n/g'"$q"' | grep -oi "https.*download.*mage$" | grep -vi "i386\\|i686\\|armhf\\|aarch64\\|arm64\\|armv7l" | head -1'
 		if ! eval "$CURL_COMMAND_REF/$RESPONSE/releases" | sed 's/[()",{} ]/\n/g' | grep -q "https.*download.*mage$"; then
 			AIA="1"
-			_use_online_downloader "$AMREPO"/templates/AM-SAMPLE-AppImage-in-archive ./am-scripts/"$MAIN_ARCH"/"$arg"
+			templatename="AM-SAMPLE-AppImage-in-archive"
+			_template_creator
 			sed -i "s/SAMPLE/$arg/g" ./am-scripts/"$MAIN_ARCH"/"$arg"
 		fi
 		[ -n "$AIA" ] && FUNCTION=$(echo "$FUNCTION" | sed 's/mage\$//g')
@@ -251,7 +264,11 @@ _template_test_github_url() {
 	echo ""
 	[ -n "$AIA" ] && GHURLPREVIEW_COMMAND=$(echo "$GHURLPREVIEW_COMMAND" | sed 's/mage\$//g')
 	GHURLPREVIEW=$(eval "$GHURLPREVIEW_COMMAND")
-	echo "$GHURLPREVIEW"
+	if echo "$GHURLPREVIEW" | grep -qi "appimage$"; then
+		printf "%b%b\n\033[0m" "${Gold}" "$GHURLPREVIEW"
+	else
+		echo "$GHURLPREVIEW"
+	fi
 }
 
 _template_test_github_alt_architectures_url() {
@@ -274,12 +291,12 @@ _template_test_github_alt_architectures_url() {
 _template_then_git_repo() {
 	_template_if_git_repo
 	# Set the release as "latest" or keep it generic
-	read -r -p $" Latest release (y) or a generic one (N or leave blank)?" yn
-	if echo "$yn" | grep -qi "^y"; then
+	_read $" Latest release (y) or a generic one (N or leave blank)?" yn_abort
+	if echo "$yn_abort" | grep -qi "^y"; then
 		warn_about_latest_releases_choice="ARE YOU SURE??? The original project might omit Linux builds from the \"latest\" release section in the future! You might not be able to get any builds at all! Think carefully! Consider using keywords for \"grep\" in the next steps."
 		printf "\n%b%b\033[0m\n\n" "${RED}" "$warn_about_latest_releases_choice" | _fit
-		read -r -p $" Latest release (y) or a generic one (N or leave blank)?" yn
-		if echo "$yn" | grep -qi "^y"; then
+		_read $" Latest release (y) or a generic one (N or leave blank)?" yn_abort
+		if echo "$yn_abort" | grep -qi "^y"; then
 			setlatest="/latest"
 			sed -i 's#/releases #/releases/latest #g' ./am-scripts/"$MAIN_ARCH"/"$arg"
 		else
@@ -290,7 +307,7 @@ _template_then_git_repo() {
 	fi
 	echo "$DIVIDING_LINE"
 	# Check if the URL is correct
-	read -r -p $" Do you wish to check the link (Y,n)?" yn
+	_read $" Do you wish to check the link (Y,n)?" yn
 	if ! echo "$yn" | grep -qi "^n"; then
 		if [ "$templatetype" = 0 ] || [ -z "$templatetype" ]; then
 			GHURLPREVIEW_COMMAND="$CURL_COMMAND_REF_PREVIEW/$RESPONSE/releases$setlatest | sed 's/[()\",{} ]/\n/g' | grep -oi \"https.*download.*mage$\" | grep -vi \"i386\|i686\|armhf\|aarch64\|arm64\|armv7l\" | head -1"
@@ -303,14 +320,14 @@ _template_then_git_repo() {
 	fi
 	echo "$DIVIDING_LINE"
 	# Add/remove keywords or leave blank to skip
-	read -r -p $" If correct, press \"ENTER\", 1 to add keywords and 2 to remove keywords: " response
-	case "$response" in
+	_read $" If correct, press \"ENTER\", 1 to add keywords and 2 to remove keywords: " choice_abort
+	#[ -n "$AIA" ] && choice_abort="1" && response="appimage$" # uncomment this line to use this default
+	case "$choice_abort" in
 	1)
-		#response="appimage$" # comment the line below to use this by default
-		read -r -ep $" URL must contain (\"x64\", \"x86_64\"... or leave blank): " response
+		[ "$response" != "appimage$" ] && read -r -ep $" URL must contain (\"x64\", \"x86_64\"... or leave blank): " response
 		if [ -n "$response" ]; then
 			sed -i "s# head -1# grep -i \"$response\" | head -1#g" ./am-scripts/"$MAIN_ARCH"/"$arg"
-			read -r -p $" Do you wish to check the link for the last time (Y,n)?" yn
+			_read $" Do you wish to check the link for the last time (Y,n)?" yn
 			if ! echo "$yn" | grep -qi "^n"; then
 				if [ "$templatetype" = 0 ] || [ -z "$templatetype" ]; then
 					GHURLPREVIEW_COMMAND="$CURL_COMMAND_REF_PREVIEW/$RESPONSE/releases$setlatest | sed 's/[()\",{} ]/\n/g' | grep -oi \"https.*download.*mage$\" | grep -vi \"i386\|i686\|armhf\|aarch64\|arm64\|armv7l\" | grep -i \"$response\" | head -1"
@@ -327,7 +344,7 @@ _template_then_git_repo() {
 		read -r -ep $" URL must NOT contain (\"txt\", \"ARM\"... or leave blank): " response
 		if [ -n "$response" ]; then
 			sed -i "s# head -1# grep -v \"$response\" | head -1#g" ./am-scripts/"$MAIN_ARCH"/"$arg"
-			read -r -p $" Do you wish to check the link for the last time (Y,n)?" yn
+			_read $" Do you wish to check the link for the last time (Y,n)?" yn
 			if ! echo "$yn" | grep -qi "^n"; then
 				if [ "$templatetype" = 0 ] || [ -z "$templatetype" ]; then
 					GHURLPREVIEW_COMMAND="$CURL_COMMAND_REF_PREVIEW/$RESPONSE/releases$setlatest | sed 's/[()\",{} ]/\n/g' | grep -oi \"https.*download.*mage$\" | grep -vi \"i386\|i686\|armhf\|aarch64\|arm64\|armv7l\" | grep -v \"$response\" | head -1"
@@ -396,7 +413,8 @@ _template_if_download_kde_org() {
 	download_kde_org_url_test="$RESPONSE/$tag$(_use_online_reading_tool "$RESPONSE/$tag" | tr '">< ' '\n' | grep -i "x86.64.*appimage$" | head -1)"
 	if _use_online_check_tool "$download_kde_org_url_test" 1> /dev/null; then
 		# REPLACE SCRIPT
-		_use_online_downloader "$AMREPO"/templates/AM-SAMPLE-AppImage-download_kde_org ./am-scripts/"$MAIN_ARCH"/"$arg"
+		templatename="AM-SAMPLE-AppImage-download_kde_org"
+		_template_creator
 		sed -i "s/SAMPLE/$arg/g" ./am-scripts/"$MAIN_ARCH"/"$arg"
 		printf "\n $download_kde_org_url_test\n"
 		echo -e $"\n The URL above is an example of what both\n the install and update scripts will point to.\n" | _fit
@@ -439,8 +457,9 @@ for arg in $ARGS; do
 	fi
 	# Check if the appname already exists in the database
 	if [ ! -f "$AMDATADIR"/betatester ] && grep -q "^◆ $arg :" "$AMDATADIR"/"$ARCH"-apps; then
-		read -r -p " This appname already exists, want to procede anyway? (y,N): " yn
-		if ! echo "$yn" | grep -qi "^y"; then
+		wait
+		_read " This appname already exists, want to procede anyway? (y,N): " yn_abort
+		if ! echo "$yn_abort" | grep -qi "^y"; then
 			continue
 		fi
 	fi
@@ -524,8 +543,8 @@ for arg in $ARGS; do
 				fi
 			esac
 			# LAUNCHER AND ICON (OPTIONAL)
-			read -r -p $" ◆ Do you wish to add a launcher and a icon (y,N)? " yn
-			if echo "$yn" | grep -qi "^y"; then
+			_read $" ◆ Do you wish to add a launcher and a icon (y,N)? " yn_abort
+			if echo "$yn_abort" | grep -qi "^y"; then
 				# ADD LAUNCHER AND ICON REFERENCES TO THE INSTALLATION SCRIPT
 				_template_generate_desktop_file
 
