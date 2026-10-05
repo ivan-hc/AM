@@ -522,18 +522,15 @@ _determine_args() {
 _determine_argpath() {
 	argpath_number=$(echo "$ARGPATHS" | grep "/$arg$" | wc -l)
 	if [ "$argpath_number" = 2 ]; then
-		argpath_items=$(echo "$ARGPATHS" | grep "/$arg$" | xargs)
-		printf " Detected multiple paths, please choose one:\n\n"
-		i=1
-		echo "$(for p in $argpath_items; do
-			printf "   %2d. %s	" "$i" "$p"
-			i=$((i + 1))
-		done)" | _fit
-		printf "\n"
-		_read " Type a number and press ENTER: " choice
-		choice=$(echo "$argpath_items" | awk '{print $'"$choice"'}')
-		argpath="$choice"
-		[ ! -d "$argpath" ] && printf "\n 💀 ERROR, invalid selection! \n\n" && argpath=""
+		mapfile -t DID_YOU_MEAN_CANDIDATES < <(echo "$ARGPATHS" | grep "/$arg$")
+		DID_YOU_MEAN_CANDIDATE_FLAGS=()
+		_print_did_you_mean_candidates " Detected multiple paths, choose one or press ZERO to abort:"
+		if _select_did_you_mean_candidate choice; then
+			argpath="$DID_YOU_MEAN"
+		else
+			printf " 💀 ERROR, invalid selection! \n\n"
+			argpath=""
+		fi
 	else
 		argpath=$(echo "$ARGPATHS" | grep "/$arg$")
 	fi
@@ -2336,7 +2333,11 @@ _levenshtein() {
 # _did_you_mean and _check_arg_variants.
 _print_did_you_mean_candidates() {
 	printf "\n"
-	printf $" Detected multiple variants, choose one or press ZERO to abort:\n\n"
+	if [ -n "$1" ]; then
+		printf " %s\n\n" "$1"
+	else
+		printf $" Detected multiple variants, choose one or press ZERO to abort:\n\n"
+	fi
 	local i=1 flag match
 	for match in "${DID_YOU_MEAN_CANDIDATES[@]}"; do
 		flag="${DID_YOU_MEAN_CANDIDATE_FLAGS[$((i-1))]}"
@@ -2397,7 +2398,7 @@ _did_you_mean() {
 	}
 
 	if [ "$only_flag" = installed ]; then
-		_did_you_mean_search "$(echo "$ARGPATHS" | sed 's:.*/::')" ""
+		_did_you_mean_search "$(echo "$ARGPATHS" | sed 's:.*/::' | sort -u)" ""
 	elif [ -n "$only_flag" ]; then
 		_did_you_mean_search "$(_did_you_mean_list_names "$only_flag")" "$only_flag"
 	else
@@ -2432,16 +2433,18 @@ _did_you_mean() {
 }
 
 _select_did_you_mean_candidate() {
-	local choice_abort
-	_read $" Type a number and press ENTER: " choice_abort
+	# $1 is the variable _read stores the answer in ("choice" defaults to 1 with -y)
+	local pick_var="${1:-choice_abort}" choice_abort choice pick
+	_read $" Type a number and press ENTER: " "$pick_var"
+	pick="${!pick_var}"
 	echo ""
-	case "$choice_abort" in
+	case "$pick" in
 		''|*[!0-9]*) return 1 ;;
 	esac
-	[ "$choice_abort" -eq 0 ] && return 1
-	[ "$choice_abort" -lt 1 ] || [ "$choice_abort" -gt "${#DID_YOU_MEAN_CANDIDATES[@]}" ] && return 1
-	DID_YOU_MEAN="${DID_YOU_MEAN_CANDIDATES[$((choice_abort-1))]}"
-	DID_YOU_MEAN_FLAG="${DID_YOU_MEAN_CANDIDATE_FLAGS[$((choice_abort-1))]}"
+	[ "$pick" -eq 0 ] && return 1
+	[ "$pick" -lt 1 ] || [ "$pick" -gt "${#DID_YOU_MEAN_CANDIDATES[@]}" ] && return 1
+	DID_YOU_MEAN="${DID_YOU_MEAN_CANDIDATES[$((pick-1))]}"
+	DID_YOU_MEAN_FLAG="${DID_YOU_MEAN_CANDIDATE_FLAGS[$((pick-1))]}"
 	return 0
 }
 

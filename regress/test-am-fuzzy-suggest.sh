@@ -628,7 +628,13 @@ _test_did_you_mean_installed() {
 	DID_YOU_MEAN="" DID_YOU_MEAN_CANDIDATES=()
 	_did_you_mean "photo" installed > /dev/null
 	_assert_eq "photo (installed) → 2 candidates" "${#DID_YOU_MEAN_CANDIDATES[@]}" "2"
-	_assert_eq "photo (installed) → candidate[0]=photon-studio" "${DID_YOU_MEAN_CANDIDATES[0]}" "photon-studio"
+	_assert_eq "photo (installed) → candidate[0]=photocraft (sorted)" "${DID_YOU_MEAN_CANDIDATES[0]}" "photocraft"
+
+	# Same app installed twice (system + local) is listed once
+	ARGPATHS=$'/opt/photocraft\n/home/u/Applications/photocraft\n/home/u/Applications/photon-studio'
+	DID_YOU_MEAN="" DID_YOU_MEAN_CANDIDATES=()
+	_did_you_mean "photo" installed > /dev/null
+	_assert_eq "photo (installed twice) → 2 candidates, no duplicate" "${#DID_YOU_MEAN_CANDIDATES[@]}" "2"
 
 	# Not-installed apps from the database are never suggested
 	ARGPATHS=$'/home/u/Applications/htop'
@@ -676,6 +682,26 @@ _test_check_installed_arg() {
 	_check_installed_arg > /dev/null <<< "1"
 	_assert_eq "photon + pick 1 → accepted" "$?" "0"
 	_assert_eq "photon + pick 1 → arg=photon-studio" "$arg" "photon-studio"
+
+	# Installed twice (system + local) → asks which path, and rejects a bad answer
+	mkdir -p "$tmpdir/loc/photocraft" "$tmpdir/sys/photocraft"
+	touch "$tmpdir/loc/photocraft/remove" "$tmpdir/sys/photocraft/remove"
+	ARGPATHS="$tmpdir/sys/photocraft"$'\n'"$tmpdir/loc/photocraft"
+	arg="photocraf" argpath=""
+	_check_installed_arg > /dev/null <<< $'y\n2'
+	_assert_eq "photocraf (2 installs) + Y + path 2 → accepted" "$?" "0"
+	_assert_eq "photocraf (2 installs) + path 2 → argpath=loc" "$argpath" "$tmpdir/loc/photocraft"
+	for bad in "" "x" "9"; do
+		arg="photocraf" argpath=""
+		out=$(_check_installed_arg <<< $'y\n'"$bad" 2>&1)
+		_assert_eq "photocraf (2 installs) + path '$bad' → rejected" "$?" "1"
+		if echo "$out" | grep -q "awk"; then
+			_ko "photocraf (2 installs) + path '$bad' → no awk error" "(awk error)" "(none)"
+		else
+			_ok "photocraf (2 installs) + path '$bad' → no awk error"
+		fi
+	done
+	ARGPATHS="$tmpdir/photon-studio"$'\n'"$tmpdir/photocraft"$'\n'"$tmpdir/htop"
 
 	# Nothing similar → rejected
 	arg="qqqxxx" argpath=""
