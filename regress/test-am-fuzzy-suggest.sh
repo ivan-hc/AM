@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Tests for the fuzzy suggest feature (_levenshtein, _did_you_mean) in modules/install.am
+# Tests for the fuzzy suggest feature (_levenshtein, _did_you_mean) in APP-MANAGER, and its users in modules/install.am and modules/management.am
 
 # Source common test functions
 . "$(dirname "$0")/test-common.sh"
@@ -13,14 +13,17 @@ FAIL=0
 # Load the actual functions from the module
 _appman="/opt/am/APP-MANAGER"
 _module="/opt/am/modules/install.am"
+_mgmt_module="/opt/am/modules/management.am"
 eval "$(awk '/^_read\(\)/,/^}$/' "$_appman")"
 eval "$(awk '/^_fit\(\)/,/^}$/' "$_appman")"
-eval "$(awk '/^_levenshtein\(\)/,/^}$/' "$_module")"
-eval "$(awk '/^_print_did_you_mean_candidates\(\)/,/^}$/' "$_module")"
-eval "$(awk '/^_did_you_mean\(\)/,/^}$/' "$_module")"
-eval "$(awk '/^_select_did_you_mean_candidate\(\)/,/^}$/' "$_module")"
+eval "$(awk '/^_levenshtein\(\)/,/^}$/' "$_appman")"
+eval "$(awk '/^_print_did_you_mean_candidates\(\)/,/^}$/' "$_appman")"
+eval "$(awk '/^_did_you_mean_list_names\(\)/,/^}$/' "$_appman")"
+eval "$(awk '/^_did_you_mean\(\)/,/^}$/' "$_appman")"
+eval "$(awk '/^_select_did_you_mean_candidate\(\)/,/^}$/' "$_appman")"
 eval "$(awk '/^_check_arg_variants\(\)/,/^}$/' "$_module")"
 eval "$(awk '/^_print_arg_variants_notice\(\)/,/^}$/' "$_module")"
+eval "$(awk '/^_check_installed_arg\(\)/,/^}$/' "$_mgmt_module")"
 
 # Variables required by _did_you_mean and _fit
 AMDATADIR="${AMDATADIR:-$HOME/.local/share/AM}"
@@ -598,6 +601,91 @@ _test_print_arg_variants_notice() {
 }
 
 ################################################################################
+# Installed-app suggestions (appman -r photon → photon-studio)
+################################################################################
+
+_test_did_you_mean_installed() {
+	printf "\n=== _did_you_mean installed-apps tests ===\n"
+
+	local saved_argpaths="$ARGPATHS" saved_argpath="$argpath" saved_arg="$arg" out
+
+	# Single substring match among installed apps
+	ARGPATHS=$'/home/u/Applications/photon-studio\n/home/u/Applications/htop'
+	DID_YOU_MEAN="" DID_YOU_MEAN_FLAG="" DID_YOU_MEAN_CANDIDATES=()
+	out=$(_did_you_mean "photon" installed)
+	_assert_contains "photon (installed) → suggests photon-studio" "$out" "photon-studio"
+	_did_you_mean "photon" installed > /dev/null
+	_assert_eq "photon (installed) → DID_YOU_MEAN=photon-studio" "$DID_YOU_MEAN" "photon-studio"
+	_assert_empty "photon (installed) → no flag" "$DID_YOU_MEAN_FLAG"
+
+	# Typo among installed apps
+	DID_YOU_MEAN="" DID_YOU_MEAN_CANDIDATES=()
+	_did_you_mean "htoop" installed > /dev/null
+	_assert_eq "htoop (installed) → DID_YOU_MEAN=htop" "$DID_YOU_MEAN" "htop"
+
+	# Several matches → candidate list
+	ARGPATHS=$'/home/u/Applications/photon-studio\n/home/u/Applications/photocraft\n/home/u/Applications/htop'
+	DID_YOU_MEAN="" DID_YOU_MEAN_CANDIDATES=()
+	_did_you_mean "photo" installed > /dev/null
+	_assert_eq "photo (installed) → 2 candidates" "${#DID_YOU_MEAN_CANDIDATES[@]}" "2"
+	_assert_eq "photo (installed) → candidate[0]=photon-studio" "${DID_YOU_MEAN_CANDIDATES[0]}" "photon-studio"
+
+	# Not-installed apps from the database are never suggested
+	ARGPATHS=$'/home/u/Applications/htop'
+	DID_YOU_MEAN="" DID_YOU_MEAN_CANDIDATES=()
+	out=$(_did_you_mean "photon" installed)
+	_assert_empty "photon (not installed) → no suggestion" "$out"
+	_assert_empty "photon (not installed) → DID_YOU_MEAN empty" "$DID_YOU_MEAN"
+
+	ARGPATHS="$saved_argpaths" argpath="$saved_argpath" arg="$saved_arg"
+}
+
+_test_check_installed_arg() {
+	printf "\n=== _check_installed_arg tests ===\n"
+
+	local tmpdir saved_argpaths="$ARGPATHS" saved_argpath="$argpath" saved_arg="$arg"
+	tmpdir=$(mktemp -d)
+	trap 'rm -rf "$tmpdir"' RETURN
+	mkdir -p "$tmpdir/photon-studio" "$tmpdir/photocraft" "$tmpdir/htop"
+	touch "$tmpdir/photon-studio/remove" "$tmpdir/photocraft/remove" "$tmpdir/htop/remove"
+	ARGPATHS="$tmpdir/photon-studio"$'\n'"$tmpdir/photocraft"$'\n'"$tmpdir/htop"
+	AMCLI=am RED="" Green=""
+	# Real _determine_argpath, as used by remove
+	eval "$(awk '/^_determine_argpath\(\)/,/^}$/' "$_appman")"
+
+	# Installed app → accepted without prompting
+	arg="htop" argpath="$tmpdir/htop"
+	_check_installed_arg > /dev/null </dev/null
+	_assert_eq "htop installed → accepted" "$?" "0"
+
+	# Not installed, one close match → accepted on Y, arg/argpath re-pointed
+	arg="photon-studi" argpath=""
+	_check_installed_arg > /dev/null <<< "y"
+	_assert_eq "photon-studi + Y → accepted" "$?" "0"
+	_assert_eq "photon-studi + Y → arg=photon-studio" "$arg" "photon-studio"
+	_assert_eq "photon-studi + Y → argpath set" "$argpath" "$tmpdir/photon-studio"
+
+	# Declined with N → rejected, arg untouched
+	arg="photon-studi" argpath=""
+	_check_installed_arg > /dev/null <<< "n"
+	_assert_eq "photon-studi + N → rejected" "$?" "1"
+	_assert_eq "photon-studi + N → arg unchanged" "$arg" "photon-studi"
+
+	# Several close matches → pick by number
+	arg="photon" argpath=""
+	_check_installed_arg > /dev/null <<< "1"
+	_assert_eq "photon + pick 1 → accepted" "$?" "0"
+	_assert_eq "photon + pick 1 → arg=photon-studio" "$arg" "photon-studio"
+
+	# Nothing similar → rejected
+	arg="qqqxxx" argpath=""
+	_check_installed_arg > /dev/null </dev/null
+	_assert_eq "qqqxxx → rejected" "$?" "1"
+
+	ARGPATHS="$saved_argpaths" argpath="$saved_argpath" arg="$saved_arg"
+}
+
+################################################################################
 # Main
 ################################################################################
 
@@ -611,6 +699,8 @@ _test_did_you_mean_case_insensitive
 _test_select_did_you_mean_candidate
 _test_check_arg_variants
 _test_print_arg_variants_notice
+_test_did_you_mean_installed
+_test_check_installed_arg
 
 printf "\n=== Results: \033[0;32m%d passed\033[0m, \033[0;31m%d failed\033[0m ===\n\n" "$PASS" "$FAIL"
 printf "Results: %d passed, %d failed\n" "$PASS" "$FAIL" >> "$test_results"
