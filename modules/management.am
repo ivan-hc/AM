@@ -553,8 +553,31 @@ _update_mime_database_after_removal() {
 	fi
 }
 
+# Succeeds if $argpath is an installed app. Otherwise reports it and offers
+# installed apps with a similar name, re-pointing $arg/$argpath on a pick.
+_check_installed_arg() {
+	[ -f "$argpath"/remove ] && return 0
+	# Installed, but the path choice was aborted or invalid: already reported
+	echo "$ARGPATHS" | grep -q "/$arg$" && return 1
+	echo -e $" \"${RED}$arg\033[0m\" is not a valid \"APPNAME\", see \"$AMCLI -f\" for more."
+	_did_you_mean "$arg" installed
+	if [ "${#DID_YOU_MEAN_CANDIDATES[@]}" -gt 0 ]; then
+		_select_did_you_mean_candidate || return 1
+	elif [ -n "$DID_YOU_MEAN" ]; then
+		local yn_abort
+		_read $" Use \"$DID_YOU_MEAN\" instead? (Y/n) " yn_abort
+		echo ""
+		echo "$yn_abort" | grep -qi '^n' && return 1
+	else
+		return 1
+	fi
+	arg="$DID_YOU_MEAN"
+	_determine_argpath
+	[ -f "$argpath"/remove ]
+}
+
 _remove() {
-	[ ! -f "$argpath"/remove ] && echo -e $" \"${RED}$arg\033[0m\" is not a valid \"APPNAME\", see \"$AMCLI -f\" for more." && return 1
+	_check_installed_arg || return 1
 	_read $" ◆ Do you wish to remove \"$arg\"? (Y/n) " yn
 	if echo "$yn" | grep -i '^n' >/dev/null 2>&1; then
 		echo -e $" \"${LightBlue}$arg\033[0m\" has not been removed!"
@@ -573,7 +596,7 @@ _remove() {
 }
 
 _hard_remove() {
-	[ ! -f "$argpath"/remove ] && echo -e $" \"${RED}$arg\033[0m\" is not a valid \"APPNAME\", see \"$AMCLI -f\" for more." && return 1
+	_check_installed_arg || return 1
 	if echo "$ARGPATHS" | grep -q "^/opt\|^/var/opt" && ! echo "$argpath" | grep -q "^/opt\|^/var/opt"; then
 		"$argpath"/remove 2>/dev/null || return 1
 	else
