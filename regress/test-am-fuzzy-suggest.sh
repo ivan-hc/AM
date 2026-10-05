@@ -703,6 +703,15 @@ _test_check_installed_arg() {
 	done
 	ARGPATHS="$tmpdir/photon-studio"$'\n'"$tmpdir/photocraft"$'\n'"$tmpdir/htop"
 
+	# Installed twice, path choice aborted (argpath empty) → rejected quietly,
+	# no "not a valid APPNAME" error and no suggestion of itself
+	ARGPATHS="$tmpdir/sys/photocraft"$'\n'"$tmpdir/loc/photocraft"
+	arg="photocraft" argpath=""
+	out=$(_check_installed_arg 2>&1 </dev/null)
+	_assert_eq "photocraft (2 installs, path aborted) → rejected" "$?" "1"
+	_assert_empty "photocraft (2 installs, path aborted) → no output" "$out"
+	ARGPATHS="$tmpdir/photon-studio"$'\n'"$tmpdir/photocraft"$'\n'"$tmpdir/htop"
+
 	# Nothing similar → rejected
 	arg="qqqxxx" argpath=""
 	_check_installed_arg > /dev/null </dev/null
