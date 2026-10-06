@@ -12,6 +12,8 @@ else
 	AMREPO_MAIN="$AMREPO"
 fi
 
+#APPIMAGE_DEFAULT="1"
+
 # Installation scripts are mainly for the x86_64 architecture: if there is not one for x86_64, there is no alternative architecture counterpart
 
 MAIN_ARCH="x86_64"
@@ -76,8 +78,12 @@ _template_remove_duplicated_lines() {
 	if grep -q "^◆ $arg " ./am-scripts/list; then
 		sed -i "s/^◆ $arg .*/◆ $arg : ${COMMENT^}/g" ./am-scripts/list
 	else
-		echo "◆ $arg : ${COMMENT^}" >> ./am-scripts/list
+		printf "◆ %b : %b\n" "$arg" "${COMMENT^}" >> ./am-scripts/list
 	fi
+}
+
+_template_comment_fixer() {
+	sed -- "s/\[.*\]//g; s/[[:space:]]*$//; s/^[[:space:]]*//g; s/\\\\\"/\"/g; s# / #, #g; s/ | /, /g; s/\*\*//g; s/\*//g; s/\`//g" "$@"
 }
 
 _template_description_if_hosted_elsewhere() {
@@ -86,7 +92,7 @@ _template_description_if_hosted_elsewhere() {
 	read -r -ep $" ◆ ADD A BRIEF DESCRIPTION FOR THIS APPLICATION $(echo -e '\n : ')" COMMENT
 	case "$COMMENT" in
 	*)
-		COMMENT=$(echo "$COMMENT"  | sed -- "s/\[.*\]//g; s/[[:space:]]*$//; s/^[[:space:]]*//g; s# / #, #g" | xargs -0 echo)
+		COMMENT=$(echo "$COMMENT"  | _template_comment_fixer | xargs -0 echo)
 		_template_remove_duplicated_lines
 		;;
 	esac
@@ -105,10 +111,6 @@ _use_trans() {
 	command -v trans 1>/dev/null && command -v gawk 1>/dev/null && trans "$@"
 }
 
-_template_comment_fixer() {
-	sed -- "s/\[.*\]//g; s/[[:space:]]*$//; s/^[[:space:]]*//g; s/\\\\\"/\"/g; s/ | /, /g; s/\*\*//g; s/\*//g; s/\`//g" "$@"
-}
-
 _template_create_new_line_for_application_list() {
 	# Fix $COMMENT syntax
 	COMMENT=$(echo "$COMMENT"  | _template_comment_fixer | xargs -0 echo)
@@ -117,11 +119,12 @@ _template_create_new_line_for_application_list() {
 	if [ -z "$COMMENT" ] && [ -n "$github_origin" ]; then
 		COMMENT=$(_use_online_reading_tool "https://raw.githubusercontent.com/$(echo "$github_origin" | sed 's#https://github.com/##g')/refs/heads/main/README.md" | grep -v -- "^#\|^|\|<\|>\|\!\[\|(http\|--" | grep . | _template_comment_fixer | head -1 | xargs -0 echo)
 		wait
-		echo "$COMMENT" | grep -qi "404: Not Found" && COMMENT=""
+		echo "$COMMENT" | grep -qi "404: Not Found\|(README.*md)" && COMMENT=""
 	fi
 	if [ -n "$COMMENT" ] && echo "$COMMENT" | grep -qP '[\p{Han}\p{Hiragana}\p{Katakana}\p{Hangul}\p{Arabic}]'; then
 		COMMENT=$(echo "$COMMENT." | _use_trans -b -t en) || COMMENT=""
 	fi
+	[ "$(echo "$COMMENT" | sed 's/^[[:space:]]*//' | awk '{ print length }')" -lt 10 ] && COMMENT=""
 	[ -z "$COMMENT" ] && [ -n "$github_origin" ] && printf "\n%b\n\n" "$github_origin" | _fit && _template_description_if_hosted_elsewhere
 	[ -n "$COMMENT" ] && printf "\nDescription:\n%b%b\033[0m\n\n" "${Green}" "$COMMENT" | _fit
 	_template_remove_duplicated_lines
@@ -210,11 +213,16 @@ _template_desktop_file_select_category() {
 # COMMON FUNCTIONS TO DOWNLOAD APPS FROM GIT REPOSITORIES
 # ------------------------------------------------------------------------
 
+_trmplate_read_github_repo_info_filters() {
+	 grep description "$@" | sed 's/"description": "//' | sed 's/",//' | cut -c 3- | head -1
+}
+
 _template_if_github() {
 	SITE="https://github.com"
 	RESPONSE=$(echo "$RESPONSE" | sed 's#https://github.com/##g' | cut -f1,2 -d'/')
-	COMMENT=$(_use_online_reading_tool $HeaderAuthWithGITPAT https://api.github.com/repos/"$RESPONSE" 2>/dev/null | grep description | sed 's/"description": "//' | sed 's/",//' | cut -c 3-)
-	[ -z "$COMMENT" ] && [ -z "$HeaderAuthWithGITPAT" ] && COMMENT=$(_use_online_reading_tool "$ALT_GH"/repos/"$RESPONSE" 2>/dev/null | grep description | sed 's/"description": "//' | sed 's/",//' | cut -c 3-)
+	COMMENT=$(_use_online_reading_tool $HeaderAuthWithGITPAT https://api.github.com/repos/"$RESPONSE" 2>/dev/null | _trmplate_read_github_repo_info_filters)
+	[ -z "$COMMENT" ] && [ -z "$HeaderAuthWithGITPAT" ] && COMMENT=$(_use_online_reading_tool "$ALT_GH"/repos/"$RESPONSE" 2>/dev/null | _trmplate_read_github_repo_info_filters)
+	wait
 	CURL_COMMAND_REF="$CURLLS https://api.github.com/repos"
 	CURL_COMMAND_REF_PREVIEW="$CURLLS $HeaderAuthWithGITPAT https://api.github.com/repos"
 	GH_API_ALLOWED=$(_use_online_reading_tool "https://api.github.com/rate_limit" | tr '{,' '\n' | grep -i remaining | tail -1 | grep -Eo "[0-9]*")
@@ -266,6 +274,8 @@ _template_test_github_url() {
 	GHURLPREVIEW=$(eval "$GHURLPREVIEW_COMMAND")
 	if echo "$GHURLPREVIEW" | grep -qi "appimage$"; then
 		printf "%b%b\n\033[0m" "${Gold}" "$GHURLPREVIEW"
+	elif [ -z "$GHURLPREVIEW" ]; then
+		rm -f ./am-scripts/"$MAIN_ARCH"/"$arg" && sed -i "\|^◆ $arg :|d" ./am-scripts/list && echo $" OPERATION ABORTED!" && echo "" && exit 1
 	else
 		echo "$GHURLPREVIEW"
 	fi
@@ -321,7 +331,7 @@ _template_then_git_repo() {
 	echo "$DIVIDING_LINE"
 	# Add/remove keywords or leave blank to skip
 	_read $" If correct, press \"ENTER\", 1 to add keywords and 2 to remove keywords: " choice_abort
-	#[ -n "$AIA" ] && choice_abort="1" && response="appimage$" # uncomment this line to use this default
+	[ -n "$APPIMAGE_DEFAULT" ] && [ -n "$AIA" ] && choice_abort="1" && response="appimage$" # uncomment this line to use this default
 	case "$choice_abort" in
 	1)
 		[ "$response" != "appimage$" ] && read -r -ep $" URL must contain (\"x64\", \"x86_64\"... or leave blank): " response
@@ -454,6 +464,18 @@ for arg in $ARGS; do
 		github_origin="$arg"
 		arg_github_repo=$(echo "$arg" | sed -- 's#/releases*$##g')
 		arg=$(echo "$arg" | sed -- 's#/releases*$##g; s/-appimage$//g; s:.*/::; s/_/-/g; s/\.github\.io$//g; s/\./-/g; s/-releases$//g; s/-release$//g; s/-builder$//g')
+		echo "##############################################################"
+		printf "\n\n %b\n\n" "$arg_github_repo"
+		read -r -ep " Is appname \"$arg\" the correct one? (Y,n)" yn
+		if echo "$yn" | grep -qi "^n"; then
+			for d in x86_64 aarch64; do
+				[ -f ./am-scripts/"$d"/"$arg" ] && rm -f ./am-scripts/"$d"/"$arg"
+			done
+			[ -f ./am-scripts/list ] && sed -i "\|^◆ $arg :|d" ./am-scripts/list
+			read -r -ep " Enter the app name: " appname
+			[ -z "$appname" ] && continue || arg="$appname"
+		fi
+		printf "\n"
 	fi
 	# Check if the appname already exists in the database
 	if [ ! -f "$AMDATADIR"/betatester ] && grep -q "^◆ $arg :" "$AMDATADIR"/"$ARCH"-apps; then
@@ -467,7 +489,7 @@ for arg in $ARGS; do
 	case $arg in
 	*)
 		cd "$SCRIPTDIR" || return
-		echo "##############################################################"
+		[ -z "$github_origin" ] && echo "##############################################################"
 		echo ""
 		echo $" Create a template for \"$arg\"" | tr '[:lower:]' '[:upper:]'
 		echo ""
@@ -481,7 +503,7 @@ for arg in $ARGS; do
 		echo $"  1) APPIMAGE ON-THE-FLY, USING A DEDICATED SCRIPT"
 		echo $"  2) ANY ARCHIVE/BINARY/SCRIPT FROM ANY WEBSITE"
 		echo ""
-		read -r -p $" WHAT KIND OF PROGRAM DO YOU WANT TO WRITE A SCRIPT FOR? : " templatetype
+		[ -n "$APPIMAGE_DEFAULT" ] && templatetype=0 || read -r -p $" WHAT KIND OF PROGRAM DO YOU WANT TO WRITE A SCRIPT FOR? : " templatetype
 		case "$templatetype" in
 
 		'0'|''|'1') # APPIMAGE (ANY)
