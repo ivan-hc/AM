@@ -121,12 +121,12 @@ _installation_cleanup() {
 	# Cleanup incomplete installation when interrupted by a signal (Ctrl+C, kill, etc.)
 	trap - INT TERM HUP QUIT
 	printf "\n\n"
-	if [ -n "$pure_arg" ] && [ -f "$APPSPATH/$pure_arg/remove" ]; then
+	if [ -n "$arg" ] && [ -f "$APPSPATH/$arg/remove" ]; then
 		echo $" 💀 ERROR DURING INSTALLATION, REMOVED $APPNAME!"
-		$SUDOCMD "$APPSPATH/$pure_arg/remove" 1>/dev/null 2>&1
-	elif [ -n "$pure_arg" ] && [ -d "$APPSPATH/$pure_arg" ]; then
+		$SUDOCMD "$APPSPATH/$arg/remove" 1>/dev/null 2>&1
+	elif [ -n "$arg" ] && [ -d "$APPSPATH/$arg" ]; then
 		echo $" 💀 ERROR DURING INSTALLATION, REMOVED $APPNAME!"
-		$SUDOCMD rm -R -f "$APPSPATH/$pure_arg" 2>/dev/null
+		$SUDOCMD rm -R -f "$APPSPATH/$arg" 2>/dev/null
 	fi
 	$SUDOCMD rm -f "$AMCACHEDIR"/"$arg"
 	# Clean up the cached installation script
@@ -240,7 +240,7 @@ _install_script_retry() {
 
 _install_arg() {
 	# This function is needed to parse the installation script and then execute it
-	APPNAME=$(echo "\"$pure_arg\"" | tr '[:lower:]' '[:upper:]')
+	APPNAME=$(echo "\"$arg\"" | tr '[:lower:]' '[:upper:]')
 	chmod a+x ./"$arg"
 	_check_if_optional_dependences_are_needed || return 1
 	_check_if_spooky_flag_exists || return 1
@@ -326,7 +326,7 @@ _install_arg() {
 	$SUDOCMD rm -f "$AMCACHEDIR"/"$arg"
 
 	# Post installation processes
-	LASTDIRPATH="${APPSPATH}/${pure_arg}"
+	LASTDIRPATH="${APPSPATH}/${arg}"
 	# Put permission check in remove script and change ownership of directory
 	if [ "$AMCLI" = am ]; then
 		$SUDOCMD sed -i '1 a [ "$(id -u)" -ne 0 ] && echo "Permission denied" && exit 1' "${LASTDIRPATH}"/remove 2>/dev/null
@@ -352,7 +352,7 @@ _install_arg() {
 	# Patch .desktop to change paths if the app is installed locally
 	if [ "$AMCLI" = "appman" ]; then
 		for a in $DATADIR/$LAUNCHERS_DIR/*-AM.desktop; do
-			sed -i "s#Exec=$pure_arg#Exec=$BINDIR/$pure_arg#g" "$a" 2>/dev/null
+			sed -i "s#Exec=$arg#Exec=$BINDIR/$arg#g" "$a" 2>/dev/null
 			sed -i "s#Exec=/usr/bin/#Exec=$BINDIR/#g" "$a" 2>/dev/null
 			sed -i "s#Exec=/opt/#Exec=$BINDIR/#g" "$a" 2>/dev/null
 		done
@@ -379,17 +379,17 @@ _install_arg() {
 		[ -d "${LASTDIRPATH}"/AppDir ] && rmdir "${LASTDIRPATH}"/AppDir 2>/dev/null
 		if test -d "${LASTDIRPATH}"/tmp; then
 			echo $" 💀 ERROR DURING INSTALLATION, REMOVED $APPNAME!"
-			$SUDOCMD "$APPSPATH/$pure_arg/remove" 1>/dev/null
-		elif test -f "$APPSPATH/$pure_arg/version" && [ -z "$(cat "$APPSPATH/$pure_arg/version")" ] && [ -z "$localscript_on" ]; then
+			$SUDOCMD "$APPSPATH/$arg/remove" 1>/dev/null
+		elif test -f "$APPSPATH/$arg/version" && [ -z "$(cat "$APPSPATH/$arg/version")" ] && [ -z "$localscript_on" ]; then
 			echo $" 💀 ERROR DURING INSTALLATION, REMOVED $APPNAME!"
-			$SUDOCMD "$APPSPATH/$pure_arg/remove" 1> /dev/null
+			$SUDOCMD "$APPSPATH/$arg/remove" 1> /dev/null
 		else
 			APPSIZE=$(du -sm "${LASTDIRPATH}" | awk '{print $1}' )
-			LASTDIRNAME=$(echo "\"$pure_arg\"" | tr '[:lower:]' '[:upper:]')
+			LASTDIRNAME=$(echo "\"$arg\"" | tr '[:lower:]' '[:upper:]')
 			printf "%b%b%s\n" " ${Green}" "$LASTDIRNAME INSTALLED\033[0m" " ($APPSIZE MB OF DISK SPACE)"
 			_check_version
-			app_version=$(grep -w " ◆ $pure_arg	|" 0<"$AMCACHEDIR"/version-args | sed 's:.*|	::')
-			echo " ◆ $pure_arg $app_version" >> "$AMCACHEDIR"/installed
+			app_version=$(grep -w " ◆ $arg	|" 0<"$AMCACHEDIR"/version-args | sed 's:.*|	::')
+			echo " ◆ $arg $app_version" >> "$AMCACHEDIR"/installed
 		fi
 		localscript_on=""
 	else
@@ -562,16 +562,16 @@ _install_3rd_party_app() {
 
 _prepare_arg() {
 	arg_origin="$arg"
-	pure_arg=$(echo "$arg" | sed 's:.*/::')
+	arg=$(echo "$arg" | sed 's:.*/::')
 	for e in $third_party_lists; do
-		pure_arg=$(echo "$pure_arg" | sed "s/\.$e$//g")
+		arg=$(echo "$arg" | sed "s/\.$e$//g")
 	done
 }
 
 _check_and_install() {
-	[ -n "$BINDIR" ] && find "$BINDIR" -xtype l -name "$pure_arg" -delete 2>/dev/null
-	if test -f "$APPSPATH"/"$pure_arg"/remove || test -f "$APPSPATH"/"$pure_arg"/remove.old; then
-		echo $" ◆ \"$pure_arg\" is already installed!" | tr '[:lower:]' '[:upper:]'
+	[ -n "$BINDIR" ] && find "$BINDIR" -xtype l -name "$arg" -delete 2>/dev/null
+	if test -f "$APPSPATH"/"$arg"/remove || test -f "$APPSPATH"/"$arg"/remove.old; then
+		echo $" ◆ \"$arg\" is already installed!" | tr '[:lower:]' '[:upper:]'
 	else
 		arg_script=$(_use_online_reading_tool "$APPSDB/$arg" 2>/dev/null)
 		echo "$arg_script" | grep -q "^#" && _install_normally
@@ -1060,15 +1060,15 @@ case "$1" in
 			arg_script=$(_use_online_reading_tool "$APPSDB/$arg" 2>/dev/null)
 
 			# If the "tmp" directory is not removed, the installation failed, so remove the app
-			[ -d "$APPSPATH"/"$pure_arg"/tmp ] && [ ! -f "$AMCACHEDIR"/"$pure_arg" ] && $SUDOCMD "$APPSPATH"/"$pure_arg"/remove 2> /dev/null
+			[ -d "$APPSPATH"/"$arg"/tmp ] && [ ! -f "$AMCACHEDIR"/"$arg" ] && $SUDOCMD "$APPSPATH"/"$arg"/remove 2> /dev/null
 
 			# Test if a symlink is broken
-			[ -n "$BINDIR" ] && find "$BINDIR" -xtype l -name "$pure_arg" -delete 2>/dev/null
+			[ -n "$BINDIR" ] && find "$BINDIR" -xtype l -name "$arg" -delete 2>/dev/null
 			# Various cases that may occur during installation
-			if test -f "$APPSPATH"/"$pure_arg"/remove || test -f "$APPSPATH"/"$pure_arg"/remove.old; then
-				echo $" ◆ \"$pure_arg\" is already installed!" | tr '[:lower:]' '[:upper:]'
-			elif [ -n "$(PATH=/usr/local/bin command -v "$pure_arg" 2>/dev/null)" ] && [ "$AMCLI" = am ]; then
-				echo $" 💀 ERROR: \"$pure_arg\" command already exists!"
+			if test -f "$APPSPATH"/"$arg"/remove || test -f "$APPSPATH"/"$arg"/remove.old; then
+				echo $" ◆ \"$arg\" is already installed!" | tr '[:lower:]' '[:upper:]'
+			elif [ -n "$(PATH=/usr/local/bin command -v "$arg" 2>/dev/null)" ] && [ "$AMCLI" = am ]; then
+				echo $" 💀 ERROR: \"$arg\" command already exists!"
 			elif echo "$arg" | grep -q "/"; then
 				if test -f "$arg" 2> /dev/null; then
 					localscript_on=1
@@ -1096,19 +1096,19 @@ case "$1" in
 				fi
 			fi
 			# Disable notifications if needed
-			[ -f "$AMDATADIR"/disable-notifications ] && [ -f "$APPSPATH/$pure_arg/AM-updater" ] && sed -e '/notify-send/ s/^#*/#/' -i "$APPSPATH/$pure_arg/AM-updater" 2>/dev/null
+			[ -f "$AMDATADIR"/disable-notifications ] && [ -f "$APPSPATH/$arg/AM-updater" ] && sed -e '/notify-send/ s/^#*/#/' -i "$APPSPATH/$arg/AM-updater" 2>/dev/null
 			# Sandbox argument
 			if echo "$FLAGS" | grep -q -- "--sandbox"; then
-				if [ -f "$APPSPATH/$pure_arg/$pure_arg" ] && head -c10 "$APPSPATH/$pure_arg/$pure_arg" 2>/dev/null | grep -qa '^.ELF....AI$'; then
-					FILE=$(command -v "$pure_arg" 2>/dev/null)
+				if [ -f "$APPSPATH/$arg/$arg" ] && head -c10 "$APPSPATH/$arg/$arg" 2>/dev/null | grep -qa '^.ELF....AI$'; then
+					FILE=$(command -v "$arg" 2>/dev/null)
 					if ! head -c1000 "$FILE" 2>/dev/null | grep -q "SANDBOXCMD"; then
 						if ! command -v aisap >/dev/null 2>&1 || ! command -v sas >/dev/null 2>&1; then
 							mv "$AMCACHEDIR"/installed "$CACHEDIR"/installed.backup.am 2>/dev/null
-							_use_sandbox "$pure_arg"
+							_use_sandbox "$arg"
 							sort "$AMCACHEDIR"/installed >> "$CACHEDIR"/installed.backup.am 2>/dev/null
 							mv "$CACHEDIR"/installed.backup.am "$AMCACHEDIR"/installed 2>/dev/null
 						else
-							printf "\n" && _use_sandbox "$pure_arg"
+							printf "\n" && _use_sandbox "$arg"
 						fi
 					fi
 				fi
