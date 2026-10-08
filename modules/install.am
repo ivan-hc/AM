@@ -10,7 +10,6 @@
 
 AMCLIPATH_ORIGIN="$AMCLIPATH"
 BINDIR="${XDG_BIN_HOME:-$HOME/.local/bin}"
-AMCATALOGUEICONS="${AMCATALOGUEICONS:-https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/main/icons}"
 
 ################################################################################################################################################################
 #				DOWNLOAD
@@ -346,9 +345,42 @@ _install_arg() {
 			touch "${LASTDIRPATH}"/.am-installer/"$arg".extra
 		fi
 	fi
-	find "${LASTDIRPATH}"/icons/* -xtype l -delete 2>/dev/null # Removes broken links
-	# If you have a broken or missing icon in your "icons" directory, download one from the catalog
-	[ -z "$(ls -A "${LASTDIRPATH}"/icons 2>/dev/null)" ] && _use_online_downloader "$AMCATALOGUEICONS"/"$arg".png "${LASTDIRPATH}"/icons/"$arg"
+
+	# Check broken/missing icons
+	find "${LASTDIRPATH}"/icons/* -type l -delete 2>/dev/null # Removes broken links
+	if [ -z "$(ls -A "${LASTDIRPATH}"/icons 2>/dev/null)" ]; then
+		# Detect if the installed app is an appimage
+		if [ -f "${LASTDIRPATH}"/"$pure_arg" ] && head -c10 "${LASTDIRPATH}"/"$pure_arg" 2>/dev/null | grep -qa '^.ELF....AI$' 2>/dev/null; then
+			cd "${LASTDIRPATH}" || return 1
+			if grep -Eaoq -m 1 "appimage-extract" ./"$pure_arg"; then
+				extracted_dir=""
+				for p in png svg; do
+					./"$pure_arg" --appimage-extract *."$p" 2>/dev/null
+				done
+				wait
+				if [ -d ./squashfs-root ]; then
+					extracted_dir="squashfs-root"
+				elif [ -d ./AppDir ]; then
+					extracted_dir="AppDir"
+				fi
+				if [ -n "$extracted_dir" ] && [ -d ./"$extracted_dir" ] && [ -n "$(ls -A ./"$extracted_dir" 2>/dev/null)" ]; then
+					find "${LASTDIRPATH}"/icons/* -type l -delete 2>/dev/null # Removes broken links
+					if [ -n "$(ls -A ./"$extracted_dir" 2>/dev/null)" ]; then
+						for i in ./"$extracted_dir"/*; do
+							[ -L "$i" ] && rm -f "$i" || mv "$i" ./icons/"$pure_arg"
+						done
+					fi
+					rmdir ./"$extracted_dir"
+				fi
+			fi
+		fi
+	fi
+	if [ -z "$(ls -A "${LASTDIRPATH}"/icons 2>/dev/null)" ]; then
+		# If you have a broken or missing icon in your "icons" directory, download one from the catalog
+		AMCATALOGUEICONS="${AMCATALOGUEICONS:-https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/main/icons}"
+		_use_online_downloader "$AMCATALOGUEICONS"/"$arg".png "${LASTDIRPATH}"/icons/"$arg"
+	fi
+
 	# Patch .desktop to change paths if the app is installed locally
 	if [ "$AMCLI" = "appman" ]; then
 		for a in $DATADIR/$LAUNCHERS_DIR/*-AM.desktop; do
