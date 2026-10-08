@@ -87,19 +87,6 @@ _check_if_optional_dependences_are_needed() {
 	fi
 }
 
-_check_if_spooky_flag_exists() {
-	# Determine if an installation script is flagged as "spooky"
-	if grep -i spooky ./"$arg" >/dev/null 2>&1; then
-		printf $" ${RED}WARNING: \"$arg\" does not have a transparent build process! \033[0m\n"
-		printf $"\n We can't be sure as to what is inside the application\n We highly recommend that you sandbox this application\n\n"
-		_read $" Do you wish to continue? (N/y): " yn
-		if ! echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
-			printf $"\n INSTALLATION ABORTED! \n"
-			return 1
-		fi
-	fi
-}
-
 _check_kind_of_installation_script() {
 	# Check if you are installing an app or a library
 	echo $" ◆ $APPNAME: starting installation script"
@@ -243,7 +230,6 @@ _install_arg() {
 	APPNAME=$(echo "\"$arg\"" | tr '[:lower:]' '[:upper:]')
 	chmod a+x ./"$arg"
 	_check_if_optional_dependences_are_needed || return 1
-	_check_if_spooky_flag_exists || return 1
 	_check_kind_of_installation_script || return 1
 
 	# APPLY PATCHES
@@ -377,10 +363,10 @@ _install_arg() {
 	[ -f "${LASTDIRPATH}"/AM-updater ] && sed -i "s#$ALT_GH#https://api.github.com#g" "${LASTDIRPATH}"/AM-updater 2>/dev/null
 	if [ -f "${LASTDIRPATH}"/remove ]; then
 		[ -d "${LASTDIRPATH}"/AppDir ] && rmdir "${LASTDIRPATH}"/AppDir 2>/dev/null
-		if test -d "${LASTDIRPATH}"/tmp; then
+		if [ -d "${LASTDIRPATH}"/tmp ]; then
 			echo $" 💀 ERROR DURING INSTALLATION, REMOVED $APPNAME!"
 			$SUDOCMD "$APPSPATH/$arg/remove" 1>/dev/null
-		elif test -f "$APPSPATH/$arg/version" && [ -z "$(cat "$APPSPATH/$arg/version")" ] && [ -z "$localscript_on" ]; then
+		elif [ -f "$APPSPATH/$arg/version" ] && [ -z "$(cat "$APPSPATH/$arg/version")" ] && [ -z "$localscript_on" ]; then
 			echo $" 💀 ERROR DURING INSTALLATION, REMOVED $APPNAME!"
 			$SUDOCMD "$APPSPATH/$arg/remove" 1> /dev/null
 		else
@@ -410,7 +396,7 @@ _install_local_script() {
 	arg=$(echo "$path2arg" | sed 's:.*/::')
 	mkdir -p "$AMCACHEDIR"/tmp && rm -f "$AMCACHEDIR"/tmp/* || return 1
 	cp "$path2arg" "$AMCACHEDIR"/tmp/"$arg" 2>/dev/null && cd "$AMCACHEDIR" && mv ./tmp/"$arg" ./"$arg" && rmdir ./tmp || return 1
-	if ! test -d "$APPSPATH"/"$arg"; then
+	if [ ! -d "$APPSPATH"/"$arg" ]; then
 		_install_arg
 	fi
 }
@@ -482,7 +468,7 @@ _3rd_party_apps_handler() {
 	else
 		tp_site_ref=$(echo "$third_party_readme_content" | grep -i "^| $arg | .* | http.* | http.* | .* |$" | tr '|' '\n' | cut -c 2- | grep . | awk -F: "NR==$awk_site" | sed 's/ //g')
 		url_content=$(echo "$third_party_readme_content" | grep -i "^| $arg | .* | http.* | http.* | .* |$" | tr '|' '\n' | cut -c 2- | grep . | awk -F: "NR==$awk_dl" | sed 's/ //g')
-		if ! [ -n "$url_content" ] && [ "$tp_extension" != soarpkg ]; then
+		if [ -z "$url_content" ] && [ "$tp_extension" != soarpkg ]; then
 			printf "%b" "$tp_missing_file_msg" | _fit
 			return 1
 		fi
@@ -570,7 +556,7 @@ _prepare_arg() {
 
 _check_and_install() {
 	[ -n "$BINDIR" ] && find "$BINDIR" -xtype l -name "$arg" -delete 2>/dev/null
-	if test -f "$APPSPATH"/"$arg"/remove || test -f "$APPSPATH"/"$arg"/remove.old; then
+	if [ -f "$APPSPATH"/"$arg"/remove ] || [ -f "$APPSPATH"/"$arg"/remove.old ]; then
 		echo $" ◆ \"$arg\" is already installed!" | tr '[:lower:]' '[:upper:]'
 	else
 		arg_script=$(_use_online_reading_tool "$APPSDB/$arg" 2>/dev/null)
@@ -950,7 +936,7 @@ _sandbox_install_sandbox_script() {
 	printf "%b\n" "${Green}"
 	printf $"%b sandbox enabled!" "$1" | _fit | tr '[:lower:]' '[:upper:]'
 	printf "\033[0m\n\n"
-	printf $"Sandbox location: " "$1" "$SANDBOXDIR" | _fit
+	printf $"Sandbox location: " | _fit
 	printf "%b%b\033[0m\n\n" "${Green}" "$SANDBOXDIR" | _fit
 	printf $"To change the location, set the \$SANDBOXDIR variable before launching." | _fit
 	printf "\n\n"
@@ -1065,12 +1051,12 @@ case "$1" in
 			# Test if a symlink is broken
 			[ -n "$BINDIR" ] && find "$BINDIR" -xtype l -name "$arg" -delete 2>/dev/null
 			# Various cases that may occur during installation
-			if test -f "$APPSPATH"/"$arg"/remove || test -f "$APPSPATH"/"$arg"/remove.old; then
+			if [ -f "$APPSPATH"/"$arg"/remove ] || [ -f "$APPSPATH"/"$arg"/remove.old ]; then
 				echo $" ◆ \"$arg\" is already installed!" | tr '[:lower:]' '[:upper:]'
 			elif [ -n "$(PATH=/usr/local/bin command -v "$arg" 2>/dev/null)" ] && [ "$AMCLI" = am ]; then
 				echo $" 💀 ERROR: \"$arg\" command already exists!"
 			elif echo "$arg" | grep -q "/"; then
-				if test -f "$arg" 2> /dev/null; then
+				if [ -f "$arg" ]; then
 					localscript_on=1
 					_install_local_script
 				else
