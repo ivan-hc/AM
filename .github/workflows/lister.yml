@@ -13,10 +13,15 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: write
+
 jobs:
   sync-files:
     name: "Run sync"
     runs-on: ubuntu-latest
+    container:
+      image: registry.gitlab.com/kazam0180/am-ci-tools:80d6340a
     outputs:
       message: ${{ steps.commit_message.outputs.message }}
     steps:
@@ -26,14 +31,16 @@ jobs:
       - name: "Get commit message"
         id: commit_message
         run: |
+          git config --global --add safe.directory /__w/AM/AM
           ORIGINAL_COMMIT_MESSAGE=$(git log --format=%s -n 1 ${{ github.sha }})
           COMMIT_MESSAGE="$ORIGINAL_COMMIT_MESSAGE (sync lists) [${{ github.sha }}]"
           echo "message=$COMMIT_MESSAGE" >> $GITHUB_OUTPUT
 
       - name: "Run lister"
+        env:
+          GITHUB_TOKEN: ${{ secrets.TOKEN }}
         run: |
-          cd programs
-          ./lister.sh
+          am-lister
 
       - name: "Push to Source"
         run: |
