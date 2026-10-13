@@ -3,9 +3,7 @@
 # AM INSTALL SCRIPT VERSION 3.6
 set -u
 APP=zapzap
-SITE1="rafatosta/zapzap" SITE2="pkgforge-dev/ZapZap-AppImage-Enhanced"
-#VARIANT1="Official" VARIANT2="Anylinux"
-# NOTE: this should be commented like this ^
+SITE="rafatosta/zapzap"
 
 # CREATE DIRECTORIES AND ADD REMOVER
 [ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
@@ -14,37 +12,9 @@ printf '\n%s' "rm -f /usr/local/share/applications/$APP-AM.desktop" >> ../remove
 chmod a+x ../remove || exit 1
 
 # DOWNLOAD AND PREPARE THE APP, $version is also used for updates
-read -r -p "
- Choose which version of zapzap to use:
-
- 1. Official upstream AppImage.
-
-    Source: https://github.com/$SITE1
-
- 2. $APP Anylinux AppImage built with all dependencies, makes it able to work
-    on any linux system, even musl ones.
-
-    Source: https://github.com/$SITE2
-
- Which version you choose (type a number and press ENTER)?" response
-RELEASE=""
-if echo "$response" | grep -q "^1"; then
-	RELEASE="$SITE1"
-elif echo "$response" | grep -q "^2"; then
-	RELEASE="$SITE2"
-fi
-if [ -z "$RELEASE" ]; then
-	printf "\n 💀 ERROR: no variant selected, aborting\n"
-	../remove 2>/dev/null
-	exit 1
-fi
-
-case "$RELEASE" in
-	"rafatosta/zapzap") version=$(curl -Ls https://api.github.com/repos/rafatosta/zapzap/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | head -1);;
-	*) version=$(curl -Ls https://api.github.com/repos/pkgforge-dev/ZapZap-AppImage-Enhanced/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l\|nightly" | head -1);;
-esac
+version=$(curl -Ls https://api.github.com/repos/"$SITE"/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | head -1)
 if [ -z "$version" ]; then
-	printf "\n 💀 ERROR: it seems that upstream removed %b, please retry\n" "$RELEASE" && exit 1
+	printf "\n 💀 ERROR: it seems that upstream removed %b, please retry\n" "$SITE" && exit 1
 else
 	wget "$version" || exit 1
 fi
@@ -63,12 +33,9 @@ cat >> ./AM-updater << 'EOF'
 #!/bin/sh
 set -u
 APP=zapzap
-SITE="REPLACETHIS"
+SITE="rafatosta/zapzap"
 version0=$(cat "/opt/$APP/version")
-case "$SITE" in
-	"rafatosta/zapzap") version=$(curl -Ls https://api.github.com/repos/rafatosta/zapzap/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | head -1);;
-	*) version=$(curl -Ls https://api.github.com/repos/pkgforge-dev/ZapZap-AppImage-Enhanced/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l\|nightly" | head -1);;
-esac
+version=$(curl -Ls https://api.github.com/repos/"$SITE"/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | head -1)
 [ -n "$version" ] || { echo "Error getting link"; exit 1; }
 if command -v appimageupdatetool >/dev/null 2>&1; then
 	cd "/opt/$APP" || exit 1
@@ -90,7 +57,6 @@ else
 fi
 EOF
 chmod a+x ./AM-updater || exit 1
-sed -i "s#REPLACETHIS#$RELEASE#g" /opt/"$APP"/AM-updater
 
 # LAUNCHER & ICON
 ./"$APP" --appimage-extract *.desktop 1>/dev/null
