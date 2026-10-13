@@ -3,7 +3,9 @@
 # AM INSTALL SCRIPT VERSION 3.6
 set -u
 APP=duckstation-gpl
-SITE="kyuyrii/duckstation-gpl"
+SITE1="kyuyrii/duckstation-gpl" SITE2="pkgforge-dev/DuckStation-GPL-AppImage-Enhanced"
+#VARIANT1="Official" VARIANT2="Anylinux"
+# NOTE: this should be commented like this ^
 
 # CREATE DIRECTORIES AND ADD REMOVER
 [ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
@@ -12,13 +14,50 @@ printf '\n%s' "rm -f /usr/local/share/applications/$APP-AM.desktop" >> ../remove
 chmod a+x ../remove || exit 1
 
 # DOWNLOAD AND PREPARE THE APP, $version is also used for updates
-version=$(curl -Ls https://api.github.com/repos/kyuyrii/duckstation-gpl/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*download.*" | grep -vi "i386\|i686\|armhf\|aarch64\|arm64\|armv7l" | grep -i "appimage$" | head -1)
-wget "$version" || exit 1
+read -r -p "
+ Choose which version of duckstation-gpl to use:
+
+ 1. Official upstream AppImage.
+
+    Source: kyuyrii/duckstation-gpl
+
+ 2. $APP Anylinux AppImage built with all dependencies, makes it able to work
+    on any linux system, even musl ones.
+
+    Source: pkgforge-dev/DuckStation-GPL-AppImage-Enhanced
+
+ Which version you choose (type a number and press ENTER)?" response
+RELEASE=""
+if echo "$response" | grep -q "^1"; then
+	RELEASE="$SITE1"
+elif echo "$response" | grep -q "^2"; then
+	RELEASE="$SITE2"
+fi
+if [ -z "$RELEASE" ]; then
+	printf "\n 💀 ERROR: no variant selected, aborting\n"
+	../remove 2>/dev/null
+	exit 1
+fi
+
+case "$RELEASE" in
+	"kyuyrii/duckstation-gpl")
+	version=$(curl -Ls https://api.github.com/repos/kyuyrii/duckstation-gpl/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*download.*" | grep -vi "i386\|i686\|armhf\|aarch64\|arm64\|armv7l" | grep -i "appimage$" | head -1)
+	wget "$version" || exit 1
+	;;
+	*)
+	version=$(curl -Ls https://api.github.com/repos/pkgforge-dev/DuckStation-GPL-AppImage-Enhanced/releases/latest | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | head -1)
+	wget "$version" || exit 1
+	;;
+esac
+if [ -z "$version" ]; then
+	printf "\n 💀 ERROR: it seems that upstream removed %b, please retry\n" "$RELEASE" && exit 1
+fi
 [ -e ./*7z ] && 7z x ./*7z && rm -f ./*7z
 [ -e ./*tar.* ] && tar fx ./*tar.* && rm -f ./*tar.*
 [ -e ./*zip ] && unzip -qq ./*zip 1>/dev/null && rm -f ./*zip
 cd ..
 if [ -d ./tmp/* ]; then mv --backup=t ./tmp/*/* ./"$APP"; else mv --backup=t ./tmp/* ./"$APP" 2>/dev/null || mv --backup=t ./tmp/* ./"$APP"; fi
+# Keep this space in sync with other installation scripts
 rm -R -f ./tmp || exit 1
 echo "$version" > ./version
 chmod a+x ./"$APP" || exit 1
@@ -31,9 +70,16 @@ cat >> ./AM-updater << 'EOF'
 #!/bin/sh
 set -u
 APP=duckstation-gpl
-SITE="kyuyrii/duckstation-gpl"
+SITE="REPLACETHIS"
 version0=$(cat "/opt/$APP/version")
-version=$(curl -Ls https://api.github.com/repos/kyuyrii/duckstation-gpl/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*download.*" | grep -vi "i386\|i686\|armhf\|aarch64\|arm64\|armv7l" | grep -i "appimage$" | head -1)
+case "$SITE" in
+	"kyuyrii/duckstation-gpl")
+	version=$(curl -Ls https://api.github.com/repos/kyuyrii/duckstation-gpl/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*download.*" | grep -vi "i386\|i686\|armhf\|aarch64\|arm64\|armv7l" | grep -i "appimage$" | head -1)
+	;;
+	*)
+	version=$(curl -Ls https://api.github.com/repos/pkgforge-dev/DuckStation-GPL-AppImage-Enhanced/releases/latest | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | head -1)
+	;;
+esac
 [ -n "$version" ] || { echo "Error getting link"; exit 1; }
 if command -v appimageupdatetool >/dev/null 2>&1; then
 	cd "/opt/$APP" || exit 1
@@ -57,6 +103,7 @@ else
 fi
 EOF
 chmod a+x ./AM-updater || exit 1
+sed -i "s#REPLACETHIS#$RELEASE#g" /opt/"$APP"/AM-updater
 
 # LAUNCHER & ICON
 ./"$APP" --appimage-extract *.desktop 1>/dev/null
