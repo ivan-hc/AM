@@ -1,9 +1,11 @@
 #!/bin/sh
 
-# AM INSTALL SCRIPT VERSION 3.5
+# AM INSTALL SCRIPT VERSION 3.6
 set -u
 APP=readest
-SITE="readest/readest"
+SITE1="readest/readest" SITE2="pkgforge-dev/Readest-AppImage-Enhanced"
+#VARIANT1="Official" VARIANT2="Anylinux"
+# NOTE: this should be commented like this ^
 
 # CREATE DIRECTORIES AND ADD REMOVER
 [ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
@@ -12,10 +14,40 @@ printf '\n%s' "rm -f /usr/local/share/applications/$APP-AM.desktop" >> ../remove
 chmod a+x ../remove || exit 1
 
 # DOWNLOAD AND PREPARE THE APP, $version is also used for updates
-version=$(curl -Ls https://api.github.com/repos/readest/readest/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" |  grep -i "aarch64\|arm64" | head -1)
-wget "$version" || exit 1
-# Keep this space in sync with other installation scripts
-# Use tar fx ./*tar* here for example in this line in case a compressed file is downloaded.
+read -r -p "
+ Choose which version of readest to use:
+
+ 1. Official upstream AppImage.
+
+    Source: https://github.com/$SITE1
+
+ 2. $APP Anylinux AppImage built with all dependencies, makes it able to work
+    on any linux system, even musl ones.
+
+    Source: https://github.com/$SITE2
+
+ Which version you choose (type a number and press ENTER)?" response
+RELEASE=""
+if echo "$response" | grep -q "^1"; then
+	RELEASE="$SITE1"
+elif echo "$response" | grep -q "^2"; then
+	RELEASE="$SITE2"
+fi
+if [ -z "$RELEASE" ]; then
+	printf "\n 💀 ERROR: no variant selected, aborting\n"
+	../remove 2>/dev/null
+	exit 1
+fi
+
+case "$RELEASE" in
+	"readest/readest") version=$(curl -Ls https://api.github.com/repos/readest/readest/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" |  grep -i "aarch64\|arm64" | head -1);;
+	*) version=$(curl -Ls https://api.github.com/repos/pkgforge-dev/Readest-AppImage-Enhanced/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" |  grep -i "aarch64\|arm64" | head -1);;
+esac
+if [ -z "$version" ]; then
+	printf "\n 💀 ERROR: it seems that upstream removed %b, please retry\n" "$RELEASE" && exit 1
+else
+	wget "$version" || exit 1
+fi
 cd ..
 mv ./tmp/*mage ./"$APP"
 # Keep this space in sync with other installation scripts
@@ -31,9 +63,12 @@ cat >> ./AM-updater << 'EOF'
 #!/bin/sh
 set -u
 APP=readest
-SITE="readest/readest"
+SITE="REPLACETHIS"
 version0=$(cat "/opt/$APP/version")
-version=$(curl -Ls https://api.github.com/repos/readest/readest/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" |  grep -i "aarch64\|arm64" | head -1)
+case "$SITE" in
+	"readest/readest") version=$(curl -Ls https://api.github.com/repos/readest/readest/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" |  grep -i "aarch64\|arm64" | head -1);;
+	*) version=$(curl -Ls https://api.github.com/repos/pkgforge-dev/Readest-AppImage-Enhanced/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" |  grep -i "aarch64\|arm64" | head -1);;
+esac
 [ -n "$version" ] || { echo "Error getting link"; exit 1; }
 if command -v appimageupdatetool >/dev/null 2>&1; then
 	cd "/opt/$APP" || exit 1
@@ -55,23 +90,32 @@ else
 fi
 EOF
 chmod a+x ./AM-updater || exit 1
+sed -i "s#REPLACETHIS#$RELEASE#g" /opt/"$APP"/AM-updater
 
 # LAUNCHER & ICON
-./"$APP" --appimage-extract *.desktop 1>/dev/null && mv ./squashfs-root/*.desktop ./"$APP".desktop
+./"$APP" --appimage-extract *.desktop 1>/dev/null
 ./"$APP" --appimage-extract .DirIcon 1>/dev/null && mv ./squashfs-root/.DirIcon ./DirIcon
 COUNT=0
 while [ "$COUNT" -lt 10 ]; do # Tries to get the actual icon/desktop if it is a symlink to another symlink
-	if [ -L ./"$APP".desktop ]; then
-		LINKPATH="$(readlink ./"$APP".desktop | sed 's|^\./||' 2>/dev/null)"
-		./"$APP" --appimage-extract "$LINKPATH" 1>/dev/null && mv ./squashfs-root/"$LINKPATH" ./"$APP".desktop
-	fi
+	for f in squashfs-root/*.desktop; do
+		FILE="$f"
+		if [ -L "$f" ]; then
+			LINKPATH="$(readlink "$f" | sed 's|^\./||' 2>/dev/null)"
+			./"$APP" --appimage-extract "$LINKPATH" 1>/dev/null
+			FILE="./squashfs-root/$LINKPATH"
+		fi
+		if grep -qi '^NoDisplay=true$' "$FILE" 2>/dev/null; then mv "$FILE" ./"$APP"-handler-AM.desktop && printf '\n%s' "rm -f /usr/local/share/applications/$APP-handler-AM.desktop" >> ./remove
+		else [ ! -f ./"$APP"-AM.desktop ] && mv "$FILE" ./"$APP"-AM.desktop || mv "$FILE" ./"$APP"-"$COUNT"-AM.desktop && printf '\n%s' "rm -f /usr/local/share/applications/$APP-$COUNT-AM.desktop" >> ./remove
+		fi
+	done
 	if [ -L ./DirIcon ]; then
 		LINKPATH="$(readlink ./DirIcon | sed 's|^\./||' 2>/dev/null)"
 		./"$APP" --appimage-extract "$LINKPATH" 1>/dev/null && mv ./squashfs-root/"$LINKPATH" ./DirIcon
 	fi
-	[ ! -L ./"$APP".desktop ] && [ ! -L ./DirIcon ] && break
+	[ ! -L ./"$APP"-AM.desktop ] && [ ! -L ./DirIcon ] && break
 	COUNT=$((COUNT + 1))
 done
-sed -i "s#Exec=[^ ]*#Exec=$APP#g; s#Icon=.*#Icon=/opt/$APP/icons/$APP#g; s# --no-sandbox##g" ./"$APP".desktop
-mv ./"$APP".desktop /usr/local/share/applications/"$APP"-AM.desktop && mv ./DirIcon ./icons/"$APP" 1>/dev/null
+for f in ./*-AM.desktop; do [ "$f" != ./"$APP"-AM.desktop ] && [ -f "$f" ] && [ "$(sort ./"$APP"-AM.desktop)" = "$(sort "$f")" ] && rm -f "$f"; done
+sed -i "s#Exec=[^ ]*#Exec=$APP#g; s#Icon=.*#Icon=/opt/$APP/icons/$APP#g; s# --no-sandbox##g" ./*-AM.desktop
+mv ./*-AM.desktop /usr/local/share/applications/ && mv ./DirIcon ./icons/"$APP" 1>/dev/null
 rm -R -f ./squashfs-root
