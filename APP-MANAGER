@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="10.6-3"
+AMVERSION="10.6-4"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -2103,6 +2103,18 @@ _update_determine_apps_version_changes() {
 
 [ -z "$ALT_GH" ] && ALT_GH="https://api.gh.pkgforge.dev"
 
+_alt_gh_on() {
+	sed -i "s#https://api.github.com#$ALT_GH#g" "$@"
+}
+
+_alt_gh_off() {
+	sed -i "s#$ALT_GH#https://api.github.com#g" "$@"
+}
+
+_alt_gh_filter() {
+	sed "s#https://api.github.com#$ALT_GH#g" "$@"
+}
+
 _update_determine_gh_apps_number() {
 	for arg in $ARGS; do
 		argpath_items=$(echo "$ARGPATHS" | grep "/$arg$" | xargs)
@@ -2133,7 +2145,7 @@ _update_run_updater() {
 	fi
 	if grep -q "api.github.com" "$argpath"/AM-updater; then
 		if [ "$GH_API_ALLOWED" -le 5 ]; then
-			sed -i "s#https://api.github.com#$ALT_GH#g" "$argpath"/AM-updater
+			_alt_gh_on "$argpath"/AM-updater
 		fi
 	fi
 	if grep -sq "Checksum failure" "$argpath"/AM-VERIFIED; then
@@ -2144,7 +2156,7 @@ _update_run_updater() {
 	else
 		"$argpath"/AM-updater
 	fi
-	sed -i "s#$ALT_GH#https://api.github.com#g" "$argpath"/AM-updater 2>/dev/null
+	_alt_gh_off "$argpath"/AM-updater 2>/dev/null
 	checksum_msg=$(_use_verify | xargs 2>/dev/null)
 	end=$(date +%s)
 	timelapsed=$((end - start))
