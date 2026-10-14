@@ -5,6 +5,10 @@ The option `--launcher` allows you to drag and drop a local AppImage to create a
 
 This option also allows you to create a symbolic link with the name you prefer, in "`~/.local/bin`". Leave blank to let the option create a shell script that calls your AppImage, with extension ".appimage", lowercased.
 
+When the AppImage contains a desktop entry and its desktop-file ID is not already in use, AM also installs a top-level launcher with the embedded desktop filename. This lets desktop environments that match Wayland windows by desktop-file ID associate the window with its launcher. The AM-managed copy remains under `applications/AppImages` for cleanup and update operations and is hidden from application menus. If that ID is already present, AM keeps the usual `-AM.desktop` launcher instead of replacing the existing entry. Removing and recreating an existing launcher is required to apply this behavior.
+
+For applications installed through AppMan, the post-install step likewise renames `APP-AM.desktop` to `APP.desktop` when the unsuffixed ID is available and updates the application's remover. If another launcher already uses that ID, AppMan leaves the `-AM.desktop` name unchanged.
+
 ---------------------------
 ### How to create a launcher for a local AppImage
 ```

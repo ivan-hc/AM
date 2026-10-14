@@ -185,11 +185,14 @@ _downgrade() {
 ################################################################################################################################################################
 
 _icon_theme() {
-	desktop_file=$(find /usr/local/share/applications -type f -name "$arg*AM.desktop" 2>/dev/null)
+	desktop_file=$(find /usr/local/share/applications -type f -name "$arg.desktop" 2>/dev/null)
+	[ -z "$desktop_file" ] && desktop_file=$(find /usr/local/share/applications -type f -name "$arg*AM.desktop" 2>/dev/null)
 	if [ "$AMCLI" = am ] && [ -n "$desktop_file" ]; then
-		$SUDOCMD sed -i "s#Icon=$argpath/icons/#Icon=#g" /usr/local/share/applications/"$arg"*AM.desktop 2>/dev/null
+		$SUDOCMD sed -i "s#Icon=$argpath/icons/#Icon=#g" "$desktop_file" 2>/dev/null
 	else
-		sed -i "s#Icon=$argpath/icons/#Icon=#g" "$DATADIR"/applications/"$arg"*AM.desktop 2>/dev/null
+		desktop_file=$(find "$DATADIR/applications" -maxdepth 1 -type f -name "$arg.desktop" 2>/dev/null)
+		[ -z "$desktop_file" ] && desktop_file=$(find "$DATADIR/applications" -maxdepth 1 -type f -name "$arg*AM.desktop" 2>/dev/null)
+		[ -n "$desktop_file" ] && sed -i "s#Icon=$argpath/icons/#Icon=#g" "$desktop_file" 2>/dev/null
 	fi
 	_icon_theme_export_to_datadir 2>/dev/null
 	desktop_file=""
@@ -200,8 +203,9 @@ _icon_theme() {
 ################################################################################################################################################################
 
 _launcher_appimage_integration() {
+	desktop_id=""
 	if grep -Eaoq -m 1 "appimage-extract" "$arg"; then
-		"$arg" --appimage-extract *.desktop 1>/dev/null && mv ./squashfs-root/*.desktop ./"$appimage".desktop
+		"$arg" --appimage-extract *.desktop 1>/dev/null && desktop_path=$(find ./squashfs-root -maxdepth 1 -name '*.desktop' -print -quit) && [ -n "$desktop_path" ] && desktop_id=${desktop_path##*/} && mv ./squashfs-root/*.desktop ./"$appimage".desktop
 		"$arg" --appimage-extract .DirIcon 1>/dev/null && mv ./squashfs-root/.DirIcon ./DirIcon
 		COUNT=0
 		while [ "$COUNT" -lt 10 ]; do # Tries to get the actual icon/desktop if it is a symlink to another symlink
@@ -218,6 +222,8 @@ _launcher_appimage_integration() {
 		done
 	elif command -v 7z >/dev/null 2>&1; then
 		7z x -osquashfs-root "$arg" 1>/dev/null
+		desktop_path=$(find ./squashfs-root -maxdepth 1 -name '*.desktop' -print -quit)
+		[ -n "$desktop_path" ] && desktop_id=${desktop_path##*/}
 		mv ./squashfs-root/*.desktop ./"$appimage".desktop
 		mv ./squashfs-root/.DirIcon ./DirIcon || test -f ./squashfs-root/*.png && mv ./squashfs-root/*.png ./DirIcon || test -f ./squashfs-root/*.svg && mv ./squashfs-root/*.svg ./DirIcon
 		COUNT=0
@@ -241,6 +247,11 @@ _launcher_appimage_integration() {
 	fi
 	if [ -d ./squashfs-root ]; then
 		sed -i "s#Exec=[^ ]*#Exec=\"$arg\"#g" ./"$appimage".desktop
+		if [ -n "$desktop_id" ] && [ ! -e "$DATADIR/applications/$desktop_id" ]; then
+			cp ./"$appimage".desktop "$DATADIR/applications/$desktop_id" || return 1
+			printf '\nX-AM-Launcher=AppImages/%s-AM.desktop\n' "$appimage" >> "$DATADIR/applications/$desktop_id"
+			printf '\nNoDisplay=true\nX-AM-DesktopFile=%s\n' "$desktop_id" >> ./"$appimage".desktop
+		fi
 		mv ./"$appimage".desktop "$DATADIR"/applications/AppImages/"$appimage"-AM.desktop
 	fi
 }
