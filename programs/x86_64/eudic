@@ -4,12 +4,6 @@
 set -u
 APP=eudic
 SITE="https://www.eudic.net"
-DOWNLOAD="https://static.eudic.net/pkg/eudic.AppImage?source=am"
-
-# Use the final HTTP response's ETag as AM's update marker.
-read_etag() {
-	awk '/^HTTP\// { etag = "" } tolower($1) == "etag:" { etag = $2 } END { print etag }' | tr -d '\r'
-}
 
 # CREATE DIRECTORIES AND ADD REMOVER
 [ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
@@ -18,8 +12,8 @@ printf '\n%s' "rm -f /usr/local/share/applications/$APP-AM.desktop" >> ../remove
 chmod a+x ../remove || exit 1
 
 # DOWNLOAD AND PREPARE THE APP, $version is also used for updates
-curl -fLsS --connect-timeout 15 --max-time 900 -H 'Cache-Control: no-cache' -D ./headers -o ./"$APP".AppImage "$DOWNLOAD" || exit 1
-version=$(read_etag < ./headers)
+curl -fL --progress-bar --connect-timeout 15 --max-time 900 -H 'Cache-Control: no-cache' -D ./headers -o ./"$APP".AppImage "https://static.eudic.net/pkg/eudic.AppImage?source=am" || exit 1
+version=$(awk '/^HTTP\// { etag = "" } tolower($1) == "etag:" { etag = $2 } END { sub(/\r$/, "", etag); print etag }' ./headers)
 [ -n "$version" ] || { echo "Error getting ETag"; exit 1; }
 # Keep this space in sync with other installation scripts
 # Use tar fx ./*tar* here for example in this line in case a compressed file is downloaded.
@@ -39,23 +33,21 @@ cat > ./AM-updater << 'EOF'
 set -u
 APP=eudic
 SITE="https://www.eudic.net"
-DOWNLOAD="https://static.eudic.net/pkg/eudic.AppImage?source=am"
-
-read_etag() {
-	awk '/^HTTP\// { etag = "" } tolower($1) == "etag:" { etag = $2 } END { print etag }' | tr -d '\r'
-}
-
 version0=$(cat "/opt/$APP/version" 2>/dev/null || :)
-headers=$(curl -fLsSI --connect-timeout 15 --max-time 30 -H 'Cache-Control: no-cache' "$DOWNLOAD") || exit 1
-version=$(printf '%s\n' "$headers" | read_etag)
+headers=$(curl -fLsSI --connect-timeout 15 --max-time 30 -H 'Cache-Control: no-cache' "https://static.eudic.net/pkg/eudic.AppImage?source=am") || exit 1
+version=$(printf '%s\n' "$headers" | awk '/^HTTP\// { etag = "" } tolower($1) == "etag:" { etag = $2 } END { sub(/\r$/, "", etag); print etag }')
 [ -n "$version" ] || { echo "Error getting ETag"; exit 1; }
+if command -v appimageupdatetool >/dev/null 2>&1; then
+	cd "/opt/$APP" || exit 1
+	appimageupdatetool -Or ./"$APP" && chmod a+x ./"$APP" && echo "$version" > ./version && exit 0
+fi
 if [ "$version" != "$version0" ]; then
 	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
 	trap 'rm -R -f "/opt/$APP/tmp"' 0
 	trap 'exit 1' 1 2 15
 	notify-send "A new version of $APP is available, please wait" 2>/dev/null || :
-	curl -fLsS --connect-timeout 15 --max-time 900 -H 'Cache-Control: no-cache' -D ./headers -o ./"$APP".AppImage "$DOWNLOAD" || exit 1
-	version=$(read_etag < ./headers)
+	curl -fL --progress-bar --connect-timeout 15 --max-time 900 -H 'Cache-Control: no-cache' -D ./headers -o ./"$APP".AppImage "https://static.eudic.net/pkg/eudic.AppImage?source=am" || exit 1
+	version=$(awk '/^HTTP\// { etag = "" } tolower($1) == "etag:" { etag = $2 } END { sub(/\r$/, "", etag); print etag }' ./headers)
 	[ -n "$version" ] || { echo "Error getting downloaded ETag"; exit 1; }
 	# Use tar fx ./*tar* here for example in this line in case a compressed file is downloaded.
 	cd ..
