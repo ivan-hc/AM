@@ -58,20 +58,14 @@ chmod a+x ./AM-updater || exit 1
 
 # LAUNCHER & ICON
 ./"$APP" --appimage-extract "usr/share/applications/*.desktop" 1>/dev/null 2>&1
-./"$APP" --appimage-extract "usr/share/icons/*" 1>/dev/null 2>&1
-./"$APP" --appimage-extract .DirIcon 1>/dev/null 2>&1 || true
-./"$APP" --appimage-extract "wps-office2023-kprometheus.*" 1>/dev/null 2>&1 || true
+./"$APP" --appimage-extract "usr/share/icons/hicolor/scalable/apps/*.svg" 1>/dev/null 2>&1
 
-# Extract main suite icon for AM manager display
-[ -s ./squashfs-root/.DirIcon ] && cp -f ./squashfs-root/.DirIcon ./icons/"$APP" 2>/dev/null || \
-	cp -f ./squashfs-root/wps-office2023-kprometheus.* ./icons/"$APP" 2>/dev/null || true
+# Copy component icons and set the main suite icon for AM manager
+cp -f ./squashfs-root/usr/share/icons/hicolor/scalable/apps/*.svg ./icons/
+cp -f ./icons/wps-*prometheus*.svg ./icons/"$APP"
 
-# Store all component icons in /opt/$APP/icons (auto-cleaned on remove)
-[ -d ./squashfs-root/usr/share/icons ] && cp -rf ./squashfs-root/usr/share/icons/* ./icons/ 2>/dev/null || true
-
-# Process desktop launchers with sub-command arguments
+# Process desktop entries with subcommands and absolute icon paths
 for f in ./squashfs-root/usr/share/applications/*.desktop; do
-	[ -e "$f" ] || continue
 	bname=$(basename "$f" .desktop)
 	dest="./${bname}-AM.desktop"
 
@@ -82,11 +76,12 @@ for f in ./squashfs-root/usr/share/applications/*.desktop; do
 		-e "s#Exec=(/nix/store/[^/]+/bin/|/usr/bin/)?(wps-office-pdf|wpspdf)([ ]|$)#Exec=$APP wpspdf\3#g" \
 		-e "s#Exec=(/nix/store/[^/]+/bin/|/usr/bin/)?wps-office-prometheus([ ]|$)#Exec=$APP\2#g" \
 		-e "s#Exec=(/nix/store/[^/]+/bin/|/usr/bin/)?(wps-office-wps|wps)([ ]|$)#Exec=$APP wps\3#g" \
+		-e "s#Icon=([^/]+)#Icon=/opt/$APP/icons/\1.svg#g" \
 		-e 's# --no-sandbox##g' \
 		"$f" > "$dest"
 
 	printf '\n%s' "rm -f /usr/local/share/applications/${bname}-AM.desktop" >> ./remove
 done
 
-mv ./*-AM.desktop /usr/local/share/applications/ 2>/dev/null || true
+mv ./*-AM.desktop /usr/local/share/applications/
 rm -R -f ./squashfs-root
