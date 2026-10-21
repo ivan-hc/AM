@@ -1,46 +1,14 @@
 #!/bin/sh
 
-# AM INSTALL SCRIPT VERSION 3.6 (Customized for Nix-built WPS Office Suite)
+# AM INSTALL SCRIPT VERSION 3.6
 set -u
 APP=wps-office-cn
 SITE="laishulu/wps-office-cn-appimage"
 
 # CREATE DIRECTORIES AND ADD REMOVER
-[ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" "/usr/local/bin" "/usr/local/share/applications" && cd "/opt/$APP/tmp" || exit 1
-
-cat > ../remove << 'EOF'
-#!/bin/sh
-set -e
-
-# Remove binaries and wrappers
-rm -f /usr/local/bin/wps-office-cn
-rm -f /usr/local/bin/wps
-rm -f /usr/local/bin/wpset
-rm -f /usr/local/bin/wpswpp
-rm -f /usr/local/bin/wpspdf
-
-# Remove desktop entries
-rm -f /usr/local/share/applications/wps-office-*-AM.desktop
-
-# Remove all integrated files in /usr/local/share (icons, mime, templates, etc.)
-if [ -f "/opt/wps-office-cn/installed-files" ]; then
-	while IFS= read -r f || [ -n "$f" ]; do
-		[ -n "$f" ] && rm -f "$f" || true
-	done < "/opt/wps-office-cn/installed-files"
-fi
-
-# Refresh system caches
-command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database -q /usr/local/share/applications || true
-command -v update-mime-database >/dev/null 2>&1 && [ -d /usr/local/share/mime ] && update-mime-database /usr/local/share/mime || true
-if command -v gtk-update-icon-cache >/dev/null 2>&1; then
-	for theme in /usr/local/share/icons/*; do
-		[ -d "$theme" ] && gtk-update-icon-cache -f -t "$theme" >/dev/null 2>&1 || true
-	done
-fi
-
-# Finally remove the installation directory
-rm -R -f /opt/wps-office-cn
-EOF
+[ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
+printf "#!/bin/sh\nset -e\nrm -f /usr/local/bin/$APP\nrm -R -f /opt/$APP" > ../remove
+printf '\n%s' "rm -f /usr/local/share/applications/$APP-AM.desktop" >> ../remove
 chmod a+x ../remove || exit 1
 
 # DOWNLOAD AND PREPARE THE APP, $version is also used for updates
@@ -56,30 +24,10 @@ echo "$version" > ./version
 chmod a+x ./"$APP" || exit 1
 
 # LINK TO PATH
-ln -sf "/opt/$APP/$APP" "/usr/local/bin/$APP"
-ln -sf "/opt/$APP/$APP" "/usr/local/bin/wps"
-
-# Wrapper scripts without hyphens to prevent binary name collisions
-cat > /usr/local/bin/wpset << 'EOF'
-#!/bin/sh
-exec /opt/wps-office-cn/wps-office-cn et "$@"
-EOF
-chmod a+x /usr/local/bin/wpset
-
-cat > /usr/local/bin/wpswpp << 'EOF'
-#!/bin/sh
-exec /opt/wps-office-cn/wps-office-cn wpp "$@"
-EOF
-chmod a+x /usr/local/bin/wpswpp
-
-cat > /usr/local/bin/wpspdf << 'EOF'
-#!/bin/sh
-exec /opt/wps-office-cn/wps-office-cn wpspdf "$@"
-EOF
-chmod a+x /usr/local/bin/wpspdf
+ln -s "/opt/$APP/$APP" "/usr/local/bin/$APP"
 
 # SCRIPT TO UPDATE THE PROGRAM
-cat > ./AM-updater << 'EOF'
+cat >> ./AM-updater << 'EOF'
 #!/bin/sh
 set -u
 APP=wps-office-cn
@@ -92,8 +40,8 @@ if command -v appimageupdatetool >/dev/null 2>&1; then
 	appimageupdatetool -Or ./"$APP" && chmod a+x ./"$APP" && echo "$version" > ./version && exit 0
 fi
 if [ "$version" != "$version0" ]; then
-	mkdir -p "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
-	notify-send "A new version of $APP is available, please wait" 2>/dev/null || true
+	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
+	notify-send "A new version of $APP is available, please wait"
 	wget "$version" || exit 1
 	# Use tar fx ./*tar* here for example in this line in case a compressed file is downloaded.
 	cd ..
@@ -101,7 +49,7 @@ if [ "$version" != "$version0" ]; then
 	chmod a+x ./"$APP" || exit 1
 	echo "$version" > ./version
 	rm -R -f ./*zs-old ./*.part ./tmp ./*~
-	notify-send "$APP is updated!" 2>/dev/null || true
+	notify-send "$APP is updated!"
 else
 	echo "Update not needed!"
 fi
@@ -109,79 +57,36 @@ EOF
 chmod a+x ./AM-updater || exit 1
 
 # LAUNCHER & ICON
-rm -rf ./squashfs-root
-# Extract root icon assets together with usr/share
+./"$APP" --appimage-extract "usr/share/applications/*.desktop" 1>/dev/null 2>&1
+./"$APP" --appimage-extract "usr/share/icons/*" 1>/dev/null 2>&1
 ./"$APP" --appimage-extract .DirIcon 1>/dev/null 2>&1 || true
-./"$APP" --appimage-extract "*.svg" 1>/dev/null 2>&1 || true
-./"$APP" --appimage-extract "*.png" 1>/dev/null 2>&1 || true
-./"$APP" --appimage-extract "usr/share/*" 1>/dev/null 2>&1 || true
+./"$APP" --appimage-extract "wps-office2023-kprometheus.*" 1>/dev/null 2>&1 || true
 
-# Fallback: full extract if desktop files were not extracted
-if ! ls ./squashfs-root/usr/share/applications/*.desktop >/dev/null 2>&1; then
-	rm -rf ./squashfs-root
-	./"$APP" --appimage-extract 1>/dev/null 2>&1
-fi
+# Extract main suite icon for AM manager display
+[ -s ./squashfs-root/.DirIcon ] && cp -f ./squashfs-root/.DirIcon ./icons/"$APP" 2>/dev/null || \
+	cp -f ./squashfs-root/wps-office2023-kprometheus.* ./icons/"$APP" 2>/dev/null || true
 
-# Ensure all extracted assets are writable (Nix store defaults to read-only)
-chmod -R u+w ./squashfs-root 2>/dev/null || true
+# Store all component icons in /opt/$APP/icons (auto-cleaned on remove)
+[ -d ./squashfs-root/usr/share/icons ] && cp -rf ./squashfs-root/usr/share/icons/* ./icons/ 2>/dev/null || true
 
-# Store primary suite icon for AM manager display
-if [ -s ./squashfs-root/.DirIcon ]; then
-	cp -aL ./squashfs-root/.DirIcon ./icons/"$APP" 2>/dev/null || true
-fi
-if [ ! -s ./icons/"$APP" ]; then
-	find ./squashfs-root/usr/share/icons -name "*prometheus*" \( -name "*.svg" -o -name "*.png" \) -exec cp -f {} ./icons/"$APP" \; -quit 2>/dev/null || true
-fi
+# Process desktop launchers with sub-command arguments
+for f in ./squashfs-root/usr/share/applications/*.desktop; do
+	[ -e "$f" ] || continue
+	bname=$(basename "$f" .desktop)
+	dest="./${bname}-AM.desktop"
 
-# Reset installed-files tracker
-rm -f /opt/"$APP"/installed-files
+	sed -E \
+		-e '/^TryExec=/d' \
+		-e "s#Exec=(/nix/store/[^/]+/bin/|/usr/bin/)?(wps-office-et|et)([ ]|$)#Exec=$APP et\3#g" \
+		-e "s#Exec=(/nix/store/[^/]+/bin/|/usr/bin/)?(wps-office-wpp|wpp)([ ]|$)#Exec=$APP wpp\3#g" \
+		-e "s#Exec=(/nix/store/[^/]+/bin/|/usr/bin/)?(wps-office-pdf|wpspdf)([ ]|$)#Exec=$APP wpspdf\3#g" \
+		-e "s#Exec=(/nix/store/[^/]+/bin/|/usr/bin/)?wps-office-prometheus([ ]|$)#Exec=$APP\2#g" \
+		-e "s#Exec=(/nix/store/[^/]+/bin/|/usr/bin/)?(wps-office-wps|wps)([ ]|$)#Exec=$APP wps\3#g" \
+		-e 's# --no-sandbox##g' \
+		"$f" > "$dest"
 
-# Install desktop files with mapped binary paths
-if [ -d "./squashfs-root/usr/share/applications" ]; then
-	mkdir -p /usr/local/share/applications
-	for f in ./squashfs-root/usr/share/applications/*.desktop; do
-		[ -e "$f" ] || continue
-		bname=$(basename "$f" .desktop)
-		dest="/usr/local/share/applications/${bname}-AM.desktop"
+	printf '\n%s' "rm -f /usr/local/share/applications/${bname}-AM.desktop" >> ./remove
+done
 
-		sed -E \
-			-e '/^TryExec=/d' \
-			-e 's#Exec=(/nix/store/[^/]+/bin/|/usr/bin/)?et([ ]|$)#Exec=/usr/local/bin/wpset\2#g' \
-			-e 's#Exec=(/nix/store/[^/]+/bin/|/usr/bin/)?wpp([ ]|$)#Exec=/usr/local/bin/wpswpp\2#g' \
-			-e 's#Exec=(/nix/store/[^/]+/bin/|/usr/bin/)?wpspdf([ ]|$)#Exec=/usr/local/bin/wpspdf\2#g' \
-			-e 's#Exec=(/nix/store/[^/]+/bin/|/usr/bin/)?wps-office-prometheus([ ]|$)#Exec=/usr/local/bin/wps\2#g' \
-			-e 's#Exec=(/nix/store/[^/]+/bin/|/usr/bin/)?wps([ ]|$)#Exec=/usr/local/bin/wps\2#g' \
-			-e 's# --no-sandbox##g' \
-			"$f" > "$dest"
-
-		echo "$dest" >> /opt/"$APP"/installed-files
-	done
-	rm -rf ./squashfs-root/usr/share/applications
-fi
-
-# Integrate shared resources (mime, icons, desktop-directories, templates, etc.)
-if [ -d "./squashfs-root/usr/share" ]; then
-	cd ./squashfs-root/usr/share
-	find . \( -type f -o -type l \) | while IFS= read -r relpath || [ -n "$relpath" ]; do
-		clean_path="${relpath#./}"
-		echo "/usr/local/share/$clean_path" >> "/opt/$APP/installed-files"
-	done
-	cp -rf ./* /usr/local/share/ 2>/dev/null || true
-	cd "/opt/$APP"
-fi
-
+mv ./*-AM.desktop /usr/local/share/applications/ 2>/dev/null || true
 rm -R -f ./squashfs-root
-
-# Deduplicate tracked installation paths
-if [ -f /opt/"$APP"/installed-files ]; then
-	sort -u -o /opt/"$APP"/installed-files /opt/"$APP"/installed-files 2>/dev/null || true
-fi
-
-# Refresh system caches
-command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database -q /usr/local/share/applications || true
-command -v update-mime-database >/dev/null 2>&1 && [ -d /usr/local/share/mime ] && update-mime-database /usr/local/share/mime || true
-if command -v gtk-update-icon-cache >/dev/null 2>&1; then
-	for theme in /usr/local/share/icons/*; do
-		[ -d "$theme" ] && gtk-update-icon-cache -f -t "$theme" >/dev/null 2>&1 || true
-	done
-fi
