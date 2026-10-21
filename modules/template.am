@@ -220,15 +220,20 @@ _trmplate_read_github_repo_info_filters() {
 _template_if_github() {
 	SITE="https://github.com"
 	RESPONSE=$(echo "$RESPONSE" | sed 's#https://github.com/##g' | cut -f1,2 -d'/')
-	COMMENT=$(_use_online_reading_tool $HeaderAuthWithGITPAT https://api.github.com/repos/"$RESPONSE" 2>/dev/null | _trmplate_read_github_repo_info_filters)
-	[ -z "$COMMENT" ] && [ -z "$HeaderAuthWithGITPAT" ] && COMMENT=$(_use_online_reading_tool "$ALT_GH"/repos/"$RESPONSE" 2>/dev/null | _trmplate_read_github_repo_info_filters)
-	wait
 	CURL_COMMAND_REF="$CURLLS https://api.github.com/repos"
-	CURL_COMMAND_REF_PREVIEW="$CURLLS $HeaderAuthWithGITPAT https://api.github.com/repos"
-	GH_API_ALLOWED=$(_use_online_reading_tool "https://api.github.com/rate_limit" | tr '{,' '\n' | grep -i remaining | tail -1 | grep -Eo "[0-9]*")
-	if [ "$GH_API_ALLOWED" -le 10 ]; then
-		CURL_COMMAND_REF_PREVIEW="$CURLLS $ALT_GH/repos"
+
+	if [ -z "$HeaderAuthWithGITPAT" ]; then
+		GH_API_ALLOWED=$(_use_online_reading_tool "https://api.github.com/rate_limit" | tr '{,' '\n' | grep -i remaining | tail -1 | grep -Eo "[0-9]*")
+		wait
 	fi
+	if [ -n "$GH_API_ALLOWED" ] && [ "$GH_API_ALLOWED" -le 10 ]; then
+		GH_API_REF="$ALT_GH"
+	else
+		GH_API_REF="$HeaderAuthWithGITPAT https://api.github.com"
+	fi
+	COMMENT=$(_use_online_reading_tool "$GH_API_REF"/repos/"$RESPONSE" 2>/dev/null | _trmplate_read_github_repo_info_filters)
+	wait
+	CURL_COMMAND_REF_PREVIEW="$CURLLS $GH_API_REF/repos"
 }
 
 _template_if_codeberg() {
@@ -251,7 +256,7 @@ _template_if_git_repo() {
 	if [ "$templatetype" = 0 ] || [ -z "$templatetype" ]; then
 		AIA=""
 		FUNCTION=''"$CURL_COMMAND_REF"'/'"$RESPONSE"'/releases | sed '"$q"'s/[()",{} ]/\\n/g'"$q"' | grep -oi "https.*download.*mage$" | grep -vi "i386\\|i686\\|armhf\\|aarch64\\|arm64\\|armv7l" | head -1'
-		if ! eval "$CURL_COMMAND_REF/$RESPONSE/releases" | sed 's/[()",{} ]/\n/g' | grep -q "https.*download.*mage$"; then
+		if ! eval "$CURL_COMMAND_REF_PREVIEW/repos/$RESPONSE/releases" | sed 's/[()",{} ]/\n/g' | grep -q "https.*download.*mage$"; then
 			AIA="1"
 			templatename="AM-SAMPLE-AppImage-in-archive"
 			_template_creator
