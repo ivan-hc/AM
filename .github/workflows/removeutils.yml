@@ -1,0 +1,49 @@
+name: "Remove utils"
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sync-files:
+    name: "Run sync"
+    runs-on: ubuntu-latest
+    outputs:
+      message: ${{ steps.commit_message.outputs.message }}
+    steps:
+      - name: "Checkout source repository"
+        uses: actions/checkout@v7
+
+      - name: "Get commit message"
+        id: commit_message
+        run: |
+          ORIGINAL_COMMIT_MESSAGE=$(git log --format=%s -n 1 ${{ github.sha }})
+          COMMIT_MESSAGE="$ORIGINAL_COMMIT_MESSAGE (sync lists) [${{ github.sha }}]"
+          echo "message=$COMMIT_MESSAGE" >> $GITHUB_OUTPUT
+
+      - name: "Run lister"
+        run: |
+          cd programs
+          dirs="aarch64 x86_64"
+          for a in $dirs; do
+             for b in "$a"/*; do
+               if grep -q '^SITE="ivan-hc/am-utils"' "$b"; then
+                 rm -f "$b"
+               fi
+             done
+          done
+
+      - name: "Push to Source"
+        run: |
+          git config --global user.name "web-flow"
+          git config --global user.email "noreply@github.com"
+          git add programs/*
+          if git diff-index --quiet HEAD; then
+            echo "No changes to commit." >> $GITHUB_STEP_SUMMARY
+          else
+            git commit -m "${{ steps.commit_message.outputs.message }}"
+            git push && echo "Sync to Source succeeded" >> $GITHUB_STEP_SUMMARY
+          fi
