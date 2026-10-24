@@ -248,7 +248,13 @@ _install_arg() {
 	# APPLY PATCHES
 
 	# Patch "$WGETCMD" (version 1.x) to have a progress bar and fix errors when applying patches
-	if [ -n "$WGETV" ]; then
+	if [ "$pure_arg" = "$WGETCMD" ]; then
+		if [ -n "$WGETV" ]; then
+			! echo "$FLAGS" | grep -q -- "--debug" && sed -i "s#^$WGETCMD #$WGETPROGRESS #g" ./"$arg"
+		else
+			sed -i "s#^$WGETCMD #$CURLPROGRES #g; s/--trust-server-names//g; s/ -O [^|]*\|\|//g" ./"$arg"
+		fi
+	elif [ -n "$WGETV" ]; then
 		! echo "$FLAGS" | grep -q -- "--debug" && sed -i "s#$WGETCMD #$WGETPROGRESS #g" ./"$arg"
 	else
 		sed -i "s#$WGETCMD #$CURLPROGRES #g; s/--trust-server-names//g; s/ -O [^|]*\|\|//g" ./"$arg"
@@ -309,9 +315,10 @@ _install_arg() {
 	fi
 	# Determine if the app is hosted on github
 	if grep -q "api.github.com" ./"$arg"; then
-		GH_API_ALLOWED=$(_use_online_reading_tool "https://api.github.com/rate_limit" | tr '{,' '\n' | grep -i remaining | tail -1 | grep -Eo "[0-9]*")
+		GH_API_REMAINING=$(_use_online_reading_tool "https://api.github.com/rate_limit" | tr '{,' '\n' | grep -i remaining | tail -1 | grep -Eo "[0-9]*")
 		wait
-		if [ -n "$GH_API_ALLOWED" ] && [ "$GH_API_ALLOWED" -le 10 ]; then
+		if [ -z "$HeaderAuthWithGITPAT" ] && [ -n "$GH_API_REMAINING" ] && [ "$GH_API_REMAINING" -le 10 ]; then
+			_proxy_enabled_msg
 			_alt_gh_on ./"$arg"
 		fi
 	fi

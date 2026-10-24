@@ -200,7 +200,14 @@ _downgrade() {
 		return 1
 	fi
 	cd "$argpath" || return 1
-	entries_list=$(_downgrade_entries_filter | _alt_gh_filter)
+	GH_API_REMAINING=$(_use_online_reading_tool "https://api.github.com/rate_limit" | tr '{,' '\n' | grep -i remaining | tail -1 | grep -Eo "[0-9]*")
+	wait
+	if [ -z "$HeaderAuthWithGITPAT" ] && [ -n "$GH_API_REMAINING" ] && [ "$GH_API_REMAINING" -le 10 ]; then
+		_proxy_enabled_msg
+		entries_list=$(_downgrade_entries_filter | _alt_gh_filter)
+	else
+		entries_list=$(_downgrade_entries_filter)
+	fi
 	urls="$(eval "$entries_list" 2>/dev/null | grep -vi "zsync$")"
 
 	# Try to avoid multiple snapshots of the same version
