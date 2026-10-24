@@ -213,8 +213,79 @@ _template_desktop_file_select_category() {
 # COMMON FUNCTIONS TO DOWNLOAD APPS FROM GIT REPOSITORIES
 # ------------------------------------------------------------------------
 
+_jq_dot() {
+	awk '
+		BEGIN { ind = "  " }
+		function nl(    k) {
+			out = out "\n"
+			for (k = 0; k < depth; k++) out = out ind
+		}
+		function flush() {                     # emit one finished document
+			if (out != "") { print out; fflush() }
+			out = ""; pending = ""
+		}
+		{
+			line = $0; m = length(line)
+			for (i = 1; i <= m; i++) {
+				c = substr(line, i, 1)
+
+				if (instr) {                       # inside a string literal
+					out = out c
+					if (esc) esc = 0
+					else if (c == "\\") esc = 1
+					else if (c == "\"") { instr = 0; if (depth == 0) flush() }
+					continue
+				}
+
+				if (c == " " || c == "\t" || c == "\r" || c == "\n") continue
+
+				if (pending) {                     # first token right after { or [
+					if ((pending == "{" && c == "}") || (pending == "[" && c == "]")) {
+						depth--; out = out c; pending = ""
+						if (depth == 0) flush()        # {} / [] stay compact
+						continue
+					}
+					nl(); pending = ""
+				}
+
+				if (c == "{" || c == "[") { depth++; out = out c; pending = c; continue }
+				if (c == "}" || c == "]") {
+					depth--; nl(); out = out c
+					if (depth == 0) flush()
+					continue
+				}
+				if (c == ":") { out = out ": "; continue }
+				if (c == ",") { out = out ","; nl(); continue }
+				if (c == "\"") { instr = 1; esc = 0; out = out c; continue }
+
+				# number / true / false / null token
+				tok = ""
+				while (i <= m && substr(line, i, 1) ~ /[-+.0-9A-Za-z_]/) {
+					tok = tok substr(line, i, 1); i++
+				}
+				if (tok != "") {
+					out = out tok; i--
+					if (depth == 0) flush()          # top-level scalar document
+					continue
+				}
+				out = out c
+			}
+		}
+		END {
+			# runs only at EOF. Empty input: say nothing, return 0.
+			if (out == "") exit 0
+			# a document was cut off mid-way: that is an error
+			if (instr || depth != 0) {
+				print "jq: invalid JSON" | "cat 1>&2"
+				exit 1
+			}
+			print out
+		}
+	 '
+}
+
 _trmplate_read_github_repo_info_filters() {
-	 grep description "$@" | sed 's/"description": "//' | sed 's/",//' | cut -c 3- | head -1
+	_jq_dot "$@" | grep description  | sed 's/"description": "//' | sed 's/",//' | cut -c 3- | head -1
 }
 
 _template_if_github() {
@@ -236,6 +307,7 @@ _template_if_github() {
 	wait
 	[ -z "$COMMENT" ] && [ -z "$HeaderAuthWithGITPAT" ] && COMMENT=$(_use_online_reading_tool "$ALT_GH"/repos/"$RESPONSE" 2>/dev/null | _trmplate_read_github_repo_info_filters)
 	wait
+	[ -z "$github_origin" ] && github_origin="$SITE/$RESPONSE"
 	CURL_COMMAND_REF_PREVIEW="$CURLLS $GH_API_REF/repos"
 }
 
