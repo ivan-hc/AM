@@ -730,12 +730,36 @@ _reinstall_common() {
 	reinstall_true=1
 	_reinstall_save_backups
 
-	# Determine if the script allows you to choose between the portable app and the AppImage
-	if grep -q 'RELEASE="PORTABLE"\|' "$argpath/.am-installer/$scriptname" && grep -q 'RELEASE="APPIMAGE"' "$argpath/.am-installer/$scriptname"; then
+	# Determine if the script allows you to choose between the portable app and the AppImage, or more AppImages from more sources
+	if grep -q 'RELEASE="PORTABLE"' "$argpath/.am-installer/$scriptname" && grep -q 'RELEASE="APPIMAGE"' "$argpath/.am-installer/$scriptname"; then
 		if [ -f "$argpath/$scriptname" ] && head -c10 "$argpath/$scriptname" 2>/dev/null | grep -qa '^.ELF....AI$'; then
 			IS_APPIMAGE_APP="1"
 		else
 			IS_PORTABE_APP="1"
+		fi
+	elif [ -f "$argpath/AM-updater" ] && grep -q 'SITE1=' "$argpath/.am-installer/$scriptname" && grep -q 'SITE2=' "$argpath/.am-installer/$scriptname"  && grep -q 'REPLACETHIS' "$argpath/.am-installer/$scriptname"; then
+		SITE1=$(sed -n 's/^[[:space:]]*SITE1="\([^"]*\)".*/\1/p' "$argpath/.am-installer/$scriptname")
+		SITE2=$(sed -n 's/^[[:space:]]*SITE2="\([^"]*\)".*/\1/p' "$argpath/.am-installer/$scriptname")
+		grep -q 'SITE3=' "$argpath/.am-installer/$scriptname" && SITE3=$(sed -n 's/^[[:space:]]*SITE3="\([^"]*\)".*/\1/p' "$argpath/.am-installer/$scriptname")
+		grep -q 'SITE4=' "$argpath/.am-installer/$scriptname" && SITE4=$(sed -n 's/^[[:space:]]*SITE4="\([^"]*\)".*/\1/p' "$argpath/.am-installer/$scriptname")
+		grep -q 'SITE5=' "$argpath/.am-installer/$scriptname" && SITE5=$(sed -n 's/^[[:space:]]*SITE5="\([^"]*\)".*/\1/p' "$argpath/.am-installer/$scriptname")
+
+		# Extract SITE from the updater
+		SITE=$(sed -n 's/^[[:space:]]*SITE="\([^"]*\)".*/\1/p' "$argpath/AM-updater")
+
+		# Determine the selected choice
+		IS_DEFAULT_CHOICE=""
+
+		if [ "$SITE" = "$SITE1" ]; then
+			IS_DEFAULT_CHOICE=1
+		elif [ "$SITE" = "$SITE2" ]; then
+			IS_DEFAULT_CHOICE=2
+		elif [ -n "$SITE3" ] && [ "$SITE" = "$SITE3" ]; then
+			IS_DEFAULT_CHOICE=3
+		elif [ -n "$SITE4" ] && [ "$SITE" = "$SITE4" ]; then
+			IS_DEFAULT_CHOICE=4
+		elif [ -n "$SITE5" ] && [ "$SITE" = "$SITE5" ]; then
+			IS_DEFAULT_CHOICE=5
 		fi
 	fi
 
@@ -758,13 +782,17 @@ _reinstall_common() {
 		echo 2 | "$AMCLIPATH_ORIGIN" -i $amoptflag "$scriptname"
 	elif [ -n "$IS_PORTABE_APP" ]; then
 		echo 1 | "$AMCLIPATH_ORIGIN" -i $amoptflag "$scriptname"
+	elif [ -n "$IS_DEFAULT_CHOICE" ]; then
+		echo "$IS_DEFAULT_CHOICE" | "$AMCLIPATH_ORIGIN" -i $amoptflag "$scriptname"
 	else
 		"$AMCLIPATH_ORIGIN" -i $amoptflag "$scriptname"
 	fi
 
 	_reinstall_restore_backups
+
 	IS_APPIMAGE_APP=""
 	IS_PORTABLE_APP=""
+	IS_DEFAULT_CHOICE=""
 }
 
 _reinstall_launcher() {
