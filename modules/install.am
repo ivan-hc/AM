@@ -726,24 +726,45 @@ _reinstall_restore_backups() {
 	done
 }
 
-_reinstall_use_amclipath_origin() {
-	"$AMCLIPATH_ORIGIN" "$@"
-}
-
 _reinstall_common() {
 	reinstall_true=1
 	_reinstall_save_backups
+
+	# Determine if the script allows you to choose between the portable app and the AppImage
+	if grep -q 'RELEASE="PORTABLE"\|' "$argpath/.am-installer/$scriptname" && grep -q 'RELEASE="APPIMAGE"' "$argpath/.am-installer/$scriptname"; then
+		if [ -f "$argpath/$scriptname" ] && head -c10 "$argpath/$scriptname" 2>/dev/null | grep -qa '^.ELF....AI$'; then
+			IS_APPIMAGE_APP="1"
+		else
+			IS_PORTABE_APP="1"
+		fi
+	fi
+
+	# Remove app
 	if echo "$argpath" | grep -q "^/opt\|^/var/opt"; then
 		$SUDOCMD "$argpath"/remove 2>/dev/null
 	else
 		"$argpath"/remove 2>/dev/null
 	fi
+
+	# Set/unset user flag
 	if [ "$AMCLI" = "am" ] && ! echo "$argpath" | grep -q "^/opt\|^/var/opt"; then
-		_reinstall_use_amclipath_origin -i --user "$scriptname"
+		amoptflag="--user"
 	else
-		_reinstall_use_amclipath_origin -i "$scriptname"
+		amoptflag=""
 	fi
+
+	# Re-install the app
+	if [ -n "$IS_APPIMAGE_APP" ]; then
+		echo 2 | "$AMCLIPATH_ORIGIN" -i $amoptflag "$scriptname"
+	elif [ -n "$IS_PORTABE_APP" ]; then
+		echo 1 | "$AMCLIPATH_ORIGIN" -i $amoptflag "$scriptname"
+	else
+		"$AMCLIPATH_ORIGIN" -i $amoptflag "$scriptname"
+	fi
+
 	_reinstall_restore_backups
+	IS_APPIMAGE_APP=""
+	IS_PORTABLE_APP=""
 }
 
 _reinstall_launcher() {
@@ -1348,12 +1369,21 @@ case "$1" in
 				_determine_args
 				for arg in $entries; do
 					if echo "$ARGPATHS" | grep -q "/$arg$"; then
-						argpath_items=$(echo "$ARGPATHS" | grep "/$arg$" | xargs)
+						argpath_items=$(echo "$ARGPATHS" | grep "/$arg$" | grep -v "/am$"| xargs)
 						for argpath in $argpath_items; do
 							if [ -f "$argpath"/AM-updater ]; then
 								mkdir -p "$argpath"/.am-installer
 								scriptname=$(ls "$argpath/.am-installer/" | head -1)
 								if [ -n "$scriptname" ] && grep -q "^◆ $scriptname :" "$AMDATADIR/$ARCH-apps"; then
+									printf "\nchange-me" >> "$argpath/.am-installer/$scriptname"
+								fi
+							elif [ ! -f "$argpath"/AM-updater ] && [ ! -f "$argpath"/AM-LOCK ] && [ ! -d "$argpath"/.am-installer ]; then
+								SOURCE=$(_use_online_reading_tool "$APPSDB"/"$arg" 2>/dev/null)
+								wait
+								if echo "$SOURCE" | grep -q "APP=$arg"; then
+									mkdir -p "$argpath"/.am-installer
+									echo "$SOURCE" > "$argpath"/.am-installer/"$arg"
+									scriptname="$arg"
 									printf "\nchange-me" >> "$argpath/.am-installer/$scriptname"
 								fi
 							fi
@@ -1365,8 +1395,7 @@ case "$1" in
 			for arg in $ARGS; do
 				argpath_items=$(echo "$ARGPATHS" | grep "/$arg$" | xargs)
 				for argpath in $argpath_items; do
-					if [ -f "$argpath"/AM-updater ]; then
-						mkdir -p "$argpath"/.am-installer
+					if [ -d "$argpath"/.am-installer ]; then
 						scriptname=$(ls "$argpath/.am-installer/" | head -1)
 						if [ -n "$scriptname" ] && grep -q "^◆ $scriptname :" "$AMDATADIR/$ARCH-apps"; then
 							CURRENT=$(cat "$argpath"/.am-installer/"$scriptname")
