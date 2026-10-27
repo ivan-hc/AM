@@ -737,20 +737,42 @@ _reinstall_common() {
 		else
 			IS_PORTABE_APP="1"
 		fi
+	elif [ "$arg" = libreoffice ] && [ -f "$argpath/version" ]; then
+		IS_LIBREOFFICE="1"
+		grep -qi -- "-fresh-" "$argpath/version" && loedition=2 || loedition=1
+		grep -qi "archimage" "$argpath/version" && lopkg=2 || lopkg=1
+		if [ "$lopkg" = 1 ]; then
+			lolanguages=$(cat "$argpath/.am-installer/$scriptname" | sed -n 's/^[[:space:]]*languages="\([^"]*\)".*/\1/p')
+			i=1
+			for l in $lolanguages; do
+				if grep -qi -- "-$l-" "$argpath/version"; then
+					lolang="$i"
+					break
+				fi
+				i=$((i + 1))
+			done
+			grep -qi "help" "$argpath/version" && lodocs=y || lodocs=n
+		else
+			i=1
+			for l in base italian european standard full; do
+				if grep -qi -- "$l" "$argpath/version"; then
+					lolang="$i"
+					break
+				fi
+				i=$((i + 1))
+			done
+			lodocs=""
+		fi
 	elif [ -f "$argpath/AM-updater" ] && grep -q 'SITE1=' "$argpath/.am-installer/$scriptname" && grep -q 'SITE2=' "$argpath/.am-installer/$scriptname"  && grep -q 'REPLACETHIS' "$argpath/.am-installer/$scriptname"; then
-
 		SITE1=$(cat "$argpath/.am-installer/$scriptname" | tr ' ' '\n' | grep "^SITE1=" 2>/dev/null | sed -n 's/^[[:space:]]*SITE1="\([^"]*\)".*/\1/p' 2>/dev/null)
 		SITE2=$(cat "$argpath/.am-installer/$scriptname" | tr ' ' '\n' | grep "^SITE2=" 2>/dev/null | sed -n 's/^[[:space:]]*SITE2="\([^"]*\)".*/\1/p' 2>/dev/null)
 		SITE3=$(cat "$argpath/.am-installer/$scriptname" | tr ' ' '\n' | grep "^SITE3=" 2>/dev/null | sed -n 's/^[[:space:]]*SITE3="\([^"]*\)".*/\1/p' 2>/dev/null)
 		SITE4=$(cat "$argpath/.am-installer/$scriptname" | tr ' ' '\n' | grep "^SITE4=" 2>/dev/null | sed -n 's/^[[:space:]]*SITE4="\([^"]*\)".*/\1/p' 2>/dev/null)
 		SITE5=$(cat "$argpath/.am-installer/$scriptname" | tr ' ' '\n' | grep "^SITE5=" 2>/dev/null | sed -n 's/^[[:space:]]*SITE5="\([^"]*\)".*/\1/p' 2>/dev/null)
-
 		# Extract SITE from the updater
 		SITE=$(sed -n 's/^[[:space:]]*SITE="\([^"]*\)".*/\1/p' "$argpath/AM-updater")
-
 		# Determine the selected choice
 		IS_DEFAULT_CHOICE=""
-
 		if [ "$SITE" = "$SITE1" ]; then
 			IS_DEFAULT_CHOICE=1
 		elif [ "$SITE" = "$SITE2" ]; then
@@ -783,6 +805,8 @@ _reinstall_common() {
 		echo 2 | "$AMCLIPATH_ORIGIN" -i $amoptflag "$scriptname"
 	elif [ -n "$IS_PORTABE_APP" ]; then
 		echo 1 | "$AMCLIPATH_ORIGIN" -i $amoptflag "$scriptname"
+	elif [ -n "$IS_LIBREOFFICE" ]; then
+		printf "%s\n" "$loedition" "$lopkg" "$lolang" "$lodocs" | "$AMCLIPATH_ORIGIN" -i $amoptflag "$scriptname"
 	elif [ -n "$IS_DEFAULT_CHOICE" ]; then
 		echo "$IS_DEFAULT_CHOICE" | "$AMCLIPATH_ORIGIN" -i $amoptflag "$scriptname"
 	else
@@ -793,6 +817,7 @@ _reinstall_common() {
 
 	IS_APPIMAGE_APP=""
 	IS_PORTABLE_APP=""
+	IS_LIBREOFFICE=""
 	IS_DEFAULT_CHOICE=""
 }
 
