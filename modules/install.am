@@ -726,20 +726,23 @@ _reinstall_restore_backups() {
 	done
 }
 
+_reinstall_determine_updater_script() {
+	if [ -f "$argpath"/AM-updater ]; then
+		UPDATER_SCRIPT="AM-updater"
+	elif [ -f "$argpath"/AM-LOCK ]; then
+		UPDATER_SCRIPT="AM-LOCK"
+	else
+		UPDATER_SCRIPT=""
+	fi
+}
+
 _reinstall_common() {
 	reinstall_true=1
 	_reinstall_save_backups
+	_reinstall_determine_updater_script
 
 	# Determine if the script allows you to choose between the portable app and the AppImage, or more AppImages from more sources
-	if [ ! -f "$argpath"/AM-updater ]; then
-		IS_PORTABE_APP="1"
-	elif grep -q 'RELEASE="PORTABLE"' "$argpath/.am-installer/$scriptname" && grep -q 'RELEASE="APPIMAGE"' "$argpath/.am-installer/$scriptname"; then
-		if [ -f "$argpath/$scriptname" ] && head -c10 "$argpath/$scriptname" 2>/dev/null | grep -qa '^.ELF....AI$'; then
-			IS_APPIMAGE_APP="1"
-		else
-			IS_PORTABE_APP="1"
-		fi
-	elif [ "$arg" = libreoffice ] && [ -f "$argpath/version" ]; then
+	if [ "$arg" = libreoffice ] && [ -f "$argpath/version" ]; then
 		IS_LIBREOFFICE="1"
 		grep -qi -- "-fresh-" "$argpath/version" && loedition=2 || loedition=1
 		grep -qi "archimage" "$argpath/version" && lopkg=2 || lopkg=1
@@ -765,14 +768,22 @@ _reinstall_common() {
 			done
 			lodocs=""
 		fi
-	elif [ -f "$argpath/AM-updater" ] && grep -q 'SITE1=' "$argpath/.am-installer/$scriptname" && grep -q 'SITE2=' "$argpath/.am-installer/$scriptname"  && grep -q 'REPLACETHIS' "$argpath/.am-installer/$scriptname"; then
+	elif [ -z "$UPDATER_SCRIPT" ] && [ ! -d "$argpath"/.am-installer ]; then
+		IS_PORTABE_APP="1"
+	elif grep -q 'RELEASE="PORTABLE"' "$argpath/.am-installer/$scriptname" && grep -q 'RELEASE="APPIMAGE"' "$argpath/.am-installer/$scriptname"; then
+		if [ -f "$argpath/$scriptname" ] && head -c10 "$argpath/$scriptname" 2>/dev/null | grep -qa '^.ELF....AI$'; then
+			IS_APPIMAGE_APP="1"
+		else
+			IS_PORTABE_APP="1"
+		fi
+	elif [ -n "$UPDATER_SCRIPT" ] && [ -f "$argpath/$UPDATER_SCRIPT" ] && grep -q 'SITE1=' "$argpath/.am-installer/$scriptname" && grep -q 'SITE2=' "$argpath/.am-installer/$scriptname"  && grep -q 'REPLACETHIS' "$argpath/.am-installer/$scriptname"; then
 		SITE1=$(cat "$argpath/.am-installer/$scriptname" | tr ' ' '\n' | grep "^SITE1=" 2>/dev/null | sed -n 's/^[[:space:]]*SITE1="\([^"]*\)".*/\1/p' 2>/dev/null)
 		SITE2=$(cat "$argpath/.am-installer/$scriptname" | tr ' ' '\n' | grep "^SITE2=" 2>/dev/null | sed -n 's/^[[:space:]]*SITE2="\([^"]*\)".*/\1/p' 2>/dev/null)
 		SITE3=$(cat "$argpath/.am-installer/$scriptname" | tr ' ' '\n' | grep "^SITE3=" 2>/dev/null | sed -n 's/^[[:space:]]*SITE3="\([^"]*\)".*/\1/p' 2>/dev/null)
 		SITE4=$(cat "$argpath/.am-installer/$scriptname" | tr ' ' '\n' | grep "^SITE4=" 2>/dev/null | sed -n 's/^[[:space:]]*SITE4="\([^"]*\)".*/\1/p' 2>/dev/null)
 		SITE5=$(cat "$argpath/.am-installer/$scriptname" | tr ' ' '\n' | grep "^SITE5=" 2>/dev/null | sed -n 's/^[[:space:]]*SITE5="\([^"]*\)".*/\1/p' 2>/dev/null)
 		# Extract SITE from the updater
-		SITE=$(sed -n 's/^[[:space:]]*SITE="\([^"]*\)".*/\1/p' "$argpath/AM-updater")
+		SITE=$(sed -n 's/^[[:space:]]*SITE="\([^"]*\)".*/\1/p' "$argpath/$UPDATER_SCRIPT")
 		# Determine the selected choice
 		IS_DEFAULT_CHOICE=""
 		if [ "$SITE" = "$SITE1" ]; then
@@ -786,12 +797,12 @@ _reinstall_common() {
 		elif [ -n "$SITE5" ] && [ "$SITE" = "$SITE5" ]; then
 			IS_DEFAULT_CHOICE=5
 		fi
-	elif [ -f "$argpath/AM-updater" ] && [ -f "$argpath/version" ] && grep -q 'REPLACETHIS' "$argpath/.am-installer/$scriptname" && grep -q 'RELEASE=' "$argpath/.am-installer/$scriptname"; then
+	elif [ -n "$UPDATER_SCRIPT" ] && [ -f "$argpath/$UPDATER_SCRIPT" ] && [ -f "$argpath/version" ] && grep -q 'REPLACETHIS' "$argpath/.am-installer/$scriptname" && grep -q 'RELEASE=' "$argpath/.am-installer/$scriptname"; then
 		IS_DEFAULT_CHOICE=""
 		releases=$(cat "$argpath/.am-installer/$scriptname" | tr ' ' '\n' | grep "^RELEASE=" 2>/dev/null | sed -n 's/^[[:space:]]*RELEASE="\([^"]*\)".*/\1/p' 2>/dev/null | xargs)
 		i=1
 		for r in $releases; do
-			if grep -qi -- "^version=.*grep.*$r" "$argpath/AM-updater" && grep -qi -- "$r" "$argpath/version"; then
+			if grep -qi -- "^version=.*grep.*$r" "$argpath/$UPDATER_SCRIPT" && grep -qi -- "$r" "$argpath/version"; then
 				IS_DEFAULT_CHOICE="$i"
 				break
 			fi
@@ -1438,13 +1449,16 @@ case "$1" in
 					if echo "$ARGPATHS" | grep -q "/$arg$"; then
 						argpath_items=$(echo "$ARGPATHS" | grep "/$arg$" | grep -v "/am$"| xargs)
 						for argpath in $argpath_items; do
-							if [ -f "$argpath"/AM-updater ]; then
+
+							_reinstall_determine_updater_script
+
+							if [ -n "$UPDATER_SCRIPT" ]; then
 								mkdir -p "$argpath"/.am-installer
 								scriptname=$(ls "$argpath/.am-installer/" | head -1)
 								if [ -n "$scriptname" ] && grep -q "^◆ $scriptname :" "$AMDATADIR/$ARCH-apps"; then
 									printf "\nchange-me" >> "$argpath/.am-installer/$scriptname"
 								fi
-							elif [ ! -f "$argpath"/AM-updater ] && [ ! -f "$argpath"/AM-LOCK ] && [ ! -d "$argpath"/.am-installer ]; then
+							elif [ -z "$UPDATER_SCRIPT" ] && [ ! -d "$argpath"/.am-installer ]; then
 								SOURCE=$(_use_online_reading_tool "$APPSDB"/"$arg" 2>/dev/null)
 								wait
 								if echo "$SOURCE" | grep -q "APP=$arg"; then
