@@ -391,6 +391,7 @@ Because of this, I have made some essential variables "customizable":
 - `APPSDBLIST`, i.e. the list of applications available for that architecture (default value *https://raw.githubusercontent.com/ivan-hc/AM/main/programs/$ARCH-apps*), this is used every time lists are updated, for example in `-l`, `-q` and `-s`/`-u`
 - `APPIMAGES_LIST`, i.e. the list of AppImages available in the database (default value *https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/main/x86_64-appimages*), used in `-ia` and `-l`/`-q` with the `--appimages` flag
 - `AMCATALOGUEMARKDOWNS`, i.e. the pages in plain text format from the catalog of applications available in this database (default value *https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/refs/heads/main/apps*, add an appname to see the content of one file), this is used in `-a`
+- `AMCATALOGUETERMNFO`, i.e. the pre-rendered pages of the catalog of applications available in this database (default value *https://portable-linux-apps.github.io/termnfo*, add an appname to see the content of one file), this is used in `-a` with the `-m`/`--markdown` suboption
 - `AMCATALOGUEICONS`, i.e. the icons in .png format available in the catalog of applications available in this database (default value *https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/main/icons*, add an appname with extension .png to see one file), this is used in `-i`, in case the installation script fails to get an icon for the application
 - `AMSYNC`, if set to "1" prevents AM from updating itself and updating modules when running `-s` or `-u`
 
@@ -551,10 +552,11 @@ Visit [github.com/topgrade-rs/topgrade](https://github.com/topgrade-rs/topgrade)
 ### `about`, `-a`
 
 		am -a {PROGRAM}
+		am -a -m {PROGRAM}
 
 **Description**:
 
-Shows more info about one or more apps.
+Shows more info about one or more apps. The "`-m`"/"`--markdown`" suboption shows the pre-rendered markdown page of the app, taken from the online catalog. Set the `AMCATALOGUETERMNFO` variable to take these pages from another source.
 
 ------------------------------------------------------------------------
 ### `apikey`
