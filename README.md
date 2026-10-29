@@ -552,11 +552,11 @@ Visit [github.com/topgrade-rs/topgrade](https://github.com/topgrade-rs/topgrade)
 ### `about`, `-a`
 
 		am -a {PROGRAM}
-		am -a -m {PROGRAM}
+		am -a -m, --markdown {PROGRAM}
 
 **Description**:
 
-Shows more info about one or more apps. The "`-m`"/"`--markdown`" suboption shows the pre-rendered markdown page of the app, taken from the online catalog. Set the `AMCATALOGUETERMNFO` variable to take these pages from another source.
+Shows more info about one or more apps. Add `-m` or `--markdown` to see the markdown version. Requires the terminal to be at least 80 columns wide.
 
 ------------------------------------------------------------------------
 ### `apikey`
