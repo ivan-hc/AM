@@ -14,6 +14,14 @@ fi
 
 #APPIMAGE_DEFAULT="1"
 
+_read_rep() {
+	local prompt="$1"
+	local var_name="$2"
+	local results=""
+	_read_e
+	eval "$var_name='$results'"
+}
+
 # Installation scripts are mainly for the x86_64 architecture: if there is not one for x86_64, there is no alternative architecture counterpart
 
 MAIN_ARCH="x86_64"
@@ -89,7 +97,7 @@ _template_comment_fixer() {
 _template_description_if_hosted_elsewhere() {
 	sed -i "s#REPLACETHIS#$RESPONSE#g" ./am-scripts/"$MAIN_ARCH"/"$arg"
 	# ADD A DESCRIPTION FOR THIS APPLICATION
-	read -r -ep $" ◆ ADD A BRIEF DESCRIPTION FOR THIS APPLICATION $(echo -e '\n : ')" COMMENT
+	_read_rep $" ◆ ADD A BRIEF DESCRIPTION FOR THIS APPLICATION $(echo -e '\n : ')" COMMENT
 	case "$COMMENT" in
 	*)
 		COMMENT=$(echo "$COMMENT"  | _template_comment_fixer | xargs -0 echo)
@@ -150,7 +158,7 @@ _edit_script_ending() {
 
 _template_custom_download_url_as_version_variable() {
 	# IF YOU CAN, USE A ONE-LINE COMMAND TO DOWNLOAD THE PROGRAM
-	read -r -ep "$(printf $" USE A ONE-LINE COMMAND TO CHECK THE URL TO THE PROGRAM OR THE VERSION\n\n if the URL is fixed, simply add the \"echo\" command at the beginning\n\n :") " DOWNLOADURL
+	_read_rep "$(printf $" USE A ONE-LINE COMMAND TO CHECK THE URL TO THE PROGRAM OR THE VERSION\n\n if the URL is fixed, simply add the \"echo\" command at the beginning\n\n :") " DOWNLOADURL
 	case "$DOWNLOADURL" in
 	*)
 		_edit_script_head
@@ -190,7 +198,7 @@ _template_generate_desktop_file() {
 # Function to add a category to our custom .desktop file (options 2 and 3)
 _template_desktop_file_select_category() {
 	echo -e $" LIST OF CATEGORIES:\n 0) AudioVideo\n 1) Audio\n 2) Video\n 3) Development\n 4) Education\n 5) Game\n 6) Graphics\n 7) Network\n 8) Office\n 9) Science\n 10) Settings\n 11) System\n 12) Utility (default)\n "
-	read -r -p $" CHOOSE A CATEGORY : " response
+	_read_e $" CHOOSE A CATEGORY : " response
 	case "$response" in
 		0)	sed -i "s/YOURCATEGORY/AudioVideo/g" ./am-scripts/"$MAIN_ARCH"/"$arg";;
 		1)	sed -i "s/YOURCATEGORY/Audio/g" ./am-scripts/"$MAIN_ARCH"/"$arg";;
@@ -414,7 +422,7 @@ _template_then_git_repo() {
 	[ -n "$APPIMAGE_DEFAULT" ] && [ -n "$AIA" ] && choice_abort="1" && response="appimage$" # uncomment this line to use this default
 	case "$choice_abort" in
 	1)
-		[ "$response" != "appimage$" ] && read -r -ep $" URL must contain (\"x64\", \"x86_64\"... or leave blank): " response
+		[ "$response" != "appimage$" ] && _read_rep $" URL must contain (\"x64\", \"x86_64\"... or leave blank): " response
 		if [ -n "$response" ]; then
 			sed -i "s# head -1# grep -i \"$response\" | head -1#g" ./am-scripts/"$MAIN_ARCH"/"$arg"
 			_read $" Do you wish to check the link for the last time (Y,n)?" yn
@@ -431,7 +439,7 @@ _template_then_git_repo() {
 		fi
 		;;
 	2)
-		read -r -ep $" URL must NOT contain (\"txt\", \"ARM\"... or leave blank): " response
+		_read_rep $" URL must NOT contain (\"txt\", \"ARM\"... or leave blank): " response
 		if [ -n "$response" ]; then
 			sed -i "s# head -1# grep -v \"$response\" | head -1#g" ./am-scripts/"$MAIN_ARCH"/"$arg"
 			_read $" Do you wish to check the link for the last time (Y,n)?" yn
@@ -456,7 +464,7 @@ _template_then_git_repo() {
 
 _template_if_sourceforge() {
 	# ADD PROJECTNAME
-	read -r -ep $" ◆ ADD THE NAME OF THE PROJECT OR LEAVE BLANK IF ITS THE SAME $(echo -e '\n : ')" projectname
+	_read_rep $" ◆ ADD THE NAME OF THE PROJECT OR LEAVE BLANK IF ITS THE SAME $(echo -e '\n : ')" projectname
 	case "$projectname" in
 	'')	projectname="$arg";;
 	*)	projectname="$projectname";;
@@ -468,13 +476,13 @@ _template_if_sourceforge() {
 	if [ "$templatetype" = 0 ] || [ -z "$templatetype" ]; then
 		filetype="appimage"
 	elif [ "$templatetype" = 1 ] || [ "$templatetype" = 2 ]; then
-		read -r -ep $" ◆ ADD an univoque keyword for the file (for example \"tar.gz\", \"linux\"):" filekeyword
+		_read_rep $" ◆ ADD an univoque keyword for the file (for example \"tar.gz\", \"linux\"):" filekeyword
 		case "$filekeyword" in
 		*) filetype="$filekeyword";;
 		esac
 	fi
 	# ADD A DESCRIPTION FOR THIS APPLICATION
-	read -r -ep $" ◆ ADD A BRIEF DESCRIPTION FOR THIS APPLICATION $(echo -e '\n : ')" COMMENT
+	_read_rep $" ◆ ADD A BRIEF DESCRIPTION FOR THIS APPLICATION $(echo -e '\n : ')" COMMENT
 	case "$COMMENT" in
 	*)
 		_template_create_new_line_for_application_list
@@ -514,7 +522,7 @@ _template_if_download_kde_org() {
 	sed -i "s#REPLACETHIS#$RESPONSE#g" ./am-scripts/"$MAIN_ARCH"/"$arg"
 	echo "$DIVIDING_LINE"
 	# ADD A DESCRIPTION FOR THIS APPLICATION
-	read -r -ep $" ◆ ADD A BRIEF DESCRIPTION FOR THIS APPLICATION $(echo -e '\n : ')" COMMENT
+	_read_rep $" ◆ ADD A BRIEF DESCRIPTION FOR THIS APPLICATION $(echo -e '\n : ')" COMMENT
 	case "$COMMENT" in
 	*)
 		_template_create_new_line_for_application_list
@@ -547,13 +555,13 @@ for arg in $ARGS; do
 		echo "$arg_github_repo" | grep -q "pkgforge-dev" && arg=$(echo "$arg" | sed -- 's/-enhanced$//g; s/-appimage$//g; s/-appimage-enhanced$//g')
 		echo "##############################################################"
 		printf "\n\n %b\n\n" "$arg_github_repo"
-		read -r -ep " Is appname \"$arg\" the correct one? (Y,n)" yn
+		_read_rep " Is appname \"$arg\" the correct one? (Y,n)" yn
 		if echo "$yn" | grep -qi "^n"; then
 			for d in x86_64 aarch64; do
 				[ -f ./am-scripts/"$d"/"$arg" ] && rm -f ./am-scripts/"$d"/"$arg"
 			done
 			[ -f ./am-scripts/list ] && sed -i "\|^◆ $arg :|d" ./am-scripts/list
-			read -r -ep " Enter the app name: " appname
+			_read_rep " Enter the app name: " appname
 			[ -z "$appname" ] && continue || arg="$appname"
 		fi
 		printf "\n"
@@ -584,7 +592,7 @@ for arg in $ARGS; do
 		echo $"  1) APPIMAGE ON-THE-FLY, USING A DEDICATED SCRIPT"
 		echo $"  2) ANY ARCHIVE/BINARY/SCRIPT FROM ANY WEBSITE"
 		echo ""
-		[ -n "$APPIMAGE_DEFAULT" ] && templatetype=0 || read -r -p $" WHAT KIND OF PROGRAM DO YOU WANT TO WRITE A SCRIPT FOR? : " templatetype
+		[ -n "$APPIMAGE_DEFAULT" ] && templatetype=0 || _read_rep $" WHAT KIND OF PROGRAM DO YOU WANT TO WRITE A SCRIPT FOR? : " templatetype
 		case "$templatetype" in
 
 		'0'|''|'1') # APPIMAGE (ANY)
@@ -597,7 +605,7 @@ for arg in $ARGS; do
 				arg_github_repo=""
 				_template_then_git_repo
 			else
-				read -r -ep $" ◆ ADD THE URL OF THE SITE (BETTER IF IT COME FROM GITHUB), FOR EXAMPLE: $(echo -e $'\n\n - if from github.com, use "https://github.com/USER/PROJECT"\n\n - if from other sources, use "https://www.SITENAME.com" or something\n\n URL: ')" RESPONSE
+				_read_rep $" ◆ ADD THE URL OF THE SITE (BETTER IF IT COME FROM GITHUB), FOR EXAMPLE: $(echo -e $'\n\n - if from github.com, use "https://github.com/USER/PROJECT"\n\n - if from other sources, use "https://www.SITENAME.com" or something\n\n URL: ')" RESPONSE
 				case "$RESPONSE" in
 				*)
 					if echo "$RESPONSE" | grep -qi "^https.*github.com\|codeberg.org"; then
@@ -618,7 +626,7 @@ for arg in $ARGS; do
 			# Set binary name for AppImages built on-the-fly
 			if [ "$templatetype" = 1 ]; then
 				echo "$DIVIDING_LINE"
-				read -r -p " Set a binary name or leave blank if it is \"$arg\": " binaryname
+				_read_e " Set a binary name or leave blank if it is \"$arg\": " binaryname
 				if [ -n "$binaryname" ]; then
 					sed -i "s/\* \"\$APP\" /\* $binaryname /g" ./am-scripts/"$MAIN_ARCH"/"$arg"
 				fi
@@ -633,7 +641,7 @@ for arg in $ARGS; do
 			_template_create_dirs_and_ask_for_source
 
 			# ADD THE NAME OF THE SOURCE
-			read -r -ep $" ◆ ADD THE URL OF THE SITE (BETTER IF IT COME FROM GITHUB), FOR EXAMPLE: $(echo -e $'\n\n - if from github.com, use "https://github.com/USER/PROJECT"\n\n - if from other sources, use "https://www.SITENAME.com" or something\n\n URL: ')" RESPONSE
+			_read_rep $" ◆ ADD THE URL OF THE SITE (BETTER IF IT COME FROM GITHUB), FOR EXAMPLE: $(echo -e $'\n\n - if from github.com, use "https://github.com/USER/PROJECT"\n\n - if from other sources, use "https://www.SITENAME.com" or something\n\n URL: ')" RESPONSE
 			case "$RESPONSE" in
 			*)
 				if echo "$RESPONSE" | grep -q "https://github.com\|https://codeberg.org"; then
@@ -652,7 +660,7 @@ for arg in $ARGS; do
 				_template_generate_desktop_file
 
 				# ENTER THE URL OF THE ICON THAT WILL APPEAR IN THE MENU
-				read -r -ep $" ◆ COPY/PASTE THE URL OF THE ICON HERE $(echo -e '\n URL: ')" ICONURL
+				_read_rep $" ◆ COPY/PASTE THE URL OF THE ICON HERE $(echo -e '\n URL: ')" ICONURL
 				case "$ICONURL" in
 				'')	sed -i "s#ICONURL#https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/main/icons/$arg.png#g" ./am-scripts/"$MAIN_ARCH"/"$arg"
 					;;
@@ -661,7 +669,7 @@ for arg in $ARGS; do
 				esac
 				echo "$DIVIDING_LINE"
 				# APPNAME
-				read -r -ep $" ◆ NAME OF THE APP (for the \"Name\" entry of the .desktop file): " APPNAME
+				_read_rep $" ◆ NAME OF THE APP (for the \"Name\" entry of the .desktop file): " APPNAME
 				case "$APPNAME" in
 				*)
 					sed -i "s#APPNAME#$APPNAME#g" ./am-scripts/"$MAIN_ARCH"/"$arg"

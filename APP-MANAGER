@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="10.6-6"
+AMVERSION="10.6-10"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -17,26 +17,36 @@ ARCH="$(uname -m)"
 export ARCH
 
 # Substitute read function (with auto-yes)
+
+_read_e() {
+	if printf 'ok\n' | read -e _probe 2>/dev/null && printf 'ok\n' | read -p _probe 2>/dev/null; then
+		read -r -ep "$prompt" results
+	else
+		printf '%s' "$prompt"
+		IFS= read -r results
+	fi
+}
+
 _read() {
 	local prompt="$1"
 	local var_name="$2"
 	local results=""
-	if [[ "$default_yes" == true ]]; then
+	if [ "$default_yes" = true ]; then
 		# If variable name is 'yn', default to 'y'
-		if [[ "$var_name" == "yn" ]]; then
+		if [ "$var_name" = "yn" ]; then
 			results="y"
 		# If variable name is 'choice', default to '1'
-		elif [[ "$var_name" == "choice" ]]; then
+		elif [ "$var_name" = "choice" ]; then
 			results="1"
 		# If variable name is 'yn_abort', default to 'n' to abort the AM command
-		elif [[ "$var_name" == "yn_abort" ]]; then
+		elif [ "$var_name" = "yn_abort" ]; then
 			results="n"
 		# If variable name is 'choice_abort', default to '0' to abort the AM command
-		elif [[ "$var_name" == "choice_abort" ]]; then
+		elif [ "$var_name" = "choice_abort" ]; then
 			results="0"
 		fi
 	else
-		read -r -ep "$prompt" results
+		_read_e
 	fi
 	eval "$var_name='$results'"
 }
@@ -1014,7 +1024,7 @@ available_options="about add apikey backup clean clone config disable downgrade 
 	install install-appimage integrate launcher list lock neodb newrepo nolibfuse off on overwrite purge query reinstall relocate remove sandbox \
 	search select sync template test translate unhide unlock update upgrade --all --appimages --apps --assume-yes --byname --clone --config --convert --debug \
 	--devmode-disable --devmode-enable --disable-notifications --enable-notifications --force-latest --help --home --icons \
-	-ias --launcher --less --pkg --portable --rollback --disable-sandbox --relocate --sandbox --system --translate --user $third_party_flags"
+	-ias --launcher --less --lock --markdown --pkg --portable --rollback --disable-sandbox --reinstall --relocate --sandbox --system --translate --unlock --user $third_party_flags"
 
 _completion_lists() {
 	# Remove existing lists and download new ones
@@ -1177,7 +1187,7 @@ _use_pla_install_handler() {
 		if ! command -v am >/dev/null 2>&1; then
 			echo "Error: System-wide install requires 'am', which isn't installed." | _fit
 			printf "\n"
-			read -p "Press [ENTER] to exit."
+			printf '%s' "Press [ENTER] to exit." >&2; read -r response
 			exit 1
 		else
 			am -i "$PLA_APP"
@@ -1190,7 +1200,7 @@ _use_pla_install_handler() {
 		fi
 	fi
 	printf "\n"
-	read -p "Press [ENTER] to close this window."
+	printf '%s' "Press [ENTER] to close this window." >&2; read -r response
 }
 
 # VERSION OF THE INSTALLED APPS
@@ -1749,6 +1759,7 @@ _use_relocate() {
 			if [ -n "$APPMAN_APPS_OLD" ]; then
 				for arg in $APPMAN_APPS_OLD; do
 					appname=$(echo "$arg" | sed 's:.*/::')
+					[ -f "$arg"/"$appname".env ] && mkdir -p "$SCRIPTDIR"/reinstall-backups && cp -r "$arg"/"$appname".env "$SCRIPTDIR"/reinstall-backups/"$appname".env
 					portable_dirs="cache config home share"
 					for d in $portable_dirs; do
 						[ -d "$SCRIPTDIR"/reinstall-backups/"$appname.$d" ] && rm -Rf "$SCRIPTDIR"/reinstall-backups/"$appname.$d"
@@ -1762,6 +1773,7 @@ _use_relocate() {
 			APPMAN_APPS_NEW=$(sort -u "$SCRIPTDIR"/am-clone.source.appman | sed 's:.*/::' | xargs)
 			"$AMCLIPATH_ORIGIN" -i --user "$APPMAN_APPS_NEW"
 			for appname in $APPMAN_APPS_NEW; do
+				[ -f "$SCRIPTDIR"/reinstall-backups/"$appname".env ] && cp -r "$SCRIPTDIR"/reinstall-backups/"$appname".env "$APPSPATH"/"$appname"/"$appname".env
 				portable_dirs="cache config home share"
 				for d in $portable_dirs; do
 					[ -d "$SCRIPTDIR"/relocate-backups/"$appname.$d" ] && cp -r "$SCRIPTDIR"/relocate-backups/"$appname.$d" "$APPSPATH"/"$appname"/"$appname.$d"
@@ -2520,7 +2532,7 @@ case "$1" in
 	'extra'|'-e'|\
 	'install'|'-i'|'-ias'|\
 	'install-appimage'|'-ia'|\
-	'reinstall'|\
+	'reinstall'|'--reinstall'|\
 	'sandbox'|'--sandbox'|'--disable-sandbox')
 		MODULE="install.am"
 		_use_module "$@"
@@ -2531,7 +2543,7 @@ case "$1" in
 	'hide'|'unhide'|\
 	'icons'|'--icons'|\
 	'launcher'|'--launcher'|'integrate'|\
-	'lock'|'unlock'|\
+	'lock'|'--lock'|'unlock'|'--unlock'|\
 	'nolibfuse'|\
 	'overwrite'|'-o'|\
 	'remove'|'-R'|'-r')
@@ -2635,6 +2647,7 @@ case "$1" in
 
 		# Descriptions
 		description_about=$(echo $"Description: Shows more info about one or more apps.")
+		description_about_markdown=$(echo $"Add -m or --markdown to see the markdown version. Requires the terminal to be at least 80 columns wide.")
 		description_apikey=$(echo $"Description: Accede to github APIs using your personal access tokens. The file named \"ghapikey.txt\" will be saved in $AMDATADIR. Use \"del\" to remove it.")
 		description_backup=$(echo $"Description: Create a snapshot of the current version of an installed program.")
 		description_clean=$(echo $"Description: Removes all the unnecessary files and folders.")
@@ -2712,8 +2725,11 @@ case "$1" in
 			${Gold}about, -a\033[0m
 
 					${LightBlue}$AMCLI -a {$_PROGRAM}\033[0m
+					${LightBlue}$AMCLI -a --markdown {$_PROGRAM}\033[0m
 
 			$description_about
+
+			$description_about_markdown
 
 			${Gold}apikey\033[0m
 
@@ -2840,7 +2856,7 @@ case "$1" in
 
 			$description_list
 
-			${Gold}lock\033[0m
+			${Gold}lock, --lock\033[0m
 
 					${LightBlue}$AMCLI lock {$_PROGRAM}\033[0m
 
@@ -2878,7 +2894,7 @@ case "$1" in
 
 			$description_query
 
-			${Gold}reinstall\033[0m
+			${Gold}reinstall, --reinstall\033[0m
 
 					${LightBlue}$AMCLI reinstall\033[0m
 					${LightBlue}$AMCLI reinstall --all\033[0m
@@ -2940,7 +2956,7 @@ case "$1" in
 
 			$description_unhide
 
-			${Gold}unlock\033[0m
+			${Gold}unlock, --unlock\033[0m
 
 					${LightBlue}$AMCLI unlock {$_PROGRAM}\033[0m
 

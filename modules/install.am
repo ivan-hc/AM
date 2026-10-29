@@ -708,6 +708,7 @@ _not_an_appimage_message() {
 _reinstall_save_backups() {
 	appname="$arg"
 	appnamepath="$argpath"
+	[ -f "$appnamepath"/"$appname".env ] && mkdir -p "$SCRIPTDIR"/reinstall-backups && cp -r "$appnamepath"/"$appname".env "$SCRIPTDIR"/reinstall-backups/"$appname".env
 	portable_dirs="cache config home share"
 	for d in $portable_dirs; do
 		if [ -d "$appnamepath"/"$appname.$d" ]; then
@@ -718,12 +719,202 @@ _reinstall_save_backups() {
 }
 
 _reinstall_restore_backups() {
+	[ -f "$SCRIPTDIR"/reinstall-backups/"$appname".env ] && cp -r "$SCRIPTDIR"/reinstall-backups/"$appname".env "$appnamepath"/"$appname".env
 	portable_dirs="cache config home share"
 	for d in $portable_dirs; do
 		if [ -d "$SCRIPTDIR"/reinstall-backups/"$appname.$d" ]; then
 			cp -r "$SCRIPTDIR"/reinstall-backups/"$appname.$d" "$appnamepath"/"$appname.$d"
 		fi
 	done
+	[ "$UPDATER_SCRIPT" = AM-LOCK ] && [ -f "$argpath"/AM-updater ] && mv "$argpath"/AM-updater "$argpath"/AM-LOCK
+}
+
+_reinstall_determine_updater_script() {
+	if [ -f "$argpath"/AM-updater ]; then
+		UPDATER_SCRIPT="AM-updater"
+	elif [ -f "$argpath"/AM-LOCK ]; then
+		UPDATER_SCRIPT="AM-LOCK"
+	else
+		UPDATER_SCRIPT=""
+	fi
+}
+
+_reinstall_common() {
+	reinstall_true=1
+	_reinstall_save_backups
+	_reinstall_determine_updater_script
+
+	# Determine if the script allows you to choose between the portable app and the AppImage, or more AppImages from more sources
+	if [ "$arg" = libreoffice ] && [ -f "$argpath/version" ]; then
+		IS_LIBREOFFICE="1"
+		grep -qi -- "-fresh-" "$argpath/version" && loedition=2 || loedition=1
+		grep -qi "archimage" "$argpath/version" && lopkg=2 || lopkg=1
+		if [ "$lopkg" = 1 ]; then
+			lolanguages=$(cat "$argpath/.am-installer/$scriptname" | sed -n 's/^[[:space:]]*languages="\([^"]*\)".*/\1/p')
+			i=1
+			for l in $lolanguages; do
+				if grep -qi -- "-$l-" "$argpath/version"; then
+					lolang="$i"
+					break
+				fi
+				i=$((i + 1))
+			done
+			grep -qi "help" "$argpath/version" && lodocs=y || lodocs=n
+		else
+			i=1
+			for l in base italian european standard all; do
+				if grep -qi -- "$l" "$argpath/version"; then
+					lolang="$i"
+					break
+				fi
+				i=$((i + 1))
+			done
+			lodocs=""
+		fi
+	elif [ -z "$UPDATER_SCRIPT" ] && [ ! -d "$argpath"/.am-installer ]; then
+		IS_PORTABE_APP="1"
+	elif grep -q 'RELEASE="PORTABLE"' "$argpath/.am-installer/$scriptname" && grep -q 'RELEASE="APPIMAGE"' "$argpath/.am-installer/$scriptname"; then
+		if [ -f "$argpath/$scriptname" ] && head -c10 "$argpath/$scriptname" 2>/dev/null | grep -qa '^.ELF....AI$'; then
+			IS_APPIMAGE_APP="1"
+		else
+			IS_PORTABE_APP="1"
+		fi
+	elif [ -n "$UPDATER_SCRIPT" ] && [ -f "$argpath/$UPDATER_SCRIPT" ] && grep -q 'SITE1=' "$argpath/.am-installer/$scriptname" && grep -q 'SITE2=' "$argpath/.am-installer/$scriptname"  && grep -q 'REPLACETHIS' "$argpath/.am-installer/$scriptname"; then
+		SITE1=$(cat "$argpath/.am-installer/$scriptname" | tr ' ' '\n' | grep "^SITE1=" 2>/dev/null | sed -n 's/^[[:space:]]*SITE1="\([^"]*\)".*/\1/p' 2>/dev/null)
+		SITE2=$(cat "$argpath/.am-installer/$scriptname" | tr ' ' '\n' | grep "^SITE2=" 2>/dev/null | sed -n 's/^[[:space:]]*SITE2="\([^"]*\)".*/\1/p' 2>/dev/null)
+		SITE3=$(cat "$argpath/.am-installer/$scriptname" | tr ' ' '\n' | grep "^SITE3=" 2>/dev/null | sed -n 's/^[[:space:]]*SITE3="\([^"]*\)".*/\1/p' 2>/dev/null)
+		SITE4=$(cat "$argpath/.am-installer/$scriptname" | tr ' ' '\n' | grep "^SITE4=" 2>/dev/null | sed -n 's/^[[:space:]]*SITE4="\([^"]*\)".*/\1/p' 2>/dev/null)
+		SITE5=$(cat "$argpath/.am-installer/$scriptname" | tr ' ' '\n' | grep "^SITE5=" 2>/dev/null | sed -n 's/^[[:space:]]*SITE5="\([^"]*\)".*/\1/p' 2>/dev/null)
+		# Extract SITE from the updater
+		SITE=$(sed -n 's/^[[:space:]]*SITE="\([^"]*\)".*/\1/p' "$argpath/$UPDATER_SCRIPT")
+		# Determine the selected choice
+		IS_DEFAULT_CHOICE=""
+		if [ "$SITE" = "$SITE1" ]; then
+			IS_DEFAULT_CHOICE=1
+		elif [ "$SITE" = "$SITE2" ]; then
+			IS_DEFAULT_CHOICE=2
+		elif [ -n "$SITE3" ] && [ "$SITE" = "$SITE3" ]; then
+			IS_DEFAULT_CHOICE=3
+		elif [ -n "$SITE4" ] && [ "$SITE" = "$SITE4" ]; then
+			IS_DEFAULT_CHOICE=4
+		elif [ -n "$SITE5" ] && [ "$SITE" = "$SITE5" ]; then
+			IS_DEFAULT_CHOICE=5
+		fi
+	elif [ -n "$UPDATER_SCRIPT" ] && [ -f "$argpath/$UPDATER_SCRIPT" ] && [ -f "$argpath/version" ] && grep -q 'REPLACETHIS' "$argpath/.am-installer/$scriptname" && grep -q 'RELEASE=' "$argpath/.am-installer/$scriptname"; then
+		IS_DEFAULT_CHOICE=""
+		releases=$(cat "$argpath/.am-installer/$scriptname" | tr ' ' '\n' | grep "^RELEASE=" 2>/dev/null | sed -n 's/^[[:space:]]*RELEASE="\([^"]*\)".*/\1/p' 2>/dev/null | xargs)
+		i=1
+		for r in $releases; do
+			if grep -qi -- "^version=.*grep.*$r" "$argpath/$UPDATER_SCRIPT" && grep -qi -- "$r" "$argpath/version"; then
+				IS_DEFAULT_CHOICE="$i"
+				break
+			fi
+			i=$((i + 1))
+		done
+	fi
+
+	# Remove app
+	if echo "$argpath" | grep -q "^/opt\|^/var/opt"; then
+		$SUDOCMD "$argpath"/remove 2>/dev/null
+	else
+		"$argpath"/remove 2>/dev/null
+	fi
+
+	# Set/unset user flag
+	if [ "$AMCLI" = "am" ] && ! echo "$argpath" | grep -q "^/opt\|^/var/opt"; then
+		amoptflag="--user"
+	else
+		amoptflag=""
+	fi
+
+	# Re-install the app
+	if [ -n "$IS_APPIMAGE_APP" ]; then
+		echo 2 | "$AMCLIPATH_ORIGIN" -i $amoptflag "$scriptname"
+	elif [ -n "$IS_PORTABE_APP" ]; then
+		echo 1 | "$AMCLIPATH_ORIGIN" -i $amoptflag "$scriptname"
+	elif [ -n "$IS_LIBREOFFICE" ]; then
+		printf "%s\n" "$loedition" "$lopkg" "$lolang" "$lodocs" | "$AMCLIPATH_ORIGIN" -i $amoptflag "$scriptname"
+	elif [ -n "$IS_DEFAULT_CHOICE" ]; then
+		echo "$IS_DEFAULT_CHOICE" | "$AMCLIPATH_ORIGIN" -i $amoptflag "$scriptname"
+	else
+		"$AMCLIPATH_ORIGIN" -i $amoptflag "$scriptname"
+	fi
+
+	_reinstall_restore_backups
+
+	IS_APPIMAGE_APP=""
+	IS_PORTABLE_APP=""
+	IS_LIBREOFFICE=""
+	IS_DEFAULT_CHOICE=""
+}
+
+_reinstall_launcher() {
+	if echo "$argpath" | grep -q "^/opt\|^/var/opt"; then
+		LAUNCHERS_PATH="/usr/local/share/$LAUNCHERS_DIR"
+	else
+		LAUNCHERS_PATH="$DATADIR/$LAUNCHERS_DIR"
+	fi
+	if [ -f "$argpath"/"$arg" ] && grep -Eaoq -m 1 "appimage-extract" "$argpath"/"$arg" || file "$argpath"/"$arg" | grep -q 'static'; then
+		launcher_name="$arg-AM.desktop"
+		if [ -f "$LAUNCHERS_PATH"/"$launcher_name" ]; then
+			mkdir -p "$SCRIPTDIR"/AMLAUNCHER_DIR
+			if [ -x "$argpath"/"$arg" ]; then
+				exec 3< <("$argpath"/"$arg" --appimage-mount)
+				read -r MOUNT_POINT <&3
+				APP_PID=$!
+				export MOUNT_POINT
+				launcher_name="$arg-AM.desktop"
+				if test -f "$argpath"/.am-installer/"$arg"* && grep -q -- "--appimage-extract" "$argpath"/.am-installer/"$arg"* && ! grep -q -- './"$APP" --appimage-extract \*.desktop 1>/dev/null && mv ./squashfs-root/\*.desktop ./"$APP".desktop' "$argpath"/.am-installer/"$arg"*; then
+					# Detect launchers with non-standard installation scripts
+					desktop_pattern=$(grep -- "--appimage-extract .*.desktop" "$argpath"/.am-installer/"$arg"* | head -1 | tr ' /' '\n' | grep -- "[a-zA-Z].*.desktop$" | tr '*' '\n' | head -1)
+					cp "$MOUNT_POINT"/"$desktop_pattern"*.desktop "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name"
+				else
+					cp "$MOUNT_POINT"/*.desktop "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name"
+				fi
+				COUNT=0
+				while [ "$COUNT" -lt 10 ]; do # Tries to get the actual icon/desktop if it is a symlink to another symlink
+					if [ -L "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name" ]; then
+						LINKPATH="$(readlink "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name" | sed 's|^\./||' 2>/dev/null)"
+						cp "$MOUNT_POINT"/"$LINKPATH" "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name"
+					fi
+					[ ! -L "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name" ] && break
+					COUNT=$((COUNT + 1))
+				done
+				if [ -f "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name" ]; then
+					# Standard patches
+					if echo "$argpath" | grep -q "^/opt\|^/var/opt"; then
+						sed -i "s#Exec=[^ ]*#Exec=$arg#g; s#Icon=.*#Icon=$argpath/icons/$arg#g" "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name"
+					else
+						sed -i "s#Exec=[^ ]*#Exec=$BINDIR/$arg#g; s#Icon=.*#Icon=$argpath/icons/$arg#g" "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name"
+					fi
+					# App-specific patches
+					[ "$arg" = photogimp ] && sed -i "s/^Name\(\[[^]]*\]\)\?=.*/Name\1=PhotoGIMP/" "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name"
+					# Determine if StartupWMClass patch is needed
+					if test -f "$argpath"/.am-installer/"$arg"* && grep -q 'grep -q "StartupWMClass"' "$argpath"/.am-installer/"$arg"* && grep -q "^StartupWMClass" "$LAUNCHERS_PATH"/"$launcher_name"; then
+						wm_class=$(grep "^StartupWMClass=" "$LAUNCHERS_PATH"/"$launcher_name" | head -1 | tr '=' '\n' | tail -1)
+						if ! grep -q "^StartupWMClass" "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name"; then
+							sed -i "/^\[Desktop Entry\]/a\StartupWMClass=$wm_class" "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name"
+						else
+							sed -i "s|^StartupWMClass=.*|StartupWMClass=$wm_class|" "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name"
+						fi
+					fi
+					# Compare the installed launcher and the extracted one
+					if [ "$(sort "$LAUNCHERS_PATH"/"$launcher_name")" != "$(sort "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name")" ]; then
+						printf -- $"- Found differences in %b, it probably needs to be updated.\n" "$launcher_name" | _fit
+						_read $" Do you wish to continue? (N/y): " yn
+						if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
+							if echo "$argpath" | grep -q "^/opt\|^/var/opt"; then
+								$SUDOCMD mv "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name" "$LAUNCHERS_PATH"/"$launcher_name"
+							else
+								mv "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name" "$LAUNCHERS_PATH"/"$launcher_name"
+							fi
+						fi
+					fi
+				fi
+				kill "$APP_PID" 2>/dev/null
+			fi
+		fi
+	fi
 }
 
 ################################################################################################################################################################
@@ -1213,7 +1404,7 @@ case "$1" in
 		exit 1
 		;;
 
-	'reinstall')
+	'reinstall'|'--reinstall')
 		_online_check
 		_completion_lists
 		if [ "$2" = "--all" ]; then
@@ -1232,19 +1423,7 @@ case "$1" in
 						[ -d "$argpath"/.am-installer ] && scriptname=$(ls "$argpath/.am-installer/" | head -1)
 						[ -z "$scriptname" ] && scriptname="$arg"
 						if [ "$arg" != am ] && grep -q "^◆ $scriptname :" "$AMDATADIR/$ARCH-apps"; then
-							reinstall_true=1
-							_reinstall_save_backups
-							if echo "$argpath" | grep -q "^/opt\|^/var/opt"; then
-								$SUDOCMD "$argpath"/remove 2>/dev/null
-							else
-								"$argpath"/remove 2>/dev/null
-							fi
-							if [ "$AMCLI" = "am" ] && ! echo "$argpath" | grep -q "^/opt\|^/var/opt"; then
-								"$AMCLIPATH_ORIGIN" -i --user "$scriptname"
-							else
-								"$AMCLIPATH_ORIGIN" -i "$scriptname"
-							fi
-							_reinstall_restore_backups
+							_reinstall_common
 						fi
 						scriptname=""
 					done
@@ -1257,72 +1436,7 @@ case "$1" in
 			for arg in $ARGS; do
 				argpath_items=$(echo "$ARGPATHS" | grep "/$arg$" | xargs)
 				for argpath in $argpath_items; do
-					if echo "$argpath" | grep -q "^/opt\|^/var/opt"; then
-						LAUNCHERS_PATH="/usr/local/share/$LAUNCHERS_DIR"
-					else
-						LAUNCHERS_PATH="$DATADIR/$LAUNCHERS_DIR"
-					fi
-					if [ -f "$argpath"/"$arg" ] && grep -Eaoq -m 1 "appimage-extract" "$argpath"/"$arg" || file "$argpath"/"$arg" | grep -q 'static'; then
-						launcher_name="$arg-AM.desktop"
-						if [ -f "$LAUNCHERS_PATH"/"$launcher_name" ]; then
-							mkdir -p "$SCRIPTDIR"/AMLAUNCHER_DIR
-							if [ -x "$argpath"/"$arg" ]; then
-								exec 3< <("$argpath"/"$arg" --appimage-mount)
-								read -r MOUNT_POINT <&3
-								APP_PID=$!
-								export MOUNT_POINT
-								launcher_name="$arg-AM.desktop"
-								if test -f "$argpath"/.am-installer/"$arg"* && grep -q -- "--appimage-extract" "$argpath"/.am-installer/"$arg"* && ! grep -q -- './"$APP" --appimage-extract \*.desktop 1>/dev/null && mv ./squashfs-root/\*.desktop ./"$APP".desktop' "$argpath"/.am-installer/"$arg"*; then
-									# Detect launchers with non-standard installation scripts
-									desktop_pattern=$(grep -- "--appimage-extract .*.desktop" "$argpath"/.am-installer/"$arg"* | head -1 | tr ' /' '\n' | grep -- "[a-zA-Z].*.desktop$" | tr '*' '\n' | head -1)
-									cp "$MOUNT_POINT"/"$desktop_pattern"*.desktop "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name"
-								else
-									cp "$MOUNT_POINT"/*.desktop "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name"
-								fi
-								COUNT=0
-								while [ "$COUNT" -lt 10 ]; do # Tries to get the actual icon/desktop if it is a symlink to another symlink
-									if [ -L "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name" ]; then
-										LINKPATH="$(readlink "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name" | sed 's|^\./||' 2>/dev/null)"
-										cp "$MOUNT_POINT"/"$LINKPATH" "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name"
-									fi
-									[ ! -L "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name" ] && break
-									COUNT=$((COUNT + 1))
-								done
-								if [ -f "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name" ]; then
-									# Standard patches
-									if echo "$argpath" | grep -q "^/opt\|^/var/opt"; then
-										sed -i "s#Exec=[^ ]*#Exec=$arg#g; s#Icon=.*#Icon=$argpath/icons/$arg#g" "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name"
-									else
-										sed -i "s#Exec=[^ ]*#Exec=$BINDIR/$arg#g; s#Icon=.*#Icon=$argpath/icons/$arg#g" "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name"
-									fi
-									# App-specific patches
-									[ "$arg" = photogimp ] && sed -i "s/^Name\(\[[^]]*\]\)\?=.*/Name\1=PhotoGIMP/" "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name"
-									# Determine if StartupWMClass patch is needed
-									if test -f "$argpath"/.am-installer/"$arg"* && grep -q 'grep -q "StartupWMClass"' "$argpath"/.am-installer/"$arg"* && grep -q "^StartupWMClass" "$LAUNCHERS_PATH"/"$launcher_name"; then
-										wm_class=$(grep "^StartupWMClass=" "$LAUNCHERS_PATH"/"$launcher_name" | head -1 | tr '=' '\n' | tail -1)
-										if ! grep -q "^StartupWMClass" "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name"; then
-											sed -i "/^\[Desktop Entry\]/a\StartupWMClass=$wm_class" "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name"
-										else
-											sed -i "s|^StartupWMClass=.*|StartupWMClass=$wm_class|" "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name"
-										fi
-									fi
-									# Compare the installed launcher and the extracted one
-									if [ "$(sort "$LAUNCHERS_PATH"/"$launcher_name")" != "$(sort "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name")" ]; then
-										printf -- $"- Found differences in %b, it probably needs to be updated.\n" "$launcher_name" | _fit
-										_read $" Do you wish to continue? (N/y): " yn
-										if echo "$yn" | grep -i '^y' >/dev/null 2>&1; then
-											if echo "$argpath" | grep -q "^/opt\|^/var/opt"; then
-												$SUDOCMD mv "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name" "$LAUNCHERS_PATH"/"$launcher_name"
-											else
-												mv "$SCRIPTDIR"/AMLAUNCHER_DIR/"$launcher_name" "$LAUNCHERS_PATH"/"$launcher_name"
-											fi
-										fi
-									fi
-								fi
-								kill "$APP_PID" 2>/dev/null
-							fi
-						fi
-					fi
+					_reinstall_launcher
 				done
 			done
 			echo "$DIVIDING_LINE"
@@ -1336,12 +1450,24 @@ case "$1" in
 				_determine_args
 				for arg in $entries; do
 					if echo "$ARGPATHS" | grep -q "/$arg$"; then
-						argpath_items=$(echo "$ARGPATHS" | grep "/$arg$" | xargs)
+						argpath_items=$(echo "$ARGPATHS" | grep "/$arg$" | grep -v "/am$"| xargs)
 						for argpath in $argpath_items; do
-							if [ -f "$argpath"/AM-updater ]; then
+
+							_reinstall_determine_updater_script
+
+							if [ -n "$UPDATER_SCRIPT" ]; then
 								mkdir -p "$argpath"/.am-installer
 								scriptname=$(ls "$argpath/.am-installer/" | head -1)
 								if [ -n "$scriptname" ] && grep -q "^◆ $scriptname :" "$AMDATADIR/$ARCH-apps"; then
+									printf "\nchange-me" >> "$argpath/.am-installer/$scriptname"
+								fi
+							elif [ -z "$UPDATER_SCRIPT" ] && [ ! -d "$argpath"/.am-installer ]; then
+								SOURCE=$(_use_online_reading_tool "$APPSDB"/"$arg" 2>/dev/null)
+								wait
+								if echo "$SOURCE" | grep -q "APP=$arg"; then
+									mkdir -p "$argpath"/.am-installer
+									echo "$SOURCE" > "$argpath"/.am-installer/"$arg"
+									scriptname="$arg"
 									printf "\nchange-me" >> "$argpath/.am-installer/$scriptname"
 								fi
 							fi
@@ -1353,23 +1479,14 @@ case "$1" in
 			for arg in $ARGS; do
 				argpath_items=$(echo "$ARGPATHS" | grep "/$arg$" | xargs)
 				for argpath in $argpath_items; do
-					if [ -f "$argpath"/AM-updater ]; then
-						mkdir -p "$argpath"/.am-installer
+					if [ -d "$argpath"/.am-installer ]; then
 						scriptname=$(ls "$argpath/.am-installer/" | head -1)
 						if [ -n "$scriptname" ] && grep -q "^◆ $scriptname :" "$AMDATADIR/$ARCH-apps"; then
 							CURRENT=$(cat "$argpath"/.am-installer/"$scriptname")
 							SOURCE=$(_use_online_reading_tool "$APPSDB"/"$scriptname")
 							if echo "$SOURCE" | grep -q "APP=$arg"; then
 								if [ "$CURRENT" != "$SOURCE" ]; then
-									reinstall_true=1
-									_reinstall_save_backups
-									"$AMCLIPATH_ORIGIN" -R "$arg"
-									if [ "$AMCLI" = "am" ] && ! echo "$argpath" | grep -q "^/opt\|^/var/opt"; then
-										"$AMCLIPATH_ORIGIN" -i --user "$scriptname"
-									else
-										"$AMCLIPATH_ORIGIN" -i "$scriptname"
-									fi
-									_reinstall_restore_backups
+									_reinstall_common
 								fi
 							fi
 							SOURCE=""
