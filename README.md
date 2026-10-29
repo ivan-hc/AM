@@ -739,7 +739,7 @@ Same as "install" (see above) but for AppImages only.  Option "`-ias`" (aka Inst
 Shows the list of all the apps available. Without flags only shows the apps in the "AM" database, add the "`--appimages`" to show only the AppImages or "`--portable`" to show other formats from the "AM" database. The "`--all`" flag allows you to consult the set of all supported third-party databases. It can also be extended with additional flags.
 
 ------------------------------------------------------------------------
-### `lock`
+### `lock`, `--lock`
 
 		am lock {PROGRAM}
 
@@ -792,7 +792,7 @@ Overwrite apps with snapshots saved previously (see "`-b`").
 Search for keywords in the list of available applications, add the "`--appimages`" option to list only the AppImages, "`--portable`" option to list only the portable apps or add "`--pkg`" to list multiple programs at once. The "`--all`" flag allows you to consult the set of all supported databases.
 
 ------------------------------------------------------------------------
-### `reinstall`
+### `reinstall`, `--reinstall`
 
  		am reinstall
  		am reinstall --all
@@ -886,7 +886,7 @@ See **[translations/README.md](translations/README.md)** for more information.
 Allow a hidden app to be shown and managed again (nulls "`hide`").
 
 ------------------------------------------------------------------------
-### `unlock`
+### `unlock`, `--unlock`
 
 		am unlock {PROGRAM}
 
