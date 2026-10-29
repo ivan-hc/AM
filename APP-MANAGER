@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="10.6-6"
+AMVERSION="10.6-9"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -17,26 +17,36 @@ ARCH="$(uname -m)"
 export ARCH
 
 # Substitute read function (with auto-yes)
+
+_read_e() {
+	if printf 'ok\n' | read -e _probe 2>/dev/null && printf 'ok\n' | read -p _probe 2>/dev/null; then
+		read -r -ep "$prompt" results
+	else
+		printf '%s' "$prompt"
+		IFS= read -r results
+	fi
+}
+
 _read() {
 	local prompt="$1"
 	local var_name="$2"
 	local results=""
-	if [[ "$default_yes" == true ]]; then
+	if [ "$default_yes" = true ]; then
 		# If variable name is 'yn', default to 'y'
-		if [[ "$var_name" == "yn" ]]; then
+		if [ "$var_name" = "yn" ]; then
 			results="y"
 		# If variable name is 'choice', default to '1'
-		elif [[ "$var_name" == "choice" ]]; then
+		elif [ "$var_name" = "choice" ]; then
 			results="1"
 		# If variable name is 'yn_abort', default to 'n' to abort the AM command
-		elif [[ "$var_name" == "yn_abort" ]]; then
+		elif [ "$var_name" = "yn_abort" ]; then
 			results="n"
 		# If variable name is 'choice_abort', default to '0' to abort the AM command
-		elif [[ "$var_name" == "choice_abort" ]]; then
+		elif [ "$var_name" = "choice_abort" ]; then
 			results="0"
 		fi
 	else
-		read -r -ep "$prompt" results
+		_read_e
 	fi
 	eval "$var_name='$results'"
 }
@@ -1177,7 +1187,7 @@ _use_pla_install_handler() {
 		if ! command -v am >/dev/null 2>&1; then
 			echo "Error: System-wide install requires 'am', which isn't installed." | _fit
 			printf "\n"
-			read -p "Press [ENTER] to exit."
+			printf '%s' "Press [ENTER] to exit." >&2; read -r response
 			exit 1
 		else
 			am -i "$PLA_APP"
@@ -1190,7 +1200,7 @@ _use_pla_install_handler() {
 		fi
 	fi
 	printf "\n"
-	read -p "Press [ENTER] to close this window."
+	printf '%s' "Press [ENTER] to close this window." >&2; read -r response
 }
 
 # VERSION OF THE INSTALLED APPS
@@ -2635,6 +2645,7 @@ case "$1" in
 
 		# Descriptions
 		description_about=$(echo $"Description: Shows more info about one or more apps.")
+		description_about_markdown=$(echo $"Add -m or --markdown to see the markdown version. Requires the terminal to be at least 80 columns wide.")
 		description_apikey=$(echo $"Description: Accede to github APIs using your personal access tokens. The file named \"ghapikey.txt\" will be saved in $AMDATADIR. Use \"del\" to remove it.")
 		description_backup=$(echo $"Description: Create a snapshot of the current version of an installed program.")
 		description_clean=$(echo $"Description: Removes all the unnecessary files and folders.")
@@ -2712,8 +2723,11 @@ case "$1" in
 			${Gold}about, -a\033[0m
 
 					${LightBlue}$AMCLI -a {$_PROGRAM}\033[0m
+					${LightBlue}$AMCLI -a -m, --markdown {$_PROGRAM}\033[0m
 
 			$description_about
+
+			$description_about_markdown
 
 			${Gold}apikey\033[0m
 
