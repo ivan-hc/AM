@@ -1027,6 +1027,9 @@ _sandbox_generate_sandbox_script() {
 	SANDBOXDIR="${SANDBOXDIR:-$HOME/.local/am-sandboxes}"
 	DBUS="$(ls /tmp/dbus* 2>/dev/null | head -1)"
 
+	# Source custom environment variables
+	[ -f "$APPEXEC".env ] && . "$APPEXEC".env
+
 	# get xdg user dirs, unset if var = $HOME
 	for DIR in DESKTOP DOCUMENTS DOWNLOAD GAMES MUSIC PICTURES VIDEOS; do
 	  eval XDG_DIR="$(xdg-user-dir $DIR 2>/dev/null)"
@@ -1341,6 +1344,31 @@ case "$1" in
 							printf "\n" && _use_sandbox "$pure_arg"
 						fi
 					fi
+				fi
+			fi
+			# Detect AppImages with FUSE2 dependency
+			if [ -f "$APPSPATH/$pure_arg/$pure_arg" ] && head -c10 "$APPSPATH/$pure_arg/$pure_arg" 2>/dev/null | grep -qa '^.ELF....AI$' && head -c1000000 "$APPSPATH/$pure_arg/$pure_arg" 2>/dev/null | grep -qa 'AppImages require FUSE to run'; then
+				cat <<-HEREDOC >> "$APPSPATH/$pure_arg/$pure_arg".env
+				if [ -f $APPSPATH/$pure_arg/$pure_arg ] && head -c10 $APPSPATH/$pure_arg/$pure_arg 2>/dev/null | grep -qa '^.ELF....AI$' && head -c1000000 $APPSPATH/$pure_arg/$pure_arg 2>/dev/null | grep -qa 'AppImages require FUSE to run'; then
+				   export APPIMAGE_EXTRACT_AND_RUN=1
+				fi
+				HEREDOC
+				if echo "$APPSPATH" | grep -q "^/opt\|^/var/opt"; then
+					$SUDOCMD rm -f /urs/local/bin/"$pure_arg"
+					$SUDOCMD cat <<-HEREDOC >> /urs/local/bin/"$pure_arg"
+					#!/bin/sh
+					. $APPSPATH/$pure_arg/$pure_arg.env
+					exec $APPSPATH/$pure_arg/$pure_arg \$@
+					HEREDOC
+					$SUDOCMD chmod a+x /urs/local/bin/"$pure_arg"
+				else
+					rm -f "$BINDIR"/"$pure_arg"
+					cat <<-HEREDOC >> "$BINDIR"/"$pure_arg"
+					#!/bin/sh
+					. $APPSPATH/$pure_arg/$pure_arg.env
+					exec $APPSPATH/$pure_arg/$pure_arg \$@
+					HEREDOC
+					chmod a+x "$BINDIR"/"$pure_arg"
 				fi
 			fi
 			echo "____________________________________________________________________________"
