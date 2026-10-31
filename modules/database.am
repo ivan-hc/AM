@@ -118,6 +118,10 @@ _about_description() {
 	AMCATALOGUEMARKDOWNS="${AMCATALOGUEMARKDOWNS:-https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/refs/heads/main/apps}"
 	markdown_url="$AMCATALOGUEMARKDOWNS/$arg"
 	markdown_page=$(_use_online_reading_tool "$markdown_url")
+	about_description=""
+	about_screenshot=""
+	about_site=""
+	about_source=""
 	if echo "$markdown_page" | grep -q "^==="; then
 		about_description=$(echo "$markdown_page" | awk '/^===$/{f=!f; next} f')
 		about_screenshot=$(echo "$markdown_page" | grep "^# SCREENSHOTS:" | sed 's/^# SCREENSHOTS: *//' | tr ' ' '\n' | grep . | grep -v "contribute_ss.webp")
@@ -132,6 +136,19 @@ _about_description() {
 		markdown_page=""
 		_about_description_for_third_party | _about_description_fit
 	fi
+}
+
+# Shows the pre-rendered page of the online catalog, as it is
+_about_markdown() {
+	AMCATALOGUETERMNFO="${AMCATALOGUETERMNFO:-https://portable-linux-apps.github.io/termnfo}"
+	markdown_url="$AMCATALOGUETERMNFO/$arg"
+	markdown_page=$(_use_online_reading_tool "$markdown_url")
+	# The site answers with an HTML page when the requested file does not exist
+	if [ -z "$markdown_page" ] || echo "$markdown_page" | grep -qi "<!doctype\|<html"; then
+		return 1
+	fi
+	printf "\n%s\n" "$markdown_page"
+	return 0
 }
 
 _about() {
@@ -154,7 +171,11 @@ _about() {
 			echo $" Disk usage: $disk_usage MB"
 			echo $" Installed version: $app_version"
 		fi
-		_about_description
+		if [ -n "$about_markdown" ]; then
+			_about_markdown || _about_description
+		else
+			_about_description
+		fi
 	else
 		printf " PACKAGE: %b%b\033[0m\n" "${Gold}" "$arg"
 		app_status="${RED}NOT a valid package name\033[0m / ${RED}NOT available\033[0m"
@@ -844,7 +865,11 @@ _find_no_order() {
 
 case "$1" in
 	'-a'|'about')
+		# Suboption "-m"/"--markdown", shows the pre-rendered page of the online catalog
+		echo "$@" | tr ' ' '\n' | grep -q -e '^-m$' -e '^--markdown$' && about_markdown="true"
 		[ -z "$2" ] && echo $" USAGE: $AMCLI $1 [ARGUMENT]" && exit 1
+		entries="$(echo "$@" | cut -f2- -d ' ' | tr ' ' '\n' | grep -v -e '^-m$' -e '^--markdown$' | grep .)"
+		[ -z "$entries" ] && echo $" USAGE: $AMCLI $1 [-m] [ARGUMENT]" && exit 1
 		_online_check
 		_completion_lists
 		_sync_third_party_lists
@@ -852,7 +877,6 @@ case "$1" in
 		_detect_scriptnames
 		echo "$DIVIDING_LINE"
 		rm -f "$AMCACHEDIR"/version-args && _check_version
-		entries="$(echo "$@" | cut -f2- -d ' ')" # Removes first argument
 		for arg in $entries; do
 			_about "$arg"
 			echo "$DIVIDING_LINE"
