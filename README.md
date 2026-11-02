@@ -391,6 +391,7 @@ Because of this, I have made some essential variables "customizable":
 - `APPSDBLIST`, i.e. the list of applications available for that architecture (default value *https://raw.githubusercontent.com/ivan-hc/AM/main/programs/$ARCH-apps*), this is used every time lists are updated, for example in `-l`, `-q` and `-s`/`-u`
 - `APPIMAGES_LIST`, i.e. the list of AppImages available in the database (default value *https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/main/x86_64-appimages*), used in `-ia` and `-l`/`-q` with the `--appimages` flag
 - `AMCATALOGUEMARKDOWNS`, i.e. the pages in plain text format from the catalog of applications available in this database (default value *https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/refs/heads/main/apps*, add an appname to see the content of one file), this is used in `-a`
+- `AMCATALOGUETERMNFO`, i.e. the pre-rendered pages of the catalog of applications available in this database (default value *https://portable-linux-apps.github.io/termnfo*, add an appname to see the content of one file), this is used in `-a` with the `-m`/`--markdown` suboption
 - `AMCATALOGUEICONS`, i.e. the icons in .png format available in the catalog of applications available in this database (default value *https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/main/icons*, add an appname with extension .png to see one file), this is used in `-i`, in case the installation script fails to get an icon for the application
 - `AMSYNC`, if set to "1" prevents AM from updating itself and updating modules when running `-s` or `-u`
 
@@ -551,10 +552,11 @@ Visit [github.com/topgrade-rs/topgrade](https://github.com/topgrade-rs/topgrade)
 ### `about`, `-a`
 
 		am -a {PROGRAM}
+		am -a -m, --markdown {PROGRAM}
 
 **Description**:
 
-Shows more info about one or more apps.
+Shows more info about one or more apps. Add `-m` or `--markdown` to see the markdown version. Requires the terminal to be at least 80 columns wide.
 
 ------------------------------------------------------------------------
 ### `apikey`
@@ -737,7 +739,7 @@ Same as "install" (see above) but for AppImages only.  Option "`-ias`" (aka Inst
 Shows the list of all the apps available. Without flags only shows the apps in the "AM" database, add the "`--appimages`" to show only the AppImages or "`--portable`" to show other formats from the "AM" database. The "`--all`" flag allows you to consult the set of all supported third-party databases. It can also be extended with additional flags.
 
 ------------------------------------------------------------------------
-### `lock`
+### `lock`, `--lock`
 
 		am lock {PROGRAM}
 
@@ -790,7 +792,7 @@ Overwrite apps with snapshots saved previously (see "`-b`").
 Search for keywords in the list of available applications, add the "`--appimages`" option to list only the AppImages, "`--portable`" option to list only the portable apps or add "`--pkg`" to list multiple programs at once. The "`--all`" flag allows you to consult the set of all supported databases.
 
 ------------------------------------------------------------------------
-### `reinstall`
+### `reinstall`, `--reinstall`
 
  		am reinstall
  		am reinstall --all
@@ -884,7 +886,7 @@ See **[translations/README.md](translations/README.md)** for more information.
 Allow a hidden app to be shown and managed again (nulls "`hide`").
 
 ------------------------------------------------------------------------
-### `unlock`
+### `unlock`, `--unlock`
 
 		am unlock {PROGRAM}
 

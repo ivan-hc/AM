@@ -12,7 +12,7 @@ printf '\n%s' "rm -f /usr/local/share/applications/$APP-AM.desktop" >> ../remove
 chmod a+x ../remove || exit 1
 
 # DOWNLOAD AND PREPARE THE APP, $version is also used for updates
-read -r -p "
+printf '%s' "
  Choose which version of $APP AppImage to use:
 
  1) AMD64 (PGO)
@@ -24,21 +24,19 @@ read -r -p "
  7) STEAMDECK (PGO)
  8) STEAMDECK (STANDARD)
 
- Which version you choose (type a number and press ENTER)?" response
+ Which version you choose (type a number and press ENTER)?" >&2 && read -r response
 RELEASE=""
-case "$response" in
-	1) RELEASE="amd64"; CLASS="pgo";;
-	2) RELEASE="amd64"; CLASS="standard";;
-	3) RELEASE="legacy"; CLASS="pgo";;
-	4) RELEASE="legacy"; CLASS="standard";;
-	5) RELEASE="rog"; CLASS="pgo";;
-	6) RELEASE="rog"; CLASS="standard";;
-	7) RELEASE="steamdeck"; CLASS="pgo";;
-	8) RELEASE="steamdeck"; CLASS="standard";;
-esac
+[ "$response" = "1" ] && RELEASE="amd64-clang-pgo"
+[ "$response" = "2" ] && RELEASE="amd64-gcc-standard"
+[ "$response" = "3" ] && RELEASE="legacy-clang-pgo"
+[ "$response" = "4" ] && RELEASE="legacy-gcc-standard"
+[ "$response" = "5" ] && RELEASE="rog-clang-pgo"
+[ "$response" = "6" ] && RELEASE="rog-gcc-standard"
+[ "$response" = "7" ] && RELEASE="steamdeck-clang-pgo"
+[ "$response" = "8" ] && RELEASE="steamdeck-gcc-standard"
 [ -z "$RELEASE" ] && exit 1
 
-version=$(curl -Ls https://stable.eden-emu.dev/latest/release.json | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | grep -i "$RELEASE.*$CLASS" | head -1)
+version=$(curl -Ls https://stable.eden-emu.dev/latest/release.json | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | grep -i "$RELEASE" | head -1)
 if [ -z "$version" ]; then
 	printf "\n 💀 ERROR: it seems that upstream removed %b, please retry\n" "$RELEASE" && exit 1
 else
@@ -61,7 +59,7 @@ set -u
 APP=eden
 SITE="https://git.eden-emu.dev"
 version0=$(cat "/opt/$APP/version")
-version=$(curl -Ls https://stable.eden-emu.dev/latest/release.json | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | grep -i "TYPE.*CLASS" | head -1)
+version=$(curl -Ls https://stable.eden-emu.dev/latest/release.json | sed 's/[()",{} ]/\n/g' | grep -oi "https.*mage$" | grep -vi "i386\|i686\|aarch64\|arm64\|armv7l" | grep -i "REPLACETHIS" | head -1)
 [ -n "$version" ] || { echo "Error getting link"; exit 1; }
 if command -v appimageupdatetool >/dev/null 2>&1; then
 	cd "/opt/$APP" || exit 1
@@ -83,7 +81,7 @@ else
 fi
 EOF
 chmod a+x ./AM-updater || exit 1
-sed -i "s/TYPE/$RELEASE/g; s/CLASS/$CLASS/g" /opt/"$APP"/AM-updater
+sed -i "s/REPLACETHIS/$RELEASE/g" /opt/"$APP"/AM-updater
 
 # LAUNCHER & ICON
 ./"$APP" --appimage-extract *.desktop 1>/dev/null && mv ./squashfs-root/*.desktop ./"$APP".desktop
