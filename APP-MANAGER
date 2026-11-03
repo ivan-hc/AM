@@ -28,9 +28,9 @@ _read_e() {
 }
 
 _read() {
-	local prompt="$1"
-	local var_name="$2"
-	local results=""
+	prompt="$1"
+	var_name="$2"
+	results=""
 	if [ "$default_yes" = true ]; then
 		# If variable name is 'yn', default to 'y'
 		if [ "$var_name" = "yn" ]; then
@@ -170,42 +170,36 @@ _check_wget_version
 
 # Identify objects online
 _use_online_check_tool() {
-	local url="$1"
 	if command -v curl >/dev/null 2>&1; then
-		curl --output /dev/null --silent --head --fail "$url" 1>/dev/null
+		curl --output /dev/null --silent --head --fail "$1" 1>/dev/null
 	elif command -v wget >/dev/null 2>&1; then
-		wget -q --tries=10 --timeout=20 --spider "$url"
+		wget -q --tries=10 --timeout=20 --spider "$1"
 	fi
 }
 
 # Read online text
 _use_online_reading_tool() {
-	local url="$1"
 	if command -v curl >/dev/null 2>&1; then
-		curl -Ls "$url" 2>/dev/null
+		curl -Ls "$1" 2>/dev/null
 	elif command -v wget >/dev/null 2>&1; then
-		wget -q -O - "$url" 2>/dev/null
+		wget -q -O - "$1" 2>/dev/null
 	fi
 }
 
 # Download files
 _use_online_downloader() {
-	local file="$2"
-	local url="$1"
 	if command -v curl >/dev/null 2>&1; then
-		curl -s -Lo "$file" "$url" 2>/dev/null
+		curl -s -Lo "$2" "$1" 2>/dev/null
 	elif command -v wget >/dev/null 2>&1; then
-		wget -q "$url" -O "$file" 2>/dev/null
+		wget -q "$1" -O "$2" 2>/dev/null
 	fi
 }
 
 _use_online_downloader_as_root() {
-	local file="$2"
-	local url="$1"
 	if command -v curl >/dev/null 2>&1; then
-		$SUDOCMD curl -s -Lo "$file" "$url" 2>/dev/null
+		$SUDOCMD curl -s -Lo "$2" "$1" 2>/dev/null
 	elif command -v wget >/dev/null 2>&1; then
-		$SUDOCMD wget -q "$url" -O "$file" 2>/dev/null
+		$SUDOCMD wget -q "$1" -O "$2" 2>/dev/null
 	fi
 }
 
@@ -1399,25 +1393,23 @@ ghapikey_file="$AMDATADIR/ghapikey.txt"
 
 # Function to validate GitHub API tokens
 _validate_github_token() {
-	local token="$1"
-	local quiet="${2:-false}"  # Optional parameter to suppress output
+	ghtoken_quiet="${2:-false}"  # Optional parameter to suppress output
 
 	# Check HTTP status code for proper validation
-	local HTTP_STATUS
-		if command -v curl >/dev/null 2>&1; then
-		HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --header "Authorization: token $token" "https://api.github.com/repos/ivan-hc/AM/releases")
+	if command -v curl >/dev/null 2>&1; then
+		ghtoken_http_status=$(curl -s -o /dev/null -w "%{http_code}" --header "Authorization: token $1" "https://api.github.com/repos/ivan-hc/AM/releases")
 	elif command -v wget >/dev/null 2>&1; then
-		HTTP_STATUS=$(wget --quiet --server-response --header="Authorization: token $token" --output-document=/dev/null "https://api.github.com/repos/ivan-hc/AM/releases" 2>&1 | awk '/HTTP\// {print $2}')
+		ghtoken_http_status=$(wget --quiet --server-response --header="Authorization: token $1" --output-document=/dev/null "https://api.github.com/repos/ivan-hc/AM/releases" 2>&1 | awk '/HTTP\// {print $2}')
 	fi
 
-	if [ "$HTTP_STATUS" = "200" ]; then
-		[ "$quiet" != "true" ] && echo $"Validation successful!"
+	if [ "$ghtoken_http_status" = "200" ]; then
+		[ "$ghtoken_quiet" != "true" ] && echo $"Validation successful!"
 		return 0
-	elif [ "$HTTP_STATUS" = "401" ] || [ "$HTTP_STATUS" = "403" ]; then
-		[ "$quiet" != "true" ] && echo $"ERROR: Invalid token or insufficient permissions!"
+	elif [ "$ghtoken_http_status" = "401" ] || [ "$ghtoken_http_status" = "403" ]; then
+		[ "$ghtoken_quiet" != "true" ] && echo $"ERROR: Invalid token or insufficient permissions!"
 		return 1
 	else
-		[ "$quiet" != "true" ] && echo $"ERROR: Unexpected response (HTTP $HTTP_STATUS)"
+		[ "$ghtoken_quiet" != "true" ] && echo $"ERROR: Unexpected response (HTTP $ghtoken_http_status)"
 		return 2
 	fi
 }
@@ -1441,7 +1433,7 @@ _use_apikey() {
 		exit 0
 	esac
 	_online_check
-	local ghtoken="${2:-}"
+	ghtoken="${2:-}"
 	if [ -z "$ghtoken" ]; then
 		read -r -s -p $"Paste your GitHub personal access token (input is hidden): " ghtoken
 		echo ""
