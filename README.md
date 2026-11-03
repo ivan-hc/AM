@@ -1199,7 +1199,7 @@ Below you can access documentation pages for common issues and frequently asked 
 
 #### External tools and forks used in this project
 - *[aisap](https://github.com/mgord9518/aisap) and [sas](https://github.com/Samueru-sama/simple-appimage-sandbox), sandboxing solutions for AppImages, see sandboxing options above*
-- *[appimagetool](https://github.com/AppImage/appimagetool), get rid of libfuse2 from old AppImages (option `nolibfuse`) and create AppImages on the fly*
+- *[**appimagetool** "fork"](https://github.com/ivan-hc/appimagetool), to get rid of libfuse2 from old AppImages (option `nolibfuse`) and create AppImages on the fly*
 
 #### Organizations and their affiliates that actively contribute to this project
 - *[Package Forge](https://github.com/pkgforge), Improving Package Management & Security for Linux systems*
