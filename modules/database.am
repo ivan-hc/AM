@@ -118,6 +118,10 @@ _about_description() {
 	AMCATALOGUEMARKDOWNS="${AMCATALOGUEMARKDOWNS:-https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/refs/heads/main/apps}"
 	markdown_url="$AMCATALOGUEMARKDOWNS/$arg"
 	markdown_page=$(_use_online_reading_tool "$markdown_url")
+	about_description=""
+	about_screenshot=""
+	about_site=""
+	about_source=""
 	if echo "$markdown_page" | grep -q "^==="; then
 		about_description=$(echo "$markdown_page" | awk '/^===$/{f=!f; next} f')
 		about_screenshot=$(echo "$markdown_page" | grep "^# SCREENSHOTS:" | sed 's/^# SCREENSHOTS: *//' | tr ' ' '\n' | grep . | grep -v "contribute_ss.webp")
@@ -132,6 +136,19 @@ _about_description() {
 		markdown_page=""
 		_about_description_for_third_party | _about_description_fit
 	fi
+}
+
+# Shows the pre-rendered page of the online catalog, as it is
+_about_markdown() {
+	AMCATALOGUETERMNFO="${AMCATALOGUETERMNFO:-https://portable-linux-apps.github.io/termnfo}"
+	markdown_url="$AMCATALOGUETERMNFO/$arg"
+	markdown_page=$(_use_online_reading_tool "$markdown_url")
+	# The site answers with an HTML page when the requested file does not exist
+	if [ -z "$markdown_page" ] || echo "$markdown_page" | grep -qi "<!doctype\|<html"; then
+		return 1
+	fi
+	printf "\n%s\n" "$markdown_page"
+	return 0
 }
 
 _about() {
@@ -154,7 +171,11 @@ _about() {
 			echo $" Disk usage: $disk_usage MB"
 			echo $" Installed version: $app_version"
 		fi
-		_about_description
+		if [ -n "$about_markdown" ]; then
+			_about_markdown || _about_description
+		else
+			_about_description
+		fi
 	else
 		printf " PACKAGE: %b%b\033[0m\n" "${Gold}" "$arg"
 		app_status="${RED}NOT a valid package name\033[0m / ${RED}NOT available\033[0m"
@@ -291,23 +312,22 @@ _files_type() {
 
 # Human readable formatting from bytes - produce du-like compact suffixes (e.g., 124G, 301.4M)
 _hr_bytes() {
-	local b="$1"
 	# Validate input; if not numeric, return 0.00 Bytes
-	if ! printf '%s' "$b" | grep -qE '^[0-9]+$'; then
+	if ! printf '%s' "$1" | grep -qE '^[0-9]+$'; then
 		printf "0.00 Bytes"
 		return
 	fi
 
 	# Always print two decimals and use unit letters only (G/M/K/B).
 	# The caller appends "iB" later, so returning e.g. "123.00G" will become "123.00GiB".
-	if [ "$b" -ge 1073741824 ]; then
-		awk -v x="$b" 'BEGIN{printf "%.2fG", x/1073741824}'
-	elif [ "$b" -ge 1048576 ]; then
-		awk -v x="$b" 'BEGIN{printf "%.2fM", x/1048576}'
-	elif [ "$b" -ge 1024 ]; then
-		awk -v x="$b" 'BEGIN{printf "%.2fK", x/1024}'
+	if [ "$1" -ge 1073741824 ]; then
+		awk -v x="$1" 'BEGIN{printf "%.2fG", x/1073741824}'
+	elif [ "$1" -ge 1048576 ]; then
+		awk -v x="$1" 'BEGIN{printf "%.2fM", x/1048576}'
+	elif [ "$1" -ge 1024 ]; then
+		awk -v x="$1" 'BEGIN{printf "%.2fK", x/1024}'
 	else
-		awk -v x="$b" 'BEGIN{printf "%.2fB", x}'
+		awk -v x="$1" 'BEGIN{printf "%.2fB", x}'
 	fi
 }
 
@@ -367,16 +387,15 @@ _files() {
 		declare -a _DU_PIDS=()
 		_wait_for_du_slot() {
 			# prune finished pids
-			local new p
-			new=()
-			for p in "${_DU_PIDS[@]}"; do
-				if kill -0 "$p" 2>/dev/null; then
-					new+=("$p")
+			du_slot_new=()
+			for du_slot_p in "${_DU_PIDS[@]}"; do
+				if kill -0 "$du_slot_p" 2>/dev/null; then
+					du_slot_new+=("$du_slot_p")
 				else
-					wait "$p" 2>/dev/null || true
+					wait "$du_slot_p" 2>/dev/null || true
 				fi
 			done
-			_DU_PIDS=("${new[@]}")
+			_DU_PIDS=("${du_slot_new[@]}")
 			# block until below job limit
 			while [ "${#_DU_PIDS[@]}" -ge "$JOBS" ]; do
 				if wait -n 2>/dev/null; then
@@ -384,15 +403,15 @@ _files() {
 				else
 					sleep 0.05
 				fi
-				new=()
-				for p in "${_DU_PIDS[@]}"; do
-					if kill -0 "$p" 2>/dev/null; then
-						new+=("$p")
+				du_slot_new=()
+				for du_slot_p in "${_DU_PIDS[@]}"; do
+					if kill -0 "$du_slot_p" 2>/dev/null; then
+						du_slot_new+=("$du_slot_p")
 					else
-						wait "$p" 2>/dev/null || true
+						wait "$du_slot_p" 2>/dev/null || true
 					fi
 				done
-				_DU_PIDS=("${new[@]}")
+				_DU_PIDS=("${du_slot_new[@]}")
 			done
 		}
 
@@ -454,17 +473,16 @@ _files() {
 	declare -a _PIDS=()
 	_wait_for_slot() {
 		# Clean up finished pids from _PIDS
-		local new p
-		new=()
-		for p in "${_PIDS[@]}"; do
-			if kill -0 "$p" 2>/dev/null; then
-				new+=("$p")
+		pid_slot_new=()
+		for pid_slot_p in "${_PIDS[@]}"; do
+			if kill -0 "$pid_slot_p" 2>/dev/null; then
+				pid_slot_new+=("$pid_slot_p")
 			else
 				# reap finished pid
-				wait "$p" 2>/dev/null || true
+				wait "$pid_slot_p" 2>/dev/null || true
 			fi
 		done
-		_PIDS=("${new[@]}")
+		_PIDS=("${pid_slot_new[@]}")
 		# If we are at or above the limit, wait for any job to finish.
 		while [ "${#_PIDS[@]}" -ge "$JOBS" ]; do
 			# Prefer wait -n (faster). If not available, poll and reap.
@@ -474,15 +492,15 @@ _files() {
 				# Simple polling fallback: sleep a short time and then prune _PIDS
 				sleep 0.05
 			fi
-			new=()
-			for p in "${_PIDS[@]}"; do
-				if kill -0 "$p" 2>/dev/null; then
-					new+=("$p")
+			pid_slot_new=()
+			for pid_slot_p in "${_PIDS[@]}"; do
+				if kill -0 "$pid_slot_p" 2>/dev/null; then
+					pid_slot_new+=("$pid_slot_p")
 				else
-					wait "$p" 2>/dev/null || true
+					wait "$pid_slot_p" 2>/dev/null || true
 				fi
 			done
-			_PIDS=("${new[@]}")
+			_PIDS=("${pid_slot_new[@]}")
 		done
 	}
 
@@ -844,7 +862,11 @@ _find_no_order() {
 
 case "$1" in
 	'-a'|'about')
+		# Suboption "-m"/"--markdown", shows the pre-rendered page of the online catalog
+		echo "$@" | tr ' ' '\n' | grep -q -e '^-m$' -e '^--markdown$' && about_markdown="true"
 		[ -z "$2" ] && echo $" USAGE: $AMCLI $1 [ARGUMENT]" && exit 1
+		entries="$(echo "$@" | cut -f2- -d ' ' | tr ' ' '\n' | grep -v -e '^-m$' -e '^--markdown$' | grep .)"
+		[ -z "$entries" ] && echo $" USAGE: $AMCLI $1 [-m] [ARGUMENT]" && exit 1
 		_online_check
 		_completion_lists
 		_sync_third_party_lists
@@ -852,7 +874,6 @@ case "$1" in
 		_detect_scriptnames
 		echo "$DIVIDING_LINE"
 		rm -f "$AMCACHEDIR"/version-args && _check_version
-		entries="$(echo "$@" | cut -f2- -d ' ')" # Removes first argument
 		for arg in $entries; do
 			_about "$arg"
 			echo "$DIVIDING_LINE"

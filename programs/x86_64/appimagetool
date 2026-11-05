@@ -1,9 +1,11 @@
 #!/bin/sh
 
-# AM INSTALL SCRIPT VERSION 3.5
+# AM INSTALL SCRIPT VERSION 3.6
 set -u
 APP=appimagetool
-SITE="AppImage/appimagetool"
+SITE1="AppImage/appimagetool" SITE2="ivan-hc/appimagetool" SITE3="pkgforge-dev/appimagetool-uruntime"
+#VARIANT1="short label like: JuNest, Anylinux, " VARIANT2="Legacy/GTK3, Enhanced, etc."
+# NOTE: this should be commented like this ^
 
 # CREATE DIRECTORIES AND ADD REMOVER
 [ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
@@ -12,10 +14,38 @@ printf '\n%s' "rm -f /usr/local/share/applications/$APP-AM.desktop" >> ../remove
 chmod a+x ../remove || exit 1
 
 # DOWNLOAD AND PREPARE THE APP, $version is also used for updates
-version=$(curl -Ls https://api.github.com/repos/AppImage/appimagetool/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*x86_64.*mage$" | head -1)
-wget "$version" || exit 1
-# Keep this space in sync with other installation scripts
-# Use tar fx ./*tar* here for example in this line in case a compressed file is downloaded.
+read -r -p "
+ Choose which version of $APP AppImage to use:
+
+ 1. Official release
+
+    Source: https://github.com/$SITE1
+
+ 2. Fork maintained by ivan-hc, to avoid breakages originating from upstream
+
+    Source: https://github.com/$SITE2
+
+ 3. Fork that uses the uruntime AppImage runtime by default
+
+    Source: https://github.com/$SITE3
+
+ Which version you choose (type a number and press ENTER)?" response
+RELEASE=""
+if echo "$response" | grep -q "^1"; then
+	RELEASE="$SITE1"
+elif echo "$response" | grep -q "^2"; then
+	RELEASE="$SITE2"
+elif echo "$response" | grep -q "^3"; then
+	RELEASE="$SITE3"
+fi
+[ -z "$RELEASE" ] && exit 0
+
+version=$(curl -Ls https://api.github.com/repos/"$RELEASE"/releases | sed 's/[()",{} ]/\n/g' | grep -io 'https.*x86_64.*mage$' | head -1)
+if [ -z "$version" ]; then
+	printf "\n 💀 ERROR: it seems that upstream removed %b, please retry\n" "$RELEASE" && exit 1
+else
+	wget "$version" || exit 1
+fi
 cd ..
 mv ./tmp/*mage ./"$APP"
 # Keep this space in sync with other installation scripts
@@ -31,9 +61,9 @@ cat >> ./AM-updater << 'EOF'
 #!/bin/sh
 set -u
 APP=appimagetool
-SITE="AppImage/appimagetool"
+SITE="REPLACETHIS"
 version0=$(cat "/opt/$APP/version")
-version=$(curl -Ls https://api.github.com/repos/AppImage/appimagetool/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*x86_64.*mage$" | head -1)
+version=$(curl -Ls https://api.github.com/repos/REPLACETHIS/releases | sed 's/[()",{} ]/\n/g' | grep -io 'https.*x86_64.*mage$' | head -1)
 [ -n "$version" ] || { echo "Error getting link"; exit 1; }
 if command -v appimageupdatetool >/dev/null 2>&1; then
 	cd "/opt/$APP" || exit 1
@@ -55,4 +85,4 @@ else
 fi
 EOF
 chmod a+x ./AM-updater || exit 1
-
+sed -i "s#REPLACETHIS#$RELEASE#g" /opt/"$APP"/AM-updater
