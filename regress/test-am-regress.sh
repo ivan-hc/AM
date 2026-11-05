@@ -15,6 +15,7 @@ _log "Done.\n"
 # Run all regression tests
 ./test-am-versions.sh
 ./test-am-fuzzy-suggest.sh
+./test-am-template-similar.sh
 ./test-am-defaults.sh
 ./test-am-hide.sh
 ./test-am-install.sh
