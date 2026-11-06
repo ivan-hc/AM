@@ -357,7 +357,7 @@ The value of `$appman_location` can be a full path or the name of a directory (w
 "AM" installs, removes, updates and manages only standalone programs, ie those programs that can be run from a single directory in which they are contained.
 
 1. **PORTABLE PROGRAMS** from official sources (see Firefox, Thunderbird, NodeJS, Platform Tools...), extracted from official .deb/tar/zip packages.
-2. **APPIMAGES**, from both official and unofficial sources (I also create unofficial AppImages), or compiled on-the-fly with [pkg2appimage](https://github.com/AppImage/pkg2appimage) and [appimagetool](https://github.com/AppImage/AppImageKit), like an AUR helper, from official archives.
+2. **APPIMAGES**, from both official and unofficial sources (I also create unofficial AppImages), or compiled on-the-fly with [portable2appimage](https://github.com/ivan-hc/portable2appimage), like an AUR helper, from official archives.
 3. **THIRD-PARTY LIBRARIES** if they are missing in your repositories.
 
 The database aims to be a reference point where you can download all the AppImage packages scattered around the web, otherwise unobtainable, as you would expect from any package manager, through specific installation scripts for each application, as happens with the AUR PKGBUILDs, on Arch Linux. You can see all of them [here](https://github.com/ivan-hc/AM/tree/main/programs), divided by architecture.
@@ -406,13 +406,13 @@ There are many discontinuous projects. Should this become one too, it will not b
 After installing AM, the following packages are a must have to make your life easier:
 
 ### *1) `appimageupdatetool`*
-[**appimageupdatetool**](https://github.com/pkgforge-dev/AppImageUpdate) (fork) is a tool to get delta updates of AppImages that support them, useful if you decide to install large AppImage packages (*see "[How to update all programs, for real!](https://github.com/ivan-hc/AM?tab=readme-ov-file#how-to-update-all-programs-for-real)"*)
+**appimageupdatetool** and **appimageupdate** are tools to get delta updates of AppImages that support them, useful if you decide to install large AppImage packages (*see "[How to update all programs, for real!](https://github.com/ivan-hc/AM?tab=readme-ov-file#how-to-update-all-programs-for-real)"*)
 ```
 am -i appimageupdatetool
 ```
 
 ### *2) `appimagetool`*
-[**appimagetool**](https://github.com/AppImage/appimagetool) is a tool used to create AppImage packages from AppDirs. "AM" uses this to convert old AppImages and remove their dependency on libfuse2 or to assemble AppImage packages on the fly from portable archives, like in an AUR helper (*see "[Convert Type2 AppImages requiring libfuse2 to New Generation AppImages](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/nolibfuse.md)" and "[Option One: "build AppImages on-the-fly](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/template.md#option-one-build-appimages-on-the-fly)"*)
+**appimagetool** is a tool used to create AppImage packages from AppDirs. "AM" uses this to convert old AppImages and remove their dependency on libfuse2 or to assemble AppImage packages on the fly from portable archives, like in an AUR helper (*see "[Convert Type2 AppImages requiring libfuse2 to New Generation AppImages](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/nolibfuse.md)" and "[Option One: "build AppImages on-the-fly](https://github.com/ivan-hc/AM/blob/main/docs/guides-and-tutorials/template.md#option-one-build-appimages-on-the-fly)"*)
 ```
 am -i appimagetool
 ```
@@ -1199,7 +1199,7 @@ Below you can access documentation pages for common issues and frequently asked 
 
 #### External tools and forks used in this project
 - *[aisap](https://github.com/mgord9518/aisap) and [sas](https://github.com/Samueru-sama/simple-appimage-sandbox), sandboxing solutions for AppImages, see sandboxing options above*
-- *[**appimagetool** "fork"](https://github.com/ivan-hc/appimagetool), to get rid of libfuse2 from old AppImages (option `nolibfuse`) and create AppImages on the fly*
+- *[appimagetool](https://github.com/ivan-hc/appimagetool) (fork), to get rid of libfuse2 from old AppImages (option `nolibfuse`)*
 
 #### Organizations and their affiliates that actively contribute to this project
 - *[Package Forge](https://github.com/pkgforge), Improving Package Management & Security for Linux systems*
