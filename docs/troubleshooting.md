@@ -212,8 +212,7 @@ There are two solutions to this problem, one simple and one a little more comple
 2. The slightly more complex solution is to disable restrictions, via the command line. If you decide to adopt this one, see below.
 
 #### How to disable Apparmor restrictions
-If you chose number two and you feel happy with Ubuntu, follow these steps (as suggested [here](https://github.com/linuxmint/mint22-beta/issues/82)):
-1. run the following command to disable AppArmor restrictions (the file name is relative)
+If you chose number two and you feel happy with Ubuntu, run the following commands to disable AppArmor restrictions and apply the changes immediately (as suggested [here](https://github.com/linuxmint/mint22-beta/issues/82)):
 ```
 echo 'kernel.apparmor_restrict_unprivileged_userns = 0' | sudo tee /etc/sysctl.d/20-apparmor-mint.conf
 sudo sysctl --system
