@@ -2178,14 +2178,16 @@ _update_run_updater() {
 	fi
 	_alt_gh_off "$argpath"/AM-updater 2>/dev/null
 	checksum_msg=$(_use_verify | xargs 2>/dev/null)
-	end=$(date +%s)
-	timelapsed=$((end - start))
-	if [ "$timelapsed" = 1 ]; then
-		timelapsed_msg=$(printf $" %b✔\033[0m $APPNAME is updated, $timelapsed second elapsed! \n" "${Green}")
-	else
-		timelapsed_msg=$(printf $" %b✔\033[0m $APPNAME is updated, $timelapsed seconds elapsed! \n" "${Green}")
+	if [ -z "$debug_update" ]; then
+		end=$(date +%s)
+		timelapsed=$((end - start))
+		if [ "$timelapsed" = 1 ]; then
+			timelapsed_msg=$(printf $" %b✔\033[0m $APPNAME is updated, $timelapsed second elapsed! \n" "${Green}")
+		else
+			timelapsed_msg=$(printf $" %b✔\033[0m $APPNAME is updated, $timelapsed seconds elapsed! \n" "${Green}")
+		fi
+		printf -- "%b%b\n" "$timelapsed_msg" "$checksum_msg" | sed 's/^ //g; s/^/ /g'
 	fi
-	printf -- "%b%b\n" "$timelapsed_msg" "$checksum_msg" | sed 's/^ //g; s/^/ /g'
 	[ -n "$debug_update" ] && echo "$DIVIDING_LINE"
 }
 
@@ -2194,9 +2196,13 @@ _update_app() {
 	if ! echo "$argpath" | grep -q "^/opt\|^/var/opt" && [ "$AMCLI" != appman ]; then
 		APPNAME="$APPNAME (AppMan)"
 	fi
-	start=$(date +%s)
+	[ -z "$debug_update" ] && start=$(date +%s) || printf " %b✔\033[0m $APPNAME\n\n" "${Green}"
 	if [ -w "$argpath"/AM-updater ]; then
-		_update_run_updater &
+		if [ -z "$debug_update" ]; then
+			_update_run_updater &
+		else
+			_update_run_updater
+		fi
 	else
 		printf $" %b✖\033[0m %b is read-only, cannot update it!\n" "${RED}" "$APPNAME"
 	fi
