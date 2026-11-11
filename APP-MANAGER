@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="10.7"
+AMVERSION="10.7-1"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -1951,7 +1951,13 @@ _use_verify() {
 		fi
 		if [ -n "$download_url" ]; then
 			# Search for zsync file
-			digest=$(curl -Lsf "$download_url.zsync" | grep -a "SHA\|MD5" | tr -d '\0')
+			attempt=0
+			digest=""
+			while [ -z "$digest" ] && [ "$attempt" -lt 10 ]; do
+				attempt=$((attempt + 1))
+				digest=$(curl -Lsf "$download_url.zsync" | grep -a "SHA\|MD5" | tr -d '\0')
+				wait
+			done
 			if [ -z "$digest" ]; then
 				# Search other sources if no zsync file
 				for ext in digest DIGEST sha512 sha512sum sha256 sha256sum sha1 sha1sum md5 md5sum; do
@@ -2178,15 +2184,20 @@ _update_run_updater() {
 	fi
 	_alt_gh_off "$argpath"/AM-updater 2>/dev/null
 	checksum_msg=$(_use_verify | xargs 2>/dev/null)
-	end=$(date +%s)
-	timelapsed=$((end - start))
-	if [ "$timelapsed" = 1 ]; then
-		timelapsed_msg=$(printf $" %b✔\033[0m $APPNAME is updated, $timelapsed second elapsed! \n" "${Green}")
-	else
-		timelapsed_msg=$(printf $" %b✔\033[0m $APPNAME is updated, $timelapsed seconds elapsed! \n" "${Green}")
+	if [ -z "$debug_update" ]; then
+		end=$(date +%s)
+		timelapsed=$((end - start))
+		if [ "$timelapsed" = 1 ]; then
+			timelapsed_msg=$(printf $" %b✔\033[0m $APPNAME is updated, $timelapsed second elapsed! \n" "${Green}")
+		else
+			timelapsed_msg=$(printf $" %b✔\033[0m $APPNAME is updated, $timelapsed seconds elapsed! \n" "${Green}")
+		fi
+		printf -- "%b%b\n" "$timelapsed_msg" "$checksum_msg" | sed 's/^ //g; s/^/ /g'
 	fi
-	printf -- "%b%b\n" "$timelapsed_msg" "$checksum_msg" | sed 's/^ //g; s/^/ /g'
-	[ -n "$debug_update" ] && echo "$DIVIDING_LINE"
+	if [ -n "$debug_update" ]; then
+		[ -n "$checksum_msg" ] && printf -- "%b\n" "$checksum_msg" | sed 's/^ //g; s/^/ /g'
+		echo "$DIVIDING_LINE"
+	fi
 }
 
 _update_app() {
@@ -2194,9 +2205,13 @@ _update_app() {
 	if ! echo "$argpath" | grep -q "^/opt\|^/var/opt" && [ "$AMCLI" != appman ]; then
 		APPNAME="$APPNAME (AppMan)"
 	fi
-	start=$(date +%s)
+	[ -z "$debug_update" ] && start=$(date +%s) || printf " %b✔\033[0m $APPNAME\n\n" "${Green}"
 	if [ -w "$argpath"/AM-updater ]; then
-		_update_run_updater &
+		if [ -z "$debug_update" ]; then
+			_update_run_updater &
+		else
+			_update_run_updater
+		fi
 	else
 		printf $" %b✖\033[0m %b is read-only, cannot update it!\n" "${RED}" "$APPNAME"
 	fi
