@@ -1951,7 +1951,13 @@ _use_verify() {
 		fi
 		if [ -n "$download_url" ]; then
 			# Search for zsync file
-			digest=$(curl -Lsf "$download_url.zsync" | grep -a "SHA\|MD5" | tr -d '\0')
+			attempt=0
+			digest=""
+			while [ -z "$digest" ] && [ "$attempt" -lt 10 ]; do
+				attempt=$((attempt + 1))
+				digest=$(curl -Lsf "$download_url.zsync" | grep -a "SHA\|MD5" | tr -d '\0')
+				wait
+			done
 			if [ -z "$digest" ]; then
 				# Search other sources if no zsync file
 				for ext in digest DIGEST sha512 sha512sum sha256 sha256sum sha1 sha1sum md5 md5sum; do
@@ -2188,7 +2194,10 @@ _update_run_updater() {
 		fi
 		printf -- "%b%b\n" "$timelapsed_msg" "$checksum_msg" | sed 's/^ //g; s/^/ /g'
 	fi
-	[ -n "$debug_update" ] && echo "$DIVIDING_LINE"
+	if [ -n "$debug_update" ]; then
+		[ -n "$checksum_msg" ] && printf -- "%b\n" "$checksum_msg" | sed 's/^ //g; s/^/ /g'
+		echo "$DIVIDING_LINE"
+	fi
 }
 
 _update_app() {
