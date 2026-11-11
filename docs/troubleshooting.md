@@ -217,7 +217,7 @@ If you chose number two and you feel happy with Ubuntu, follow these steps (as s
 ```
 echo 'kernel.apparmor_restrict_unprivileged_userns = 0' | sudo tee /etc/sysctl.d/20-apparmor-mint.conf
 ```
-2. Reboot.
+2. Apply the setting immediately on Ubuntu by running `sudo sysctl --system` (or reboot if on Debian).
 
 ------------------------------------------------------------------------
 
