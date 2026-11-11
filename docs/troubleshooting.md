@@ -216,8 +216,8 @@ If you chose number two and you feel happy with Ubuntu, follow these steps (as s
 1. run the following command to disable AppArmor restrictions (the file name is relative)
 ```
 echo 'kernel.apparmor_restrict_unprivileged_userns = 0' | sudo tee /etc/sysctl.d/20-apparmor-mint.conf
+sudo sysctl --system
 ```
-2. Reboot.
 
 ------------------------------------------------------------------------
 
