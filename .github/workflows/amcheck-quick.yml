@@ -27,29 +27,8 @@ jobs:
         run: |
           cd programs || exit 1
 
-           for f in x86_64/*; do
-            (if grep -q "^SITE=" "$f" && grep -q "version=.*api.github.com" "$f" && grep -q "wget \"\$version\"" "$f"; then
-              if ! grep -q "^SITE2=" "$f"; then
-                if ! grep -q "version=.*api.github.com.*\$SITE" "$f"; then
-                  SITE=$(grep "version=.*api.github.com" "$f" | grep -Eoi "repos/.*/releases" | head -1 | awk -F/ '{print $2 "/" $3}')
-                else
-                  SITE=$(grep "^SITE=" "$f" | head -1 | sed 's/"/\n/g' | sed "s/\'/\n/g" | grep . | tail -1)
-                fi
-                if command -v curl >/dev/null 2>&1; then
-                  if ! curl --retry 10 --retry-all-errors --retry-delay 2 --connect-timeout 20 --max-time 60 --output /dev/null --silent --head --fail "https://github.com/$SITE" 2>/dev/null; then
-                    echo "$f"
-                  fi
-                elif command -v wget >/dev/null 2>&1; then
-                  if ! wget ! -q --tries=11 --timeout=20 --spider "https://github.com/$SITE" 2>/dev/null; then
-                    echo "$f"
-                  fi
-                fi
-              fi
-            fi) &
-          done
-          wait
-
           architectures=$(ls -d */ | tr '/' ' ' | xargs)
+
           scripts="evalit"
           for s in $scripts; do
             for a in $architectures; do
