@@ -1,0 +1,61 @@
+
+name: AMCHECK (quick)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  create-testing-pr:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout latest main
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      # 2. Configure web-flow as author
+      - name: Configure Git author
+        run: |
+          git config user.name "web-flow"
+          git config user.email "noreply@github.com"
+
+      # 3. Create or refresh testing from main
+      - name: Refresh testing branch
+        run: |
+          git checkout -B testing origin/main
+
+      # 4. Add file
+      - name: Add testing file
+        run: |
+          echo "This file was automatically generated." > testing.txt
+
+      # 5. Commit and push
+      - name: Commit and push testing
+        run: |
+          git add testing.txt
+          git commit -m "Add testing file" || echo "No changes to commit"
+          git push origin testing --force
+
+      # 6. Create or update PR
+      - name: Create or update Pull Request
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh pr view testing --base main >/dev/null 2>&1; then
+            gh pr edit testing \
+              --title "Automated testing branch update" \
+              --body "Automatically generated from main."
+          else
+            gh pr create \
+              --base main \
+              --head testing \
+              --title "Automated testing branch update" \
+              --body "Automatically generated from main."
+          fi
