@@ -52,4 +52,19 @@ jobs:
           git checkout -b dead-app-removal
           git add programs
           git commit -m "Remove apps that did not pass the test" || echo "No changes to commit"
-          git push origin testing --force
+          git push origin dead-app-removal --force
+          printf '{"title":"Remove apps that did not pass the test","head":"dead-app-removal","base":"%s","body":""}' "$base" > /tmp/pull.json
+          code=$(curl -sS -o /tmp/pull-reply.json -w '%{http_code}' -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "$API_URL/pulls" \
+            --data-binary @/tmp/pull.json)
+          if [ "$code" = 201 ]; then
+            echo "Opened the site pull request"
+          elif [ "$code" = 422 ] && grep -q 'already exists' /tmp/pull-reply.json; then
+            echo "Pull request already open; pushed the new commit onto it"
+          else
+            echo "::error::Opening the site pull request failed (HTTP $code)"
+            cat /tmp/pull-reply.json
+            exit 1
+          fi
