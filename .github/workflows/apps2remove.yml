@@ -1,0 +1,61 @@
+name: Apps to remove
+
+on:
+  workflow_dispatch:
+    inputs:
+      what_remove:
+        description: "App names: (space between)"
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-apps2remove-branch:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Refresh apps2remove branch
+        run: |
+          git checkout -B apps2remove origin/main
+
+      - name: Check scripts
+        run: |
+          if [ -n "${{ github.event.inputs.what_remove }}" ]; then
+            scripts="${{ github.event.inputs.what_remove }}"
+
+            cd programs || exit 1
+
+            architectures=$(ls -d */ | tr '/' ' ' | xargs)
+            echo "----------------------------------------------------"
+            printf "Remove scripts:\n\n"
+            for s in $scripts; do
+              for a in $architectures; do
+                [ -f "$a"/"$s" ] && rm -f "$a"/"$s" && echo "- programs/$a/$s"
+              done
+            done
+            echo "Done!"
+
+            echo "----------------------------------------------------"
+            printf "Update lists:\n\n"
+            ./lister.sh
+
+            echo "----------------------------------------------------"
+          fi
+
+      - name: Commit and push apps2remove
+        run: |
+          git config --global user.name "web-flow"
+          git config --global user.email "noreply@github.com"
+          git add programs
+          git commit -m "Remove apps that did not pass the test" || echo "No changes to commit"
+          git push origin apps2remove --force
