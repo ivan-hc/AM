@@ -855,12 +855,18 @@ _reinstall_launcher() {
 	else
 		LAUNCHERS_PATH="$DATADIR/$LAUNCHERS_DIR"
 	fi
-	if [ -f "$argpath"/"$arg" ] && grep -Eaoq -m 1 "appimage-extract" "$argpath"/"$arg" || file "$argpath"/"$arg" | grep -q 'static'; then
+	APPIMAGE=""
+	if [ -f "$argpath/$arg" ]; then
+		APPIMAGE="$argpath/$arg"
+	elif [ -f "$argpath/$arg".real ]; then
+		APPIMAGE="$argpath/$arg".real
+	fi
+	if [ -f "$APPIMAGE" ] && grep -Eaoq -m 1 "appimage-extract" "$APPIMAGE" || file "$APPIMAGE" | grep -q 'static'; then
 		launcher_name="$arg-AM.desktop"
 		if [ -f "$LAUNCHERS_PATH"/"$launcher_name" ]; then
 			mkdir -p "$SCRIPTDIR"/AMLAUNCHER_DIR
-			if [ -x "$argpath"/"$arg" ]; then
-				exec 3< <("$argpath"/"$arg" --appimage-mount)
+			if [ -x "$APPIMAGE" ]; then
+				exec 3< <("$APPIMAGE" --appimage-mount)
 				read -r MOUNT_POINT <&3
 				APP_PID=$!
 				export MOUNT_POINT
@@ -950,7 +956,7 @@ _sandbox_check_appimage() {
 		printf $" ✖ ERROR: \"%b\" is not installed\n" "$1"
 		echo "$DIVIDING_LINE"
 		return 1
-	elif ! head -c10 "$APPIMAGE" 2>/dev/null | grep -qa '^.ELF....AI$'; then
+	elif ! head -c10 "$APPIMAGE" 2>/dev/null | grep -qa '^.ELF....AI$' || [ -f "$APPIMAGE".real ] && ! head -c10 "$APPIMAGE".real 2>/dev/null | grep -qa '^.ELF....AI$'; then
 		echo "$DIVIDING_LINE"
 		printf $" ✖ ERROR: \"%b\" is NOT an AppImage\n" "$1"
 		echo "$DIVIDING_LINE"
@@ -1054,12 +1060,16 @@ _sandbox_generate_sandbox_script() {
 	    UPDATER_SCRIPT="$argpath/AM-LOCK"
 	  fi
 	  echo "✔ Patching $UPDATER_SCRIPT to give permissions back..." | fold -sw 77 | sed 's/^/   /g; s/   ✔/ ✔/g'
-	  tmpsedEEE="$(sed 's|chmod a-x|chmod a+x|g; s/"$APP"\.real/"$APP"/g' "$UPDATER_SCRIPT" 2>/dev/null)"
+	  if [ -f "$APPEXEC".wrapper-backup ]; then
+	    tmpsedEEE="$(sed 's|chmod a-x|chmod a+x|g' "$UPDATER_SCRIPT" 2>/dev/null)"
+	  else
+	    tmpsedEEE="$(sed 's|chmod a-x|chmod a+x|g; s/"$APP"\.real/"$APP"/g' "$UPDATER_SCRIPT" 2>/dev/null)"
+	  fi
 	  [ -n "$tmpsedEEE" ] && echo "$tmpsedEEE" > "$UPDATER_SCRIPT" || return 1
 	  unset tmpsedEEE
 	  THISFILE="$(readlink -f "$0")"
 	  echo "✔ Replacing $THISFILE with the AppImage..." | fold -sw 77 | sed 's/^/   /g; s/   ✔/ ✔/g'
-	  mv "$APPEXEC".real "$APPEXEC" || exit 1
+	  [ -f "$APPEXEC".wrapper-backup ] && mv "$APPEXEC".wrapper-backup "$APPEXEC" || mv "$APPEXEC".real "$APPEXEC" || exit 1
 	  printf '\033[32m\n%s\n\033[0m\n' "✔ $APPEXEC successfully unsandboxed!" | fold -sw 77 | sed 's/^/   /g; s/   ✔/ ✔/g'
 	  exit 0
 	fi
@@ -1162,10 +1172,15 @@ _sandbox_install_sandbox_script() {
 		UPDATER_SCRIPT="$argpath/AM-LOCK"
 	fi
 	tmpsedEEE="$(sed 's|chmod a+x|chmod a-x|g; s/"$APP"/"$APP"\.real/g' "$UPDATER_SCRIPT" 2>/dev/null)"
+	if ! grep -q '"$APP"\.real' "$UPDATER_SCRIPT"; then
+		tmpsedEEE="$(sed 's|chmod a+x|chmod a-x|g; s/"$APP"/"$APP"\.real/g' "$UPDATER_SCRIPT" 2>/dev/null)"
+	else
+		tmpsedEEE="$(sed 's|chmod a+x|chmod a-x|g' "$UPDATER_SCRIPT" 2>/dev/null)"
+	fi
 	[ -n "$tmpsedEEE" ] && echo "$tmpsedEEE" > "$UPDATER_SCRIPT" || return 1
 	unset tmpsedEEE
 	# Install the script
-	mv "$APPIMAGE" "$APPIMAGE".real || return 1
+	[ ! -f "$APPIMAGE".real ] && mv "$APPIMAGE" "$APPIMAGE".real || mv "$APPIMAGE" "$APPIMAGE".wrapper-backup || return 1
 	echo "$tmpscript" | tee "$APPIMAGE" >/dev/null 2>&1 || return 1
 	chmod a+x "$APPIMAGE"
 	SANDBOXDIR="${SANDBOXDIR:-$HOME/.local/am-sandboxes}"
