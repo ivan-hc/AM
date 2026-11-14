@@ -1060,7 +1060,11 @@ _sandbox_generate_sandbox_script() {
 	    UPDATER_SCRIPT="$argpath/AM-LOCK"
 	  fi
 	  echo "✔ Patching $UPDATER_SCRIPT to give permissions back..." | fold -sw 77 | sed 's/^/   /g; s/   ✔/ ✔/g'
-	  tmpsedEEE="$(sed 's|chmod a-x|chmod a+x|g; s/"$APP"\.real/"$APP"/g' "$UPDATER_SCRIPT" 2>/dev/null)"
+	  if [ -f "$APPEXEC".wrapper-backup ]; then
+	    tmpsedEEE="$(sed 's|chmod a-x|chmod a+x|g' "$UPDATER_SCRIPT" 2>/dev/null)"
+	  else
+	    tmpsedEEE="$(sed 's|chmod a-x|chmod a+x|g; s/"$APP"\.real/"$APP"/g' "$UPDATER_SCRIPT" 2>/dev/null)"
+	  fi
 	  [ -n "$tmpsedEEE" ] && echo "$tmpsedEEE" > "$UPDATER_SCRIPT" || return 1
 	  unset tmpsedEEE
 	  THISFILE="$(readlink -f "$0")"
@@ -1168,6 +1172,11 @@ _sandbox_install_sandbox_script() {
 		UPDATER_SCRIPT="$argpath/AM-LOCK"
 	fi
 	tmpsedEEE="$(sed 's|chmod a+x|chmod a-x|g; s/"$APP"/"$APP"\.real/g' "$UPDATER_SCRIPT" 2>/dev/null)"
+	if ! grep -q '"$APP"\.real' "$UPDATER_SCRIPT"; then
+		tmpsedEEE="$(sed 's|chmod a+x|chmod a-x|g; s/"$APP"/"$APP"\.real/g' "$UPDATER_SCRIPT" 2>/dev/null)"
+	else
+		tmpsedEEE="$(sed 's|chmod a+x|chmod a-x|g' "$UPDATER_SCRIPT" 2>/dev/null)"
+	fi
 	[ -n "$tmpsedEEE" ] && echo "$tmpsedEEE" > "$UPDATER_SCRIPT" || return 1
 	unset tmpsedEEE
 	# Install the script
