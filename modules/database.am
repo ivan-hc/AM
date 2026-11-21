@@ -114,6 +114,38 @@ _about_description_for_third_party() {
 	repo_source=""
 }
 
+_about_real_source() {
+	if [ -f "$argpath"/AM-updater ]; then
+		UPDATER_SCRIPT="AM-updater"
+	elif [ -f "$argpath"/AM-LOCK ]; then
+		UPDATER_SCRIPT="AM-LOCK"
+	else
+		UPDATER_SCRIPT=""
+	fi
+	about_real_source=""
+	is_github_app=""
+	if [ -n "$UPDATER_SCRIPT" ] && echo "$app_status" | grep -q "^installed"; then
+		about_real_source=$(sed -n 's/^[[:space:]]*SITE="\([^"]*\)".*/\1/p' "$argpath/$UPDATER_SCRIPT")
+		if grep -q "^version=.*api.github.com" "$argpath/$UPDATER_SCRIPT"; then
+			is_github_app="1"
+			about_real_source="https://github.com/$about_real_source"
+		fi
+	fi
+
+	about_site=$(echo "$markdown_page" | grep "^# SITES:" | sed 's/^# SITES: *//' | tr ' ' '\n' | grep .)
+	about_source=$(echo "$markdown_page" | grep "^# SOURCES:" | sed 's/^# SOURCES: *//' | tr ' ' '\n' | grep .)
+
+	if [ -z "$about_source" ] && [ -n "$about_real_source" ] && [ -n "$is_github_app" ]; then
+		if ! echo "$about_site" | grep -q "$about_real_source"; then
+			about_source="$about_real_source"
+		fi
+	else
+		if ! echo "$about_source" | grep -q "$about_real_source"; then
+			about_source="$about_source \n\nINSTALLED SOURCE: \n$about_real_source"
+		fi
+	fi
+}
+
 _about_description() {
 	AMCATALOGUEMARKDOWNS="${AMCATALOGUEMARKDOWNS:-https://raw.githubusercontent.com/Portable-Linux-Apps/Portable-Linux-Apps.github.io/refs/heads/main/apps}"
 	markdown_url="$AMCATALOGUEMARKDOWNS/$arg"
@@ -125,8 +157,7 @@ _about_description() {
 	if echo "$markdown_page" | grep -q "^==="; then
 		about_description=$(echo "$markdown_page" | awk '/^===$/{f=!f; next} f')
 		about_screenshot=$(echo "$markdown_page" | grep "^# SCREENSHOTS:" | sed 's/^# SCREENSHOTS: *//' | tr ' ' '\n' | grep . | grep -v "contribute_ss.webp")
-		about_site=$(echo "$markdown_page" | grep "^# SITES:" | sed 's/^# SITES: *//' | tr ' ' '\n' | grep .)
-		about_source=$(echo "$markdown_page" | grep "^# SOURCES:" | sed 's/^# SOURCES: *//' | tr ' ' '\n' | grep .)
+		_about_real_source
 		echo ""
 		echo "$about_description" | _about_description_fit
 		[ -n "$about_screenshot" ] && printf "\nSCREENSHOTS:\n%b\n" "$about_screenshot" | sed 's/^/ /g'
