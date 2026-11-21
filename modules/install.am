@@ -855,12 +855,18 @@ _reinstall_launcher() {
 	else
 		LAUNCHERS_PATH="$DATADIR/$LAUNCHERS_DIR"
 	fi
-	if [ -f "$argpath"/"$arg" ] && grep -Eaoq -m 1 "appimage-extract" "$argpath"/"$arg" || file "$argpath"/"$arg" | grep -q 'static'; then
+	APPIMAGE=""
+	if [ -f "$argpath/$arg" ]; then
+		APPIMAGE="$argpath/$arg"
+	elif [ -f "$argpath/$arg".real ]; then
+		APPIMAGE="$argpath/$arg".real
+	fi
+	if [ -f "$APPIMAGE" ] && grep -Eaoq -m 1 "appimage-extract" "$APPIMAGE" || file "$APPIMAGE" | grep -q 'static'; then
 		launcher_name="$arg-AM.desktop"
 		if [ -f "$LAUNCHERS_PATH"/"$launcher_name" ]; then
 			mkdir -p "$SCRIPTDIR"/AMLAUNCHER_DIR
-			if [ -x "$argpath"/"$arg" ]; then
-				exec 3< <("$argpath"/"$arg" --appimage-mount)
+			if [ -x "$APPIMAGE" ]; then
+				exec 3< <("$APPIMAGE" --appimage-mount)
 				read -r MOUNT_POINT <&3
 				APP_PID=$!
 				export MOUNT_POINT
@@ -941,14 +947,8 @@ _sandbox_check_appimage() {
 	_determine_args
 	arg="$1"
 	_determine_argpath
-	if ! echo "$argpath" | grep -q "^/opt\|^/var/opt"; then
-		TARGET="$(command -v "$BINDIR/$1" 2>/dev/null)"
-	else
-		TARGET="$(command -v "/usr/local/bin/$1" 2>/dev/null)"
-	fi
-	APPIMAGE="$(readlink "$TARGET" 2>/dev/null)"
-	APPIMAGEDIR="$argpath"
-	if grep "aisap-am" "$TARGET" >/dev/null 2>&1; then
+	APPIMAGE="$argpath/$arg"
+	if grep "aisap-am" "$APPIMAGE" >/dev/null 2>&1; then
 		printf $"%b\n \"%b\" is already sandboxed!\n%b\n" "$DIVIDING_LINE" "$1" "$DIVIDING_LINE"
 		return 1
 	elif [ ! -e "$APPIMAGE" ]; then
@@ -956,7 +956,7 @@ _sandbox_check_appimage() {
 		printf $" ✖ ERROR: \"%b\" is not installed\n" "$1"
 		echo "$DIVIDING_LINE"
 		return 1
-	elif ! head -c10 "$APPIMAGE" 2>/dev/null | grep -qa '^.ELF....AI$'; then
+	elif ! head -c10 "$APPIMAGE" 2>/dev/null | grep -qa '^.ELF....AI$' || [ -f "$APPIMAGE".real ] && ! head -c10 "$APPIMAGE".real 2>/dev/null | grep -qa '^.ELF....AI$'; then
 		echo "$DIVIDING_LINE"
 		printf $" ✖ ERROR: \"%b\" is NOT an AppImage\n" "$1"
 		echo "$DIVIDING_LINE"
@@ -1023,10 +1023,13 @@ _sandbox_generate_sandbox_script() {
 
 	# Set variables and create sandboxed dir
 	APPEXEC=DUMMY
-	chmod a-x "$APPEXEC" # Prevents accidental launch of app outside the sandbox
+	chmod a-x "$APPEXEC".real # Prevents accidental launch of app outside the sandbox
 	APPNAME="$(echo "$APPEXEC" | awk -F "/" '{print $NF}')"
 	SANDBOXDIR="${SANDBOXDIR:-$HOME/.local/am-sandboxes}"
 	DBUS="$(ls /tmp/dbus* 2>/dev/null | head -1)"
+
+	# Source custom environment variables
+	[ -f "$APPEXEC".env ] && . "$APPEXEC".env
 
 	# get xdg user dirs, unset if var = $HOME
 	for DIR in DESKTOP DOCUMENTS DOWNLOAD GAMES MUSIC PICTURES VIDEOS; do
@@ -1047,22 +1050,26 @@ _sandbox_generate_sandbox_script() {
 	APPCONF=$( ls "$CONFIGDIR" | grep -i "$APPNAME" | head -1 )
 	# Disable sandbox
 	if [ "$1" = "--disable-sandbox" ]; then
-	  APPIMAGEDIR="${APPEXEC%/*}"
+	  argpath="${APPEXEC%/*}"
 	  echo ""
 	  echo "✔ Giving exec permissions back to $APPEXEC..." | fold -sw 77 | sed 's/^/   /g; s/   ✔/ ✔/g'
-	  chmod a+x "$APPEXEC" || exit 1
-	  if [ -f "$APPIMAGEDIR/AM-updater" ]; then
-	    UPDATER_SCRIPT="$APPIMAGEDIR/AM-updater"
-	  elif [ -f "$APPIMAGEDIR/AM-LOCK" ]; then
-	    UPDATER_SCRIPT="$APPIMAGEDIR/AM-LOCK"
+	  chmod a+x "$APPEXEC".real || exit 1
+	  if [ -f "$argpath/AM-updater" ]; then
+	    UPDATER_SCRIPT="$argpath/AM-updater"
+	  elif [ -f "$argpath/AM-LOCK" ]; then
+	    UPDATER_SCRIPT="$argpath/AM-LOCK"
 	  fi
 	  echo "✔ Patching $UPDATER_SCRIPT to give permissions back..." | fold -sw 77 | sed 's/^/   /g; s/   ✔/ ✔/g'
-	  tmpsedEEE="$(sed 's|chmod a-x|chmod a+x|g' "$UPDATER_SCRIPT" 2>/dev/null)"
+	  if [ -f "$APPEXEC".wrapper-backup ]; then
+	    tmpsedEEE="$(sed 's|chmod a-x|chmod a+x|g' "$UPDATER_SCRIPT" 2>/dev/null)"
+	  else
+	    tmpsedEEE="$(sed 's|chmod a-x|chmod a+x|g; s/"$APP"\.real/"$APP"/g' "$UPDATER_SCRIPT" 2>/dev/null)"
+	  fi
 	  [ -n "$tmpsedEEE" ] && echo "$tmpsedEEE" > "$UPDATER_SCRIPT" || return 1
 	  unset tmpsedEEE
 	  THISFILE="$(readlink -f "$0")"
-	  echo "✔ Replacing $THISFILE with a link to the AppImage..." | fold -sw 77 | sed 's/^/   /g; s/   ✔/ ✔/g'
-	  SUDO ln -sf "$APPEXEC" "$THISFILE" || exit 1
+	  echo "✔ Replacing $THISFILE with the AppImage..." | fold -sw 77 | sed 's/^/   /g; s/   ✔/ ✔/g'
+	  [ -f "$APPEXEC".wrapper-backup ] && mv "$APPEXEC".wrapper-backup "$APPEXEC" || mv "$APPEXEC".real "$APPEXEC" || exit 1
 	  printf '\033[32m\n%s\n\033[0m\n' "✔ $APPEXEC successfully unsandboxed!" | fold -sw 77 | sed 's/^/   /g; s/   ✔/ ✔/g'
 	  exit 0
 	fi
@@ -1101,7 +1108,7 @@ _sandbox_generate_sandbox_script() {
 	--add-socket x11 \
 	--add-socket wayland \
 	--add-device dri -- \
-	"$APPEXEC" "$@"
+	"$APPEXEC".real "$@"
 	HEREDOC
 	)"
 }
@@ -1159,24 +1166,23 @@ _sandbox_install_sandbox_script() {
 	fi
 	# Remove exec permission from AppImage and its updater for better safety™
 	chmod a-x "$APPIMAGE" || return 1
-	if [ -f "$APPIMAGEDIR/AM-updater" ]; then
-		UPDATER_SCRIPT="$APPIMAGEDIR/AM-updater"
-	elif [ -f "$APPIMAGEDIR/AM-LOCK" ]; then
-		UPDATER_SCRIPT="$APPIMAGEDIR/AM-LOCK"
+	if [ -f "$argpath/AM-updater" ]; then
+		UPDATER_SCRIPT="$argpath/AM-updater"
+	elif [ -f "$argpath/AM-LOCK" ]; then
+		UPDATER_SCRIPT="$argpath/AM-LOCK"
 	fi
-	tmpsedEEE="$(sed 's|chmod a+x|chmod a-x|g' "$UPDATER_SCRIPT" 2>/dev/null)"
+	tmpsedEEE="$(sed 's|chmod a+x|chmod a-x|g; s/"$APP"/"$APP"\.real/g' "$UPDATER_SCRIPT" 2>/dev/null)"
+	if ! grep -q '"$APP"\.real' "$UPDATER_SCRIPT"; then
+		tmpsedEEE="$(sed 's|chmod a+x|chmod a-x|g; s/"$APP"/"$APP"\.real/g' "$UPDATER_SCRIPT" 2>/dev/null)"
+	else
+		tmpsedEEE="$(sed 's|chmod a+x|chmod a-x|g' "$UPDATER_SCRIPT" 2>/dev/null)"
+	fi
 	[ -n "$tmpsedEEE" ] && echo "$tmpsedEEE" > "$UPDATER_SCRIPT" || return 1
 	unset tmpsedEEE
 	# Install the script
-	if echo "$argpath" | grep -q "^/opt\|^/var/opt"; then
-		$SUDOCMD rm -f "$TARGET" || return 1
-		echo "$tmpscript" | $SUDOCMD tee "$TARGET" >/dev/null 2>&1 || return 1
-		$SUDOCMD chmod a+x "$TARGET"
-	else
-		rm -f "$TARGET" || return 1
-		echo "$tmpscript" | tee "$TARGET" >/dev/null 2>&1 || return 1
-		chmod a+x "$TARGET"
-	fi
+	[ ! -f "$APPIMAGE".real ] && mv "$APPIMAGE" "$APPIMAGE".real || mv "$APPIMAGE" "$APPIMAGE".wrapper-backup || return 1
+	echo "$tmpscript" | tee "$APPIMAGE" >/dev/null 2>&1 || return 1
+	chmod a+x "$APPIMAGE"
 	SANDBOXDIR="${SANDBOXDIR:-$HOME/.local/am-sandboxes}"
 	printf "%b\n" "${Green}"
 	printf $"%b sandbox enabled!" "$1" | _fit | tr '[:lower:]' '[:upper:]'
@@ -1198,16 +1204,12 @@ _use_disable_sandbox() {
 	_determine_args
 	arg="$1"
 	_determine_argpath
-	if ! echo "$argpath" | grep -q "^/opt\|^/var/opt"; then
-		TARGET="$(command -v "$BINDIR/$1" 2>/dev/null)"
-	else
-		TARGET="$(command -v "/usr/local/bin/$1" 2>/dev/null)"
-	fi
-	if ! grep "aisap-am sandboxing script" "$TARGET" >/dev/null 2>&1; then
+	APPIMAGE="$argpath/$arg"
+	if ! grep "aisap-am sandboxing script" "$APPIMAGE" >/dev/null 2>&1; then
 		echo $" ERROR: Not a sandboxed AppImage, aborting"
 		return 1
 	fi
-	"$TARGET" --disable-sandbox
+	"$APPIMAGE" --disable-sandbox
 }
 
 ################################################################################################################################################################
