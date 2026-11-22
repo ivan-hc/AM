@@ -1389,7 +1389,34 @@ fi
 
 # Set header authorization if GitHub API key file exists
 ghapikey_file="$AMDATADIR/ghapikey.txt"
+[ -f "$ghapikey_file" ] && chmod 600 "$ghapikey_file" 2>/dev/null
+
 [ -f "$ghapikey_file" ] && HeaderAuthWithGITPAT=" --header \"Authorization: token $(sort "$ghapikey_file")\" "
+
+_legacy_token_header_re=' --header "Authorization: token (gh[ps]_[a-zA-Z0-9]{36}|github_pat_[a-zA-Z0-9]{22}_[a-zA-Z0-9]{59})"'
+
+_gh_api_read_snippet_file="$AMCACHEDIR/gh-api-read.snippet"
+
+_define_gh_api_read_snippet() {
+	cat > "$_gh_api_read_snippet_file" <<EOF
+_gh_api_read() {
+	if [ -r "$ghapikey_file" ] && [ -s "$ghapikey_file" ]; then
+		curl -Ls --header "Authorization: token \$(cat "$ghapikey_file")" "\$@"
+	else
+		curl -Ls "\$@"
+	fi
+}
+EOF
+}
+
+_add_gh_api_read_to_script() {
+	[ -f "$1" ] || return 0
+	grep -q '_gh_api_read()' "$1" && return 0
+	_define_gh_api_read_snippet
+	sed -i -E "s#$_legacy_token_header_re##g" "$1"
+	sed -i -E "s#$CURLLS +https://api.github.com#_gh_api_read https://api.github.com#g" "$1"
+	sed -i "/^[[:space:]]*#!\/bin\/sh[[:space:]]*$/r $_gh_api_read_snippet_file" "$1"
+}
 
 # Function to validate GitHub API tokens
 _validate_github_token() {
@@ -1424,7 +1451,7 @@ _use_apikey() {
 			for argpath in $argpath_items; do
 				if [ -f "$argpath"/AM-updater ] && grep -q "https://api.github.com" "$argpath"/AM-updater; then
 					# Remove the Authorization header from the file
-					sed -i 's# --header "Authorization: token [^"]*"##g' "$argpath"/AM-updater
+					sed -i -E "s#$_legacy_token_header_re##g" "$argpath"/AM-updater
 				fi
 			done
 		done
@@ -1443,7 +1470,10 @@ _use_apikey() {
 	elif [[ "$ghtoken" =~ ^(gh[ps]_[a-zA-Z0-9]{36}|github_pat_[a-zA-Z0-9]{22}_[a-zA-Z0-9]{59})$ ]]; then
 		# Validate the token
 		if _validate_github_token "$ghtoken"; then
-			echo "$ghtoken" > "$ghapikey_file"
+			# Keep file empty until chmod 600; avoid readable token window
+			printf '' > "$ghapikey_file"
+			chmod 600 "$ghapikey_file" 2>/dev/null
+			printf '%s\n' "$ghtoken" > "$ghapikey_file"
 		fi
 	else
 		echo $"ERROR: This is not a valid GitHub token!"
@@ -1469,23 +1499,19 @@ _update_github_api_key_in_the_updater_files() {
 			echo "$DIVIDING_LINE"
 			exit 1
 		fi
-
-		for arg in $ARGS; do
-			argpath_items=$(echo "$ARGPATHS" | grep "/$arg$" | xargs)
-			for argpath in $argpath_items; do
-				if [ -f "$argpath"/AM-updater ] && grep -q "https://api.github.com" "$argpath"/AM-updater; then
-					# Check if the file already contains a valid API key
-					if ! grep -qE "(gh[ps]_[a-zA-Z0-9]{36}|github_pat_[a-zA-Z0-9]{22}_[a-zA-Z0-9]{59})" "$argpath"/AM-updater; then
-						# Insert HeaderAuthWithGITPAT before the GitHub API URL
-						sed -i "s#https://api.github.com#$HeaderAuthWithGITPAT https://api.github.com#g" "$argpath"/AM-updater
-					else
-						# Replace existing API key with the one from ghapikey.txt
-						sed -i "s#\(gh[ps]_[a-zA-Z0-9]\{36\}\|github_pat_[a-zA-Z0-9]\{22\}_[a-zA-Z0-9]\{59\}\)#$ghapikey#g" "$argpath"/AM-updater
-					fi
-				fi
-			done
-		done
 	fi
+
+	for arg in $ARGS; do
+		argpath_items=$(echo "$ARGPATHS" | grep "/$arg$" | xargs)
+		for argpath in $argpath_items; do
+			if [ -f "$argpath"/AM-updater ] && grep -q "https://api.github.com" "$argpath"/AM-updater; then
+				# Check updater for GitHub API calls
+				# Add the private-file reader to the updater
+				# Remove any token copies embedded by older versions
+				_add_gh_api_read_to_script "$argpath"/AM-updater
+			fi
+		done
+	done
 }
 
 ################################################################################################################################################################
