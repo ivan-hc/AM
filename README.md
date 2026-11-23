@@ -566,7 +566,7 @@ Shows more info about one or more apps. Add `-m` or `--markdown` to see the mark
 
 **Description**:
 
-Accede to github APIs using your personal access tokens. The file named "ghapikey.txt" will be saved in ~/.local/share/AM. Use "`del`" to remove it.
+Accede to github APIs using your personal access tokens. The file named "ghapikey.txt" will be saved in ~/.local/share/AM with `600` permissions. Installers and updaters read the token from that file at run time; the token is never written into them. Use "`del`" to remove it.
 
 ------------------------------------------------------------------------
 ### `backup`, `-b`
