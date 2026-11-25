@@ -1776,10 +1776,23 @@ _use_env() {
 			APPIMAGE="$argpath/$arg"
 		fi
 		[ -z "$APPIMAGE" ] && return 1
+		# Determine updater script
+		if [ -f "$argpath/AM-updater" ]; then
+			UPDATER_SCRIPT="$argpath/AM-updater"
+		elif [ -f "$argpath/AM-LOCK" ]; then
+			UPDATER_SCRIPT="$argpath/AM-LOCK"
+		fi
+		# Determine if the target file is an AppImage or a script
 		if head -c10 "$APPIMAGE" 2>/dev/null | grep -qa '^.ELF....AI$'; then
-			if [ -f "$APPIMAGE" ] && grep -Eaoq -m 1 "appimage-extract" "$APPIMAGE" || file "$APPIMAGE" | grep -q 'static'; then
-				echo "$APPIMAGE"
+			if grep -Eaoq -m 1 "appimage-extract" "$APPIMAGE" || file "$APPIMAGE" | grep -q 'static'; then
+				# Determine if the AppImage is already in a legacy sandbox
+				if grep -q "chmod a-x" "$UPDATER_SCRIPT" && [ ! -x "$APPIMAGE" ]; then
+					printf $"%b\n \"%b\" is already sandboxed!\n%b\n" "$DIVIDING_LINE" "$arg" "$DIVIDING_LINE" | sed "s/\!$/ [LEGACY CODE]/g"
+				else
+					echo "$APPIMAGE"
+				fi
 			fi
+		# Determine if the target file is a script that calls the AppImage
 		elif grep '#!.*bin.*sh' "$APPIMAGE" >/dev/null 2>&1 && [ -f "$APPIMAGE".real ] && head -c10 "$APPIMAGE".real 2>/dev/null | grep -qa '^.ELF....AI$'; then
 			if [ -f "$APPIMAGE.real" ] && grep -Eaoq -m 1 "appimage-extract" "$APPIMAGE.real" || file "$APPIMAGE.real" | grep -q 'static'; then
 				echo "$APPIMAGE.real"
