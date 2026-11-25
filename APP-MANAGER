@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="10.7-1"
+AMVERSION="10.7-2"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -1766,6 +1766,31 @@ _use_clone() {
 #				ENV
 ################################################################################################################################################################
 
+_use_env_create_script() {
+	mv "$APPIMAGE" "$APPIMAGE.real" || return 1
+	cat <<-HEREDOC >> "$APPIMAGE"
+	#!/bin/sh
+
+	if [ -f $APPIMAGE.real ] && head -c10 $APPIMAGE.real 2>/dev/null | grep -qa '^.ELF....AI$' && head -c1000000 $APPIMAGE.real 2>/dev/null | grep -qa 'AppImages require FUSE to run'; then
+	  export APPIMAGE_EXTRACT_AND_RUN=1
+	fi
+
+	[ -d $APPIMAGE.cache ] && export XDG_CACHE_HOME="$APPIMAGE.cache"
+	[ -d $APPIMAGE.config ] && export XDG_CONFIG_HOME="$APPIMAGE.config"
+	[ -d $APPIMAGE.home ] && export HOME="$APPIMAGE.home"
+	[ -d $APPIMAGE.share ] && export XDG_DATA_HOME="$APPIMAGE.share"
+
+	[ -f $APPIMAGE.env ] && . $APPIMAGE.env
+	[ -f $APPIMAGE.sandbox ] && . $APPIMAGE.sandbox
+
+	exec $APPIMAGE.real \$@
+	HEREDOC
+	chmod a+x "$APPIMAGE"
+	if ! grep -q '"$APP"\.real' "$UPDATER_SCRIPT"; then
+		sed -i 's/"$APP"/"$APP"\.real/g' "$UPDATER_SCRIPT" 2>/dev/null
+	fi
+}
+
 _use_env() {
 	_determine_args
 	ENTRIES="$(echo "$@" | cut -f2- -d ' ')"
@@ -1789,13 +1814,13 @@ _use_env() {
 				if grep -q "chmod a-x" "$UPDATER_SCRIPT" && [ ! -x "$APPIMAGE" ]; then
 					printf $"%b\n \"%b\" is already sandboxed!\n%b\n" "$DIVIDING_LINE" "$arg" "$DIVIDING_LINE" | sed "s/\!$/ [LEGACY CODE]/g"
 				else
-					echo "$APPIMAGE"
+					_use_env_create_script
 				fi
 			fi
 		# Determine if the target file is a script that calls the AppImage
 		elif grep '#!.*bin.*sh' "$APPIMAGE" >/dev/null 2>&1 && [ -f "$APPIMAGE".real ] && head -c10 "$APPIMAGE".real 2>/dev/null | grep -qa '^.ELF....AI$'; then
 			if [ -f "$APPIMAGE.real" ] && grep -Eaoq -m 1 "appimage-extract" "$APPIMAGE.real" || file "$APPIMAGE.real" | grep -q 'static'; then
-				echo "$APPIMAGE.real"
+				[ ! -f "$APPIMAGE.env" ] && printf '#!/bin/sh\n\n' > "$APPIMAGE.env"
 			fi
 		fi
 		
