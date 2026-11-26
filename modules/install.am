@@ -945,26 +945,59 @@ _sandbox_legacy_check() {
 	_determine_args
 	arg="$1"
 	_determine_argpath
+	TARGET=""
+	SANDBOXEDAPPIMAGE=""
+	SANDBOXFILE=""
+	APPIMAGE=""
 	if ! echo "$argpath" | grep -q "^/opt\|^/var/opt"; then
 		TARGET="$(command -v "$BINDIR/$1" 2>/dev/null)"
 	else
 		TARGET="$(command -v "/usr/local/bin/$1" 2>/dev/null)"
 	fi
+	SANDBOXFILE="$TARGET"
+	APPIMAGEFILE=$(readlink "$TARGET" 2>/dev/null)
+	if [ -f "$APPIMAGEFILE.real" ] && head -c10 "$APPIMAGEFILE.real" 2>/dev/null | grep -qa '^.ELF....AI$'; then
+		if [ -f "$APPIMAGEFILE.sandbox" ]; then
+			SANDBOXFILE="$APPIMAGEFILE.sandbox"
+		fi
+		APPIMAGEFILE="$APPIMAGEFILE.real"
+	fi
+	if grep -q "aisap-am sandboxing script" "$SANDBOXFILE"; then
+		SANDBOXEDAPPIMAGE="1"
+	fi
+	if [ -z "$SANDBOXEDAPPIMAGE" ]; then
+		if [ ! -f "$APPIMAGEFILE.real" ] && head -c10 "$APPIMAGEFILE" 2>/dev/null | grep -qa '^.ELF....AI$'; then
+			_use_env "$arg"
+			SANDBOXFILE="$APPIMAGE.sandbox"
+			APPIMAGEFILE="$APPIMAGE.real"
+		elif [ -f "$APPIMAGEFILE.real" ] && head -c10 "$APPIMAGEFILE.real" 2>/dev/null | grep -qa '^.ELF....AI$'; then
+			SANDBOXFILE="$APPIMAGEFILE.sandbox"
+			APPIMAGEFILE="$APPIMAGEFILE.real"
+		fi
+	fi
+}
+
+_use_disable_sandbox() {
+	echo "$DIVIDING_LINE"
+	_sandbox_legacy_check "$@"
+	if [ -z "$SANDBOXEDAPPIMAGE" ]; then
+		echo $" ERROR: Not a sandboxed AppImage, aborting"
+		return 1
+	fi
+	"$TARGET" --disable-sandbox
 }
 
 _sandbox_check_appimage() {
 	_sandbox_legacy_check "$@"
-	APPIMAGE="$(readlink "$TARGET" 2>/dev/null)"
-	APPIMAGEDIR="$argpath"
-	if grep "aisap-am" "$TARGET" >/dev/null 2>&1; then
+	if [ -n "$SANDBOXEDAPPIMAGE" ]; then
 		printf $"%b\n \"%b\" is already sandboxed!\n%b\n" "$DIVIDING_LINE" "$1" "$DIVIDING_LINE"
 		return 1
-	elif [ ! -e "$APPIMAGE" ]; then
+	elif [ ! -e "$APPIMAGEFILE" ]; then
 		echo "$DIVIDING_LINE"
 		printf $" ✖ ERROR: \"%b\" is not installed\n" "$1"
 		echo "$DIVIDING_LINE"
 		return 1
-	elif ! head -c10 "$APPIMAGE" 2>/dev/null | grep -qa '^.ELF....AI$'; then
+	elif ! head -c10 "$APPIMAGEFILE" 2>/dev/null | grep -qa '^.ELF....AI$'; then
 		echo "$DIVIDING_LINE"
 		printf $" ✖ ERROR: \"%b\" is NOT an AppImage\n" "$1"
 		echo "$DIVIDING_LINE"
@@ -1068,9 +1101,8 @@ _sandbox_generate_sandbox_script() {
 	  tmpsedEEE="$(sed 's|chmod a-x|chmod a+x|g' "$UPDATER_SCRIPT" 2>/dev/null)"
 	  [ -n "$tmpsedEEE" ] && echo "$tmpsedEEE" > "$UPDATER_SCRIPT" || return 1
 	  unset tmpsedEEE
-	  THISFILE="$(readlink -f "$0")"
-	  echo "✔ Replacing $THISFILE with a link to the AppImage..." | fold -sw 77 | sed 's/^/   /g; s/   ✔/ ✔/g'
-	  SUDO ln -sf "$APPEXEC" "$THISFILE" || exit 1
+	  echo "✔ Removing SANDBOXFILE..." | fold -sw 77 | sed 's/^/   /g; s/   ✔/ ✔/g'
+	  rm -f "SANDBOXFILE" || exit 1
 	  printf '\033[32m\n%s\n\033[0m\n' "✔ $APPEXEC successfully unsandboxed!" | fold -sw 77 | sed 's/^/   /g; s/   ✔/ ✔/g'
 	  exit 0
 	fi
@@ -1160,31 +1192,19 @@ _sandbox_configure_dirs_access() {
 }
 
 _sandbox_install_sandbox_script() {
-	if echo "$argpath" | grep -q "^/opt\|^/var/opt"; then
-		tmpscript=$(echo "$tmpscript" | sed "s#DUMMY#$APPIMAGE#g; s#SUDO#$SUDOCMD#g")
-	else
-		tmpscript=$(echo "$tmpscript" | sed "s#DUMMY#$APPIMAGE#g; s#SUDO##g")
-	fi
+	tmpscript=$(echo "$tmpscript" | sed "s#DUMMY#$APPIMAGEFILE#g; s#SANDBOXFILE#$SANDBOXFILE#g")
 	# Remove exec permission from AppImage and its updater for better safety™
-	chmod a-x "$APPIMAGE" || return 1
-	if [ -f "$APPIMAGEDIR/AM-updater" ]; then
-		UPDATER_SCRIPT="$APPIMAGEDIR/AM-updater"
-	elif [ -f "$APPIMAGEDIR/AM-LOCK" ]; then
-		UPDATER_SCRIPT="$APPIMAGEDIR/AM-LOCK"
+	chmod a-x "$APPIMAGEFILE" || return 1
+	if [ -f "$argpath/AM-updater" ]; then
+		UPDATER_SCRIPT="$argpath/AM-updater"
+	elif [ -f "$argpath/AM-LOCK" ]; then
+		UPDATER_SCRIPT="$argpath/AM-LOCK"
 	fi
 	tmpsedEEE="$(sed 's|chmod a+x|chmod a-x|g' "$UPDATER_SCRIPT" 2>/dev/null)"
 	[ -n "$tmpsedEEE" ] && echo "$tmpsedEEE" > "$UPDATER_SCRIPT" || return 1
 	unset tmpsedEEE
 	# Install the script
-	if echo "$argpath" | grep -q "^/opt\|^/var/opt"; then
-		$SUDOCMD rm -f "$TARGET" || return 1
-		echo "$tmpscript" | $SUDOCMD tee "$TARGET" >/dev/null 2>&1 || return 1
-		$SUDOCMD chmod a+x "$TARGET"
-	else
-		rm -f "$TARGET" || return 1
-		echo "$tmpscript" | tee "$TARGET" >/dev/null 2>&1 || return 1
-		chmod a+x "$TARGET"
-	fi
+	echo "$tmpscript" > "$SANDBOXFILE" || return 1
 	SANDBOXDIR="${SANDBOXDIR:-$HOME/.local/am-sandboxes}"
 	printf "%b\n" "${Green}"
 	printf $"%b sandbox enabled!" "$1" | _fit | tr '[:lower:]' '[:upper:]'
@@ -1199,16 +1219,6 @@ _sandbox_install_sandbox_script() {
 
 _use_sandbox() {
 	_sandbox_get_xdg_variables_for_configure_dirs_access && _sandbox_check_appimage "${@}" && _sandbox_check_aisap "${@}" && _sandbox_generate_sandbox_script "${@}" && _sandbox_configure_dirs_access "${@}" && _sandbox_install_sandbox_script "${@}"
-}
-
-_use_disable_sandbox() {
-	echo "$DIVIDING_LINE"
-	_sandbox_legacy_check "$@"
-	if ! grep "aisap-am sandboxing script" "$TARGET" >/dev/null 2>&1; then
-		echo $" ERROR: Not a sandboxed AppImage, aborting"
-		return 1
-	fi
-	"$TARGET" --disable-sandbox
 }
 
 ################################################################################################################################################################
