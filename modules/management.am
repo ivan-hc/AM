@@ -450,7 +450,7 @@ _launcher(){
 ################################################################################################################################################################
 
 _lock() {
-		if [ ! -f "$argpath"/AM-updater ]; then
+	if [ ! -f "$argpath"/AM-updater ]; then
 		echo $" \"$AMCLIUPPER\" cannot manage updates for $2, \"AM-updater\" file not found!"
 		return 1
 	fi
@@ -465,7 +465,7 @@ _lock() {
 }
 
 _unlock() {
-		if ! test -f "$argpath"/AM-LOCK; then
+	if ! test -f "$argpath"/AM-LOCK; then
 		echo $" \"$2\" cannot be unlocked, \"AM-LOCK\" file not found!"
 		return 1
 	fi
@@ -494,10 +494,16 @@ _nolibfuse() {
 	else
 		cd "$argpath" || return 1
 	fi
-	if ! head -c10 ./"$arg" 2>/dev/null | grep -qa '^.ELF....AI$' 2>/dev/null; then
+	APPIMAGE=""
+	if [ -f ./"$arg".real ]; then
+		APPIMAGE="$arg.real"
+	else
+		APPIMAGE="$arg"
+	fi
+	if ! head -c10 ./"$APPIMAGE" 2>/dev/null | grep -qa '^.ELF....AI$' 2>/dev/null; then
 		printf $" ✖ ERROR: \"%b\" is NOT an AppImage\n" "$target"
 		return 1
-	elif ! grep -Eaoq -m 1 'AppImages require FUSE to run' "$arg"; then
+	elif ! grep -Eaoq -m 1 'AppImages require FUSE to run' "$APPIMAGE"; then
 		printf $" ◆ \"%b\" is already a new generation AppImage.\n" "$target"
 		return 1
 	fi
@@ -506,11 +512,11 @@ _nolibfuse() {
 
 	# Extract the AppImage
 	printf $" ...extracting the AppImage\r"
-	if grep -Eaoq -m 1 "appimage-extract" "$2"; then
-		if ! ./"$2" --appimage-extract >/dev/null 2>&1; then
+	if grep -Eaoq -m 1 "appimage-extract" "$APPIMAGE"; then
+		if ! ./"$APPIMAGE" --appimage-extract >/dev/null 2>&1; then
 			if command -v 7z >/dev/null 2>&1; then
 				mkdir -p squashfs-root
-				7z x ./"$2" -o"./squashfs-root" >/dev/null 2>&1
+				7z x ./"$APPIMAGE" -o"./squashfs-root" >/dev/null 2>&1
 			fi
 		fi
 		chmod 0755 ./squashfs-root
@@ -534,7 +540,7 @@ _nolibfuse() {
 		return 1
 	fi
 
-	mv ./"$2" ./"$2".old && mv ./*.AppImage ./"$2" || return 1
+	mv ./"$APPIMAGE" ./"$APPIMAGE".old && mv ./*.AppImage ./"$APPIMAGE" || return 1
 	echo $" ◆ $target has been converted to a new generation AppImage."
 	rm -Rf ./squashfs-root ./*.zsync
 	if [ -f ./AM-updater ] && ! grep -q 'nolibfuse' ./AM-updater; then
