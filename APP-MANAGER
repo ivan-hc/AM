@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="10.7-2"
+AMVERSION="10.7-3"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -1769,7 +1769,9 @@ _use_clone() {
 conf_files="env sandbox"
 
 _use_env_create_script() {
+	# Rename the AppImage by adding a .real extension
 	mv "$APPIMAGE" "$APPIMAGE.real" || return 1
+	# Create the wrapper
 	cat <<-HEREDOC >> "$APPIMAGE"
 	#!/bin/sh
 
@@ -1788,9 +1790,12 @@ _use_env_create_script() {
 	exec $APPIMAGE.real \$@
 	HEREDOC
 	chmod a+x "$APPIMAGE"
+	# Patch the updater script
 	if ! grep -q '"$APP"\.real' "$UPDATER_SCRIPT"; then
 		sed -i 's/"$APP"/"$APP"\.real/g' "$UPDATER_SCRIPT" 2>/dev/null
 	fi
+	# Create .env configuration file
+	[ ! -f "$APPIMAGE.env" ] && printf '#!/bin/sh\n\n' > "$APPIMAGE.env"
 }
 
 _use_env() {
