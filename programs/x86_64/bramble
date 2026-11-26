@@ -67,11 +67,19 @@ trap 'exit 1' HUP INT TERM
 curl --fail --silent --show-error --location "$MANIFEST" -o "$stage/manifest.json"
 version=$(jq -er '.version' "$stage/manifest.json")
 case "$version" in ''|*[!0-9A-Za-z.+-]*) echo "Invalid version in Bramble update manifest" >&2; exit 1 ;; esac
-installed=$(cat "$APPDIR/version" 2>/dev/null || :)
-if [ -n "$installed" ] && ! printf '%s\n%s\n' "$installed" "$version" | grep -q '^https://'; then
-	newest=$(printf '%s\n%s\n' "$installed" "$version" | sort -V | tail -n 1)
-	if [ "$newest" = "$installed" ]; then echo "Bramble is already current or newer ($installed)"; exit 0; fi
-fi
+installed=$(cat "$APPDIR/version")
+case "$installed" in
+	https://github.com/flythenimbus/bramble/releases/download/*-desktop/Bramble_*.AppImage | \
+	https://github.com/bramble-sh/bramble/releases/download/*-desktop/Bramble_*.AppImage)
+		installed=${installed#*/releases/download/}
+		installed=${installed%%-desktop/*}
+		;;
+esac
+case "$installed" in
+	''|*[!0-9A-Za-z.+-]*) echo "Invalid installed Bramble version" >&2; exit 1 ;;
+esac
+newest=$(printf '%s\n%s\n' "$installed" "$version" | sort -V | tail -n 1)
+if [ "$newest" = "$installed" ]; then echo "Bramble is already current or newer ($installed)"; exit 0; fi
 appimage_url=$(jq -er --arg platform "$PLATFORM" '.platforms[$platform].url' "$stage/manifest.json")
 expected_url="https://github.com/$SITE/releases/download/${version}-desktop/Bramble_${version}_${ASSET_ARCH}.AppImage"
 [ "$appimage_url" = "$expected_url" ] || { echo "Unexpected AppImage URL in Bramble update manifest" >&2; exit 1; }
@@ -91,12 +99,17 @@ committing=1
 rollback() {
 	status=$?
 	trap - EXIT HUP INT TERM
+	retain_stage=0
 	if [ "${committing:-0}" -eq 1 ]; then
-		mv -f "$stage/$APP.old" "$APPDIR/$APP" || echo "Could not restore Bramble image from $stage" >&2
-		mv -f "$stage/version.old" "$APPDIR/version" || echo "Could not restore Bramble version from $stage" >&2
+		mv -f "$stage/$APP.old" "$APPDIR/$APP" || retain_stage=1
+		mv -f "$stage/version.old" "$APPDIR/version" || retain_stage=1
 	fi
-	rm -f "$APPDIR/$APP.new" "$APPDIR/version.new"
-	rm -rf "$stage"
+	rm -f "$APPDIR/$APP.new" "$APPDIR/version.new" || :
+	if [ "$retain_stage" -eq 1 ]; then
+		echo "Bramble update recovery files retained at $stage" >&2
+	else
+		rm -rf "$stage"
+	fi
 	exit "$status"
 }
 trap rollback EXIT
