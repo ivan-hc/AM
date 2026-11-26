@@ -1768,21 +1768,31 @@ _use_clone() {
 
 conf_files="env sandbox"
 
+_use_env_default_env_file() {
+	if [ ! -f "$APPIMAGE.env" ]; then
+		cat <<-HEREDOC >> "$APPIMAGE.env"
+		#!/bin/sh
+
+		if [ -f $APPIMAGE.real ] && head -c10 $APPIMAGE.real 2>/dev/null | grep -qa '^.ELF....AI$' && head -c1000000 $APPIMAGE.real 2>/dev/null | grep -qa 'AppImages require FUSE to run'; then
+		  printf "\n This AppImage require the EOL FUSE2 library to run!\n Exporting APPIMAGE_EXTRACT_AND_RUN=1, please wait...\n\n"
+		  export APPIMAGE_EXTRACT_AND_RUN=1
+		fi
+
+		[ -d $APPIMAGE.cache ] && export XDG_CACHE_HOME="$APPIMAGE.cache"
+		[ -d $APPIMAGE.config ] && export XDG_CONFIG_HOME="$APPIMAGE.config"
+		[ -d $APPIMAGE.home ] && export HOME="$APPIMAGE.home"
+		[ -d $APPIMAGE.share ] && export XDG_DATA_HOME="$APPIMAGE.share"
+
+		HEREDOC
+	fi	
+}
+
 _use_env_create_script() {
 	# Rename the AppImage by adding a .real extension
 	mv "$APPIMAGE" "$APPIMAGE.real" || return 1
 	# Create the wrapper
 	cat <<-HEREDOC >> "$APPIMAGE"
 	#!/bin/sh
-
-	if [ -f $APPIMAGE.real ] && head -c10 $APPIMAGE.real 2>/dev/null | grep -qa '^.ELF....AI$' && head -c1000000 $APPIMAGE.real 2>/dev/null | grep -qa 'AppImages require FUSE to run'; then
-	  export APPIMAGE_EXTRACT_AND_RUN=1
-	fi
-
-	[ -d $APPIMAGE.cache ] && export XDG_CACHE_HOME="$APPIMAGE.cache"
-	[ -d $APPIMAGE.config ] && export XDG_CONFIG_HOME="$APPIMAGE.config"
-	[ -d $APPIMAGE.home ] && export HOME="$APPIMAGE.home"
-	[ -d $APPIMAGE.share ] && export XDG_DATA_HOME="$APPIMAGE.share"
 
 	[ -f $APPIMAGE.env ] && . $APPIMAGE.env
 	[ -f $APPIMAGE.sandbox ] && . $APPIMAGE.sandbox
@@ -1795,7 +1805,7 @@ _use_env_create_script() {
 		sed -i 's/"$APP"/"$APP"\.real/g' "$UPDATER_SCRIPT" 2>/dev/null
 	fi
 	# Create .env configuration file
-	[ ! -f "$APPIMAGE.env" ] && printf '#!/bin/sh\n\n' > "$APPIMAGE.env"
+	_use_env_default_env_file
 }
 
 _use_env() {
@@ -1827,7 +1837,7 @@ _use_env() {
 		# Determine if the target file is a script that calls the AppImage
 		elif grep '#!.*bin.*sh' "$APPIMAGE" >/dev/null 2>&1 && [ -f "$APPIMAGE".real ] && head -c10 "$APPIMAGE".real 2>/dev/null | grep -qa '^.ELF....AI$'; then
 			if [ -f "$APPIMAGE.real" ] && grep -Eaoq -m 1 "appimage-extract" "$APPIMAGE.real" || file "$APPIMAGE.real" | grep -q 'static'; then
-				[ ! -f "$APPIMAGE.env" ] && printf '#!/bin/sh\n\n' > "$APPIMAGE.env"
+				_use_env_default_env_file
 			fi
 		fi
 		
