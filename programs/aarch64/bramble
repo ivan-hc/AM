@@ -1,87 +1,132 @@
 #!/bin/sh
 
 # AM INSTALL SCRIPT VERSION 3.6
-set -u
+# Bramble Desktop AppImage, installed in AppMan's applications directory.
+set -eu
 APP=bramble
-SITE="flythenimbus/bramble"
-
-# CREATE DIRECTORIES AND ADD REMOVER
-[ -n "$APP" ] && mkdir -p "/opt/$APP/tmp" "/opt/$APP/icons" && cd "/opt/$APP/tmp" || exit 1
-printf "#!/bin/sh\nset -e\nrm -f /usr/local/bin/$APP\nrm -R -f /opt/$APP" > ../remove
-printf '\n%s' "rm -f /usr/local/share/applications/$APP-AM.desktop" >> ../remove
-chmod a+x ../remove || exit 1
-
-# DOWNLOAD AND PREPARE THE APP, $version is also used for updates
-version=$(curl -Ls https://api.github.com/repos/flythenimbus/bramble/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*download.*" |  grep -i "aarch64\|arm64" | grep -i "appimage$" | head -1)
-wget "$version" || exit 1
-[ -e ./*7z ] && 7z x ./*7z && rm -f ./*7z
-[ -e ./*tar.* ] && tar fx ./*tar.* && rm -f ./*tar.*
-[ -e ./*zip ] && unzip -qq ./*zip 1>/dev/null && rm -f ./*zip
-cd ..
-if [ -d ./tmp/* ]; then mv --backup=t ./tmp/*/* ./"$APP"; else mv --backup=t ./tmp/* ./"$APP" 2>/dev/null || mv --backup=t ./tmp/* ./"$APP"; fi
-rm -R -f ./tmp || exit 1
-echo "$version" > ./version
-chmod a+x ./"$APP" || exit 1
-
-# LINK TO PATH
-ln -s "/opt/$APP/$APP" "/usr/local/bin/$APP"
-
-# SCRIPT TO UPDATE THE PROGRAM
-cat >> ./AM-updater << 'EOF'
-#!/bin/sh
-set -u
-APP=bramble
-SITE="flythenimbus/bramble"
-version0=$(cat "/opt/$APP/version")
-version=$(curl -Ls https://api.github.com/repos/flythenimbus/bramble/releases | sed 's/[()",{} ]/\n/g' | grep -oi "https.*download.*" |  grep -i "aarch64\|arm64" | grep -i "appimage$" | head -1)
-[ -n "$version" ] || { echo "Error getting link"; exit 1; }
-if command -v appimageupdatetool >/dev/null 2>&1; then
-	cd "/opt/$APP" || exit 1
-	appimageupdatetool -Or ./"$APP" && chmod a+x ./"$APP" && echo "$version" > ./version && exit 0
-fi
-if [ "$version" != "$version0" ]; then
-	mkdir "/opt/$APP/tmp" && cd "/opt/$APP/tmp" || exit 1
-	notify-send "A new version of $APP is available, please wait"
-	wget "$version" || exit 1
-	[ -e ./*7z ] && 7z x ./*7z && rm -f ./*7z
-	[ -e ./*tar.* ] && tar fx ./*tar.* && rm -f ./*tar.*
-	[ -e ./*zip ] && unzip -qq ./*zip 1>/dev/null && rm -f ./*zip
-	cd ..
-	if [ -d ./tmp/* ]; then mv --backup=t ./tmp/*/* ./"$APP"; else mv --backup=t ./tmp/* ./"$APP" 2>/dev/null || mv --backup=t ./tmp/* ./"$APP"; fi
-	chmod a+x ./"$APP" || exit 1
-	echo "$version" > ./version
-	rm -R -f ./*zs-old ./*.part ./tmp ./*~
-	notify-send "$APP is updated!"
-else
-	echo "Update not needed!"
-fi
-EOF
-chmod a+x ./AM-updater || exit 1
-
-# LAUNCHER & ICON
-./"$APP" --appimage-extract *.desktop 1>/dev/null
-./"$APP" --appimage-extract .DirIcon 1>/dev/null && mv ./squashfs-root/.DirIcon ./DirIcon
-COUNT=0
-while [ "$COUNT" -lt 10 ]; do # Tries to get the actual icon/desktop if it is a symlink to another symlink
-	for f in squashfs-root/*.desktop; do
-		FILE="$f"
-		if [ -L "$f" ]; then
-			LINKPATH="$(readlink "$f" | sed 's|^\./||' 2>/dev/null)"
-			./"$APP" --appimage-extract "$LINKPATH" 1>/dev/null
-			FILE="./squashfs-root/$LINKPATH"
-		fi
-		if grep -qi '^NoDisplay=true$' "$FILE" 2>/dev/null; then mv "$FILE" ./"$APP"-handler-AM.desktop && printf '\n%s' "rm -f /usr/local/share/applications/$APP-handler-AM.desktop" >> ./remove
-		else [ ! -f ./"$APP"-AM.desktop ] && mv "$FILE" ./"$APP"-AM.desktop || mv "$FILE" ./"$APP"-"$COUNT"-AM.desktop && printf '\n%s' "rm -f /usr/local/share/applications/$APP-$COUNT-AM.desktop" >> ./remove
-		fi
-	done
-	if [ -L ./DirIcon ]; then
-		LINKPATH="$(readlink ./DirIcon | sed 's|^\./||' 2>/dev/null)"
-		./"$APP" --appimage-extract "$LINKPATH" 1>/dev/null && mv ./squashfs-root/"$LINKPATH" ./DirIcon
-	fi
-	[ ! -L ./"$APP"-AM.desktop ] && [ ! -L ./DirIcon ] && break
-	COUNT=$((COUNT + 1))
+SITE="bramble-sh/bramble"
+MANIFEST="https://bramble.sh/desktop/latest.json"
+APPDIR="/opt/$APP"
+PLATFORM="linux-aarch64"
+ASSET_ARCH="aarch64"
+for tool in curl jq minisign base64; do
+	command -v "$tool" >/dev/null 2>&1 || { echo "Missing required command: $tool" >&2; exit 1; }
 done
-for f in ./*-AM.desktop; do [ "$f" != ./"$APP"-AM.desktop ] && [ -f "$f" ] && [ "$(sort ./"$APP"-AM.desktop)" = "$(sort "$f")" ] && rm -f "$f"; done
-sed -i "s#Exec=[^ ]*#Exec=$APP#g; s#Icon=.*#Icon=/opt/$APP/icons/$APP#g; s# --no-sandbox##g" ./*-AM.desktop
-mv ./*-AM.desktop /usr/local/share/applications/ && mv ./DirIcon ./icons/"$APP" 1>/dev/null
-rm -R -f ./squashfs-root
+mkdir -p "$APPDIR/tmp" "$APPDIR/icons"
+work="$APPDIR/tmp/install-$$"
+mkdir -m 700 "$work"
+installed=0
+[ -e "$APPDIR/$APP" ] && installed=1
+cleanup() { status=$?; rm -rf "$work"; if [ "$status" -ne 0 ] && [ "$installed" -eq 0 ]; then rm -rf "$APPDIR"; fi; exit "$status"; }
+trap cleanup EXIT
+trap 'exit 1' HUP INT TERM
+cd "$work"
+# Save one manifest per run so version and asset URL come from the same release.
+curl --fail --silent --show-error --location "$MANIFEST" -o manifest.json
+version=$(jq -er '.version' manifest.json)
+case "$version" in ''|*[!0-9A-Za-z.+-]*) echo "Invalid version in Bramble update manifest" >&2; exit 1 ;; esac
+appimage_url=$(jq -er --arg platform "$PLATFORM" '.platforms[$platform].url' manifest.json)
+expected_url="https://github.com/$SITE/releases/download/${version}-desktop/Bramble_${version}_${ASSET_ARCH}.AppImage"
+[ "$appimage_url" = "$expected_url" ] || { echo "Unexpected AppImage URL in Bramble update manifest" >&2; exit 1; }
+cat > updater.pub <<'KEY'
+untrusted comment: minisign public key: 67F935EFCFD28F69
+RWRpj9LP7zX5Z/tmH3zxEGUiP+oLc0+1Nbx7l2rY2BzyzFAMxdQ59Sit
+KEY
+curl --fail --silent --show-error --location "$appimage_url" -o "$APP"
+curl --fail --silent --show-error --location "${appimage_url}.sig" -o "$APP.sig"
+base64 -d "$APP.sig" > "$APP.minisig"
+minisign -V -m "$APP" -x "$APP.minisig" -p updater.pub
+chmod a+x "$APP"
+mv "$APP" "$APPDIR/$APP.new"
+mv -f "$APPDIR/$APP.new" "$APPDIR/$APP"
+printf '%s\n' "$version" > "$APPDIR/version.new"
+mv -f "$APPDIR/version.new" "$APPDIR/version"
+ln -sfn "$APPDIR/$APP" "/usr/local/bin/$APP"
+cat > "$APPDIR/remove" <<EOF
+#!/bin/sh
+set -eu
+rm -f "/usr/local/bin/$APP" "/usr/local/share/applications/$APP-AM.desktop"
+rm -rf "$APPDIR"
+EOF
+chmod a+x "$APPDIR/remove"
+cat > "$APPDIR/AM-updater" <<'EOF'
+#!/bin/sh
+set -eu
+APP=bramble
+SITE="bramble-sh/bramble"
+MANIFEST="https://bramble.sh/desktop/latest.json"
+APPDIR="/opt/$APP"
+PLATFORM="linux-aarch64"
+ASSET_ARCH="aarch64"
+for tool in curl jq minisign base64; do command -v "$tool" >/dev/null 2>&1 || { echo "Missing required command: $tool" >&2; exit 1; }; done
+stage="$APPDIR/.update-$$"
+mkdir -m 700 "$stage"
+cleanup() { status=$?; rm -rf "$stage"; exit "$status"; }
+trap cleanup EXIT
+trap 'exit 1' HUP INT TERM
+curl --fail --silent --show-error --location "$MANIFEST" -o "$stage/manifest.json"
+version=$(jq -er '.version' "$stage/manifest.json")
+case "$version" in ''|*[!0-9A-Za-z.+-]*) echo "Invalid version in Bramble update manifest" >&2; exit 1 ;; esac
+installed=$(cat "$APPDIR/version" 2>/dev/null || :)
+if [ -n "$installed" ] && ! printf '%s\n%s\n' "$installed" "$version" | grep -q '^https://'; then
+	newest=$(printf '%s\n%s\n' "$installed" "$version" | sort -V | tail -n 1)
+	if [ "$newest" = "$installed" ]; then echo "Bramble is already current or newer ($installed)"; exit 0; fi
+fi
+appimage_url=$(jq -er --arg platform "$PLATFORM" '.platforms[$platform].url' "$stage/manifest.json")
+expected_url="https://github.com/$SITE/releases/download/${version}-desktop/Bramble_${version}_${ASSET_ARCH}.AppImage"
+[ "$appimage_url" = "$expected_url" ] || { echo "Unexpected AppImage URL in Bramble update manifest" >&2; exit 1; }
+curl --fail --silent --show-error --location "$appimage_url" -o "$stage/$APP"
+curl --fail --silent --show-error --location "${appimage_url}.sig" -o "$stage/$APP.sig"
+base64 -d "$stage/$APP.sig" > "$stage/$APP.minisig"
+cat > "$stage/updater.pub" <<'KEY'
+untrusted comment: minisign public key: 67F935EFCFD28F69
+RWRpj9LP7zX5Z/tmH3zxEGUiP+oLc0+1Nbx7l2rY2BzyzFAMxdQ59Sit
+KEY
+minisign -V -m "$stage/$APP" -x "$stage/$APP.minisig" -p "$stage/updater.pub"
+chmod a+x "$stage/$APP"
+printf '%s\n' "$version" > "$stage/version"
+cp -p "$APPDIR/$APP" "$stage/$APP.old"
+cp -p "$APPDIR/version" "$stage/version.old"
+committing=1
+rollback() {
+	status=$?
+	trap - EXIT HUP INT TERM
+	if [ "${committing:-0}" -eq 1 ]; then
+		mv -f "$stage/$APP.old" "$APPDIR/$APP" || echo "Could not restore Bramble image from $stage" >&2
+		mv -f "$stage/version.old" "$APPDIR/version" || echo "Could not restore Bramble version from $stage" >&2
+	fi
+	rm -f "$APPDIR/$APP.new" "$APPDIR/version.new"
+	rm -rf "$stage"
+	exit "$status"
+}
+trap rollback EXIT
+mv "$stage/$APP" "$APPDIR/$APP.new"
+mv -f "$APPDIR/$APP.new" "$APPDIR/$APP"
+mv "$stage/version" "$APPDIR/version.new"
+mv -f "$APPDIR/version.new" "$APPDIR/version"
+committing=0
+trap cleanup EXIT
+printf 'Bramble updated to %s\n' "$version"
+EOF
+sed -i "s/linux-aarch64/$PLATFORM/g; s/aarch64/$ASSET_ARCH/g" "$APPDIR/AM-updater"
+chmod a+x "$APPDIR/AM-updater"
+rm -f "$APPDIR/version.new"
+# Resolve embedded symlinks before copying launch metadata. Only Exec and Icon
+# are rewritten, so StartupWMClass and other desktop integration keys survive.
+cd "$APPDIR"
+if ./$APP --appimage-extract >/dev/null 2>&1; then
+	icon=$(readlink -f squashfs-root/.DirIcon 2>/dev/null || :)
+	case "$icon" in "$(pwd)/squashfs-root/"*) [ -f "$icon" ] && cp "$icon" "$APPDIR/icons/$APP" ;; esac
+	desktop=
+	for f in squashfs-root/*.desktop; do
+		[ -f "$f" ] || continue
+		resolved=$(readlink -f "$f" 2>/dev/null || :)
+		case "$resolved" in "$(pwd)/squashfs-root/"*) [ -f "$resolved" ] && { desktop=$resolved; break; } ;; esac
+	done
+	if [ -n "$desktop" ] && [ -f "$APPDIR/icons/$APP" ]; then
+		cp "$desktop" "$APP.desktop"
+		sed -i "s#^Exec=.*#Exec=$APP#g; s#^Icon=.*#Icon=$APPDIR/icons/$APP#g; s# --no-sandbox##g" "$APP.desktop"
+		mv "$APP.desktop" "/usr/local/share/applications/$APP-AM.desktop"
+	fi
+	rm -rf squashfs-root
+fi
