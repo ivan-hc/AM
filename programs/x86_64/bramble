@@ -9,10 +9,12 @@ MANIFEST="https://bramble.sh/desktop/latest.json"
 APPDIR="/opt/$APP"
 PLATFORM="linux-x86_64"
 ASSET_ARCH="amd64"
-for tool in curl jq minisign base64; do
+for tool in curl jq minisign base64 flock; do
 	command -v "$tool" >/dev/null 2>&1 || { echo "Missing required command: $tool" >&2; exit 1; }
 done
 mkdir -p "$APPDIR/tmp" "$APPDIR/icons"
+exec 9>"$APPDIR/.bramble-update.lock"
+flock -n 9 || { echo "Another Bramble install or update is running" >&2; exit 1; }
 work="$APPDIR/tmp/install-$$"
 mkdir -m 700 "$work"
 installed=0
@@ -24,7 +26,9 @@ cd "$work"
 # Save one manifest per run so version and asset URL come from the same release.
 curl --fail --silent --show-error --location "$MANIFEST" -o manifest.json
 version=$(jq -er '.version' manifest.json)
-case "$version" in ''|*[!0-9A-Za-z.+-]*) echo "Invalid version in Bramble update manifest" >&2; exit 1 ;; esac
+# The stable desktop release channel uses MAJOR.MINOR.PATCH tags.
+version_pattern='(0|[1-9][0-9]*)[.](0|[1-9][0-9]*)[.](0|[1-9][0-9]*)'
+printf '%s\0' "$version" | grep -zExq "$version_pattern" || { echo "Invalid version in Bramble update manifest" >&2; exit 1; }
 appimage_url=$(jq -er --arg platform "$PLATFORM" '.platforms[$platform].url' manifest.json)
 expected_url="https://github.com/$SITE/releases/download/${version}-desktop/Bramble_${version}_${ASSET_ARCH}.AppImage"
 [ "$appimage_url" = "$expected_url" ] || { echo "Unexpected AppImage URL in Bramble update manifest" >&2; exit 1; }
@@ -58,7 +62,9 @@ MANIFEST="https://bramble.sh/desktop/latest.json"
 APPDIR="/opt/$APP"
 PLATFORM="linux-x86_64"
 ASSET_ARCH="amd64"
-for tool in curl jq minisign base64; do command -v "$tool" >/dev/null 2>&1 || { echo "Missing required command: $tool" >&2; exit 1; }; done
+for tool in curl jq minisign base64 flock; do command -v "$tool" >/dev/null 2>&1 || { echo "Missing required command: $tool" >&2; exit 1; }; done
+exec 9>"$APPDIR/.bramble-update.lock"
+flock -n 9 || { echo "Another Bramble install or update is running" >&2; exit 1; }
 stage="$APPDIR/.update-$$"
 mkdir -m 700 "$stage"
 cleanup() { status=$?; rm -rf "$stage"; exit "$status"; }
@@ -66,7 +72,9 @@ trap cleanup EXIT
 trap 'exit 1' HUP INT TERM
 curl --fail --silent --show-error --location "$MANIFEST" -o "$stage/manifest.json"
 version=$(jq -er '.version' "$stage/manifest.json")
-case "$version" in ''|*[!0-9A-Za-z.+-]*) echo "Invalid version in Bramble update manifest" >&2; exit 1 ;; esac
+# The stable desktop release channel uses MAJOR.MINOR.PATCH tags.
+version_pattern='(0|[1-9][0-9]*)[.](0|[1-9][0-9]*)[.](0|[1-9][0-9]*)'
+printf '%s\0' "$version" | grep -zExq "$version_pattern" || { echo "Invalid version in Bramble update manifest" >&2; exit 1; }
 installed=$(cat "$APPDIR/version")
 case "$installed" in
 	https://github.com/flythenimbus/bramble/releases/download/*-desktop/Bramble_*.AppImage | \
@@ -75,9 +83,7 @@ case "$installed" in
 		installed=${installed%%-desktop/*}
 		;;
 esac
-case "$installed" in
-	''|*[!0-9A-Za-z.+-]*) echo "Invalid installed Bramble version" >&2; exit 1 ;;
-esac
+printf '%s\0' "$installed" | grep -zExq "$version_pattern" || { echo "Invalid installed Bramble version" >&2; exit 1; }
 newest=$(printf '%s\n%s\n' "$installed" "$version" | sort -V | tail -n 1)
 if [ "$newest" = "$installed" ]; then echo "Bramble is already current or newer ($installed)"; exit 0; fi
 appimage_url=$(jq -er --arg platform "$PLATFORM" '.platforms[$platform].url' "$stage/manifest.json")
