@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="10.7-3"
+AMVERSION="10.7-4"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -1773,15 +1773,15 @@ _use_env_default_env_file() {
 		cat <<-HEREDOC >> "$APPIMAGE.env"
 		#!/bin/sh
 
-		if [ -f $APPIMAGE.real ] && head -c10 $APPIMAGE.real 2>/dev/null | grep -qa '^.ELF....AI$' && head -c1000000 $APPIMAGE.real 2>/dev/null | grep -qa 'AppImages require FUSE to run'; then
+		if [ -f "$APPIMAGE.real" ] && head -c10 "$APPIMAGE.real" 2>/dev/null | grep -qa '^.ELF....AI$' && head -c1000000 "$APPIMAGE.real" 2>/dev/null | grep -qa 'AppImages require FUSE to run'; then
 		  printf "\n This AppImage require the EOL FUSE2 library to run!\n Exporting APPIMAGE_EXTRACT_AND_RUN=1, please wait...\n\n"
 		  export APPIMAGE_EXTRACT_AND_RUN=1
 		fi
 
-		[ -d $APPIMAGE.cache ] && export XDG_CACHE_HOME="$APPIMAGE.cache"
-		[ -d $APPIMAGE.config ] && export XDG_CONFIG_HOME="$APPIMAGE.config"
-		[ -d $APPIMAGE.home ] && export HOME="$APPIMAGE.home"
-		[ -d $APPIMAGE.share ] && export XDG_DATA_HOME="$APPIMAGE.share"
+		[ -d "$APPIMAGE.cache" ] && export XDG_CACHE_HOME="$APPIMAGE.cache"
+		[ -d "$APPIMAGE.config" ] && export XDG_CONFIG_HOME="$APPIMAGE.config"
+		[ -d "$APPIMAGE.home" ] && export HOME="$APPIMAGE.home"
+		[ -d "$APPIMAGE.share" ] && export XDG_DATA_HOME="$APPIMAGE.share"
 
 		HEREDOC
 	fi	
@@ -1794,8 +1794,8 @@ _use_env_create_script() {
 	cat <<-HEREDOC >> "$APPIMAGE"
 	#!/bin/sh
 
-	[ -f $APPIMAGE.env ] && . $APPIMAGE.env
-	[ -f $APPIMAGE.sandbox ] && . $APPIMAGE.sandbox
+	[ -f "$APPIMAGE.env" ] && . "$APPIMAGE.env"
+	[ -f "$APPIMAGE.sandbox" ] && . "$APPIMAGE.sandbox"
 
 	exec "$APPIMAGE.real" "\$@"
 	HEREDOC
@@ -1812,13 +1812,16 @@ _use_env_flags() {
 	# Reset the .env file
 	if echo "$FLAGS" | grep -q -- "--reset"; then
 		if [ -n "$APPIMAGE" ] && [ -f "$APPIMAGE.real" ] && [ -f "$APPIMAGE.env" ]; then
-			rm -f "$APPIMAGE.env" | _fit && _use_env_default_env_file
+			rm -f "$APPIMAGE.env" && _use_env_default_env_file
 		fi
 	fi
 	# Edit the .env file
 	if echo "$FLAGS" | grep -q -- "--edit"; then
 		if [ -n "$APPIMAGE" ] && [ -f "$APPIMAGE.real" ] && [ -f "$APPIMAGE.env" ]; then
-			if command -v vim >/dev/null 2>&1; then
+			ed="${VISUAL:-${EDITOR:-}}"
+			if [ -n "$ed" ]; then
+				$ed "$APPIMAGE.env"
+			elif command -v vim >/dev/null 2>&1; then
 				vim "$APPIMAGE.env"
 			elif command -v nano >/dev/null 2>&1; then
 				nano "$APPIMAGE.env"
@@ -1841,6 +1844,7 @@ _use_env() {
 			printf $" ✖ ERROR: \"%b\" is NOT an AppImage\n" "$arg"
 		else
 			# Determine updater script
+			UPDATER_SCRIPT=""
 			if [ -f "$argpath/AM-updater" ]; then
 				UPDATER_SCRIPT="$argpath/AM-updater"
 			elif [ -f "$argpath/AM-LOCK" ]; then
