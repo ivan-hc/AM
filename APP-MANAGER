@@ -1017,8 +1017,8 @@ fi
 available_options="about add apikey backup clean clone config disable downgrade download enable env extra files hide home icons info \
 	install install-appimage integrate launcher list lock neodb newrepo nolibfuse off on overwrite purge query reinstall relocate remove sandbox \
 	search select sync template test translate unhide unlock update upgrade --all --appimages --apps --assume-yes --byname --clone --config --convert --debug \
-	--devmode-disable --devmode-enable --disable-notifications --enable-notifications --env --force-latest --help --home --icons \
-	-ias --launcher --less --lock --markdown --pkg --portable --rollback --disable-sandbox --reinstall --relocate --sandbox --system --translate --unlock --user $third_party_flags"
+	--devmode-disable --devmode-enable --disable-notifications --edit --enable-notifications --env --force-latest --help --home --icons \
+	-ias --launcher --less --lock --markdown --pkg --portable --reset --rollback --disable-sandbox --reinstall --relocate --sandbox --system --translate --unlock --user $third_party_flags"
 
 _completion_lists() {
 	# Remove existing lists and download new ones
@@ -1808,39 +1808,65 @@ _use_env_create_script() {
 	_use_env_default_env_file
 }
 
+_use_env_flags() {
+	# Reset the .env file
+	if echo "$FLAGS" | grep -q -- "--reset"; then
+		if [ -n "$APPIMAGE" ] && [ -f "$APPIMAGE.real" ] && [ -f "$APPIMAGE.env" ]; then
+			rm -f "$APPIMAGE.env" | _fit && _use_env_default_env_file
+		fi
+	fi
+	# Edit the .env file
+	if echo "$FLAGS" | grep -q -- "--edit"; then
+		if [ -n "$APPIMAGE" ] && [ -f "$APPIMAGE.real" ] && [ -f "$APPIMAGE.env" ]; then
+			if command -v vim >/dev/null 2>&1; then
+				vim "$APPIMAGE.env"
+			elif command -v nano >/dev/null 2>&1; then
+				nano "$APPIMAGE.env"
+			fi
+		fi
+	fi
+}
+
 _use_env() {
 	_determine_args
-	ENTRIES="$(echo "$@" | cut -f2- -d ' ')"
+	ENTRIES="$(echo "$@" | cut -f2- -d ' ' | tr ' ' '\n' | grep -v -- "--")"
+	FLAGS=$(echo "$@" | tr ' ' '\n' | grep -- "--" | tr '\n ' ' ')
 	for arg in $ENTRIES; do
 		_determine_argpath
 		APPIMAGE=""
 		if [ -f "$argpath/$arg" ]; then
 			APPIMAGE="$argpath/$arg"
 		fi
-		[ -z "$APPIMAGE" ] && return 1
-		# Determine updater script
-		if [ -f "$argpath/AM-updater" ]; then
-			UPDATER_SCRIPT="$argpath/AM-updater"
-		elif [ -f "$argpath/AM-LOCK" ]; then
-			UPDATER_SCRIPT="$argpath/AM-LOCK"
-		fi
-		# Determine if the target file is an AppImage or a script
-		if head -c10 "$APPIMAGE" 2>/dev/null | grep -qa '^.ELF....AI$'; then
-			if grep -Eaoq -m 1 "appimage-extract" "$APPIMAGE" || file "$APPIMAGE" | grep -q 'static'; then
-				# Determine if the AppImage is already in a legacy sandbox
-				if grep -q "chmod a-x" "$UPDATER_SCRIPT" && [ ! -x "$APPIMAGE" ]; then
-					printf $"%b\n \"%b\" is already sandboxed!\n%b\n" "$DIVIDING_LINE" "$arg" "$DIVIDING_LINE" | sed "s/\!$/ [LEGACY CODE]/g"
-				else
-					_use_env_create_script
+		if [ -z "$APPIMAGE" ]; then
+			printf $" ✖ ERROR: \"%b\" is NOT an AppImage\n" "$arg"
+		else
+			# Determine updater script
+			if [ -f "$argpath/AM-updater" ]; then
+				UPDATER_SCRIPT="$argpath/AM-updater"
+			elif [ -f "$argpath/AM-LOCK" ]; then
+				UPDATER_SCRIPT="$argpath/AM-LOCK"
+			fi
+			# Determine if the target file is an AppImage or a script
+			if head -c10 "$APPIMAGE" 2>/dev/null | grep -qa '^.ELF....AI$'; then
+				if grep -Eaoq -m 1 "appimage-extract" "$APPIMAGE" || file "$APPIMAGE" | grep -q 'static'; then
+					# Determine if the AppImage is already in a legacy sandbox
+					if grep -q "chmod a-x" "$UPDATER_SCRIPT" && [ ! -x "$APPIMAGE" ]; then
+						printf $"%b\n \"%b\" is already sandboxed!\n%b\n" "$DIVIDING_LINE" "$arg" "$DIVIDING_LINE" | sed "s/\!$/ [LEGACY CODE]/g"
+					else
+						_use_env_create_script
+					fi
 				fi
-			fi
-		# Determine if the target file is a script that calls the AppImage
-		elif grep '#!.*bin.*sh' "$APPIMAGE" >/dev/null 2>&1 && [ -f "$APPIMAGE".real ] && head -c10 "$APPIMAGE".real 2>/dev/null | grep -qa '^.ELF....AI$'; then
-			if [ -f "$APPIMAGE.real" ] && grep -Eaoq -m 1 "appimage-extract" "$APPIMAGE.real" || file "$APPIMAGE.real" | grep -q 'static'; then
-				_use_env_default_env_file
+			# Determine if the target file is a script that calls the AppImage
+			elif grep '#!.*bin.*sh' "$APPIMAGE" >/dev/null 2>&1 && [ -f "$APPIMAGE".real ] && head -c10 "$APPIMAGE".real 2>/dev/null | grep -qa '^.ELF....AI$'; then
+				if [ -f "$APPIMAGE.real" ] && grep -Eaoq -m 1 "appimage-extract" "$APPIMAGE.real" || file "$APPIMAGE.real" | grep -q 'static'; then
+					_use_env_default_env_file
+				fi
+			else
+				printf $" ✖ ERROR: \"%b\" is NOT an AppImage\n" "$arg"
 			fi
 		fi
-		
+		# Use flags
+		_use_env_flags
 	done
 }
 
