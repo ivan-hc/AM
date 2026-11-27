@@ -23,12 +23,12 @@ appman --sandbox $APP
 ```
 The "aisap"/"sas" package installed is required, whether it is available system-wide ("AM") or locally ("AppMan"), the important thing is that the "aisap"/"sas" command is in $PATH. If it is not present, "AM"/"AppMan" will ask you if it can proceed with the installation before continuing.
 
-We will first compile the script in a non-privileged, easy-to-access directory, before being placed in $PATH (see step 2, below).
+We will first compile the script in a non-privileged, easy-to-access directory.
 1. Once started, you will be asked whether to enable the sandbox (default "Y") or not (type "N"):
   - the main XDG directories (Pictures, Videos, Documents...) will be listed, answer whether to authorize access (type "Y") or not ("N", default);
   - at the end, choose whether to specify some directories to access (default "N"), and if "Yes", write the path.
-2. Now that the script is complete, it should be placed in $PATH. "AM" users will need to authorize writing to /usr/local/bin by entering their password. "AppMan" users do not have these problems;
-3. To allow Aipman take care of the AppImage, the latter be set to "not executable" and the related AM-updater will also have its `chmod` command set from `a+x` to `a-x`.
+2. Now that the script is complete, it should be placed near the AppImage, with extension .sandbox.
+3. To allow aisap/sas take care of the AppImage, the latter be set to "not executable" and the related AM-updater will also have its `chmod` command set from `a+x` to `a-x`.
 4. Now your AppImage is in a sandbox!
 
 NOTE, the default location for the sandboxed homes is at $HOME/.local/am-sandboxes, but that location can be changed by setting the $SANDBOXDIR environemt variable.
