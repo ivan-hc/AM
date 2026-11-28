@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-AMVERSION="10.7-1"
+AMVERSION="10.7-5"
 
 # Determine main repository and branch
 AMREPO="https://raw.githubusercontent.com/ivan-hc/AM/main"
@@ -1014,11 +1014,11 @@ fi
 ################################################################################################################################################################
 
 # COMPLETION LIST
-available_options="about add apikey backup clean clone config disable downgrade download enable extra files hide home icons info \
+available_options="about add apikey backup clean clone config disable downgrade download enable env extra files hide home icons info \
 	install install-appimage integrate launcher list lock neodb newrepo nolibfuse off on overwrite purge query reinstall relocate remove sandbox \
 	search select sync template test translate unhide unlock update upgrade --all --appimages --apps --assume-yes --byname --clone --config --convert --debug \
-	--devmode-disable --devmode-enable --disable-notifications --enable-notifications --force-latest --help --home --icons \
-	-ias --launcher --less --lock --markdown --pkg --portable --rollback --disable-sandbox --reinstall --relocate --sandbox --system --translate --unlock --user $third_party_flags"
+	--devmode-disable --devmode-enable --disable-notifications --edit --enable-notifications --env --force-latest --help --home --icons \
+	-ias --launcher --less --lock --markdown --pkg --portable --reset --rollback --disable-sandbox --reinstall --relocate --sandbox --system --translate --unlock --user $third_party_flags"
 
 _completion_lists() {
 	# Remove existing lists and download new ones
@@ -1763,6 +1763,120 @@ _use_clone() {
 }
 
 ################################################################################################################################################################
+#				ENV
+################################################################################################################################################################
+
+conf_files="env sandbox"
+
+_use_env_default_env_file() {
+	if [ ! -f "$APPIMAGE.env" ]; then
+		cat <<-HEREDOC >> "$APPIMAGE.env"
+		#!/bin/sh
+
+		if [ -f "$APPIMAGE.real" ] && head -c10 "$APPIMAGE.real" 2>/dev/null | grep -qa '^.ELF....AI$' && head -c1000000 "$APPIMAGE.real" 2>/dev/null | grep -qa 'AppImages require FUSE to run'; then
+		  printf "\n This AppImage require the EOL FUSE2 library to run!\n Exporting APPIMAGE_EXTRACT_AND_RUN=1, please wait...\n\n"
+		  export APPIMAGE_EXTRACT_AND_RUN=1
+		fi
+
+		if [ ! "$APPIMAGE.sandbox" ]; then
+		  [ -d "$APPIMAGE.cache" ] && export XDG_CACHE_HOME="$APPIMAGE.cache"
+		  [ -d "$APPIMAGE.config" ] && export XDG_CONFIG_HOME="$APPIMAGE.config"
+		  [ -d "$APPIMAGE.home" ] && export HOME="$APPIMAGE.home"
+		  [ -d "$APPIMAGE.share" ] && export XDG_DATA_HOME="$APPIMAGE.share"
+		fi
+
+		HEREDOC
+	fi
+}
+
+_use_env_create_script() {
+	# Rename the AppImage by adding a .real extension
+	mv "$APPIMAGE" "$APPIMAGE.real" || return 1
+	# Create the wrapper
+	cat <<-HEREDOC >> "$APPIMAGE"
+	#!/bin/sh
+
+	[ -f "$APPIMAGE.env" ] && . "$APPIMAGE.env"
+	[ -f "$APPIMAGE.sandbox" ] && . "$APPIMAGE.sandbox"
+
+	exec "$APPIMAGE.real" "\$@"
+	HEREDOC
+	chmod a+x "$APPIMAGE"
+	# Patch the updater script
+	if ! grep -q '"$APP"\.real' "$UPDATER_SCRIPT"; then
+		sed -i 's/"$APP"/"$APP"\.real/g' "$UPDATER_SCRIPT" 2>/dev/null
+	fi
+	# Create .env configuration file
+	_use_env_default_env_file
+}
+
+_use_env_flags() {
+	# Reset the .env file
+	if echo "$FLAGS" | grep -q -- "--reset"; then
+		if [ -n "$APPIMAGE" ] && [ -f "$APPIMAGE.real" ] && [ -f "$APPIMAGE.env" ]; then
+			rm -f "$APPIMAGE.env" && _use_env_default_env_file
+		fi
+	fi
+	# Edit the .env file
+	if echo "$FLAGS" | grep -q -- "--edit"; then
+		if [ -n "$APPIMAGE" ] && [ -f "$APPIMAGE.real" ] && [ -f "$APPIMAGE.env" ]; then
+			ed="${VISUAL:-${EDITOR:-}}"
+			if [ -n "$ed" ]; then
+				$ed "$APPIMAGE.env"
+			elif command -v vim >/dev/null 2>&1; then
+				vim "$APPIMAGE.env"
+			elif command -v nano >/dev/null 2>&1; then
+				nano "$APPIMAGE.env"
+			fi
+		fi
+	fi
+}
+
+_use_env() {
+	_determine_args
+	ENTRIES="$(echo "$@" | cut -f2- -d ' ' | tr ' ' '\n' | grep -v -- "--")"
+	FLAGS=$(echo "$@" | tr ' ' '\n' | grep -- "--" | tr '\n ' ' ')
+	for arg in $ENTRIES; do
+		_determine_argpath
+		APPIMAGE=""
+		if [ -f "$argpath/$arg" ]; then
+			APPIMAGE="$argpath/$arg"
+		fi
+		if [ -z "$APPIMAGE" ]; then
+			printf $" ✖ ERROR: \"%b\" is NOT an AppImage\n" "$arg"
+		else
+			# Determine updater script
+			UPDATER_SCRIPT=""
+			if [ -f "$argpath/AM-updater" ]; then
+				UPDATER_SCRIPT="$argpath/AM-updater"
+			elif [ -f "$argpath/AM-LOCK" ]; then
+				UPDATER_SCRIPT="$argpath/AM-LOCK"
+			fi
+			# Determine if the target file is an AppImage or a script
+			if head -c10 "$APPIMAGE" 2>/dev/null | grep -qa '^.ELF....AI$'; then
+				if grep -Eaoq -m 1 "appimage-extract" "$APPIMAGE" || file "$APPIMAGE" | grep -q 'static'; then
+					# Determine if the AppImage is already in a legacy sandbox
+					if grep -q "chmod a-x" "$UPDATER_SCRIPT" && [ ! -x "$APPIMAGE" ]; then
+						printf $"%b\n \"%b\" is already sandboxed!\n%b\n" "$DIVIDING_LINE" "$arg" "$DIVIDING_LINE" | sed "s/\!$/ [LEGACY CODE]/g"
+					else
+						_use_env_create_script
+					fi
+				fi
+			# Determine if the target file is a script that calls the AppImage
+			elif grep '#!.*bin.*sh' "$APPIMAGE" >/dev/null 2>&1 && [ -f "$APPIMAGE".real ] && head -c10 "$APPIMAGE".real 2>/dev/null | grep -qa '^.ELF....AI$'; then
+				if [ -f "$APPIMAGE.real" ] && grep -Eaoq -m 1 "appimage-extract" "$APPIMAGE.real" || file "$APPIMAGE.real" | grep -q 'static'; then
+					_use_env_default_env_file
+				fi
+			else
+				printf $" ✖ ERROR: \"%b\" is NOT an AppImage\n" "$arg"
+			fi
+		fi
+		# Use flags
+		_use_env_flags
+	done
+}
+
+################################################################################################################################################################
 #				RELOCATE
 ################################################################################################################################################################
 
@@ -1785,7 +1899,9 @@ _use_relocate() {
 			if [ -n "$APPMAN_APPS_OLD" ]; then
 				for arg in $APPMAN_APPS_OLD; do
 					appname=$(echo "$arg" | sed 's:.*/::')
-					[ -f "$arg"/"$appname".env ] && mkdir -p "$SCRIPTDIR"/reinstall-backups && cp -r "$arg"/"$appname".env "$SCRIPTDIR"/reinstall-backups/"$appname".env
+					for ext in $conf_files; do
+						[ -f "$arg"/"$appname"."$ext" ] && mkdir -p "$SCRIPTDIR"/reinstall-backups && cp -r "$arg"/"$appname"."$ext" "$SCRIPTDIR"/reinstall-backups/"$appname"."$ext"
+					done
 					portable_dirs="cache config home share"
 					for d in $portable_dirs; do
 						[ -d "$SCRIPTDIR"/reinstall-backups/"$appname.$d" ] && rm -Rf "$SCRIPTDIR"/reinstall-backups/"$appname.$d"
@@ -1799,7 +1915,9 @@ _use_relocate() {
 			APPMAN_APPS_NEW=$(sort -u "$SCRIPTDIR"/am-clone.source.appman | sed 's:.*/::' | xargs)
 			"$AMCLIPATH_ORIGIN" -i --user "$APPMAN_APPS_NEW"
 			for appname in $APPMAN_APPS_NEW; do
-				[ -f "$SCRIPTDIR"/reinstall-backups/"$appname".env ] && cp -r "$SCRIPTDIR"/reinstall-backups/"$appname".env "$APPSPATH"/"$appname"/"$appname".env
+				for ext in $conf_files; do
+					[ -f "$SCRIPTDIR"/reinstall-backups/"$appname"."$ext" ] && cp -r "$SCRIPTDIR"/reinstall-backups/"$appname"."$ext" "$APPSPATH"/"$appname"/"$appname"."$ext"
+				done
 				portable_dirs="cache config home share"
 				for d in $portable_dirs; do
 					[ -d "$SCRIPTDIR"/relocate-backups/"$appname.$d" ] && cp -r "$SCRIPTDIR"/relocate-backups/"$appname.$d" "$APPSPATH"/"$appname"/"$appname.$d"
@@ -2010,16 +2128,21 @@ _use_verify() {
 		# Show URL and digest when in debug mode
 		[ -n "$debug_update" ] && printf "\nDownload URL: %s, Digest: %s\n" "$download_url" "$digest"
 		# Calculate checksums
-		if [ -f "$argpath"/"$arg" ]; then
-			checksum_sha1=$(sha1sum "$argpath/$arg" | awk '{print $1}')
-			checksum_sha256=$(sha256sum "$argpath/$arg" | awk '{print $1}')
-			checksum_sha512=$(sha512sum "$argpath/$arg" | awk '{print $1}')
-			checksum_md5=$(md5sum "$argpath/$arg" | awk '{print $1}')
+		APPLICATION=""
+		if [ -f "$argpath"/"$arg".real ] && [ -f "$argpath"/"$arg" ]; then
+			APPLICATION="$argpath/$arg.real"
+		elif [ -f "$argpath"/"$arg" ]; then
+			APPLICATION="$argpath/$arg"
+		elif [ -f "$argpath"/"$pure_arg".real ] && [ -f "$argpath"/"$pure_arg" ]; then
+			APPLICATION="$argpath/$pure_arg.real"
 		elif [ -f "$argpath"/"$pure_arg" ]; then
-			checksum_sha1=$(sha1sum "$argpath/$pure_arg" | awk '{print $1}')
-			checksum_sha256=$(sha256sum "$argpath/$pure_arg" | awk '{print $1}')
-			checksum_sha512=$(sha512sum "$argpath/$pure_arg" | awk '{print $1}')
-			checksum_md5=$(md5sum "$argpath/$pure_arg" | awk '{print $1}')
+			APPLICATION="$argpath/$pure_arg"
+		fi
+		if [ -n "$APPLICATION" ]; then
+			checksum_sha1=$(sha1sum "$APPLICATION" | awk '{print $1}')
+			checksum_sha256=$(sha256sum "$APPLICATION" | awk '{print $1}')
+			checksum_sha512=$(sha512sum "$APPLICATION" | awk '{print $1}')
+			checksum_md5=$(md5sum "$APPLICATION" | awk '{print $1}')
 		else
 			checksum_msg=$(echo $"Checksum cannot be verified, mismatch in binary name.")
 			printf "%b✖\033[0m %b \n" "${RED}" "$checksum_msg" | _fit
@@ -2637,6 +2760,9 @@ case "$1" in
 			sed -e '/notify-send/ s/^#*//' -i "$n/AM-updater" 2>/dev/null
 		done
 		rm -f "$AMDATADIR"/disable-notifications
+		;;
+	'env'|'--env')
+		_use_env "$@"
 		;;
 	'force-latest'|'--force-latest')
 		_use_force_latest "$@"
