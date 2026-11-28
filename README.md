@@ -904,10 +904,14 @@ Unlock updates for the selected program (nulls "`lock`").
 		am -u {PROGRAM}
 		am -u --debug {PROGRAM}
 		am -u --launcher
+		am -u --refresh-launchers
+		am -u --refresh-launchers {PROGRAM}
 
 **Description**:
 
 Update everything. Add "`--apps`" to update only the apps or write only the apps you want to update by adding their names. Add the "`--debug`" flag to view the output of AM-updater scripts. Add the "`--launcher`" flag to try to update only local AppImages integrated with the "`--launcher`" option (see "`--launcher`").
+
+Add "`--refresh-launchers`" to copy `StartupWMClass` from the AppImage into the existing launcher. With this flag, AM owns `StartupWMClass`. `Exec` and every other line are left unchanged. Launchers that are not writable, including system installs, are skipped; use "`reinstall --launcher`" for those.
 
 ------------------------------------------------------------------------
 ### `version`, `-v`

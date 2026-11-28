@@ -1018,7 +1018,7 @@ available_options="about add apikey backup clean clone config disable downgrade 
 	install install-appimage integrate launcher list lock neodb newrepo nolibfuse off on overwrite purge query reinstall relocate remove sandbox \
 	search select sync template test translate unhide unlock update upgrade --all --appimages --apps --assume-yes --byname --clone --config --convert --debug \
 	--devmode-disable --devmode-enable --disable-notifications --enable-notifications --force-latest --help --home --icons \
-	-ias --launcher --less --lock --markdown --pkg --portable --rollback --disable-sandbox --reinstall --relocate --sandbox --system --translate --unlock --user $third_party_flags"
+	-ias --launcher --less --lock --markdown --pkg --portable --rollback --disable-sandbox --refresh-launchers --reinstall --relocate --sandbox --system --translate --unlock --user $third_party_flags"
 
 _completion_lists() {
 	# Remove existing lists and download new ones
@@ -2046,6 +2046,41 @@ _use_verify() {
 #				UPDATE
 ################################################################################################################################################################
 
+# Copy StartupWMClass from the AppImage when -u --refresh-launchers is set.
+# Exec and every other line stay. With this flag, AM owns StartupWMClass.
+# Root-owned launchers are skipped; use "reinstall --launcher" for those.
+_update_launcher_wmclass() {
+	if echo "$argpath" | grep -q "^/opt\|^/var/opt"; then
+		launcher="/usr/local/share/$LAUNCHERS_DIR/$arg-AM.desktop"
+	else
+		launcher="$DATADIR/$LAUNCHERS_DIR/$arg-AM.desktop"
+	fi
+	[ -w "$launcher" ] && head -c10 "$argpath/$arg" 2>/dev/null | grep -qa '^.ELF....AI$' || return 0
+	grep -Eaoq -m 1 "appimage-extract" "$argpath/$arg" || return 0
+	grep -qs "StartupWMClass" "$argpath"/.am-installer/"$arg"* && return 0
+	cd "$argpath" || return 0
+	./"$arg" --appimage-extract '*.desktop' >/dev/null 2>&1
+	set -- squashfs-root/*.desktop
+	if [ "$#" = 1 ] && [ -L "$1" ]; then
+		LINKPATH="$(readlink "$1" | sed 's|^\./||')"
+		case "$LINKPATH" in
+			/*) ;;
+			*) ./"$arg" --appimage-extract "$LINKPATH" >/dev/null 2>&1 && set -- squashfs-root/"$LINKPATH" ;;
+		esac
+	fi
+	wm_class=""
+	[ "$#" = 1 ] && [ ! -L "$1" ] && wm_class=$(grep -m1 "^StartupWMClass=" "$1" 2>/dev/null | cut -d= -f2- | tr -d '\r')
+	rm -Rf ./squashfs-root
+	case "$wm_class" in ''|*[\|\\\&]*) return 0 ;; esac
+	grep -qxF "StartupWMClass=$wm_class" "$launcher" && return 0
+	if grep -q "^StartupWMClass=" "$launcher"; then
+		sed -i "s|^StartupWMClass=.*|StartupWMClass=$wm_class|" "$launcher"
+	else
+		sed -i "/^\[Desktop Entry\]/a\StartupWMClass=$wm_class" "$launcher"
+	fi
+	printf $" %b✔\033[0m StartupWMClass of %s updated to %s\n" "${Green}" "$arg" "$wm_class"
+}
+
 _update_updatable_apps_msg_head() {
 	printf $" %b\"%b\" CAN MANAGE UPDATES FOR THE FOLLOWING PROGRAMS\033[0m:\n%b\n\n" "${Gold}" "$AMCLIUPPER" "$DIVIDING_LINE"
 	[ -f "$AMCACHEDIR/updatable-args-list" ] && grep "◆" "$AMCACHEDIR/updatable-args-list" | sort | sed 's/\([✖✓🔒]\)/ \1/g' || echo $" None"
@@ -2203,10 +2238,11 @@ _update_run_updater() {
 	if grep -sq "Checksum failure" "$argpath"/AM-VERIFIED; then
 		rm -f "$argpath"/version # Triggers AM-updater to re-download the Appimage binary
 	fi
+	updater_status=0
 	if [ -z "$debug_update" ]; then
-		"$argpath"/AM-updater >/dev/null 2>&1
+		"$argpath"/AM-updater >/dev/null 2>&1 || updater_status=$?
 	else
-		"$argpath"/AM-updater
+		"$argpath"/AM-updater || updater_status=$?
 	fi
 	_alt_gh_off "$argpath"/AM-updater 2>/dev/null
 	checksum_msg=$(_use_verify | xargs 2>/dev/null)
@@ -2224,6 +2260,7 @@ _update_run_updater() {
 		[ -n "$checksum_msg" ] && printf -- "%b\n" "$checksum_msg" | sed 's/^ //g; s/^/ /g'
 		echo "$DIVIDING_LINE"
 	fi
+	[ "$updater_status" = 0 ] && [ -n "$refresh_launchers" ] && _update_launcher_wmclass
 }
 
 _update_app() {
@@ -2301,6 +2338,9 @@ _use_update() {
 	FLAGS=$(echo "$@" | tr ' ' '\n' | grep -- "--" | tr '\n ' ' ')
 	if echo "$FLAGS" | grep -q -- "--debug"; then
 		debug_update="1"
+	fi
+	if echo "$FLAGS" | grep -q -- "--refresh-launchers"; then
+		refresh_launchers="1"
 	fi
 
 	_update_determine_gh_apps_number
@@ -2729,6 +2769,7 @@ case "$1" in
 		description_unhide=$(echo $"Description: Allow a hidden app to be shown and managed again (nulls \"hide\").")
 		description_unlock=$(echo $"Description: Unlock updates for the selected program (nulls \"lock\").")
 		description_update=$(echo $"Description: Update everything. Add \"--apps\" to update only the apps or write only the apps you want to update by adding their names. Add the \"--debug\" flag to view the output of AM-updater scripts. Add the \"--launcher\" flag to try to update only local AppImages integrated with the \"--launcher\" option (see \"--launcher\").")
+		description_update_refresh=$(echo $"Add \"--refresh-launchers\" to copy StartupWMClass from the AppImage into the existing launcher. With this flag, AM owns StartupWMClass. Exec and every other line are left unchanged. Launchers that are not writable, including system installs, are skipped; use \"reinstall --launcher\" for those.")
 		description_version=$(echo $"Description: Shows the version.")
 		description_assumeyes=$(echo $"Description: Add this option before other options. If a command requires manual confirmation from the user, it will be executed non-interactively, where allowed.")
 		description_devmode_disable=$(echo $"Description: Undo \"--devmode-enable\" (see below).")
@@ -3012,9 +3053,13 @@ case "$1" in
 					${LightBlue}$AMCLI -u --apps --debug
 					${LightBlue}$AMCLI -u {$_PROGRAM}\033[0m
 					${LightBlue}$AMCLI -u --debug {$_PROGRAM}
-					${LightBlue}$AMCLI -u --launcher\033[0m
+					${LightBlue}$AMCLI -u --launcher
+					${LightBlue}$AMCLI -u --refresh-launchers
+					${LightBlue}$AMCLI -u --refresh-launchers {$_PROGRAM}\033[0m
 
 			$description_update
+
+			$description_update_refresh
 
 			${Gold}version, -v\033[0m
 
